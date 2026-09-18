@@ -5,29 +5,33 @@ The executable source is the repository feature manifest. Read the manifest, the
 | ID | Feature | Status | Client support |
 |---|---|---|---|
 | dsn_connection | DSN URI connection | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| schema_migrations | Schema migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| model_queries | Model queries | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| model_writes | Model writes | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| transactions | Transactions | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| model_generation | Model generation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| schema_install | Schema installation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| planner | In-process planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| authenticated_encryption | Versioned authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| parameter_chunking | IN and relation parameter limits | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| batch_writes | Typed batch writes | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| keyset_pagination | Typed keyset pagination | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| transactions | Transaction options | implemented | go: partial<br>php: partial<br>rust: partial<br>typescript: partial |
-| precompiled_plans | Precompiled plan bundles | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| constraints_and_relations | Constraints and relation predicates | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| conformance_verification | Cross-client conformance verification | partial | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| authenticated_encryption | Authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| parameter_chunking | Parameter chunking | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| constraints_and_relations | Constraints and relations | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 
 ## Current behavior
 
-- `dsn_connection`: Open a database from one URI DSN. The URI scheme selects the database and runtime compiler internals are not part of the caller API.
-- `schema_migrations`: Compare modeled schema state and produce validated forward and rollback operations.
-- `composite_keys`: Preserve every declared primary and foreign key component in identity, CRUD, relations, pagination, and rotation.
-- `authenticated_encryption`: Encode authenticated versioned ciphertext, read mixed key versions, and rotate every encrypted column in bounded resumable batches.
-- `parameter_chunking`: Split relation parameter tuples and oversized root IN lists by database limits while preserving result order and relation assembly. Reject unsafe root query shapes with an explicit error.
-- `batch_writes`: Execute typed insert, upsert, primary-key update, and primary-key delete requests in one transaction with bounded chunks and deterministic counts.
-- `keyset_pagination`: Provide versioned cursors, total composite ordering, validation, and forward and backward traversal.
-- `transactions`: Expose opt-in retry, isolation, read-only mode, savepoints, row locks, and timeoutMs with capability errors. PostgreSQL applies timeoutMs as a transaction-local statement timeout; MySQL and SQLite reject it. The common interface declares no in-flight cancellation operation because the four clients cannot provide the same driver behavior.
-- `precompiled_plans`: Load a validated plan bundle and execute a matching request without a compiler call.
-- `constraints_and_relations`: Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated clients execute the declared operations on MySQL, PostgreSQL, and SQLite.
-- `conformance_verification`: Run common input vectors through Go, PHP, Rust, and TypeScript and compare normalized results for each database.
+- `dsn_connection`: Open a database from one URI DSN. The URI scheme selects the driver, the timezone parameter sets the connection time zone, and the client plans statements in its own process.
+- `model_queries`: Build conditions, joins, relations, columns, subqueries, aggregates, and pages with the generated model methods and read the rows as models and collections.
+- `model_writes`: Create, create many, update with optional optimistic locking, save, and delete with optional recursive relation deletion, including the duplication assignments of an upsert.
+- `transactions`: Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values.
+- `model_generation`: Generate the models from schema.json with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains.
+- `schema_definition`: Build schema.json from Mermaid diagrams, render DDL for each dialect, import a database into a diagram, and compare two manifests into forward and rollback migrations.
+- `schema_install`: Install a manifest through a connection: every client renders the create DDL of its dialect, creates the missing tables, and registers the manifest.
+- `planner`: Validate a value-free request against the manifest and render the dialect SQL, bind slots, and assembly metadata in the client process. The four planners produce identical statements.
+- `composite_keys`: Preserve every declared primary and foreign key component in identity, writes, relations, tuple conditions, and pages.
+- `authenticated_encryption`: Encode authenticated versioned AES values and blind indexes, read mixed key versions, and rotate every encrypted column of a table in batches.
+- `parameter_chunking`: Pad relation key lists to size classes, split relation keys and oversized root IN lists at the driver bind limit, merge the results, and reject root shapes that a merge would change.
+- `constraints_and_relations`: Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.
+- `conformance_verification`: Run the same model chains in Go, PHP, Rust, and TypeScript on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

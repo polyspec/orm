@@ -1,37 +1,39 @@
 # 공통 인터페이스 v1
 
-이 문서는 공통 공개 자료구조, 소유권 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에서 관리한다. 인터페이스 정의만으로 모든 클라이언트의 구현을 증명하지 않는다.
+이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
 
 ## 1. 호출 구간과 변경 규칙
 
-schema manifest는 entity, field, relation, operator, style, error를 정의한다. compiler는 타입이 정해진 request 구조를 받고 immutable plan을 반환한다. executor는 plan, parameter 값, root binding 하나를 받는다.
+스키마 매니페스트는 엔티티, 필드, 연산자, 스타일, 오류를 정의한다. 각 언어는 자기 빌드 도구로 매니페스트에서 모델을 생성한다. 클라이언트 라이브러리는 타입이 있는 요청 형태를 검증하고 애플리케이션 프로세스 안에서 변경할 수 없는 Plan으로 계획한다. 실행기는 Plan, 매개변수 값, 모델에 선택된 연결을 받는다.
 
-변경 순서는 schema 또는 인터페이스 명세 수정, manifest와 생성물 수정, 모든 클라이언트 수정, 공통 벡터 실행, 쌍 문서 수정이다. 공통 인터페이스를 맞추기 위해 클라이언트 전용 필드나 다른 호출 순서를 추가하지 않는다.
+변경 순서는 설계 계획과 DSL 갱신, 매니페스트와 생성물 갱신, 모든 클라이언트 갱신, 공통 벡터 실행, 쌍 문서 갱신이다. 클라이언트는 공통 인터페이스를 맞추기 위해 비공개 필드나 다른 호출 순서를 추가할 수 없다.
 
 ## 2. 모듈 호출 흐름 — IF-01
 
 ```mermaid
 flowchart LR
     Schema[Schema] --> Manifest[Manifest]
-    Manifest --> Generator[Generator]
+    Manifest --> Generator[Language generator]
     Generator --> Go[Go client]
     Generator --> PHP[PHP client]
     Generator --> Rust[Rust client]
-    TypeScript[TypeScript client] --> Request[Request]
-    Go --> Request
+    Generator --> TypeScript[TypeScript client]
+    Go --> Request[Request]
     PHP --> Request
     Rust --> Request
+    TypeScript --> Request
     Request --> IR[Request IR]
-    IR --> Compiler[Compiler]
-    Compiler --> Plan[Immutable Plan]
+    Manifest --> Planner[In-process planner]
+    IR --> Planner
+    Planner --> Plan[Immutable Plan]
     Plan --> Executor[Native executor]
-    Binding[Root binding] --> Executor
+    Binding[Model connection] --> Executor
     Values[Parameter values] --> Executor
     Executor --> Rows[Execution rows]
     Rows --> Result[Row, collection, page, or scalar]
 ```
 
-compiler는 DB 자격 증명이나 parameter 값을 받지 않는다. executor가 DB 접근을 소유한다. root binding이 context와 database 또는 transaction을 제공한다. 자식 relation은 root binding을 교체할 수 없다.
+플래너는 데이터베이스 인증 정보와 매개변수 값을 받지 않는다. 데이터베이스 접근은 실행기의 책임이다. 모델은 `connect`로 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 현재 실행 흐름의 활성 트랜잭션을 사용한다. `connect`를 호출하지 않은 조인·관계 자식은 부모 연결을 사용한다.
 
 ## 3. 자료형과 값 — IF-02
 
@@ -46,27 +48,28 @@ compiler는 DB 자격 증명이나 parameter 값을 받지 않는다. executor�
 | `JsonValue` | `any` | `mixed` | `serde_json::Value` | `unknown` |
 | `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` |
 | `List<T>` | slice | array | `Vec<T>` | `T[]` |
-| `Result<T>` | `(T, error)` | return 또는 exception | `Result<T>` | `Promise<T>` |
-| `Key` | `orm.Key` | typed key | `orm::Key` | `Key` |
+| `Result<T>` | `(T, error)` | 반환 또는 예외 | `Result<T>` | `Promise<T>` |
+| `Key` | `orm.Key` | 타입 있는 키 | `orm::Key` | `Key` |
 
-null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 codec 명세가 요구하는 논리 타입과 필드 순서를 보존한다.
+null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
-## 4. 쿼리 객체와 조건 트리 — IF-03 ~ IF-08
+## 4. 모델과 조건 트리 — IF-03 ~ IF-08
 
 ```mermaid
 classDiagram
-    class Query {
+    class Model {
         Entity entity
         Request request
-        Binding binding
-        scope(value) Query
-        where(callback) Query
-        and(callback) Query
-        or() Query
-        relation(child) Query
-        join(child) Query
+        Optional~Connection~ connection
+        connect(connection) Model
+        and(callbackOrModel) Model
+        or(callbackOrModel) Model
+        relation(child) Model
+        relations(child) Model
+        on(callback) Model
         get() Result~OptionalRow~
         gets() Result~Collection~
+        getsPage(page, perPage) Result~Page~
         getCount() Result~I64~
     }
     class Request {
@@ -75,107 +78,114 @@ classDiagram
         Optional~Error~ deferredError
     }
     class Group {
-        List~PredicateOrGroup~ items
+        List~ConditionOrGroup~ items
     }
     class Relation {
-        String name
-        Query query
+        String resultName
+        Model child
     }
-    Query --> Request
+    Model --> Request
     Request --> Group
-    Query --> Relation
+    Model --> Relation
 ```
 
-각 entity occurrence는 query 객체와 Where builder 하나를 가진다. group은 predicate 또는 중첩 group을 포함한다. `or()`는 다음 항목의 연결자를 바꾼다. `and(fn)`과 `or(fn)`은 중첩 group을 만든다. relation과 join은 schema의 key mapping을 사용하며 정규 문법에서 호출자가 두 번째 mapping을 전달하지 않는다.
+모델은 쿼리 빌더이자 조회한 행 타입이다. 묶음은 조건이나 하위 묶음을 순서대로 가지며 첫 항목 뒤의 항목은 명시적인 `AND` 또는 `OR` 연결자를 가진다. `and(fn)`과 `or(fn)`은 하위 묶음을 만들며 콜백은 같은 타입의 빈 모델을 받는다. `and(model)`과 `or(model)`은 조인 자식의 조건을 묶음으로 넣는다. 조인 `ON` 조건은 `WHERE` 조건과 따로 저장한다.
 
-`scope(value)`는 entity가 `%% scope`를 선언한 query에만 존재한다. 이 메서드는 parameter index를 `RequestIR.query.scope_p`에 저장하며 Where builder는 이 값을 변경할 수 없다. compiler는 root와 relation scope를 WHERE에 적용하고 join scope를 JOIN ON에 적용한다. scoped insert는 scope 컬럼을 설정한다. scoped update와 upsert는 scope 컬럼을 설정할 수 없다. scoped raw SQL은 잘못된 요청이다.
+종단 작업은 저장된 요청을 바꾸지 않으므로 종단 작업을 반복해도 같은 SQL 문장을 만든다.
 
 ## 5. 공개 API — IF-09 ~ IF-12
 
 ### 5.0 연결 입력
 
-모든 공개 client는 하나의 DSN URI를 받는다. `mysql://`, `postgres://`, `sqlite://` scheme이 database driver를 선택한다. 호출자는 별도의 driver 값이나 compiler engine을 전달하지 않는다.
+모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 선택 매개변수 `timezone`이 연결 시간대를 정하며, 없으면 서버 환경의 시간대를 사용한다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
-| Client | 공개 연결 호출 | 반환값 |
+| 클라이언트 | 공개 연결 호출 | 결과 |
 |---|---|---|
-| Go | `gen.Connect(dsn, schemaPath, options)` | `(*orm.DB, error)` |
-| PHP | `Orm::connect(dsn, config)` | `Db` |
-| Rust | `gen::connect(dsn, wasm, schema_json, pool_size, config).await?` | `orm::Db` |
-| TypeScript | `Db.connect(dsn, options)` | `Promise<Db>` |
+| Go | `model.Connect(dsn, schemaPath, config)` | `(*orm.DB, error)` |
+| PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
+| Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |
 
 ### 5.1 생성과 언어별 표기
 
-| 동작 | PHP | Go | Rust | TypeScript |
+| 작업 | PHP | Go | Rust | TypeScript |
 |---|---|---|---|---|
-| root entry | `Battle::query()` | `gen.Battle()` | `battle::query()` | `Battle()` |
-| executor 지정 | `using($db)` | `Using(db)` | `using(&db)` | `using(database)` |
-| collection terminal | `gets()` | `Gets()` | `gets().await?` | `gets()` |
-| count terminal | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
+| 모델 생성 | `new Product` | `model.Product()` | `Product::new()` | `new Product()` |
+| 연결 | `->connect($db)` 또는 `($db)` | `.Connect(db)` | `.connect(&db)` | `.connect(db)` |
+| 컬렉션 종단 | `gets()` | `Gets()` | `gets().await?` | `gets()` |
+| 개수 종단 | `getCount()` | `GetCount()` | `get_count().await?` | `getCount()` |
 
-진입점 표기는 언어 문법을 따른다. 메서드 역할, 저장 request, 반환 타입, 오류 동작, 호출 순서는 같다.
+생성 표기는 호스트 언어를 따른다. 메서드 역할, 저장 요청, 결과 타입, 오류 동작, 호출 순서는 같다.
 
 ### 5.2 메서드군
 
-| 군 | 필수 동작 |
+| 메서드군 | 필수 동작 |
 |---|---|
-| predicate | 생성된 컬럼과 schema가 허용한 operator를 사용한다. |
-| group | 항목 순서와 중첩 구조를 보존한다. |
-| relation | 선언된 relation 이름과 key mapping을 사용한다. |
-| join | ON group과 WHERE group을 분리한다. |
-| projection | 위치 기반 출력 mapping과 alias를 보존한다. |
-| mutation | 변경 필드와 원본 값을 기록한다. |
-| terminal | 값만 받고 root binding을 사용한다. |
+| 조건 | 컬럼 체인, 연산자 접두어, 값 형태, 명시적 연결자를 사용한다. |
+| 묶음 | 항목 순서와 하위 묶음 구분을 유지한다. |
+| 관계 | 자식의 `match<L>With<R>` 키를 사용하며 관계마다 별도 SQL 문장을 실행한다. |
+| 조인 | `ON`과 `WHERE` 조건을 분리하고 자식을 전달한 묶음 위치에 자식 조건을 넣는다. |
+| 컬럼 | 위치 기반 출력 대응을 유지하고 행 명칭 중복을 거부한다. |
+| 변경 | 변경 필드와 원래 값을 기록한다. |
+| 종단 | 체인 값만 받고 모델 연결을 사용한다. |
 
-`getsByX(value)`와 `getCountByX(value)`는 정규 생성 메서드다. X의 equality predicate를 적용한 뒤 `gets()` 또는 `getCount()`를 호출한다. finder 이전에 executor를 지정하며 finder에 executor를 전달하지 않는다.
+`getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 체인을 조건으로 적용하고 종단 작업을 호출한다. PHP는 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 소비자 소스가 호출하는 체인을 생성한다.
 
 ### 5.3 실행 메서드
 
-| 메서드 | 결과 | 필수 binding |
+| 메서드 | 결과 | 연결 |
 |---|---|---|
-| `get` | 한 행 또는 `NO_ROWS` | root executor |
-| `getOrNil` | 선택적 행 | root executor |
-| `gets` | collection | root executor |
-| `getCount` | integer | root executor |
-| `insert` | row 또는 key | root executor |
-| `update` | affected count | row 또는 root executor |
-| `delete` | affected count | row 또는 root executor |
+| `get` | 행 하나 또는 null | 모델 연결 또는 활성 트랜잭션 |
+| `gets` | 컬렉션 | 모델 연결 또는 활성 트랜잭션 |
+| `getsPage` | 페이지 | 모델 연결 또는 활성 트랜잭션 |
+| `getCount` | 정수 | 모델 연결 또는 활성 트랜잭션 |
+| `create` | 생성 키를 포함한 행 | 모델 연결 또는 활성 트랜잭션 |
+| `creates` | 삽입한 행 수 | 모델 연결 또는 활성 트랜잭션 |
+| `update` | 행 | 행 연결 또는 활성 트랜잭션 |
+| `delete` | 행 또는 컬렉션 | 행 연결 또는 활성 트랜잭션 |
 
-binding이 없는 terminal은 `CONFIG`다. transaction 종료 후 terminal도 `CONFIG`다. terminal에 database 인자를 전달할 수 없다. 바인딩된 executor는 생성 요청이 사용하는 schema engine을 포함해야 하며, 그렇지 않으면 binding 해석이 `CONFIG`를 반환한다. 이 검증은 ORM binding과 생성 클라이언트가 소유하며 호출자가 engine을 직접 검사하지 않는다.
+트랜잭션 밖에서 연결 없는 종단 작업은 `CONFIG`를 반환한다. 연결은 생성된 요청이 사용하는 스키마 엔진을 가져야 하며, 아니면 종단 작업이 `CONFIG`를 반환한다.
 
-## 6. Binding·executor·transaction — IF-13 ~ IF-17
+## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17
 
-binding은 실행 context와 database 또는 transaction 참조 하나를 포함한다. query 복사는 request 값을 공유할 수 있지만 mutable builder 상태는 공유하지 않는다. 자식 relation은 root binding을 사용한다. 로드된 row는 update와 delete에 필요한 binding을 보존한다.
+`connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다.
 
-transaction을 만든 코드가 소유권을 가진다. commit과 rollback은 binding을 종료한다. 이후 해당 transaction의 query와 row는 실행을 거부한다. transaction은 `savepoint(name)`, `rollbackTo(name)`, `releaseSavepoint(name)`을 제공한다. 이름은 `[A-Za-z_][A-Za-z0-9_]*`와 일치해야 하며 잘못된 이름은 `CONFIG`로 거부한다. 이 작업은 바깥 transaction을 종료하지 않는다.
+| 옵션 | 값 |
+|---|---|
+| `isolation` | `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable` |
+| `readOnly` | 불리언 |
+| `timeoutMs` | 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환 |
+| `retry` | 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다 |
 
-Go는 callback 재시도 없이 호출자가 명시적으로 `tx.Commit(ctx)` 또는 `tx.Rollback(ctx)`로 종료하는 `orm.Begin(ctx, db, options)`도 제공한다. `tx.Driver()`는 공통 query·mutation·transaction API를 바꾸지 않고 canonical adapter 이름(`mysql`, `postgres`, `sqlite`)을 반환한다. PostgreSQL은 실제 통합 테스트의 lock orchestration을 위해 `tx.BackendPID(ctx)`를 제공하며, 다른 driver는 `CAPABILITY_UNSUPPORTED`를 반환한다.
+- 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
+- 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다.
+- 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다. 콜백 안에서 시작한 task나 goroutine에는 활성 트랜잭션이 없다.
+- `transactionConflict(message)`(Go: `orm.TransactionConflict`)는 재시도 대상 `DEADLOCK` 오류를 만든다.
+- 행 잠금 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 잠금 절을 추가하고 SQLite는 ORM 트랜잭션 범위의 잠금 행을 사용한다.
 
-Go는 ORM이 소유한 connection pool 상태를 확인하는 `db.Stats()`와 lifecycle 조정만을 위한 불투명한 `db.Acquire(ctx)` 및 `ConnectionLease`도 제공한다. lease는 명시적으로 닫을 수 있지만 `database/sql`이나 query 실행을 노출하지 않는다. 데이터 접근은 generated query와 ORM transaction 범위만 사용한다.
+`connection.utils()`는 쿼리 문법 밖의 작업을 제공한다.
 
-PostgreSQL transaction은 transaction 범위 직렬화를 위해 `advisoryLock(key)`(Go: `AdvisoryLock`)를 제공한다. lock은 transaction 종료 시 해제된다. 다른 driver는 이 작업을 `CAPABILITY_UNSUPPORTED`로 거부한다.
+| 유틸리티 | 동작 |
+|---|---|
+| `lock(key)` | 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요 |
+| `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
+| `schema().install(manifestJson)` | 모든 데이터베이스에서 매니페스트의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
+| `schema().exists(schema)`, `schema().installed(schema, table)`, `schema().empty()` | 스키마 확인 |
+| `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환 |
+| `aes().status(model, keyring)`, `aes().rotate(model, keyring)` | AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전 |
+| `stats()` | 연결 풀 통계 |
 
-스키마 설치는 호출자가 소유한 transaction에서 `installDDL(statements)`(Go: `InstallDDL`)를 사용한다. ORM은 문장을 순서대로 실행하고 첫 오류를 반환하므로 transaction 소유자가 전체 설치를 rollback할 수 있다.
+데이터를 바꾸는 유틸리티는 활성 트랜잭션이 없으면 트랜잭션을 열고, 같은 연결의 활성 트랜잭션이 있으면 그 트랜잭션에 참여한다.
 
-PostgreSQL transaction은 transaction 종료 시 되돌리는 값에 `setLocal(key, value)`(Go: `SetLocal`)와 같은 ORM transaction에서 설정한 값을 읽는 `local(key)`(Go: `Local`), 현재 mode를 확인하는 `readOnly()`와 `isolation()`(Go: `ReadOnly`, `Isolation`), 설치를 확인하는 `schemaInstalled(schema, table)`와 `schemaExists(schema)`(Go: `SchemaInstalled`, `SchemaExists`)도 제공한다. `Local`은 키가 없으면 `NO_ROWS`를 반환하고 SQLite와 PostgreSQL에서 모두 사용할 수 있다. SQLite는 값을 ORM transaction context에 보존하며 audit adapter도 context table을 사용한다. `grantPlatformRuntimePrivileges(role)`(Go: `GrantPlatformRuntimePrivileges`)는 설치 후 고정된 `core` runtime privilege와 core identity sequence DML 권한을 설정한다. 감사 기록은 generated core operation table에 포함되며 별도의 수기 schema를 요구하지 않는다. `grantTablePrivileges(table, role)`(Go: `GrantTablePrivileges`)는 하나의 정규화된 module table에 runtime DML 권한을 설정한다. 이 작업들은 PostgreSQL 이외 driver에서 `CAPABILITY_UNSUPPORTED`를 반환한다. 식별자는 비어 있지 않은 한 줄이어야 하고 정규화된 table 이름은 schema 구분자를 정확히 하나 포함해야 하며 statement에 사용하기 전에 quote한다.
-`installerSessionAuthorized(role)`(Go: `InstallerSessionAuthorized`)는 현재 PostgreSQL session이 `core` schema를 소유하고 runtime role과 다른지 확인한다.
+## 7. 계획과 조립 — IF-18 ~ IF-20
 
-`TransactionOptions`는 `isolation`(`default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`), `readOnly`, `timeoutMs`(언어별 snake case 표기)를 받는다. Go는 isolation과 read-only를 `database/sql.TxOptions`로 전달하고 PHP·TypeScript는 PostgreSQL에서 `BEGIN` 후, MySQL에서 `START TRANSACTION` 전에 설정한다. Rust도 driver별 transaction 시작 규칙을 적용한다. SQLite는 명시적인 isolation·read-only·timeout을 거부한다. MySQL과 SQLite는 `timeoutMs`를 거부하고 PostgreSQL은 transaction 로컬 `statement_timeout`으로 적용한다. 지원하지 않는 capability는 `CAPABILITY_UNSUPPORTED`를 반환한다.
-
-root row select는 `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`를 각 언어의 명명 규칙으로 제공한다. request는 공통 IR에 `lock`을 저장한다. MySQL과 PostgreSQL은 order와 limit 뒤에 선택한 lock 절을 추가하며 `NoWait` mode는 row를 즉시 사용할 수 없으면 실패한다. SQLite는 lock suffix를 생성하지 않고 ORM이 `forUpdate()`, `forShare()`와 두 `NoWait` variant를 transaction 범위의 database lock 행으로 구현한다. `NoWait`은 일시적으로 busy timeout을 0으로 설정하여 경합에서 즉시 실패한다.
-
-오류는 안정된 code와 원래 driver message를 보존한다. `newTransactionConflict(message)`(Go: `NewTransactionConflict`)는 serialization failure와 deadlock에 사용하는 adapter-neutral 재시도 가능한 transaction-conflict 오류를 만들며 `DEADLOCK`을 전달하고 driver 오류 type을 노출하지 않는다. transaction timeout은 driver가 PostgreSQL `statement_timeout`을 지원하는 경우 `timeoutMs`로 제공하며 실행 중 cancellation은 각 언어 runtime의 native 방식을 사용한다.
-
-`transaction`은 기본적으로 callback을 한 번 실행한다. deadlock 재시도는 기본 비활성화다. 호출자는 `TransactionOptions`의 `retryDeadlocks`와 `maxAttempts`를 지정할 수 있다. 재시도마다 새 transaction을 만들고 callback 전체를 다시 실행한다. 재시도를 활성화하면 callback은 여러 번 실행되어도 안전해야 한다.
-
-## 7. Compile·Plan·조립 — IF-18 ~ IF-20
-
-`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. compiler는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다.
+`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. 클라이언트 플래너는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다. 네 플래너는 같은 요청에서 같은 SQL을 만들며, conformance 벡터가 이를 검사한다.
 
 조립은 `{alias, column, output_name, index}`를 사용한다. join alias는 root namespace와 분리한다. 출력 이름이 중복되면 `COLUMN_ALIAS_CONFLICT`다. schema hash가 다르면 실행 전에 `SCHEMA_HASH_MISMATCH`다.
 
 ## 8. Row 값·dirty 상태·관계 — IF-21 ~ IF-24
 
-생성 row는 선언 필드와 relation 결과를 저장한다. getter는 선언 타입을 반환한다. setter는 필드를 변경하고 dirty로 표시한다. update는 optimistic locking에 필요한 필드를 제외하고 dirty 필드만 전송한다. 원본 version은 변경 전에 읽어 update 조건에 사용한다.
+모델 행은 선언 필드, 추가 컬럼, 관계 결과, `new<Name>`으로 추가한 값을 하나의 명칭 공간에 저장하며 명칭 중복을 거부한다. getter는 선언 타입을 반환한다. setter는 필드를 변경하고 dirty로 표시한다. update는 optimistic locking에 필요한 필드를 제외하고 dirty 필드만 전송한다. 원본 version은 변경 전에 읽어 update 조건에 사용한다.
 
 relation 결과는 schema에 따라 한 행 또는 collection이다. collection keying은 결정적이다. 중복 key는 선언된 정책을 따르고, 선언되지 않은 key function은 오류다.
 
@@ -185,7 +195,7 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. collection 
 |---|---|
 | `Collection<T>` | 순서가 있는 행, 길이, first, key lookup |
 | `Key` | 논리 타입 tag와 값 |
-| `Page<T>` | page, 페이지당 수, total count, rows |
+| `Page<T>` | `items`, `totalCount`, `totalPages`, `page`, `perPage` |
 
 정수 key `7`과 문자열 key `"7"`은 다른 key다. 복합 key는 각 타입 구성요소의 길이를 함께 인코딩하므로 `("1", "23")`과 `("12", "3")`이 충돌하지 않는다. plan은 순서가 있는 collection 식별자를 `Assemble.key`에 기록한다. 일반 행은 모든 primary key 구성요소를 사용하고 grouped count 행은 group 컬럼과 expression 별칭을 사용한다. 명시적인 order나 key 정책이 없으면 collection은 DB 순서를 보존한다. page는 root 결과 순서와 relation 부착 순서를 보존한다.
 
@@ -199,9 +209,9 @@ query event에는 정규화 SQL, bind 수, duration, plan 식별자, 오류를 �
 
 ## 11. 생성기·스키마·확장 구분 — IF-32 ~ IF-34
 
-generator는 schema manifest를 읽고 선언된 method, field, relation, column reference, error type을 출력한다. 선언되지 않은 column, relation, operator의 method를 출력하지 않는다. 생성 코드는 manifest와 interface symbol 목록으로 검사한다.
+생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 소비자 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
 
-정규 API는 `relation<Rel>`, `relations<Rel>`, `join<Rel>`, `leftJoin<Rel>`처럼 선언된 relation method를 사용한다. 선언되지 않은 method 이름은 언어의 method lookup 단계에서 실패한다.
+관계는 자식의 `match<L>With<R>()`와 함께 `relation(child)`, `relations(child)`를 사용한다. 조인은 `join<L>With<R>(child)`, `leftJoin<L>With<R>(child)`를 사용한다. 알 수 없는 명칭은 PHP와 TypeScript에서는 호출 해석 단계, Go와 Rust에서는 생성 단계에서 실패한다.
 
 ## 12. 검증
 
@@ -252,7 +262,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Error[Driver or compiler error] --> Code[Stable error code]
+    Error[Driver or planner error] --> Code[Stable error code]
     Error --> Message[Original message]
     Code --> Client[Client result]
     Message --> Client

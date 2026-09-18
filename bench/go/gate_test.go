@@ -14,10 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/clients/go/gen"
+	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 // The ratio is comparable across machines. A Unix socket emphasizes fixed
@@ -56,26 +54,11 @@ func TestHotPathGate(t *testing.T) {
 	}
 	sqlDB := open(t) // skips without a local MySQL
 	ctx := context.Background()
-	js, err := os.ReadFile("../../schema/schema.json")
+	db, err := model.Connect(dsn(), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := schema.Load(js)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "mysql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.OpenWithEngine(dsn(), eng, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.SQL.Close()
-	if err := gen.Init(eng); err != nil {
-		t.Fatal(err)
-	}
+	defer db.Close()
 
 	for _, c := range []struct {
 		name           string
@@ -86,7 +69,7 @@ func TestHotPathGate(t *testing.T) {
 			name:   "pk",
 			native: func() { mustNoErr(t, func() error { _, err := pkGet(ctx, sqlDB, 42); return err }) },
 			client: func() {
-				mustNoErr(t, func() error { _, err := gen.Battle().Using(db).GetBySeq(42); return err })
+				mustNoErr(t, func() error { _, err := model.Battle().Connect(db).GetBySeq(42); return err })
 			},
 			bound: pkBound,
 		},
@@ -95,7 +78,7 @@ func TestHotPathGate(t *testing.T) {
 			native: func() { mustNoErr(t, func() error { _, err := list100(ctx, sqlDB, 7); return err }) },
 			client: func() {
 				mustNoErr(t, func() error {
-					_, err := gen.Battle().ServiceSeq(7).IsClose(false).OrderBySeqDesc().Limit(0, 100).Using(db).Gets()
+					_, err := model.Battle().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100).Gets()
 					return err
 				})
 			},

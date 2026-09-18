@@ -1,53 +1,53 @@
 <?php
-// A complex statement in three languages, one JSON document (docs/examples/complex-query.md
-// shows the same product-domain shapes). Run:
+// A complex statement in every client language, one JSON document. Run:
 //
-//   php examples/complex/php/main.php /abs/ormd.sock /abs/schema/schema.json
+//   php examples/complex/php/main.php /abs/schema/schema.json
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
 
 use App\Orm\Battle;
-use App\Orm\BattleWhere;
 use App\Orm\Service;
 use App\Orm\ServiceMember;
-use App\Orm\ServiceWhere;
 use App\Orm\User;
 use Orm\Config;
-use Orm\Db;
 use Orm\Orm;
 
-Orm::init(new Config(socket: $argv[1], schemaPath: $argv[2], aesKey: 'bench-salt'));
-$db = Db::mysql(getenv('ORM_MYSQL_DSN_PHP') ?: 'mysql:unix_socket=/tmp/mysql.sock;dbname=orm_bench;charset=utf8mb4', 'root', '');
+$db = Orm::connect(
+    getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock',
+    new Config(schemaPath: $argv[1], aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
+);
 
-// A join carrying its own ON and WHERE, a root group mixing a predicate with
-// navigation into the joined entity, and three levels of relations with options.
-$rows = Battle::query()
-    ->selectNone()->selectName()
-    ->join(Service::query()
-        ->on(fn(ServiceWhere $w) => $w->seqGt(0))
-        ->where(fn(ServiceWhere $w) => $w->name('service-7')))
+// A join child with its own ON conditions whose WHERE conditions are placed
+// in a group, and two levels of relations with options.
+$service = (new Service)
+    ->on(fn(Service $s) => $s->gtSeq(0))
+    ->name('service-7');
+$rows = (new Battle)($db)
+    ->removeAllColumns()->addColumnName()
+    ->joinServiceSeqWithSeq($service)
     ->isClose(false)
-    ->and(fn(BattleWhere $w) => $w->isDisplay(true)->or()->service(fn(ServiceWhere $s) => $s->seq(7)))
-    ->relation(User::query()
-        ->relations(Battle::query()->selectNone()->orderBySeqDesc()->limitPerParent(2)->dropChildKey()))
-    ->relation(Service::query()
-        ->relations(ServiceMember::query()->selectNone()->orderBySeqAsc()->limitPerParent(2)->keyByUserSeq()))
-    ->orderBySeqAsc()->limit(0, 2)
-    ->using($db)->gets();
-$items = [];
-foreach ($rows as $b) {
-    $items[] = $b->toArray();
-}
+    ->and(fn(Battle $q) => $q->isDisplay(true)->or($service))
+    ->relation((new User)->matchUserSeqWithSeq()
+        ->relations((new Battle)->matchSeqWithUserSeq()->removeAllColumns()->orderBySeqDesc()->groupLimit(2)))
+    ->relation((new Service)->matchServiceSeqWithSeq()->aliasOwnerService()
+        ->relations((new ServiceMember)->matchSeqWithServiceSeq()->removeAllColumns()->orderBySeqAsc()->groupLimit(2)->keyNameUserSeq()))
+    ->orderBySeqAsc()
+    ->limit(0, 2)
+    ->gets();
 
-// Aggregates over the same slice of data: a grouped count with HAVING, min/max, distinct.
-$groups = Battle::query()->serviceSeq(7)->groupByUserSeq()
-    ->having(fn(BattleWhere $w) => $w->expr('COUNT(*) > ?', [1]))->using($db)->getCount();
+// Aggregates over the same data: grouped counts, a sum, an average, and a page.
+$groups = (new Battle)($db)->serviceSeq(7)->groupByUserSeq()->getsCount();
+$sum = (new Battle)($db)->serviceSeq(7)->sumReadCount()->getSum();
+$avg = (new Battle)($db)->serviceSeq(7)->avgLikeCount()->getAvg();
+$page = (new Battle)($db)->serviceSeq(7)->removeAllColumns()->orderBySeqAsc()->getsPage(2, 10);
 
 echo json_encode([
-    'rows' => $items,
-    'groups' => $groups,
-    'min_seq' => Battle::query()->serviceSeq(7)->using($db)->minSeq(),
-    'max_seq' => Battle::query()->serviceSeq(7)->using($db)->maxSeq(),
-    'user_count' => Battle::query()->serviceSeq(7)->using($db)->countDistinctUserSeq(),
+    'rows' => $rows,
+    'groups' => count($groups),
+    'read_sum' => $sum,
+    'like_avg' => $avg,
+    'page_total' => $page->totalCount,
+    'page_pages' => $page->totalPages,
+    'page_length' => count($page->items),
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";

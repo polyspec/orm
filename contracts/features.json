@@ -17,8 +17,8 @@
       "title": "DSN URI connection",
       "title_ko": "DSN URI 연결",
       "status": "implemented",
-      "description": "Open a database from one URI DSN. The URI scheme selects the database and runtime compiler internals are not part of the caller API.",
-      "description_ko": "하나의 URI DSN으로 database를 연다. URI scheme이 database를 선택하며 runtime compiler 내부 구조는 호출자 API에 포함하지 않는다.",
+      "description": "Open a database from one URI DSN. The URI scheme selects the driver, the timezone parameter sets the connection time zone, and the client plans statements in its own process.",
+      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 timezone 파라미터가 연결 시간대를 정하며, client는 자기 process에서 statement를 계획한다.",
       "inputs": {
         "type": "DsnConnectionRequest",
         "fields": [
@@ -30,23 +30,107 @@
         "type": "Db",
         "fields": [
           "connection_pool",
-          "runtime_executor"
+          "planners",
+          "plan_cache"
         ]
       },
       "state": [
-        "parse DSN scheme",
+        "parse DSN scheme and time zone",
         "select native driver",
-        "validate dialect and schema",
+        "load and check the schema manifest",
         "open connection pool"
       ],
       "errors": [
         {
           "code": "CONFIG",
-          "when": "DSN scheme or connection parameters are invalid"
+          "when": "the DSN scheme, the parameters, or a named MySQL time zone is invalid"
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
-          "when": "runtime compiler schema differs from generated schema"
+          "when": "the generated models come from another schema.json"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [],
+      "tests": [
+        "clients/go/orm/dsn_test.go",
+        "clients/go/orm/timezone_test.go",
+        "clients/php/tests/dsn.php",
+        "tests/typescript/dsn.mjs",
+        "clients/rust/orm/tests/zone.rs"
+      ],
+      "docs": [
+        "docs/config.md",
+        "docs/usage.md"
+      ],
+      "verification": [
+        {
+          "id": "dsn-go",
+          "command": "go test ./clients/go/orm -run 'ParseDSN|ConnectionTimeZone' -count=1"
+        },
+        {
+          "id": "dsn-php",
+          "command": "php clients/php/tests/dsn.php"
+        },
+        {
+          "id": "dsn-typescript",
+          "command": "npm run typescript:build && node tests/typescript/dsn.mjs"
+        },
+        {
+          "id": "dsn-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test zone"
+        }
+      ]
+    },
+    {
+      "id": "model_queries",
+      "title": "Model queries",
+      "title_ko": "모델 조회",
+      "status": "implemented",
+      "description": "Build conditions, joins, relations, columns, subqueries, aggregates, and pages with the generated model methods and read the rows as models and collections.",
+      "description_ko": "생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.",
+      "inputs": {
+        "type": "Model",
+        "fields": [
+          "conditions",
+          "joins",
+          "relations",
+          "columns",
+          "order",
+          "limit"
+        ]
+      },
+      "outputs": {
+        "type": "Collection",
+        "fields": [
+          "models",
+          "keys",
+          "fetched_values"
+        ]
+      },
+      "state": [
+        "build a value-free request and a parameter list",
+        "plan once per request shape",
+        "run the main and relation statements",
+        "assemble models by position"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "the chain is incomplete or the model has no connection outside a transaction"
+        },
+        {
+          "code": "IR_INVALID",
+          "when": "the request shape is invalid"
+        },
+        {
+          "code": "EMPTY_IN",
+          "when": "an IN list is empty"
         }
       ],
       "clients": {
@@ -56,66 +140,291 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/features.json"
+        "tests/conformance/vectors.json"
       ],
       "tests": [
-        "clients/go/orm/dsn_test.go",
-        "tests/typescript/dsn.mjs"
+        "clients/go/model/model_test.go",
+        "clients/php/tests/model_test.php",
+        "tests/typescript/model.mjs",
+        "clients/rust/tests/src/integration.rs",
+        "engine/engine_test.go"
       ],
       "docs": [
+        "docs/dsl.md",
         "docs/usage.md",
-        "docs/usage.md"
+        "docs/protocol.md"
       ],
       "verification": [
         {
-          "id": "dsn-connection-unit",
-          "command": "go test ./clients/go/orm -run 'DSN|Dsn' -count=1"
+          "id": "queries-go",
+          "command": "go test ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1"
         },
         {
-          "id": "dsn-client-validation",
-          "command": "php clients/php/tests/dsn.php && npm run typescript:build && node tests/typescript/dsn.mjs"
+          "id": "queries-php",
+          "command": "php clients/php/tests/model_test.php"
+        },
+        {
+          "id": "queries-typescript",
+          "command": "npm run typescript:test"
         }
       ]
     },
     {
-      "id": "schema_migrations",
-      "title": "Schema migration",
-      "title_ko": "Schema migration",
+      "id": "model_writes",
+      "title": "Model writes",
+      "title_ko": "모델 쓰기",
       "status": "implemented",
-      "description": "Compare modeled schema state and produce validated forward and rollback operations.",
-      "description_ko": "모델 schema 상태를 비교하고 검증된 forward 및 rollback operation을 생성한다.",
+      "description": "Create, create many, update with optional optimistic locking, save, and delete with optional recursive relation deletion, including the duplication assignments of an upsert.",
+      "description_ko": "생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다.",
+      "inputs": {
+        "type": "Model",
+        "fields": [
+          "sets",
+          "plus_minus",
+          "raw_sets",
+          "duplication"
+        ]
+      },
+      "outputs": {
+        "type": "Model",
+        "fields": [
+          "stored_row",
+          "affected_rows"
+        ]
+      },
+      "state": [
+        "assign values and timestamps",
+        "encrypt AES columns with the current key version",
+        "run the write statement",
+        "return the stored row"
+      ],
+      "errors": [
+        {
+          "code": "OPTIMISTIC_LOCK",
+          "when": "an optimistic update matched no row"
+        },
+        {
+          "code": "DUPLICATE_KEY",
+          "when": "an insert conflicts with a unique key"
+        },
+        {
+          "code": "FOREIGN_KEY",
+          "when": "a write breaks a foreign key"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [
+        "tests/conformance/vectors.json"
+      ],
+      "tests": [
+        "clients/go/model/model_test.go",
+        "clients/php/tests/model_test.php",
+        "tests/typescript/model.mjs",
+        "clients/rust/tests/src/integration.rs"
+      ],
+      "docs": [
+        "docs/dsl.md",
+        "docs/usage.md"
+      ],
+      "verification": [
+        {
+          "id": "writes-go",
+          "command": "go test ./clients/go/model -run 'Writes' -count=1"
+        }
+      ]
+    },
+    {
+      "id": "transactions",
+      "title": "Transactions",
+      "title_ko": "트랜잭션",
+      "status": "implemented",
+      "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values.",
+      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다.",
+      "inputs": {
+        "type": "TransactionRequest",
+        "fields": [
+          "callback",
+          "isolation",
+          "read_only",
+          "timeout_ms",
+          "retry"
+        ]
+      },
+      "outputs": {
+        "type": "TransactionResult",
+        "fields": [
+          "callback_result"
+        ]
+      },
+      "state": [
+        "begin or create a savepoint",
+        "run models without a connection in the flow transaction",
+        "commit or roll back",
+        "retry on deadlock"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "a row lock or named lock runs outside a transaction, or the transaction connection is used concurrently"
+        },
+        {
+          "code": "DEADLOCK",
+          "when": "the retries are exhausted"
+        },
+        {
+          "code": "CAPABILITY_UNSUPPORTED",
+          "when": "the dialect rejects an option"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [],
+      "tests": [
+        "clients/go/model/model_test.go",
+        "clients/go/orm/cancel_test.go",
+        "clients/php/tests/model_test.php",
+        "tests/typescript/model.mjs",
+        "clients/rust/orm/tests/zone.rs",
+        "clients/rust/tests/src/integration.rs"
+      ],
+      "docs": [
+        "docs/config.md",
+        "docs/dsl.md",
+        "docs/errors.yaml"
+      ],
+      "verification": [
+        {
+          "id": "transactions-go",
+          "command": "go test ./clients/go/model -run 'Transactions' -count=1"
+        }
+      ],
+      "public_constraints": [
+        "The chain declares no cancellation operation: a flow cancels through the host language primitive on a connection handle (Go WithContext, TypeScript withSignal, Rust dropping the statement future), and a cancelled statement returns CANCELED.",
+        "PHP cancellation is not implemented yet.",
+        "The interface manifest prohibits query_cancel, transaction_cancel, and in_flight_cancellation symbols."
+      ]
+    },
+    {
+      "id": "model_generation",
+      "title": "Model generation",
+      "title_ko": "모델 생성",
+      "status": "implemented",
+      "description": "Generate the models from schema.json with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains.",
+      "description_ko": "언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다.",
+      "inputs": {
+        "type": "GeneratorRequest",
+        "fields": [
+          "schema_json",
+          "output",
+          "scan_paths"
+        ]
+      },
+      "outputs": {
+        "type": "GeneratedModels",
+        "fields": [
+          "models",
+          "chain_methods",
+          "schema_hash"
+        ]
+      },
+      "state": [
+        "load schema.json and check its hash",
+        "scan calls",
+        "reject names outside the chain rules",
+        "write the models"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "a called name does not follow the chain rules or a column name is reserved"
+        },
+        {
+          "code": "SCHEMA_INVALID",
+          "when": "schema.json was edited by hand"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [],
+      "tests": [
+        "internal/ormgen/gen_go_test.go",
+        "clients/php/tests/engine_test.php",
+        "tests/typescript/generate.mjs",
+        "clients/rust/orm-build/tests/generate.rs"
+      ],
+      "docs": [
+        "docs/dsl.md",
+        "docs/usage.md"
+      ],
+      "verification": [
+        {
+          "id": "generation-go",
+          "command": "go test ./internal/ormgen -run 'Gen' -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
+        },
+        {
+          "id": "generation-typescript",
+          "command": "npm run typescript:build && node tests/typescript/generate.mjs"
+        },
+        {
+          "id": "generation-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-build"
+        }
+      ]
+    },
+    {
+      "id": "schema_definition",
+      "title": "Schema definition and migration",
+      "title_ko": "스키마 정의와 마이그레이션",
+      "status": "implemented",
+      "description": "Build schema.json from Mermaid diagrams, render DDL for each dialect, import a database into a diagram, and compare two manifests into forward and rollback migrations.",
+      "description_ko": "Mermaid 다이어그램에서 schema.json을 만들고, dialect별 DDL을 렌더링하며, 데이터베이스를 다이어그램으로 가져오고, 두 manifest를 비교해 forward와 rollback migration을 만든다.",
       "inputs": {
         "type": "SchemaDocument",
         "fields": [
           "entities",
+          "relations",
           "indexes",
-          "foreign_keys",
-          "comments"
+          "checks",
+          "comments",
+          "renames"
         ]
       },
       "outputs": {
-        "type": "MigrationPlan",
+        "type": "SchemaManifest",
         "fields": [
-          "operations",
-          "rollback",
-          "warnings"
+          "schema_hash",
+          "entities",
+          "ddl",
+          "migration"
         ]
       },
       "state": [
-        "load schema",
-        "validate declarations",
-        "compare state",
-        "build plan",
-        "execute transaction"
+        "parse diagrams",
+        "validate names, keys, and relations",
+        "compute the schema hash",
+        "render DDL or migration statements"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "schema declaration is unsupported"
+          "when": "a diagram breaks a schema rule"
         },
         {
-          "code": "MIGRATION_UNSAFE",
-          "when": "operation cannot preserve data"
+          "code": "CONFIG",
+          "when": "a command argument or database connection is invalid"
         }
       ],
       "clients": {
@@ -126,11 +435,92 @@
       },
       "fixtures": [
         "schema/schema.json",
-        "bench/sql/battle.sqlite.sql"
+        "bench/sql/battle.sqlite.sql",
+        "tests/schema/cases.json"
       ],
       "tests": [
-        "cmd/ormgen",
-        "engine"
+        "engine/schema/manifest_test.go",
+        "engine/schema/mermaid_test.go",
+        "internal/ormgen/diff_test.go",
+        "internal/ormgen/import_test.go",
+        "internal/ormgen/migrate_test.go",
+        "clients/php/tests/schema_test.php",
+        "clients/php/tests/schema_tool_test.php",
+        "clients/php/tests/schema_db_test.php",
+        "clients/rust/orm-build/tests/schema_cases.rs",
+        "clients/rust/orm-build/tests/tools.rs",
+        "clients/rust/orm-build/tests/cli.rs",
+        "tests/typescript/schema-cases.mjs",
+        "tests/typescript/schema-tools.mjs"
+      ],
+      "docs": [
+        "docs/schema.md",
+        "docs/dialects.md"
+      ],
+      "verification": [
+        {
+          "id": "schema-go",
+          "command": "go test ./engine/schema ./internal/ormgen -count=1"
+        },
+        {
+          "id": "schema-php",
+          "command": "php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php && php clients/php/tests/schema_db_test.php"
+        },
+        {
+          "id": "schema-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-build --features cli"
+        },
+        {
+          "id": "schema-typescript",
+          "command": "npm run typescript:build && node tests/typescript/schema-cases.mjs && node tests/typescript/schema-tools.mjs"
+        }
+      ]
+    },
+    {
+      "id": "schema_install",
+      "title": "Schema installation",
+      "title_ko": "스키마 설치",
+      "status": "implemented",
+      "description": "Install a manifest through a connection: every client renders the create DDL of its dialect, creates the missing tables, and registers the manifest.",
+      "description_ko": "연결로 manifest를 설치한다. 모든 client가 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록한다.",
+      "inputs": {
+        "type": "ManifestJson",
+        "fields": [
+          "schema_json"
+        ]
+      },
+      "outputs": {
+        "type": "Success",
+        "fields": []
+      },
+      "state": [
+        "render the create DDL",
+        "run it in one transaction where the dialect allows it",
+        "register the manifest with the connection"
+      ],
+      "errors": [
+        {
+          "code": "SCHEMA_INVALID",
+          "when": "the manifest is invalid"
+        },
+        {
+          "code": "CONFIG",
+          "when": "the installation cannot run on the connection"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [],
+      "tests": [
+        "clients/go/orm/keyword_test.go",
+        "clients/go/orm/timezone_test.go",
+        "clients/php/tests/model_test.php",
+        "tests/typescript/model.mjs",
+        "clients/rust/orm/tests/zone.rs"
       ],
       "docs": [
         "docs/schema.md",
@@ -138,174 +528,57 @@
       ],
       "verification": [
         {
-          "id": "schema-unit",
-          "command": "go test ./engine/... ./cmd/ormgen/... -count=1"
-        }
-      ]
-    },
-    {
-      "id": "composite_keys",
-      "title": "Composite keys",
-      "title_ko": "Composite keys",
-      "status": "implemented",
-      "description": "Preserve every declared primary and foreign key component in identity, CRUD, relations, pagination, and rotation.",
-      "description_ko": "선언된 primary 및 foreign key component 전체를 identity, CRUD, relation, pagination, rotation에서 보존한다.",
-      "inputs": {
-        "type": "CompositeKeyDefinition",
-        "fields": [
-          "ordered_columns",
-          "references"
-        ]
-      },
-      "outputs": {
-        "type": "TypedIdentity",
-        "fields": [
-          "key_fields",
-          "collection_key",
-          "relation_key"
-        ]
-      },
-      "state": [
-        "validate complete key",
-        "build tuple predicate",
-        "execute operation",
-        "assemble tuple identity"
-      ],
-      "errors": [
-        {
-          "code": "SCHEMA_INVALID",
-          "when": "composite declaration is unsupported"
+          "id": "install-go",
+          "command": "go test ./clients/go/orm -run 'SQLKeywordNames|ConnectionTimeZone' -count=1"
         },
         {
-          "code": "IR_INVALID",
-          "when": "partial identity is supplied"
-        }
-      ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass"
-      },
-      "fixtures": [
-        "schema/schema.json"
-      ],
-      "tests": [
-        "clients/go/orm/composite_identity_test.go",
-        "clients/php/tests/integration.php",
-        "clients/rust/tests/src/integration.rs",
-        "tests/typescript/sqlite-integration.mjs"
-      ],
-      "docs": [
-        "docs/schema.md",
-        "docs/dsl.md"
-      ],
-      "verification": [
-        {
-          "id": "composite-unit",
-          "command": "go test ./engine/... ./cmd/ormgen/... ./clients/go/orm -run 'Composite|composite' -count=1"
+          "id": "install-php",
+          "command": "php clients/php/tests/engine_test.php"
         }
       ]
     },
     {
-      "id": "authenticated_encryption",
-      "title": "Versioned authenticated encryption",
-      "title_ko": "Versioned authenticated encryption",
+      "id": "planner",
+      "title": "In-process planner",
+      "title_ko": "프로세스 내 planner",
       "status": "implemented",
-      "description": "Encode authenticated versioned ciphertext, read mixed key versions, and rotate every encrypted column in bounded resumable batches.",
-      "description_ko": "인증된 version ciphertext를 저장하고 여러 key version을 읽으며 모든 암호화 column을 제한된 재개 가능 batch로 회전한다.",
+      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, and assembly metadata in the client process. The four planners produce identical statements.",
+      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보를 client process에서 만든다. 네 planner는 같은 statement를 만든다.",
       "inputs": {
-        "type": "EncryptionConfig",
+        "type": "RequestIR",
         "fields": [
-          "aes_keys",
-          "aes_version",
-          "blind_index_key"
+          "schema_hash",
+          "kind",
+          "query",
+          "set",
+          "rows"
         ]
       },
       "outputs": {
-        "type": "Ciphertext",
+        "type": "Plan",
         "fields": [
-          "version",
-          "nonce",
-          "tag",
-          "payload"
+          "steps",
+          "bind_slots",
+          "assemble"
         ]
       },
       "state": [
-        "select row key version",
-        "decode authenticated value",
-        "write current version",
-        "resume rotation checkpoint"
-      ],
-      "errors": [
-        {
-          "code": "CODEC_DECODE",
-          "when": "ciphertext authentication or format check fails"
-        },
-        {
-          "code": "CONFIG",
-          "when": "key version is unavailable"
-        }
-      ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass"
-      },
-      "fixtures": [
-        "tests/codec/aes-vectors.json"
-      ],
-      "tests": [
-        "clients/go/orm/codec_test.go",
-        "clients/go/orm/aes_rotation_test.go",
-        "clients/php/tests/hostcodec.php",
-        "tests/typescript/codec-vector.mjs"
-      ],
-      "docs": [
-        "docs/codec.md",
-        "docs/config.md"
-      ],
-      "verification": [
-        {
-          "id": "codec-unit",
-          "command": "go test ./clients/go/orm -run 'Codec|AES|Rotation' -count=1"
-        }
-      ]
-    },
-    {
-      "id": "parameter_chunking",
-      "title": "IN and relation parameter limits",
-      "title_ko": "IN 및 relation parameter limit",
-      "status": "implemented",
-      "description": "Split relation parameter tuples and oversized root IN lists by database limits while preserving result order and relation assembly. Reject unsafe root query shapes with an explicit error.",
-      "description_ko": "database limit에 따라 relation parameter tuple과 큰 root IN 목록을 분할하면서 결과 순서와 relation 조립을 보존한다. 안전하게 분할할 수 없는 root query 형태는 명시적 오류로 거부한다.",
-      "inputs": {
-        "type": "ParameterList",
-        "fields": [
-          "values",
-          "key_width",
-          "driver"
-        ]
-      },
-      "outputs": {
-        "type": "ChunkedParameterLists",
-        "fields": [
-          "chunks",
-          "order"
-        ]
-      },
-      "state": [
-        "validate key width",
-        "calculate driver limit",
-        "split values",
-        "execute chunks",
-        "assemble rows"
+        "validate the request",
+        "render the statements",
+        "cache the plan by request shape"
       ],
       "errors": [
         {
           "code": "IR_INVALID",
-          "when": "tuple width or parameter limit is invalid"
+          "when": "the request shape is invalid"
+        },
+        {
+          "code": "COLUMN_UNKNOWN",
+          "when": "a column is not in the manifest"
+        },
+        {
+          "code": "FUNCTION_UNKNOWN",
+          "when": "a function name is unknown"
         }
       ],
       "clients": {
@@ -316,12 +589,11 @@
       },
       "fixtures": [],
       "tests": [
-        "clients/go/orm/relation_keys_test.go",
-        "clients/go/orm/root_in_physical_test.go",
-        "clients/go/gen/in_probe_test.go",
-        "clients/php/tests/integration.php",
-        "clients/rust/orm/src/db.rs",
-        "tests/typescript/root-in.mjs"
+        "engine/engine_test.go",
+        "engine/query_forms_test.go",
+        "engine/planner/soft_delete_test.go",
+        "clients/php/tests/engine_test.php",
+        "tests/typescript/engine.mjs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -329,62 +601,49 @@
       ],
       "verification": [
         {
-          "id": "parameter-go",
-          "command": "go test ./clients/go/orm -run 'Relation|INList|CompositeParent|RootIN' -count=1"
+          "id": "planner-go",
+          "command": "go test ./engine/... -count=1"
         },
         {
-          "id": "parameter-php",
-          "command": "php clients/php/tests/relation_keys.php"
+          "id": "planner-php",
+          "command": "php clients/php/tests/engine_test.php"
         },
         {
-          "id": "parameter-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked root_in"
-        },
-        {
-          "id": "parameter-typescript",
-          "command": "npm run typescript:build && node tests/typescript/root-in.mjs"
+          "id": "planner-typescript",
+          "command": "npm run typescript:build && node tests/typescript/engine.mjs"
         }
       ]
     },
     {
-      "id": "batch_writes",
-      "title": "Typed batch writes",
-      "title_ko": "Typed batch write",
+      "id": "composite_keys",
+      "title": "Composite keys",
+      "title_ko": "복합 key",
       "status": "implemented",
-      "description": "Execute typed insert, upsert, primary-key update, and primary-key delete requests in one transaction with bounded chunks and deterministic counts.",
-      "description_ko": "typed insert, upsert, primary-key update, primary-key delete request를 제한된 chunk와 하나의 transaction으로 실행하고 결정적인 count를 반환한다.",
+      "description": "Preserve every declared primary and foreign key component in identity, writes, relations, tuple conditions, and pages.",
+      "description_ko": "선언된 모든 primary key와 foreign key 구성 요소를 식별, 쓰기, 관계, tuple 조건, 페이지에서 유지한다.",
       "inputs": {
-        "type": "TypedQueryDraft[]",
+        "type": "SchemaManifest",
         "fields": [
-          "entity",
-          "assignments",
-          "primary_key_predicates",
-          "chunk_size"
+          "primary_keys",
+          "foreign_keys"
         ]
       },
       "outputs": {
-        "type": "BatchResult",
+        "type": "Model",
         "fields": [
-          "attempted",
-          "affected",
-          "inserted"
+          "identity",
+          "relations"
         ]
       },
       "state": [
-        "validate homogeneous requests",
-        "open or reuse transaction",
-        "execute bounded chunks",
-        "commit on success",
-        "rollback on error"
+        "read every key component",
+        "match relations by all components",
+        "write by the full key"
       ],
       "errors": [
         {
-          "code": "CONFIG",
-          "when": "kind or chunk size is invalid"
-        },
-        {
-          "code": "DUPLICATE_KEY",
-          "when": "insert violates a unique constraint"
+          "code": "IR_INVALID",
+          "when": "a tuple condition has the wrong width"
         }
       ],
       "clients": {
@@ -394,213 +653,60 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/fixtures/batch-writes.json"
+        "tests/conformance/vectors.json"
       ],
       "tests": [
-        "clients/go/orm/batch_test.go",
-        "clients/go/gen/gen_integration_test.go",
-        "clients/php/tests/integration.php",
-        "clients/rust/tests/src/integration.rs",
-        "tests/typescript/sqlite-integration.mjs"
+        "engine/composite_key_test.go",
+        "internal/ormgen/composite_migration_test.go",
+        "clients/go/model/model_test.go"
       ],
       "docs": [
-        "docs/dsl.md",
-        "docs/public-readiness.md"
-      ],
-      "verification": [
-        {
-          "id": "batch-unit",
-          "command": "go test ./clients/go/orm -run 'Batch' -count=1"
-        }
-      ]
-    },
-    {
-      "id": "keyset_pagination",
-      "title": "Typed keyset pagination",
-      "title_ko": "Typed keyset pagination",
-      "status": "implemented",
-      "description": "Provide versioned cursors, total composite ordering, validation, and forward and backward traversal.",
-      "description_ko": "version cursor, 완전한 composite order, validation, forward 및 backward traversal을 제공한다.",
-      "inputs": {
-        "type": "KeysetRequest",
-        "fields": [
-          "order",
-          "cursor",
-          "direction",
-          "limit"
-        ]
-      },
-      "outputs": {
-        "type": "KeysetPage",
-        "fields": [
-          "items",
-          "next_cursor",
-          "previous_cursor"
-        ]
-      },
-      "state": [
-        "validate order",
-        "decode cursor",
-        "apply boundary predicate",
-        "fetch page",
-        "encode cursors"
-      ],
-      "errors": [
-        {
-          "code": "CURSOR_INVALID",
-          "when": "cursor version, order, or value types do not match"
-        }
-      ],
-      "clients": {
-        "go": "pass",
-        "php": "pass",
-        "rust": "pass",
-        "typescript": "pass"
-      },
-      "fixtures": [
-        "contracts/fixtures/keyset-pagination.json"
-      ],
-      "tests": [
-        "engine/keyset_test.go",
-        "clients/go/orm/keyset_test.go",
-        "clients/go/gen/gen_integration_test.go",
-        "clients/php/tests/keyset.php",
-        "clients/php/tests/integration.php",
-        "clients/rust/orm/src/keyset.rs",
-        "clients/rust/tests/src/integration.rs",
-        "tests/typescript/keyset.mjs",
-        "tests/typescript/sqlite-integration.mjs"
-      ],
-      "docs": [
+        "docs/schema.md",
         "docs/dsl.md"
       ],
       "verification": [
         {
-          "id": "keyset-go",
-          "command": "go test ./engine/... ./clients/go/orm -run 'Keyset' -count=1"
-        },
-        {
-          "id": "keyset-php",
-          "command": "php clients/php/tests/keyset.php"
-        },
-        {
-          "id": "keyset-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked keyset"
-        },
-        {
-          "id": "keyset-typescript",
-          "command": "npm run typescript:build && node tests/typescript/keyset.mjs"
+          "id": "composite-go",
+          "command": "go test ./engine ./internal/ormgen -run 'Composite' -count=1"
         }
       ]
     },
     {
-      "id": "transactions",
-      "title": "Transaction options",
-      "title_ko": "Transaction option",
+      "id": "authenticated_encryption",
+      "title": "Authenticated encryption",
+      "title_ko": "인증 암호화",
       "status": "implemented",
-      "description": "Expose opt-in retry, isolation, read-only mode, savepoints, row locks, and timeoutMs with capability errors. PostgreSQL applies timeoutMs as a transaction-local statement timeout; MySQL and SQLite reject it. The common interface declares no in-flight cancellation operation because the four clients cannot provide the same driver behavior.",
-      "description_ko": "명시적 retry, isolation, read-only, savepoint, row lock과 timeoutMs, capability error를 제공한다. PostgreSQL은 timeoutMs를 transaction 로컬 statement timeout으로 적용하고 MySQL·SQLite는 거부한다. 네 client가 동일한 driver 동작을 제공할 수 없으므로 공통 interface에 실행 중 cancellation operation을 선언하지 않는다.",
+      "description": "Encode authenticated versioned AES values and blind indexes, read mixed key versions, and rotate every encrypted column of a table in batches.",
+      "description_ko": "인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.",
       "inputs": {
-        "type": "TransactionOptions",
+        "type": "AESKeyring",
         "fields": [
-          "retry",
-          "isolation",
-          "read_only",
-          "lock",
-          "timeout_ms"
+          "versions",
+          "current_version"
         ]
       },
       "outputs": {
-        "type": "TransactionResult",
+        "type": "AESRotationStatus",
         "fields": [
-          "value",
-          "attempts"
+          "current",
+          "total",
+          "pending",
+          "versions"
         ]
       },
       "state": [
-        "validate options",
-        "begin transaction",
-        "run callback",
-        "commit or rollback",
-        "retry only when enabled"
-      ],
-      "errors": [
-        {
-          "code": "CAPABILITY_UNSUPPORTED",
-          "when": "database cannot provide the requested mode"
-        },
-        {
-          "code": "DEADLOCK",
-          "when": "transaction cannot commit after policy limit"
-        }
-      ],
-      "clients": {
-        "go": "partial",
-        "php": "partial",
-        "rust": "partial",
-        "typescript": "partial"
-      },
-      "fixtures": [],
-      "tests": [
-        "clients/go/orm/transaction_savepoint_test.go",
-        "tests/typescript/transaction.mjs",
-        "clients/php/tests/integration.php",
-        "clients/rust/tests/src/integration.rs"
-      ],
-      "docs": [
-        "docs/dsl.md",
-        "docs/errors.yaml"
-      ],
-      "verification": [
-        {
-          "id": "transaction-unit",
-          "command": "go test ./clients/go/orm -run 'Transaction|Savepoint' -count=1"
-        }
-      ],
-      "public_constraints": [
-        "The common API declares no in-flight cancellation operation because the four clients cannot provide identical driver behavior.",
-        "The interface manifest prohibits query_cancel, transaction_cancel, and in_flight_cancellation symbols."
-      ]
-    },
-    {
-      "id": "precompiled_plans",
-      "title": "Precompiled plan bundles",
-      "title_ko": "Precompiled plan bundle",
-      "status": "implemented",
-      "description": "Load a validated plan bundle and execute a matching request without a compiler call.",
-      "description_ko": "검증된 plan bundle을 로드하고 일치하는 request를 compiler 호출 없이 실행한다.",
-      "inputs": {
-        "type": "PlanBundle",
-        "fields": [
-          "version",
-          "schema_hash",
-          "dialect",
-          "request_hash",
-          "plan"
-        ]
-      },
-      "outputs": {
-        "type": "Plan",
-        "fields": [
-          "kind",
-          "steps",
-          "plan_id"
-        ]
-      },
-      "state": [
-        "validate bundle",
-        "index by request shape",
-        "serve cache hit",
-        "compile on miss"
+        "encrypt with the current version",
+        "decrypt by the stored version",
+        "rewrite stale rows in batches"
       ],
       "errors": [
         {
           "code": "CONFIG",
-          "when": "bundle field is invalid"
+          "when": "a key version is missing"
         },
         {
-          "code": "SCHEMA_HASH_MISMATCH",
-          "when": "bundle schema differs"
+          "code": "CODEC_UNSUPPORTED",
+          "when": "a value cannot be decoded"
         }
       ],
       "clients": {
@@ -610,59 +716,151 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/interfaces.json"
+        "tests/codec/aes-vectors.json",
+        "tests/codec/vectors.json"
       ],
       "tests": [
-        "clients/go/orm/plan_bundle_test.go",
-        "clients/php/tests/integration.php",
-        "tests/typescript/database.mjs",
-        "clients/rust/orm/src/db.rs"
+        "clients/go/orm/codec_test.go",
+        "clients/go/orm/hostcodec_test.go",
+        "clients/go/orm/aes_rotation_test.go",
+        "clients/php/tests/hostcodec.php",
+        "tests/typescript/codec-vector.mjs",
+        "clients/rust/orm/src/codec.rs"
       ],
       "docs": [
-        "docs/protocol.md",
+        "docs/codec.md",
         "docs/config.md"
       ],
       "verification": [
         {
-          "id": "plan-unit",
-          "command": "go test ./clients/go/orm -run 'PlanBundle' -count=1"
+          "id": "encryption-go",
+          "command": "go test ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && go test ./clients/go/model -run 'AESRotation' -count=1"
+        },
+        {
+          "id": "encryption-php",
+          "command": "php clients/php/tests/hostcodec.php"
+        },
+        {
+          "id": "encryption-typescript",
+          "command": "npm run typescript:build && node tests/typescript/codec-vector.mjs"
+        },
+        {
+          "id": "encryption-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm codec"
+        }
+      ]
+    },
+    {
+      "id": "parameter_chunking",
+      "title": "Parameter chunking",
+      "title_ko": "파라미터 분할",
+      "status": "implemented",
+      "description": "Pad relation key lists to size classes, split relation keys and oversized root IN lists at the driver bind limit, merge the results, and reject root shapes that a merge would change.",
+      "description_ko": "관계 key 목록을 크기 등급으로 채우고, 관계 key와 큰 root IN 목록을 driver bind 한도에서 나누어 결과를 합치며, 병합이 결과를 바꾸는 root 모양은 거부한다.",
+      "inputs": {
+        "type": "RequestIR",
+        "fields": [
+          "in_lists",
+          "relation_keys"
+        ]
+      },
+      "outputs": {
+        "type": "Collection",
+        "fields": [
+          "merged_rows",
+          "summed_counts"
+        ]
+      },
+      "state": [
+        "pad key lists",
+        "split at the bind limit",
+        "remove duplicate IN values",
+        "merge rows and sum counts"
+      ],
+      "errors": [
+        {
+          "code": "IR_INVALID",
+          "when": "a root shape with order, limit, grouping, or OR cannot be split"
+        },
+        {
+          "code": "EMPTY_IN",
+          "when": "an IN list is empty"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [],
+      "tests": [
+        "clients/go/model/chunk_test.go",
+        "clients/rust/tests/src/integration.rs",
+        "clients/php/tests/relation_keys.php",
+        "clients/php/tests/model_test.php",
+        "tests/typescript/model.mjs"
+      ],
+      "docs": [
+        "docs/protocol.md",
+        "docs/dialects.md"
+      ],
+      "verification": [
+        {
+          "id": "chunking-go",
+          "command": "go test ./clients/go/model -run 'BindLimitSplitting' -count=1"
+        },
+        {
+          "id": "chunking-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked --release -p orm-tests --bin integration && clients/rust/target/release/integration \"$PWD/schema/schema.json\""
+        },
+        {
+          "id": "chunking-php-keys",
+          "command": "php clients/php/tests/relation_keys.php"
+        },
+        {
+          "id": "chunking-php",
+          "command": "php clients/php/tests/model_test.php"
+        },
+        {
+          "id": "chunking-typescript",
+          "command": "npm run typescript:build >/dev/null && node tests/typescript/model.mjs"
         }
       ]
     },
     {
       "id": "constraints_and_relations",
-      "title": "Constraints and relation predicates",
-      "title_ko": "Constraint 및 relation predicate",
+      "title": "Constraints and relations",
+      "title_ko": "제약과 관계",
       "status": "implemented",
-      "description": "Preserve CHECK, index, foreign-key, soft-delete, relation existence, relation count, and many-to-many through metadata in the planner and migration system. Generated clients execute the declared operations on MySQL, PostgreSQL, and SQLite.",
-      "description_ko": "CHECK, index, foreign-key, soft-delete, relation existence, relation count, many-to-many through metadata를 planner와 migration system에서 보존한다. 생성 client가 MySQL·PostgreSQL·SQLite에서 선언된 operation을 실행한다.",
+      "description": "Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.",
+      "description_ko": "CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.",
       "inputs": {
-        "type": "RelationDefinition",
+        "type": "SchemaDocument",
         "fields": [
-          "kind",
-          "keys",
-          "through",
-          "policy"
+          "checks",
+          "indexes",
+          "foreign_keys",
+          "soft_delete",
+          "immutable"
         ]
       },
       "outputs": {
-        "type": "RelationPlan",
+        "type": "SchemaManifest",
         "fields": [
-          "joins",
-          "predicates",
-          "metadata"
+          "constraints",
+          "relations"
         ]
       },
       "state": [
-        "validate relation metadata",
-        "build join or relation plan",
-        "apply policy predicates",
-        "assemble related rows"
+        "parse the directives",
+        "render constraints and triggers",
+        "exclude soft-deleted rows from reads"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "relation keys or through entity are incomplete"
+          "when": "a directive names an unknown table or column"
         }
       ],
       "clients": {
@@ -675,13 +873,12 @@
         "schema/schema.json"
       ],
       "tests": [
-        "engine/engine_test.go",
+        "engine/schema/external_fk_test.go",
+        "engine/schema/immutable_test.go",
+        "engine/schema/overlapping_foreign_keys_test.go",
         "engine/planner/soft_delete_test.go",
-        "proto/orm/compiler/v1/bridge/bridge_test.go",
-        "clients/php/tests/integration.php",
-        "clients/rust/tests/src/integration.rs",
-        "tests/typescript/sqlite-integration.mjs",
-        "engine/schema/manifest_test.go"
+        "internal/ormgen/ddl_external_fk_test.go",
+        "internal/ormgen/ddl_immutable_test.go"
       ],
       "docs": [
         "docs/schema.md",
@@ -689,46 +886,44 @@
       ],
       "verification": [
         {
-          "id": "relation-unit",
-          "command": "go test ./engine/... -run 'Relation|Join|Scope|Composite|Count' -count=1"
+          "id": "constraints-go",
+          "command": "go test ./engine/... ./internal/ormgen -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1"
         }
       ]
     },
     {
       "id": "conformance_verification",
-      "title": "Cross-client conformance verification",
-      "title_ko": "Cross-client conformance verification",
-      "status": "partial",
-      "description": "Run common input vectors through Go, PHP, Rust, and TypeScript and compare normalized results for each database.",
-      "description_ko": "공통 input vector를 Go, PHP, Rust, TypeScript에서 실행하고 database별 normalized result를 비교한다.",
+      "title": "Conformance verification",
+      "title_ko": "적합성 검증",
+      "status": "implemented",
+      "description": "Run the same model chains in Go, PHP, Rust, and TypeScript on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.",
+      "description_ko": "같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.",
       "inputs": {
         "type": "ConformanceVector",
         "fields": [
           "name",
           "chain",
-          "expect"
+          "statements",
+          "result"
         ]
       },
       "outputs": {
-        "type": "ConformanceResult",
+        "type": "ConformanceReport",
         "fields": [
-          "sql",
-          "binds",
-          "result",
-          "error"
+          "language",
+          "database",
+          "differences"
         ]
       },
       "state": [
-        "load vector",
-        "run every selected client",
-        "normalize output",
-        "compare expectation",
-        "report mismatch"
+        "run every runner",
+        "normalize sequence values, clocks, and ciphertext",
+        "compare with the vectors of the database"
       ],
       "errors": [
         {
-          "code": "CONFORMANCE_MISMATCH",
-          "when": "client output differs"
+          "code": "CONFIG",
+          "when": "a runner cannot connect or another run holds the lock"
         }
       ],
       "clients": {
@@ -751,12 +946,12 @@
       ],
       "docs": [
         "tests/conformance/README.md",
-        "docs/public-readiness.md"
+        "docs/protocol.md"
       ],
       "verification": [
         {
-          "id": "conformance-unit",
-          "command": "go test ./tests/conformance/check ./tests/conformance/runner_go -count=1"
+          "id": "conformance-build",
+          "command": "go vet ./tests/conformance/check ./tests/conformance/runner_go"
         }
       ],
       "vector_contract": {
@@ -766,9 +961,18 @@
           "tests/conformance/vectors.postgres.json",
           "tests/conformance/vectors.sqlite.json"
         ],
-        "required_clients": ["go", "php", "rust", "typescript"],
-        "required_databases": ["mysql", "postgres", "sqlite"],
-        "minimum_vectors": 63
+        "required_clients": [
+          "go",
+          "php",
+          "rust",
+          "typescript"
+        ],
+        "required_databases": [
+          "mysql",
+          "postgres",
+          "sqlite"
+        ],
+        "minimum_vectors": 22
       }
     }
   ]

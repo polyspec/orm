@@ -1,0 +1,229 @@
+impl T {
+    /// Creates a model.
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        <Self as orm::Model>::from_core(orm::Core::new(&ENTITY))
+    }
+
+    /// Sets the connection.
+    pub fn connect(mut self, db: &orm::Db) -> Self {
+        self.__orm.connect(db);
+        self
+    }
+
+    /// Joins the next condition with AND, opens an AND group with a callback,
+    /// or places the conditions of a joined model.
+    pub fn and<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self {
+        arg.apply("and", &mut self.__orm);
+        self
+    }
+
+    /// Joins the next condition with OR, opens an OR group with a callback, or
+    /// places the conditions of a joined model.
+    pub fn or<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self {
+        arg.apply("or", &mut self.__orm);
+        self
+    }
+
+    /// Adds a raw first condition.
+    pub fn raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
+        self.__orm.raw("", sql, binds.into_binds());
+        self
+    }
+
+    /// Adds a raw condition joined with AND.
+    pub fn and_raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
+        self.__orm.raw("and", sql, binds.into_binds());
+        self
+    }
+
+    /// Adds a raw condition joined with OR.
+    pub fn or_raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
+        self.__orm.raw("or", sql, binds.into_binds());
+        self
+    }
+
+    /// Sets the join ON conditions.
+    pub fn on(mut self, f: impl FnOnce(Self) -> Self) -> Self {
+        let g = f(<Self as orm::Model>::from_core(self.__orm.group()));
+        self.__orm.set_on(<Self as orm::Model>::into_core(g));
+        self
+    }
+
+    /// Attaches one related row loaded by a separate query.
+    pub fn relation(mut self, child: impl orm::Model) -> Self {
+        self.__orm.relation(false, child.into_core());
+        self
+    }
+
+    /// Attaches related rows loaded by a separate query.
+    pub fn relations(mut self, child: impl orm::Model) -> Self {
+        self.__orm.relation(true, child.into_core());
+        self
+    }
+
+    /// Returns the first matching row.
+    pub async fn get(&self) -> orm::Result<Option<Self>> {
+        orm::model::get(self).await
+    }
+
+    /// Returns the matching rows.
+    pub async fn gets(&self) -> orm::Result<orm::Collection<Self>> {
+        orm::model::gets(self).await
+    }
+
+    /// Returns the number of matching rows.
+    pub async fn get_count(&self) -> orm::Result<i64> {
+        orm::model::get_count(&self.__orm).await
+    }
+
+    /// Returns grouped rows with row_count.
+    pub async fn gets_count(&self) -> orm::Result<orm::Collection<Self>> {
+        orm::model::gets_count(self).await
+    }
+
+    /// Returns the sum of the column selected with sum_<col>.
+    pub async fn get_sum(&self) -> orm::Result<f64> {
+        orm::model::get_sum(&self.__orm).await
+    }
+
+    /// Returns the average of the column selected with avg_<col>.
+    pub async fn get_avg(&self) -> orm::Result<f64> {
+        orm::model::get_avg(&self.__orm).await
+    }
+
+    /// Returns one page of matching rows.
+    pub async fn gets_page(&self, page: u32, per_page: u32) -> orm::Result<orm::Page<Self>> {
+        orm::model::gets_page(self, page, per_page).await
+    }
+
+    /// Returns the statement of gets without executing it.
+    pub async fn get_query(&self) -> orm::Result<orm::Statement> {
+        orm::model::get_query(&self.__orm).await
+    }
+
+    /// Inserts the row and returns the created row.
+    pub async fn create(&mut self) -> orm::Result<Self> {
+        orm::model::create(self).await
+    }
+
+    /// Inserts rows in one transaction and returns the inserted row count.
+    pub async fn creates(&self, rows: Vec<Self>) -> orm::Result<u64> {
+        orm::model::creates(self, rows).await
+    }
+
+    /// Writes the changed columns; update(true) requires an unchanged update time.
+    pub async fn update(&mut self, optimistic: bool) -> orm::Result<()> {
+        orm::model::update(self, optimistic).await
+    }
+
+    /// Updates the row when its primary key is known, otherwise creates it.
+    pub async fn save(&mut self) -> orm::Result<Self> {
+        orm::model::save(self).await
+    }
+
+    /// Deletes the row; delete(true) first deletes loaded related rows.
+    pub async fn delete(&self, recursive: bool) -> orm::Result<()> {
+        orm::model::delete(self, recursive).await
+    }
+
+    /// Sets the duplicate-key update of the next create.
+    pub fn duplication(mut self, m: Self) -> Self {
+        self.__orm.duplication(m.__orm);
+        self
+    }
+
+    /// Sets the row range.
+    pub fn limit(mut self, offset: u32, count: u32) -> Self {
+        self.__orm.limit(offset, count);
+        self
+    }
+
+    /// Orders rows randomly.
+    pub fn order_by_random(mut self) -> Self {
+        self.__orm.order_by_random();
+        self
+    }
+
+    /// Appends a raw order expression.
+    pub fn order_by_raw(mut self, sql: &str) -> Self {
+        self.__orm.order_by_raw(sql);
+        self
+    }
+
+    /// Appends a raw grouping expression.
+    pub fn group_by_raw(mut self, sql: &str) -> Self {
+        self.__orm.group_by_raw(sql);
+        self
+    }
+
+    /// Keeps only primary and foreign keys.
+    pub fn remove_all_columns(mut self) -> Self {
+        self.__orm.remove_all_columns();
+        self
+    }
+
+    /// Selects every column.
+    pub fn add_all_columns(mut self) -> Self {
+        self.__orm.add_all_columns();
+        self
+    }
+
+    /// Merges the related row into the parent row.
+    pub fn parent_node(mut self) -> Self {
+        self.__orm.parent_node();
+        self
+    }
+
+    /// Limits related rows per parent.
+    pub fn group_limit(mut self, count: u32) -> Self {
+        self.__orm.group_limit(count);
+        self
+    }
+
+    /// Excludes the relation from recursive delete.
+    pub fn delete_lock(mut self) -> Self {
+        self.__orm.delete_lock();
+        self
+    }
+
+    /// Computes the collection key of each row.
+    pub fn fetch_key<K: Into<orm::Key>>(mut self, f: impl Fn(&Self) -> K + Send + Sync + 'static) -> Self {
+        self.__orm.fetch_key_with::<Self, K>(f);
+        self
+    }
+
+    /// Computes a value for each loaded row.
+    pub fn fetch_value(mut self, f: impl Fn(&Self) -> orm::serde_json::Value + Send + Sync + 'static) -> Self {
+        self.__orm.fetch_value_with::<Self>(f);
+        self
+    }
+
+    /// Locks the selected rows for update inside a transaction.
+    pub fn for_update(mut self) -> Self {
+        self.__orm.lock("update");
+        self
+    }
+
+    /// Locks the selected rows for share inside a transaction.
+    pub fn for_share(mut self) -> Self {
+        self.__orm.lock("share");
+        self
+    }
+
+    /// Locks for update without waiting.
+    pub fn for_update_no_wait(mut self) -> Self {
+        self.__orm.lock("update_nowait");
+        self
+    }
+
+    /// Locks for share without waiting.
+    pub fn for_share_no_wait(mut self) -> Self {
+        self.__orm.lock("share_nowait");
+        self
+    }
+
+    /// Returns the row values.
+    pub fn to_array(&self) -> orm::serde_json::Value {
+        orm::model::to_json(self)
+    }

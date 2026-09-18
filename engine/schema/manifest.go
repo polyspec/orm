@@ -21,6 +21,8 @@ type Manifest struct {
 	ORM         []*ORMDirective    `json:"orm,omitempty"`
 	ExternalFKs []ExternalFK       `json:"external_fks,omitempty"`
 	Immutable   []string           `json:"immutable,omitempty"`
+	AuditLog    *AuditLog          `json:"audit_log,omitempty"`
+	Audits      []Audit            `json:"audits,omitempty"`
 }
 
 // ExternalFK describes a foreign key whose target table belongs to another
@@ -37,24 +39,22 @@ type ExternalFK struct {
 }
 
 type Entity struct {
-	Name        string                `json:"name"`
-	Table       string                `json:"table"`
-	RenamedFrom string                `json:"renamed_from,omitempty"`
-	Comment     string                `json:"comment,omitempty"`
-	PK          []string              `json:"pk"`
-	Auto        string                `json:"auto,omitempty"`
-	Columns     []*Col                `json:"columns"`
-	Relations   map[string]*Rel       `json:"relations"`
-	Unique      [][]string            `json:"unique,omitempty"`
-	Indexes     map[string][]string   `json:"indexes,omitempty"`
-	Fulltext    [][]string            `json:"fulltext,omitempty"`
-	Checks      []Check               `json:"checks,omitempty"`
-	Timestamps  *Timestamps           `json:"timestamps,omitempty"`
-	Predicates  map[string]*Predicate `json:"predicates,omitempty"`  // %% predicate → generated <name>(args…) methods
-	Scope       string                `json:"scope,omitempty"`       // %% scope <table> <column>
-	SoftDelete  string                `json:"soft_delete,omitempty"` // %% soft_delete <table> <nullable datetime column>
-	AESVersion  string                `json:"aes_version,omitempty"` // %% aes_version <table> <version column>
-	Line        int                   `json:"-"`
+	Name        string              `json:"name"`
+	Table       string              `json:"table"`
+	RenamedFrom string              `json:"renamed_from,omitempty"`
+	Comment     string              `json:"comment,omitempty"`
+	PK          []string            `json:"pk"`
+	Auto        string              `json:"auto,omitempty"`
+	Columns     []*Col              `json:"columns"`
+	Relations   map[string]*Rel     `json:"relations"`
+	Unique      [][]string          `json:"unique,omitempty"`
+	Indexes     map[string][]string `json:"indexes,omitempty"`
+	Fulltext    [][]string          `json:"fulltext,omitempty"`
+	Checks      []Check             `json:"checks,omitempty"`
+	Timestamps  *Timestamps         `json:"timestamps,omitempty"`
+	SoftDelete  string              `json:"soft_delete,omitempty"` // %% soft_delete <table> <nullable datetime column>
+	AESVersion  string              `json:"aes_version,omitempty"` // %% aes_version <table> <version column>
+	Line        int                 `json:"-"`
 
 	cols map[string]*Col
 }
@@ -113,13 +113,11 @@ type Ref struct {
 // Rel is one direction of a relationship line. Keys preserves the SQL column
 // pair order for joins, relation loading, and row attachment.
 type Rel struct {
-	Name        string   `json:"name"`
-	Kind        string   `json:"kind"`
-	Target      string   `json:"target"`
-	Keys        []RelKey `json:"keys"`
-	Through     string   `json:"through,omitempty"`
-	ThroughKeys []RelKey `json:"through_keys,omitempty"`
-	OnDelete    string   `json:"on_delete,omitempty"`
+	Name     string   `json:"name"`
+	Kind     string   `json:"kind"`
+	Target   string   `json:"target"`
+	Keys     []RelKey `json:"keys"`
+	OnDelete string   `json:"on_delete,omitempty"`
 	// ForeignKey is emitted only when this relation is an additional child-side
 	// foreign key whose local columns already have another inferred target.
 	// Ordinary relations retain the historical column Ref representation.
@@ -129,13 +127,6 @@ type Rel struct {
 type RelKey struct {
 	Local  string `json:"local"`
 	Target string `json:"target"`
-}
-
-// Predicate is a reusable expr fragment declared with `%% predicate <table> <name> : <fragment>`:
-// backtick column names are checked against the entity, each `?` becomes a method argument.
-type Predicate struct {
-	Expr  string `json:"expr"`
-	Arity int    `json:"arity"`
 }
 
 type BuildError struct {
@@ -150,36 +141,19 @@ func (e *BuildError) Error() string {
 	return e.Msg
 }
 
-// Names that cannot be represented safely by the generated DSL or by the
-// common SQL DDL surface. This is the union of the reserved words used by
-// PostgreSQL, MySQL, and SQLite plus words consumed by generated methods.
-// Identifier quoting is not a workaround: generated identifiers also become
-// method names, relation names, and migration symbols.
-var reservedNames = map[string]bool{
-	"or": true, "and": true, "on": true, "where": true, "select": true, "limit": true, "distinct": true,
-	"one": true, "all": true, "count": true, "sum": true, "avg": true, "insert": true, "update": true,
-	"delete": true, "save": true, "debug": true, "sql": true, "clone": true, "expr": true, "paginate": true,
-	"flatten": true, "relation": true, "relations": true, "join": true, "left_join": true, "order_by": true,
-	"group_by": true, "group_by_expr": true, "key_by": true, "set": true, "get": true, "get_count": true, "gets_count": true, "new": true,
-	// DDL and query words shared by the supported dialects.
-	"add": true, "alter": true, "asc": true, "begin": true, "between": true, "by": true, "case": true,
-	"check": true, "column": true, "commit": true, "constraint": true, "create": true, "database": true,
-	"default": true, "deferrable": true, "deferred": true, "desc": true, "drop": true, "else": true,
-	"end": true, "escape": true, "except": true, "exists": true, "foreign": true, "from": true,
-	"full": true, "function": true, "grant": true, "group": true, "having": true, "if": true,
-	"in": true, "index": true, "inner": true, "intersect": true, "into": true, "is": true, "key": true,
-	"left": true, "like": true, "match": true, "natural": true, "null": true, "offset": true, "outer": true,
-	"primary": true, "procedure": true, "references": true, "recursive": true, "rename": true, "replace": true,
-	"returning": true, "revoke": true, "right": true, "rollback": true, "row": true, "rows": true,
-	"order":  true,
-	"schema": true, "setnull": true, "table": true, "then": true, "transaction": true, "trigger": true,
-	"union": true, "unique": true, "until": true, "using": true, "values": true, "view": true,
-	"when": true, "with": true, "without": true, "window": true,
-}
-
-var opSuffixes = []string{"_eq", "_not_eq", "_gt", "_gte", "_lt", "_lte", "_in", "_not_in", "_like",
-	"_like_binary", "_contains", "_starts_with", "_ends_with", "_between", "_is_null", "_is_not_null",
-	"_match", "_match_boolean"}
+// Column names follow the reserved-name rules of the model syntax
+// (docs/dsl.md §9). SQL keywords are allowed because every dialect quotes
+// identifiers.
+var (
+	// ReservedSegments may not appear as an underscore-separated segment.
+	ReservedSegments = []string{"and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"}
+	// ReservedPrefixes may not start a column name.
+	ReservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext"}
+	// ReservedColumns may not be a column name.
+	ReservedColumns = []string{"and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "save", "raw", "on", "random"}
+	// reservedEntities collide with package-level names of generated models.
+	reservedEntities = []string{"connect", "schema_hash"}
+)
 
 var (
 	reTypeParen = regexp.MustCompile(`^([a-z]+)(?:\(([^)]*)\))?$`)
@@ -247,8 +221,22 @@ func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error)
 			}
 		}
 	}
+	var firstAudit *ORMDirective
 	for _, d := range diagrams {
 		for _, x := range d.ORM {
+			switch x.Kind {
+			case "audit_log":
+				if err := m.addAuditLog(x); err != nil {
+					return nil, err
+				}
+			case "audit":
+				if firstAudit == nil {
+					firstAudit = x
+				}
+				if err := m.addAudit(x); err != nil {
+					return nil, err
+				}
+			}
 			if x.Kind == "immutable" {
 				entity := x.Args["entity"]
 				if m.Entities[entity] == nil {
@@ -267,6 +255,9 @@ func build(allowMissingAESVersion bool, diagrams ...*Diagram) (*Manifest, error)
 			}
 			m.ExternalFKs = append(m.ExternalFKs, fk)
 		}
+	}
+	if err := m.finishAudits(firstAudit); err != nil {
+		return nil, err
 	}
 	if err := m.validate(allowMissingAESVersion); err != nil {
 		return nil, err
@@ -340,12 +331,12 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	if !reIdent.MatchString(e.Name) {
 		return nil, &BuildError{e.Line, "entity name must be snake_case: " + e.Name}
 	}
-	if reservedNames[e.Name] {
-		return nil, &BuildError{e.Line, "entity name is a reserved ORM/SQL word: " + e.Name}
+	if slices.Contains(reservedEntities, e.Name) {
+		return nil, &BuildError{e.Line, "entity name is reserved by the generated models: " + e.Name}
 	}
 	ent := &Entity{Name: e.Name, Table: e.Name, Comment: e.Comment, Relations: map[string]*Rel{}, Line: e.Line, cols: map[string]*Col{}}
 	for _, dc := range e.Columns {
-		if err := checkColumnName(dc.Name); err != nil {
+		if err := CheckColumnName(dc.Name); err != nil {
 			return nil, &BuildError{dc.Line, err.Error()}
 		}
 		if _, dup := ent.cols[dc.Name]; dup {
@@ -398,25 +389,26 @@ func buildEntity(e *DEntity) (*Entity, error) {
 	return ent, nil
 }
 
-func checkColumnName(n string) error {
+// CheckColumnName applies the column naming rules.
+func CheckColumnName(n string) error {
 	if !reIdent.MatchString(n) {
 		return fmt.Errorf("column name must be snake_case: %s", n)
 	}
 	if strings.Contains(n, "__") {
 		return fmt.Errorf("column name may not contain '__': %s", n)
 	}
-	for _, bad := range []string{"_and_", "_or_", "_with_"} {
-		if strings.Contains(n, bad) {
-			return fmt.Errorf("column name may not contain %q: %s", bad, n)
+	for _, segment := range strings.Split(n, "_") {
+		if slices.Contains(ReservedSegments, segment) {
+			return fmt.Errorf("column name may not contain the segment %q: %s", segment, n)
 		}
 	}
-	for _, suf := range opSuffixes {
-		if strings.HasSuffix(n, suf) {
-			return fmt.Errorf("column name may not end with operator suffix %q: %s", suf, n)
-		}
+	if slices.Contains(ReservedColumns, n) {
+		return fmt.Errorf("column name is a reserved method name: %s", n)
 	}
-	if reservedNames[n] {
-		return fmt.Errorf("column name is a reserved ORM/SQL word: %s", n)
+	for _, p := range ReservedPrefixes {
+		if n == p || strings.HasPrefix(n, p+"_") {
+			return fmt.Errorf("column name may not start with %q: %s", p, n)
+		}
 	}
 	return nil
 }
@@ -488,8 +480,10 @@ func buildColumn(dc *DColumn) (*Col, error) {
 		if arg != "" {
 			c.Precision, _ = strconv.Atoi(arg)
 		}
+	case "jsontext":
+		c.Type = "jsontext"
 	case "json":
-		c.Type = "json"
+		return nil, fmt.Errorf("column %s: type json is not supported; use jsontext, which stores the ordered-json text", dc.Name)
 	case "enum":
 		c.Type = "enum"
 		if arg == "" {
@@ -504,7 +498,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 		return nil, fmt.Errorf("column %s: unsupported type %q", dc.Name, dc.Type)
 	}
 	// Style inference from column naming: aes_hex_x, aes_x, gz_x, json_x, jsons_x,
-	// base64_x, serialize_x, curlfile_serialize_x; column named ip.
+	// base64_x, serialize_x; column named ip.
 	if len(c.Styles) == 0 {
 		switch {
 		case strings.HasPrefix(dc.Name, "aes_hex_"):
@@ -523,8 +517,6 @@ func buildColumn(dc *DColumn) (*Col, error) {
 			c.Styles = []string{"serialize", "base64"}
 		case strings.HasPrefix(dc.Name, "serialize_"):
 			c.Styles = []string{"serialize"}
-		case strings.HasPrefix(dc.Name, "curlfile_serialize_"):
-			c.Styles = []string{"curlfile", "serialize"}
 		case dc.Name == "ip":
 			c.Styles = []string{"ip"}
 		}
@@ -532,7 +524,7 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	if len(c.Styles) == 1 && c.Styles[0] == "ip" {
 		c.Type = "inet"
 	}
-	if c.Type == "json" && len(c.Styles) == 0 {
+	if c.Type == "jsontext" && len(c.Styles) == 0 {
 		c.Styles = []string{"json"}
 	}
 	// The AES version is plaintext metadata. Keep it out of the default
@@ -645,7 +637,7 @@ func (m *Manifest) addDirective(x *Directive) error {
 		return &BuildError{x.Line, "%% " + x.Kind + ": unknown entity " + x.Table}
 	}
 	for _, c := range x.Columns {
-		if x.Kind != "predicate" && x.Kind != "many_to_many" && ent.cols[c] == nil {
+		if ent.cols[c] == nil {
 			return &BuildError{x.Line, fmt.Sprintf("%%%% %s %s: unknown column %s", x.Kind, x.Table, c)}
 		}
 	}
@@ -696,21 +688,6 @@ func (m *Manifest) addDirective(x *Directive) error {
 		ent.Checks = append(ent.Checks, Check{Name: x.Name, Expr: x.Raw})
 	case "timestamps":
 		ent.Timestamps = &Timestamps{Created: x.Columns[0], Updated: x.Columns[1]}
-	case "scope":
-		if ent.Scope != "" {
-			return &BuildError{x.Line, "scope declared twice for " + ent.Name}
-		}
-		c := ent.Column(x.Columns[0])
-		if c == nil {
-			return &BuildError{x.Line, "scope column " + x.Columns[0] + " is unknown"}
-		}
-		if c.Nullable {
-			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be NOT NULL"}
-		}
-		if c.Type != "i32" && c.Type != "i64" && c.Type != "string" && c.Type != "enum" {
-			return &BuildError{x.Line, "scope column " + x.Columns[0] + " must be an integer or string"}
-		}
-		ent.Scope = x.Columns[0]
 	case "aes_version":
 		if ent.AESVersion != "" && ent.AESVersion != "aes_key_version" {
 			return &BuildError{x.Line, "aes version declared twice for " + ent.Name}
@@ -772,89 +749,8 @@ func (m *Manifest) addDirective(x *Directive) error {
 			}
 		}
 		encrypted.BlindIndex = index.Name
-	case "many_to_many":
-		if len(x.Columns) != 2 {
-			return &BuildError{x.Line, "many_to_many requires target entity and reverse relation"}
-		}
-		target, ok := m.Entities[x.Columns[0]]
-		if !ok {
-			return &BuildError{x.Line, "many_to_many target entity " + x.Columns[0] + " is unknown"}
-		}
-		through, ok := m.Entities[x.Through]
-		if !ok {
-			return &BuildError{x.Line, "many_to_many through entity " + x.Through + " is unknown"}
-		}
-		if _, dup := ent.Relations[x.Name]; dup {
-			return &BuildError{x.Line, "relation name " + ent.Name + "." + x.Name + " already used"}
-		}
-		if _, dup := target.Relations[x.Columns[1]]; dup {
-			return &BuildError{x.Line, "relation name " + target.Name + "." + x.Columns[1] + " already used"}
-		}
-		sourceKeys, targetKeys := throughForeignKeys(through, ent.Name, target.Name)
-		if len(sourceKeys) != len(ent.PK) || len(targetKeys) != len(target.PK) {
-			return &BuildError{x.Line, fmt.Sprintf("many_to_many %s.%s through %s requires one FK for every source and target PK component", ent.Name, x.Name, through.Name)}
-		}
-		if len(through.PK) != len(sourceKeys)+len(targetKeys) {
-			return &BuildError{x.Line, "many_to_many through entity primary key must contain exactly the source and target FK columns"}
-		}
-		for _, column := range append(append([]string{}, sourceKeys...), targetKeys...) {
-			if !slices.Contains(through.PK, column) {
-				return &BuildError{x.Line, "many_to_many through entity primary key must contain " + column}
-			}
-		}
-		forward := &Rel{Name: x.Name, Kind: "many", Target: target.Name, Through: through.Name}
-		for i, c := range sourceKeys {
-			forward.Keys = append(forward.Keys, RelKey{Local: ent.PK[i], Target: c})
-		}
-		for i, c := range targetKeys {
-			forward.ThroughKeys = append(forward.ThroughKeys, RelKey{Local: c, Target: target.PK[i]})
-		}
-		reverse := &Rel{Name: x.Columns[1], Kind: "many", Target: ent.Name, Through: through.Name}
-		for i, c := range targetKeys {
-			reverse.Keys = append(reverse.Keys, RelKey{Local: target.PK[i], Target: c})
-		}
-		for i, c := range sourceKeys {
-			reverse.ThroughKeys = append(reverse.ThroughKeys, RelKey{Local: c, Target: ent.PK[i]})
-		}
-		ent.Relations[x.Name] = forward
-		target.Relations[x.Columns[1]] = reverse
-	case "predicate":
-		if ent.Predicates == nil {
-			ent.Predicates = map[string]*Predicate{}
-		}
-		if err := checkColumnName(x.Name); err != nil {
-			return &BuildError{x.Line, "predicate " + x.Name + ": " + err.Error()}
-		}
-		if _, dup := ent.Predicates[x.Name]; dup {
-			return &BuildError{x.Line, "predicate " + x.Name + " declared twice"}
-		}
-		if ent.Column(x.Name) != nil {
-			return &BuildError{x.Line, "predicate " + x.Name + " collides with a column"}
-		}
-		for _, col := range backtickNames(x.Raw) {
-			if ent.Column(col) == nil {
-				return &BuildError{x.Line, "predicate " + x.Name + ": unknown column `" + col + "`"}
-			}
-		}
-		ent.Predicates[x.Name] = &Predicate{Expr: x.Raw, Arity: strings.Count(x.Raw, "?")}
 	}
 	return nil
-}
-
-func throughForeignKeys(through *Entity, source, target string) ([]string, []string) {
-	var sourceKeys, targetKeys []string
-	for _, c := range through.Columns {
-		if c.Ref == nil {
-			continue
-		}
-		if c.Ref.Entity == source {
-			sourceKeys = append(sourceKeys, c.Name)
-		}
-		if c.Ref.Entity == target {
-			targetKeys = append(targetKeys, c.Name)
-		}
-	}
-	return sourceKeys, targetKeys
 }
 
 func (m *Manifest) validate(allowMissingAESVersion bool) error {
@@ -905,37 +801,11 @@ func (m *Manifest) validate(allowMissingAESVersion bool) error {
 			}
 		}
 		for rn, r := range e.Relations {
-			if reservedNames[rn] {
-				return &BuildError{e.Line, fmt.Sprintf("relation name %s.%s is a reserved DSL word", e.Name, rn)}
-			}
 			if e.cols[rn] != nil {
 				return &BuildError{e.Line, fmt.Sprintf("relation name %s.%s collides with a column; name the sides in the label", e.Name, rn)}
 			}
 			if _, ok := m.Entities[r.Target]; !ok {
 				return &BuildError{e.Line, "relation target missing: " + r.Target}
-			}
-			if r.Through != "" {
-				through, ok := m.Entities[r.Through]
-				if !ok {
-					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s through entity missing: %s", e.Name, rn, r.Through)}
-				}
-				if r.Kind != "many" || len(r.Keys) != len(e.PK) || len(r.ThroughKeys) == 0 {
-					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has invalid through metadata", e.Name, rn)}
-				}
-				for _, key := range r.Keys {
-					if e.Column(key.Local) == nil || through.Column(key.Target) == nil {
-						return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid source through key", e.Name, rn)}
-					}
-				}
-				target := m.Entities[r.Target]
-				if len(r.ThroughKeys) != len(target.PK) {
-					return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid target through key count", e.Name, rn)}
-				}
-				for _, key := range r.ThroughKeys {
-					if through.Column(key.Local) == nil || target.Column(key.Target) == nil {
-						return &BuildError{e.Line, fmt.Sprintf("relation %s.%s has an invalid target through key", e.Name, rn)}
-					}
-				}
 			}
 		}
 		for _, c := range e.Columns {
@@ -988,6 +858,10 @@ func (m *Manifest) hash() string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:8])
 }
+
+// Rehash sets SchemaHash from the current content, for a tool that changes a
+// built manifest.
+func (m *Manifest) Rehash() { m.SchemaHash = m.hash() }
 
 // MarshalIndent writes the manifest as schema.json.
 func (m *Manifest) MarshalIndent() ([]byte, error) { return json.MarshalIndent(m, "", "  ") }

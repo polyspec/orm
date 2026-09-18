@@ -1,117 +1,73 @@
-//! S1 demo (Rust): one statement, three languages, one JSON.
-//! stdout: the result as JSON — byte-identical to the Go and PHP demos.
-//! stderr: p50 of the generated client vs the same SQL through sqlx directly.
+//! Thin-slice demo (Rust): one statement in every client language, one JSON.
+//! stdout: the result as JSON. stderr: p50 of the generated client and of the
+//! same SQL through sqlx directly.
 //!
-//!   clients/rust/target/release/demo bin/ormengine.wasm schema/schema.json
-//! The DSN comes from ORM_MYSQL_URL_RUST when set, else the local socket.
+//!   clients/rust/target/release/demo
+//! The DSN comes from ORM_BENCH_MYSQL_DSN when set, else the local socket.
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use gen::*;
-use orm::db::{Config, ConnectOptions, Db, Pool};
-use orm::engine::{Engine, EngineConfig};
-use orm::value::Param;
+orm::models!();
+
+use model::Battle;
+use orm::db::Pool;
+use orm::Param;
 use serde_json::json;
 
 const ITERATIONS: usize = 500;
+const AES_KEY: &str = "bench-salt";
 
-/// The test DSN: `ORM_MYSQL_URL_RUST` when set (CI), else the local socket.
-fn connect_opts() -> ConnectOptions {
-    let url = std::env::var("ORM_MYSQL_URL_RUST")
-        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into());
-    ConnectOptions::parse("mysql", &url).expect("ORM_MYSQL_URL_RUST is a mysql:// URL")
+fn dsn() -> String {
+    std::env::var("ORM_BENCH_MYSQL_DSN").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+}
+
+fn p50(mut s: Vec<u128>) -> u128 {
+    s.sort_unstable();
+    s[s.len() / 2]
 }
 
 #[tokio::main]
-async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let wasm = std::fs::read(&args[1]).expect("wasm");
-    let schema = std::fs::read(&args[2]).expect("schema.json");
-    let engine = Arc::new(
-        Engine::new(EngineConfig {
-            wasm: &wasm,
-            schema_json: &schema,
-            ..Default::default()
-        })
-        .expect("engine"),
-    );
-    gen::init(engine.clone()).expect("schema hash");
-
+async fn main() -> orm::Result<()> {
     let last: Arc<Mutex<(String, Vec<Param>)>> = Arc::new(Mutex::new((String::new(), Vec::new())));
-    let last_h = last.clone();
-    let on_query = Box::new(
-        move |sql: &str,
-              params: &[Param],
-              _: std::time::Duration,
-              _: u64,
-              _: Option<&orm::Error>| {
-            *last_h.lock().unwrap() = (sql.to_owned(), params.to_vec());
-        },
-    );
-    let opts = connect_opts();
-    let db = Db::connect(
-        opts,
-        1,
-        engine,
-        Config {
-            aes_key: "bench-salt".into(),
-            blind_index_key: "bench-blind-index".into(),
-            aes_version: 1,
-            aes_keys: [(1, "bench-salt".into())].into_iter().collect(),
-            plan_cache_size: 256,
-            statement_cache_size: 256,
-            on_query: Some(on_query),
-        },
-    )
-    .await
-    .expect("connect");
-    let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
-        .unwrap()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
+    let hook = last.clone();
+    let config = orm::Config {
+        aes_key: AES_KEY.into(),
+        blind_index_key: "bench-blind-index".into(),
+        on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
+            // the hook masks secret binds; the native replay needs the real key
+            let binds = binds.iter().map(|p| if *p == Param::Str(orm::db::SECRET_MASK.into()) { Param::Str(AES_KEY.into()) } else { p.clone() }).collect();
+            *hook.lock().unwrap() = (sql.to_owned(), binds);
+        })),
+        ..Default::default()
+    };
+    let db = orm::Db::connect(&dsn(), 1, config).await?;
+    let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
 
-    let query = || async {
-        battle::query()
+    let query = || {
+        Battle::new()
+            .connect(&db)
             .service_seq(7)
-            .is_close(false)
-            .and_group(|w| {
-                w.is_display(true)
-                    .or()
-                    .and_group(|w| w.is_display(false).display_start_dt_lt(now))
-            })
-            .seq_in(vec![6, 106, 206, 306, 406])
+            .and_is_close(false)
+            .and(|q: Battle| q.is_display(true).or(|q: Battle| q.is_display(false).and_lt_display_start_dt(now)))
+            .and_seq(vec![6, 106, 206, 306, 406])
             .order_by_seq_desc()
             .limit(0, 3)
-            .using(&db)
-            .gets()
-            .await
     };
 
-    let rows = query().await.expect("query");
-    let out: Vec<_> = rows.iter().map(|(_, r)| json!({"seq": r.seq, "name": r.name, "is_display": r.is_display, "like_count": r.like_count})).collect();
+    let rows = query().gets().await?;
+    let out: Vec<_> = rows.models().map(|r| json!({"seq": r.get_seq(), "name": r.get_name(), "is_display": r.get_is_display(), "like_count": r.get_like_count()})).collect();
     println!("{}", serde_json::to_string(&out).unwrap());
 
     let mut s = Vec::with_capacity(ITERATIONS);
     for _ in 0..ITERATIONS {
         let t = Instant::now();
-        query().await.expect("query");
+        query().gets().await?;
         s.push(t.elapsed().as_micros());
     }
-    s.sort_unstable();
-    let client = s[ITERATIONS / 2];
+    let client = p50(s);
 
     let (sql, params) = last.lock().unwrap().clone();
-    // the hook masks secret binds; the native replay needs the real key
-    let params: Vec<Param> = params
-        .into_iter()
-        .map(|p| {
-            if p == Param::Str(orm::db::SECRET_MASK.into()) {
-                Param::Str("bench-salt".into())
-            } else {
-                p
-            }
-        })
-        .collect();
+    let Pool::MySql(pool) = db.pool() else { panic!("the demo runs on MySQL") };
     let mut s = Vec::with_capacity(ITERATIONS);
     for _ in 0..ITERATIONS {
         let t = Instant::now();
@@ -129,13 +85,11 @@ async fn main() {
                 Param::Point(point) => q.bind(orm::point_text(*point).expect("valid point")),
             };
         }
-        let Pool::MySql(pool) = &db.pool else {
-            panic!("the demo runs on MySQL")
-        };
         let _rows: Vec<sqlx::mysql::MySqlRow> = q.fetch_all(pool).await.expect("native");
         s.push(t.elapsed().as_micros());
     }
-    s.sort_unstable();
-    let native = s[ITERATIONS / 2];
+    let native = p50(s);
     eprintln!("rust: client p50 {client}µs, native p50 {native}µs ({ITERATIONS} iterations)");
+    db.close().await;
+    Ok(())
 }

@@ -1,4 +1,0 @@
-client pk one                  n=3000   mean=   31856ns p50=   31416ns p90=   34209ns p99=   41250ns
-client list100                 n=3000   mean=  394274ns p50=  390375ns p90=  409459ns p99=  439417ns
-client list100 + getName x100  n=3000   mean=  418475ns p50=  409791ns p90=  445250ns p99=  489250ns
-plan cache hit (no db)         n=3000   mean=    1810ns p50=    1792ns p90=    1875ns p99=    2125ns

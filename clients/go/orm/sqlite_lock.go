@@ -15,13 +15,13 @@ const sqliteRowLockDDL = `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEG
 // boundary. SQLite has no row-lock clause, so one transaction-scoped lock row
 // serializes ORM lock requests. The lock is deliberately database-backed: an
 // in-process mutex would not protect independent application processes.
-func acquireSQLiteRowLock(ctx context.Context, ex Exec, mode string) error {
-	if mode == "" || ex == nil || ex.db().driver != "sqlite" {
+func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) error {
+	if mode == "" || ex.base().driver != "sqlite" {
 		return nil
 	}
-	tx, ok := ex.(*Tx)
-	if !ok || tx == nil || tx.tx == nil {
-		return &ir.Error{Code: CodeConfig, Msg: "SQLite row locks require an ORM transaction"}
+	tx := ex.transaction()
+	if tx == nil {
+		return &ir.Error{Code: CodeConfig, Msg: "row locks require a transaction"}
 	}
 	var previousBusyTimeout int
 	if strings.HasSuffix(mode, "_nowait") {
@@ -35,7 +35,7 @@ func acquireSQLiteRowLock(ctx context.Context, ex Exec, mode string) error {
 			_, _ = tx.tx.ExecContext(context.Background(), fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout))
 		}()
 	}
-	if err := ensureSQLiteRowLock(ctx, tx.d); err != nil {
+	if err := ensureSQLiteRowLock(ctx, tx.db); err != nil {
 		return err
 	}
 	for {
@@ -53,18 +53,18 @@ func acquireSQLiteRowLock(ctx context.Context, ex Exec, mode string) error {
 }
 
 func ensureSQLiteRowLock(ctx context.Context, d *DB) error {
-	if d.sqliteRowLockReady.Load() {
+	if d.m.sqliteRowLockReady.Load() {
 		return nil
 	}
-	d.sqliteRowLockMu.Lock()
-	defer d.sqliteRowLockMu.Unlock()
-	if d.sqliteRowLockReady.Load() {
+	d.m.sqliteRowLockMu.Lock()
+	defer d.m.sqliteRowLockMu.Unlock()
+	if d.m.sqliteRowLockReady.Load() {
 		return nil
 	}
 	for {
-		_, err := d.SQL.ExecContext(ctx, sqliteRowLockDDL)
+		_, err := d.sql.ExecContext(ctx, sqliteRowLockDDL)
 		if err == nil {
-			d.sqliteRowLockReady.Store(true)
+			d.m.sqliteRowLockReady.Store(true)
 			return nil
 		}
 		mapped := mapDriverErr(err)

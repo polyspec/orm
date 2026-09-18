@@ -10,24 +10,45 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/clients/go/orm"
 )
 
-const localDSN = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&parseTime=true&clientFoundRows=true&interpolateParams=false"
+const localDSN = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"
 
-// dsn is the local socket unless ORM_MYSQL_DSN_GO names another server (CI).
+// dsn is the local socket unless ORM_BENCH_MYSQL_DSN names another server (CI).
 func dsn() string {
-	if v := os.Getenv("ORM_MYSQL_DSN_GO"); v != "" {
+	if v := os.Getenv("ORM_BENCH_MYSQL_DSN"); v != "" {
 		return v
 	}
 	return localDSN
+}
+
+// nativeDSN converts the DSN URI to the go-sql-driver form used by the
+// native baseline.
+func nativeDSN(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	cfg := mysql.NewConfig()
+	cfg.User = u.User.Username()
+	cfg.Passwd, _ = u.User.Password()
+	cfg.DBName = strings.TrimPrefix(u.Path, "/")
+	cfg.Net, cfg.Addr = "tcp", u.Host
+	if socket := u.Query().Get("socket"); socket != "" {
+		cfg.Net, cfg.Addr = "unix", socket
+	}
+	cfg.ParseTime = true
+	cfg.ClientFoundRows = true
+	return cfg.FormatDSN(), nil
 }
 
 const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_team_player_count`, `a`.`success_count`, `a`.`player_count`, `a`.`read_count`, `a`.`cover_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_module_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_play`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`, `a`.`price`, `a`.`ip`"
@@ -102,7 +123,7 @@ func prep(db *sql.DB, q string) *sql.Stmt {
 }
 
 func open(tb testing.TB) *sql.DB {
-	native, err := orm.NativeDSN(dsn())
+	native, err := nativeDSN(dsn())
 	if err != nil {
 		tb.Fatal(err)
 	}

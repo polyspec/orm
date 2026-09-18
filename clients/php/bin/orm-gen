@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+// Model generation and schema tools (docs/schema.md §4):
+//
+//   vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace App\\Model
+//   vendor/bin/orm-gen build schema/*.mmd --out schema/schema.json
+declare(strict_types=1);
+
+foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if ($autoload !== null && is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+exit(Orm\SchemaTool::main(array_slice($argv, 1)));

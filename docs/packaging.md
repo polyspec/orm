@@ -1,12 +1,12 @@
-# Packaging decisions (S5)
+# Packaging decisions
 
-| decision | choice | numbers behind it | what would reverse it |
+| decision | choice | reason | what would reverse it |
 |---|---|---|---|
-| engine placement | compiler only; executors native | proxy execution: PK +69%, 100 rows +152% (perf.md §5) | none — row data crossing an interface loses in every measurement |
-| Rust runtime | wasmtime, wasm on a dedicated thread | cold compile 50µs/shape, cache hit 0.7µs; no Go runtime in the tokio process (perf.md §2) | a need for <20µs cold compiles at very high shape churn (then libloading of the .dylib, measured 11µs) |
-| PHP runtime | `ormd` daemon over a persistent Unix socket + bounded process-local plan cache | compile round trip once per uncached shape; hot path is PDO only | FrankenPHP/in-process PHP remains a separate runtime implementation |
-| artifacts | `ormengine-0.0.1.wasm` (all hosts), `ormd-0.0.1-<os>-<arch>`, `ormgen-0.0.1-<os>-<arch>`, `SHA256SUMS` (`scripts/build-artifacts.sh`) | — | — (version stays 0.0.1; file names carry it, never a "latest" symlink) |
-| distribution | Go: module path; PHP: composer package with `bin/ormd-…` next to it; Rust: crate loading the wasm from `[engine].wasm` (optional `include_bytes!` documented) | — | a registry publish is a separate decision |
-| configuration | DSN and secrets are injected by the application; compiler and schema paths are runtime options | — | — |
-| drivers | Go `go-sql-driver/mysql` (MPL-2.0), Rust `sqlx` (MIT/Apache), PHP `pdo_mysql` | sqlx PK 78µs is the driver's own cost (F2) | a measured 2× win from `mysql_async` on the hot path would justify swapping `db.rs` only |
-| YAML codec | Go `go.yaml.in/yaml/v3`, PHP `symfony/yaml`, Rust `serde_yaml_ng` with `yaml-rust2` validation, TypeScript `yaml`; lock files are committed | the same 96 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |
+| statement planning | in the client library, in the application process; executors use the native driver | adopting the ORM needs only the library; no service or daemon to deploy and operate | none |
+| model generation | one generator per language: `ormgen gen --lang go` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin (TypeScript), the `orm-build` crate in `build.rs` (Rust) | each language builds with its own tool chain | none |
+| equality across languages | `tests/conformance` vectors on MySQL, PostgreSQL, and SQLite | the four planners must produce the same SQL, binds, and results | none |
+| artifacts | `ormgen-0.0.1-<os>-<arch>`, `SHA256SUMS` | the schema tools (`build`, `import`, `validate`, `ddl`, `diff`) run at build and migration time | — (version stays 0.0.1; file names carry it, never a "latest" symlink) |
+| distribution | Go: module path; PHP: composer package `orm/php-client` with `bin/orm-gen`; TypeScript: npm package `@polyspec/orm-typescript` with the `orm-gen` bin; Rust: crates `orm` and `orm-build` | — | a registry publish is a separate decision |
+| configuration | DSN and secrets are injected by the application; the schema path is a connection option (Go, PHP, TypeScript) or embedded by the build (Rust) | — | — |
+| drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | a measured 2× win from another driver on the hot path |
+| YAML codec | Go `go.yaml.in/yaml/v3`, PHP `symfony/yaml`, Rust `serde_yaml_ng` with `yaml-rust2` validation, TypeScript `yaml`; lock files are committed | the same 80 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |

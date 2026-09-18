@@ -9,14 +9,13 @@ import (
 // to another request. Parameter values live outside this tree.
 func CloneQuery(q Query) Query {
 	out := q
-	out.ScopeP = clonePtr(q.ScopeP)
 	if q.Columns != nil {
 		c := *q.Columns
 		c.Add, c.Remove = slices.Clone(c.Add), slices.Clone(c.Remove)
-		c.As, c.Expr = maps.Clone(c.As), maps.Clone(c.Expr)
+		c.Expr = maps.Clone(c.Expr)
 		out.Columns = &c
 	}
-	out.On, out.Where, out.Having = cloneGroup(q.On), cloneGroup(q.Where), cloneGroup(q.Having)
+	out.On, out.Where = cloneGroup(q.On), cloneGroup(q.Where)
 	out.Joins = slices.Clone(q.Joins)
 	for i, j := range q.Joins {
 		if j == nil {
@@ -44,10 +43,7 @@ func CloneQuery(q Query) Query {
 	out.Order = slices.Clone(q.Order)
 	out.GroupBy = slices.Clone(q.GroupBy)
 	out.GroupByExpr = slices.Clone(q.GroupByExpr)
-	out.Limit, out.IfParent, out.Keyset = clonePtr(q.Limit), clonePtr(q.IfParent), clonePtr(q.Keyset)
-	if q.Keyset != nil {
-		out.Keyset.Values = slices.Clone(q.Keyset.Values)
-	}
+	out.Limit, out.IfParent = clonePtr(q.Limit), clonePtr(q.IfParent)
 	return out
 }
 
@@ -74,12 +70,6 @@ func cloneGroup(g *Group) *Group {
 			out.Items[i].Pred = &p
 		}
 		out.Items[i].Group = cloneGroup(item.Group)
-		if item.Nav != nil {
-			n := *item.Nav
-			n.P = clonePtr(n.P)
-			n.Group = cloneGroup(n.Group)
-			out.Items[i].Nav = &n
-		}
 	}
 	return &out
 }

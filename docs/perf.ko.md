@@ -1,158 +1,61 @@
-# perf.md — S0 스파이크 실측과 결정
+# 성능
 
-측정 환경: Apple M3 Pro, macOS, MySQL 8.4.11 로컬 유닉스 소켓(`/tmp/mysql.sock`), `orm_bench.battle` 10만 행(`aes_hex_*` 2컬럼),
-Go 1.27, Rust 1.98.1(sqlx 0.9, wasmtime 48), PHP 8.5.10(mysqlnd, msgpack). 단일 연결, p50 기준. 원자료: `docs/perf-raw-*.txt`. 아래 PHP plan-cache 수치는 과거 APCu 측정이며 현재 runtime 의존성이 아니다.
+모든 클라이언트는 애플리케이션 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 이전 실행 경로의 클라이언트 측정값은 더 이상 적용되지 않아 삭제했다. 현재 클라이언트의 오버헤드는 수치를 기록하기 전에 `make perf-check`와 아래 벤치마크 프로그램으로 다시 측정해야 한다.
 
-## 1. 엔진 컴파일 비용 (Go in-process, JSON in → JSON out)
-| 워크로드 | ns/op | allocs |
-|---|---:|---:|
-| Compile list(WHERE 트리 2단 + IN 3 + order + limit, plan 1.9KB) | 10,985 | 48 |
-| Compile pk | 5,033 | 13 |
+드라이버 결과의 측정 환경: Apple M3 Pro, macOS, MySQL 8.4.11 로컬 유닉스 소켓(`/tmp/mysql.sock`), `orm_bench.battle` 10만 행, 단일 연결, p50. 원자료: `docs/perf-raw-go-native.txt`, `docs/perf-raw-rust-native.txt`, `docs/perf-raw-rust-native-2.txt`.
 
-형태당 1회(플랜 캐시)이므로 핫패스 기여 0.
+## 1. 네이티브 드라이버 기준값
 
-## 2. 언어 호출 경로 (콜드패스, 형태당 1회)
-| 경로 | list | pk | 비고 |
-|---|---:|---:|---|
-| Go in-process | 11.0µs | 5.0µs | 함수 호출 |
-| Rust `libloading` (.dylib 2.7MB) | 11.4µs | 5.4µs | dlopen 366ms(1회), Go 런타임·시그널이 호스트 프로세스에 탑재 |
-| Rust `wasmtime` (.wasm 4.6MB) | 50.6µs | 24.0µs | 모듈 컴파일 390ms(디스크 캐시 후 22ms), 인스턴스화 1.9ms, 런타임 탑재 없음 |
-| PHP 영속 UDS → ormd | 26.5µs | 17.4µs | 와이어 오버헤드 ≈12–15µs; 요청당 새 connect면 +22µs |
-| PHP local cache 히트 | 0.25µs | 과거 APCu benchmark; 현재 runtime은 같은 bounded local lookup을 APCu 없이 사용 | 캐시된 플랜 `json_decode` 8.3µs → 배열로 저장해 디코드 회피 |
+하나의 연결에서 prepared statement를 재사용한다. 이 값은 ORM 없이 드라이버만 측정한 결과다.
 
-**결정 R1 — Rust 호출 경로 = wasmtime.** 두 경로 모두 예산(형태당 ≤2ms) 대비 100배 여유. 4.4배 느린 것은 콜드패스뿐이고, FFI는 Go 런타임을 tokio 프로세스에 넣는 운영 위험(시그널·스레드·366ms dlopen)이 있다. 아티팩트 하나로 모든 OS/arch, 4번째 언어(TS/엣지)에도 같은 파일.
-
-## 3. PHP 와이어 (100행 × 20열 결과 디코드)
-| 인코딩 | bytes | 디코드 p50 |
-|---|---:|---:|
-| JSON 연관배열 | 33.7KB | 139.1µs |
-| JSON 위치형 | 16.9KB | 69.8µs |
-| **msgpack 위치형** | 11.6KB | **28.7µs** |
-| msgpack 연관배열 | 24.5KB | 69.9µs |
-
-**결정 R2 — PHP 와이어 = msgpack + 위치형 행 + 컬럼 헤더.** 모델은 행 배열과 공유 컬럼 인덱스를 들고 있어 변환 비용 0(`array_combine`은 +60µs라 쓰지 않음).
-
-## 4. 네이티브 기준선 (prepared statement 재사용, 단일 연결)
-| 워크로드 | Go database/sql | Rust sqlx | PHP PDO |
+| 작업 | Go database/sql | Rust sqlx | PHP PDO |
 |---|---:|---:|---:|
-| PK 단건 (25열, AES 2) | 38.0µs | 81.4µs | 30.5µs |
+| PK 단일 행 (25컬럼, AES 2) | 38.0µs | 81.4µs | 30.5µs |
 | 100행 목록 | 448µs | 472µs | 446µs |
 | INSERT | 175µs | 191µs | 181µs |
-| 4단 관계(부모 20 + 자식 IN 3회 ≤200행 + 조립) | 6.43ms | 6.68ms | 7.45ms |
+| 4단 관계 (부모 20 + 자식 IN 쿼리 3개, ≤200행 + 조립) | 6.43ms | 6.68ms | 7.45ms |
 
-**발견 F1 — prepared statement 캐시는 실행기 필수.** Go에서 `QueryContext(args)`(prepare+exec+close, 왕복 3회)는 PK 100µs, 캐시 후 38µs. ormd도 같은 수정으로 112→51µs.
-**발견 F2 — sqlx PK 81µs**는 Go/PDO의 2배. 풀 체크아웃·tokio 스케줄링·per-connection 캐시 조회로 추정. S1 Rust 실행기에서 전용 연결·`persistent` 확인 후 재측정(T1.19 DoD에 추가).
+## 2. 실행기 규칙
 
-## 5. PHP 실행 위치 — 3경로 비교 (핵심 결정)
-| 워크로드 | (i) PDO 직접 + PHP 조립 | (iii) ormd 실행(prepared) + msgpack | 차이 |
+**F1 — 모든 실행기는 prepared statement를 캐시한다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다.
+
+**F2 — sqlx PK 지연은 드라이버 자체 비용이다.** sqlx는 풀 크기 1과 전용 연결에서도 PK 행을 약 80µs에 읽으며, 이는 Go와 PDO의 두 배다. 차이는 tokio 작업 전환과 프로토콜 파싱에서 생긴다.
+
+**F3 — 실행기는 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않는다.** 실패한 `try_get`은 셀마다 오류 문자열을 만든다. 정수 컬럼을 `i64`로 읽고 unsigned 컬럼을 `u64`로 다시 읽는 방식은 100행 읽기를 p50 378µs에서 615µs, p90 1.6ms로 늘렸다. 실행기는 컬럼 타입 명칭에 따라 분기해 signed와 unsigned 값을 한 번에 읽는다.
+
+**F4 — PHP는 `PDO::ATTR_EMULATE_PREPARES = true`로 고정한다.** 웹 요청은 보통 문장 형태를 한 번 실행하므로 cold path가 기준이다. cold path p50(off → on): PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs. warm path p50: PK 33→49µs, 100행 435→400µs. 타입(IP 문자열, JSON, 실수, 불리언)과 conformance 출력은 두 모드에서 같다.
+
+**F5 — PHP는 `PDO::FETCH_NUM` 배열을 행 저장소로 유지한다.** 행을 하나씩 가져오는 방식은 100행에 약 511µs, `fetchAll`은 약 425µs가 걸렸다.
+
+## 3. 회귀 검사 (`make perf-check`)
+
+검사는 한 프로세스에서 생성 클라이언트와 같은 결과의 네이티브 코드를 p50 표본 300개로 측정한다. 양쪽은 같은 non-lazy 컬럼을 선택하며, PHP 기준 코드도 같은 생성 행 결과를 디코딩하고 만든다. 중앙값 비율이 한도를 넘으면 CI가 실패한다.
+
+| 클라이언트 | PK 한도 | 100행 한도 | 검사 |
+|---|---:|---:|---|
+| Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `bench/go` `TestHotPathGate` |
+| PHP | 1.35 | 1.50 | `clients/php/tests/perf_gate.php <schema.json>` |
+
+비율은 하드웨어에 따라 달라지고 왕복 시간이 길수록 1에 가까워진다. 한도를 바꾸려면 측정 결과와 이 문서의 갱신이 필요하다.
+
+## 4. Rust MySQL 드라이버 비교
+
+하나의 release 프로세스에서 sqlx 0.9와 `mysql_async` 0.37.1을 비교했다. 풀마다 연결 하나, 같은 prepared SQL과 bind, 같은 4필드 타입 결과, 준비 작업 200회, 측정 작업 1,000회를 사용했다. 모든 쌍의 결과가 같았다. 환경: Apple M3 Pro, MySQL 8.4 로컬 유닉스 소켓, 2026-09-12.
+
+| 작업 | sqlx 평균 | `mysql_async` 평균 | 비율 (`mysql_async/sqlx`) |
 |---|---:|---:|---:|
-| PK 단건 | 30.5µs | 51.4µs | **+69%** |
-| 100행 목록 | 446µs | 1,122µs | **+152%** |
-| 100행 + 연관배열 변환 | — | 1,448µs | |
-| 4단 관계 | 7.45ms (PHP 조립) | 7.87ms (Go 조립) | **+6%** |
-
-검사(원격 단건 ≤+25%, 목록 ≤+15%, 4단 관계 기준선 이하)를 전부 실패. 목록의 +676µs는 홉(15µs)이 아니라 **행이 호출 경로를 넘는 비용**(Go 제네릭 `[]any` 스캔·복사 + msgpack 인코딩 + PHP 디코드)이다. 4단 관계는 Go 조립이 PHP 조립보다 빠르지 않았다(PDO+mysqlnd의 C 디코딩이 이미 빠르고, 조립 자체는 양쪽 다 수십 µs).
-비교 기준선 (i)은 손으로 쓴 PDO 조립이므로, 이 측정은 호출 경로 비용의 하한선으로 해석한다.
-
-**결정 R3 — PHP는 네이티브 실행기(PDO). `ormd`는 컴파일 전용.** plan-v2 §1의 "PHP는 ormd 사이드카가 실행" 결정을 **측정으로 철회**한다. Q1 검수의 가설("Go 조립 > PHP 조립", "홉 비용만 지불")은 실측에서 성립하지 않았다. 검수가 옳게 짚은 드리프트 위험(키 타입·`possible` 비교·`unserialize`)은 적합성 벡터에 키 타입 태그·정수 possible·serialize 픽스처를 넣어 잡는다(체크리스트 T2.16).
-뒤집는 조건(유효): 행이 호출 경로를 넘지 않는 새 방식이 나오거나(FrankenPHP in-process로 PHP가 Go 실행기를 직접 호출), PHP가 주력화되어 조립 3벌 유지 비용이 문제될 때.
-
-## 6. 핫패스 검사 — Go 실측 (S1, 생성 클라이언트)
-| 워크로드 | 네이티브(prepared) | 생성 클라이언트 | 비고 |
-|---|---:|---:|---|
-| PK 단건 | 38.0µs / 39 allocs | 32.9µs / 75 allocs | 플랜 캐시 히트 1.7µs 포함 |
-| 100행 목록 | 448µs / 2,176 allocs | 369µs / 4,517 allocs | typed struct 매핑 포함 |
-| 플랜 캐시 히트(컴파일 없이) | — | 1.7µs / 14 allocs | IR JSON 직렬화 + FNV |
-손실 0(측정 오차 안). 할당 수는 2배(위치형 `[]any` 스캔 → struct) — CPU에 영향 없음, 필요 시 S5에서 typed 스캔으로 줄인다. **G0/G1 Go 검사 통과.**
-
-### PHP 실측 (생성 클라이언트, ormd 컴파일 + PDO 실행, 과거 APCu benchmark)
-| 워크로드 | PDO 직접 | 생성 클라이언트 | 비고 |
-|---|---:|---:|---|
-| PK 단건 | 30.5µs | 31.4µs (+3%) | 플랜 캐시 히트 1.8µs 포함 |
-| 100행 목록 | 446µs | 390µs | 위치형 fetch + 지연 접근(getName ×100 포함 시 410µs) |
-**PHP 검사(≤5%) 통과.** ormd는 형태당 1회만 호출된다.
-
-### Rust 실측 (생성 클라이언트, wasmtime 엔진 스레드 + sqlx 실행, 같은 세션에서 기준선 재측정)
-| 워크로드 | sqlx 직접 | 생성 클라이언트 | 비고 |
-|---|---:|---:|---|
-| PK 단건 | 77.7µs | 78.3µs (+1%) | 플랜 캐시 히트 0.7µs 포함 |
-| 100행 목록 | 407µs | 378µs | 위치형 `Vec<Val>` → typed struct(문자열은 move) |
-| 플랜 캐시 히트(컴파일 없이) | — | 0.7µs | IR JSON 직렬화 + 해시 |
-**Rust 검사(≤5%) 통과.** 원자료 `docs/perf-raw-rust-client.txt`, `docs/perf-raw-rust-native-2.txt`.
-
-**발견 F3 — sqlx `try_get` 실패는 셀당 포맷된 에러를 만든다.** 첫 실측은 100행 p50 615µs·p90 1.6ms(이봉 분포)였다. 원인: 정수 컬럼을 `i64`로 먼저 읽고 실패하면 `u64`로 재시도하는 디코드 경로 — unsigned 컬럼(seq·FK·카운트 12개 × 100행)마다 sqlx가 `ColumnDecode` 에러를 `format!`으로 생성했다. 타입명으로 signed/unsigned를 분기해 한 번에 읽도록 고치자 378µs로 안정(p90 396µs). 실행기 규칙: **`try_get` 실패를 흐름 제어로 쓰지 않는다.**
-
-**F2 종결 — sqlx PK 78µs는 sqlx 자체 비용**이다. 생성 클라이언트도 같은 값이고(+1%), 풀 크기 1·전용 연결에서도 변하지 않았다. Go/PDO보다 2배인 것은 sqlx의 tokio 태스크 전환 + 프로토콜 파싱 비용으로, 우리 계층이 더한 것이 아니다. 계층 손실 검사는 통과이며, sqlx 절대치 개선은 범위 밖(S7 후보: 드라이버 교체 비교).
-
-## 6b. 고정 비용 — 3행 쿼리 (S1 데모, `examples/thin-slice`)
-같은 플랜의 SQL을 같은 프로세스에서 네이티브 드라이버로 다시 실행한 값과 비교(500회 p50, 타입 매핑 없는 최소 fetch).
-| | 생성 클라이언트 | 네이티브 최소 fetch | 문장당 고정 비용 |
-|---|---:|---:|---:|
-| Go | 66µs | 60µs | +6µs |
-| PHP | 64µs | 55µs | +9µs |
-| Rust | 107µs | 91µs | +16µs |
-행이 3개뿐이라 IR 구성·JSON 직렬화·해시·플랜 조회·typed 행 생성의 고정 비용이 상대적으로 드러난다. 100행 검사(§6)는 통과했지만 이 고정 비용은 줄일 수 있다 — S5 항목: IR 형태 키를 전체 JSON 직렬화 없이 만들기, Rust `Vec<Val>` 중간 단계 제거(typed 직접 디코드). 데모의 "네이티브"는 typed 매핑을 하지 않으므로 §6보다 불리한 비교다.
-
-## 6c. Rust 생성 crate 컴파일 시간 (T1.24, 5 테이블, 2,191줄, 메서드 1,259개)
-| | 시간 |
-|---|---:|
-| `cargo check -p gen` (증분, 의존성 웜) | 0.25s |
-| `cargo build --release -p gen` (증분) | 1.25s |
-| 의존성 포함 첫 dev 빌드 | 38.6s (sqlx·wasmtime·tokio가 대부분) |
-5 테이블에서 문제 없음. 150 테이블(T2.15)에서 선형 외삽 시 release 증분 ≈ 40s — 그때 `--tables` 분할 여부를 결정한다.
-
-### 고정 비용 감축 결과 (S5 T5.3b)
-| | 전 | 후 | 방법 |
-|---|---:|---:|---|
-| Go 3행 데모 | +8µs (+13%) | +5µs (+8%) | IR 형태 키를 JSON 없이 해시, 플랜별 스캔 팩트 캐시, 스캔 셀 재사용(PK 82→67 allocs, list100 5,118→3,323 allocs) |
-| PHP 3행 데모 | +9µs (+16%) | +6µs (+11%) | 빌더 시그니처로 요청 내 플랜 캐시(IR 재인코딩 없음), 단계별 styled/plan_id 사전 계산 |
-| Rust 3행 데모 | +4.5µs | 오차 범위 | `MySqlRow` → typed 직접 디코드(`Vec<Val>` 제거); list100 476→428µs, PK p99 210→102µs |
-≤+5% 목표는 Rust만 도달. Go/PHP의 남은 비용은 빌더 객체 생성과 `[]any`→struct 2단 스캔이며, typed 직접 스캔은 생성기 재설계라 S7로 보표시한다.
-
-### PHP prepared 방식 (S5 T5.4)
-`PDO::ATTR_EMULATE_PREPARES = true`로 고정. 근거(p50, off → on): 콜드(prepare+execute, 요청마다 형태를 처음 보는 PHP-FPM의 현실) PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs; 웜(같은 statement 재실행) PK 33→49µs, 100행 435→400µs. 웹 요청은 대부분 형태를 한 번 실행하므로 콜드가 결정 기준이다. 타입(ip 문자열·JSON·실수·불리언)과 적합성 출력은 두 모드에서 동일.
-
-## 6d. 재측정 (S6 종료 시점, 2026-09-11 — ip·decimal·스타일 컬럼 5개·fulltext 인덱스 추가 후)
-MySQL 8.4, 로컬 소켓, 같은 장비. 네이티브 = 각 언어의 드라이버로 같은 SQL을 직접 실행(prepared 재사용).
-
-| 워크로드 | Go 네이티브 | Go 클라이언트 | PHP PDO | PHP 클라이언트 | Rust sqlx | Rust 클라이언트 |
-|---|---:|---:|---:|---:|---:|---:|
-| PK 단건 | 40.4µs | 44.9µs (+11%) | 29.6µs | 49.3µs (+66%)¹ | 77.3µs | 80.9µs (+5%) |
-| 100행 목록 | 382µs | 416µs (+9%) | 410µs | 425µs (+4%) | 453µs | 410µs (−9%) |
-| INSERT | 180µs | — | 128µs | — | 169µs | — |
-| 플랜 캐시 히트(DB 없이) | — | 1.1µs | — | 1.3µs | — | 0.7µs |
-| allocs/op (PK / 100행) | 39 / 2,176 | 70 / 3,326 | — | — | — | — |
-
-¹ PHP 클라이언트의 PK가 느린 것은 S5에서 고정한 `EMULATE_PREPARES=true` 때문이다(§T5.4: 콜드 경로 72→48µs를 얻는 대신 웜 PK는 33→49µs). 벤치는 같은 문장을 3,000번 반복하는 웜 경로라 이 선택의 손해만 보인다. 실제 요청은 대부분 형태를 한 번 실행한다.
-
-행이 많은 워크로드(100행)는 세 언어 모두 네이티브의 ±10% 안이고 Rust는 typed 직접 디코드 덕에 오히려 빠르다. 단건은 문장당 고정 비용(§6b: IR 구성·해시·플랜 조회·행 매핑)이 그대로 드러나는 크기다. S1 대비 절대값이 커진 것은 `battle`에 컬럼 7개(ip·decimal·스타일 5개)와 fulltext 인덱스가 늘어 SELECT 폭과 INSERT 비용이 커졌기 때문이며, 비교는 같은 시점의 네이티브 열끼리 읽는다.
-
-## 6e. 회귀 검사 (`make perf-check`)
-같은 process에서 생성 클라이언트와 동일한 native 결과를 각각 300회 측정하고 p50 비율을 비교한다. 양쪽은 `price`, `ip`를 포함한 같은 non-lazy 컬럼을 조회한다. PHP 기준선은 같은 생성 행 결과를 decode하고 구성한다. 기존 Go·PHP native SQL은 `price`, `ip`를 누락했으며 T7.11에서 두 benchmark를 수정했다.
-
-2026-09-12 로컬 MySQL 8.4에서 세 번 연속 실행한 중앙 비율은 Go PK 0.48배, Go 100행 1.05배, PHP PK 1.12배, PHP 100행 0.96배다. 제한은 PK 1.35, 100행 1.25를 유지한다. 제한을 초과하면 CI가 실패한다. 제한 변경에는 측정 결과와 이 문서 수정이 필요하다.
-
-Go는 기본 flat projection에 생성 typed 스캔을 사용한다. 다른 projection과 plan은 positional assembly를 사용한다. PHP는 `PDO::FETCH_NUM` 배열을 행 저장소로 사용한다. PDO의 행별 fetch는 100행에서 약 511µs, `fetchAll`은 약 425µs로 측정되어 행별 구현을 제거했다.
-
-비율은 하드웨어에 따라 달라지며 왕복 시간이 길수록 1에 가까워진다. `TestHotPathGate`는 `ORM_RUN_PERF_GATE=1`을 요구한다. `scripts/perf-test.sh`가 독립 compiler socket을 시작한 뒤 Go·PHP 검사를 실행하고 `make check`가 이 script를 실행한다.
-
-## 6f. Rust MySQL driver 비교 (T7.9)
-
-하나의 release process에서 pool당 connection 1개, 동일한 prepared SQL과 bind, 동일한 4개 필드 typed 결과, warmup 200회, 측정 1,000회 조건으로 sqlx 0.9와 `mysql_async` 0.37.1을 비교했다. 각 query 결과는 같았다. 환경은 Apple M3 Pro, MySQL 8.4 로컬 Unix socket, 2026-09-12이다.
-
-| workload | sqlx 평균 | `mysql_async` 평균 | 비율(`mysql_async/sqlx`) |
-|---|---:|---:|---:|
-| primary-key 행 | 58.840µs | 61.825µs | 1.051 |
+| PK 행 | 58.840µs | 61.825µs | 1.051 |
 | 100행 목록 | 1.180ms | 1.113ms | 0.943 |
 
-`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 기존 교체 규칙은 2배 개선 측정값을 요구한다. 두 workload 모두 기준을 충족하지 않아 ORM은 sqlx를 유지한다. CI는 `make rust-driver-check`으로 프로그램을 컴파일하고 latency는 CI 통과 조건이 아니다.
+`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 프로그램을 컴파일하며, 지연 시간은 CI 통과 조건이 아니다.
 
-## 7. S0 결정 요약
+## 5. 결정 요약
+
 | ID | 결정 | 근거 |
 |---|---|---|
-| R1 | Rust 호출 경로 = wasmtime (.wasm 내장) | §2 |
-| R2 | PHP 와이어 = msgpack 위치형 | §3 |
-| R3 | PHP 실행 = PDO 네이티브, ormd 컴파일 전용 | §5 |
-| F1 | 모든 실행기에 prepared statement 캐시 | §4 |
-| F2 | Rust 실행기 PK 지연 재측정 → sqlx 고유 비용으로 종결 | §4, §6 |
-| F3 | sqlx `try_get` 실패를 흐름 제어로 쓰지 않는다(셀당 에러 포맷) | §6 |
+| F1 | 모든 실행기의 prepared statement 캐시 | §2 |
+| F2 | sqlx PK 지연은 드라이버 고유 비용 | §1, §2 |
+| F3 | 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않음 | §2 |
+| F4 | PHP `ATTR_EMULATE_PREPARES = true` | §2 |
+| F5 | PHP 행은 `FETCH_NUM` 배열 유지 | §2 |
+| D1 | Rust는 sqlx 유지 | §4 |

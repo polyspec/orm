@@ -124,9 +124,6 @@ final class Codec
                         throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage());
                     }
                     break;
-                case 'curlfile':
-                    $v = self::restoreUploadFiles($v);
-                    break;
                 case 'json':
                 case 'jsons':
                     try {
@@ -156,12 +153,6 @@ final class Codec
         $value = $v;
         foreach ($styles as $i => $st) {
             switch ($st) {
-                case 'curlfile':
-                    if ($i !== 0) {
-                        throw new OrmException(Code::CODEC_UNSUPPORTED, 'curlfile must be the first style');
-                    }
-                    $value = self::prepareUploadFiles($value);
-                    break;
                 case 'serialize':
                     $cur = serialize($value);
                     break;
@@ -193,46 +184,6 @@ final class Codec
         return $styles[count($styles) - 1] === 'gz' ? new Bytes($cur) : $cur;
     }
 
-    private static function prepareUploadFiles(mixed $value): mixed
-    {
-        if (!is_array($value)) {
-            return $value;
-        }
-        if (($value['$type'] ?? null) === 'upload_file') {
-            if (count($value) !== 4 || !is_string($value['path'] ?? null) || $value['path'] === ''
-                || !is_string($value['mime'] ?? null) || !is_string($value['name'] ?? null) || $value['name'] === '') {
-                throw new OrmException(Code::CODEC_ENCODE, 'curlfile: upload_file requires non-empty path and name plus string mime');
-            }
-            return ['is_curl_file' => true, 'mime' => $value['mime'], 'name' => $value['name'], 'path' => $value['path']];
-        }
-        foreach ($value as $key => $item) {
-            if (is_array($item)) {
-                $value[$key] = self::prepareUploadFiles($item);
-            }
-        }
-        return $value;
-    }
-
-    private static function restoreUploadFiles(mixed $value): mixed
-    {
-        if (!is_array($value)) {
-            return $value;
-        }
-        if (($value['is_curl_file'] ?? null) === true) {
-            if (count($value) !== 4 || !is_string($value['path'] ?? null) || $value['path'] === ''
-                || !is_string($value['mime'] ?? null) || !is_string($value['name'] ?? null) || $value['name'] === '') {
-                throw new OrmException(Code::CODEC_DECODE, 'curlfile: invalid stored upload file');
-            }
-            return ['$type' => 'upload_file', 'path' => $value['path'], 'mime' => $value['mime'], 'name' => $value['name']];
-        }
-        foreach ($value as $key => $item) {
-            if (is_array($item)) {
-                $value[$key] = self::restoreUploadFiles($item);
-            }
-        }
-        return $value;
-    }
-
     private static function validateYamlValue(mixed $value): void
     {
         if (is_float($value) && !is_finite($value)) {
@@ -262,7 +213,8 @@ final class Codec
      */
     private static function aesV2Key(string $key): string
     {
-        return hash('sha256', "polyspec/orm/aes-256-gcm/v2\0" . $key, true);
+        static $derived = [];
+        return $derived[$key] ??= hash('sha256', "polyspec/orm/aes-256-gcm/v2\0" . $key, true);
     }
 
     /**
@@ -353,11 +305,6 @@ final class Codec
         return $cur;
     }
 
-    public static function hostDecodeVersioned(mixed $raw, array $styles, int $version, AesKeyring $keyring): ?string
-    {
-        return self::hostDecode($raw, $styles, $keyring->key($version));
-    }
-
     /** INET6_ATON: 4 bytes for IPv4 (an IPv4-mapped IPv6 address included), 16 for IPv6. */
     private static function packIp(string $s): string
     {
@@ -382,60 +329,38 @@ final class Codec
     }
 
     /**
-     * Decodes every styled cell of a positional row in place (joins included): the host stages
-     * first (Assemble::index split them off as 'host'), then the codec stages ('codec').
+     * Decodes the styled cells of positional rows in place: the host stages first, then the codec
+     * stages. $cells is a step's 'decode' list from Assemble::index (joined columns included):
+     * [index, host stages, codec stages, whether the host stages include aes, the index of the
+     * node's aes_key_version column or null].
+     * @param list<list<mixed>> $rows
+     * @param list<array{0: int, 1: list<string>, 2: list<string>, 3: bool, 4: ?int}> $cells
      */
-    public static function decodeRow(array &$vals, array $asm): void
+    public static function decodeRows(array &$rows, array $cells, Config $config): void
     {
-        $config = Orm::config();
-        $hasAes = false;
-        foreach ($asm['columns'] as $c) { if (in_array('aes', $c['styles'] ?? [], true)) { $hasAes = true; break; } }
-        $keyring = $hasAes ? ($config->aesKeys === [] ? new AesKeyring([$config->aesVersion => $config->aesKey], $config->aesVersion) : new AesKeyring($config->aesKeys, $config->aesVersion)) : null;
-        $version = $config->aesVersion;
-        foreach ($asm['columns'] as $c) {
-            if (!empty($c['hidden']) && ($c['column'] ?? '') === 'aes_key_version') {
-                $version = (int) $vals[$c['index']];
+        $keyring = null;
+        foreach ($cells as $c) {
+            if ($c[3]) {
+                $keyring = $config->keyring();
                 break;
             }
         }
-        foreach ($asm['columns'] as $c) {
-            if (empty($c['styles'])) {
-                continue;
-            }
-            $v = $vals[$c['index']];
-            if (!empty($c['host'])) {
-                $v = in_array('aes', $c['host'], true)
-                    ? self::hostDecodeVersioned($v, $c['host'], $version, $keyring)
-                    : self::hostDecode($v, $c['host'], $config->aesKey);
-            }
-            if (!empty($c['codec'])) {
-                $v = self::decode($c['codec'], $v);
-            } elseif (is_resource($v)) {
-                $v = stream_get_contents($v);
-            }
-            $vals[$c['index']] = $v;
-        }
-        foreach ($asm['children'] ?? [] as $ch) {
-            if ($ch['kind'] === 'join') {
-                self::decodeRow($vals, $ch['assemble']);
+        foreach ($rows as &$vals) {
+            foreach ($cells as [$index, $host, $codec, $aes, $versionIndex]) {
+                $v = $vals[$index];
+                if ($host !== []) {
+                    $key = !$aes ? $config->aesKey
+                        : $keyring->key($versionIndex === null ? $config->aesVersion : (int) $vals[$versionIndex]);
+                    $v = self::hostDecode($v, $host, $key);
+                }
+                if ($codec !== []) {
+                    $v = self::decode($codec, $v);
+                } elseif (is_resource($v)) {
+                    $v = stream_get_contents($v);
+                }
+                $vals[$index] = $v;
             }
         }
-    }
-
-    /** @param array $asm */
-    public static function hasStyled(array $asm): bool
-    {
-        foreach ($asm['columns'] as $c) {
-            if (!empty($c['styles'])) {
-                return true;
-            }
-        }
-        foreach ($asm['children'] ?? [] as $ch) {
-            if ($ch['kind'] === 'join' && self::hasStyled($ch['assemble'])) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** unserialize gives PHP arrays as-is; nothing to change in the value model (int keys stay int keys). */

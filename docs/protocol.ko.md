@@ -1,113 +1,155 @@
-# protocol.md — IR(JSON)에서 Plan(JSON)으로
+# IR과 Plan 프로토콜
 
-클라이언트는 [docs/dsl.md](dsl.md)의 호출 체인을 아래 IR로 변환하고 형태 해시로 Plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 한다.
+클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 애플리케이션 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
 
 ## 1. 요청
+
 ```json
 {
   "ir_version": 1,
   "schema_hash": "cd21c76a45bcb2dd",
-  "kind": "one | all | count | group_count | count_distinct | sum | avg | min | max | paginate | insert | update | delete",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
   "entity": "battle",
-  "columns": {"mode": "" | "all" | "none", "add": [], "remove": [], "as": {"out": "col"}, "expr": {"out": "ST_Y(`location`)"}},
-  "joins":     [{"rel": "campaign", "kind": "inner|left", "query": { …Query…, "on": Group }}],
-  "where":     Group,
-  "relations": [{"rel": "items", "query": { …Query…, "key_by": "col", "flatten": true, "limit_per_parent": 3, "if_parent": {"column","value"}, "drop_child_key": true }}],
-  "order":     [{"column": "seq", "desc": true} | {"expr": "…"}],
-  "group_by":  ["seq"],
-  "group_by_expr": [{"expr": "ROUND(`score`)", "as": "score_bucket"}],
-  "limit":     {"offset": 0, "count": 20},
-  "keyset":    {"direction": "after|before", "values": [parameter indexes]},
-  "distinct":  false,
-  "force_index": "ik",
-  "agg": "amount",                                  // sum/avg
-  "set": [{"column","value"} | {"column","expr","binds"} | {"column","plus"} | {"column","minus"}],   // insert/update
-  "optimistic": {"column": "updated_ts", "value": "…"},                                                 // update
-  "debug": false
+  "columns": Columns,
+  "where": Group,
+  "joins": [Join],
+  "relations": [Relation],
+  "order": [Order],
+  "group_by": ["user_seq"],
+  "group_by_expr": [{"expr": "DATE({created_ts})", "as": "group_1"}],
+  "limit": {"offset": 0, "count": 20},
+  "force_index": "ix_service",
+  "lock": "update | share | update_nowait | share_nowait",
+  "agg": "read_count",
+  "set": [Assign],
+  "rows": [[4, 5], [6, 7]],
+  "on_duplicate": [Assign],
+  "optimistic": {"column": "updated_ts", "p": 3},
+  "n_params": 8
 }
 ```
-`Query` (shared by root, join child, relation child) = `entity columns on where joins relations order group_by group_by_expr limit distinct force_index` plus relation options. root keyset request는 `keyset: {"direction":"after|before","values":[parameter index]}`를 추가하며 values는 누락된 primary-key column을 포함한 정규화된 order에 대응한다.
 
-keyset은 offset이 0인 양수 limit을 요구하며 join이나 relation column을 cursor order로 사용할 수 없다.
+요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다.
 
-### Group / Item
+| 필드 | 규칙 |
+|---|---|
+| `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓴다 |
+| `set` | `insert`와 `update`의 할당 |
+| `rows` | 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다 |
+| `on_duplicate` | 삽입한 행이 기존 고유 키와 겹칠 때 적용하는 할당 |
+| `optimistic` | `update`는 컬럼 값이 매개변수와 같을 때만 일치한다. 일치하는 행이 없으면 `OPTIMISTIC_LOCK`을 반환한다 |
+| `lock` | 루트 행 조회에만 사용하며 클라이언트는 트랜잭션 안에서만 허용한다 |
+
+`Query`는 루트, 조인 자식, 관계 자식, 서브쿼리가 함께 쓰는 형태로 `entity`, `columns`, `on`(조인 자식 전용), `where`, `joins`, `relations`, `order`, `group_by`, `group_by_expr`, `limit`, `force_index`, `lock`, 관계 옵션으로 이루어진다.
+
+### 1.1 컬럼
+
 ```json
-Group = {"conn": "and|or", "items": [Item…]}          // conn = connector to the preceding sibling; absent for the first item
-Item = {"pred": Pred} | {"group": Group} | {"nav": {"conn", "rel": "campaign", "group": Group}}
-Pred  = {"conn", "column", "op", "value"}                       // eq not_eq gt gte lt lte like like_binary contains starts_with ends_with
-      | {"conn", "column", "op": "in|not_in|between", "values": [...]}
-      | {"conn", "column", "op": "is_null|is_not_null"}
-      | {"conn", "column", "op": "eq_col|…", "ref": {"path": "campaign/service", "column": "seq"}}
-      | {"conn", "op": "match|match_boolean", "match": ["name","description"], "value": "kw"}
-      | {"conn", "expr": "DAYOFWEEK(`created_ts`) = ?", "binds": [1]}
+Columns = {
+  "mode": "" | "all" | "none",
+  "add": ["name"],
+  "remove": ["description"],
+  "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
+  "fn": {"distance": {"column": "location", "fn": Func}},
+  "sub": {"read_total": Sub}
+}
 ```
-- 연속 술어는 AND를 사용한다. `or()` 토큰은 다음 항목에 `conn: "or"`를 설정한다. `and(fn)`/`or(fn)` creates a `group`. `<rel>(fn)` creates `nav`; that relation must be joined in the current statement.
-- A join child's `on` is ON. Its `where` is added to the parent WHERE in parentheses. The client does not create the terminal predicate for a join child chain (`JOIN_PREDICATE_PLACEMENT`).
-- `expr`의 백틱 컬럼을 검사하고 현재 엔티티 기준으로 별칭을 치환한다. `?` values use `binds` order.
+
+- `mode`가 `""`이면 지연 로딩이 아닌 컬럼을, `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다.
+- `expr`, `fn`, `sub`는 이름이 있는 출력을 추가한다. 출력 명칭은 엔티티의 컬럼 명칭과 같을 수 없다.
+- 기본 키와 관계가 바인드하는 키는 항상 선택한다.
+
+### 1.2 조인과 관계
+
+```json
+Join = {"rel": "service_model", "kind": "inner | left", "left": "service_seq", "right": "seq", "query": Query}
+Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": "seq", "query": Query,
+            "key_by": "user_seq", "flatten": false, "limit_per_parent": 2,
+            "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
+```
+
+- `rel`은 결과 명칭이다. `left`는 부모의 컬럼이고 `right`는 자식의 컬럼이다.
+- 조인 자식의 `on` 그룹은 `ON` 절에 추가한다. `where` 그룹은 `joined` 항목이 지정한 위치에 두며, 지정하지 않으면 부모 `WHERE`에 `AND`로 붙인다.
+- 관계는 별도 문장으로 실행한다. `limit_per_parent`는 부모 키마다 자식 행 수를 제한하고, `if_parent`는 컬럼 값이 매개변수와 같은 부모에 대해서만 자식을 읽는다. `flatten`은 자식 컬럼을 부모 행에 합치고, `key_by`는 자식 컬렉션의 키를 정하며, `no_cascade_delete`는 재귀 삭제에서 관계를 제외한다.
+
+### 1.3 그룹과 조건
+
+```json
+Group = {"conn": "and | or", "items": [Item]}
+Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
+Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
+      | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
+      | {"conn", "column", "op": "is_null | is_not_null"}
+      | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
+      | {"conn", "op": "match | match_boolean", "match": ["name", "description"], "p"}
+      | {"conn", "op": "tuple_in | tuple_not_in", "cols": ["tenant_id", "account_id"], "ps": [0, 1, 2, 3]}
+      | {"conn", "column", "op": "in | not_in", "sub": Sub}
+      | {"conn", "column", "op", "p", "fn": Func}
+      | {"conn", "column", "op", "value": Func}
+      | {"conn", "expr": "{read_count} > ?", "ps": [0]}
+Func  = {"name": "day_of_week | year | month | date | distance | point_x | point_y | now | today | days_ago | …", "ps": [0, 1]}
+Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
+```
+
+- `conn`은 항목을 같은 그룹의 이전 항목에 연결한다. 첫 항목에는 연결자가 없다.
+- `ref.path`는 SQL 문장 루트에서 시작하는 조인 경로(`""`는 루트, `a/b`는 중첩 조인)이거나, 서브쿼리를 소유한 모델을 뜻하는 `^`다.
+- `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
+- `expr` 조각은 소유 모델의 컬럼을 `{column}`으로 참조하고 `?` 값을 `ps` 순서로 바인드한다. 자리표시자 수는 바인드 수와 같아야 한다.
+- `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains_binary`는 대소문자를 구분한다.
+
+### 1.4 정렬과 할당
+
+```json
+Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true} | {"expr": "{seq} DESC"}
+Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} | {"column", "plus_p"} | {"column", "minus_p"}
+```
+
+원시 정렬 표현식은 방향을 직접 포함한다. `minus_p`는 음수 값을 저장하지 않는다.
 
 ## 2. Plan
+
 ```json
 {
   "schema_hash": "…", "kind": "all",
   "steps": [
     {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `battle` AS `a` … LIMIT 0, 20",
-     "bind_slots": [{"from": "secret", "name": "aes"}, {"from": "param", "value": 5}, …],
+     "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
      "assemble": {"entity": "battle", "alias": "a",
-                  "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}, {"index": 23, "name": "aes_hex_email", "column": "aes_hex_email", "type": "string"}],
+                  "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],
                   "key": [{"column": "seq", "index": 0}],
-                  "children": [{"rel": "campaign", "kind": "join", "assemble": {…}}]}},
-    {"id": 1, "role": "count", "sql": "SELECT COUNT(*) FROM …", "bind_slots": […]}
+                  "children": [{"rel": "service_model", "kind": "join", "assemble": {…}}]}},
+    {"id": 1, "role": "relation", "sql": "…", "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
   ]
 }
 ```
-- `bind_slots.from`: `param`은 IR 값이며 실행기가 `host_styles`의 aes/hex/ip 처리와 date/time/datetime 정규화를 적용한다. `secret`은 실행기 AES 키, `parent`는 부모 행에서 읽어 확장한 관계 값, `now`는 SQLite `updated_ts` 등에 사용하는 실행기 UTC 마이크로초 문자열이다.
-- 결과는 `index`로 매핑한다. `alias__col` 같은 SELECT 별칭은 디버그 출력에만 사용하며 실행기는 별칭을 해석하지 않는다.
-- `assemble.columns[].styles`는 gz/json/serialize 같은 애플리케이션 디코딩 단계다. aes/hex/ip 같은 SQL 단계는 SQL에 포함된다.
-- `assemble.key`는 순서가 있는 collection 식별자다. 일반 행은 모든 primary key 구성요소를 사용한다. `group_count` 행은 각 `group_by` 컬럼 다음에 각 `group_by_expr` 별칭을 사용한다.
-- `children[].kind`: `join`은 같은 행의 `assemble`을 저장한다. `one`과 `many`는 순서가 있는 `parent_keys`와 `child_keys` 배열로 다른 단계의 행을 연결한다.
 
-### 관계 단계 (S2)
-- 각 관계는 부모 단계 다음에 `role: relation`인 단계 하나를 사용한다. 중첩 관계와 join 하위 관계에도 같은 규칙을 적용한다. paginate 단계 순서는 main, relations, `count`다.
-- `step.parent = {step, keys:[{column,index},...], if_parent?{column,index,param}}`: 실행기는 배열 순서대로 각 부모 키 튜플을 읽고, null을 포함한 튜플을 제거하며, 처음 확인한 순서대로 중복을 제거한다. `if_parent`가 있으면 `params[param]`과 같은 부모 행만 사용한다. 남은 튜플이 없으면 쿼리를 실행하지 않는다.
-- SQL `parent` 슬롯은 플레이스홀더 하나다. 실행기는 단일 키를 N개 스칼라 플레이스홀더로 확장하고 복합 키를 N개 괄호 튜플로 확장한다. N은 마지막 완전한 튜플을 반복해 2의 거듭제곱으로 맞춘다. Go, PHP, Rust, TypeScript에 같은 규칙을 적용한다.
-- 사용자가 지정한 `IN` 목록도 빌더가 IR을 생성하기 전에 같은 패딩 규칙을 적용한다. 목록 길이별로 prepared statement가 생성되는 것을 제한한다.
-- root positive `IN` request가 driver parameter limit을 초과하면 Go·PHP·Rust·TypeScript는 목록을 power-of-two chunk로 분할하고 다른 parameter를 보존하며 row 결과를 병합하고 count 결과를 합산한다. 분할로 의미가 변경되는 ordering, limit, distinct, grouping, having, keyset 또는 `NOT IN` query는 `IR_INVALID`로 거부한다.
-- `children[].kind = one`은 첫 번째 자식 행을 연결한다. `many`는 순서가 있는 `key` 참조로 키 맵을 생성하고 행 순서를 유지하며 중복 키에는 마지막 행을 사용한다. `if_parent`에서 제외된 부모에는 null 또는 빈 collection을 설정한다.
-- `limit_per_parent n`은 `ROW_NUMBER() OVER (PARTITION BY right ORDER BY …)` 하위 쿼리를 사용한다. 출력 컬럼 순서는 바뀌지 않는다.
-- `flatten`은 one 관계에만 사용할 수 있다. 자식 컬럼을 배열 또는 JSON 결과에 병합하고 이름이 같으면 부모 컬럼을 유지한다. 타입 accessor는 계속 사용할 수 있다.
-- `drop_child_key`는 `columns[].hidden = true`를 설정한다. 연결 컬럼은 바인딩과 키 생성에 사용되며 배열 또는 JSON 결과에서만 제외된다.
-- `columns[].styles`는 행을 읽은 직후 역순으로 디코딩한다(`docs/codec.ko.md`). MySQL 드라이버가 JSON 값을 먼저 파싱할 수 있다.
-- `key_by`는 many 관계에만, `flatten`은 one 관계에만 사용할 수 있다. `if_parent.column`은 부모 엔터티에 포함되어야 한다. 위반하면 `IR_INVALID`를 반환한다.
+- `bind_slots.from`은 `param`(요청 매개변수. 전문 검색과 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각) 중 하나다.
+- 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
+- `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
+- `children[].kind`는 같은 행의 자식이면 `join`, `parent_keys`와 `child_keys`로 연결되는 관계 단계면 `one` 또는 `many`다.
+
+### 2.1 관계 단계
+
+- 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`의 단계 순서는 본문, 관계, 개수다.
+- 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
+- `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
+- `one`은 첫 자식 행을, `many`는 자식 순서의 컬렉션을 붙인다. 컬렉션 키가 겹치면 마지막 행을 유지한다.
 
 ## 3. 오류
-`{"error": {"code": "…", "msg": "…"}}` — codes: `IR_INVALID CAPABILITY_UNSUPPORTED VERSION_MISMATCH SCHEMA_HASH_MISMATCH SCHEMA_INVALID SCHEMA_NOT_LOADED ENTITY_UNKNOWN COLUMN_UNKNOWN RELATION_UNKNOWN INDEX_UNKNOWN OPERATOR_UNKNOWN OPERATOR_NOT_ALLOWED OR_AT_GROUP_START EMPTY_IN ENTITY_NOT_JOINED LIMIT_IN_RELATION COLUMN_ALIAS_CONFLICT DIALECT_UNKNOWN FRAME_INVALID OP_UNKNOWN INTERNAL`. Executor codes include `OPTIMISTIC_LOCK DEADLOCK DUPLICATE_KEY`.
 
-## 4. 전송
+오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`를 추가한다.
 
-공통 compiler service는 `proto/orm/compiler/v1/compiler.proto`의 `orm.compiler.v1.CompilerService`다.
+## 4. 클라이언트 안의 계획
 
-| RPC | Connect 경로 | 입력 | 출력 |
-|---|---|---|---|
-| Compile | `/orm.compiler.v1.CompilerService/Compile` | `CompileRequest` | `CompileResponse.plan` 또는 `CompileResponse.error` |
-| GetMetadata | `/orm.compiler.v1.CompilerService/GetMetadata` | `GetMetadataRequest` | schema hash, dialect, IR version |
+모든 클라이언트는 애플리케이션 프로세스 안에서 요청을 검증하고 계획한다. 컴파일러 서비스, 데몬, 확장은 사용하지 않는다.
 
-`ormd -listen 127.0.0.1:8080 -schema schema/schema.json`은 binary Protobuf를 사용하는 Connect unary request를 처리한다. Go·PHP·Rust·TypeScript는 같은 두 작업을 가진 `CompilerTransport`와 `ConnectCompiler`를 제공한다. `make proto-check`는 scope를 포함한 request를 네 구현으로 실행하고 정규화한 전체 결과를 비교한다.
+| 클라이언트 | 검증, 계획, 방언, DDL |
+|---|---|
+| Go | `engine/ir`, `engine/planner`, `engine/dialect`, `internal/ormgen` DDL |
+| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Ddl.php` |
+| Rust | `clients/rust/orm/src/engine/` |
+| TypeScript | `clients/typescript/src/engine/` |
 
-`contracts/interfaces.json`은 네 전송 구현의 service 경로, 작업 이름, request·response type, 오류, 언어별 symbol을 정의한다. Protobuf 검사는 interface method나 구현 선언이 누락되면 실패한다. Runtime symbol snapshot은 생성된 Protobuf 파일을 제외하며, 해당 파일은 `proto/generated.sha256.json`이 모두 검사한다.
+연결은 `schema.json`을 읽어 내용으로 `schema_hash`를 확인하고, 해시가 다른 생성 모델을 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 스키마 해시와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
 
-Go·PHP·Rust·TypeScript database executor는 설정된 `CompilerTransport`로 plan cache miss를 compile한다. 시작 단계에서 schema hash, dialect, IR version metadata 불일치를 거부한다. 기본 compiler 경로는 Go in-process, Rust WASM, PHP Unix socket, TypeScript Connect/Protobuf다. Connect는 네 client가 구현하는 공통 compiler service 경로이기도 하다. 네 executor는 각자 선언된 compiler 구현으로 MySQL·PostgreSQL·SQLite 벡터 63개를 통과한다.
-
-Cache key는 schema hash, request 형태, IN cardinality로 구성한다. Parameter 값은 제외한다.
-
-### 쓰기 확장 (S3)
-- `on_duplicate: [Assign]` is insert-only and excludes PK/auto. The planner creates `INSERT … ON DUPLICATE KEY UPDATE a = ?, b = b + ?[, pk = LAST_INSERT_ID(pk)]`. The executor reads the row again by that id.
-- `no_cascade_delete: true` sets `children[].cascade = false`. Cascade applies only when the related row has the foreign key to the current row. `deleteCascade` removes loaded cascade relations depth first, then removes the current row. A parent-side relation is never removed.
-- `save`, query `update`/`delete`, and `sql` are executor rules without additional IR (`docs/lanes/s3.md`).
-
-### 집계 확장 (S4)
-- `kind`: `count_distinct`, `min`, and `max` with `agg` as the column. `count` with `group_by` returns the number of groups.
-- `group_by_expr`: `{expr, as}` entries. Backtick columns use the current entity; `as` is the output name for `getsCount`. Bind values are unsupported.
-- `having: Group` is root-only and requires `group_by` or `group_by_expr`. It uses the same group syntax and aggregate `expr` items.
-
-### 방언 (S6)
-Plan 형태는 방언과 무관하다. Dialect handling changes identifier quoting, placeholders, LIKE, upsert, fulltext, and SQL-side versus application-side style stages according to `docs/dialects.md`. 지원하지 않는 연산자는 컴파일 시 `OPERATOR_NOT_ALLOWED`로 실패한다.
+네 플래너는 같은 요청에서 같은 SQL과 bind slot을 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 같은 벡터를 네 클라이언트로 실행하고 문장, bind, 결과를 기록된 기대값과 비교한다.

@@ -1,11 +1,10 @@
 package orm
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -17,12 +16,16 @@ type AESKeyring struct {
 	current int32
 }
 
+// aesKeyring builds the keyring of the connection configuration once.
 func (d *DB) aesKeyring() (AESKeyring, error) {
-	keys := d.cfg.AESKeys
-	if len(keys) == 0 && d.cfg.AESKey != "" {
-		keys = map[int32]string{d.cfg.AESVersion: d.cfg.AESKey}
-	}
-	return NewAESKeyring(keys, d.cfg.AESVersion)
+	d.m.keyringOnce.Do(func() {
+		keys := d.cfg.AESKeys
+		if len(keys) == 0 && d.cfg.AESKey != "" {
+			keys = map[int32]string{d.cfg.AESVersion: d.cfg.AESKey}
+		}
+		d.m.keyring, d.m.keyringErr = NewAESKeyring(keys, d.cfg.AESVersion)
+	})
+	return d.m.keyring, d.m.keyringErr
 }
 
 // HostDecodeVersioned decodes an AES value with the row's stored version.
@@ -102,207 +105,6 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 	return out, nil
 }
 
-// AESRotationColumn identifies one stored AES column and its host stages. The
-// list normally contains ["aes"] or ["aes", "hex"].
-type AESRotationColumn struct {
-	Name   string
-	Styles []string
-}
-
-// AESRotationSpec contains only schema-derived identifiers. Callers must use
-// the generated specification for an entity; arbitrary SQL identifiers are
-// rejected by quoteIdentifier.
-type AESRotationSpec struct {
-	Table         string
-	PrimaryKeys   []string
-	VersionColumn string
-	Columns       []AESRotationColumn
-	BatchSize     int
-}
-
-// AESRotationStatus reports row counts by stored key version.
-type AESRotationStatus struct {
-	Current  int32
-	Total    int64
-	Pending  int64
-	Versions map[int32]int64
-}
-
-// AESStatus reads only the plaintext version column.
-func (d *DB) AESStatus(ctx context.Context, ex Exec, spec AESRotationSpec, keyring AESKeyring) (AESRotationStatus, error) {
-	status := AESRotationStatus{Current: keyring.current, Versions: map[int32]int64{}}
-	version := quoteIdentifier(d.driver, spec.VersionColumn)
-	query := "SELECT " + version + ", COUNT(*) FROM " + quoteIdentifier(d.driver, spec.Table) + " GROUP BY " + version + " ORDER BY " + version
-	var rows *sql.Rows
-	var err error
-	if tx, ok := ex.(*Tx); ok {
-		rows, err = tx.tx.QueryContext(ctx, query)
-	} else {
-		rows, err = d.SQL.QueryContext(ctx, query)
-	}
-	if err != nil {
-		return status, mapDriverErr(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var raw any
-		var count int64
-		if err := rows.Scan(&raw, &count); err != nil {
-			return status, err
-		}
-		stored, err := rowVersion(raw)
-		if err != nil {
-			return status, err
-		}
-		status.Versions[stored] = count
-		status.Total += count
-		if stored != status.Current {
-			status.Pending += count
-		}
-	}
-	return status, rows.Err()
-}
-
-// RotateAESRows reads and updates every row in one transaction. Each UPDATE
-// writes every AES column and the version column together, and includes the
-// old version in its predicate. A decode, encode, scan, conflict, or driver
-// error rolls back all updates.
-func (d *DB) RotateAESRows(ctx context.Context, ex Exec, spec AESRotationSpec, keyring AESKeyring) (int, error) {
-	if d == nil || ex == nil {
-		return 0, fmt.Errorf("aes rotation requires a database and executor")
-	}
-	if spec.Table == "" || len(spec.PrimaryKeys) == 0 || spec.VersionColumn == "" || len(spec.Columns) == 0 {
-		return 0, fmt.Errorf("aes rotation specification is incomplete")
-	}
-	if spec.BatchSize <= 0 {
-		spec.BatchSize = 1000
-	}
-	for _, column := range spec.Columns {
-		if column.Name == "" || len(column.Styles) == 0 {
-			return 0, fmt.Errorf("aes rotation column is incomplete")
-		}
-	}
-	attemptCount := 0
-	err := InTx(ctx, ex, func(txEx Exec) error {
-		attemptCount = 0
-		rows, err := d.rotationQuery(ctx, txEx, spec, keyring.current)
-		if err != nil {
-			return err
-		}
-		type pendingRow struct{ before, after map[string]any }
-		pending := make([]pendingRow, 0)
-		selectColumns := len(spec.PrimaryKeys) + 1 + len(spec.Columns)
-		for rows.Next() {
-			values := make([]any, selectColumns)
-			dest := make([]any, selectColumns)
-			for i := range values {
-				dest[i] = &values[i]
-			}
-			if err := rows.Scan(dest...); err != nil {
-				rows.Close()
-				return err
-			}
-			row := make(map[string]any, selectColumns)
-			for i, key := range spec.PrimaryKeys {
-				row[key] = values[i]
-			}
-			row[spec.VersionColumn] = values[len(spec.PrimaryKeys)]
-			for i, column := range spec.Columns {
-				row[column.Name] = values[len(spec.PrimaryKeys)+1+i]
-			}
-			rotated, err := RotateAESRow(row, spec.VersionColumn, spec.Columns, keyring.current, keyring)
-			if err != nil {
-				rows.Close()
-				return err
-			}
-			pending = append(pending, pendingRow{before: row, after: rotated})
-		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
-			return err
-		}
-		if err := rows.Close(); err != nil {
-			return err
-		}
-		for _, row := range pending {
-			if err := d.rotationUpdate(ctx, txEx, spec, row.before, row.after); err != nil {
-				return err
-			}
-			attemptCount++
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return attemptCount, nil
-}
-
-func (d *DB) rotationQuery(ctx context.Context, ex Exec, spec AESRotationSpec, targetVersion int32) (*sql.Rows, error) {
-	columns := make([]string, 0, len(spec.PrimaryKeys)+1+len(spec.Columns))
-	order := make([]string, len(spec.PrimaryKeys))
-	for i, key := range spec.PrimaryKeys {
-		order[i] = quoteIdentifier(d.driver, key)
-		columns = append(columns, order[i])
-	}
-	columns = append(columns, quoteIdentifier(d.driver, spec.VersionColumn))
-	for _, column := range spec.Columns {
-		columns = append(columns, quoteIdentifier(d.driver, column.Name))
-	}
-	limit := spec.BatchSize
-	if limit <= 0 {
-		limit = 1000
-	}
-	query := "SELECT " + strings.Join(columns, ", ") + " FROM " + quoteIdentifier(d.driver, spec.Table) + " WHERE " + quoteIdentifier(d.driver, spec.VersionColumn) + " <> " + d.rotationPlaceholder(1) + " ORDER BY " + strings.Join(order, ", ") + fmt.Sprintf(" LIMIT %d", limit)
-	if tx, ok := ex.(*Tx); ok {
-		return tx.tx.QueryContext(ctx, query, targetVersion)
-	}
-	return d.SQL.QueryContext(ctx, query, targetVersion)
-}
-
-func (d *DB) rotationUpdate(ctx context.Context, ex Exec, spec AESRotationSpec, before, after map[string]any) error {
-	sets := make([]string, 0, len(spec.Columns)+1)
-	args := make([]any, 0, len(spec.Columns)+len(spec.PrimaryKeys)+2)
-	for _, column := range spec.Columns {
-		sets = append(sets, quoteIdentifier(d.driver, column.Name)+" = "+d.rotationPlaceholder(len(args)+1))
-		args = append(args, after[column.Name])
-	}
-	sets = append(sets, quoteIdentifier(d.driver, spec.VersionColumn)+" = "+d.rotationPlaceholder(len(args)+1))
-	args = append(args, after[spec.VersionColumn])
-	conditions := make([]string, 0, len(spec.PrimaryKeys)+1)
-	for _, key := range spec.PrimaryKeys {
-		conditions = append(conditions, quoteIdentifier(d.driver, key)+" = "+d.rotationPlaceholder(len(args)+1))
-		args = append(args, before[key])
-	}
-	conditions = append(conditions, quoteIdentifier(d.driver, spec.VersionColumn)+" = "+d.rotationPlaceholder(len(args)+1))
-	args = append(args, before[spec.VersionColumn])
-	query := "UPDATE " + quoteIdentifier(d.driver, spec.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + strings.Join(conditions, " AND ")
-	var result sql.Result
-	var err error
-	if tx, ok := ex.(*Tx); ok {
-		result, err = tx.tx.ExecContext(ctx, query, args...)
-	} else {
-		result, err = d.SQL.ExecContext(ctx, query, args...)
-	}
-	if err != nil {
-		return mapDriverErr(err)
-	}
-	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("aes rotation update matched %d rows", affected)
-	}
-	return nil
-}
-
-func (d *DB) rotationPlaceholder(position int) string {
-	if d.driver == "postgres" {
-		return fmt.Sprintf("$%d", position)
-	}
-	return "?"
-}
-
 func quoteIdentifier(driver, value string) string {
 	if value == "" || strings.ContainsAny(value, "\x00\"`.;'") {
 		panic("invalid generated SQL identifier")
@@ -342,6 +144,12 @@ func rowVersion(value any) (int32, error) {
 			return 0, fmt.Errorf("aes version %d is out of range", v)
 		}
 		version = int64(v)
+	case string:
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("aes version %q is not an integer", v)
+		}
+		version = n
 	default:
 		return 0, fmt.Errorf("aes version has type %T", value)
 	}

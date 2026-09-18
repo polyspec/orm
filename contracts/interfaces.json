@@ -5,7 +5,7 @@
     "go": {
       "roots": [
         "clients/go/orm",
-        "clients/go/gen",
+        "clients/go/model",
         "engine"
       ],
       "symbols": "contracts/symbols/go.json"
@@ -20,7 +20,8 @@
     "rust": {
       "roots": [
         "clients/rust/orm/src",
-        "clients/rust/gen/src"
+        "clients/rust/orm-build/src",
+        "clients/rust/orm-schema/src"
       ],
       "symbols": "contracts/symbols/rust.json"
     },
@@ -32,1763 +33,1338 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:64c3276f3d1cf80c7175f33d3d9f5aa8c6aac06c5f213f9b795b58da75f21540",
-    "php": "sha256:f4486b525de4bf43c68560bb36da7321d727a7b6e898fcc11f223b2ea9c9354a",
-    "rust": "sha256:4c3e03eb6a4b58e638a55e555c9707fa3eaae304975c738f2669e567f1e7b51a",
-    "typescript": "sha256:dbec1df34ccf02b6c763824a7870f1634c6e494c65b1745fd0ea298f5e1c79e6"
+    "go": "sha256:6b587e9da48a616de88c6477df916c5c4058fd6713eed35b79af43c3c673fab5",
+    "php": "sha256:8484310a1170877590f0eae6b614763ee36cf872c174879ab1f26f486d14c3bc",
+    "rust": "sha256:243ef7d618bd004a8a916506a65eeb5ca771559278d94d6d6b97bb284d5fdad7",
+    "typescript": "sha256:671ad193333ff9dbec05b6cbf32d21e3401aee54b8e6a232a9f99f8ff1648626"
   },
   "prohibited_symbols": [
     "multi_statement",
     "in_flight_cancellation",
     "query_cancel",
-    "transaction_cancel"
+    "transaction_cancel",
+    "gets_after",
+    "gets_before",
+    "keyset_page",
+    "compiler_transport",
+    "plan_bundle",
+    "get_or_null"
   ],
   "components": [
     {
-      "id": "Query",
+      "id": "Model",
       "fields": {
-        "binding": "Binding",
-        "request": "Request",
-        "keySelector": "Optional<Function<Row,Key>>",
-        "linkSelection": "Optional<LinkSelection>"
+        "core": "Core"
       },
       "methods": [
-        "query",
-        "using",
-        "scope",
-        "predicate",
-        "join",
-        "relation",
-        "get",
-        "getOrNull",
-        "gets",
-        "getsAfter",
-        "getsBefore",
-        "stream",
-        "getCount",
-        "insert",
-        "update",
-        "delete",
-        "sql"
-      ],
-      "ownership": "Stores mutable query state. Loaded results use Row.",
-      "ownership_ko": "가변 query 상태를 저장한다. 조회 결과는 Row가 저장한다."
-    },
-    {
-      "id": "LinkSelection",
-      "fields": {
-        "parentKey": "Text",
-        "childKey": "Text"
-      },
-      "methods": [],
-      "ownership": "Stores parent and child keys until relation or join construction.",
-      "ownership_ko": "relation 또는 join 생성 전까지 parent key와 child key를 저장한다."
-    },
-    {
-      "id": "Where",
-      "fields": {
-        "request": "Borrow<Request>",
-        "group": "Borrow<Group>",
-        "pendingConnector": "Connector"
-      },
-      "methods": [
-        "predicate",
+        "connect",
         "and",
         "or",
-        "navigate"
+        "raw",
+        "relation",
+        "relations",
+        "limit",
+        "duplication",
+        "get",
+        "gets",
+        "getsCount",
+        "getCount",
+        "getSum",
+        "getAvg",
+        "getsPage",
+        "getQuery",
+        "create",
+        "creates",
+        "update",
+        "save",
+        "delete",
+        "toArray"
       ],
-      "ownership": "Valid only during its callback. Does not execute SQL.",
-      "ownership_ko": "callback 실행 중에만 유효하다. SQL을 실행하지 않는다."
+      "ownership": "Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core.",
+      "ownership_ko": "엔티티마다 생성된다. 새 행이나 조회한 행의 컬럼 값과 체인 상태를 Core에 담는다."
+    },
+    {
+      "id": "Core",
+      "fields": {
+        "connection": "Optional<Db>",
+        "conditions": "Group",
+        "joins": "List<Model>",
+        "relations": "List<Model>",
+        "columns": "Columns",
+        "order": "List<Order>",
+        "limit": "Optional<Limit>",
+        "lock": "Text",
+        "sets": "List<Assignment>",
+        "row": "Optional<RowState>"
+      },
+      "methods": [
+        "build"
+      ],
+      "ownership": "Stores the chain state and builds a value-free request with a separate parameter list.",
+      "ownership_ko": "체인 상태를 저장하고 값이 없는 request와 별도의 parameter 목록을 만든다."
     },
     {
       "id": "Request",
       "fields": {
         "ir": "RequestIR",
-        "params": "List<Value>",
-        "deferredError": "Optional<Error>"
+        "params": "List<Value>"
       },
       "methods": [
-        "parameter",
-        "attach",
         "shape"
       ],
-      "ownership": "attach copies child state and shifts parameter indexes in the copy.",
-      "ownership_ko": "attach는 child 상태를 복사하고 복사본의 parameter index를 이동한다."
+      "ownership": "The request shape is the plan cache key; values stay in the parameter list.",
+      "ownership_ko": "request 모양이 plan cache key이며 값은 parameter 목록에만 있다."
     },
     {
       "id": "RequestIR",
       "fields": {
-        "version": "I32",
+        "version": "Integer",
         "schemaHash": "Text",
-        "kind": "QueryKind",
+        "kind": "Text",
         "root": "QueryNode",
         "set": "List<Assignment>",
+        "rows": "List<List<Integer>>",
         "onDuplicate": "List<Assignment>",
         "optimistic": "Optional<Optimistic>",
-        "raw": "Optional<Raw>",
-        "aggregate": "Optional<Column>",
-        "parameterCount": "I64"
+        "parameterCount": "Integer"
       },
       "methods": [],
-      "ownership": "Contains compiler input without parameter values.",
-      "ownership_ko": "parameter 값을 제외한 compiler 입력을 저장한다."
+      "ownership": "The common request shape of every client.",
+      "ownership_ko": "모든 client에 공통인 request 모양이다."
     },
     {
       "id": "QueryNode",
       "fields": {
-        "entity": "Entity",
-        "scopeParameter": "Optional<ParameterIndex>",
-        "columns": "Projection",
-        "where": "Optional<Group>",
-        "on": "Optional<Group>",
-        "having": "Optional<Group>",
-        "joins": "List<JoinEdge>",
-        "relations": "List<RelationEdge>",
+        "entity": "Text",
+        "columns": "Columns",
+        "where": "Group",
+        "on": "Group",
+        "joins": "List<Join>",
+        "relations": "List<Relation>",
         "order": "List<Order>",
-        "groupBy": "List<GroupKey>",
+        "groupBy": "List<Text>",
         "limit": "Optional<Limit>",
+        "lock": "Text",
         "options": "RelationOptions"
       },
       "methods": [],
-      "ownership": "Contains the root or child condition tree.",
-      "ownership_ko": "root 또는 child 조건 tree를 저장한다."
+      "ownership": "The root, a join child, a relation child, or a subquery.",
+      "ownership_ko": "root, join child, relation child, subquery 중 하나다."
     },
     {
-      "id": "Binding",
+      "id": "Planner",
       "fields": {
-        "executor": "Optional<Executor>",
-        "control": "NativeExecutionControl"
+        "manifest": "SchemaManifest",
+        "dialect": "Dialect"
       },
       "methods": [
-        "resolve"
+        "validate",
+        "plan"
       ],
-      "ownership": "Stores an explicit executor. Does not select an ambient transaction.",
-      "ownership_ko": "명시한 executor를 저장한다. 현재 실행 중인 transaction을 자동 선택하지 않는다."
-    },
-    {
-      "id": "Executor",
-      "fields": {},
-      "methods": [
-        "database",
-        "queryStep",
-        "streamStep",
-        "writeStep"
-      ],
-      "ownership": "Defines database and pinned transaction execution operations.",
-      "ownership_ko": "database와 고정 transaction의 실행 작업을 정의한다."
-    },
-    {
-      "id": "Connection",
-      "fields": {
-        "dsn": "Text",
-        "options": "ConnectionOptions"
-      },
-      "methods": [
-        "connect"
-      ],
-      "ownership": "Creates a Db from one DSN URI. The URI scheme selects the database; compiler internals are hidden from callers.",
-      "ownership_ko": "하나의 DSN URI로 Db를 생성한다. URI scheme이 database를 선택하며 compiler 내부 구조는 호출자에게 노출하지 않는다."
-    },
-    {
-      "id": "Db",
-      "fields": {
-        "connection": "ConnectionResource",
-        "compiler": "CompilerTransport",
-        "plans": "PlanCache",
-        "statements": "StatementCache",
-        "config": "RuntimeConfig"
-      },
-      "methods": [
-        "transaction",
-        "queryStep",
-        "streamStep",
-        "writeStep"
-      ],
-      "ownership": "Stores connections, plan cache, statement cache, and runtime configuration.",
-      "ownership_ko": "connection, plan cache, statement cache, runtime 설정을 저장한다."
-    },
-    {
-      "id": "Tx",
-      "fields": {
-        "database": "Borrow<Db>",
-        "connection": "PinnedConnection",
-        "state": "TxState"
-      },
-      "methods": [
-        "queryStep",
-        "writeStep",
-        "commit",
-        "rollback"
-      ],
-      "ownership": "commit or rollback invalidates queries and rows that use the transaction.",
-      "ownership_ko": "commit 또는 rollback 후 해당 transaction을 사용하는 query와 row는 무효다."
-    },
-    {
-      "id": "Row",
-      "fields": {
-        "identity": "OrderedMap<Column,Value>",
-        "loaded": "Bool",
-        "values": "ValueStore",
-        "projection": "Projection",
-        "dirty": "OrderedMap<Column,Assignment>",
-        "deferredError": "Optional<Error>",
-        "relations": "Map<Relation,RelatedValue>",
-        "binding": "Binding",
-        "originalVersion": "Optional<Value>"
-      },
-      "methods": [
-        "getColumn",
-        "has",
-        "setColumn",
-        "relLoaded",
-        "using",
-        "update",
-        "updateOptimistic",
-        "delete",
-        "deleteCascade",
-        "export"
-      ],
-      "ownership": "Separates loaded identity, values, pending changes, relations, and execution binding.",
-      "ownership_ko": "조회한 identity, 값, 변경 사항, relation, 실행 binding을 구분해 저장한다."
-    },
-    {
-      "id": "Collection",
-      "fields": {
-        "orderedKeys": "List<Key>",
-        "items": "Map<Key,Row>"
-      },
-      "methods": [
-        "put",
-        "get",
-        "first",
-        "len",
-        "keys",
-        "entries"
-      ],
-      "ownership": "A duplicate key replaces its value without changing order. Integer and string keys are distinct.",
-      "ownership_ko": "중복 key는 순서를 유지하고 값을 교체한다. integer key와 string key는 구분한다."
-    },
-    {
-      "id": "Page",
-      "fields": {
-        "items": "Collection<Row>",
-        "total": "I64",
-        "pages": "I64",
-        "current": "I64",
-        "per": "I64"
-      },
-      "methods": [],
-      "ownership": "Requires a positive per value. total does not depend on the requested page.",
-      "ownership_ko": "per는 양수여야 한다. total은 요청한 page와 관계없이 계산한다."
-    },
-    {
-      "id": "StreamResult",
-      "fields": {
-        "state": "StreamState",
-        "count": "I64"
-      },
-      "methods": [],
-      "ownership": "Reports whether the cursor was exhausted or stopped and how many independently owned rows were delivered.",
-      "ownership_ko": "cursor 완료 또는 중단 상태와 독립된 row를 전달한 수를 반환한다."
-    },
-    {
-      "id": "Batch",
-      "fields": {
-        "requests": "List<Request>",
-        "options": "BatchOptions",
-        "result": "BatchResult"
-      },
-      "methods": [
-        "batchInsert",
-        "batchUpsert",
-        "batchUpdate",
-        "batchDelete"
-      ],
-      "ownership": "Executes homogeneous typed write requests in bounded chunks and one transaction.",
-      "ownership_ko": "동일한 typed write request를 제한된 chunk와 하나의 transaction으로 실행한다."
-    },
-    {
-      "id": "AESKeyring",
-      "fields": {
-        "versions": "OrderedMap<I32,Secret>",
-        "currentVersion": "I32"
-      },
-      "methods": [
-        "versions",
-        "rotateRow"
-      ],
-      "ownership": "Stores versioned AES keys and the current write version.",
-      "ownership_ko": "버전별 AES key와 현재 저장 버전을 보관한다."
-    },
-    {
-      "id": "AESRotationSpec",
-      "fields": {
-        "table": "Table",
-        "primaryKey": "Column",
-        "versionColumn": "Column",
-        "columns": "List<AESRotationColumn>"
-      },
-      "methods": [],
-      "ownership": "Contains generated identifiers and codec stages for one AES entity.",
-      "ownership_ko": "AES entity 하나의 생성된 식별자와 codec 단계를 보관한다."
-    },
-    {
-      "id": "AESRotationStatus",
-      "fields": {
-        "current": "I32",
-        "total": "I64",
-        "pending": "I64",
-        "versions": "OrderedMap<I32,I64>"
-      },
-      "methods": [],
-      "ownership": "Contains row counts by stored AES key version.",
-      "ownership_ko": "저장된 AES key 버전별 row 수를 보관한다."
-    },
-    {
-      "id": "Compiler",
-      "fields": {},
-      "methods": [
-        "compile"
-      ],
-      "ownership": "Accepts RequestIR and returns an immutable Plan. Does not execute SQL.",
-      "ownership_ko": "RequestIR을 입력받아 변경 불가능한 Plan을 반환한다. SQL을 실행하지 않는다."
-    },
-    {
-      "id": "CompilerTransport",
-      "fields": {},
-      "methods": [
-        "compile",
-        "metadata"
-      ],
-      "ownership": "Sends typed compiler requests and returns typed plans and metadata.",
-      "ownership_ko": "type이 정의된 compiler request를 전송하고 plan과 metadata를 반환한다."
+      "ownership": "Runs in the client process. Validates a request against the manifest and renders the dialect SQL.",
+      "ownership_ko": "client process 안에서 실행된다. manifest로 request를 검증하고 dialect SQL을 만든다."
     },
     {
       "id": "Plan",
       "fields": {
         "schemaHash": "Text",
-        "kind": "QueryKind",
+        "kind": "Text",
         "steps": "List<Step>"
       },
       "methods": [],
-      "ownership": "Contains cached execution steps and cannot change during execution.",
-      "ownership_ko": "cache 가능한 실행 step을 저장하며 실행 중에는 변경할 수 없다."
+      "ownership": "Immutable statements and assembly metadata cached per request shape.",
+      "ownership_ko": "request 모양별로 cache하는 불변 statement와 조립 정보다."
     },
     {
       "id": "Step",
       "fields": {
-        "id": "I32",
-        "role": "StepRole",
+        "id": "Integer",
+        "role": "Text",
         "sql": "Text",
         "bindSlots": "List<BindSlot>",
         "parent": "Optional<ParentRef>",
         "assemble": "Optional<Assemble>"
       },
       "methods": [],
-      "ownership": "Contains one SQL statement, bind slots, parent input, and result mapping.",
-      "ownership_ko": "SQL statement 하나, bind slot, parent 입력, 결과 mapping을 저장한다."
+      "ownership": "One SQL statement of a plan.",
+      "ownership_ko": "plan의 SQL statement 하나다."
     },
     {
       "id": "Assemble",
       "fields": {
-        "entity": "Entity",
-        "columns": "List<OutColumn>",
-        "children": "List<ChildAttachment>"
+        "entity": "Text",
+        "columns": "List<OutputColumn>",
+        "children": "List<Child>"
       },
       "methods": [],
-      "ownership": "Maps result columns and relation results to rows.",
-      "ownership_ko": "결과 column과 relation 결과를 row에 mapping한다."
+      "ownership": "Maps result columns by position to models, joins, and relations.",
+      "ownership_ko": "결과 컬럼을 위치로 model, join, relation에 대응시킨다."
     },
     {
-      "id": "ExecutionRows",
+      "id": "Db",
       "fields": {
-        "binding": "Binding",
-        "plan": "Plan",
-        "params": "List<Value>",
-        "steps": "OrderedMap<StepId,StepRows>"
+        "pool": "ConnectionPool",
+        "planners": "Map<SchemaHash,Planner>",
+        "plans": "Cache<Shape,Plan>",
+        "statements": "Cache<Sql,Statement>",
+        "config": "Config"
       },
       "methods": [
-        "related",
-        "stepAssemble"
+        "connect",
+        "transaction",
+        "utils",
+        "close",
+        "stats"
       ],
-      "ownership": "Stores the plan, parameters, step results, and root execution binding.",
-      "ownership_ko": "plan, parameter, step 결과, root 실행 binding을 저장한다."
+      "ownership": "Owns the pool, the planners of registered schemas, and the plan and statement caches.",
+      "ownership_ko": "pool, 등록된 schema의 planner, plan cache, statement cache를 가진다."
+    },
+    {
+      "id": "TransactionFlow",
+      "fields": {
+        "frames": "List<TransactionFrame>"
+      },
+      "methods": [
+        "begin",
+        "savepoint",
+        "commit",
+        "rollback"
+      ],
+      "ownership": "Private. The transaction of the current execution flow; models without a connection use it.",
+      "ownership_ko": "비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다."
+    },
+    {
+      "id": "Collection",
+      "fields": {
+        "keys": "List<Key>",
+        "items": "Map<Key,Model>",
+        "fetched": "Map<Key,Value>"
+      },
+      "methods": [
+        "get",
+        "first",
+        "keys",
+        "connect",
+        "delete",
+        "toArray"
+      ],
+      "ownership": "Ordered models keyed by primary key, keyName, or fetchKey.",
+      "ownership_ko": "primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다."
+    },
+    {
+      "id": "Page",
+      "fields": {
+        "items": "Collection",
+        "totalCount": "Integer",
+        "totalPages": "Integer",
+        "page": "Integer",
+        "perPage": "Integer"
+      },
+      "methods": [],
+      "ownership": "The rows and counts of getsPage.",
+      "ownership_ko": "getsPage의 행과 개수다."
+    },
+    {
+      "id": "Utils",
+      "fields": {
+        "db": "Db"
+      },
+      "methods": [
+        "lock",
+        "setLocal",
+        "local",
+        "schema",
+        "privileges",
+        "aes",
+        "stats"
+      ],
+      "ownership": "Connection utilities; lock and local values need an active transaction.",
+      "ownership_ko": "연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다."
+    },
+    {
+      "id": "SchemaUtils",
+      "fields": {
+        "db": "Db"
+      },
+      "methods": [
+        "install",
+        "exists",
+        "installed",
+        "empty"
+      ],
+      "ownership": "Installs a manifest with the client DDL renderer.",
+      "ownership_ko": "client DDL 렌더러로 manifest를 설치한다."
+    },
+    {
+      "id": "AesUtils",
+      "fields": {
+        "db": "Db"
+      },
+      "methods": [
+        "status",
+        "rotate"
+      ],
+      "ownership": "Reports and rotates AES key versions of a model table.",
+      "ownership_ko": "model 테이블의 AES key version을 조회하고 회전한다."
+    },
+    {
+      "id": "AESKeyring",
+      "fields": {
+        "versions": "Map<Integer,Secret>",
+        "currentVersion": "Integer"
+      },
+      "methods": [
+        "versions"
+      ],
+      "ownership": "Keys by version; the current version encrypts new values.",
+      "ownership_ko": "version별 key다. 현재 version으로 새 값을 암호화한다."
+    },
+    {
+      "id": "AESRotationStatus",
+      "fields": {
+        "current": "Integer",
+        "total": "Integer",
+        "pending": "Integer",
+        "versions": "Map<Integer,Integer>"
+      },
+      "methods": [],
+      "ownership": "Row counts per key version.",
+      "ownership_ko": "key version별 행 수다."
+    },
+    {
+      "id": "Generator",
+      "fields": {
+        "manifest": "SchemaManifest",
+        "scan": "List<Path>"
+      },
+      "methods": [
+        "generate"
+      ],
+      "ownership": "One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call.",
+      "ownership_ko": "언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다."
     },
     {
       "id": "Error",
       "fields": {
         "code": "Text",
         "message": "Text",
-        "cause": "Optional<NativeError>"
+        "cause": "Optional<Error>"
       },
       "methods": [],
-      "ownership": "Separates failures from empty results and default values.",
-      "ownership_ko": "실패를 빈 결과 및 기본값과 구분한다."
+      "ownership": "A stable code from docs/errors.yaml.",
+      "ownership_ko": "docs/errors.yaml의 안정적인 code다."
     }
   ],
   "rules": [
     {
-      "id": "Query.get",
+      "id": "Model.connect",
       "for": "entity",
-      "inputs": [],
-      "output": "Required<Row>",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID",
-        "driver/codec error"
+      "inputs": [
+        "Connection"
       ],
-      "state": "Query retained; only execution kind changes",
+      "output": "Chain",
+      "errors": [],
+      "state": "Sets the connection of the model; join and relation children without one use the parent connection",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Get",
-          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Connect",
+          "signature": "receiver=*{Entity}Model func(db *orm.DB) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::get",
-          "signature": "public function get(): App\\Orm\\{Entity}Row"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::connect",
+          "signature": "public function connect(Orm\\Db $db): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get",
-          "signature": "pub async fn get(&mut self) -> Result<{Entity}Row>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::connect",
+          "signature": "pub fn connect(mut self, db: &orm::Db) -> Self"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.get",
-          "signature": "public async get(): Promise<{Entity}Row>"
+          "symbol": "clients/typescript/src/model.ts::Model.connect",
+          "signature": "public connect(db: Db): this"
         }
       }
     },
     {
-      "id": "Query.getOrNull",
+      "id": "Model.and",
       "for": "entity",
-      "inputs": [],
-      "output": "Optional<Row>",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID",
-        "driver/codec error"
+      "inputs": [
+        "ConnectorArgument"
       ],
-      "state": "Query retained; only execution kind changes",
+      "output": "Chain",
+      "errors": [],
+      "state": "Adds an AND connector, an AND group, or the placement of a joined model",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetOrNil",
-          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.And",
+          "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getOrNull",
-          "signature": "public function getOrNull(): ?App\\Orm\\{Entity}Row"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::and",
+          "signature": "public function and(mixed ...$args): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_or_none",
-          "signature": "pub async fn get_or_none(&mut self) -> Result<Option<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::and",
+          "signature": "pub fn and<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getOrNull",
-          "signature": "public async getOrNull(): Promise<{Entity}Row | null>"
+          "symbol": "clients/typescript/src/model.ts::Model.and",
+          "signature": "public and(arg?: ((q: this) => unknown) | Model): this"
         }
       }
     },
     {
-      "id": "Query.gets",
+      "id": "Model.or",
+      "for": "entity",
+      "inputs": [
+        "ConnectorArgument"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Adds an OR connector, an OR group, or the placement of a joined model",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Or",
+          "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::or",
+          "signature": "public function or(mixed ...$args): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::or",
+          "signature": "pub fn or<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.or",
+          "signature": "public or(arg?: ((q: this) => unknown) | Model): this"
+        }
+      }
+    },
+    {
+      "id": "Model.raw",
+      "for": "entity",
+      "inputs": [
+        "RawSql"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Adds a raw first condition with its binds",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Raw",
+          "signature": "receiver=*{Entity}Model func(sql string, binds ...any) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::raw",
+          "signature": "public function raw(string $sql, array $binds = []): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::raw",
+          "signature": "pub fn raw(mut self, sql: &str, binds: impl orm::Binds) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.raw",
+          "signature": "public raw(sql: string, ...binds: unknown[]): this"
+        }
+      }
+    },
+    {
+      "id": "Model.relation",
+      "for": "entity",
+      "inputs": [
+        "ChildModel"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Loads one child row per model with a separate statement",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Relation",
+          "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::relation",
+          "signature": "public function relation(Orm\\Model $child): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relation",
+          "signature": "pub fn relation(mut self, child: impl orm::Model) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.relation",
+          "signature": "public relation(child: Model): this"
+        }
+      }
+    },
+    {
+      "id": "Model.relations",
+      "for": "entity",
+      "inputs": [
+        "ChildModel"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Loads a child collection per model with a separate statement",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Relations",
+          "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::relations",
+          "signature": "public function relations(Orm\\Model $child): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relations",
+          "signature": "pub fn relations(mut self, child: impl orm::Model) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.relations",
+          "signature": "public relations(child: Model): this"
+        }
+      }
+    },
+    {
+      "id": "Model.limit",
+      "for": "entity",
+      "inputs": [
+        "OffsetCount"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Returns the same model with the added state",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Limit",
+          "signature": "receiver=*{Entity}Model func(offset, count int) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::limit",
+          "signature": "public function limit(int $offset, int $count): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::limit",
+          "signature": "pub fn limit(mut self, offset: u32, count: u32) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.limit",
+          "signature": "public limit(offset: number, count: number): this"
+        }
+      }
+    },
+    {
+      "id": "Model.duplication",
+      "for": "entity",
+      "inputs": [
+        "DuplicateModel"
+      ],
+      "output": "Chain",
+      "errors": [],
+      "state": "Stores the assignments applied when an insert meets an existing unique key",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Duplication",
+          "signature": "receiver=*{Entity}Model func(m *{Entity}Model) *{Entity}Model"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::duplication",
+          "signature": "public function duplication(Orm\\Model $model): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::duplication",
+          "signature": "pub fn duplication(mut self, m: Self) -> Self"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.duplication",
+          "signature": "public duplication(model: this): this"
+        }
+      }
+    },
+    {
+      "id": "Model.get",
       "for": "entity",
       "inputs": [],
-      "output": "Collection<Row>",
+      "output": "Optional<Model>",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; only execution kind changes",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Gets",
-          "signature": "receiver=*{Entity}Query func() (*orm.Collection[{Entity}Row], error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Get",
+          "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::gets",
+          "symbol": "clients/php/src/Model.php::Orm\\Model::get",
+          "signature": "public function get(): ?static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get",
+          "signature": "pub async fn get(&self) -> orm::Result<Option<Self>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.get",
+          "signature": "public async get(): Promise<this | null>"
+        }
+      }
+    },
+    {
+      "id": "Model.gets",
+      "for": "entity",
+      "inputs": [],
+      "output": "Collection<Model>",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error"
+      ],
+      "state": "The model is not changed; the same model can run again",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Gets",
+          "signature": "receiver=*{Entity}Model func() (*orm.Collection[*{Entity}Model], error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::gets",
           "signature": "public function gets(): Orm\\Collection"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets",
-          "signature": "pub async fn gets(&mut self) -> Result<Collection<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets",
+          "signature": "pub async fn gets(&self) -> orm::Result<orm::Collection<Self>>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.gets",
-          "signature": "public async gets(): Promise<Collection<{Entity}Row>>"
+          "symbol": "clients/typescript/src/model.ts::Model.gets",
+          "signature": "public async gets(): Promise<Collection<this>>"
         }
       }
     },
     {
-      "id": "Query.stream",
-      "for": "entity",
-      "inputs": [
-        "RowVisitor"
-      ],
-      "output": "StreamResult",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID",
-        "driver/codec/visitor error"
-      ],
-      "state": "Query retained; cursor closes on exhaustion, visitor stop, cancellation, or error",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Stream",
-          "signature": "receiver=*{Entity}Query func(visit func(*{Entity}Row) bool) (orm.StreamResult, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::stream",
-          "signature": "public function stream(callable $visit): Orm\\StreamResult"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::stream",
-          "signature": "pub async fn stream(&mut self, visit: impl FnMut({Entity}Row) -> bool) -> Result<db::StreamResult>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.stream",
-          "signature": "public async stream(visitor: (row: {Entity}Row) => boolean | Promise<boolean>): Promise<StreamResult>"
-        }
-      }
-    },
-    {
-      "id": "Query.getCount",
+      "id": "Model.getsCount",
       "for": "entity",
       "inputs": [],
-      "output": "I64",
+      "output": "Collection<Model>",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; only execution kind changes",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetCount",
-          "signature": "receiver=*{Entity}Query func() (int64, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetsCount",
+          "signature": "receiver=*{Entity}Model func() (*orm.Collection[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getCount",
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getsCount",
+          "signature": "public function getsCount(): Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_count",
+          "signature": "pub async fn gets_count(&self) -> orm::Result<orm::Collection<Self>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.getsCount",
+          "signature": "public async getsCount(): Promise<Collection<this>>"
+        }
+      }
+    },
+    {
+      "id": "Model.getCount",
+      "for": "entity",
+      "inputs": [],
+      "output": "Count",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error"
+      ],
+      "state": "The model is not changed; the same model can run again",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetCount",
+          "signature": "receiver=*{Entity}Model func() (int64, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getCount",
           "signature": "public function getCount(): int"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count",
-          "signature": "pub async fn get_count(&mut self) -> Result<i64>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_count",
+          "signature": "pub async fn get_count(&self) -> orm::Result<i64>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getCount",
+          "symbol": "clients/typescript/src/model.ts::Model.getCount",
           "signature": "public async getCount(): Promise<number>"
         }
       }
     },
     {
-      "id": "Query.getsCount",
+      "id": "Model.getSum",
       "for": "entity",
       "inputs": [],
-      "output": "Collection<Row>",
+      "output": "Aggregate",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; only execution kind changes",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsCount",
-          "signature": "receiver=*{Entity}Query func() (*orm.Collection[{Entity}Row], error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetSum",
+          "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsCount",
-          "signature": "public function getsCount(): Orm\\Collection"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getSum",
+          "signature": "public function getSum(): float"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_count",
-          "signature": "pub async fn gets_count(&mut self) -> Result<Collection<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_sum",
+          "signature": "pub async fn get_sum(&self) -> orm::Result<f64>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsCount",
-          "signature": "public async getsCount(): Promise<Collection<{Entity}Row>>"
+          "symbol": "clients/typescript/src/model.ts::Model.getSum",
+          "signature": "public async getSum(): Promise<number>"
         }
       }
     },
     {
-      "id": "Query.aesStatus",
-      "for": "aes_entity",
-      "inputs": [
-        "AESKeyring"
-      ],
-      "output": "AESRotationStatus",
-      "errors": [
-        "CONFIG",
-        "AES_KEY_VERSION",
-        "driver/codec error"
-      ],
-      "state": "Reads version metadata and does not change rows",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.AESStatus",
-          "signature": "receiver=*{Entity}Query func(keyring orm.AESKeyring) (orm.AESRotationStatus, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::aesStatus",
-          "signature": "public function aesStatus(Orm\\AesKeyring $keyring): Orm\\AesRotationStatus"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::aes_status",
-          "signature": "pub async fn aes_status(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<orm::aes_rotation::AesRotationStatus>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.aesStatus",
-          "signature": "public aesStatus(keyring: AesKeyring): Promise<AesRotationStatus>"
-        }
-      }
-    },
-    {
-      "id": "Query.rotateAES",
-      "for": "aes_entity",
-      "inputs": [
-        "AESKeyring"
-      ],
-      "output": "RowCount",
-      "errors": [
-        "CONFIG",
-        "AES_KEY_VERSION",
-        "AES_ROTATION_CONFLICT",
-        "driver/codec error"
-      ],
-      "state": "Updates all AES columns and the version column for every pending row in one transaction",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.RotateAES",
-          "signature": "receiver=*{Entity}Query func(keyring orm.AESKeyring) (int, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::rotateAES",
-          "signature": "public function rotateAES(Orm\\AesKeyring $keyring): int"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::rotate_aes",
-          "signature": "pub async fn rotate_aes(&self, keyring: &orm::aes_rotation::AesKeyring) -> Result<u64>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.rotateAES",
-          "signature": "public rotateAES(keyring: AesKeyring): Promise<number>"
-        }
-      }
-    },
-    {
-      "id": "Query.insert",
+      "id": "Model.getAvg",
       "for": "entity",
       "inputs": [],
-      "output": "Optional<Row>",
+      "output": "Aggregate",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; write followed by same-executor readback when a key is available",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Insert",
-          "signature": "receiver=*{Entity}Query func() (*{Entity}Row, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetAvg",
+          "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::insert",
-          "signature": "public function insert(): ?App\\Orm\\{Entity}Row"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getAvg",
+          "signature": "public function getAvg(): float"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::insert",
-          "signature": "pub async fn insert(&mut self) -> Result<Option<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_avg",
+          "signature": "pub async fn get_avg(&self) -> orm::Result<f64>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.insert",
-          "signature": "public async insert(): Promise<{Entity}Row | null>"
+          "symbol": "clients/typescript/src/model.ts::Model.getAvg",
+          "signature": "public async getAvg(): Promise<number>"
         }
       }
     },
     {
-      "id": "Query.update",
+      "id": "Model.getsPage",
       "for": "entity",
-      "inputs": [],
-      "output": "AffectedRows",
+      "inputs": [
+        "PagePerPage"
+      ],
+      "output": "Page<Model>",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; WHERE required",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Update",
-          "signature": "receiver=*{Entity}Query func() (int64, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetsPage",
+          "signature": "receiver=*{Entity}Model func(page, perPage int) (*orm.Page[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::update",
-          "signature": "public function update(): int"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getsPage",
+          "signature": "public function getsPage(int $page, int $perPage): Orm\\Page"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::update",
-          "signature": "pub async fn update(&mut self) -> Result<u64>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_page",
+          "signature": "pub async fn gets_page(&self, page: u32, per_page: u32) -> orm::Result<orm::Page<Self>>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.update",
-          "signature": "public async update(): Promise<number>"
+          "symbol": "clients/typescript/src/model.ts::Model.getsPage",
+          "signature": "public async getsPage(page: number, perPage: number): Promise<Page<this>>"
         }
       }
     },
     {
-      "id": "Query.delete",
+      "id": "Model.getQuery",
       "for": "entity",
       "inputs": [],
-      "output": "AffectedRows",
+      "output": "Statement",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error"
       ],
-      "state": "Query retained; WHERE required",
+      "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Delete",
-          "signature": "receiver=*{Entity}Query func() (int64, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetQuery",
+          "signature": "receiver=*{Entity}Model func() (*orm.Statement, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::delete",
-          "signature": "public function delete(): int"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::getQuery",
+          "signature": "public function getQuery(): array"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::delete",
-          "signature": "pub async fn delete(&mut self) -> Result<u64>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_query",
+          "signature": "pub async fn get_query(&self) -> orm::Result<orm::Statement>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.delete",
-          "signature": "public async delete(): Promise<number>"
+          "symbol": "clients/typescript/src/model.ts::Model.getQuery",
+          "signature": "public async getQuery(): Promise<{ sql: string; binds: unknown[]; }>"
         }
       }
     },
     {
-      "id": "Query.sql",
+      "id": "Model.create",
       "for": "entity",
       "inputs": [],
-      "output": "SqlStatement",
+      "output": "WrittenModel",
       "errors": [
         "CONFIG",
         "IR_INVALID",
-        "driver/codec error"
+        "driver or codec error",
+        "DUPLICATE_KEY",
+        "FOREIGN_KEY"
       ],
-      "state": "Query retained; secrets masked; no statement executed",
+      "state": "Inserts the model and returns the stored row",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.SQL",
-          "signature": "receiver=*{Entity}Query func() (*orm.Statement, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Create",
+          "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::sql",
-          "signature": "public function sql(): array"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::create",
+          "signature": "public function create(): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::sql",
-          "signature": "pub async fn sql(&mut self) -> Result<db::Sql>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::create",
+          "signature": "pub async fn create(&mut self) -> orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.sql",
-          "signature": "public async sql(): Promise<{ sql: string; binds: unknown[]; }>"
+          "symbol": "clients/typescript/src/model.ts::Model.create",
+          "signature": "public async create(): Promise<this>"
         }
       }
     },
     {
-      "id": "Query.query",
-      "for": "entity",
-      "inputs": [],
-      "output": "Query",
-      "errors": [],
-      "state": "No SQL",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}",
-          "signature": "func() *{Entity}Query"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::query",
-          "signature": "public static function query(): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::query",
-          "signature": "pub fn query() -> {Entity}"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}",
-          "signature": "export function {Entity}(): {Entity}Query"
-        }
-      }
-    },
-    {
-      "id": "Query.using",
+      "id": "Model.creates",
       "for": "entity",
       "inputs": [
-        "Executor"
+        "Rows"
       ],
-      "output": "Query",
-      "errors": [],
-      "state": "Replace execution target; preserve IR",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Using",
-          "signature": "receiver=*{Entity}Query func(ex orm.Exec) *{Entity}Query"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q::using",
-          "signature": "public function using(Orm\\Db|PDO $db): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::using",
-          "signature": "pub fn using(mut self, ex: &impl Exec) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::QueryCore.using",
-          "signature": "public using(database: Db): this"
-        }
-      }
-    },
-    {
-      "id": "Query.scope",
-      "for": "scoped_entity",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Query",
-      "errors": [],
-      "state": "Store scope parameter separately from the predicate tree",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Scope",
-          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::scope",
-          "signature": "public function scope({type} $v): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::scope",
-          "signature": "pub fn scope(mut self, v: {type}) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.scope",
-          "signature": "public override scope(value: {type}): this"
-        }
-      }
-    },
-    {
-      "id": "Query.paginate",
-      "for": "entity",
-      "inputs": [
-        "page",
-        "per"
-      ],
-      "output": "Page<Row>",
+      "output": "InsertedRows",
       "errors": [
         "CONFIG",
-        "IR_INVALID"
-      ],
-      "state": "Query retained; per>0, page>=1",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.Paginate",
-          "signature": "receiver=*{Entity}Query func(page, per int) (*orm.Page[{Entity}Row], error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::paginate",
-          "signature": "public function paginate(int $page, int $per): Orm\\Page"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::paginate",
-          "signature": "pub async fn paginate(&mut self, page: u32, per: u32) -> Result<Page<{Entity}Row>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.paginate",
-          "signature": "public async paginate(page: number, per: number): Promise<Page<{Entity}Row>>"
-        }
-      }
-    },
-    {
-      "id": "Query.getsAfter",
-      "for": "entity",
-      "inputs": [
-        "Cursor",
-        "PositiveLimit"
-      ],
-      "output": "KeysetPage<Row>",
-      "errors": [
-        "CURSOR_INVALID",
         "IR_INVALID",
-        "CONFIG",
-        "driver/codec error"
+        "driver or codec error",
+        "DUPLICATE_KEY",
+        "FOREIGN_KEY"
       ],
-      "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors",
+      "state": "Inserts the rows in one statement per bind limit",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsAfter",
-          "signature": "receiver=*{Entity}Query func(cursor string, per int) (*orm.KeysetPage[{Entity}Row], error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Creates",
+          "signature": "receiver=*{Entity}Model func(rows []*{Entity}Model) (int64, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsAfter",
-          "signature": "public function getsAfter(string $cursor, int $per): Orm\\KeysetPage"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::creates",
+          "signature": "public function creates(array $rows): int"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_after",
-          "signature": "pub async fn gets_after(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::creates",
+          "signature": "pub async fn creates(&self, rows: Vec<Self>) -> orm::Result<u64>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsAfter",
-          "signature": "public async getsAfter(cursor: string, per: number): Promise<KeysetPage<{Entity}Row>>"
+          "symbol": "clients/typescript/src/model.ts::Model.creates",
+          "signature": "public async creates(rows: readonly this[]): Promise<number>"
         }
       }
     },
     {
-      "id": "Query.getsBefore",
+      "id": "Model.update",
       "for": "entity",
       "inputs": [
-        "Cursor",
-        "PositiveLimit"
+        "Optimistic"
       ],
-      "output": "KeysetPage<Row>",
+      "output": "UpdatedModel",
       "errors": [
-        "CURSOR_INVALID",
+        "CONFIG",
         "IR_INVALID",
-        "CONFIG",
-        "driver/codec error"
+        "driver or codec error",
+        "OPTIMISTIC_LOCK"
       ],
-      "state": "Uses the typed cursor and stable primary-key order; returns rows and boundary cursors in request order",
+      "state": "Writes the changed columns of a loaded model by its primary key",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsBefore",
-          "signature": "receiver=*{Entity}Query func(cursor string, per int) (*orm.KeysetPage[{Entity}Row], error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Update",
+          "signature": "receiver=*{Entity}Model func(optimistic ...bool) (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsBefore",
-          "signature": "public function getsBefore(string $cursor, int $per): Orm\\KeysetPage"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::update",
+          "signature": "public function update(bool $optimistic = false): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_before",
-          "signature": "pub async fn gets_before(&mut self, cursor: &str, per: u32) -> Result<orm::KeysetPage<{Entity}Row>>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::update",
+          "signature": "pub async fn update(&mut self, optimistic: bool) -> orm::Result<()>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsBefore",
-          "signature": "public async getsBefore(cursor: string, per: number): Promise<KeysetPage<{Entity}Row>>"
+          "symbol": "clients/typescript/src/model.ts::Model.update",
+          "signature": "public async update(optimistic = false): Promise<this>"
         }
       }
     },
     {
-      "id": "Query.getsBy<Column>",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Collection<Row>",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID"
-      ],
-      "state": "Append root equality; preserve joins and relations",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetsBy{Column}",
-          "signature": "receiver=*{Entity}Query func(v {type}) (*orm.Collection[{Entity}Row], error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getsBy{Column}",
-          "signature": "public function getsBy{Column}({type} $value): Orm\\Collection"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::gets_by_{column}",
-          "signature": "pub async fn gets_by_{column}(&mut self, v: {type}) -> Result<Collection<{Entity}Row>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getsBy{Column}",
-          "signature": "public async getsBy{Column}(value: {type}): Promise<Collection<{Entity}Row>>"
-        }
-      }
-    },
-    {
-      "id": "Query.getCountBy<Column>",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "I64",
-      "errors": [
-        "CONFIG",
-        "IR_INVALID"
-      ],
-      "state": "Append root equality; preserve joins and relations",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.GetCountBy{Column}",
-          "signature": "receiver=*{Entity}Query func(v {type}) (int64, error)"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::getCountBy{Column}",
-          "signature": "public function getCountBy{Column}({type} $value): int"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::get_count_by_{column}",
-          "signature": "pub async fn get_count_by_{column}(&mut self, v: {type}) -> Result<i64>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.getCountBy{Column}",
-          "signature": "public async getCountBy{Column}(value: {type}): Promise<number>"
-        }
-      }
-    },
-    {
-      "id": "Query.<Column>Eq",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Query",
-      "errors": [],
-      "state": "Append equality in this condition group",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.{Column}Eq",
-          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::{columnCamel}Eq",
-          "signature": "public function {columnCamel}Eq({type} $v): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}_eq",
-          "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.{columnCamel}Eq",
-          "signature": "public {columnCamel}Eq(value: {type}): this"
-        }
-      }
-    },
-    {
-      "id": "Where.<Column>Eq",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Where",
-      "errors": [],
-      "state": "Append equality in this condition group",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Where.{Column}Eq",
-          "signature": "receiver=*{Entity}Where func(v {type}) *{Entity}Where"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where::{columnCamel}Eq",
-          "signature": "public function {columnCamel}Eq({type} $v): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}_eq",
-          "signature": "pub fn {column}_eq(mut self, v: {type}) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where.{columnCamel}Eq",
-          "signature": "public {columnCamel}Eq(value: {type}): this"
-        }
-      }
-    },
-    {
-      "id": "Query.<Column>",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Query",
-      "errors": [],
-      "state": "Append equality in this condition group",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query.{Column}",
-          "signature": "receiver=*{Entity}Query func(v {type}) *{Entity}Query"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}::{columnCamel}",
-          "signature": "public function {columnCamel}({type} $v): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}::{column}",
-          "signature": "pub fn {column}(self, v: {type}) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query.{columnCamel}",
-          "signature": "public {columnCamel}(value: {type}): this"
-        }
-      }
-    },
-    {
-      "id": "Where.<Column>",
-      "for": "eq_column",
-      "inputs": [
-        "ColumnValue"
-      ],
-      "output": "Where",
-      "errors": [],
-      "state": "Append equality in this condition group",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Where.{Column}",
-          "signature": "receiver=*{Entity}Where func(v {type}) *{Entity}Where"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where::{columnCamel}",
-          "signature": "public function {columnCamel}({type} $v): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where < 'a >::{column}",
-          "signature": "pub fn {column}(self, v: {type}) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where.{columnCamel}",
-          "signature": "public {columnCamel}(value: {type}): this"
-        }
-      }
-    },
-    {
-      "id": "Row.using",
-      "for": "entity",
-      "inputs": [
-        "Executor"
-      ],
-      "output": "Row",
-      "errors": [],
-      "state": "Preserve row identity and binding; obey row state transition contract",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Using",
-          "signature": "receiver=*{Entity}Row func(ex orm.Exec) *{Entity}Row"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::using",
-          "signature": "public function using(Orm\\Db|PDO $db): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::using",
-          "signature": "pub fn using(&mut self, ex: &impl Exec) -> &mut Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.using",
-          "signature": "public using(database: Db): this"
-        }
-      }
-    },
-    {
-      "id": "Row.update",
+      "id": "Model.save",
       "for": "entity",
       "inputs": [],
-      "output": "Success",
+      "output": "WrittenModel",
       "errors": [
         "CONFIG",
-        "codec/driver error"
+        "IR_INVALID",
+        "driver or codec error",
+        "DUPLICATE_KEY",
+        "FOREIGN_KEY"
       ],
-      "state": "Preserve row identity and binding; obey row state transition contract",
+      "state": "Inserts a new model or updates a loaded one",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Update",
-          "signature": "receiver=*{Entity}Row func() error"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Save",
+          "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::update",
-          "signature": "public function update(): void"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::save",
+          "signature": "public function save(): static"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update",
-          "signature": "pub async fn update(&mut self) -> Result<()>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::save",
+          "signature": "pub async fn save(&mut self) -> orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.update",
-          "signature": "public async update(): Promise<void>"
+          "symbol": "clients/typescript/src/model.ts::Model.save",
+          "signature": "public async save(): Promise<this>"
         }
       }
     },
     {
-      "id": "Row.updateOptimistic",
-      "for": "versioned_entity",
-      "inputs": [],
-      "output": "Success",
-      "errors": [
-        "CONFIG",
-        "OPTIMISTIC_LOCK",
-        "codec/driver error"
-      ],
-      "state": "Preserve row identity and binding; obey row state transition contract",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.UpdateOptimistic",
-          "signature": "receiver=*{Entity}Row func() error"
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Row::updateOptimistic",
-          "signature": "public function updateOptimistic(): void"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::update_optimistic",
-          "signature": "pub async fn update_optimistic(&mut self) -> Result<()>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.updateOptimistic",
-          "signature": "public async updateOptimistic(): Promise<void>"
-        }
-      }
-    },
-    {
-      "id": "Row.delete",
-      "for": "entity",
-      "inputs": [],
-      "output": "Success",
-      "errors": [
-        "CONFIG",
-        "driver error"
-      ],
-      "state": "Preserve row identity and binding; obey row state transition contract",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.Delete",
-          "signature": "receiver=*{Entity}Row func() error"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::delete",
-          "signature": "public function delete(bool $cascade=false): void"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete",
-          "signature": "pub async fn delete(&self) -> Result<()>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.delete",
-          "signature": "public async delete(): Promise<void>"
-        }
-      }
-    },
-    {
-      "id": "Row.deleteCascade",
-      "for": "entity",
-      "inputs": [],
-      "output": "Success",
-      "errors": [
-        "CONFIG",
-        "driver error"
-      ],
-      "state": "Preserve row identity and binding; obey row state transition contract",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.DeleteCascade",
-          "signature": "receiver=*{Entity}Row func() error"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::deleteCascade",
-          "signature": "public function deleteCascade(): void"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::delete_cascade",
-          "signature": "pub async fn delete_cascade(&self) -> Result<()>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.deleteCascade",
-          "signature": "public async deleteCascade(): Promise<void>"
-        }
-      }
-    },
-    {
-      "id": "Row.has",
+      "id": "Model.delete",
       "for": "entity",
       "inputs": [
-        "Column"
+        "Recursive"
       ],
-      "output": "Bool",
-      "errors": [],
-      "state": "Preserve row identity and binding; obey row state transition contract",
+      "output": "ModelSuccess",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error",
+        "FOREIGN_KEY"
+      ],
+      "state": "Deletes a loaded model, and its relation rows when recursive",
       "native": {
         "go": {
-          "symbol": "clients/go/orm/builder.go::Row.Has",
-          "signature": "receiver=*Row func(name string) bool"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Delete",
+          "signature": "receiver=*{Entity}Model func(recursive ...bool) error"
         },
         "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::has",
-          "signature": "public function has(string $col): bool"
+          "symbol": "clients/php/src/Model.php::Orm\\Model::delete",
+          "signature": "public function delete(bool $recursive = false): void"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::has",
-          "signature": "pub fn has(&self, name: &str) -> bool"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::delete",
+          "signature": "pub async fn delete(&self, recursive: bool) -> orm::Result<()>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.has",
-          "signature": "public has(column: string): boolean"
+          "symbol": "clients/typescript/src/model.ts::Model.delete",
+          "signature": "public async delete(recursive = false): Promise<void>"
         }
       }
     },
     {
-      "id": "Row.relLoaded",
-      "for": "entity",
-      "inputs": [
-        "Relation"
-      ],
-      "output": "Bool",
-      "errors": [],
-      "state": "Preserve row identity and binding; obey row state transition contract",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row.RelLoaded",
-          "signature": "receiver=*Row func(rel string) bool"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::relLoaded",
-          "signature": "public function relLoaded(string $name): bool"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::rel_loaded",
-          "signature": "pub fn rel_loaded(&self, name: &str) -> bool"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.relLoaded",
-          "signature": "public relLoaded(relation: string): boolean"
-        }
-      }
-    },
-    {
-      "id": "Row.export",
+      "id": "Model.toArray",
       "for": "entity",
       "inputs": [],
       "output": "RowMap",
-      "errors": [
-        "IR_INVALID"
-      ],
-      "state": "Preserve row identity and binding; obey row state transition contract",
+      "errors": [],
+      "state": "Exports the loaded columns and relations",
       "native": {
         "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row.ToArray",
-          "signature": "receiver=*{Entity}Row func() (map[string]any, error)"
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.ToArray",
+          "signature": "receiver=*{Entity}Model func() map[string]any"
         },
         "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::toArray",
+          "symbol": "clients/php/src/Model.php::Orm\\Model::toArray",
           "signature": "public function toArray(): array"
         },
         "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row::to_map",
-          "signature": "pub fn to_map(&self) -> Result<serde_json::Value>"
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::to_array",
+          "signature": "pub fn to_array(&self) -> orm::serde_json::Value"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row.toObject",
-          "signature": "public toObject(): Record<string, unknown>"
+          "symbol": "clients/typescript/src/model.ts::Model.toArray",
+          "signature": "public toArray(): Record<string, unknown>"
+        }
+      }
+    },
+    {
+      "id": "Db.connect",
+      "for": "once",
+      "inputs": [
+        "ConnectionOptions"
+      ],
+      "output": "Db",
+      "errors": [
+        "CONFIG",
+        "SCHEMA_HASH_MISMATCH",
+        "driver error"
+      ],
+      "state": "Opens the pool selected by the DSN URI scheme",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/orm.go::Connect",
+          "signature": "func(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Orm.php::Orm\\Orm::connect",
+          "signature": "public static function connect(string $dsn, Orm\\Config $config): Orm\\Db"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/db.rs::Db::connect",
+          "signature": "pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.connect",
+          "signature": "public static async connect(dsn: string, schemaPath: string, options: ConnectOptions = {}): Promise<Db>"
+        }
+      }
+    },
+    {
+      "id": "Db.transaction",
+      "for": "once",
+      "inputs": [
+        "TransactionCallback"
+      ],
+      "output": "TransactionResult",
+      "errors": [
+        "CONFIG",
+        "DEADLOCK",
+        "CAPABILITY_UNSUPPORTED"
+      ],
+      "state": "Runs the callback in the transaction of the current execution flow; a nested call uses a savepoint",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/tx.go::DB.Transaction",
+          "signature": "receiver=*DB func(fn func() error, options ...TransactionOption) error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3): mixed"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/tx.rs::Db::transaction",
+          "signature": "pub fn transaction<F>(&self, f: F) -> Transaction<'_, F>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.transaction",
+          "signature": "public async transaction<T>(callback: () => Promise<T> | T, options: TransactionOptions = {}): Promise<T>"
+        }
+      }
+    },
+    {
+      "id": "Db.utils",
+      "for": "once",
+      "inputs": [],
+      "output": "Utils",
+      "errors": [],
+      "state": "Returns the utilities of the connection",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::DB.Utils",
+          "signature": "receiver=*DB func() *Utils"
+        },
+        "php": {
+          "symbol": "clients/php/src/Db.php::Orm\\Db::utils",
+          "signature": "public function utils(): Orm\\Utils"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::Db::utils",
+          "signature": "pub fn utils(&self) -> Utils<'_>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.utils",
+          "signature": "public utils(): Utils"
+        }
+      }
+    },
+    {
+      "id": "Utils.lock",
+      "for": "once",
+      "inputs": [
+        "LockKey"
+      ],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "CAPABILITY_UNSUPPORTED"
+      ],
+      "state": "Takes a named lock released when the transaction ends",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::Utils.Lock",
+          "signature": "receiver=*Utils func(key string) error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\Utils::lock",
+          "signature": "public function lock(string $key): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::Utils < 'a >::lock",
+          "signature": "pub async fn lock(&self, key: &str) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::Utils.lock",
+          "signature": "public async lock(key: string): Promise<void>"
+        }
+      }
+    },
+    {
+      "id": "Utils.schema",
+      "for": "once",
+      "inputs": [],
+      "output": "SchemaUtils",
+      "errors": [],
+      "state": "Returns the schema utilities",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::Utils.Schema",
+          "signature": "receiver=*Utils func() *SchemaUtils"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\Utils::schema",
+          "signature": "public function schema(): Orm\\SchemaUtils"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::Utils < 'a >::schema",
+          "signature": "pub fn schema(&self) -> SchemaUtils<'_>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::Utils.schema",
+          "signature": "public schema(): SchemaUtils"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.install",
+      "for": "once",
+      "inputs": [
+        "ManifestJson"
+      ],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "SCHEMA_INVALID",
+        "driver error"
+      ],
+      "state": "Creates the missing tables of the manifest and registers the manifest with the connection",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",
+          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
+          "signature": "public function install(string $manifestJson): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
+          "signature": "pub async fn install(&self, manifest_json: &[u8]) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
+          "signature": "public async install(manifestJson: string): Promise<void>"
+        }
+      }
+    },
+    {
+      "id": "Utils.aes",
+      "for": "once",
+      "inputs": [],
+      "output": "AesUtils",
+      "errors": [],
+      "state": "Returns the AES key rotation utilities",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::Utils.Aes",
+          "signature": "receiver=*Utils func() *AESUtils"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\Utils::aes",
+          "signature": "public function aes(): Orm\\AesUtils"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::Utils < 'a >::aes",
+          "signature": "pub fn aes(&self) -> AesUtils<'_>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::Utils.aes",
+          "signature": "public aes(): AesUtils"
+        }
+      }
+    },
+    {
+      "id": "AesUtils.status",
+      "for": "once",
+      "inputs": [
+        "ModelKeyring"
+      ],
+      "output": "AesRotationStatus",
+      "errors": [
+        "CONFIG",
+        "driver error"
+      ],
+      "state": "Counts rows per stored key version",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::AESUtils.Status",
+          "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (AESRotationStatus, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\AesUtils::status",
+          "signature": "public function status(Orm\\Model $model, Orm\\AesKeyring $keyring): Orm\\AesRotationStatus"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::AesUtils < '_ >::status",
+          "signature": "pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::AesUtils.status",
+          "signature": "public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus>"
+        }
+      }
+    },
+    {
+      "id": "AesUtils.rotate",
+      "for": "once",
+      "inputs": [
+        "ModelKeyring"
+      ],
+      "output": "RotatedRows",
+      "errors": [
+        "CONFIG",
+        "driver or codec error"
+      ],
+      "state": "Rewrites every AES column and the key version of stale rows in batches",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::AESUtils.Rotate",
+          "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (int, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\AesUtils::rotate",
+          "signature": "public function rotate(Orm\\Model $model, Orm\\AesKeyring $keyring): int"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::AesUtils < '_ >::rotate",
+          "signature": "pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::AesUtils.rotate",
+          "signature": "public async rotate(model: unknown, keyring: AesKeyring): Promise<number>"
         }
       }
     }
   ],
   "sequences": [
     {
-      "id": "interface_query_reuse",
+      "id": "terminal_reuse",
       "expected": [
-        1000,
+        143,
         2,
         1000
       ],
       "statements": 3,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
+      "suite": "tests/conformance"
     },
     {
-      "id": "interface_attach",
+      "id": "relation_empty",
+      "expected": 0,
+      "statements": 1,
+      "suite": "tests/conformance"
+    },
+    {
+      "id": "errors",
+      "expected": [
+        "CONFIG",
+        "CONFIG",
+        "EMPTY_IN",
+        "CONFIG",
+        "CONFIG",
+        "CONFIG",
+        "CONFIG",
+        "LIMIT_IN_RELATION",
+        "CONFIG"
+      ],
+      "statements": 0,
+      "suite": "tests/conformance"
+    },
+    {
+      "id": "now_defaults",
       "expected": {
-        "a": {
-          "entity": "battle",
-          "where": {
-            "items": [
-              {
-                "pred": {
-                  "column": "service_seq",
-                  "op": "eq",
-                  "p": 0
-                }
-              }
-            ]
+        "created_equals_updated": true,
+        "created_near_clock": true
+      },
+      "statements": 3,
+      "suite": "tests/conformance"
+    },
+    {
+      "id": "creates_and_save",
+      "expected": {
+        "inserted": 3,
+        "left": 0,
+        "pairs": [
+          {
+            "account_id": 1,
+            "name": "updated",
+            "tenant_id": 900
           },
-          "joins": [
-            {
-              "rel": "user",
-              "kind": "inner",
-              "query": {
-                "entity": "user",
-                "where": {
-                  "items": [
-                    {
-                      "pred": {
-                        "column": "seq",
-                        "op": "in",
-                        "ps": [
-                          1,
-                          2
-                        ]
-                      }
-                    },
-                    {
-                      "group": {
-                        "items": [
-                          {
-                            "pred": {
-                              "column": "name",
-                              "op": "eq",
-                              "p": 3
-                            }
-                          },
-                          {
-                            "pred": {
-                              "conn": "or",
-                              "column": "name",
-                              "op": "eq",
-                              "p": 4
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        "b": {
-          "entity": "battle",
-          "where": {
-            "items": [
-              {
-                "pred": {
-                  "column": "service_seq",
-                  "op": "eq",
-                  "p": 0
-                }
-              }
-            ]
-          },
-          "joins": [
-            {
-              "rel": "user",
-              "kind": "inner",
-              "query": {
-                "entity": "user",
-                "where": {
-                  "items": [
-                    {
-                      "pred": {
-                        "column": "seq",
-                        "op": "in",
-                        "ps": [
-                          1,
-                          2
-                        ]
-                      }
-                    },
-                    {
-                      "group": {
-                        "items": [
-                          {
-                            "pred": {
-                              "column": "name",
-                              "op": "eq",
-                              "p": 3
-                            }
-                          },
-                          {
-                            "pred": {
-                              "conn": "or",
-                              "column": "name",
-                              "op": "eq",
-                              "p": 4
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        },
-        "child": {
-          "entity": "user",
-          "where": {
-            "items": [
-              {
-                "pred": {
-                  "column": "seq",
-                  "op": "in",
-                  "ps": [
-                    0,
-                    1
-                  ]
-                }
-              },
-              {
-                "group": {
-                  "items": [
-                    {
-                      "pred": {
-                        "column": "name",
-                        "op": "eq",
-                        "p": 2
-                      }
-                    },
-                    {
-                      "pred": {
-                        "conn": "or",
-                        "column": "name",
-                        "op": "eq",
-                        "p": 3
-                      }
-                    }
-                  ]
-                }
-              },
-              {
-                "pred": {
-                  "column": "name",
-                  "op": "eq",
-                  "p": 4
-                }
-              }
-            ]
+          {
+            "account_id": 2,
+            "name": "saved",
+            "tenant_id": 900
           }
-        },
-        "a_params": [
-          7,
-          1,
-          2,
-          "user-1",
-          "user-2"
-        ],
-        "b_params": [
-          8,
-          1,
-          2,
-          "user-1",
-          "user-2"
-        ],
-        "child_params": [
-          1,
-          2,
-          "user-1",
-          "user-2",
-          "later"
         ]
       },
-      "statements": 0,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
+      "statements": 9,
+      "suite": "tests/conformance"
     },
     {
-      "id": "interface_typed_keys",
-      "expected": [
-        [
-          1,
-          "last"
-        ],
-        [
-          "1",
-          "string"
-        ],
-        [
-          2,
-          "second"
-        ]
-      ],
-      "statements": 0,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "interface_invalid_page",
+      "id": "delete_recursive",
       "expected": {
-        "error": "IR_INVALID"
-      },
-      "statements": 0,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "interface_error",
-      "expected": [
-        "CODEC_UNSUPPORTED",
-        "CODEC_UNSUPPORTED"
-      ],
-      "statements": 0,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "interface_row_state",
-      "expected": {
-        "before": false,
-        "assigned": true,
-        "value": "interface-final",
-        "export": {
-          "seq": 6,
-          "name": "interface-final",
-          "like_count": 5,
-          "user_seq": 7,
-          "service_seq": 7,
-          "service_module_seq": 7,
-          "service_member_seq": 7
-        },
-        "noop_statements": 0,
-        "relation_loaded": false
-      },
-      "statements": 2,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "interface_dirty_retry",
-      "expected": {
-        "errors": [
-          "OPTIMISTIC_LOCK",
-          "OPTIMISTIC_LOCK"
-        ],
-        "value": "interface-pending"
-      },
-      "statements": 4,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "finished_transaction",
-      "expected": {
-        "error": "CONFIG"
-      },
-      "statements": 0,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
-    },
-    {
-      "id": "bound_transaction_rollback",
-      "expected": {
-        "changed": 1,
-        "expired_row": "CONFIG",
-        "joined_name": "conf-user",
+        "members": 2,
         "members_left": 0,
-        "service_left": 0,
-        "user_name": "user-1"
+        "service_left": false
       },
-      "statements": 14,
-      "suite": "tests/conformance",
-      "required_languages": [
-        "go",
-        "php",
-        "rust"
-      ]
+      "statements": 10,
+      "suite": "tests/conformance"
     },
     {
-      "id": "interface_original_version",
-      "steps": [
-        "assemble and retain original version",
-        "set version and name",
-        "optimistic update succeeds against original version",
-        "assemble without version",
-        "optimistic update rejects missing version",
-        "read stored version and name"
+      "id": "transactions",
+      "expected": [
+        true,
+        1,
+        1,
+        "runner",
+        true,
+        0
       ],
-      "expected": {
-        "name": "interface-version",
-        "version_retained": true,
-        "missing_version": "CONFIG",
-        "pending": "not-written"
-      },
-      "statements": 4
-    },
-    {
-      "id": "interface_identity",
-      "steps": [
-        "load row identity",
-        "mutate current PK storage without dirty tracking",
-        "update by loaded identity",
-        "read original row",
-        "delete by loaded identity",
-        "count original and other identities"
-      ],
-      "expected": {
-        "updated": "identity-original",
-        "original_left": 0,
-        "other_left": 1
-      },
-      "statements": 6
-    },
-    {
-      "id": "interface_nested_keys",
-      "steps": [
-        "load parent and many relation",
-        "insert Integer(1) and String(1)",
-        "export parent rejects colliding object keys"
-      ],
-      "expected": {
-        "error": "IR_INVALID"
-      },
-      "statements": 2
-    },
-    {
-      "id": "interface_stream",
-      "steps": [
-        "open root cursor",
-        "deliver independently owned rows",
-        "stop or exhaust",
-        "close cursor"
-      ],
-      "expected": {
-        "stopped": {
-          "state": "stopped",
-          "count": 3
-        },
-        "exhausted": {
-          "state": "exhausted",
-          "count": 4
-        },
-        "relation_error": "IR_INVALID"
-      },
-      "suite": "tests/streaming",
-      "required_languages": [
-        "go",
-        "php",
-        "rust",
-        "typescript"
-      ],
-      "statements": 2
+      "statements": 5,
+      "suite": "tests/conformance"
     }
   ],
   "inventory_policy": {
@@ -1796,193 +1372,167 @@
     "source_parsers": {
       "go": "go/ast",
       "php": "ReflectionClass/ReflectionMethod",
-      "rust": "syn::parse_file"
+      "rust": "syn::parse_file",
+      "typescript": "TypeScript compiler API"
     },
-    "runtime_bodies": "Validated by state, lifetime and execution suites, not by declaration snapshots.",
+    "runtime_bodies": "Validated by conformance vectors and client database suites, not by declaration snapshots.",
     "update": "Change the common contract first; record candidates explicitly, review their diff, then pass all language gates.",
-    "adapters": [
-      "native constructor syntax",
-      "Go context binding",
-      "native async/error/borrow syntax",
-      "PHP native getter arguments and row accessors",
-      "native exported row fields and metadata accessors"
-    ]
+    "generated_models": "Go snapshots the generated bench models; PHP and TypeScript snapshot the runtime base class; Rust snapshots the orm-build template of the fixed model methods."
   },
   "edges": [
     {
-      "to": "Request",
+      "from": "Model",
       "kind": "*--",
-      "role": "stores request",
-      "from": "Query",
-      "role_ko": "request 저장"
+      "to": "Core",
+      "role": "stores chain state",
+      "role_ko": "체인 상태 저장"
     },
     {
-      "to": "Binding",
-      "kind": "*--",
-      "role": "stores binding",
-      "from": "Query",
-      "role_ko": "binding 저장"
-    },
-    {
-      "to": "Request",
+      "from": "Core",
       "kind": "-->",
-      "role": "references request",
-      "from": "Where",
-      "role_ko": "request 참조"
+      "to": "Db",
+      "role": "uses connection",
+      "role_ko": "연결 사용"
     },
     {
-      "to": "RequestIR",
-      "kind": "*--",
-      "role": "stores IR",
+      "from": "Core",
+      "kind": "-->",
+      "to": "TransactionFlow",
+      "role": "uses flow transaction",
+      "role_ko": "흐름 transaction 사용"
+    },
+    {
+      "from": "Core",
+      "kind": "-->",
+      "to": "Request",
+      "role": "builds",
+      "role_ko": "생성"
+    },
+    {
       "from": "Request",
+      "kind": "*--",
+      "to": "RequestIR",
+      "role": "stores IR",
       "role_ko": "IR 저장"
     },
     {
-      "to": "QueryNode",
-      "kind": "*--",
-      "role": "contains root",
       "from": "RequestIR",
+      "kind": "*--",
+      "to": "QueryNode",
+      "role": "contains root",
       "role_ko": "root 포함"
     },
     {
-      "to": "QueryNode",
-      "kind": "*--",
-      "role": "contains child nodes",
       "from": "QueryNode",
+      "kind": "*--",
+      "to": "QueryNode",
+      "role": "contains child nodes",
       "role_ko": "child node 포함"
     },
     {
-      "to": "Executor",
-      "kind": "-->",
-      "role": "selects executor",
-      "from": "Binding",
-      "role_ko": "executor 선택"
-    },
-    {
-      "to": "Executor",
-      "kind": "..|>",
-      "role": "implements",
       "from": "Db",
-      "role_ko": "구현"
+      "kind": "*--",
+      "to": "Planner",
+      "role": "plans per schema",
+      "role_ko": "schema별 계획"
     },
     {
-      "to": "CompilerTransport",
+      "from": "Planner",
       "kind": "-->",
-      "role": "compiles plans",
-      "from": "Db",
-      "role_ko": "plan 컴파일"
-    },
-    {
-      "to": "Executor",
-      "kind": "..|>",
-      "role": "implements",
-      "from": "Tx",
-      "role_ko": "구현"
-    },
-    {
-      "to": "Db",
-      "kind": "-->",
-      "role": "uses database",
-      "from": "Tx",
-      "role_ko": "database 사용"
-    },
-    {
-      "to": "Binding",
-      "kind": "*--",
-      "role": "uses root binding",
-      "from": "Row",
-      "role_ko": "root binding 사용"
-    },
-    {
-      "to": "Collection",
-      "kind": "*--",
-      "role": "contains relations",
-      "from": "Row",
-      "role_ko": "relation 포함"
-    },
-    {
-      "to": "Row",
-      "kind": "o--",
-      "role": "contains ordered rows",
-      "from": "Collection",
-      "role_ko": "순서 row 포함"
-    },
-    {
-      "to": "Collection",
-      "kind": "*--",
-      "role": "contains items",
-      "from": "Page",
-      "role_ko": "항목 포함"
-    },
-    {
       "to": "Plan",
-      "kind": "-->",
       "role": "returns",
-      "from": "Compiler",
       "role_ko": "반환"
     },
     {
-      "to": "Step",
-      "kind": "*--",
-      "role": "contains ordered steps",
       "from": "Plan",
-      "role_ko": "순서 step 포함"
+      "kind": "*--",
+      "to": "Step",
+      "role": "contains ordered steps",
+      "role_ko": "순서 있는 step 포함"
     },
     {
-      "to": "Assemble",
-      "kind": "*--",
-      "role": "maps results",
       "from": "Step",
-      "role_ko": "결과 mapping"
-    },
-    {
-      "to": "Plan",
-      "kind": "-->",
-      "role": "uses plan",
-      "from": "ExecutionRows",
-      "role_ko": "plan 사용"
-    },
-    {
-      "to": "Binding",
       "kind": "*--",
-      "role": "uses binding",
-      "from": "ExecutionRows",
-      "role_ko": "binding 사용"
+      "to": "Assemble",
+      "role": "maps results",
+      "role_ko": "결과 대응"
     },
     {
-      "to": "Compiler",
+      "from": "Db",
       "kind": "-->",
-      "role": "calls",
-      "from": "CompilerTransport",
-      "role_ko": "호출"
+      "to": "TransactionFlow",
+      "role": "opens",
+      "role_ko": "시작"
     },
     {
+      "from": "Db",
+      "kind": "-->",
+      "to": "Utils",
+      "role": "returns",
+      "role_ko": "반환"
+    },
+    {
+      "from": "Utils",
+      "kind": "-->",
+      "to": "SchemaUtils",
+      "role": "returns",
+      "role_ko": "반환"
+    },
+    {
+      "from": "Utils",
+      "kind": "-->",
+      "to": "AesUtils",
+      "role": "returns",
+      "role_ko": "반환"
+    },
+    {
+      "from": "SchemaUtils",
+      "kind": "-->",
+      "to": "Planner",
+      "role": "registers schema",
+      "role_ko": "schema 등록"
+    },
+    {
+      "from": "AesUtils",
+      "kind": "-->",
       "to": "AESKeyring",
-      "kind": "-->",
       "role": "uses keys",
-      "from": "Query",
       "role_ko": "key 사용"
     },
     {
-      "to": "AESRotationSpec",
+      "from": "AesUtils",
       "kind": "-->",
-      "role": "uses generated specification",
-      "from": "Query",
-      "role_ko": "생성 명세 사용"
-    },
-    {
       "to": "AESRotationStatus",
-      "kind": "-->",
       "role": "returns status",
-      "from": "Query",
       "role_ko": "상태 반환"
     },
     {
-      "to": "StreamResult",
+      "from": "Collection",
+      "kind": "o--",
+      "to": "Model",
+      "role": "contains ordered models",
+      "role_ko": "순서 있는 model 포함"
+    },
+    {
+      "from": "Page",
+      "kind": "*--",
+      "to": "Collection",
+      "role": "contains items",
+      "role_ko": "항목 포함"
+    },
+    {
+      "from": "Model",
+      "kind": "*--",
+      "to": "Collection",
+      "role": "contains relations",
+      "role_ko": "relation 포함"
+    },
+    {
+      "from": "Generator",
       "kind": "-->",
-      "role": "returns stream result",
-      "from": "Query",
-      "role_ko": "stream 결과 반환"
+      "to": "Model",
+      "role": "emits",
+      "role_ko": "생성"
     }
   ],
   "records": [
@@ -1991,7 +1541,7 @@
       "native": {
         "go": "engine/ir/ir.go::Request",
         "rust": "clients/rust/orm/src/ir.rs::Request",
-        "typescript": "clients/typescript/src/index.ts::Request"
+        "typescript": "clients/typescript/src/ir.ts::Request"
       },
       "fields": {
         "ir_version": "integer",
@@ -2001,17 +1551,15 @@
         "on_duplicate": "list<IRAssign>",
         "optimistic": "IROptimist",
         "agg": "text",
-        "raw": "IRRaw",
-        "debug": "bool",
-        "n_params": "integer"
+        "n_params": "integer",
+        "rows": "list<list<integer>>"
       },
       "optional": [
         "set",
         "on_duplicate",
         "optimistic",
         "agg",
-        "raw",
-        "debug"
+        "rows"
       ],
       "extends": "IRQuery"
     },
@@ -2020,89 +1568,68 @@
       "native": {
         "go": "engine/ir/ir.go::Query",
         "rust": "clients/rust/orm/src/ir.rs::Query",
-        "typescript": "clients/typescript/src/index.ts::RequestQuery"
+        "typescript": "clients/typescript/src/ir.ts::RequestQuery"
       },
       "fields": {
         "entity": "text",
-        "scope_p": "integer",
         "columns": "IRColumns",
         "on": "IRGroup",
         "where": "IRGroup",
-        "having": "IRGroup",
         "joins": "list<IRJoin>",
         "relations": "list<IRRelation>",
         "order": "list<IROrder>",
         "group_by": "list<text>",
         "group_by_expr": "list<IRGroupExpr>",
         "limit": "IRLimit",
-        "distinct": "bool",
         "force_index": "text",
         "lock": "text",
         "key_by": "text",
         "flatten": "bool",
         "limit_per_parent": "integer",
         "if_parent": "IRIfParent",
-        "keyset": "IRKeyset",
-        "drop_child_key": "bool",
         "no_cascade_delete": "bool"
       },
       "optional": [
-        "scope_p",
         "columns",
         "on",
         "where",
-        "having",
         "joins",
         "relations",
         "order",
         "group_by",
         "group_by_expr",
         "limit",
-        "distinct",
         "force_index",
         "lock",
         "key_by",
         "flatten",
         "limit_per_parent",
         "if_parent",
-        "keyset",
-        "drop_child_key",
         "no_cascade_delete"
       ]
-    },
-    {
-      "id": "IRKeyset",
-      "native": {
-        "go": "engine/ir/ir.go::Keyset",
-        "rust": "clients/rust/orm/src/ir.rs::Keyset",
-        "typescript": "clients/typescript/src/index.ts::Keyset"
-      },
-      "fields": {
-        "direction": "text",
-        "values": "list<integer>"
-      },
-      "optional": []
     },
     {
       "id": "IRColumns",
       "native": {
         "go": "engine/ir/ir.go::Columns",
         "rust": "clients/rust/orm/src/ir.rs::Columns",
-        "typescript": "clients/typescript/src/index.ts::Projection"
+        "typescript": "clients/typescript/src/ir.ts::Projection"
       },
       "fields": {
         "mode": "text",
         "add": "list<text>",
         "remove": "list<text>",
-        "as": "map<text>",
-        "expr": "map<text>"
+        "expr": "map<IRExpr>",
+        "fn": "map<IRColFunc>",
+        "sub": "map<IRSub>"
       },
       "optional": [
-        "mode",
         "add",
+        "expr",
+        "fn",
+        "mode",
         "remove",
-        "as",
-        "expr"
+        "sub"
       ]
     },
     {
@@ -2110,34 +1637,45 @@
       "native": {
         "go": "engine/ir/ir.go::Join",
         "rust": "clients/rust/orm/src/ir.rs::Join",
-        "typescript": "clients/typescript/src/index.ts::Join"
+        "typescript": "clients/typescript/src/ir.ts::Join"
       },
       "fields": {
         "rel": "text",
         "kind": "text",
-        "query": "IRQuery"
+        "query": "IRQuery",
+        "left": "text",
+        "right": "text"
       },
-      "optional": []
+      "optional": [
+        "left",
+        "right"
+      ]
     },
     {
       "id": "IRRelation",
       "native": {
         "go": "engine/ir/ir.go::Relation",
         "rust": "clients/rust/orm/src/ir.rs::Relation",
-        "typescript": "clients/typescript/src/index.ts::Relation"
+        "typescript": "clients/typescript/src/ir.ts::Relation"
       },
       "fields": {
         "rel": "text",
-        "query": "IRQuery"
+        "query": "IRQuery",
+        "kind": "text",
+        "left": "text",
+        "right": "text"
       },
-      "optional": []
+      "optional": [
+        "left",
+        "right"
+      ]
     },
     {
       "id": "IRGroup",
       "native": {
         "go": "engine/ir/ir.go::Group",
         "rust": "clients/rust/orm/src/ir.rs::Group",
-        "typescript": "clients/typescript/src/index.ts::Group"
+        "typescript": "clients/typescript/src/ir.ts::Group"
       },
       "fields": {
         "conn": "text",
@@ -2152,17 +1690,17 @@
       "native": {
         "go": "engine/ir/ir.go::Item",
         "rust": "clients/rust/orm/src/ir.rs::Item",
-        "typescript": "clients/typescript/src/index.ts::Item"
+        "typescript": "clients/typescript/src/ir.ts::Item"
       },
       "fields": {
         "pred": "IRPred",
         "group": "IRGroup",
-        "nav": "IRNav"
+        "joined": "IRJoinedRef"
       },
       "optional": [
-        "pred",
         "group",
-        "nav"
+        "joined",
+        "pred"
       ],
       "union": true
     },
@@ -2171,7 +1709,7 @@
       "native": {
         "go": "engine/ir/ir.go::Pred",
         "rust": "clients/rust/orm/src/ir.rs::Pred",
-        "typescript": "clients/typescript/src/index.ts::Predicate"
+        "typescript": "clients/typescript/src/ir.ts::Predicate"
       },
       "fields": {
         "conn": "text",
@@ -2181,17 +1719,25 @@
         "ps": "list<integer>",
         "ref": "IRColRef",
         "expr": "text",
-        "match": "list<text>"
+        "match": "list<text>",
+        "fn": "IRFunc",
+        "value": "IRFunc",
+        "cols": "list<text>",
+        "sub": "IRSub"
       },
       "optional": [
-        "conn",
+        "cols",
         "column",
+        "conn",
+        "expr",
+        "fn",
+        "match",
         "op",
         "p",
         "ps",
         "ref",
-        "expr",
-        "match"
+        "sub",
+        "value"
       ]
     },
     {
@@ -2199,34 +1745,88 @@
       "native": {
         "go": "engine/ir/ir.go::ColRef",
         "rust": "clients/rust/orm/src/ir.rs::ColRef",
-        "typescript": "clients/typescript/src/index.ts::ColumnReferenceIR"
+        "typescript": "clients/typescript/src/ir.ts::ColumnReferenceIR"
       },
       "fields": {
         "path": "text",
         "column": "text"
       },
+      "optional": [
+        "path"
+      ]
+    },
+    {
+      "id": "IRExpr",
+      "native": {
+        "go": "engine/ir/ir.go::Expr",
+        "rust": "clients/rust/orm/src/ir.rs::Expr",
+        "typescript": "clients/typescript/src/ir.ts::Expression"
+      },
+      "fields": {
+        "sql": "text",
+        "ps": "list<integer>"
+      },
+      "optional": [
+        "ps"
+      ]
+    },
+    {
+      "id": "IRFunc",
+      "native": {
+        "go": "engine/ir/ir.go::Func",
+        "rust": "clients/rust/orm/src/ir.rs::Func",
+        "typescript": "clients/typescript/src/ir.ts::OrmFunction"
+      },
+      "fields": {
+        "name": "text",
+        "ps": "list<integer>"
+      },
+      "optional": [
+        "ps"
+      ]
+    },
+    {
+      "id": "IRColFunc",
+      "native": {
+        "go": "engine/ir/ir.go::ColFunc",
+        "rust": "clients/rust/orm/src/ir.rs::ColFunc",
+        "typescript": "clients/typescript/src/ir.ts::ColumnFunction"
+      },
+      "fields": {
+        "column": "text",
+        "fn": "IRFunc"
+      },
       "optional": []
     },
     {
-      "id": "IRNav",
+      "id": "IRSub",
       "native": {
-        "go": "engine/ir/ir.go::Nav",
-        "rust": "clients/rust/orm/src/ir.rs::Nav",
-        "typescript": "clients/typescript/src/index.ts::Navigation"
+        "go": "engine/ir/ir.go::Sub",
+        "rust": "clients/rust/orm/src/ir.rs::Sub",
+        "typescript": "clients/typescript/src/ir.ts::Subquery"
+      },
+      "fields": {
+        "query": "IRQuery",
+        "column": "text",
+        "agg": "text"
+      },
+      "optional": [
+        "agg"
+      ]
+    },
+    {
+      "id": "IRJoinedRef",
+      "native": {
+        "go": "engine/ir/ir.go::JoinedRef",
+        "rust": "clients/rust/orm/src/ir.rs::JoinedRef",
+        "typescript": "clients/typescript/src/ir.ts::JoinedReference"
       },
       "fields": {
         "conn": "text",
-        "rel": "text",
-        "group": "IRGroup",
-        "mode": "text",
-        "count_op": "text",
-        "p": "integer"
+        "join": "text"
       },
       "optional": [
-        "conn",
-        "mode",
-        "count_op",
-        "p"
+        "conn"
       ]
     },
     {
@@ -2234,17 +1834,21 @@
       "native": {
         "go": "engine/ir/ir.go::Order",
         "rust": "clients/rust/orm/src/ir.rs::Order",
-        "typescript": "clients/typescript/src/index.ts::Order"
+        "typescript": "clients/typescript/src/ir.ts::Order"
       },
       "fields": {
         "column": "text",
         "expr": "text",
-        "desc": "bool"
+        "desc": "bool",
+        "random": "bool",
+        "fn": "IRFunc"
       },
       "optional": [
         "column",
+        "desc",
         "expr",
-        "desc"
+        "fn",
+        "random"
       ]
     },
     {
@@ -2252,7 +1856,7 @@
       "native": {
         "go": "engine/ir/ir.go::GroupExpr",
         "rust": "clients/rust/orm/src/ir.rs::GroupExpr",
-        "typescript": "clients/typescript/src/index.ts::GroupExpression"
+        "typescript": "clients/typescript/src/ir.ts::GroupExpression"
       },
       "fields": {
         "expr": "text",
@@ -2265,7 +1869,7 @@
       "native": {
         "go": "engine/ir/ir.go::Limit",
         "rust": "clients/rust/orm/src/ir.rs::Limit",
-        "typescript": "clients/typescript/src/index.ts::Limit"
+        "typescript": "clients/typescript/src/ir.ts::Limit"
       },
       "fields": {
         "offset": "integer",
@@ -2278,7 +1882,7 @@
       "native": {
         "go": "engine/ir/ir.go::IfParent",
         "rust": "clients/rust/orm/src/ir.rs::IfParent",
-        "typescript": "clients/typescript/src/index.ts::IfParent"
+        "typescript": "clients/typescript/src/ir.ts::IfParent"
       },
       "fields": {
         "column": "text",
@@ -2291,7 +1895,7 @@
       "native": {
         "go": "engine/ir/ir.go::Assign",
         "rust": "clients/rust/orm/src/ir.rs::Assign",
-        "typescript": "clients/typescript/src/index.ts::Assignment"
+        "typescript": "clients/typescript/src/ir.ts::Assignment"
       },
       "fields": {
         "column": "text",
@@ -2312,1113 +1916,108 @@
       ]
     },
     {
-      "id": "IRRaw",
-      "native": {
-        "go": "engine/ir/ir.go::Raw",
-        "rust": "clients/rust/orm/src/ir.rs::Raw",
-        "typescript": "clients/typescript/src/index.ts::Raw"
-      },
-      "fields": {
-        "sql": "text",
-        "ps": "list<integer>"
-      },
-      "optional": [
-        "ps"
-      ]
-    },
-    {
       "id": "IROptimist",
       "native": {
         "go": "engine/ir/ir.go::Optimist",
         "rust": "clients/rust/orm/src/ir.rs::Optimist",
-        "typescript": "clients/typescript/src/index.ts::Optimistic"
+        "typescript": "clients/typescript/src/ir.ts::Optimistic"
       },
       "fields": {
         "column": "text",
         "p": "integer"
       },
       "optional": []
-    },
-    {
-      "id": "Plan",
-      "native": {
-        "go": "engine/plan/plan.go::Plan",
-        "rust": "clients/rust/orm/src/plan.rs::Plan",
-        "typescript": "clients/typescript/src/index.ts::Plan"
-      },
-      "fields": {
-        "schema_hash": "text",
-        "kind": "text",
-        "steps": "list<PlanStep>"
-      },
-      "optional": []
-    },
-    {
-      "id": "PlanStep",
-      "native": {
-        "go": "engine/plan/plan.go::Step",
-        "rust": "clients/rust/orm/src/plan.rs::Step",
-        "typescript": "clients/typescript/src/index.ts::PlanStep"
-      },
-      "fields": {
-        "id": "integer",
-        "role": "text",
-        "sql": "text",
-        "lock": "text",
-        "bind_slots": "list<PlanBindSlot>",
-        "assemble": "PlanAssemble",
-        "parent": "PlanParent"
-      },
-      "optional": [
-        "lock",
-        "assemble",
-        "parent"
-      ]
-    },
-    {
-      "id": "PlanKeyRef",
-      "native": {
-        "go": "engine/plan/plan.go::KeyRef",
-        "rust": "clients/rust/orm/src/plan.rs::KeyRef",
-        "typescript": "clients/typescript/src/index.ts::KeyReference"
-      },
-      "fields": {
-        "column": "text",
-        "index": "integer"
-      },
-      "optional": []
-    },
-    {
-      "id": "PlanParent",
-      "native": {
-        "go": "engine/plan/plan.go::ParentRef",
-        "rust": "clients/rust/orm/src/plan.rs::ParentRef",
-        "typescript": "clients/typescript/src/index.ts::ParentReference"
-      },
-      "fields": {
-        "step": "integer",
-        "keys": "list<PlanKeyRef>",
-        "if_parent": "PlanIfParent"
-      },
-      "optional": [
-        "if_parent"
-      ]
-    },
-    {
-      "id": "PlanIfParent",
-      "native": {
-        "go": "engine/plan/plan.go::IfParent",
-        "rust": "clients/rust/orm/src/plan.rs::IfParent",
-        "typescript": "clients/typescript/src/index.ts::PlanIfParent"
-      },
-      "fields": {
-        "column": "text",
-        "index": "integer",
-        "param": "integer"
-      },
-      "optional": []
-    },
-    {
-      "id": "PlanBindSlot",
-      "native": {
-        "go": "engine/plan/plan.go::BindSlot",
-        "rust": "clients/rust/orm/src/plan.rs::BindSlot",
-        "typescript": "clients/typescript/src/index.ts::BindSlot"
-      },
-      "fields": {
-        "from": "text",
-        "param": "integer",
-        "transform": "text",
-        "name": "text",
-        "step": "integer",
-        "column": "text",
-        "host_styles": "list<text>",
-        "col_type": "text"
-      },
-      "optional": [
-        "transform",
-        "name",
-        "step",
-        "column",
-        "host_styles",
-        "col_type"
-      ]
-    },
-    {
-      "id": "PlanAssemble",
-      "native": {
-        "go": "engine/plan/plan.go::Assemble",
-        "rust": "clients/rust/orm/src/plan.rs::Assemble",
-        "typescript": "clients/typescript/src/index.ts::Assemble"
-      },
-      "fields": {
-        "entity": "text",
-        "alias": "text",
-        "columns": "list<PlanOutCol>",
-        "children": "list<PlanChild>",
-        "key": "list<PlanKeyRef>"
-      },
-      "optional": [
-        "children"
-      ]
-    },
-    {
-      "id": "PlanOutCol",
-      "native": {
-        "go": "engine/plan/plan.go::OutCol",
-        "rust": "clients/rust/orm/src/plan.rs::OutCol",
-        "typescript": "clients/typescript/src/index.ts::OutputColumn"
-      },
-      "fields": {
-        "index": "integer",
-        "name": "text",
-        "column": "text",
-        "type": "text",
-        "styles": "list<text>",
-        "hidden": "bool"
-      },
-      "optional": [
-        "column",
-        "styles",
-        "hidden"
-      ]
-    },
-    {
-      "id": "PlanChild",
-      "native": {
-        "go": "engine/plan/plan.go::Child",
-        "rust": "clients/rust/orm/src/plan.rs::Child",
-        "typescript": "clients/typescript/src/index.ts::Child"
-      },
-      "fields": {
-        "rel": "text",
-        "kind": "text",
-        "step": "integer",
-        "parent_keys": "list<PlanKeyRef>",
-        "child_keys": "list<PlanKeyRef>",
-        "key": "list<PlanKeyRef>",
-        "flatten": "bool",
-        "cascade": "bool",
-        "assemble": "PlanAssemble"
-      },
-      "optional": [
-        "step",
-        "parent_keys",
-        "child_keys",
-        "key",
-        "flatten",
-        "cascade",
-        "assemble"
-      ]
     }
   ],
-  "storage": [
-    {
-      "id": "Query.binding",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query#field.binding",
-          "signature": "orm.Binding"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q::$binding",
-          "signature": "private ?Orm\\Binding"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.binding",
-          "signature": "Binding"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.binding",
-          "signature": "Binding"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Query.request",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Q#field.Req",
-          "signature": "*Req"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q::$req",
-          "signature": "public Orm\\Req"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Q#field.req",
-          "signature": "Req"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.request",
-          "signature": "RequestState"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Query.keySelector",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query#field.keyFn",
-          "signature": "func(*{Entity}Row) orm.Key"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q::$keyFn",
-          "signature": "public ?Closure"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}#field.key_fn",
-          "signature": "Option<Box<dyn Fn(&{Entity}Row) -> Key + Send + Sync>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::QueryCore#field.keySelector",
-          "signature": "(row: unknown) => number | string | bigint"
-        }
-      },
-      "adapter": "Closure callback is erased in PHP and typed in native clients."
-    },
-    {
-      "id": "Request.ir",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Req#field.IR",
-          "signature": "ir.Request"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Req::$ir",
-          "signature": "public array"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Req#field.ir",
-          "signature": "Request"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::RequestState#field.ir",
-          "signature": "Request"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Request.params",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Req#field.Params",
-          "signature": "[]any"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Req::$params",
-          "signature": "public array"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Req#field.params",
-          "signature": "Vec<Param>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::RequestState#field.params",
-          "signature": "Param[]"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Request.deferredError",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Req#field.Err",
-          "signature": "error"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Req::$error",
-          "signature": "public ?Orm\\OrmException"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Req#field.err",
-          "signature": "Option<DeferredError>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::RequestState#field.deferredError",
-          "signature": "OrmError"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Where.request",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::W#field.Req",
-          "signature": "*Req"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\W::$req",
-          "signature": "public readonly Orm\\Req"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::W#field.params",
-          "signature": "&'a mut Vec<Param>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.request",
-          "signature": "RequestState"
-        }
-      },
-      "adapter": "Rust borrows disjoint Request.params and Group; PHP g is a constructor reference."
-    },
-    {
-      "id": "Where.group",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::W#field.G",
-          "signature": "*ir.Group"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\W::$g",
-          "signature": "public array"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::W#field.g",
-          "signature": "&'a mut Group"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.group",
-          "signature": "Group"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Where.pendingConnector",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::W#field.pendingOr",
-          "signature": "bool"
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\W::$pendingOr",
-          "signature": "private bool"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::W#field.pending_or",
-          "signature": "bool"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::WhereCore#field.pendingConnector",
-          "signature": "'or' | undefined"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Binding.executor",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/binding.go::Binding#field.ex",
-          "signature": "Exec"
-        },
-        "php": {
-          "symbol": "clients/php/src/Binding.php::Orm\\Binding::$executor",
-          "signature": "private readonly ?Orm\\Db"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/binding.rs::Binding#field.0",
-          "signature": "Option<BoundExec>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::Binding#field.executor",
-          "signature": "Db"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Row.binding",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.Binding",
-          "signature": "Binding"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$binding",
-          "signature": "private ?Orm\\Binding"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.binding",
-          "signature": "Binding"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.binding",
-          "signature": "Db | undefined"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Row.originalVersion",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.version",
-          "signature": "any"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$originalVersion",
-          "signature": "protected mixed"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_version",
-          "signature": "Option<Param>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.originalVersion",
-          "signature": "unknown"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Row.dirty",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.dirty",
-          "signature": "[]ir.Assign"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$dirty",
-          "signature": "protected array"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.dirty",
-          "signature": "Vec<(&'static str, Param)>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.dirty",
-          "signature": "Map<string, unknown>"
-        }
-      },
-      "adapter": "Go stores assignments and values in paired ordered slices; PHP ordered column map; Rust ordered pairs. State vectors enforce replacement order."
-    },
-    {
-      "id": "Row.deferredError",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.encErr",
-          "signature": "error"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$error",
-          "signature": "protected ?Orm\\OrmException"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.enc_err",
-          "signature": "Option<(String,String)>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.dirtyStyles",
-          "signature": "Map<string, readonly string[]>"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Row.projection",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.proj",
-          "signature": "*Projection"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$idx",
-          "signature": "protected array"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.asm",
-          "signature": "Option<std::sync::Arc<orm::plan::Assemble>>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.indexes",
-          "signature": "Map<string, number>"
-        }
-      },
-      "adapter": "Projection metadata is derived once from the shared Assemble record; PHP separates idx/hidden/cascade."
-    },
-    {
-      "id": "Collection.items",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Collection#field.items",
-          "signature": "map[Key]*T"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Collection::$items",
-          "signature": "private array"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Collection#field.items",
-          "signature": "IndexMap<Key,T>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Collection#field.items",
-          "signature": "Map<string, { key: Key; value: T }>"
-        }
-      },
-      "adapter": "Go ordered keys plus map; Rust IndexMap; PHP encoded key identities and typed entry values. Mixed-key vectors verify all forms."
-    },
-    {
-      "id": "Page.items",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Page#field.Items",
-          "signature": "*Collection[T]"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page::$items",
-          "signature": "public readonly Orm\\Collection"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Page#field.items",
-          "signature": "Collection<T>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Page#field.items",
-          "signature": "Collection<T>"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Page.total",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Page#field.Total",
-          "signature": "int64"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page::$total",
-          "signature": "public readonly int"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Page#field.total",
-          "signature": "i64"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Page#field.total",
-          "signature": "number"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Page.pages",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Page#field.Pages",
-          "signature": "int64"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page::$pages",
-          "signature": "public readonly int"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Page#field.pages",
-          "signature": "i64"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Page#field.pages",
-          "signature": "number"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Page.current",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Page#field.Current",
-          "signature": "int64"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page::$current",
-          "signature": "public readonly int"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Page#field.current",
-          "signature": "i64"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Page#field.current",
-          "signature": "number"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Page.per",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Page#field.Per",
-          "signature": "int64"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page::$per",
-          "signature": "public readonly int"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Page#field.per",
-          "signature": "i64"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Page#field.per",
-          "signature": "number"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Tx.state",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Tx#field.finished",
-          "signature": "atomic.Bool"
-        },
-        "php": {
-          "symbol": "clients/php/src/Db.php::Orm\\Tx::$finished",
-          "signature": "private bool"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/db.rs::Tx#field.finished",
-          "signature": "Arc<AtomicBool>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/database.ts::Tx#field.active",
-          "signature": "boolean"
-        }
-      },
-      "adapter": ""
-    },
-    {
-      "id": "Row.identity",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Row#field.keyVals",
-          "signature": "[]any"
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Row::$identity",
-          "signature": "protected array"
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row#field.original_key",
-          "signature": "Option < Vec < Param > >"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Row#field.identity",
-          "signature": "unknown[]"
-        }
-      }
-    }
-  ],
+  "storage": [],
   "owners": [
-    {
-      "id": "Query",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Query",
-          "fields": [
-            "binding",
-            "q",
-            "keyFn"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}",
-          "fields": []
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}",
-          "fields": [
-            "binding",
-            "q",
-            "key_fn"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Query",
-          "fields": []
-        }
-      }
-    },
-    {
-      "id": "QueryCore",
-      "for": "once",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::Q",
-          "fields": [
-            "Req",
-            "Node",
-            "LinkLeft",
-            "LinkRight",
-            "pendingOr"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Q",
-          "fields": [
-            "binding",
-            "req",
-            "node",
-            "pendingOr",
-            "rootW",
-            "keyFn"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Q",
-          "fields": [
-            "req",
-            "link_left",
-            "link_right",
-            "pending_or"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::QueryCore",
-          "fields": [
-            "request",
-            "binding",
-            "keySelector",
-            "linkSelection",
-            "rootWhere"
-          ]
-        }
-      }
-    },
-    {
-      "id": "Where",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Where",
-          "fields": [
-            "w"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Where",
-          "fields": [
-            "w"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Where",
-          "fields": [
-            "w"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Where",
-          "fields": [
-            "core"
-          ]
-        }
-      }
-    },
-    {
-      "id": "WhereCore",
-      "for": "once",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/builder.go::W",
-          "fields": [
-            "Req",
-            "G",
-            "pendingOr"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\W",
-          "fields": [
-            "pendingOr",
-            "req",
-            "g"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::W",
-          "fields": [
-            "params",
-            "g",
-            "pending_or"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::WhereCore",
-          "fields": [
-            "request",
-            "group",
-            "pendingConnector"
-          ]
-        }
-      }
-    },
-    {
-      "id": "Request",
-      "for": "once",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Req",
-          "fields": [
-            "IR",
-            "Params",
-            "Err"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/src/Query.php::Orm\\Req",
-          "fields": [
-            "ir",
-            "params",
-            "error",
-            "sig"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/builder.rs::Req",
-          "fields": [
-            "ir",
-            "params",
-            "err"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::RequestState",
-          "fields": [
-            "ir",
-            "params",
-            "deferredError"
-          ]
-        }
-      }
-    },
-    {
-      "id": "Binding",
-      "for": "once",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/binding.go::Binding",
-          "fields": [
-            "ctx",
-            "ex"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/src/Binding.php::Orm\\Binding",
-          "fields": [
-            "executor"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/binding.rs::Binding",
-          "fields": [
-            "0"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/builder.ts::Binding",
-          "fields": [
-            "executor"
-          ]
-        }
-      }
-    },
-    {
-      "id": "Row",
-      "for": "entity",
-      "native": {
-        "go": {
-          "symbol": "clients/go/gen/{entity}.go::{Entity}Row",
-          "fields": [
-            "Row",
-            "{columns}",
-            "{relations}"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/gen/{Entity}.php::App\\Orm\\{Entity}Row",
-          "fields": []
-        },
-        "rust": {
-          "symbol": "clients/rust/gen/src/{entity}.rs::{Entity}Row",
-          "fields": [
-            "binding",
-            "{columns}",
-            "{relations}",
-            "assigned",
-            "original_version",
-            "original_key",
-            "dirty",
-            "enc_err",
-            "extra",
-            "asm"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/gen/entities.ts::{Entity}Row",
-          "fields": []
-        }
-      }
-    },
-    {
-      "id": "Collection",
-      "for": "once",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/orm.go::Collection",
-          "fields": [
-            "keys",
-            "items"
-          ]
-        },
-        "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Collection",
-          "fields": [
-            "items"
-          ]
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/collection.rs::Collection",
-          "fields": [
-            "items"
-          ]
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Collection",
-          "fields": [
-            "items"
-          ]
-        }
-      }
-    },
     {
       "id": "Page",
       "for": "once",
       "native": {
         "go": {
-          "symbol": "clients/go/orm/orm.go::Page",
+          "symbol": "clients/go/orm/collection.go::Page",
           "fields": [
             "Items",
-            "Total",
-            "Pages",
-            "Current",
-            "Per"
+            "TotalCount",
+            "TotalPages",
+            "Page",
+            "PerPage"
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Row.php::Orm\\Page",
+          "symbol": "clients/php/src/Collection.php::Orm\\Page",
           "fields": [
             "items",
-            "total",
-            "pages",
-            "current",
-            "per"
+            "totalCount",
+            "totalPages",
+            "page",
+            "perPage"
           ]
         },
         "rust": {
           "symbol": "clients/rust/orm/src/collection.rs::Page",
           "fields": [
             "items",
-            "total",
-            "pages",
-            "current",
-            "per"
+            "total_count",
+            "total_pages",
+            "page",
+            "per_page"
           ]
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Page",
           "fields": [
             "items",
-            "total",
-            "pages",
+            "totalCount",
+            "totalPages",
+            "page",
+            "perPage"
+          ]
+        }
+      }
+    },
+    {
+      "id": "AESRotationStatus",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::AESRotationStatus",
+          "fields": [
+            "Current",
+            "Total",
+            "Pending",
+            "Versions"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/AesKeyring.php::Orm\\AesRotationStatus",
+          "fields": [
             "current",
-            "per"
+            "total",
+            "pending",
+            "versions"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::AesRotationStatus",
+          "fields": [
+            "current",
+            "total",
+            "pending",
+            "versions"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::AesRotationStatus",
+          "fields": [
+            "current",
+            "total",
+            "pending",
+            "versions"
           ]
         }
       }
     }
-  ],
-  "compiler_transport": {
-    "service": "orm.compiler.v1.CompilerService",
-    "path": "/orm.compiler.v1.CompilerService/",
-    "operations": {
-      "compile": {
-        "rpc": "Compile",
-        "input": "CompileRequest",
-        "output": "Plan",
-        "error": "CompileError"
-      },
-      "metadata": {
-        "rpc": "GetMetadata",
-        "input": "GetMetadataRequest",
-        "output": "GetMetadataResponse",
-        "error": "TransportError"
-      }
-    },
-    "native": {
-      "go": {
-        "file": "clients/go/orm/compiler_transport.go",
-        "interface": "CompilerTransport",
-        "implementation": "ConnectCompiler",
-        "compile": "Compile",
-        "metadata": "Metadata"
-      },
-      "php": {
-        "file": "clients/php/src/CompilerTransport.php",
-        "implementation_file": "clients/php/src/ConnectCompiler.php",
-        "interface": "CompilerTransport",
-        "implementation": "ConnectCompiler",
-        "compile": "compile",
-        "metadata": "metadata"
-      },
-      "rust": {
-        "file": "clients/rust/orm/src/compiler_transport.rs",
-        "interface": "CompilerTransport",
-        "implementation": "ConnectCompiler",
-        "compile": "compile",
-        "metadata": "metadata"
-      },
-      "typescript": {
-        "file": "clients/typescript/src/compiler.ts",
-        "interface": "CompilerTransport",
-        "implementation": "ConnectCompiler",
-        "compile": "compile",
-        "metadata": "metadata"
-      }
-    }
-  }
+  ]
 }

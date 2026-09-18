@@ -18,10 +18,11 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
-| `curlfile` | convert upload records, then serialize | unserialize, then restore upload records | `['curlfile','serialize']` |
 | `yaml` | YAML 1.2 document | YAML 1.2 parse | single document and common value model |
 
 ## Value model
+A `json` or `jsons` stage stores its text in a `jsontext` column, which is text on the three databases, so the stored text is read back as written. Data queried inside the database is modeled as columns or a child table; the ORM has no JSON path conditions and no JSON indexes.
+
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. JSON and JSONS columns use the ordered-json value tree, which preserves object member order and distinguishes an empty object from an empty array.
 
 The Go JSON codec returns `*orderedjson.Value` from `Decode` and accepts that value from `Encode`. It does not use Go's `encoding/json` for user values. Portable scalar/list/map values, named scalar types, and Go structs with `json` field tags are converted to ordered-json explicitly; parsed ordered-json values retain their original order and node kinds. `jsontext.Value` and `json.RawMessage` are accepted only as already-encoded raw JSON values and are parsed immediately into ordered-json. Unsupported Go kinds, non-string map keys, `[]byte`, and non-finite numbers return `CODEC_ENCODE`.
@@ -37,14 +38,6 @@ Go `[]byte` is not a common JSON value and JSON encoding rejects it with `CODEC_
 
 PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as a list; other keys are read as a map. Serialize-family codecs preserve the key representation. Go and Rust sort JSON map keys; PHP keeps insertion order, so bytes can differ while values remain equal.
 
-`curlfile` uses the following public record in every client:
-
-```json
-{"$type":"upload_file","path":"/tmp/report.txt","mime":"text/plain","name":"report.txt"}
-```
-
-Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","name":"report.txt","path":"/tmp/report.txt"}` before PHP serialization. Decoding restores the public record. `path` and `name` must be non-empty strings, `mime` must be a string, and no additional fields are allowed. The codec does not open the path or construct a PHP `CURLFile`; file I/O remains the caller's operation.
-
 `yaml` stores one YAML 1.2 document. Output values use the common value model. Mapping keys are strings; integral YAML keys are converted to decimal strings for compatibility with PHP arrays. Duplicate keys, multiple documents, aliases, anchors, explicit tags, non-finite numbers, collection keys, and plain boolean, null, or floating-point keys return `CODEC_DECODE`. YAML output text can differ by client, so verification compares decoded values across clients.
 
 `point` is a column type, not a style. Its public value is `[x, y]`: Go `orm.Point`, PHP `array{float,float}`, Rust `orm::Point`, and TypeScript `Point`. `parsePoint`/`parse_point`/`Codec::point` accept `POINT(x y)` and PostgreSQL `(x,y)` output. The write conversion emits `POINT(x y)`. Values with a coordinate count other than two return `CODEC_DECODE`; non-finite output coordinates return `CODEC_ENCODE`.
@@ -54,7 +47,6 @@ Encoding recursively converts it to `{"is_curl_file":true,"mime":"text/plain","n
 - NULL and an empty string are read as `null`.
 - `json` and `jsons` preserve `[]`, `{}`, `0`, and `""`. A parse failure returns `CODEC_DECODE`.
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.
-- An invalid public upload record returns `CODEC_ENCODE`. An invalid stored upload marker returns `CODEC_DECODE`. A `curlfile` stage outside the first position returns `CODEC_UNSUPPORTED`.
 - A YAML parse or value-model failure returns `CODEC_DECODE`. A YAML encode failure returns `CODEC_ENCODE`. A `yaml` stage outside the first position returns `CODEC_UNSUPPORTED`.
 - Invalid point input returns `CODEC_DECODE`. Point output containing NaN or infinity returns `CODEC_ENCODE`.
 - String lengths use byte length. Compressed bytes can vary by implementation, so `gz` guarantees equal round-trip values.

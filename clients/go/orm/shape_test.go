@@ -71,8 +71,11 @@ func eachMutation(v reflect.Value, path string, depth int, fn func(string)) {
 		m.SetMapIndex(reflect.ValueOf("k"), reflect.Zero(v.Type().Elem()))
 		v.Set(m)
 		fn(path + "{}")
-		m.SetMapIndex(reflect.ValueOf("k"), reflect.ValueOf("v"))
-		fn(path + "{k}")
+		elem := reflect.New(v.Type().Elem()).Elem()
+		eachMutation(elem, path+"{k}", depth+1, func(p string) {
+			m.SetMapIndex(reflect.ValueOf("k"), elem)
+			fn(p)
+		})
 		v.Set(reflect.Zero(v.Type()))
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
@@ -84,16 +87,16 @@ func eachMutation(v reflect.Value, path string, depth int, fn func(string)) {
 }
 
 func TestShapeIgnoresParamValues(t *testing.T) {
-	a := &Req{}
-	b := &Req{}
-	for _, r := range []*Req{a, b} {
-		r.IR.Kind = "all"
-		r.IR.Entity = "battle"
-		i := r.P(int64(len(r.Params)))
-		r.IR.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: &i}}}}
+	a := &request{}
+	b := &request{}
+	for _, r := range []*request{a, b} {
+		r.ir.Kind = "all"
+		r.ir.Entity = "battle"
+		i := r.param(int64(len(r.params)))
+		r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: &i}}}}
 	}
-	a.Params[0], b.Params[0] = int64(1), int64(2)
-	if shapeKey(&a.IR) != shapeKey(&b.IR) {
+	a.params[0], b.params[0] = int64(1), int64(2)
+	if shapeKey(&a.ir) != shapeKey(&b.ir) {
 		t.Error("different param values must share a shape")
 	}
 	if PlanID(0x1f) != "000000000000001f" {

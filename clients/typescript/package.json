@@ -1,16 +1,24 @@
 {
   "name": "@polyspec/orm-typescript",
   "version": "0.0.1",
-  "description": "TypeScript executor for the shared orm compiler and database plans",
+  "description": "TypeScript ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/polyspec/orm.git"
   },
-  "keywords": ["orm", "mysql", "postgres", "sqlite", "protobuf", "connect"],
+  "keywords": [
+    "orm",
+    "mysql",
+    "postgres",
+    "sqlite"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
+  },
+  "bin": {
+    "orm-gen": "./dist/bin/orm-gen.js"
   },
   "exports": {
     ".": {
@@ -22,17 +30,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json && npm run models && tsc -p tsconfig.build.json",
+    "models": "node dist/bin/orm-gen.js gen --schema ../../schema/schema.json --out src/models --scan ../../tests/conformance/runner_typescript.mjs --scan tests --scan ../../tests/typescript"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.15.0",
-    "@connectrpc/connect": "^2.2.0",
-    "@connectrpc/connect-node": "^2.2.0",
     "mysql2": "^3.24.4",
-    "pg": "^8.23.0",
-    "pg-query-stream": "4.17.0",
     "ordered-json": "https://github.com/polyspec/ordered-json/archive/6d23a2a.tar.gz",
-    "smol-toml": "1.8.0",
+    "pg": "^8.23.0",
+    "typescript": "^5.9.2",
     "yaml": "2.9.1"
   },
   "devDependencies": {

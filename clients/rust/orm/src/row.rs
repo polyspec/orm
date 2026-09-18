@@ -13,6 +13,7 @@ use sqlx::postgres::PgRow;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{Column, Row as _, TypeInfo, ValueRef as _};
 
+use crate::db::Zone;
 use crate::value::Val;
 use crate::{Error, Result};
 
@@ -262,7 +263,7 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
 /// Reads one PostgreSQL cell by its column type: integers of every width as i64, float and
 /// numeric as f64, boolean, timestamp(tz) and date, jsonb/json parsed, bytea as text-or-bytes,
 /// inet as its text (the plans select `host(col)`, so this is for raw statements).
-pub fn read_cell_pg(row: &PgRow, i: usize) -> Result<Val> {
+pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
     let v = match row.column(i).type_info().name() {
         "INT2" => row
             .try_get::<Option<i16>, _>(i)?
@@ -282,9 +283,10 @@ pub fn read_cell_pg(row: &PgRow, i: usize) -> Result<Val> {
         "TIMESTAMP" => row
             .try_get::<Option<NaiveDateTime>, _>(i)?
             .map(Val::DateTime),
+        // an instant, shown as wall-clock time in the connection zone
         "TIMESTAMPTZ" => row
             .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?
-            .map(|t| Val::DateTime(t.naive_utc())),
+            .map(|t| Val::DateTime(zone.local(t))),
         "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
         "JSONB" | "JSON" => row
             .try_get::<Option<serde_json::Value>, _>(i)?
@@ -329,17 +331,17 @@ pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
 }
 
 /// Reads one cell as a `Val` by its column type, whichever driver produced the row.
-pub fn read_cell(row: &DriverRow, i: usize) -> Result<Val> {
+pub fn read_cell(row: &DriverRow, i: usize, zone: Zone) -> Result<Val> {
     match row {
         DriverRow::MySql(r) => read_cell_mysql(r, i),
-        DriverRow::Postgres(r) => read_cell_pg(r, i),
+        DriverRow::Postgres(r) => read_cell_pg(r, i, zone),
         DriverRow::Sqlite(r) => read_cell_sqlite(r, i),
     }
 }
 
 /// Reads one positional row of `n` cells.
-pub fn read_row(row: &DriverRow, n: usize) -> Result<Vec<Val>> {
-    (0..n).map(|i| read_cell(row, i)).collect()
+pub fn read_row(row: &DriverRow, n: usize, zone: Zone) -> Result<Vec<Val>> {
+    (0..n).map(|i| read_cell(row, i, zone)).collect()
 }
 
 /// Decodes styled cells of every positional row of a step in place: the host stages a

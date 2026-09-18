@@ -1,5 +1,5 @@
 {
-  "schema_hash": "37a6106a33435373",
+  "schema_hash": "07c725aadc45a65d",
   "order": [
     "battle",
     "user",
@@ -36,26 +36,7 @@
           "len": 191
         }
       ],
-      "relations": {
-        "projects": {
-          "name": "projects",
-          "kind": "many",
-          "target": "project",
-          "keys": [
-            {
-              "local": "seq",
-              "target": "account_seq"
-            }
-          ],
-          "through": "account_project",
-          "through_keys": [
-            {
-              "local": "project_seq",
-              "target": "seq"
-            }
-          ]
-        }
-      }
+      "relations": {}
     },
     "account_project": {
       "name": "account_project",
@@ -351,8 +332,8 @@
         },
         {
           "name": "json_setting",
-          "type": "json",
-          "raw": "json",
+          "type": "jsontext",
+          "raw": "jsontext",
           "nullable": true,
           "lazy": true,
           "styles": [
@@ -361,8 +342,8 @@
         },
         {
           "name": "jsons_tags",
-          "type": "text",
-          "raw": "text",
+          "type": "jsontext",
+          "raw": "jsontext",
           "nullable": true,
           "lazy": true,
           "styles": [
@@ -474,17 +455,6 @@
         "created": "created_ts",
         "updated": "updated_ts"
       },
-      "predicates": {
-        "started_after": {
-          "expr": "`start_dt` \u003e ?",
-          "arity": 1
-        },
-        "visible": {
-          "expr": "`is_close` = FALSE AND `is_display` = TRUE",
-          "arity": 0
-        }
-      },
-      "scope": "service_seq",
       "aes_version": "aes_key_version"
     },
     "composite_account": {
@@ -611,26 +581,7 @@
           "len": 191
         }
       ],
-      "relations": {
-        "accounts": {
-          "name": "accounts",
-          "kind": "many",
-          "target": "account",
-          "keys": [
-            {
-              "local": "seq",
-              "target": "project_seq"
-            }
-          ],
-          "through": "account_project",
-          "through_keys": [
-            {
-              "local": "account_seq",
-              "target": "seq"
-            }
-          ]
-        }
-      }
+      "relations": {}
     },
     "service": {
       "name": "service",

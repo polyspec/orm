@@ -1,42 +1,46 @@
-//! Rust executor for the orm engine. Generated code (clients/rust/gen) builds
-//! value-free IR requests; this crate compiles them through the wasm engine
-//! (cached by IR shape), runs the plan with sqlx and maps positional rows.
+//! The Rust ORM runtime. Generated models record requests; this crate plans
+//! them into SQL for the connection's database (cached by request shape), runs
+//! the statements with sqlx, and assembles models.
 
-pub mod aes_rotation;
-pub mod builder;
+pub mod args;
 pub mod codec;
 pub mod codes;
 pub mod collection;
-pub mod config;
+pub mod core;
 pub mod db;
+mod driver;
 pub mod engine;
 pub mod ir;
-pub mod keyset;
+pub mod model;
 pub mod plan;
+mod request;
 pub mod row;
+pub mod schema;
+pub mod tx;
+pub mod utils;
 pub mod value;
-pub mod compiler_proto {
-    include!("gen/orm/compiler/v1/orm.compiler.v1.rs");
-}
-pub mod compiler_bridge;
-pub mod compiler_transport;
 
-pub use builder::{Q, W};
-pub use collection::{Collection, Key, KeysetPage, Page};
-pub use compiler_transport::{CompilerTransport, ConnectCompiler};
-pub use config::OrmConfig;
-pub use db::{
-    batch_write, BatchOptions, BatchResult, ConnectOptions, Db, Exec, IsolationLevel, Pool,
-    TransactionOptions, Tx,
+pub use chrono;
+pub use serde;
+pub use serde_json;
+pub use args::{
+    date, day_of_week, days_ago, days_later, distance, hours_ago, hours_later, minutes_ago, minutes_later, month,
+    months_ago, months_later, now, point_x, point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
 };
-pub use engine::Engine;
-pub use row::{Cells, Src};
-pub use value::{parse_point, point_text, Param, Point};
+pub use collection::{Collection, Key, Page};
+pub use core::Core;
+pub use db::{Config, Db, DbStats, OnQuery, Statement};
+pub use engine::Dialect;
+pub use model::{AnyModel, Entity, Model};
+pub use schema::{Manifest, Schema};
+pub use tx::{transaction_conflict, Isolation, Transaction};
+pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
+pub use value::{parse_point, point_text, Param, Point, Val};
 
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]
 pub enum Error {
-    /// Compile-time error from the engine (docs/protocol.md §3).
+    /// An error with a code from docs/errors.yaml.
     Engine { code: String, msg: String },
     /// Driver error.
     Sqlx(sqlx::Error),
@@ -70,7 +74,9 @@ impl std::error::Error for Error {}
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite BUSY / LOCKED
 /// (5 / 6, primary code of any extended form: the other writer wins, re-run) → DEADLOCK,
-/// 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) → DUPLICATE_KEY, 787 / 1811 → FOREIGN_KEY. Everything else stays `Error::Sqlx`.
+/// 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) → DUPLICATE_KEY, 787 / 1811 → FOREIGN_KEY. A statement
+/// stopped before it finished — MySQL 1317 / 3024, PostgreSQL 57014, SQLite 9 — maps to CANCELED.
+/// Everything else stays `Error::Sqlx`.
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
@@ -83,7 +89,14 @@ impl From<sqlx::Error> for Error {
                         Some((codes::DEADLOCK, m.message().to_owned()))
                     }
                     (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
+                    (1317, _) | (3024, _) => Some((codes::CANCELED, m.message().to_owned())),
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
+                    (1298, _) => {
+                        return Error::Config(format!(
+                            "dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)",
+                            m.message()
+                        ))
+                    }
                     _ => None,
                 }
             } else if let Some(p) = d.try_downcast_ref::<sqlx::postgres::PgDatabaseError>() {
@@ -92,6 +105,7 @@ impl From<sqlx::Error> for Error {
                     "40P01" | "40001" => Some((codes::DEADLOCK, msg())),
                     "23505" => Some((codes::DUPLICATE_KEY, msg())),
                     "23503" => Some((codes::FOREIGN_KEY, msg())),
+                    "57014" => Some((codes::CANCELED, msg())),
                     _ => None,
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
@@ -101,6 +115,7 @@ impl From<sqlx::Error> for Error {
                     (5, _) | (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
                     (_, 787) | (_, 1811) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                    (9, _) => Some((codes::CANCELED, s.message().to_owned())),
                     _ => None,
                 }
             } else {
@@ -143,5 +158,15 @@ impl Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-pub use builder::ColRef;
-pub mod binding;
+
+/// Includes the models that `orm_build` generated in the build script as the
+/// module `model`.
+#[macro_export]
+macro_rules! models {
+    () => {
+        #[allow(dead_code, clippy::all)]
+        pub mod model {
+            include!(concat!(env!("OUT_DIR"), "/orm_model.rs"));
+        }
+    };
+}

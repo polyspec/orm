@@ -4,428 +4,521 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * The PDO executor: prepared-statement cache, bind resolution, and transactions.
- * Queries and loaded rows bind a Db or a Tx.
+ * A database connection: the PDO handle, its engine, the statement cache,
+ * and the transactions of the request.
  */
-final class TransactionOptions
+final class Db
 {
-    public function __construct(
-        public readonly bool $retryDeadlocks = false,
-        public readonly int $maxAttempts = 3,
-        public readonly string $isolation = 'default',
-        public readonly bool $readOnly = false,
-        public readonly int $timeoutMs = 0,
-    ) {
-        if ($this->maxAttempts < 1) {
-            throw new OrmException(Code::CONFIG, 'transaction maxAttempts must be at least 1');
-        }
-        if (!in_array($this->isolation, ['default', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
-            throw new OrmException(Code::CONFIG, "unsupported transaction isolation {$this->isolation}");
-        }
-        if ($this->timeoutMs < 0) throw new OrmException(Code::CONFIG, 'transaction timeout_ms must not be negative');
-    }
-}
-
-final class BatchOptions
-{
-    public function __construct(public readonly int $chunkSize = 1000)
-    {
-        if ($this->chunkSize < 1) throw new OrmException(Code::CONFIG, 'batch chunkSize must be positive');
-    }
-}
-
-final class BatchResult
-{
-    public function __construct(public readonly int $attempted, public readonly int $affected, public readonly int $inserted) {}
-}
-
-class Db
-{
-    /**
-     * Decided by measurement (clients/php/tests/bench_emulate.php, S5, p50 µs, off → on):
-     * cold (prepare + execute, what a PHP-FPM request pays once per statement shape since
-     * PDOStatements do not outlive the request): pk 72 → 48, IN(8) 107 → 75, 100 rows 460 → 382;
-     * warm (statement reused in-process): pk 33 → 49, IN(8) 75 → 84, 100 rows 435 → 400.
-     * Web requests run most shapes once, so emulation wins; a CLI loop re-running one small
-     * statement pays ~15µs more per execution (the server re-parses the text protocol query).
-     * Types are unchanged: mysqlnd returns native ints/floats, INET6_NTOA strings and JSON text
-     * in both modes (the conformance runner prints identical output). The DSN must carry
-     * charset=utf8mb4: the client-side quoting uses the connection charset.
-     */
-    public const EMULATE_PREPARES = true;
-
-    /** the databases a Db can speak; the plans are dialect text, so ormd runs with the same `-dialect` */
     public const DRIVERS = ['mysql', 'postgres', 'sqlite'];
-    /** what the on_query hook and sql() show in place of a secret / `now` bind */
     public const SECRET = '$SECRET';
     public const NOW = '$NOW';
 
-    /** Open the database selected by a mysql://, postgres://, or sqlite:// DSN. */
-    public static function connect(string $dsn, bool $persistent = true): self
-    {
-        $driver = self::driverFromDsn($dsn);
-        $parts = $driver === 'sqlite' ? ['scheme' => 'sqlite', 'path' => substr($dsn, strlen('sqlite://'))] : parse_url($dsn);
-        if ($parts === false) throw new OrmException(Code::CONFIG, 'invalid DSN URI');
-        try {
-            return match ($driver) {
-                'mysql' => self::mysql(self::mysqlUriToPdo($parts), $parts['user'] ?? '', $parts['pass'] ?? '', $persistent),
-                'postgres' => self::postgres(self::postgresUriToPdo($parts), $parts['user'] ?? null, $parts['pass'] ?? null, $persistent),
-                'sqlite' => self::sqlite(self::sqliteUriToPath($parts), $persistent),
-                default => throw new OrmException(Code::CONFIG, "unsupported DSN scheme {$driver}; want mysql, postgres, or sqlite"),
-            };
-        } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
-        }
-    }
-
-    /** Returns the driver selected by a canonical DSN URI. */
-    public static function driverFromDsn(string $dsn): string
-    {
-        if (!preg_match('/^([a-z][a-z0-9+.-]*):\/\//i', $dsn, $match)) {
-            throw new OrmException(Code::CONFIG, 'dsn must be a URI using mysql://, postgres://, or sqlite://');
-        }
-        $driver = strtolower($match[1]);
-        if (!in_array($driver, self::DRIVERS, true)) {
-            throw new OrmException(Code::CONFIG, "unsupported DSN scheme {$driver}; want mysql, postgres, or sqlite");
-        }
-        return $driver;
-    }
-
-    /** @param array<string,mixed> $parts */
-    private static function mysqlUriToPdo(array $parts): string
-    {
-        $query = [];
-        parse_str((string) ($parts['query'] ?? ''), $query);
-        $db = ltrim((string) ($parts['path'] ?? ''), '/');
-        if ($db === '') throw new OrmException(Code::CONFIG, 'mysql DSN must include a database');
-        if (isset($query['socket'])) return 'mysql:unix_socket=' . $query['socket'] . ';dbname=' . $db . ';charset=utf8mb4';
-        if (!isset($parts['host']) || $parts['host'] === '') throw new OrmException(Code::CONFIG, 'mysql DSN must include a host');
-        $dsn = 'mysql:host=' . $parts['host'];
-        if (isset($parts['port'])) $dsn .= ';port=' . $parts['port'];
-        return $dsn . ';dbname=' . $db . ';charset=utf8mb4';
-    }
-
-    /** @param array<string,mixed> $parts */
-    private static function postgresUriToPdo(array $parts): string
-    {
-        $db = ltrim((string) ($parts['path'] ?? ''), '/');
-        if ($db === '' || !isset($parts['host']) || $parts['host'] === '') throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
-        $dsn = 'pgsql:host=' . $parts['host'] . ';port=' . ($parts['port'] ?? 5432) . ';dbname=' . $db;
-        parse_str((string) ($parts['query'] ?? ''), $query);
-        if (isset($query['sslmode'])) $dsn .= ';sslmode=' . $query['sslmode'];
-        return $dsn;
-    }
-
-    /** @param array<string,mixed> $parts */
-    private static function sqliteUriToPath(array $parts): string
-    {
-        $path = (string) ($parts['path'] ?? '');
-        if ($path === '' || $path[0] !== '/') throw new OrmException(Code::CONFIG, 'sqlite DSN path must be absolute');
-        return $path;
-    }
+    /** @var list<TxFrame> active transactions of the request, innermost last */
+    private static array $frames = [];
 
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
-	private array $stmtOrder = [];
-	private bool $closed = false;
-    /** @var array<int, string> positions in the last args() result the on_query hook masks (secret → "$SECRET", now → "$NOW") */
+    /** @var list<string> */
+    private array $stmtOrder = [];
+    private bool $closed = false;
+    /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
-    /**
-     * whether the last args() result needs typed binding: a bool (PDO sends '' / '1' as text; MySQL wants 0 / 1,
-     * PostgreSQL a boolean, SQLite an integer), a Bytes (bytea / BLOB), or SQLite at all (an int bound as text
-     * compares as text against an expression without affinity: COUNT(*) > '1' is never true)
-     */
     private bool $typed = false;
-    private readonly Transport $compiler;
 
-    public function __construct(public readonly \PDO $pdo, private readonly string $driver = 'mysql', ?Transport $compiler = null)
-    {
-        if (!in_array($driver, self::DRIVERS, true)) {
-            throw new OrmException(Code::CONFIG, "driver $driver: want mysql, postgres or sqlite");
-        }
-        if (($cfg = Orm::config())->driver !== $driver) {
-            throw new OrmException(Code::CONFIG, "Db speaks $driver but Orm::init was given driver {$cfg->driver}");
-        }
+    /** @internal Orm::connect creates connections. */
+    public function __construct(
+        private readonly \PDO $pdo,
+        private readonly string $driver,
+        private readonly Config $config,
+        private readonly Engine $engine,
+        private readonly \DateTimeZone $zone,
+    ) {
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        // pdo_pgsql / pdo_sqlite prepare natively: the plan's placeholders reach the server, types come from the column
-        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql' && self::EMULATE_PREPARES);
+        // MySQL uses emulated prepares: a request runs most statement shapes once.
+        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
-        $this->compiler = $compiler ?? Orm::transport();
-    }
-
-    /** Open a MySQL connection with FOUND_ROWS, persistence, and utf8mb4 enabled. */
-    public static function mysql(string $dsn, string $user, string $password, bool $persistent = true): self
-    {
-        $opts = [
-            \PDO::ATTR_PERSISTENT => $persistent,
-            \Pdo\Mysql::ATTR_FOUND_ROWS => true,
-        ];
-        try {
-            return new self(new \PDO($dsn, $user, $password, $opts), 'mysql');
-        } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
-        }
     }
 
     /**
-     * Open a PostgreSQL connection (pdo_pgsql): `pgsql:host=…;port=…;dbname=…[;user=…]`. The user and password
-     * may come from the DSN instead. Booleans are bound as booleans, ints as ints, binary values as bytea;
-     * the rows come back typed (bool, int; numeric as text, jsonb and inet as text, bytea as a stream the codec reads).
+     * The configured maximum of connections a process opens for this
+     * database. PDO has no pool: a Db holds one connection, so the value is
+     * the bound a caller keeps when it creates connections.
      */
-    public static function postgres(string $dsn, ?string $user = null, ?string $password = null, bool $persistent = true): self
+    public function poolSize(): int
     {
-        if (str_starts_with($dsn, 'postgres://') || str_starts_with($dsn, 'postgresql://')) {
-            $url = parse_url($dsn);
-            if ($url === false || !isset($url['host'], $url['path'])) {
-                throw new OrmException(Code::CONFIG, "invalid PostgreSQL URL $dsn");
-            }
-            parse_str($url['query'] ?? '', $query);
-            $parts = ['host=' . $url['host'], 'port=' . ($url['port'] ?? 5432), 'dbname=' . ltrim($url['path'], '/')];
-            if ($user === null && isset($url['user'])) $user = rawurldecode($url['user']);
-            if ($password === null && isset($url['pass'])) $password = rawurldecode($url['pass']);
-            if (isset($query['sslmode'])) $parts[] = 'sslmode=' . $query['sslmode'];
-            $dsn = 'pgsql:' . implode(';', $parts);
-        }
-        try {
-            return new self(new \PDO($dsn, $user, $password, [\PDO::ATTR_PERSISTENT => $persistent]), 'postgres');
-        } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
-        }
+        return $this->config->poolSize;
     }
 
-    /**
-     * Open a SQLite database file (pdo_sqlite; the path is absolute and declared, as every path here).
-     * busy_timeout 5s and WAL are set on open so concurrent writers wait instead of failing at once;
-     * a lock that still cannot be taken is SQLITE_BUSY, mapped to DEADLOCK and re-run by transaction().
-     * Datetimes are text with six fraction digits (docs/dialects.md); the executor binds them in that form.
-     */
-    public static function sqlite(string $path, bool $persistent = true): self
-    {
-        if (!str_starts_with($path, '/')) {
-            throw new OrmException(Code::CONFIG, "sqlite path must be absolute: $path");
-        }
-        try {
-            $pdo = new \PDO('sqlite:' . $path, null, null, [\PDO::ATTR_PERSISTENT => $persistent]);
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            $pdo->exec('PRAGMA foreign_keys=ON');
-            $pdo->exec('PRAGMA busy_timeout=5000');
-            $pdo->exec('PRAGMA journal_mode=WAL');
-            return new self($pdo, 'sqlite');
-        } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot open: ' . $e->getMessage(), $e);
-        }
-    }
-
-    /** The database this Db talks to (mysql | postgres | sqlite). */
+    /** The database of the connection: mysql, postgres, or sqlite. */
     public function driver(): string
     {
         return $this->driver;
     }
 
-    public function db(): Db
+    /** @internal the connection time zone */
+    public function zone(): \DateTimeZone
     {
-        return $this;
+        return $this->zone;
     }
 
-    public function planFor(Req $req, string $kind): array
+    /** @internal */
+    public function config(): Config
     {
-        return $this->compiler->planFor($req, $kind);
+        return $this->config;
     }
 
-    public function compiler(): Transport
+    /** @internal */
+    public function pdo(): \PDO
     {
-        return $this->compiler;
-    }
-
-    public function stmt(string $sql): \PDOStatement
-    {
-		if ($this->closed) throw new OrmException(Code::CONFIG, 'database is closed');
-		if (isset($this->stmts[$sql])) return $this->stmts[$sql];
-		$statement = $this->pdo->prepare($this->driver === 'postgres' ? self::questionMarks($sql) : $sql);
-		$this->stmts[$sql] = $statement;
-		$this->stmtOrder[] = $sql;
-		$limit = Orm::config()->statementCacheSize;
-		while (count($this->stmtOrder) > $limit) {
-			$oldest = array_shift($this->stmtOrder);
-			if ($oldest !== null && isset($this->stmts[$oldest])) {
-				$this->stmts[$oldest]->closeCursor();
-				unset($this->stmts[$oldest]);
-			}
-		}
-		return $statement;
-    }
-
-	public function close(): void
-	{
-		if ($this->closed) return;
-		$this->closed = true;
-		foreach ($this->stmts as $statement) $statement->closeCursor();
-		$this->stmts = [];
-		$this->stmtOrder = [];
-	}
-
-    /**
-     * pdo_pgsql numbers placeholders itself and binds nothing to a `$n` it did not write, so a PostgreSQL
-     * statement is prepared from its `?` form: the plan has one `$k` per bind slot in slot order, so the
-     * positional binds line up. The dialect text is what the cache key, the hook and sql() show.
-     */
-    private static function questionMarks(string $sql): string
-    {
-        return preg_replace('/\$\d+/', '?', $sql);
-    }
-
-    /**
-     * Run $fn once inside a transaction. An exception rolls back.
-     * @template T
-     * @param \Closure(Tx): T $fn
-     * @param TransactionOptions|null $options
-     * @return T
-     */
-    public function transaction(\Closure $fn, ?TransactionOptions $options = null): mixed
-    {
-        $options ??= new TransactionOptions();
-        if ($options->timeoutMs > 0 && $this->driver !== 'postgres') {
-            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeout_ms is supported only by postgres');
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
         }
-        $last = null;
-        $attempts = $options->retryDeadlocks ? $options->maxAttempts : 1;
-        for ($attempt = 0; $attempt < $attempts; $attempt++) {
-            if ($this->driver !== 'postgres') $this->configureTransaction($options);
-            $this->pdo->beginTransaction();
-            $tx = new Tx($this);
+        return $this->pdo;
+    }
+
+    /** The operations outside the query syntax. */
+    public function utils(): Utils
+    {
+        return new Utils($this);
+    }
+
+    /** Releases cached statements; the connection cannot be used afterwards. */
+    public function close(): void
+    {
+        if ($this->closed) {
+            return;
+        }
+        $this->closed = true;
+        foreach ($this->stmts as $st) {
+            $st->closeCursor();
+        }
+        $this->stmts = [];
+        $this->stmtOrder = [];
+    }
+
+    public static function bindLimit(string $driver): int
+    {
+        return $driver === 'sqlite' ? 999 : 65535;
+    }
+
+    private function stmt(string $sql): \PDOStatement
+    {
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        if (isset($this->stmts[$sql])) {
+            return $this->stmts[$sql];
+        }
+        // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
+        $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
+        $this->stmts[$sql] = $st;
+        $this->stmtOrder[] = $sql;
+        while (count($this->stmtOrder) > $this->config->statementCacheSize) {
+            $oldest = array_shift($this->stmtOrder);
+            $this->stmts[$oldest]->closeCursor();
+            unset($this->stmts[$oldest]);
+        }
+        return $st;
+    }
+
+    // ---- transactions ----
+
+    /** @internal the innermost active transaction of the connection */
+    public static function activeFor(Db $db): ?TxFrame
+    {
+        for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
+            if (self::$frames[$i]->db === $db) {
+                return self::$frames[$i];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @internal where a model runs: the active transaction of its connection,
+     * the connection, or the innermost transaction for a model without one.
+     * @return array{0: Db, 1: ?TxFrame}
+     */
+    public static function resolve(?Db $conn): array
+    {
+        if ($conn !== null) {
+            if ($conn->closed) {
+                throw new OrmException(Code::CONFIG, 'database is closed');
+            }
+            return [$conn, self::activeFor($conn)];
+        }
+        $frame = self::$frames[count(self::$frames) - 1] ?? null;
+        if ($frame === null) {
+            throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a transaction');
+        }
+        return [$frame->db, $frame];
+    }
+
+    /** @internal runs $fn in a transaction of $conn, or directly inside the active one */
+    public static function inTransaction(?Db $conn, \Closure $fn): void
+    {
+        if ($conn === null) {
+            if (self::$frames === []) {
+                throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a transaction');
+            }
+            $fn();
+            return;
+        }
+        $conn->transaction($fn, retry: 0);
+    }
+
+    /**
+     * Runs $fn in one transaction and returns its result. An exception rolls
+     * back; models without connect inside $fn use this transaction. A
+     * transaction of the same connection inside an active one creates a
+     * savepoint and accepts only retry, which it ignores.
+     */
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3): mixed
+    {
+        if ($retry < 0) {
+            throw new OrmException(Code::CONFIG, 'transaction retry must not be negative');
+        }
+        if ($timeoutMs < 0) {
+            throw new OrmException(Code::CONFIG, 'transaction timeoutMs must not be negative');
+        }
+        if (!in_array($isolation, ['', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
+            throw new OrmException(Code::CONFIG, "unsupported transaction isolation $isolation");
+        }
+        $outer = self::activeFor($this);
+        if ($outer !== null) {
+            if ($isolation !== '' || $readOnly || $timeoutMs !== 0) {
+                throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the retry option');
+            }
+            return $this->savepoint($outer, $fn);
+        }
+        for ($attempt = 0; ; $attempt++) {
             try {
-                if ($this->driver === 'postgres') $this->configureTransaction($options);
-                if ($options->timeoutMs > 0) {
-                    $this->pdo->exec('SET LOCAL statement_timeout = ' . $options->timeoutMs);
-                }
-                $v = $fn($tx);
-                $this->pdo->commit();
-                return $v;
-            } catch (\Throwable $e) {
-                if ($this->pdo->inTransaction()) {
-                    $this->pdo->rollBack();
-                }
-                if ($e instanceof \PDOException) {
-                    $e = OrmException::fromDriver($e, $this->driver);
-                }
-                if (!$options->retryDeadlocks || !self::isDeadlock($e)) {
+                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
+            } catch (OrmException $e) {
+                if ($e->code_ !== Code::DEADLOCK || $attempt >= $retry) {
                     throw $e;
                 }
-                $last = $e;
                 usleep((50000 << $attempt) + random_int(0, 20000));
-            } finally {
-                $tx->finish();
             }
         }
-        throw $last;
     }
 
-    private function configureTransaction(TransactionOptions $options): void
+    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
     {
-        if ($this->driver === 'sqlite' && ($options->isolation !== 'default' || $options->readOnly)) {
-            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'sqlite does not support transaction isolation or read-only mode');
+        $frame = $this->begin($isolation, $readOnly, $timeoutMs);
+        self::$frames[] = $frame;
+        try {
+            $v = $fn();
+        } catch (\Throwable $e) {
+            array_pop(self::$frames);
+            $this->finish($frame, false);
+            throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
         }
-        if ($options->isolation !== 'default') {
-            $level = strtoupper(str_replace('_', ' ', $options->isolation));
-            try { $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level); }
-            catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver); }
-        }
-        if ($options->readOnly) {
-            try { $this->pdo->exec('SET TRANSACTION READ ONLY'); }
-            catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver); }
-        }
+        array_pop(self::$frames);
+        $this->finish($frame, true);
+        return $v;
     }
 
-    /** @param array{table:string, primary_keys:non-empty-list<string>, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
-    public function aesStatus(array $spec, AesKeyring $keyring): AesRotationStatus
+    private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
     {
-        $table = $this->aesIdentifier($spec['table']);
-        $version = $this->aesIdentifier($spec['version_column']);
-        $st = $this->stmt("SELECT $version, COUNT(*) FROM $table GROUP BY $version ORDER BY $version");
-        $st->execute();
-        $versions = []; $total = 0; $pending = 0;
-        while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
-            if ((!is_int($row[0]) && (!is_string($row[0]) || !ctype_digit($row[0])))
-                || (!is_int($row[1]) && (!is_string($row[1]) || !ctype_digit($row[1])))) {
-                throw new OrmException(Code::CODEC_DECODE, 'AES rotation status contains a non-integer value');
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        if ($timeoutMs > 0 && $this->driver !== 'postgres') {
+            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
+        }
+        $level = strtoupper(str_replace('_', ' ', $isolation));
+        try {
+            if ($this->driver === 'mysql') {
+                if ($isolation !== '') {
+                    $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level);
+                }
+                if ($readOnly) {
+                    $this->pdo->exec('SET TRANSACTION READ ONLY');
+                }
             }
-            $stored = (int) $row[0]; $count = (int) $row[1];
-            if ($stored < 1 || $count < 0) {
-                throw new OrmException(Code::CODEC_DECODE, 'AES rotation status contains an invalid value');
+            if ($this->driver === 'sqlite') {
+                $this->pdo->exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
             }
-            $versions[$stored] = $count; $total += $count;
-            if ($stored !== $keyring->currentVersion) { $pending += $count; }
+            $this->pdo->beginTransaction();
+            $frame = new TxFrame($this, $readOnly, $isolation);
+            if ($this->driver === 'postgres') {
+                if ($isolation !== '') {
+                    $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level);
+                }
+                if ($readOnly) {
+                    $this->pdo->exec('SET TRANSACTION READ ONLY');
+                }
+                if ($timeoutMs > 0) {
+                    $this->pdo->exec('SET LOCAL statement_timeout = ' . $timeoutMs);
+                }
+            }
+            if ($this->driver === 'sqlite') {
+                if ($isolation === 'read_uncommitted') {
+                    $this->pdo->exec('PRAGMA read_uncommitted = 1');
+                }
+                if ($readOnly) {
+                    $this->pdo->exec('PRAGMA query_only = 1');
+                }
+            }
+            return $frame;
+        } catch (\PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw OrmException::fromDriver($e, $this->driver);
         }
-        $st->closeCursor();
-        return new AesRotationStatus($keyring->currentVersion, $total, $pending, $versions);
     }
 
-    /** @param array{table:string, primary_keys:non-empty-list<string>, version_column:string, columns:list<array{name:string,styles:list<string>}>} $spec */
-    public function rotateAESRows(array $spec, AesKeyring $keyring): int
+    private function finish(TxFrame $frame, bool $commit): void
     {
-        if (!($this instanceof Tx)) {
-            return $this->transaction(fn(Tx $tx): int => $tx->rotateAESRows($spec, $keyring));
+        $frame->finished = true;
+        try {
+            foreach ($frame->locks as $key) {
+                $this->pdo->prepare('SELECT RELEASE_LOCK(?)')->execute([$key]);
+            }
+            if ($this->driver === 'mysql') {
+                foreach ($frame->locals as $key => $_) {
+                    $this->pdo->exec('SET @`orm.' . $key . '` = NULL');
+                }
+            }
+            if ($commit && $frame->contextRow) {
+                $this->pdo->exec('DELETE FROM "orm__context"');
+            }
+            if ($this->driver === 'sqlite') {
+                if ($frame->readOnly) {
+                    $this->pdo->exec('PRAGMA query_only = 0');
+                }
+                if ($frame->isolation === 'read_uncommitted') {
+                    $this->pdo->exec('PRAGMA read_uncommitted = 0');
+                }
+            }
+            $commit ? $this->pdo->commit() : $this->pdo->rollBack();
+        } catch (\PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw OrmException::fromDriver($e, $this->driver);
         }
-        $table = $this->aesIdentifier($spec['table']);
-        if (($spec['primary_keys'] ?? []) === []) { throw new OrmException(Code::CONFIG, 'AES rotation primary keys are empty'); }
-        $primary = array_map(fn(string $key): string => $this->aesIdentifier($key), $spec['primary_keys']);
-        $version = $this->aesIdentifier($spec['version_column']);
-        $columns = $spec['columns'];
-        if ($columns === []) { throw new OrmException(Code::CONFIG, 'AES rotation columns are empty'); }
-        $names = array_map(fn(array $column): string => $this->aesIdentifier($column['name']), $columns);
-        $batchSize = (int) ($spec['batch_size'] ?? 1000);
-        if ($batchSize < 1) { $batchSize = 1000; }
-        $select = $this->stmt("SELECT " . implode(', ', $primary) . ", $version, " . implode(', ', $names) . " FROM $table WHERE $version <> ? ORDER BY " . implode(', ', $primary) . " LIMIT " . $batchSize);
-        $select->execute([$keyring->currentVersion]);
-        $rows = $select->fetchAll(\PDO::FETCH_NUM);
-        $select->closeCursor();
-        $sets = array_map(fn(string $name): string => "$name = ?", $names);
-        $sets[] = "$version = ?";
-        $where = array_map(fn(string $key): string => "$key = ?", $primary);
-        $where[] = "$version = ?";
-        $update = $this->stmt("UPDATE $table SET " . implode(', ', $sets) . " WHERE " . implode(' AND ', $where));
-        $count = 0;
-        foreach ($rows as $values) {
-            $row = [];
-            foreach ($spec['primary_keys'] as $index => $key) { $row[$key] = $values[$index]; }
-            $row[$spec['version_column']] = (int) $values[count($primary)];
-            foreach ($columns as $index => $column) { $row[$column['name']] = $values[$index + count($primary) + 1]; }
-            $rotated = $keyring->rotateRow($row, $spec['version_column'], $columns, $keyring->currentVersion);
-            $args = [];
-            foreach ($columns as $column) { $value = $rotated[$column['name']]; $args[] = $value instanceof Bytes ? $value->data : $value; }
-            $args[] = $keyring->currentVersion;
-            foreach (array_slice($values, 0, count($primary)) as $keyValue) { $args[] = $keyValue; }
-            $args[] = (int) $values[count($primary)];
-            $update->execute($args);
-            if ($update->rowCount() !== 1) { throw new OrmException(Code::OPTIMISTIC_LOCK, "AES rotation changed {$spec['table']} primary key " . json_encode(array_slice($values, 0, count($primary)))); }
-            $count++;
-        }
-        return $count;
     }
 
-    private function aesIdentifier(string $value): string
+    private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
-        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $value)) { throw new OrmException(Code::CONFIG, "invalid generated identifier $value"); }
-        return $this->driver === 'mysql' ? "`$value`" : "\"$value\"";
-    }
-
-    public static function isDeadlock(\Throwable $e): bool
-    {
-        return $e instanceof OrmException && $e->code_ === Code::DEADLOCK;
+        $name = 'orm_sp_' . (++$frame->savepoints);
+        try {
+            $this->pdo->exec("SAVEPOINT $name");
+            self::$frames[] = $frame;
+            try {
+                $v = $fn();
+            } catch (\Throwable $e) {
+                array_pop(self::$frames);
+                $this->pdo->exec("ROLLBACK TO SAVEPOINT $name");
+                $this->pdo->exec("RELEASE SAVEPOINT $name");
+                throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            }
+            array_pop(self::$frames);
+            $this->pdo->exec("RELEASE SAVEPOINT $name");
+            return $v;
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
+        } finally {
+            $frame->savepoints--;
+        }
     }
 
     // ---- execution ----
 
+    private function enter(?TxFrame $frame, array $ir): void
+    {
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        if ($frame !== null && $frame->finished) {
+            throw new OrmException(Code::CONFIG, 'transaction already finished');
+        }
+        if (($ir['lock'] ?? '') !== '' && $frame === null) {
+            throw new OrmException(Code::CONFIG, 'row locks are allowed only inside a transaction');
+        }
+    }
+
+    private function plan(Request $r): array
+    {
+        return $this->engine->plan($r->shape());
+    }
+
+    /** @internal @return array{0: array, 1: array} the plan and its positional result */
+    public function select(?TxFrame $frame, Request $r): array
+    {
+        $this->enter($frame, $r->ir);
+        $plan = $this->plan($r);
+        $this->acquireSQLiteRowLock((string) ($r->ir['lock'] ?? ''));
+        $parts = $this->rootInParts($r, $plan['steps'][0]);
+        if ($parts !== []) {
+            $main = [];
+            $seen = [];
+            foreach ($parts as $part) {
+                $partPlan = $this->plan($part);
+                foreach ($this->query($partPlan['steps'][0], $part->params) as $row) {
+                    $key = self::rowKey($row, $partPlan['steps'][0]['assemble']['key']);
+                    if (!isset($seen[$key])) {
+                        $seen[$key] = true;
+                        $main[] = $row;
+                    }
+                }
+            }
+        } else {
+            $main = $this->query($plan['steps'][0], $r->params);
+        }
+        return [$plan, $this->relations($plan, $r->params, $main)];
+    }
+
+    /** @internal */
+    public function scalarOf(?TxFrame $frame, Request $r): mixed
+    {
+        $this->enter($frame, $r->ir);
+        $plan = $this->plan($r);
+        $parts = $this->rootInParts($r, $plan['steps'][0]);
+        if ($parts !== []) {
+            if ($r->ir['kind'] !== 'count') {
+                throw new OrmException(Code::IR_INVALID, 'a split IN list can be merged only for a count');
+            }
+            $total = 0;
+            foreach ($parts as $part) {
+                $total += (int) $this->scalar($this->plan($part)['steps'][0], $part->params);
+            }
+            return $total;
+        }
+        return $this->scalar($plan['steps'][0], $r->params);
+    }
+
+    /** @internal @return array{0: array, 1: array, 2: int} */
+    public function paginate(?TxFrame $frame, Request $r): array
+    {
+        $this->enter($frame, $r->ir);
+        $plan = $this->plan($r);
+        $main = $this->query($plan['steps'][0], $r->params);
+        $result = $this->relations($plan, $r->params, $main);
+        foreach ($plan['steps'] as $st) {
+            if (($st['role'] ?? '') === 'count') {
+                return [$plan, $result, (int) $this->scalar($st, $r->params)];
+            }
+        }
+        throw new OrmException(Code::INTERNAL, 'paginate plan has no count step');
+    }
+
+    /** @internal @return array{0: int|string|null, 1: int} the generated id and the affected rows */
+    public function writeOf(?TxFrame $frame, Request $r): array
+    {
+        $this->enter($frame, $r->ir);
+        $step = $this->plan($r)['steps'][0];
+        $args = $this->args($step, $r->params);
+        $insert = $r->ir['kind'] === 'insert';
+        $start = microtime(true);
+        $st = null;
+        try {
+            $st = $this->stmt($step['sql']);
+            $this->exec($st, $args);
+            if ($insert && str_contains($step['sql'], ' RETURNING ')) {
+                $id = $st->fetchColumn();
+                $st->closeCursor();
+                $affected = 1;
+            } else {
+                $affected = $st->rowCount();
+                $id = $insert && !isset($r->ir['rows']) ? $this->pdo->lastInsertId() : null;
+            }
+        } catch (\PDOException $e) {
+            $e = $this->failed($st, $e);
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
+            throw $e;
+        }
+        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
+        if (isset($r->ir['optimistic']) && $affected === 0) {
+            throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
+        }
+        return [$id, $affected];
+    }
+
+    /** @internal @return array{sql: string, binds: list<mixed>} */
+    public function statement(Request $r): array
+    {
+        $step = $this->plan($r)['steps'][0];
+        $args = $this->args($step, $r->params);
+        foreach ($this->masks as $i => $mask) {
+            $args[$i] = $mask;
+        }
+        foreach ($args as $i => $v) {
+            if ($v instanceof Bytes) {
+                $args[$i] = $v->bytes;
+            }
+        }
+        return ['sql' => $step['sql'], 'binds' => $args];
+    }
+
     /**
-     * @param list<mixed> $params request params; @param list<mixed> $parentVals values for the step's `parent` slot
-     * @param bool $dump render secret slots as "$SECRET" and now slots as "$NOW" (sql() dumps) instead of their values
+     * The executor clock in the connection time zone. PostgreSQL receives the
+     * offset because its columns store instants.
      */
-    private function args(array $step, array $params, array $parentVals = [], bool $dump = false): array
+    private function now(): string
+    {
+        return (new \DateTimeImmutable('now', $this->zone))->format($this->driver === 'postgres' ? 'Y-m-d H:i:s.uP' : 'Y-m-d H:i:s.u');
+    }
+
+    /**
+     * Writes a datetime or date value in the text form SQLite stores, so a
+     * string value compares equal to the stored value. A datetime string with
+     * an offset is converted to the connection time zone.
+     */
+    private function sqliteTimeValue(mixed $v, string $colType): mixed
+    {
+        if ($v instanceof \DateTimeInterface) {
+            return $colType === 'date'
+                ? \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d')
+                : $v;
+        }
+        if (!is_string($v)) {
+            return $v;
+        }
+        if ($colType === 'date') {
+            $d = preg_match('/^\d{4}-\d{2}-\d{2}$/D', $v) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $v) : false;
+            if ($d === false || $d->format('Y-m-d') !== $v) {
+                throw self::invalidTimeText($v, $colType);
+            }
+            return $v;
+        }
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?$/D', $v, $m) !== 1) {
+            throw self::invalidTimeText($v, $colType);
+        }
+        $fraction = $m[3] ?? '';
+        $text = $m[1] . ' ' . $m[2] . '.' . str_pad($fraction, 6, '0');
+        $zone = $m[4] ?? '';
+        if ($zone === '') {
+            $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.u', $text);
+            if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
+                throw self::invalidTimeText($v, $colType);
+            }
+            return $text;
+        }
+        $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($zone === 'Z' ? '+00:00' : $zone));
+        if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
+            throw self::invalidTimeText($v, $colType);
+        }
+        return $t->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
+    }
+
+    private static function invalidTimeText(string $v, string $colType): OrmException
+    {
+        $form = $colType === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:MM:SS[.ffffff][Z|±HH:MM]';
+        return new OrmException(Code::CODEC_ENCODE, "$colType value \"$v\" is not $form");
+    }
+
+    private function args(array $step, array $params, array $parentVals = []): array
     {
         $out = [];
         $this->masks = [];
         $this->typed = $this->driver === 'sqlite';
-        $cfg = Orm::config();
+        $cfg = $this->config;
+        // One statement reads the clock once, so its clock columns are equal.
+        $clock = null;
         foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
                 case 'parent':
@@ -435,53 +528,44 @@ class Db
                     break;
                 case 'param':
                     $v = $params[$b['param']];
-                    if (!empty($b['transform'])) {
+                    $colType = $b['col_type'] ?? '';
+                    if ($this->driver === 'sqlite' && ($colType === 'datetime' || $colType === 'date') && $v !== null) {
+                        $v = $this->sqliteTimeValue($v, $colType);
+                    }
+                    if ($v instanceof \DateTimeInterface) {
+                        $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
+                    }
+                    if (($b['transform'] ?? '') !== '') {
                         $v = Transform::apply($b['transform'], (string) $v);
                     } elseif (in_array('blind_index', $b['host_styles'] ?? [], true)) {
-                        if (count($b['host_styles'] ?? []) !== 1) throw new OrmException(Code::CONFIG, 'blind_index must be the only host style');
                         $v = Codec::blindIndex($v, $cfg->blindIndexKey);
-                    } elseif (!empty($b['host_styles'] ?? [])) {
-                        // the stages this dialect cannot run in SQL (aes/hex on PostgreSQL, plus ip on SQLite)
+                    } elseif (!empty($b['host_styles'])) {
                         $v = Codec::hostEncode($v, $b['host_styles'], $cfg->aesKey);
                         $this->typed = $this->typed || $v instanceof Bytes;
                     } elseif (is_bool($v) || $v instanceof Bytes) {
                         $this->typed = true;
                     }
-                    if ($this->driver === 'sqlite' && !empty($b['col_type'])) {
-                        $v = $this->sqliteTime($v);
-                    }
-                    if (($b['col_type'] ?? '') === 'point' && $v !== null) {
+                    if ($colType === 'point' && $v !== null) {
                         $v = $this->driver === 'postgres' ? Codec::postgresPointText($v) : Codec::pointText($v);
                     }
                     $out[] = $v;
                     break;
                 case 'secret':
-                    if ($dump) {
-                        $out[] = self::SECRET;
-                        break;
+                    if (($b['name'] ?? '') !== 'aes' || $cfg->aesKey === '') {
+                        throw new OrmException(Code::CONFIG, "secret {$b['name']} is not configured");
                     }
                     $this->masks[count($out)] = self::SECRET;
-                    if (($b['name'] ?? '') === 'aes' && $cfg->aesKey !== '') {
-                        $out[] = $cfg->aesKey;
-                    } else {
-                        throw new OrmException(Code::CONFIG, "secret {$b['name']} not configured");
-                    }
+                    $out[] = $cfg->aesKey;
                     break;
                 case 'config':
                     if (($b['name'] ?? '') !== 'aes_version') {
-                        throw new OrmException(Code::CONFIG, "config value {$b['name']} not configured");
+                        throw new OrmException(Code::CONFIG, "config value {$b['name']} is not configured");
                     }
                     $out[] = $cfg->aesVersion;
                     break;
                 case 'now':
-                    // dialects without a microsecond clock function (SQLite) get the timestamp from the executor;
-                    // hooks see "$NOW" so logs and recorded vectors stay deterministic
-                    if ($dump) {
-                        $out[] = self::NOW;
-                        break;
-                    }
                     $this->masks[count($out)] = self::NOW;
-                    $out[] = self::now();
+                    $out[] = $clock ??= $this->now();
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
@@ -491,50 +575,8 @@ class Db
     }
 
     /**
-     * SQLite stores what it is given, and PHP has no datetime type: a value bound for a
-     * date/time column (the plan's slot says so — never a bare string that merely looks
-     * like a timestamp) is written in the canonical text form every reader parses
-     * (docs/dialects.md), so it reads back equal to one written by Go or Rust.
-     */
-    private function sqliteTime(mixed $v): mixed
-    {
-        if ($v instanceof \DateTimeInterface) {
-            return \DateTimeImmutable::createFromInterface($v)->setTimezone(self::utc())->format('Y-m-d H:i:s.u');
-        }
-        if (is_string($v) && preg_match('/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(\.\d{1,6})?$/', $v)) {
-            return str_pad(strlen($v) === 19 ? "$v." : $v, 26, '0');
-        }
-        return $v;
-    }
-
-    private static ?\DateTimeZone $utc = null;
-
-    private static function utc(): \DateTimeZone
-    {
-        return self::$utc ??= new \DateTimeZone('UTC');
-    }
-
-    /** The `now` bind: UTC with microseconds, the text form SQLite datetimes are kept in. */
-    public static function now(): string
-    {
-        return (new \DateTimeImmutable('now', self::utc()))->format('Y-m-d H:i:s.u');
-    }
-
-    /**
-     * What a step would run, without running it: the SQL and its binds with secrets masked as "$SECRET"
-     * and now slots as "$NOW" (the sql() terminal). Relation steps are not dumped, so no parent values are expanded.
-     * @return array{sql: string, binds: list<mixed>}
-     */
-    public function sqlOf(array $step, array $params): array
-    {
-        return ['sql' => $step['sql'], 'binds' => array_map(static fn(mixed $v) => $v instanceof Bytes ? $v->bytes : $v, $this->args($step, $params, [], true))];
-    }
-
-    /**
-     * execute() with the binds typed where the driver needs it. MySQL (emulated prepares): bools as 0/1 — PDO
-     * would interpolate false as '', which strict MySQL rejects for an int column. PostgreSQL: bools as
-     * PARAM_BOOL, Bytes as PARAM_LOB (bytea, binary format); everything else stays untyped text the server
-     * resolves from the column. SQLite: ints and bools as PARAM_INT, Bytes as PARAM_LOB, null as PARAM_NULL.
+     * Binds with types where the driver needs them: MySQL bools as 0/1,
+     * PostgreSQL bools and binary values, SQLite ints, bools, blobs, and nulls.
      */
     private function exec(\PDOStatement $st, array $args): void
     {
@@ -570,59 +612,59 @@ class Db
         $st->execute();
     }
 
-    /**
-     * A statement that failed (at prepare — pdo_sqlite parses eagerly — or at execute): mapped to the catalog's
-     * code (docs/errors.yaml) and reset — pdo_sqlite leaves a statement that failed at step time un-reset, and
-     * binding to it again is SQLITE_MISUSE; the cached statement is re-run by transaction() after a DEADLOCK
-     * and by the next call of the same shape.
-     */
     private function failed(?\PDOStatement $st, \PDOException $e): \Throwable
     {
         try {
             $st?->closeCursor();
         } catch (\PDOException) {
-            // the reset itself reports the failed step again on some drivers; the original error is the one to surface
+            // the reset reports the failed step again on some drivers
         }
         return OrmException::fromDriver($e, $this->driver);
     }
 
-    /** The on_query hook: (sql, binds with secrets masked as "$SECRET" and now slots as "$NOW", seconds, plan id, error). */
     private function emit(string $sql, array $args, float $start, string $planId, ?\Throwable $err): void
     {
-        $hook = Orm::config()->onQuery;
-        if ($hook !== null) {
-            foreach ($args as $i => $v) {
-                if ($v instanceof Bytes) {
-                    $args[$i] = $v->bytes;
-                }
-            }
-            foreach ($this->masks as $i => $mask) {
-                $args[$i] = $mask;
-            }
-            $hook($sql, $args, microtime(true) - $start, $planId, $err);
+        $hook = $this->config->onQuery;
+        if ($hook === null) {
+            return;
         }
+        foreach ($args as $i => $v) {
+            if ($v instanceof Bytes) {
+                $args[$i] = $v->bytes;
+            }
+        }
+        foreach ($this->masks as $i => $mask) {
+            $args[$i] = $mask;
+        }
+        $hook($sql, $args, microtime(true) - $start, $planId, $err);
     }
 
-    private function acquireSQLiteRowLock(string $mode): void
+    /** @internal takes the ORM lock row that stands for SQLite row locks */
+    public function acquireSQLiteRowLock(string $mode): void
     {
-        if ($mode === '' || $this->driver !== 'sqlite') return;
-        if (!$this->pdo->inTransaction()) throw new OrmException(Code::CONFIG, 'SQLite row locks require an ORM transaction');
+        if ($mode === '' || $this->driver !== 'sqlite') {
+            return;
+        }
         $noWait = str_ends_with($mode, '_nowait');
         $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
-        if ($noWait) $this->pdo->exec('PRAGMA busy_timeout=0');
         try {
-            $this->pdo->exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
-            $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+            if ($noWait) {
+                $this->pdo->exec('PRAGMA busy_timeout=0');
+            }
+            $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
         } finally {
-            if ($noWait) $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+            if ($noWait) {
+                $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+            }
         }
     }
 
-    /** @return list<list<mixed>> rows (positional); styled cells decoded */
-    public function query(array $step, array $params, ?string $sql = null, array $parentVals = []): array
+    /** @return list<list<mixed>> positional rows with styled cells decoded */
+    private function query(array $step, array $params, ?string $sql = null, array $parentVals = []): array
     {
         $sql ??= $step['sql'];
-        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
         $args = $this->args($step, $params, $parentVals);
         $start = microtime(true);
         $st = null;
@@ -637,92 +679,61 @@ class Db
             throw $e;
         }
         $this->emit($sql, $args, $start, $step['plan_id'], null);
-        if ($step['styled']) {
-            foreach ($rows as &$vals) {
-                Codec::decodeRow($vals, $step['assemble']);
-            }
-            unset($vals);
+        if ($step['decode'] !== []) {
+            Codec::decodeRows($rows, $step['decode'], $this->config);
         }
         return $rows;
     }
 
-    /**
-     * Visits one independently owned positional row at a time and closes the
-     * statement cursor on completion, visitor stop, or error.
-     * @param callable(list<mixed>, Rows): bool $visit
-     */
-    public function streamPlan(array $plan, array $params, callable $visit): StreamResult
+    private function scalar(array $step, array $params): mixed
     {
-        foreach (array_slice($plan['steps'], 1) as $step) {
-            if (($step['role'] ?? '') === 'relation') {
-                throw new OrmException(Code::IR_INVALID, 'stream does not support separate relation steps; use a join or gets');
-            }
-        }
-        $step = $plan['steps'][0] ?? throw new OrmException(Code::INTERNAL, 'plan has no steps');
-        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
         $args = $this->args($step, $params);
         $start = microtime(true);
-        $statement = null;
-        $count = 0;
-        $error = null;
+        $st = null;
         try {
-            $statement = $this->stmt($step['sql']);
-            $this->exec($statement, $args);
-            $rows = new Rows($plan, $step['assemble'], [], $params);
-            $rows->db = $this;
-            while (($values = $statement->fetch(\PDO::FETCH_NUM)) !== false) {
-                if ($step['styled']) {
-                    Codec::decodeRow($values, $step['assemble']);
-                }
-                $count++;
-                if (!$visit($values, $rows)) {
-                    return new StreamResult(StreamResult::STOPPED, $count);
-                }
-            }
-            return new StreamResult(StreamResult::EXHAUSTED, $count);
-        } catch (\PDOException $caught) {
-            $error = $this->failed($statement, $caught);
-            throw $error;
-        } catch (\Throwable $caught) {
-            $error = $caught;
-            throw $caught;
-        } finally {
-            try { $statement?->closeCursor(); } catch (\PDOException) {}
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $error);
+            $st = $this->stmt($step['sql']);
+            $this->exec($st, $args);
+            $v = $st->fetchColumn();
+            $st->closeCursor();
+        } catch (\PDOException $e) {
+            $e = $this->failed($st, $e);
+            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
+            throw $e;
         }
+        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
+        return $v === false ? null : $v;
     }
 
-    /** Runs a select plan: the main step, then every relation step bound to its parent's rows. */
-    public function runPlan(array $plan, array $params): Rows
+    /** @return array{main: list<list<mixed>>, steps: array<int, array>, params: list<mixed>} */
+    private function relations(array $plan, array $params, array $main): array
     {
-        $st0 = $plan['steps'][0];
-        $rows = new Rows($plan, $st0['assemble'], $this->query($st0, $params), $params);
-        $rows->db = $this;
+        $out = ['main' => $main, 'steps' => [], 'params' => $params];
         foreach ($plan['steps'] as $st) {
             if (($st['role'] ?? '') !== 'relation') {
                 continue;
             }
             $pr = $st['parent'];
-            $parents = $pr['step'] === 0 ? $rows->data : $rows->steps[$pr['step']]['data'];
+            $parents = $pr['step'] === 0 ? $main : $out['steps'][$pr['step']]['data'];
             $vals = self::parentValues($pr, $parents, $params);
-        $sr = ['data' => [], 'byKey' => []];
-        if ($vals !== []) {
+            $sr = ['step' => $st, 'data' => [], 'byKey' => []];
+            if ($vals !== []) {
                 foreach (self::relationChunks($st, $vals, $this->driver) as $chunk) {
                     [$sql, $chunk] = self::expandIn($st, $chunk);
-                    $sr['data'] = array_merge($sr['data'], $this->query($st, $params, $sql, $chunk));
+                    array_push($sr['data'], ...$this->query($st, $params, $sql, $chunk));
                 }
                 $keys = self::childKeys($plan, $st['id']);
                 foreach ($sr['data'] as $j => $row) {
                     $key = self::rowKey($row, $keys);
-                    if ($key !== null) { $sr['byKey'][$key][] = $j; }
+                    if ($key !== null) {
+                        $sr['byKey'][$key][] = $j;
+                    }
                 }
             }
-            $rows->steps[$st['id']] = $sr;
+            $out['steps'][$st['id']] = $sr;
         }
-        return $rows;
+        return $out;
     }
 
-    /** Distinct non-null values a relation step binds, first-seen order, from parents passing if_parent. */
     private static function parentValues(array $pr, array $parents, array $params): array
     {
         $seen = [];
@@ -737,24 +748,21 @@ class Db
                 continue;
             }
             $seen[$key] = true;
-            foreach ($pr['keys'] as $ref) { $out[] = $row[$ref['index']]; }
+            foreach ($pr['keys'] as $ref) {
+                $out[] = $row[$ref['index']];
+            }
         }
         return $out;
     }
 
     /**
-     * Rewrites the step's single `parent` placeholder into n placeholders; n is rounded up
-     * to a power of two (values padded by repetition) so the statement cache holds one
-     * statement per size class. On PostgreSQL ($n placeholders, one per slot in slot order) the
-     * parent slot becomes n numbered placeholders and every later number shifts by n - 1.
+     * Rewrites the single parent placeholder into a list padded to a power of
+     * two. On PostgreSQL every later placeholder number shifts.
      * @return array{0: string, 1: list<mixed>}
      */
     private static function expandIn(array $step, array $vals): array
     {
-        $width = count($step['parent']['keys'] ?? []);
-        if ($width === 0 || count($vals) % $width !== 0) {
-            throw new OrmException(Code::INTERNAL, 'invalid relation parent keys');
-        }
+        $width = count($step['parent']['keys']);
         $tuples = intdiv(count($vals), $width);
         $n = 1;
         while ($n < $tuples) {
@@ -776,10 +784,10 @@ class Db
                 $k = (int) $m[1];
                 if ($k === $parent) {
                     $groups = [];
-                    for ($tuple = 0; $tuple < $n; $tuple++) {
+                    for ($t = 0; $t < $n; $t++) {
                         $parts = [];
-                        for ($part = 0; $part < $width; $part++) {
-                            $parts[] = '$' . ($k + $tuple * $width + $part);
+                        for ($p = 0; $p < $width; $p++) {
+                            $parts[] = '$' . ($k + $t * $width + $p);
                         }
                         $groups[] = implode(', ', $parts);
                     }
@@ -792,14 +800,12 @@ class Db
         $sql = '';
         $slot = 0;
         for ($i = 0, $len = strlen($src); $i < $len; $i++) {
-            $c = $src[$i];
-            if ($c !== '?') {
-                $sql .= $c;
+            if ($src[$i] !== '?') {
+                $sql .= $src[$i];
                 continue;
             }
             if ($step['bind_slots'][$slot]['from'] === 'parent') {
-                $groups = array_fill(0, $n, implode(', ', array_fill(0, $width, '?')));
-                $sql .= implode($width === 1 ? ', ' : '), (', $groups);
+                $sql .= implode($width === 1 ? ', ' : '), (', array_fill(0, $n, implode(', ', array_fill(0, $width, '?'))));
             } else {
                 $sql .= '?';
             }
@@ -808,31 +814,21 @@ class Db
         return [$sql, $vals];
     }
 
-    /** Split relation values before power-of-two padding reaches a driver bind limit. */
     private static function relationChunks(array $step, array $vals, string $driver): array
     {
-        $width = count($step['parent']['keys'] ?? []);
-        if ($width === 0 || count($vals) % $width !== 0) {
-            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} has invalid parent key values");
-        }
-        $nonParent = count(array_filter($step['bind_slots'] ?? [], static fn(array $bind): bool => ($bind['from'] ?? '') !== 'parent'));
-        $limit = $driver === 'sqlite' ? 999 : 65535;
-        $maxTuples = intdiv($limit - $nonParent, $width);
+        $width = count($step['parent']['keys']);
+        $nonParent = count(array_filter($step['bind_slots'] ?? [], static fn(array $b): bool => $b['from'] !== 'parent'));
+        $maxTuples = intdiv(self::bindLimit($driver) - $nonParent, $width);
         if ($maxTuples < 1) {
-            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} needs " . ($nonParent + $width) . " bind parameters but $driver permits $limit");
+            throw new OrmException(Code::IR_INVALID, "relation {$step['id']} needs more bind parameters than $driver permits");
         }
-        $chunkTuples = 1;
-        while ($chunkTuples * 2 <= $maxTuples) $chunkTuples *= 2;
-        $tuples = intdiv(count($vals), $width);
-        $out = [];
-        for ($start = 0; $start < $tuples; $start += $chunkTuples) {
-            $count = min($chunkTuples, $tuples - $start);
-            $out[] = array_slice($vals, $start * $width, $count * $width);
+        $chunk = 1;
+        while ($chunk * 2 <= $maxTuples) {
+            $chunk *= 2;
         }
-        return $out;
+        return array_chunk($vals, $chunk * $width);
     }
 
-    /** The match column of a relation step, from the child spec that references it. */
     private static function childKeys(array $plan, int $id): array
     {
         $find = function (array $a) use (&$find, $id): ?array {
@@ -840,205 +836,133 @@ class Db
                 if ($ch['kind'] !== 'join' && $ch['step'] === $id) {
                     return $ch['child_keys'];
                 }
-                if ($ch['kind'] === 'join' && ($i = $find($ch['assemble'])) !== null) {
-                    return $i;
+                if ($ch['kind'] === 'join' && ($keys = $find($ch['assemble'])) !== null) {
+                    return $keys;
                 }
             }
             return null;
         };
         foreach ($plan['steps'] as $st) {
-            if (isset($st['assemble']) && ($i = $find($st['assemble'])) !== null) {
-                return $i;
+            if (isset($st['assemble']) && ($keys = $find($st['assemble'])) !== null) {
+                return $keys;
             }
         }
-        throw new OrmException(Code::INTERNAL, "relation step $id without a child spec");
+        throw new OrmException(Code::INTERNAL, "relation step $id without a child");
+    }
+
+    /**
+     * Splits a root IN list that exceeds the driver bind limit into requests
+     * whose results together equal the original result.
+     * @return list<Request>
+     */
+    private function rootInParts(Request $r, array $step): array
+    {
+        $limit = self::bindLimit($this->driver);
+        if (count($step['bind_slots'] ?? []) <= $limit) {
+            return [];
+        }
+        $tooLarge = new OrmException(Code::IR_INVALID, 'the statement needs ' . count($step['bind_slots']) . " bind parameters but {$this->driver} permits $limit");
+        $ir = $r->ir;
+        $items = $ir['where']['items'] ?? [];
+        if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || isset($ir['group_by_expr']) || $items === []) {
+            throw $tooLarge;
+        }
+        $target = -1;
+        foreach ($items as $i => $item) {
+            if (!isset($item['pred'])) {
+                continue;
+            }
+            $next = $items[$i + 1] ?? null;
+            $nextConn = $next === null ? '' : (reset($next)['conn'] ?? '');
+            if (($item['pred']['conn'] ?? '') === 'or' || $nextConn === 'or') {
+                throw $tooLarge;
+            }
+            if ($item['pred']['op'] === 'in' && !isset($item['pred']['sub']) && ($target < 0 || count($item['pred']['ps']) > count($items[$target]['pred']['ps']))) {
+                $target = $i;
+            }
+        }
+        if ($target < 0) {
+            throw $tooLarge;
+        }
+        $ps = $items[$target]['pred']['ps'];
+        $available = $limit - (count($step['bind_slots']) - count($ps));
+        if ($available < 1) {
+            throw $tooLarge;
+        }
+        $chunk = 1;
+        while ($chunk * 2 <= $available) {
+            $chunk *= 2;
+        }
+        $seen = [];
+        $unique = [];
+        foreach ($ps as $p) {
+            $k = self::scalarText($r->params[$p]);
+            if (!isset($seen[$k])) {
+                $seen[$k] = true;
+                $unique[] = $p;
+            }
+        }
+        $parts = [];
+        foreach (array_chunk($unique, $chunk) as $group) {
+            $part = clone $r;
+            $part->ir['where']['items'][$target]['pred']['ps'] = Request::padIn($group);
+            $parts[] = $part;
+        }
+        return $parts;
     }
 
     /** @param list<mixed> $row @param list<array{column:string,index:int}> $refs */
     public static function rowKey(array $row, array $refs): int|string|null
     {
         if (count($refs) === 1) {
-            $value = $row[$refs[0]['index']];
-            return $value === null ? null : Collection::keyOf($value);
+            $v = $row[$refs[0]['index']];
+            return $v === null ? null : Collection::keyOf($v);
         }
         $out = '';
         foreach ($refs as $ref) {
-            $value = $row[$ref['index']];
-            if ($value === null) {
+            $v = $row[$ref['index']];
+            if ($v === null) {
                 return null;
             }
-            $part = self::scalarKey($value);
+            $part = self::scalarText($v);
             $out .= strlen($part) . ':' . $part;
         }
         return $out;
     }
 
-    /** Compares a row value with a bound value regardless of representation (bool/int/string). */
     public static function sameScalar(mixed $a, mixed $b): bool
     {
-        return self::scalarKey($a) === self::scalarKey($b);
+        return self::scalarText($a) === self::scalarText($b);
     }
 
-    private static function scalarKey(mixed $v): string
+    public static function scalarText(mixed $v): string
     {
         return match (true) {
             $v === null => "\0",
             is_bool($v) => $v ? '1' : '0',
+            $v instanceof \DateTimeInterface => $v->format('Y-m-d H:i:s.u'),
             default => (string) $v,
         };
     }
-
-    /** Rows of a raw step keyed by the driver's column names; no codec, no assembly. @return list<array<string, mixed>> */
-    public function rows(array $step, array $params): array
-    {
-        $args = $this->args($step, $params);
-        $start = microtime(true);
-        $st = null;
-        try {
-            $st = $this->stmt($step['sql']);
-            $this->exec($st, $args);
-            $rows = $st->fetchAll(\PDO::FETCH_ASSOC);
-            $st->closeCursor();
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
-            throw $e;
-        }
-        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
-        return $rows;
-    }
-
-    public function scalar(array $step, array $params): mixed
-    {
-        $this->acquireSQLiteRowLock((string) ($step['lock'] ?? ''));
-        $args = $this->args($step, $params);
-        $start = microtime(true);
-        $st = null;
-        try {
-            $st = $this->stmt($step['sql']);
-            $this->exec($st, $args);
-            $v = $st->fetchColumn();
-            $st->closeCursor();
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
-            throw $e;
-        }
-        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
-        return $v;
-    }
-
-    /** @return array{0: int|string|null lastInsertId, 1: int affected} */
-    public function write(array $step, array $params, bool $insert, bool $optimistic): array
-    {
-        $args = $this->args($step, $params);
-        $start = microtime(true);
-        $st = null;
-        try {
-            $st = $this->stmt($step['sql']);
-            $this->exec($st, $args);
-            if ($insert && str_contains($step['sql'], ' RETURNING ')) {
-                // PostgreSQL/SQLite: the id comes back as a row, not from the driver's last insert id
-                $id = $st->fetchColumn();
-                $st->closeCursor();
-                $affected = 1;
-            } else {
-                $affected = $st->rowCount();
-                $id = $insert ? $this->pdo->lastInsertId() : null;
-            }
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
-            throw $e;
-        }
-        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
-        if ($optimistic && $affected === 0) {
-            throw new OrmException(Code::OPTIMISTIC_LOCK, 'row changed since it was read');
-        }
-        return [$id, $affected];
-    }
-
-    /**
-     * Execute homogeneous generated write requests in one transaction. Each
-     * request contains the validated plan step and its typed parameters.
-     * @param list<array{step: array, params: list<mixed>}> $requests
-     */
-    public function batchWrite(array $requests, string $kind, ?BatchOptions $options = null): BatchResult
-    {
-        if (!in_array($kind, ['insert', 'update', 'delete'], true)) throw new OrmException(Code::CONFIG, "batch kind $kind is not supported");
-        if ($requests === []) return new BatchResult(0, 0, 0);
-        $options ??= new BatchOptions();
-        $run = function (Tx $tx) use ($requests, $kind, $options): BatchResult {
-            $attempted = 0; $affected = 0; $inserted = 0;
-            foreach (array_chunk($requests, $options->chunkSize) as $chunk) {
-                foreach ($chunk as $request) {
-                    $attempted++;
-                    [, $count] = $tx->write($request['step'], $request['params'], $kind === 'insert', false);
-                    if ($kind === 'insert') {
-                        // Drivers report different counts for an upsert
-                        // that updates a duplicate. Expose one per success.
-                        $affected++;
-                        $inserted++;
-                    } else {
-                        $affected += $count;
-                    }
-                }
-            }
-            return new BatchResult($attempted, $affected, $inserted);
-        };
-        if ($this instanceof Tx) return $run($this);
-        return $this->transaction($run);
-    }
 }
 
-/** A transaction handle: same executor, marks statements as inside the transaction. */
-final class Tx extends Db
+/** @internal one active transaction */
+final class TxFrame
 {
-    private bool $finished = false;
+    public bool $finished = false;
+    public int $savepoints = 0;
+    /** @var array<string, string> */
+    public array $locals = [];
+    /** @var list<string> */
+    public array $locks = [];
+    public bool $contextRow = false;
 
-    public function finish(): void { $this->finished = true; }
-
-    public function assertActive(): void
-    {
-        if ($this->finished) {
-            throw new OrmException(Code::CONFIG, 'transaction already finished');
-        }
-    }
-
-    public function __construct(private readonly Db $outer)
-    {
-        parent::__construct($outer->pdo, $outer->driver(), $outer->compiler());
-    }
-
-    public function db(): Db
-    {
-        return $this->outer;
-    }
-
-    public function stmt(string $sql): \PDOStatement
-    {
-        $this->assertActive();
-        return $this->outer->stmt($sql);
-    }
-
-    public function savepoint(string $name): void { $this->control('SAVEPOINT', $name); }
-    public function rollbackTo(string $name): void { $this->control('ROLLBACK TO SAVEPOINT', $name); }
-    public function releaseSavepoint(string $name): void { $this->control('RELEASE SAVEPOINT', $name); }
-
-    private function control(string $command, string $name): void
-    {
-        $this->assertActive();
-        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
-            throw new OrmException(Code::CONFIG, 'savepoint name must match [A-Za-z_][A-Za-z0-9_]*');
-        }
-        try { $this->pdo->exec($command . ' ' . $name); }
-        catch (\PDOException $e) { throw OrmException::fromDriver($e, $this->driver()); }
-    }
+    public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation) {}
 }
 
 final class Transform
 {
-    /** Executor-side value transforms; identical in Go/Rust/PHP. */
+    /** Executor-side value transforms, identical in every client. */
     public static function apply(string $kind, string $s): string
     {
         switch ($kind) {

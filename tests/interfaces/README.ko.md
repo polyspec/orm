@@ -4,13 +4,13 @@
 
 검사기는 다음 요구사항을 확인한다.
 
-- 논리 입력과 출력이 Go, PHP, Rust, TypeScript 시그니처와 일치한다.
-- 매니페스트에서 Query와 Row 인터페이스를 생성한다. 각 언어 컴파일러가 인터페이스 구현을 검사한다.
-- 저장 항목은 Query, Where, Request, Binding, Row, Collection, Page, Tx의 필드 소유자와 네이티브 저장 타입을 정의한다.
-- 소유자 규칙은 선언되지 않은 상태 필드를 거부한다.
-- 레코드 규칙은 IR과 Plan 레코드 25개의 모든 필드와 중첩 타입을 정의한다.
+- 논리 입력과 출력이 모델 메서드, 연결, 트랜잭션, 유틸리티의 Go, PHP, Rust, TypeScript 시그니처와 일치한다.
+- 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `orm-build` 템플릿을 읽는다.
+- 소유자 규칙은 `Page`와 `AESRotationStatus`의 선언되지 않은 필드를 거부한다.
+- 레코드 규칙은 Go, Rust, TypeScript의 request 레코드 20개의 모든 필드와 중첩 타입을 정의한다.
 - 네이티브 심볼 스냅샷은 공개 및 내부 선언 변경을 보고한다. 매니페스트의 SHA-256 값은 검토하지 않은 스냅샷 교체를 차단한다.
-- 실행 순서 규칙은 SQL, statement 순서, bind 타입, 결과, 상태 전이를 비교한다.
+- 실행 순서 규칙은 conformance 벡터의 결과와 statement 수를 비교한다.
+- 금지 심볼은 취소와 커서 페이지처럼 삭제되었거나 지원하지 않는 동작을 거부한다.
 - 소스 변이 검사는 메서드 누락, 인자 추가, 반환 타입 변경, 필드 타입 변경, receiver 변경, 선언되지 않은 상태를 검사기가 거부하는지 확인한다.
 
 데이터베이스 없이 구조 검사를 실행한다.
@@ -31,10 +31,9 @@ go run ./tests/interfaces/check --results tests/conformance/out/sqlite
 승인된 인터페이스 변경 후 계약 출력을 다시 생성한다.
 
 ```sh
-for lang in go php rust; do
-  go run ./cmd/ormgen gen --schema schema/schema.json --lang "$lang" --out "clients/$lang/gen"
-done
-go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
+(cd clients/go/model && go generate ./)
+php clients/php/bin/orm-gen --schema schema/schema.json --out clients/php/gen --namespace 'App\Orm'
+npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```
 

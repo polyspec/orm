@@ -43,10 +43,10 @@ func TestBuildExample(t *testing.T) {
 	if c := b.Column("aes_hex_email"); c.Type != "string" || c.Len != 255 || c.Lazy || strings.Join(c.Styles, ",") != "aes,hex" {
 		t.Errorf("aes_hex_email: %+v", c)
 	}
-	if c := b.Column("curlfile_serialize_files"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "curlfile,serialize" {
-		t.Errorf("curlfile_serialize_files: %+v", c)
+	if c := b.Column("serialize_files"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "serialize" {
+		t.Errorf("serialize_files: %+v", c)
 	}
-	if c := b.Column("upload_archive"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "curlfile,serialize" {
+	if c := b.Column("upload_archive"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "serialize,base64" {
 		t.Errorf("upload_archive: %+v", c)
 	}
 	if c := b.Column("yaml_settings"); c.Type != "text" || !c.Lazy || strings.Join(c.Styles, ",") != "yaml" {
@@ -86,8 +86,8 @@ func TestBuildExample(t *testing.T) {
 	if len(b.Unique) != 2 || b.Indexes["ik"][1] != "is_close" || b.Fulltext[0][1] != "description" {
 		t.Errorf("unique/index/fulltext: %+v %+v %+v", b.Unique, b.Indexes, b.Fulltext)
 	}
-	if b.Timestamps.Created != "created_ts" || b.Timestamps.Updated != "updated_ts" || b.Predicates["display"] == nil || b.Predicates["display"].Expr != "`seq` > 0" || b.Predicates["display"].Arity != 0 {
-		t.Errorf("timestamps/predicates: %+v %+v", b.Timestamps, b.Predicates)
+	if b.Timestamps.Created != "created_ts" || b.Timestamps.Updated != "updated_ts" {
+		t.Errorf("timestamps: %+v", b.Timestamps)
 	}
 	if len(m.SchemaHash) != 16 {
 		t.Errorf("hash: %q", m.SchemaHash)
@@ -174,13 +174,13 @@ func TestSoftDeleteDirectiveRejectsInvalidColumns(t *testing.T) {
 }
 
 func TestAllowedColumnNames(t *testing.T) {
-	for _, n := range []string{"order_number", "get_dt", "condition_type", "withdraw_count", "android_app_url", "origin_price", "brand_name", "seq_no", "is_win"} {
-		if err := checkColumnName(n); err != nil {
+	for _, n := range []string{"order_number", "condition_type", "withdraw_count", "android_app_url", "origin_price", "brand_name", "seq_no", "is_win", "key", "order", "group", "select", "name_like", "min_price"} {
+		if err := CheckColumnName(n); err != nil {
 			t.Errorf("%s should be allowed: %v", n, err)
 		}
 	}
-	for _, n := range []string{"terms_and_conditions", "a_or_b", "x_with_y", "price_gt", "name_like", "or", "select", "a__b", "CamelCase", "1x"} {
-		if err := checkColumnName(n); err == nil {
+	for _, n := range []string{"terms_and_conditions", "a_or_b", "x_with_y", "price_gt", "get_dt", "order_by_x", "random", "create", "or", "a__b", "CamelCase", "1x"} {
+		if err := CheckColumnName(n); err == nil {
 			t.Errorf("%s should be rejected", n)
 		}
 	}
@@ -230,56 +230,6 @@ func TestCompositePrimaryAndForeignKeysPreserveOrderedPairs(t *testing.T) {
 	}
 }
 
-func TestManyToManyDirectiveBuildsOrderedThroughRelations(t *testing.T) {
-	d, err := Parse(`erDiagram
- account {
- bigint id PK
- }
- project {
- bigint id PK
- }
- account_project {
- bigint account_id PK "-> account.id"
- bigint project_id PK "-> project.id"
- }
- %% many_to_many account project projects accounts through account_project
-`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r := m.Entities["account"].Relations["projects"]
-	if r == nil || r.Kind != "many" || r.Target != "project" || r.Through != "account_project" || len(r.Keys) != 1 || r.Keys[0].Local != "id" || r.Keys[0].Target != "account_id" || len(r.ThroughKeys) != 1 || r.ThroughKeys[0].Local != "project_id" || r.ThroughKeys[0].Target != "id" {
-		t.Fatalf("unexpected forward many-to-many relation: %#v", r)
-	}
-	reverse := m.Entities["project"].Relations["accounts"]
-	if reverse == nil || reverse.Through != "account_project" || reverse.Keys[0].Target != "project_id" || reverse.ThroughKeys[0].Local != "account_id" {
-		t.Fatalf("unexpected reverse many-to-many relation: %#v", reverse)
-	}
-}
-
-func TestScopeDirectiveRequiresNonNullTenantColumn(t *testing.T) {
-	good := mustBuild(t, "erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id\n }\n %% scope tenant account_id\n")
-	if got := good.Entities["tenant"].Scope; got != "account_id" {
-		t.Fatalf("scope = %q", got)
-	}
-	for _, src := range []string{
-		"erDiagram\n tenant {\n bigint id PK \"auto\"\n bigint account_id \"?\"\n }\n %% scope tenant account_id\n",
-		"erDiagram\n tenant {\n bigint id PK \"auto\"\n text account_id\n }\n %% scope tenant account_id\n",
-	} {
-		d, err := Parse(src)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := Build(d); err == nil {
-			t.Fatalf("scope validation accepted: %s", src)
-		}
-	}
-}
-
 func TestBlindIndexDirectiveRequiresDedicatedIndexedColumn(t *testing.T) {
 	good := "erDiagram\n account {\n bigint id PK\n int aes_key_version \"=1\"\n varchar(255) aes_email \"? aes\"\n char(64) email_index \"?\"\n }\n %% index account (email_index) email_index_idx\n %% blind_index account aes_email email_index\n"
 	m := mustBuild(t, good)
@@ -317,17 +267,15 @@ func TestBuildErrors(t *testing.T) {
 		"erDiagram\n a { bigint seq PK }\n b { bigint seq PK }\n b ||--o{ a : nope": "FK column nope not in a",
 		"erDiagram\n a { bigint seq PK }\n b { bigint seq PK }\n b ||--o{ a : seq":  "cannot derive a name",
 		"erDiagram\n a { bigint seq PK\n bigint b_seq FK\n bigint owner_b_seq FK }\n b { bigint seq PK }\n b ||--o{ a : b_seq\n b ||--o{ a : owner_b_seq": "already used",
-		"erDiagram\n a { bigint seq PK \"-> zz.seq\" }":                                                                 "target does not exist",
-		"erDiagram\n a { bigint seq PK }\n %% index a (nope)":                                                           "unknown column nope",
-		"erDiagram\n a { bigint seq PK\n varchar(3) b_seq FK }\n b { bigint seq PK }\n b ||--o{ a : \"b_seq (or / x)\"": "reserved DSL word",
-		"erDiagram\n order { bigint seq PK }":                                                                           "entity name is a reserved ORM/SQL word",
-		"erDiagram\n a { bigint seq PK\n varchar(32) match }":                                                           "reserved ORM/SQL word",
-		"erDiagram\n select { bigint seq PK }":                                                                          "entity name is a reserved ORM/SQL word",
-		"erDiagram\n a { bigint seq PK\n bigint item FK }\n b { bigint seq PK }\n b ||--o{ a : \"item (item / x)\"":     "collides with a column",
-		"erDiagram\n a { whatever seq PK }":                                                                             "unsupported type",
-		"erDiagram\n a { bigint seq PK\n varchar name }":                                                                "varchar requires a positive length",
-		"erDiagram\n a { bigint seq PK\n varchar(0) name }":                                                             "varchar requires a positive length",
-		"erDiagram\n a { bigint seq PK\n char code }":                                                                   "char requires a positive length",
+		"erDiagram\n a { bigint seq PK \"-> zz.seq\" }":                                                             "target does not exist",
+		"erDiagram\n a { bigint seq PK }\n %% index a (nope)":                                                       "unknown column nope",
+		"erDiagram\n connect { bigint seq PK }":                                                                     "reserved by the generated models",
+		"erDiagram\n a { bigint seq PK\n varchar(32) random }":                                                      "reserved method name",
+		"erDiagram\n a { bigint seq PK\n bigint item FK }\n b { bigint seq PK }\n b ||--o{ a : \"item (item / x)\"": "collides with a column",
+		"erDiagram\n a { whatever seq PK }":                                                                         "unsupported type",
+		"erDiagram\n a { bigint seq PK\n varchar name }":                                                            "varchar requires a positive length",
+		"erDiagram\n a { bigint seq PK\n varchar(0) name }":                                                         "varchar requires a positive length",
+		"erDiagram\n a { bigint seq PK\n char code }":                                                               "char requires a positive length",
 	}
 	for src, want := range cases {
 		d, err := Parse(ml(src))

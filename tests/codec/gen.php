@@ -35,23 +35,8 @@ $styles = [
     'serialize' => ['serialize'],
     'base64' => ['serialize', 'base64'],
     'gz' => ['serialize', 'gz'],
-    'curlfile' => ['curlfile', 'serialize'],
     'yaml' => ['yaml'],
 ];
-
-function prepare_curlfiles(mixed $value): mixed
-{
-    if (!is_array($value)) {
-        return $value;
-    }
-    if (($value['$type'] ?? null) === 'upload_file') {
-        return ['is_curl_file' => true, 'mime' => $value['mime'], 'name' => $value['name'], 'path' => $value['path']];
-    }
-    foreach ($value as $key => $item) {
-        $value[$key] = prepare_curlfiles($item);
-    }
-    return $value;
-}
 
 function encode(array $styles, mixed $v): ?string
 {
@@ -62,7 +47,6 @@ function encode(array $styles, mixed $v): ?string
     $value = $v;
     foreach ($styles as $st) {
         $cur = match ($st) {
-            'curlfile' => $value = prepare_curlfiles($value),
             'serialize' => serialize($value),
             'yaml' => Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING),
             'json', 'jsons' => json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),

@@ -17,39 +17,37 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 |---|---|
 | `vectors.json` | vector names, canonical chains, MySQL expectations — **the only place a vector is declared** |
 | `vectors.postgres.json`, `vectors.sqlite.json` | the same vectors' expectations on the other databases (`check … -driver postgres`); results equal MySQL's except where the dialect differs (`sql_dump` text, fulltext semantics, operators SQLite rejects) |
-| `runner_go/main.go` | Go runner (in-process engine) |
-| `runner.php` | PHP runner (ormd compile, PDO execute) |
-| `clients/rust/tests/src/conformance.rs` | Rust runner (wasmtime engine, sqlx) |
-| `runner_typescript.mjs` | TypeScript runner (Connect compiler and native database driver) |
+| `runner_go/main.go` | Go runner (generated models in `clients/go/model`) |
+| `runner.php` | PHP runner (PDO) |
+| `clients/rust/tests/src/conformance.rs` | Rust runner (models from `orm-build`, sqlx) |
+| `runner_typescript.mjs` | TypeScript runner (native database drivers) |
 | `check/main.go` | orchestrator + comparator |
 
 ## Run
 
 ```sh
-go build -o bin/ormd ./cmd/ormd                       # once
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o bin/ormengine.wasm ./engine/wasm
-(cd clients/rust && cargo build --release)            # once
+(cd clients/rust && cargo build --locked --release -p orm-tests --bin conformance)
+npm run typescript:build
 go run ./tests/conformance/check run                  # MySQL: runs all four, compares
-go run ./tests/conformance/check run -driver postgres -dsn 'postgres://…'   # same on PostgreSQL
-go run ./tests/conformance/check run -driver sqlite  -dsn 'file:/abs.sqlite' # and SQLite
+go run ./tests/conformance/check run -driver postgres -dsn 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00'
+go run ./tests/conformance/check run -driver sqlite -dsn 'sqlite:///tmp/orm_bench.sqlite?timezone=%2B00:00'
 ```
-`-langs go,php` limits which runners execute. SQLite accepts one DSN per client
-when driver syntax differs: `-go-dsn file:/abs.sqlite`,
-`-rust-dsn sqlite:///abs.sqlite`, and `-php-dsn` or `-typescript-dsn`
-with `/abs.sqlite`. These flags override `-dsn` for the selected runner.
-`check record -driver <db> out/<db>/go.json` refreshes that database's
+`-langs go,php` limits which runners execute. Every runner receives the same DSN
+URI; without `-dsn` the runners use the local bench database with the time zone
+`+00:00`. `check record -driver <db> out/<db>/go.json` refreshes that database's
 expectations after a deliberate change.
 
-`check run` starts `ormd` on `tests/conformance/out/ormd.sock` for the PHP
-runner and blocks on its "listening" line before proceeding — no polling.
+Every client plans its statements in its own process. `check run` holds the
+directory lock `/tmp/orm-conformance.lock` while the runners use the bench
+database; a second run fails instead of waiting.
 
 ## Adding a vector
 
 1. Declare `{"name", "chain", "expect": null}` in `vectors.json`.
 2. Implement the same chain in all four runners (keep the statement order).
-3. `go run ./tests/conformance/check record tests/conformance/out/go.json`,
+3. `go run ./tests/conformance/check record -driver <db> tests/conformance/out/<db>/go.json` for each database (MySQL output is `out/go.json`),
    review the recorded SQL/binds/result, commit.
 
-Write vectors leave the database as they found it. Their row identity is
-masked in binds (`$SEQ` for the inserted PK, `$TS` for the `updated_ts` read
-with it) so the recording stays deterministic.
+Write vectors leave the database as they found it. The keys and update times of
+the rows they create are masked as `$SEQ` and `$TS`, and AES ciphertexts, which
+carry a random nonce, as `$AES`, so the recording stays deterministic.

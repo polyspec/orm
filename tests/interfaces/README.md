@@ -4,33 +4,36 @@
 
 The checker verifies these requirements:
 
-- Logical inputs and outputs match the Go, PHP, Rust, and TypeScript signatures.
-- The manifest generates Query and Row interfaces. Native compilers verify interface implementation.
-- Storage entries define field owners and native storage types for Query, Where, Request, Binding, Row, Collection, Page, and Tx.
-- Owner rules reject undeclared state fields.
-- Record rules define every field and nested type for the 25 IR and Plan records.
+- Logical inputs and outputs match the Go, PHP, Rust, and TypeScript signatures of the model methods, the connection, the transaction, and the utilities.
+- Model rules read the generated Go models, the PHP and TypeScript base classes, and the Rust `orm-build` template of the fixed model methods.
+- Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
+- Record rules define every field and nested type of the 20 request records in Go, Rust, and TypeScript.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
-- Sequence rules compare SQL, statement order, typed binds, results, and state transitions.
+- Sequence rules compare the results and statement counts of conformance vectors.
+- Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
+
+Run the structure checks without a database:
 
 ```sh
 go test ./contracts ./tests/interfaces/check
 go run ./tests/interfaces/check --self-test
+```
 
+Check recorded conformance results:
+
+```sh
 go run ./tests/interfaces/check --results tests/conformance/out
 go run ./tests/interfaces/check --results tests/conformance/out/postgres
 go run ./tests/interfaces/check --results tests/conformance/out/sqlite
 ```
 
-`--self-test`는 실제 소스의 메서드 누락·추가 인자·반환값·소유 타입·필드 타입·receiver 변경·임의 상태 필드 추가 21개를 검출한다. PHP 동적 레코드는 165개 필드/형태 반례를 추가로 거부한다. 공통 규칙 검사에는 native snapshot을 다시 기록해도 통과하면 안 되는 반례가 있다.
-
-Regenerate contract outputs after an approved interface change:
+Regenerate the contract outputs after an approved interface change:
 
 ```sh
-for lang in go php rust; do
-  go run ./cmd/ormgen gen --schema schema/schema.json --lang "$lang" --out "clients/$lang/gen"
-done
-go run ./cmd/ormgen gen --schema schema/schema.json --lang typescript --out clients/typescript/src/gen
+(cd clients/go/model && go generate ./)
+php clients/php/bin/orm-gen --schema schema/schema.json --out clients/php/gen --namespace 'App\Orm'
+npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```
 

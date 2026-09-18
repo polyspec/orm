@@ -3,32 +3,32 @@ name = "orm"
 version = "0.0.1"
 edition = "2021"
 publish = false
-description = "Rust executor for the orm engine: wasm compiler boundary, plan cache, sqlx runner"
+description = "Rust ORM: model runtime, SQL planner, and sqlx executor"
 license = "MIT"
 repository = "https://github.com/polyspec/orm"
 readme = "../README.md"
-keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx", "wasm"]
+keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
 [dependencies]
+orm-schema = { path = "../orm-schema" }
 ordered-json = { git = "https://github.com/polyspec/ordered-json.git", rev = "6d23a2a" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "rust_decimal", "json", "ipnet"] }
 rust_decimal = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
-wasmtime = "48"
-wasmtime-wasi = "48"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-prost = "0.14.4"
-reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
-async-trait = "0.1"
 indexmap = "2"
-chrono = { version = "0.4", default-features = false, features = ["std"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono-tz = "0.9"
+url = "2"
+# sqlx-postgres uses whoami without its std feature, which reports the OS user
+# as "anonymous"; a DSN without a user must connect as the OS user.
+whoami = "2"
 rand = "0.10"
 flate2 = "1"
 futures-util = "0.3"
 base64 = "0.22"
-toml = "0.9"
 aes-gcm = "0.10"
 sha2 = "0.10"
 hmac = "0.12"

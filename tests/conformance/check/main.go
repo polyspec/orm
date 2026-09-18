@@ -10,12 +10,11 @@
 // tests/conformance/vectors.<driver>.json for the other databases: statements
 // differ per dialect, results must not.
 //
-// `run` starts one ormd process. Connect clients share its HTTP endpoint; the
-// The PHP executor uses its Unix-socket compiler transport during conformance.
+// `run` holds the directory lock /tmp/orm-conformance.lock while the runners
+// use the shared bench database; a second run fails instead of waiting.
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -36,14 +35,12 @@ type file struct {
 	Vectors []vec `json:"vectors"`
 }
 
-// driver selects the database: "mysql" (default) or postgres/sqlite. The runners get
-// it as -driver/-dsn (Go), argv (PHP/Rust) and the expectations file follows it.
+// driver selects the database: "mysql" (default) or postgres/sqlite. Every
+// runner takes it as a driver flag, and the expectations file follows it.
 var (
-	driver                 string
-	dsn                    string
-	goDSN, phpDSN          string
-	rustDSN, typescriptDSN string
-	langs                  string
+	driver string
+	dsn    string
+	langs  string
 )
 
 func vectorsPath() string {
@@ -59,11 +56,7 @@ func main() {
 	}
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
-	fs.StringVar(&dsn, "dsn", "", "database DSN/URL for the runners (driver-specific; empty = each runner's default)")
-	fs.StringVar(&goDSN, "go-dsn", "", "Go runner DSN; overrides -dsn")
-	fs.StringVar(&phpDSN, "php-dsn", "", "PHP runner DSN; overrides -dsn")
-	fs.StringVar(&rustDSN, "rust-dsn", "", "Rust runner DSN; overrides -dsn")
-	fs.StringVar(&typescriptDSN, "typescript-dsn", "", "TypeScript runner DSN; overrides -dsn")
+	fs.StringVar(&dsn, "dsn", "", "database DSN URI for every runner (empty = the local bench database)")
 	fs.StringVar(&langs, "langs", "go,php,rust,typescript", "runners to execute")
 	fs.Parse(os.Args[2:])
 	root, err := os.Getwd()
@@ -72,7 +65,13 @@ func main() {
 	case "run":
 		out := filepath.Join(root, "tests", "conformance", "out", driverDir())
 		must(os.MkdirAll(out, 0o755))
+		if err := os.Mkdir(lockDir, 0o755); err != nil {
+			must(fmt.Errorf("another conformance run holds %s: %w", lockDir, err))
+		}
+		held = true
 		runAll(root, out)
+		held = false
+		must(os.Remove(lockDir))
 		var files []string
 		for _, l := range strings.Split(langs, ",") {
 			files = append(files, filepath.Join(out, l+".json"))
@@ -90,27 +89,7 @@ func main() {
 	}
 }
 
-func dsnFor(language string) string {
-	switch language {
-	case "go":
-		if goDSN != "" {
-			return goDSN
-		}
-	case "php":
-		if phpDSN != "" {
-			return phpDSN
-		}
-	case "rust":
-		if rustDSN != "" {
-			return rustDSN
-		}
-	case "typescript":
-		if typescriptDSN != "" {
-			return typescriptDSN
-		}
-	}
-	return dsn
-}
+const lockDir = "/tmp/orm-conformance.lock"
 
 func driverDir() string {
 	if driver == "mysql" {
@@ -124,9 +103,15 @@ func usage() {
 	os.Exit(2)
 }
 
+// held is set while run owns the lock directory, so a failure releases it.
+var held bool
+
 func must(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "check:", err)
+		if held {
+			_ = os.Remove(lockDir)
+		}
 		os.Exit(1)
 	}
 }
@@ -159,69 +144,26 @@ func runAll(root, out string) {
 	if want["typescript"] {
 		build(exec.Command("npm", "run", "build", "--prefix", "clients/typescript"))
 	}
-	sock := filepath.Join(out, "ormd.sock")
-	_ = os.Remove(sock)
-	ormdArgs := []string{"-listen", "127.0.0.1:0", "-schema", schema, "-dialect", driver, "-ready-fd", "3"}
-	ormd := exec.Command(filepath.Join(root, "bin", "ormd"), ormdArgs...)
-	readyRead, readyWrite, err := os.Pipe()
-	must(err)
-	ormd.ExtraFiles = []*os.File{readyWrite}
-	ormd.Stderr = os.Stderr
-	must(ormd.Start())
-	must(readyWrite.Close())
-	endpoint, err := bufio.NewReader(readyRead).ReadString('\n')
-	must(readyRead.Close())
-	endpoint = strings.TrimSpace(endpoint)
-	if endpoint == "" {
-		_ = ormd.Process.Kill()
-		_ = ormd.Wait()
-		must(fmt.Errorf("ormd did not signal the compiler endpoint: %w", err))
-	}
-	defer func() {
-		_ = ormd.Process.Kill()
-		_ = ormd.Wait()
-		_ = os.Remove(sock)
-	}()
-	var goArgs []string
-	goArgs = append(goArgs, "-compiler", endpoint)
-	if driver != "mysql" {
-		goArgs = append(goArgs, "-driver", driver)
-	}
-	if value := dsnFor("go"); value != "" {
-		goArgs = append(goArgs, "-dsn", value)
+	flags := []string{"--driver", driver}
+	if dsn != "" {
+		flags = append(flags, "--dsn", dsn)
 	}
 	if want["go"] {
-		capture(filepath.Join(out, "go.json"), exec.Command("go", append([]string{"run", "./tests/conformance/runner_go"}, append(goArgs, schema)...)...))
+		args := []string{"run", "./tests/conformance/runner_go", "-driver", driver}
+		if dsn != "" {
+			args = append(args, "-dsn", dsn)
+		}
+		capture(filepath.Join(out, "go.json"), exec.Command("go", append(args, schema)...))
 	}
-	if want["rust"] {
-		args := []string{filepath.Join(root, "bin", "ormengine.wasm"), schema, "--compiler", endpoint}
-		if driver != "mysql" {
-			args = append(args, "--driver", driver)
-		}
-		if value := dsnFor("rust"); value != "" {
-			args = append(args, "--dsn", value)
-		}
-		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), args...))
+	if want["php"] {
+		capture(filepath.Join(out, "php.json"), exec.Command("php", append([]string{"tests/conformance/runner.php", schema}, flags...)...))
 	}
 	if want["typescript"] {
-		args := []string{"tests/conformance/runner_typescript.mjs", "--compiler", endpoint, "--driver", driver}
-		if value := dsnFor("typescript"); value != "" {
-			args = append(args, "--dsn", value)
-		}
-		args = append(args, schema)
-		capture(filepath.Join(out, "typescript.json"), exec.Command("node", args...))
+		capture(filepath.Join(out, "typescript.json"), exec.Command("node", append(append([]string{"tests/conformance/runner_typescript.mjs"}, flags...), schema)...))
 	}
-	if !want["php"] {
-		return
+	if want["rust"] {
+		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), append(flags, schema)...))
 	}
-	phpArgs := []string{"tests/conformance/runner.php", endpoint, schema}
-	if driver != "mysql" {
-		phpArgs = append(phpArgs, "--driver", driver)
-	}
-	if value := dsnFor("php"); value != "" {
-		phpArgs = append(phpArgs, "--dsn", value)
-	}
-	capture(filepath.Join(out, "php.json"), exec.Command("php", phpArgs...))
 }
 
 // load reads the vector list (names and chains) from vectors.json — the single

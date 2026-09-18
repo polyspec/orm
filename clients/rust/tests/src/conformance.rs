@@ -1,1363 +1,548 @@
-//! Conformance runner (Rust). Same chains as tests/conformance/runner_go and runner.php; prints the same document.
-//! Usage: conformance <ormengine.wasm> <schema.json> [--driver mysql|postgres|sqlite] [--dsn …]
-use std::collections::BTreeMap;
+//! Conformance runner (Rust). Runs every vector against the bench database and
+//! prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
+//! other runners print the same document for the same chains.
+//!
+//! Usage: conformance [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>
+use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use gen::*;
-use orm::builder::Q;
-use orm::collection::{Collection, Key};
-use orm::db::{Config, ConnectOptions, Db};
-use orm::engine::{Engine, EngineConfig};
-use orm::value::Param;
-use serde_json::{json, Value};
+orm::models!();
 
-type Log = Arc<Mutex<Vec<Value>>>;
+use model::{Battle, CompositeAccount, Service, ServiceMember, ServiceModule, User};
+use orm::{AesKeyring, Collection, Db, Model, Null, Param};
+use serde_json::{json, Map, Value};
 
-/// Row identity of a write vector: every created seq binds as "$SEQ", the read updated_ts as "$TS".
-#[derive(Default, Clone)]
-struct Mask {
-    seqs: Vec<i64>,
-    ts: Option<chrono::NaiveDateTime>,
+#[derive(Default)]
+struct Log {
+    statements: Vec<Value>,
+    seqs: HashSet<i64>,
+    times: HashSet<String>,
 }
 
-/// Installs the mask for the statements to come and re-masks the ones already logged
-/// (the INSERTs and their re-reads ran before the created row was known).
-fn mask_created(mask: &Arc<Mutex<Mask>>, log: &Log, m: Mask) {
-    for st in log.lock().unwrap().iter_mut() {
-        for b in st["binds"].as_array_mut().unwrap() {
-            if m.seqs.iter().any(|s| *b == json!(s)) {
-                *b = json!("$SEQ");
-            }
-            if m.ts
-                .as_ref()
-                .map(|t| *b == json!(fmt_time(t)))
-                .unwrap_or(false)
-            {
-                *b = json!("$TS");
+type Shared = Arc<Mutex<Log>>;
+
+fn time_text(t: &chrono::NaiveDateTime) -> String {
+    t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+}
+
+/// Renders a bound value the way every runner does.
+fn norm(v: &Value, log: &Log) -> Value {
+    match v {
+        Value::Number(n) => match n.as_i64() {
+            Some(x) if log.seqs.contains(&x) => json!("$SEQ"),
+            _ => v.clone(),
+        },
+        Value::String(s) => {
+            if log.times.contains(s) {
+                json!("$TS")
+            } else if s.starts_with("ORM-AES2") || s.to_lowercase().starts_with("4f524d2d41455332") {
+                json!("$AES")
+            } else {
+                v.clone()
             }
         }
-    }
-    *mask.lock().unwrap() = m;
-}
-
-fn fmt_time(t: &chrono::NaiveDateTime) -> String {
-    if t.and_utc().timestamp_subsec_nanos() == 0 {
-        t.format("%Y-%m-%d %H:%M:%S").to_string()
-    } else {
-        t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+        _ => v.clone(),
     }
 }
 
-fn norm(p: &Param, m: &Mask) -> Value {
+fn param_json(p: &Param) -> Value {
     match p {
         Param::Null => Value::Null,
         Param::Bool(b) => json!(b),
-        Param::I64(x) if m.seqs.contains(x) => json!("$SEQ"),
         Param::I64(x) => json!(x),
         Param::F64(x) => json!(x),
-        // SQLite binds datetimes as text: the same value still masks
-        Param::Str(s) if m.ts.as_ref().map(|t| fmt_time(t) == *s).unwrap_or(false) => json!("$TS"),
         Param::Str(s) => json!(s),
-        Param::Bytes(b) if b.first() == Some(&0x78) => json!("$ZLIB"), // zlib stream (gz style)
         Param::Bytes(b) => json!(String::from_utf8_lossy(b)),
-        Param::DateTime(t) if m.ts.as_ref() == Some(t) => json!("$TS"),
-        Param::DateTime(t) => json!(fmt_time(t)),
+        Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
-        Param::Point(point) => json!(point),
+        Param::Point(p) => json!(orm::point_text(*p).unwrap_or_default()),
     }
 }
 
-fn row(b: Option<&BattleRow>) -> Value {
-    match b {
-        None => Value::Null,
-        Some(b) => json!({
-            "seq": b.seq, "name": b.name, "aes_hex_email": b.aes_hex_email, "is_close": b.is_close, "is_display": b.is_display,
-            "description": b.description, "start_dt": fmt_time(&b.start_dt), "like_count": b.like_count,
-        }),
+/// Hides the identity of rows a vector created: their keys and update times
+/// wherever they are bound, including statements logged earlier.
+fn mask(shared: &Shared, seqs: &[i64], times: &[chrono::NaiveDateTime]) {
+    let mut log = shared.lock().unwrap();
+    log.seqs.extend(seqs.iter().copied());
+    log.times.extend(times.iter().map(time_text));
+    let mut statements = std::mem::take(&mut log.statements);
+    for st in statements.iter_mut() {
+        if let Some(binds) = st["binds"].as_array_mut() {
+            for b in binds.iter_mut() {
+                *b = norm(b, &log);
+            }
+        }
+    }
+    log.statements = statements;
+}
+
+fn code(e: &orm::Error) -> Value {
+    json!(e.code())
+}
+
+fn code_of<T>(r: orm::Result<T>) -> Value {
+    match r {
+        Ok(_) => Value::Null,
+        Err(e) => code(&e),
     }
 }
 
-fn keyed(c: &Collection<BattleRow>) -> Value {
-    Value::Array(c.iter().map(|(k, r)| json!([k.as_i64(), {"seq": r.seq, "name": r.name, "like_count": r.like_count}])).collect())
+/// Keeps the named values of a row.
+fn pick<M: Model>(m: Option<&M>, names: &[&str]) -> Value {
+    let Some(m) = m else { return Value::Null };
+    let all = orm::model::to_json(m);
+    let mut out = Map::new();
+    for n in names {
+        out.insert((*n).to_owned(), all.get(*n).cloned().unwrap_or(Value::Null));
+    }
+    Value::Object(out)
 }
 
-fn keys(c: &Collection<BattleRow>) -> Value {
-    Value::Array(c.iter().map(|(k, _)| json!(k.as_i64())).collect())
+fn picks<M: Model>(c: &Collection<M>, names: &[&str]) -> Value {
+    Value::Array(c.models().map(|m| pick(Some(m), names)).collect())
 }
 
-/// The database under test: `--driver` (mysql default) and `--dsn`; the defaults are the Go
-/// runner's (MySQL: `ORM_MYSQL_URL_RUST` when set, else the local socket).
-struct Target {
+fn keys_of<M: Model>(c: &Collection<M>) -> Value {
+    Value::Array(c.keys().iter().map(|k| k.to_json()).collect())
+}
+
+fn int(v: Option<Value>) -> i64 {
+    match v {
+        Some(Value::Number(n)) => n.as_i64().or_else(|| n.as_f64().map(|f| f as i64)).unwrap_or(0),
+        Some(Value::String(s)) => s.parse().unwrap_or(0),
+        _ => 0,
+    }
+}
+
+struct Args {
+    schema: String,
     driver: String,
     dsn: Option<String>,
-    compiler: Option<String>,
 }
 
-impl Target {
-    fn parse(args: &[String]) -> Target {
-        let mut t = Target {
-            driver: "mysql".into(),
-            dsn: None,
-            compiler: None,
-        };
-        let mut i = 0;
-        while i < args.len() {
-            match args[i].as_str() {
-                "--driver" => t.driver = args[i + 1].clone(),
-                "--dsn" => t.dsn = Some(args[i + 1].clone()),
-                "--compiler" => t.compiler = Some(args[i + 1].clone()),
-                other => panic!("unknown argument {other}; usage: conformance <wasm> <schema.json> --compiler <http-endpoint> [--driver mysql|postgres|sqlite] [--dsn …]"),
+impl Args {
+    fn parse() -> Args {
+        let mut rest = Vec::new();
+        let (mut driver, mut dsn) = ("mysql".to_owned(), None);
+        let mut it = std::env::args().skip(1);
+        while let Some(a) = it.next() {
+            match a.as_str() {
+                "--driver" => driver = it.next().expect("--driver value"),
+                "--dsn" => dsn = Some(it.next().expect("--dsn value")),
+                _ => rest.push(a),
             }
-            i += 2;
         }
-        t
+        if rest.len() != 1 {
+            eprintln!("usage: conformance [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>");
+            std::process::exit(2);
+        }
+        Args { schema: rest[0].clone(), driver, dsn }
     }
 
-    fn connect_opts(&self) -> ConnectOptions {
-        let dsn = match (&self.dsn, self.driver.as_str()) {
-            (Some(d), _) => d.clone(),
-            (None, "mysql") => std::env::var("ORM_MYSQL_URL_RUST").unwrap_or_else(|_| {
-                "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into()
-            }),
-            (None, "postgres") => "postgres://maxkwon@localhost:5432/orm_bench".into(),
-            (None, "sqlite") => "sqlite:///tmp/orm_bench.sqlite".into(),
-            (None, other) => panic!("driver {other}: want mysql, postgres or sqlite"),
-        };
-        ConnectOptions::parse(&self.driver, &dsn).expect("connect options")
+    fn dsn(&self) -> String {
+        if let Some(d) = &self.dsn {
+            return d.clone();
+        }
+        match self.driver.as_str() {
+            "postgres" => "postgres:///orm_bench?host=/tmp&timezone=%2B00:00".into(),
+            "sqlite" => "sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00".into(),
+            _ => "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&timezone=%2B00:00".into(),
+        }
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let wasm = std::fs::read(&args[1]).expect("wasm");
-    let schema = std::fs::read(&args[2]).expect("schema.json");
-    let target = Target::parse(&args[3..]);
-    let engine = Arc::new(
-        Engine::new(EngineConfig {
-            wasm: &wasm,
-            schema_json: &schema,
-            dialect: &target.driver,
-            cache_dir: None,
-        })
-        .expect("engine"),
-    );
-    gen::init(engine.clone()).expect("schema hash");
+    let args = Args::parse();
+    let schema = orm::Manifest::load(&std::fs::read(&args.schema).expect("schema.json")).expect("schema manifest");
+    assert_eq!(schema.schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
+    let shared: Shared = Arc::new(Mutex::new(Log::default()));
+    let hook = shared.clone();
+    let config = orm::Config {
+        aes_key: "bench-salt".into(),
+        blind_index_key: "bench-blind-index".into(),
+        on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
+            let mut log = hook.lock().unwrap();
+            let binds: Vec<Value> = binds.iter().map(|b| norm(&param_json(b), &log)).collect();
+            log.statements.push(json!({"sql": sql, "binds": binds}));
+        })),
+        ..Default::default()
+    };
+    let db = Db::connect(&args.dsn(), 4, config).await.expect("connect");
+    let out = run_all(&db, &shared).await;
+    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+    db.close().await;
+}
 
-    let log: Log = Arc::new(Mutex::new(Vec::new()));
-    let mask = Arc::new(Mutex::new(Mask::default()));
-    let (log_h, mask_h) = (log.clone(), mask.clone());
-    let on_query = Box::new(
-        move |sql: &str,
-              params: &[Param],
-              _: std::time::Duration,
-              _: u64,
-              _: Option<&orm::Error>| {
-            let m = mask_h.lock().unwrap().clone();
-            log_h.lock().unwrap().push(json!({"sql": sql, "binds": params.iter().map(|p| norm(p, &m)).collect::<Vec<_>>()}));
-        },
-    );
-    let opts = target.connect_opts();
-    let compiler = Arc::new(
-        orm::ConnectCompiler::new(
-            target.compiler.as_deref().expect("--compiler is required"),
-            std::time::Duration::from_secs(5),
-        )
-        .expect("compiler"),
-    );
-    let db = Db::connect_with_compiler(
-        opts,
-        4,
-        engine,
-        compiler,
-        Config {
-            aes_key: "bench-salt".into(),
-            blind_index_key: String::new(),
-            aes_version: 1,
-            aes_keys: [(1, "bench-salt".into())].into_iter().collect(),
-            plan_cache_size: 256,
-            statement_cache_size: 256,
-            on_query: Some(on_query),
-        },
-    )
-    .await
-    .expect("connect");
-
-    let mut out: Vec<(String, Value)> = Vec::new();
+async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
+    let mut out = BTreeMap::new();
     macro_rules! run {
         ($name:expr, $body:expr) => {{
-            log.lock().unwrap().clear();
-            *mask.lock().unwrap() = Mask::default();
-            let res: orm::Result<Value> = $body;
-            let res = match res {
+            *shared.lock().unwrap() = Log::default();
+            let res: orm::Result<Value> = $body.await;
+            let result = match res {
                 Ok(v) => v,
-                Err(e) => json!({"error": e.code()}),
+                Err(e) => json!({"error": code(&e)}),
             };
-            let statements = Value::Array(log.lock().unwrap().clone());
-            out.push(($name.into(), json!({"statements": statements, "result": res})));
+            let statements = std::mem::take(&mut shared.lock().unwrap().statements);
+            out.insert($name.to_owned(), json!({"statements": statements, "result": result}));
         }};
     }
-    let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
-        .unwrap()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
-    let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1)
-        .unwrap()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
-    let end = chrono::NaiveDate::from_ymd_opt(2026, 12, 31)
-        .unwrap()
-        .and_hms_opt(0, 0, 0)
-        .unwrap();
-    // FKs and dts every write vector sets (user 1, service 999, module 1, member 1; 2026-06-01 .. 2026-12-31)
+    let battle = || Battle::new().connect(db);
+    let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
-    run!(
-        "interface_query_reuse",
-        async {
-            let mut q = battle::query().using(&db).service_seq(7).limit(0, 2);
-            let first = q.get_count().await?;
-            let rows = q.gets().await?;
-            let last = q.get_count().await?;
-            Ok(json!([first, rows.len(), last]))
+    run!("conditions_connectors", async {
+        let rows = battle().service_seq(7).and_is_close(false).or(()).read_count(6).order_by_seq_asc().limit(0, 3).gets().await?;
+        Ok::<Value, orm::Error>(picks(&rows, &cols))
+    });
+    run!("conditions_group", async {
+        let rows = battle()
+            .service_seq(7)
+            .and(|q: Battle| q.is_display(false).or(|q: Battle| q.is_close(true).and_gt_read_count(500)))
+            .order_by_seq_desc()
+            .limit(0, 3)
+            .gets()
+            .await?;
+        Ok::<Value, orm::Error>(picks(&rows, &cols))
+    });
+    run!("conditions_leading_group", async {
+        let rows = battle()
+            .and(|q: Battle| q.is_display(false).or_is_close(true))
+            .and_service_seq(7)
+            .order_by_seq_desc()
+            .limit(0, 3)
+            .gets()
+            .await?;
+        Ok::<Value, orm::Error>(picks(&rows, &cols))
+    });
+    run!("conditions_leading_prefix", async {
+        let rows = battle().and_service_seq(7).and_gt_read_count(990).order_by_seq_desc().limit(0, 3).gets().await?;
+        Ok::<Value, orm::Error>(picks(&rows, &cols))
+    });
+    run!("conditions_values", async {
+        let mut counts = Vec::new();
+        for q in [
+            battle().service_seq(vec![7, 8]).and_ne_is_close(true),
+            battle().service_seq(7).and_uuid(Null),
+            battle().service_seq(7).and_ne_cover_url(Null),
+            battle().service_seq(7).and_ne_read_count(vec![6, 106, 206]),
+            battle().service_seq(7).and_between_read_count([100, 200]),
+            battle().service_seq(7).and_lk_name("attle-10"),
+            battle().service_seq(7).and_lb_name("Battle-10"),
+            battle().service_seq(7).and_ge_read_count(990),
+            battle().service_seq(7).and_le_read_count(10),
+            battle().service_seq(7).and_lt_seq(1000),
+        ] {
+            counts.push(json!(q.get_count().await?));
         }
-        .await
-    );
-    run!("interface_attach", async {
-        let child=user::query().seq_in(vec![1,2]).and_group(|w|w.name("user-1").or().name("user-2"));
-        let a=battle::query().service_seq(7).join(&child);
-        let b=battle::query().service_seq(8).join(&child);
-        let child=child.name("later");
-        Ok(json!({"a":a.q.req.ir.query,"b":b.q.req.ir.query,"child":child.q.req.ir.query,
-            "a_params":a.q.req.params.iter().map(|p|norm(p,&Mask::default())).collect::<Vec<_>>(),
-            "b_params":b.q.req.params.iter().map(|p|norm(p,&Mask::default())).collect::<Vec<_>>(),
-            "child_params":child.q.req.params.iter().map(|p|norm(p,&Mask::default())).collect::<Vec<_>>()}))
-    }.await);
-    run!(
-        "interface_typed_keys",
-        async {
-            let mut c = Collection::with_capacity(0);
-            for (key, name) in [
-                (Key::I(1), "first"),
-                (Key::S("1".into()), "string"),
-                (Key::I(2), "second"),
-                (Key::I(1), "last"),
-            ] {
-                let mut row = ServiceRow::default();
-                row.set_name(name);
-                c.put(key, row);
-            }
-            Ok(json!(c
-                .entries()
-                .map(|(k, r)| json!([
-                    match k {
-                        Key::I(i) => json!(i),
-                        Key::S(s) => json!(s),
-                    },
-                    r.name
-                ]))
-                .collect::<Vec<_>>()))
-        }
-        .await
-    );
-    run!(
-        "interface_invalid_page",
-        async {
-            battle::query().using(&db).paginate(1, 0).await?;
-            Ok(Value::Null)
-        }
-        .await
-    );
-    run!(
-        "interface_error",
-        async {
-            let mut child = user::query();
-            child
-                .q
-                .defer_err(orm::codec::encode(&["unsupported"], Some(&json!("x"))).unwrap_err());
-            let mut q = battle::query().using(&db).join(child);
-            let first = q.sql().await.err().map(|e| e.code().to_owned());
-            let second = q.sql().await.err().map(|e| e.code().to_owned());
-            Ok(json!([first, second]))
-        }
-        .await
-    );
-    run!("interface_row_state", async {
-        let observed=Arc::new(Mutex::new(None));
-        let err=db.transaction(|tx|{let observed=observed.clone();let log=log.clone();async move {
-            let mut r=battle::query().using(&tx).select_none().select_seq().get_by_seq(6).await?.unwrap();
-            let before=r.has("name");
-            r.set_name("interface-first").set_like_count(5).set_name("interface-final");
-            r.update().await?;let n=log.lock().unwrap().len();r.update().await?;
-            *observed.lock().unwrap()=Some(json!({"before":before,"assigned":r.has("name"),"value":r.name,"export":r.to_map()?,"noop_statements":log.lock().unwrap().len()-n,"relation_loaded":r.rel_loaded("user")}));
-            Err::<(),_>(orm::Error::Config("interface rollback".into()))
-        }}).await.unwrap_err();
-        if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
-        let value=observed.lock().unwrap().take().unwrap();Ok(value)
-    }.await);
-    run!(
-        "interface_dirty_retry",
-        async {
-            let observed = Arc::new(Mutex::new(None));
-            let err = db
-                .transaction(|tx| {
-                    let observed = observed.clone();
-                    let log = log.clone();
-                    let mask = mask.clone();
-                    async move {
-                        let mut r = battle::query().using(&tx).get_by_seq(6).await?.unwrap();
-                        mask_created(
-                            &mask,
-                            &log,
-                            Mask {
-                                seqs: vec![],
-                                ts: Some(r.updated_ts),
-                            },
-                        );
-                        battle::query()
-                            .using(&tx)
-                            .seq(6)
-                            .set_updated_ts(
-                                chrono::NaiveDate::from_ymd_opt(2001, 1, 1)
-                                    .unwrap()
-                                    .and_hms_opt(0, 0, 0)
-                                    .unwrap(),
-                            )
-                            .update()
-                            .await?;
-                        r.set_name("interface-pending");
-                        let first = r
-                            .update_optimistic()
-                            .await
-                            .err()
-                            .map(|e| e.code().to_owned());
-                        let second = r
-                            .update_optimistic()
-                            .await
-                            .err()
-                            .map(|e| e.code().to_owned());
-                        *observed.lock().unwrap() =
-                            Some(json!({"errors":[first,second],"value":r.name}));
-                        Err::<(), _>(orm::Error::Config("interface rollback".into()))
-                    }
-                })
-                .await
-                .unwrap_err();
-            if err.to_string() != "CONFIG: interface rollback" {
-                return Err(err);
-            }
-            let value = observed.lock().unwrap().take().unwrap();
-            Ok(value)
-        }
-        .await
-    );
-
-    run!("interface_original_version", async {
-        let observed=Arc::new(Mutex::new(None));
-        let err=db.transaction(|tx|{let observed=observed.clone();let log=log.clone();let mask=mask.clone();async move {
-            let mut r=battle::query().using(&tx).get_by_seq(6).await?.unwrap();
-            mask_created(&mask,&log,Mask{seqs:vec![],ts:Some(r.updated_ts)});
-            let version=chrono::NaiveDate::from_ymd_opt(2002,1,1).unwrap().and_hms_opt(0,0,0).unwrap();
-            r.set_updated_ts(version).set_name("interface-version");r.update_optimistic().await?;
-            let mut sparse=battle::query().using(&tx).select_none().select_seq().get_by_seq(6).await?.unwrap();sparse.set_name("not-written");
-            let missing=sparse.update_optimistic().await.err().map(|e|e.code().to_owned());
-            let stored=battle::query().using(&tx).get_by_seq(6).await?.unwrap();
-            *observed.lock().unwrap()=Some(json!({"name":stored.name,"version_retained":r.updated_ts==version&&stored.updated_ts==version,"missing_version":missing,"pending":sparse.name}));
-            Err::<(),_>(orm::Error::Config("interface rollback".into()))
-        }}).await.unwrap_err();
-        if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
-        let value=observed.lock().unwrap().take().unwrap();Ok(value)
-    }.await);
-    run!("interface_identity", async {
-        let observed=Arc::new(Mutex::new(None));
-        let err=db.transaction(|tx|{let observed=observed.clone();async move {
-            let mut r=battle::query().using(&tx).get_by_seq(6).await?.unwrap();r.seq=5;
-            r.set_name("identity-original");r.update().await?;
-            let stored=battle::query().using(&tx).get_by_seq(6).await?.unwrap();r.delete().await?;
-            let original=battle::query().using(&tx).get_count_by_seq(6).await?;let other=battle::query().using(&tx).get_count_by_seq(5).await?;
-            *observed.lock().unwrap()=Some(json!({"updated":stored.name,"original_left":original,"other_left":other}));
-            Err::<(),_>(orm::Error::Config("interface rollback".into()))
-        }}).await.unwrap_err();
-        if err.to_string()!="CONFIG: interface rollback"{return Err(err)}
-        let value=observed.lock().unwrap().take().unwrap();Ok(value)
-    }.await);
-    run!(
-        "interface_nested_keys",
-        async {
-            let mut r = service::query()
-                .using(&db)
-                .relations(
-                    service_member::query()
-                        .order_by_seq_asc()
-                        .limit_per_parent(1),
-                )
-                .get_by_seq(7)
-                .await?
-                .unwrap();
-            let members = r.members_mut();
-            let first = members.first().unwrap().clone();
-            members.put(orm::Key::I(1), first.clone());
-            members.put(orm::Key::S("1".into()), first);
-            r.to_map()
-        }
-        .await
-    );
-    run!(
-        "interface_stream",
-        async {
-            let mut seen = 0_u64;
-            let mut first = None;
-            let mut first_seq = None;
-            let stopped = battle::query()
-                .service_seq(7)
-                .order_by_seq_asc()
-                .using(&db)
-                .stream(|row| {
-                    if first.is_none() {
-                        first_seq = Some(row.seq);
-                        first = Some(row);
-                    }
-                    seen += 1;
-                    seen < 3
-                })
-                .await?;
-            if first.as_ref().map(|row| row.seq) != first_seq {
-                return Err(orm::Error::Config(
-                    "stream row ownership check failed".into(),
-                ));
-            }
-            let exhausted = battle::query()
-                .service_seq(7)
-                .order_by_seq_asc()
-                .limit(0, 4)
-                .using(&db)
-                .stream(|_| true)
-                .await?;
-            let relation_error = battle::query()
-                .service_seq(7)
-                .relation(user::query())
-                .using(&db)
-                .stream(|_| true)
-                .await
-                .err()
-                .map(|e| e.code().to_owned());
-            Ok(json!({
-                "stopped":{"state":stopped.state,"count":stopped.count},
-                "exhausted":{"state":exhausted.state,"count":exhausted.count},
-                "relation_error":relation_error,
-            }))
-        }
-        .await
-    );
-    run!(
-        "unbound_terminal",
-        async { Ok(json!(battle::query().get_count_by_service_seq(7).await?)) }.await
-    );
-    run!(
-        "bound_count_finder",
-        async {
-            Ok(json!(
-                battle::query()
-                    .using(&db)
-                    .join(service::query().where_(|w| w.name("service-7")))
-                    .relation(user::query())
-                    .get_count_by_service_seq(7)
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "finished_transaction",
-        async {
-            let mut q = db
-                .transaction(|tx| async move { Ok(battle::query().using(&tx)) })
-                .await?;
-            Ok(json!(q.get_count_by_service_seq(7).await?))
-        }
-        .await
-    );
-    run!(
-        "bound_transaction_rollback",
-        async {
-            let observed = Arc::new(Mutex::new(None));
-            let err = db
-                .transaction(|tx| {
-                    let observed = observed.clone();
-                    let db = &db;
-                    async move {
-                        let mut s = service::query()
-                            .using(&tx)
-                            .set_name("conf-bind")
-                            .insert()
-                            .await?
-                            .unwrap();
-                        s.set_name("conf-bound").update().await?;
-                        let m = service_member::query()
-                            .using(&tx)
-                            .set_service_seq(s.seq)
-                            .set_user_seq(1)
-                            .insert()
-                            .await?
-                            .unwrap();
-                        let parent = service::query()
-                            .using(db)
-                            .using(&tx)
-                            .relations(service_member::query().using(db).join(user::query()))
-                            .get_by_seq(s.seq)
-                            .await?
-                            .unwrap();
-                        if parent.name != "conf-bound" || parent.members().len() != 1 {
-                            return Err(orm::Error::Config("bound relation missing".into()));
-                        }
-                        let mut child = parent.members().first().unwrap().clone();
-                        child.set_user_seq(2).update().await?;
-                        child
-                            .user()
-                            .unwrap()
-                            .clone()
-                            .set_name("conf-user")
-                            .update()
-                            .await?;
-                        let changed = service_member::query()
-                            .using(&tx)
-                            .user_seq(2)
-                            .get_count_by_service_seq(s.seq)
-                            .await?;
-                        let u = user::query().using(&tx).get_by_seq(1).await?.unwrap();
-                        *observed.lock().unwrap() = Some((s.seq, m, changed, u.name));
-                        Err::<bool, _>(orm::Error::Config("binding rollback".into()))
-                    }
-                })
-                .await;
-            match err {
-                Err(orm::Error::Config(ref msg)) if msg == "binding rollback" => {}
-                Err(e) => return Err(e),
-                Ok(_) => return Err(orm::Error::Config("rollback missing".into())),
-            }
-            let (seq, m, changed, joined_name) = observed.lock().unwrap().take().unwrap();
-            mask_created(
-                &mask,
-                &log,
-                Mask {
-                    seqs: vec![seq, m.seq],
-                    ts: None,
-                },
-            );
-            let expired = m.delete().await.err().map(|e| e.code().to_string());
-            let members_left = service_member::query()
-                .using(&db)
-                .get_count_by_service_seq(seq)
-                .await?;
-            let service_left = service::query().using(&db).get_count_by_seq(seq).await?;
-            let u = user::query().using(&db).get_by_seq(1).await?.unwrap();
-            Ok(
-                json!({"changed": changed, "joined_name": joined_name, "expired_row": expired,
-            "members_left": members_left, "service_left": service_left, "user_name": u.name}),
-            )
-        }
-        .await
-    );
-
-    run!(
-        "pk_one",
-        async {
-            Ok(row(battle::query()
-                .seq(42)
-                .using(&db)
-                .get_or_none()
-                .await?
-                .as_ref()))
-        }
-        .await
-    );
-    run!(
-        "pk_one_by",
-        async {
-            Ok(row(battle::query()
-                .using(&db)
-                .get_by_seq(42)
-                .await?
-                .as_ref()))
-        }
-        .await
-    );
-    run!(
-        "pk_missing",
-        async { Ok(row(battle::query().seq(0).using(&db).get_or_none().await?.as_ref())) }.await
-    );
-    run!(
-        "select_lazy",
-        async {
-            let b = battle::query()
-                .select_description()
-                .seq(42)
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap();
-            Ok(json!({"seq": b.seq, "description_prefix": &b.description.as_deref().unwrap()[..7]}))
-        }
-        .await
-    );
-    run!(
-        "list_order_limit",
-        async {
-            Ok(keyed(
-                &battle::query()
-                    .service_seq(7)
-                    .is_close(false)
-                    .order_by_seq_desc()
-                    .limit(0, 5)
-                    .using(&db)
-                    .gets()
-                    .await?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "in_keyed",
-        async {
-            Ok(keys(
-                &battle::query()
-                    .seq_in(vec![306, 6, 106])
-                    .order_by_seq_asc()
-                    .using(&db)
-                    .gets()
-                    .await?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "group_or",
-        async {
-            Ok(keyed(
-                &battle::query()
-                    .service_seq(7)
-                    .is_close(false)
-                    .and_group(|w| {
-                        w.is_display(true)
-                            .or()
-                            .and_group(|w| w.is_display(false).display_start_dt_lt(now))
-                    })
-                    .seq_in(vec![6, 106, 206, 306, 406])
-                    .order_by_seq_desc()
-                    .limit(0, 3)
-                    .using(&db)
-                    .gets()
-                    .await?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "aggregates",
-        async {
-            Ok(json!({
-                "count": battle::query().service_seq(7).using(&db).get_count().await?,
-                "sum_like_count": battle::query().service_seq(7).using(&db).sum_like_count().await?,
-                "avg_like_count": battle::query().service_seq(7).using(&db).avg_like_count().await?,
-            }))
-        }
-        .await
-    );
-    run!(
-        "join_nav_count",
-        async {
-            Ok(json!(
-                battle::query()
-                    .join(service::query().where_(|w| w.name("service-7")))
-                    .left_join(user::query().on(|w| w.name_contains("user")))
-                    .is_close(false)
-                    .and_group(|w| w.is_display(true).or().service(|s| s.seq_gt(1000)))
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "join_row",
-        async {
-            let b = battle::query()
-                .join(service::query().where_(|w| w.seq(7)))
-                .seq(6)
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap();
-            let s = b.service().unwrap();
-            Ok(json!({"seq": b.seq, "service": {"seq": s.seq, "name": s.name}}))
-        }
-        .await
-    );
-    run!(
-        "root_finder_join_relation",
-        async {
-            let c = battle::query()
-                .select_none()
-                .join(service::query().where_(|w| w.name("service-7")))
-                .relation(user::query())
-                .order_by_seq_asc()
-                .limit(0, 2)
-                .using(&db)
-                .gets_by_service_seq(7)
-                .await?;
-            Ok(Value::Array(
-                c.iter()
-                    .map(|(_, b)| {
-                        json!({
-                            "seq": b.seq,
-                            "service": b.service().map(|s| json!({"seq": s.seq, "name": s.name})),
-                            "user": b.user().map(|u| json!({"seq": u.seq, "name": u.name})),
-                        })
-                    })
-                    .collect(),
-            ))
-        }
-        .await
-    );
-    run!("paginate", async {
-        let p = battle::query().service_seq(7).order_by_seq_asc().using(&db).paginate(2, 10).await?;
-        Ok(json!({"total": p.total, "pages": p.pages, "current": p.current, "per": p.per, "keys": keys(&p.items)}))
-    }.await);
-    run!(
-        "contains_escape",
-        async {
-            Ok(json!(
-                battle::query()
-                    .name_contains("%")
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "empty_in_error",
-        async {
-            Ok(json!(
-                battle::query()
-                    .seq_in(vec![])
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "op_not_allowed_error",
-        async {
-            // Not expressible through the typed builder; the untyped core reaches the engine.
-            let mut q = Q::new(gen::schema_hash(), "battle");
-            q.w().pred("seq", "like", "x");
-            Ok(json!(orm::db::scalar(&db, &mut q.req, "count")
-                .await?
-                .as_i64()))
-        }
-        .await
-    );
-    run!(
-        "write_cycle",
-        async {
-            let created = db
-                .transaction(|tx| async move {
-                    battle::query()
-                        .set_name("conf-write")
-                        .set_user_seq(1)
-                        .set_service_seq(999)
-                        .set_service_module_seq(1)
-                        .set_service_member_seq(1)
-                        .set_start_dt(start)
-                        .set_end_dt(end)
-                        .set_aes_hex_email(Some("w@example.com"))
-                        .using(&tx)
-                        .insert()
-                        .await
-                })
-                .await?
-                .unwrap();
-            mask_created(
-                &mask,
-                &log,
-                Mask {
-                    seqs: vec![created.seq],
-                    ts: Some(created.updated_ts),
-                },
-            );
-            let mut c = created.clone();
-            c.set_name("conf-write-2").set_like_count(5);
-            c.using(&db).update_optimistic().await?;
-            let again = battle::query()
-                .using(&db)
-                .get_by_seq(created.seq)
-                .await?
-                .unwrap();
-            c.set_name("stale");
-            let stale = match c.using(&db).update_optimistic().await {
-                Ok(()) => Value::Null,
-                Err(e) => json!(e.code()),
-            };
-            again.delete().await?;
-            let left = battle::query()
-                .seq(created.seq)
-                .using(&db)
-                .get_count()
-                .await?;
-            Ok(json!({
-                "inserted": created.seq > 0, "email": created.aes_hex_email,
-                "after_update": {"name": again.name, "like_count": again.like_count},
-                "stale": stale, "left": left,
-            }))
-        }
-        .await
-    );
-
-    run!(
-        "eq_col_where",
-        async {
-            Ok(keys(
-                &battle::query()
-                    .join(
-                        service::query()
-                            .where_(|w| w.seq_eq_col(battle::cols::service_module_seq())),
-                    )
-                    .seq_in(vec![1, 2, 10])
-                    .order_by_seq_asc()
-                    .using(&db)
-                    .gets()
-                    .await?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "expr_where",
-        async {
-            Ok(json!(
-                battle::query()
-                    .service_seq(7)
-                    .expr("LENGTH(`name`) > ?", vec![8.into()])
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "select_expr",
-        async {
-            let b = battle::query()
-                .select_expr("tag", "CONCAT(`name`, '!')")
-                .seq(42)
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap();
-            Ok(json!({"seq": b.seq, "tag": b.extra("tag").map(|v| v.as_string())}))
-        }
-        .await
-    );
-    run!(
-        "relation_four_levels",
-        async {
-            Ok(battle::query()
-                .select_none()
-                .seq(7)
-                .relation(
-                    service::query().relations(
-                        service_member::query()
-                            .order_by_seq_asc()
-                            .limit_per_parent(2)
-                            .relation(
-                                user::query().relations(
-                                    battle::query()
-                                        .select_none()
-                                        .order_by_seq_asc()
-                                        .limit_per_parent(1),
-                                ),
-                            ),
-                    ),
-                )
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!(
-        "relation_one_ordered",
-        async {
-            Ok(battle::query()
-                .select_none()
-                .seq(7)
-                .relation(service::query().order_by_seq_desc())
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!(
-        "relation_if_parent",
-        async {
-            let c = battle::query()
-                .select_none()
-                .seq_in(vec![7, 8, 14])
-                .order_by_seq_asc()
-                .relation(user::query().if_parent_is_close_eq(true))
-                .using(&db)
-                .gets()
-                .await?;
-            Ok(Value::Array(
-                c.iter()
-                    .map(|(_, b)| b.to_map())
-                    .collect::<orm::Result<Vec<_>>>()?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "relation_empty_parents",
-        async {
-            Ok(keys(
-                &battle::query()
-                    .seq(0)
-                    .relation(user::query())
-                    .using(&db)
-                    .gets()
-                    .await?,
-            ))
-        }
-        .await
-    );
-    run!(
-        "relation_off_join",
-        async {
-            Ok(battle::query()
-                .select_none()
-                .seq(8)
-                .join(service::query().relations(service_module::query()))
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!("paginate_relations", async {
-        let p = battle::query().select_none().service_seq(7).order_by_seq_asc().relation(user::query()).using(&db).paginate(1, 3).await?;
-        Ok(json!({"total": p.total, "items": p.items.iter().map(|(_, b)| b.to_map()).collect::<orm::Result<Vec<_>>>()?}))
-    }.await);
-    run!(
-        "key_by_column",
-        async {
-            Ok(service::query()
-                .seq(7)
-                .relations(
-                    service_member::query()
-                        .order_by_seq_asc()
-                        .limit_per_parent(3)
-                        .key_by_user_seq(),
-                )
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!(
-        "key_by_unselected",
-        async {
-            Ok(service::query()
-                .seq(7)
-                .relations(service_module::query().select_none().key_by_name())
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!("types_roundtrip", async {
-        let dt = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_micro_opt(12, 34, 56, 123456).unwrap();
-        let created = db.transaction(|tx| async move {
-            battle::query()
-                .set_name("conf-types")
-                .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
-                .set_start_dt(dt).set_end_dt(dt).set_display_start_dt(Some(dt)).set_is_display(true).set_target_team_player_count(2147483647).set_read_count(4294967295).set_price(Some(12345.678))
-                .set_json_setting(json!({"k": []})).set_jsons_tags(json!([])).set_serialize_data(json!(""))
-                .using(&tx).insert().await
-        }).await?.unwrap();
-        mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
-        let b = battle::query().select_json_setting().select_jsons_tags().select_serialize_data().seq(created.seq).using(&db).get_or_none().await?.unwrap();
-        b.delete().await?;
-        Ok(json!({
-            "display_start_dt": fmt_time(b.display_start_dt.as_ref().unwrap()), "is_display": b.is_display, "is_close": b.is_close,
-            "target_team_player_count": b.target_team_player_count, "read_count": b.read_count, "price": b.price,
-            "json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "serialize_data": b.serialize_data,
+        Ok::<Value, orm::Error>(Value::Array(counts))
+    });
+    run!("terminal_by", async {
+        let one = battle().get_by_seq(42).await?;
+        let missing = battle().get_by_seq(-1).await?;
+        let rows = battle().order_by_seq_asc().limit(0, 2).gets_by_service_seq_and_is_close(7, false).await?;
+        let count = battle().get_count_by_service_seq(7).await?;
+        Ok::<Value, orm::Error>(json!({"one": pick(one.as_ref(), &cols), "missing": missing.is_none(), "rows": picks(&rows, &cols), "count": count}))
+    });
+    run!("terminal_reuse", async {
+        let q = battle().service_seq(7).order_by_seq_asc().limit(0, 2);
+        let first = q.get_count_by_is_close(true).await?;
+        let rows = q.gets().await?;
+        let last = q.get_count().await?;
+        Ok::<Value, orm::Error>(json!([first, rows.len(), last]))
+    });
+    run!("raw_forms", async {
+        let count = battle().service_seq(7).and_raw("{read_count} > ?", [990]).get_count().await?;
+        let rows = battle()
+            .raw("{seq} IN (?, ?)", [42, 43])
+            .remove_all_columns()
+            .add_raw_column_doubled("({read_count} * ?)", [2])
+            .order_by_raw("{seq} DESC")
+            .gets()
+            .await?;
+        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq(), int(r.get_doubled())])).collect();
+        Ok::<Value, orm::Error>(json!({"count": count, "rows": rows}))
+    });
+    run!("columns", async {
+        let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
+        let added = battle().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;
+        let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
+        Ok::<Value, orm::Error>(json!([
+            none.map(|m| m.to_array()),
+            pick(added.as_ref(), &["seq", "name", "read_text"]),
+            removed.map(|m| m.to_array())
+        ]))
+    });
+    run!("joins", async {
+        let service = Service::new().on(|s: Service| s.gt_seq(0)).name("service-7");
+        let rows = battle()
+            .remove_all_columns()
+            .add_column_name()
+            .join_service_seq_with_seq(service.clone())
+            .is_close(false)
+            .and(|q: Battle| q.is_display(true).or(&service))
+            .order_by_seq_asc()
+            .limit(0, 2)
+            .gets()
+            .await?;
+        let member = ServiceMember::new();
+        let compared = battle()
+            .join_service_member_seq_with_seq(member.clone())
+            .service_seq(7)
+            .and_success_count_lt_seq(&member)
+            .get_count()
+            .await?;
+        let left = battle()
+            .left_join_service_module_seq_with_seq(ServiceModule::new().alias_module())
+            .service_seq(7)
+            .order_by_seq_asc()
+            .limit(0, 1)
+            .gets()
+            .await?;
+        Ok::<Value, orm::Error>(json!({
+            "rows": rows.to_array(),
+            "compared": compared,
+            "module": pick(left.first().and_then(|b| b.get_module()), &["seq", "name"]),
         }))
-    }.await);
-    run!(
-        "key_by_fn_to_array",
-        async {
-            let c = service_member::query()
-                .service_seq(7)
-                .order_by_seq_asc()
-                .limit(0, 2)
-                .relation(user::query().flatten())
-                .key_by_fn(|m| Key::S(format!("u{}", m.user_seq)))
-                .using(&db)
-                .gets()
-                .await?;
-            Ok(Value::Array(
-                c.iter()
-                    .map(|(k, m)| Ok(json!([k.to_string(), m.to_map()?])))
-                    .collect::<orm::Result<Vec<_>>>()?,
-            ))
+    });
+    run!("relations", async {
+        let rows = battle()
+            .remove_all_columns()
+            .add_column_name()
+            .add_column_is_close()
+            .relation(
+                User::new()
+                    .match_user_seq_with_seq()
+                    .alias_writer()
+                    .relations(Battle::new().match_seq_with_user_seq().remove_all_columns().order_by_seq_desc().group_limit(2)),
+            )
+            .relation(
+                Service::new()
+                    .match_service_seq_with_seq()
+                    .relations(ServiceMember::new().match_seq_with_service_seq().remove_all_columns().order_by_seq_asc().group_limit(2).key_name_user_seq()),
+            )
+            .relation(ServiceModule::new().match_service_module_seq_with_seq().possible_is_close(true).parent_node())
+            .service_seq(7)
+            .order_by_seq_asc()
+            .limit(0, 3)
+            .gets()
+            .await?;
+        Ok::<Value, orm::Error>(rows.to_array())
+    });
+    run!("relation_empty", async {
+        let rows = battle().relations(ServiceMember::new().match_user_seq_with_user_seq()).gets_by_seq(-1).await?;
+        Ok::<Value, orm::Error>(json!(rows.len()))
+    });
+    run!("subqueries", async {
+        let users = User::new()
+            .connect(db)
+            .add_column_read_total(|u: &User| Battle::new().sum_read_count().user_seq_eq_seq(u).and_service_seq(7))
+            .seq(Battle::new().add_column_user_seq().service_seq(7).and_ge_read_count(906))
+            .order_by_seq_asc()
+            .gets()
+            .await?;
+        let out: Vec<Value> = users.models().map(|u| json!([u.get_seq(), int(u.get_read_total())])).collect();
+        Ok::<Value, orm::Error>(Value::Array(out))
+    });
+    run!("aggregates", async {
+        let sum = battle().service_seq(7).sum_read_count().get_sum().await?;
+        let avg = battle().service_seq(7).avg_like_count().get_avg().await?;
+        let groups = battle().service_seq(7).group_by_is_close().order_by_is_close_asc().gets_count().await?;
+        let page = battle().service_seq(7).remove_all_columns().order_by_seq_asc().gets_page(3, 4).await?;
+        Ok::<Value, orm::Error>(json!({
+            "sum": sum,
+            "avg": format!("{avg:.4}"),
+            "groups": groups.to_array(),
+            "page": {"keys": keys_of(&page.items), "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page},
+        }))
+    });
+    run!("functions", async {
+        let mut counts = Vec::new();
+        for q in [
+            battle().service_seq(7).and_eq_start_dt(orm::day_of_week(), 2),
+            battle().service_seq(7).and_start_dt(orm::year(), 2026),
+            battle().service_seq(7).and_gt_start_dt(orm::days_ago(36500)),
+            battle().service_seq(7).and_lt_start_dt(orm::months_later(1200)),
+        ] {
+            counts.push(json!(q.get_count().await?));
         }
-        .await
-    );
-    run!(
-        "drop_child_key_to_array",
-        async {
-            let u = user::query()
-                .seq(5)
-                .relations(
-                    battle::query()
-                        .select_none()
-                        .order_by_seq_asc()
-                        .limit_per_parent(2)
-                        .drop_child_key(),
-                )
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap();
-            u.to_map()
-        }
-        .await
-    );
-    let fks = |q: Battle| {
-        q.set_user_seq(1)
+        let rows = battle()
+            .remove_all_columns()
+            .add_column_start_dt_alias_start_month(orm::month())
+            .order_by_start_dt_asc(orm::year())
+            .order_by_seq_asc()
+            .gets_by_seq(vec![42, 43])
+            .await?;
+        let months: Vec<Value> = rows.models().map(|r| json!(int(r.get_start_month()))).collect();
+        Ok::<Value, orm::Error>(json!({"counts": counts, "months": months}))
+    });
+    run!("errors", async {
+        let errs = vec![
+            code_of(battle().name("a").is_close(true).gets().await),
+            code_of(battle().name("a").and(()).gets().await),
+            code_of(battle().seq(Vec::<i64>::new()).gets().await),
+            code_of(Battle::new().name("a").gets().await),
+            code_of(battle().for_update().gets().await),
+            code_of(battle().join_user_seq_with_seq(User::new().connect(db)).gets().await),
+            code_of(battle().limit(0, 1).gets_page(1, 10).await),
+            code_of(battle().relation(User::new().match_user_seq_with_seq().limit(0, 1)).gets_by_seq(42).await),
+            code_of(battle().name("a").or(&User::new()).gets().await),
+        ];
+        Ok::<Value, orm::Error>(Value::Array(errs))
+    });
+    run!("get_query", async {
+        let st = battle()
+            .service_seq(7)
+            .and_lk_name("x")
+            .and_aes_hex_email("user7@example.com")
+            .order_by_seq_desc()
+            .limit(0, 5)
+            .get_query()
+            .await?;
+        let log = Log::default();
+        let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b), &log)).collect();
+        Ok::<Value, orm::Error>(json!({"sql": st.sql, "binds": binds}))
+    });
+    run!("aes_values", async {
+        let row = battle().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?;
+        let found = battle().aes_hex_email("user42@example.com").get_count().await?;
+        Ok::<Value, orm::Error>(json!({"row": row.map(|r| r.to_array()), "found": found}))
+    });
+    run!("write_cycle", async {
+        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let created = battle()
+            .set_name("cycle")
+            .set_user_seq(1)
             .set_service_seq(999)
             .set_service_module_seq(1)
             .set_service_member_seq(1)
             .set_start_dt(start)
-            .set_end_dt(end)
-    };
-    run!(
-        "upsert",
-        async {
-            let (a, b) = db
-                .transaction(|tx| async move {
-                    let a = fks(battle::query()
-                        .set_uuid(Some("conf-upsert"))
-                        .set_name("u1")
-                        .set_read_count(1))
-                    .using(&tx)
-                    .insert()
-                    .await?
-                    .unwrap();
-                    let b = fks(battle::query()
-                        .set_uuid(Some("conf-upsert"))
-                        .set_name("u2")
-                        .set_read_count(1))
-                    .on_duplicate_set_name("u2")
-                    .on_duplicate_plus_read_count(5)
-                    .using(&tx)
-                    .insert()
-                    .await?
-                    .unwrap();
-                    b.delete().await?;
-                    Ok((a, b))
-                })
-                .await?;
-            mask_created(
-                &mask,
-                &log,
-                Mask {
-                    seqs: vec![a.seq],
-                    ts: Some(a.updated_ts),
-                },
-            );
-            Ok(json!({"same_seq": a.seq == b.seq, "name": b.name, "read_count": b.read_count}))
+            .set_end_dt(start)
+            .set_price(12.5)
+            .set_ip("10.0.0.1")
+            .set_aes_hex_email("cycle@example.com")
+            .set_json_setting(json!({"a": 1}))
+            .set_serialize_data(json!({"k": "v"}))
+            .new_label("created")
+            .create()
+            .await?;
+        let seq = created.get_seq();
+        mask(shared, &[seq], &[]);
+        let mut created_array = created.to_array();
+        created_array["seq"] = json!("$SEQ");
+        let loaded = battle().add_all_columns().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        mask(shared, &[], &[loaded.get_updated_ts()]);
+        let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
+        loaded.update(true).await?;
+        let mut loaded = loaded.set_name("stale");
+        let stale = loaded.update(true).await;
+        let again = battle().add_all_columns().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        let updated = pick(Some(&again), &["name", "read_count", "price", "ip", "aes_hex_email", "json_setting", "serialize_data", "start_dt"]);
+        again.delete(false).await?;
+        let gone = battle().get_by_seq(seq).await?;
+        Ok::<Value, orm::Error>(json!({"created": created_array, "updated": updated, "stale": code_of(stale), "deleted": gone.is_none()}))
+    });
+    run!("now_defaults", async {
+        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        let before = chrono::Utc::now().naive_utc();
+        let created = battle()
+            .set_name("clock")
+            .set_user_seq(1)
+            .set_service_seq(999)
+            .set_service_module_seq(1)
+            .set_service_member_seq(1)
+            .set_start_dt(start)
+            .set_end_dt(start)
+            .create()
+            .await?;
+        let seq = created.get_seq();
+        mask(shared, &[seq], &[]);
+        let loaded = battle().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        let (created_ts, updated_ts) = (loaded.get_created_ts(), loaded.get_updated_ts());
+        // The runner connects in +00:00, so the wall-clock value is UTC.
+        let near = (created_ts - before).num_seconds().abs() < 60;
+        loaded.delete(false).await?;
+        Ok::<Value, orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
+    });
+    run!("creates_and_save", async {
+        let rows = vec![
+            CompositeAccount::new().set_tenant_id(900).set_account_id(1).set_name("a"),
+            CompositeAccount::new().set_tenant_id(900).set_account_id(2).set_name("b"),
+            CompositeAccount::new().set_tenant_id(901).set_account_id(1).set_name("c"),
+        ];
+        let inserted = CompositeAccount::new().connect(db).creates(rows).await?;
+        CompositeAccount::new()
+            .connect(db)
+            .set_tenant_id(900)
+            .set_account_id(1)
+            .set_name("dup")
+            .duplication(CompositeAccount::new().set_name("updated"))
+            .create()
+            .await?;
+        CompositeAccount::new().connect(db).set_tenant_id(900).set_account_id(2).set_name("saved").save().await?;
+        let pairs = CompositeAccount::new().connect(db).tuple_tenant_id_with_account_id(vec![(900, 1), (900, 2)]).order_by_account_id_asc().gets().await?;
+        let all = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).order_by_tenant_id_asc().order_by_account_id_asc().gets().await?;
+        all.delete(false).await?;
+        let left = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).get_count().await?;
+        Ok::<Value, orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array(), "left": left}))
+    });
+    run!("delete_recursive", async {
+        let service = Service::new().connect(db).set_name("recursive").create().await?;
+        let seq = service.get_seq();
+        let mut seqs = vec![seq];
+        for i in 0..2 {
+            let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
+            seqs.push(member.get_seq());
         }
-        .await
-    );
-    run!(
-        "upsert_set_all",
-        async {
-            let (a, b) = db
-                .transaction(|tx| async move {
-                    let a = fks(battle::query()
-                        .set_uuid(Some("conf-upsert"))
-                        .set_name("u1")
-                        .set_read_count(1))
-                    .using(&tx)
-                    .insert()
-                    .await?
-                    .unwrap();
-                    let b = fks(battle::query()
-                        .set_uuid(Some("conf-upsert"))
-                        .set_name("u3")
-                        .set_read_count(9))
-                    .on_duplicate_set_all()
-                    .using(&tx)
-                    .insert()
-                    .await?
-                    .unwrap();
-                    b.delete().await?;
-                    Ok((a, b))
-                })
-                .await?;
-            mask_created(
-                &mask,
-                &log,
-                Mask {
-                    seqs: vec![a.seq],
-                    ts: Some(a.updated_ts),
-                },
-            );
-            Ok(json!({"same_seq": a.seq == b.seq, "name": b.name, "read_count": b.read_count}))
-        }
-        .await
-    );
-    run!(
-        "save_branch",
-        async {
-            let r = db
-                .transaction(|tx| async move {
-                    fks(battle::query().set_name("conf-save"))
-                        .using(&tx)
-                        .insert()
-                        .await
-                })
-                .await?
-                .unwrap();
-            mask_created(
-                &mask,
-                &log,
-                Mask {
-                    seqs: vec![r.seq],
-                    ts: Some(r.updated_ts),
-                },
-            );
-            battle::query()
-                .seq(r.seq)
-                .set_name("conf-save-2")
-                .using(&db)
-                .update()
-                .await?;
-            let after = battle::query().seq(r.seq).using(&db).get().await?;
-            after.delete().await?;
-            Ok(json!({"inserted": r.seq > 0, "after": after.name}))
-        }
-        .await
-    );
-    run!("bulk_update_plus_minus", async {
-        let r = db.transaction(|tx| async move { fks(battle::query().set_read_count(3).set_name("conf-bulk")).using(&tx).insert().await }).await?.unwrap();
-        mask_created(&mask, &log, Mask { seqs: vec![r.seq], ts: Some(r.updated_ts) });
-        let read = |seq: i64| { let db = &db; async move { battle::query().using(db).get_by_seq(seq).await.map(|b| b.unwrap().read_count) } };
-        battle::query().seq(r.seq).plus_read_count(2).using(&db).update().await?;
-        let after_plus = read(r.seq).await?;
-        // minus clamps at zero
-        battle::query().seq(r.seq).minus_read_count(10).using(&db).update().await?;
-        let after_minus = read(r.seq).await?;
-        battle::query().seq(r.seq).set_read_count_expr("`read_count` * ? + 1", vec![2.into()]).using(&db).update().await?;
-        let after_expr = read(r.seq).await?;
-        let deleted = battle::query().seq(r.seq).using(&db).delete().await?;
-        Ok(json!({"after_plus": after_plus, "after_minus": after_minus, "after_expr": after_expr, "deleted": deleted}))
-    }.await);
-    run!("delete_cascade_order", async {
-        let (s, m1, m2, md) = db.transaction(|tx| async move {
-            let s = service::query().set_name("conf-svc").using(&tx).insert().await?.unwrap();
-            let m1 = service_member::query().set_service_seq(s.seq).set_user_seq(1).using(&tx).insert().await?.unwrap();
-            let m2 = service_member::query().set_service_seq(s.seq).set_user_seq(2).using(&tx).insert().await?.unwrap();
-            let md = service_module::query().set_service_seq(s.seq).set_name("conf-mod").using(&tx).insert().await?.unwrap();
-            Ok((s.seq, m1.seq, m2.seq, md.seq))
-        }).await?;
-        mask_created(&mask, &log, Mask { seqs: vec![s, m1, m2, md], ts: None });
-        service::query().seq(s)
-            .relations(service_member::query().order_by_seq_asc())
-            .relations(service_module::query().no_cascade_delete())
-            .using(&db).get_or_none().await?.unwrap()
-            .using(&db).delete_cascade().await?;
-        let members_left = service_member::query().service_seq(s).using(&db).get_count().await?;
-        let modules_left = service_module::query().service_seq(s).using(&db).get_count().await?;
-        let service_left = service::query().seq(s).using(&db).get_count().await?;
-        service_module::query().seq(md).using(&db).delete().await?;
-        Ok(json!({"members_left": members_left, "modules_left": modules_left, "service_left": service_left}))
-    }.await);
-    run!("sql_dump", async {
-        let s = battle::query().service_seq(7).select_aes_hex_email().limit(0, 1).using(&db).sql().await?;
-        Ok(json!({"sql": s.sql, "binds": s.binds.iter().map(|p| norm(p, &Mask::default())).collect::<Vec<_>>()}))
-    }.await);
-    run!("agg_min_max", async {
-        Ok(json!({
-            "min": battle::query().service_seq(7).using(&db).min_seq().await?,
-            "max": battle::query().service_seq(7).using(&db).max_seq().await?,
-            "distinct_users": battle::query().service_seq(7).using(&db).count_distinct_user_seq().await?,
-        }))
-    }.await);
-    run!(
-        "group_count_having",
-        async {
-            Ok(json!(
-                battle::query()
-                    .service_seq(7)
-                    .group_by_user_seq()
-                    .having(|w| w.expr("COUNT(*) > ?", vec![1.into()]))
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!("predicate_named", async {
-        Ok(json!({
-            "visible": battle::query().visible().service_seq(7).using(&db).get_count().await?,
-            "started_after": battle::query().started_after("2026-01-01 00:00:00").service_seq(7).using(&db).get_count().await?,
-        }))
-    }.await);
-    run!("raw_root", async {
-        let rows = battle::query()
-            .raw("SELECT COUNT(*) AS n, MAX(seq) AS m FROM {table} WHERE service_seq = ? AND is_close = ?", vec![7.into(), false.into()])
-            .using(&db).raw_all().await?;
-        Ok(Value::Array(rows.iter().map(|r| Value::Object(r.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())).collect()))
-    }.await);
-    run!(
-        "join_fulltext_or",
-        async {
-            Ok(json!(
-                battle::query()
-                    .join(service::query().where_(|w| w.seq(7)))
-                    .is_close(false)
-                    .and_group(|w| w
-                        .name_with_description_match_boolean("battle")
-                        .or()
-                        .service(|s| s.name("service-999")))
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "join_two_groups",
-        async {
-            Ok(json!(
-                battle::query()
-                    .join(
-                        service::query()
-                            .on(|w| w.name("service-7"))
-                            .where_(|w| w.seq_gt(0))
-                    )
-                    .left_join(user::query().where_(|w| w.name_contains("user-4")))
-                    .seq_in(vec![6, 106, 206, 406])
-                    .using(&db)
-                    .get_count()
-                    .await?
-            ))
-        }
-        .await
-    );
-    run!(
-        "join_multi_level",
-        async {
-            Ok(battle::query()
-                .select_none()
-                .seq(6)
-                .join(
-                    service_member::query()
-                        .select_none()
-                        .join(user::query().select_none())
-                        .join(service::query().select_none()),
-                )
-                .using(&db)
-                .get_or_none()
-                .await?
-                .unwrap()
-                .to_map()?)
-        }
-        .await
-    );
-    run!("relation_predicates", async {
-        let exists = service::query().seq(7).has_members(|w| w).using(&db).get_count().await?;
-        let count = service::query().seq(7).count_members_eq(50, |w| w).using(&db).get_count().await?;
-        Ok(json!({"exists": exists, "count": count}))
-    }.await);
-    run!("batch_insert_delete", async {
-        let names = vec!["conformance-batch-a".to_string(), "conformance-batch-b".to_string()];
-        service::query().name_in(names.clone()).using(&db).delete().await?;
-        let result = service::query().using(&db).batch_insert(vec![
-            service::query().set_name(names[0].clone()), service::query().set_name(names[1].clone()),
-        ], orm::db::BatchOptions { chunk_size: 1 }).await?;
-        let deleted = service::query().name_in(names).using(&db).delete().await?;
-        Ok(json!({"attempted": result.attempted, "affected": result.affected, "inserted": result.inserted, "deleted": deleted}))
-    }.await);
-    run!("keyset_pages", async {
-        let first = service::query().order_by_seq_asc().using(&db).gets_after("", 3).await?;
-        let second = service::query().order_by_seq_asc().using(&db).gets_after(&first.next_cursor, 3).await?;
-        Ok(json!({
-            "first": first.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
-            "second": second.items.keys().map(|key| key.as_i64()).collect::<Vec<_>>(),
-            "has_cursor": !first.next_cursor.is_empty()
-        }))
-    }.await);
+        let loaded = Service::new()
+            .connect(db)
+            .relations(ServiceMember::new().match_seq_with_service_seq())
+            .get_by_seq(seq)
+            .await?
+            .ok_or(orm::Error::NoRows)?;
+        let members = loaded.get_service_member_models().map(|c| c.len()).unwrap_or(0);
+        mask(shared, &seqs, &[]);
+        loaded.delete(true).await?;
+        let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
+        let service2 = Service::new().connect(db).get_by_seq(seq).await?;
+        Ok::<Value, orm::Error>(json!({"members": members, "members_left": left, "service_left": service2.is_some()}))
+    });
+    run!("transactions", async {
+        let events = Mutex::new(Vec::new());
+        let result: orm::Result<()> = db
+            .transaction(async || {
+                Service::new().set_name("tx-outer").create().await?;
+                let inner: orm::Result<()> = db
+                    .transaction(async || {
+                        Service::new().set_name("tx-inner").create().await?;
+                        Err(orm::Error::Config("boom".into()))
+                    })
+                    .await;
+                events.lock().unwrap().push(json!(matches!(&inner, Err(orm::Error::Config(m)) if m == "boom")));
+                let count = Service::new().name(vec!["tx-outer", "tx-inner"]).get_count().await?;
+                events.lock().unwrap().push(json!(count));
+                let locked = Service::new().name("tx-outer").for_update().gets().await?;
+                events.lock().unwrap().push(json!(locked.len()));
+                db.utils().lock("conformance").await?;
+                db.utils().set_local("app.actor", "runner").await?;
+                let actor = db.utils().local("app.actor")?;
+                events.lock().unwrap().push(json!(actor));
+                Err(orm::Error::Config("boom".into()))
+            })
+            .retry(0)
+            .await;
+        let mut events = events.into_inner().unwrap();
+        events.push(json!(matches!(&result, Err(orm::Error::Config(m)) if m == "boom")));
+        let left = Service::new().connect(db).name(vec!["tx-outer", "tx-inner"]).get_count().await?;
+        events.push(json!(left));
+        Ok::<Value, orm::Error>(Value::Array(events))
+    });
     run!("aes_status", async {
-        let keys = BTreeMap::from([
-            (1, "bench-salt".to_string()),
-            (2, "bench-salt-v2".to_string()),
-        ]);
-        let keyring = orm::aes_rotation::AesKeyring::new(keys, 1)?;
-        let log_len = log.lock().unwrap().len();
-        let status = battle::query().using(&db).aes_status(&keyring).await?;
-        // AES status is a generated terminal operation. Its low-level SQL is
-        // intentionally omitted here because the other clients do not expose
-        // this internal statement through their query event hooks.
-        log.lock().unwrap().truncate(log_len);
-        Ok(json!({
-            "current": status.current,
-            "total": status.total,
-            "pending": status.pending,
-            "versions": status.versions,
-        }))
-    }.await);
-    run!("codec_roundtrip", async {
-        let value = json!({"a": 1, "b": [1, 2, {"c": "한글/slash"}], "d": null, "e": true, "f": 1.5});
-        let v = value.clone();
-        let created = db.transaction(|tx| { let v = v.clone(); async move {
-            battle::query()
-                .set_name("conf-codec")
-                .set_user_seq(1).set_service_seq(999).set_service_module_seq(1).set_service_member_seq(1)
-                .set_start_dt(start).set_end_dt(end)
-                .set_json_setting(v.clone()).set_jsons_tags(json!(["x", "y"])).set_base64_extra(v.clone()).set_serialize_data(v.clone()).set_gz_extend(v).set_ip(Some("10.1.2.3"))
-                .using(&tx).insert().await
-        }}).await?.unwrap();
-        mask_created(&mask, &log, Mask { seqs: vec![created.seq], ts: Some(created.updated_ts) });
-        let b = battle::query().select_json_setting().select_jsons_tags().select_base64_extra().select_serialize_data().select_gz_extend().seq(created.seq).using(&db).get_or_none().await?.unwrap();
-        b.delete().await?;
-        Ok(json!({"json_setting": b.json_setting, "jsons_tags": b.jsons_tags, "base64_extra": b.base64_extra, "serialize_data": b.serialize_data, "gz_extend": b.gz_extend, "ip": b.ip}))
-    }.await);
-
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&Value::Object(out.into_iter().collect())).unwrap()
-    );
+        let keyring = AesKeyring::new([(1, "bench-salt".to_owned())].into_iter().collect(), 1)?;
+        let status = db.utils().aes().status(&Battle::new(), &keyring).await?;
+        let mut versions: Vec<String> = status.versions.iter().map(|(v, n)| format!("{v}:{n}")).collect();
+        versions.sort();
+        Ok::<Value, orm::Error>(json!({"current": status.current, "pending": status.pending, "versions": versions.join(",")}))
+    });
+    out
 }

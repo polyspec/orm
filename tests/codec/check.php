@@ -47,9 +47,6 @@ foreach ($vectors as $v) {
     }
 }
 $errors = [
-    ['invalid public upload file', fn() => Codec::encode(['curlfile', 'serialize'], ['$type' => 'upload_file', 'path' => '', 'mime' => 'text/plain', 'name' => 'a.txt']), Code::CODEC_ENCODE],
-    ['invalid stored upload file', fn() => Codec::decode(['curlfile', 'serialize'], 'a:4:{s:12:"is_curl_file";b:1;s:4:"mime";s:10:"text/plain";s:4:"name";s:5:"a.txt";s:4:"path";s:0:"";}'), Code::CODEC_DECODE],
-    ['invalid curlfile order', fn() => Codec::encode(['serialize', 'curlfile'], []), Code::CODEC_UNSUPPORTED],
     ['duplicate YAML key', fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE],
     ['multiple YAML documents', fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE],
     ['YAML alias', fn() => Codec::decode(['yaml'], "a: &x [1]\nb: *x\n"), Code::CODEC_DECODE],
