@@ -294,14 +294,22 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 		return err
 	}
 	pushFrame(t)
+	// A callback can leave without returning: it can panic, and in a test it
+	// can call runtime.Goexit through t.Fatal. Both end the transaction.
+	returned := false
 	defer func() {
 		popFrame()
 		if r := recover(); r != nil {
 			t.rollback()
 			panic(r)
 		}
+		if !returned {
+			t.rollback()
+		}
 	}()
-	if err = fn(); err != nil {
+	err = fn()
+	returned = true
+	if err != nil {
 		t.rollback()
 		return err
 	}
@@ -417,14 +425,21 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		return mapDriverErr(err)
 	}
 	pushFrame(t)
+	returned := false
 	defer func() {
 		popFrame()
 		if r := recover(); r != nil {
 			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
 			panic(r)
 		}
+		if !returned {
+			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
+			_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
+		}
 	}()
-	if err = fn(); err != nil {
+	err = fn()
+	returned = true
+	if err != nil {
 		if _, rbErr := t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name); rbErr != nil {
 			return mapDriverErr(rbErr)
 		}
