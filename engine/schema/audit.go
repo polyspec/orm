@@ -150,8 +150,8 @@ func (m *Manifest) addAudit(x *ORMDirective) error {
 			if column.PK {
 				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("%s.%s is a key column and identifies the row", name, path[0])}
 			}
-			if len(path) > 1 && column.Type != "jsontext" {
-				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("%s.%s is not a jsontext column, so %s has no path", name, path[0], item)}
+			if len(path) > 1 && !holdsJSON(column) {
+				return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("%s.%s holds no JSON, so %s has no path", name, path[0], item)}
 			}
 			for _, previous := range audit.Redact {
 				n := min(len(previous), len(path))
@@ -222,4 +222,11 @@ func splitORMFields(body string) []string {
 	}
 	flush()
 	return fields
+}
+
+// holdsJSON reports whether a column can carry a JSON document: the jsontext
+// type, a JSON codec, or plain text, which is how a database reports a
+// jsontext column when the schema is read back from it.
+func holdsJSON(c *Col) bool {
+	return c.Type == "jsontext" || c.Type == "text" || slices.Contains(c.Styles, "json") || slices.Contains(c.Styles, "jsons")
 }
