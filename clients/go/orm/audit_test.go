@@ -40,10 +40,11 @@ const auditItemSchema = "er" + "Diagram\n" +
 	"    bigint       seq            PK \"auto\"\n" +
 	"    varchar(36)  site_ref\n" +
 	"    varchar(191) title\n" +
+	"    text         json_detail    \"?\"\n" +
 	"  }\n" +
 	"  %% orm:table entity=audit_item name=app.audit_item\n" +
 	"  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n" +
-	"  %% orm:audit entity=audit_item mode=changes site=site_ref\n"
+	"  %% orm:audit entity=audit_item mode=changes site=site_ref redact=json_detail.secret\n"
 
 // auditManifest builds a schema, without schema-qualified tables on MySQL.
 func auditManifest(t *testing.T, source, driver string) (*schema.Manifest, []byte) {
@@ -138,7 +139,7 @@ func TestAuditTriggers(t *testing.T) {
 			}
 			operations := rowEntity("audit_operation", logs.SchemaHash, "seq", "operation_uuid")
 			changes := rowEntity("audit_change", logs.SchemaHash, "seq", "operation_seq", "change_kind", "site_ref", "table_label", "entity_ref", "before_value", "after_value")
-			items := rowEntity("audit_item", m.SchemaHash, "seq", "site_ref", "title")
+			items := rowEntity("audit_item", m.SchemaHash, "seq", "site_ref", "title", "json_detail")
 			model := func(ent *orm.Entity) (*orm.Core, *keywordRow) {
 				c := orm.NewCore(ent)
 				return c, ent.New(c).(*keywordRow)
@@ -166,6 +167,7 @@ func TestAuditTriggers(t *testing.T) {
 				c, _ := model(items)
 				c.Set("site_ref", "s1")
 				c.Set("title", "a")
+				c.Set("json_detail", map[string]any{"secret": "s3cret", "kept": "v"})
 				created, err := c.Create()
 				if err != nil {
 					return err
@@ -208,6 +210,20 @@ func TestAuditTriggers(t *testing.T) {
 			if strings.Join(got, ",") != "INSERT,UPDATE" {
 				t.Fatalf("change kinds: %v", got)
 			}
+			insert := jsonText(t, all[0].vals["after_value"]).(map[string]any)
+			detail, ok := insert["json_detail"].(map[string]any)
+			if !ok {
+				t.Fatalf("inserted detail: %v", insert["json_detail"])
+			}
+			if !reflect.DeepEqual(detail["secret"], map[string]any{"redacted": true, "present": true}) {
+				t.Fatalf("redacted path: %v", detail["secret"])
+			}
+			if detail["kept"] != "v" {
+				t.Fatalf("kept value: %v", detail["kept"])
+			}
+			if strings.Contains(strings.ToLower(string(mustJSON(t, all[0].vals))), "s3cret") {
+				t.Fatal("the secret is recorded in the change row")
+			}
 			update := all[1].vals
 			if before, after := jsonText(t, update["before_value"]), jsonText(t, update["after_value"]); !reflect.DeepEqual(before, map[string]any{"title": "a"}) || !reflect.DeepEqual(after, map[string]any{"title": "b"}) {
 				t.Fatalf("update values: %v %v", before, after)
@@ -247,4 +263,13 @@ func dropAuditSchema(t *testing.T, driver, dsn string, tables []string) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
