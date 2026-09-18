@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestPhysicalQueryForms(t *testing.T) {
 	for _, target := range targets {
 		t.Run(target.driver, func(t *testing.T) {
 			if target.dsn == "" {
-				t.Skip("physical database DSN is not configured")
+				t.Fatalf("ORM_MIGRATION_%s_DSN is required; physical DB tests never skip", strings.ToUpper(target.driver))
 			}
 			testPhysicalQueryForms(t, target.driver, target.dsn)
 		})

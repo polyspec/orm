@@ -65,10 +65,8 @@ func TestAuditLargeUnicodeValueStaysWithinBudget(t *testing.T) {
 		t.Fatalf("the document must exceed 1 MiB, got %d bytes", len(older))
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			tables := []string{"ormtest.audit_doc", "ormtest.audit_change", "ormtest.audit_operation"}
 			if driver == "mysql" {
 				tables = []string{"audit_doc", "audit_change", "audit_operation"}

@@ -3,7 +3,6 @@ package orm_test
 import (
 	"encoding/json"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 
@@ -15,10 +14,7 @@ import (
 // TestMySQLInstallInsideTransaction rejects a MySQL install in a transaction,
 // where the implicit commit of schema statements would end the transaction.
 func TestMySQLInstallInsideTransaction(t *testing.T) {
-	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
-	if dsn == "" {
-		t.Skip("ORM_TEST_MYSQL_DSN is not set")
-	}
+	dsn := requireDSN(t, "ORM_TEST_MYSQL_DSN")
 	d, err := schema.Parse(zoneSchema)
 	if err != nil {
 		t.Fatal(err)

@@ -40,10 +40,8 @@ func TestWithContextCancels(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
 			eng, err := engine.New(m, driver)
@@ -117,10 +115,8 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
 			eng, err := engine.New(m, driver)
@@ -183,10 +179,8 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
 		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
 			eng, err := engine.New(m, driver)

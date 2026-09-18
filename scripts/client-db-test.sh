@@ -1,8 +1,8 @@
 #!/bin/sh
-# Runs the database tests of every client. SQLite always runs; set
-# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN to empty test databases to add
-# MySQL and PostgreSQL, and ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN to
-# dedicated databases for the schema tools. ORM_CLIENT_DB_LANGS selects
+# Runs the database tests of every client on SQLite, MySQL and PostgreSQL.
+# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
+# ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for the
+# schema tools; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects
 # clients (default: all).
 set -eu
 
