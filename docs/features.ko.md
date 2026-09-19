@@ -16,6 +16,10 @@
 | authenticated_encryption | 인증 암호화 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | parameter_chunking | 파라미터 분할 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | constraints_and_relations | 제약과 관계 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| audit_triggers | 감사 트리거 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| point_type | point 타입 | partial | go: pass<br>php: partial<br>rust: partial<br>typescript: partial |
+| interface_contract | 공통 인터페이스 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| performance_gate | hot-path 성능 기준 | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned |
 | conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 
 ## 현재 동작
@@ -32,6 +36,10 @@
 - `authenticated_encryption`: 인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.
 - `parameter_chunking`: 관계 key 목록을 크기 등급으로 채우고, 관계 key와 큰 root IN 목록을 driver bind 한도에서 나누어 결과를 합치며, 병합이 결과를 바꾸는 root 모양은 거부한다.
 - `constraints_and_relations`: CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.
+- `audit_triggers`: 스키마 지시문으로 감사 기록을 만든다. orm:audit_log는 같은 연결에 설치한 다른 매니페스트의 작업 테이블과 변경 테이블을 표시하고, orm:audit는 현재 작업 아래에서 모든 삽입·갱신·삭제를 기록하는 트리거를 만든다.
+- `point_type`: point 컬럼은 좌표 쌍을 담는다. 모든 dialect가 point 리터럴과 텍스트 변환을 만들고, Go 모델 클라이언트는 타입으로 된 point 값을 bind하고 읽는다. PHP, Rust, TypeScript 스키마 도구는 같은 DDL을 만들지만 타입으로 된 클라이언트 값은 없다.
+- `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
+- `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.
