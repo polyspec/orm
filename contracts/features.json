@@ -56,7 +56,9 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "clients/go/orm/test_helpers_test.go"
+      ],
       "tests": [
         "clients/go/orm/dsn_test.go",
         "clients/go/orm/timezone_test.go",
@@ -140,14 +142,16 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "tests/conformance/vectors.json"
+        "tests/conformance/vectors.json",
+        "clients/php/tests/autoload.php"
       ],
       "tests": [
         "clients/go/model/model_test.go",
         "clients/php/tests/model_test.php",
         "tests/typescript/model.mjs",
         "clients/rust/tests/src/integration.rs",
-        "engine/engine_test.go"
+        "engine/engine_test.go",
+        "clients/go/orm/jsontext_order_test.go"
       ],
       "docs": [
         "docs/dsl.md",
@@ -287,14 +291,17 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "clients/php/tests/deadlock_child.php"
+      ],
       "tests": [
         "clients/go/model/model_test.go",
         "clients/go/orm/cancel_test.go",
         "clients/php/tests/model_test.php",
         "tests/typescript/model.mjs",
         "clients/rust/orm/tests/zone.rs",
-        "clients/rust/tests/src/integration.rs"
+        "clients/rust/tests/src/integration.rs",
+        "clients/go/orm/goexit_test.go"
       ],
       "docs": [
         "docs/config.md",
@@ -363,7 +370,8 @@
         "internal/ormgen/gen_go_test.go",
         "clients/php/tests/engine_test.php",
         "tests/typescript/generate.mjs",
-        "clients/rust/orm-build/tests/generate.rs"
+        "clients/rust/orm-build/tests/generate.rs",
+        "internal/ormgen/fuzz_test.go"
       ],
       "docs": [
         "docs/dsl.md",
@@ -451,7 +459,13 @@
         "clients/rust/orm-build/tests/tools.rs",
         "clients/rust/orm-build/tests/cli.rs",
         "tests/typescript/schema-cases.mjs",
-        "tests/typescript/schema-tools.mjs"
+        "tests/typescript/schema-tools.mjs",
+        "engine/schema/fuzz_test.go",
+        "engine/schema/manifest_property_test.go",
+        "internal/ormgen/ddl_uuid_test.go",
+        "internal/ormgen/schema_features_test.go",
+        "internal/ormgen/schema_source_test.go",
+        "internal/ormgen/tooldb_test.go"
       ],
       "docs": [
         "docs/schema.md",
@@ -520,7 +534,14 @@
         "clients/go/orm/timezone_test.go",
         "clients/php/tests/model_test.php",
         "tests/typescript/model.mjs",
-        "clients/rust/orm/tests/zone.rs"
+        "clients/rust/orm/tests/zone.rs",
+        "clients/go/orm/install_test.go",
+        "internal/ormgen/live_diff_test.go",
+        "internal/ormgen/migrate_physical_test.go",
+        "internal/ormgen/mysql_defects_test.go",
+        "internal/ormgen/rename_test.go",
+        "internal/ormgen/rollback_test.go",
+        "internal/ormgen/sqlite_rebuild_test.go"
       ],
       "docs": [
         "docs/schema.md",
@@ -593,7 +614,14 @@
         "engine/query_forms_test.go",
         "engine/planner/soft_delete_test.go",
         "clients/php/tests/engine_test.php",
-        "tests/typescript/engine.mjs"
+        "tests/typescript/engine.mjs",
+        "engine/functions_physical_test.go",
+        "engine/interface_test.go",
+        "engine/plan/plan_test.go",
+        "engine/ir/fuzz_test.go",
+        "engine/ir/operators_test.go",
+        "engine/dialect/sqlite_test.go",
+        "clients/rust/tests/src/conformance.rs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -658,7 +686,10 @@
       "tests": [
         "engine/composite_key_test.go",
         "internal/ormgen/composite_migration_test.go",
-        "clients/go/model/model_test.go"
+        "clients/go/model/model_test.go",
+        "clients/php/tests/model_test.php",
+        "clients/rust/tests/src/integration.rs",
+        "tests/typescript/model.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -725,7 +756,8 @@
         "clients/go/orm/aes_rotation_test.go",
         "clients/php/tests/hostcodec.php",
         "tests/typescript/codec-vector.mjs",
-        "clients/rust/orm/src/codec.rs"
+        "clients/go/orm/fuzz_test.go",
+        "clients/rust/tests/src/integration.rs"
       ],
       "docs": [
         "docs/codec.md",
@@ -870,7 +902,8 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/schema.json"
+        "schema/schema.json",
+        "tests/schema/cases.json"
       ],
       "tests": [
         "engine/schema/external_fk_test.go",
@@ -878,7 +911,12 @@
         "engine/schema/overlapping_foreign_keys_test.go",
         "engine/planner/soft_delete_test.go",
         "internal/ormgen/ddl_external_fk_test.go",
-        "internal/ormgen/ddl_immutable_test.go"
+        "internal/ormgen/ddl_immutable_test.go",
+        "clients/go/orm/sqlite/sqlite_test.go",
+        "clients/php/tests/schema_test.php",
+        "clients/rust/orm-build/tests/schema_cases.rs",
+        "clients/rust/orm/tests/soft_delete.rs",
+        "tests/typescript/schema-cases.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -888,6 +926,246 @@
         {
           "id": "constraints-go",
           "command": "go test ./engine/... ./internal/ormgen -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1"
+        }
+      ]
+    },
+    {
+      "id": "audit_triggers",
+      "title": "Audit triggers",
+      "title_ko": "감사 트리거",
+      "status": "implemented",
+      "description": "Write an audit trail from schema directives. orm:audit_log declares the operation and change tables of another manifest installed on the same connection, and orm:audit attaches triggers that record every insert, update, and delete against the current operation.",
+      "description_ko": "스키마 지시문으로 감사 기록을 만든다. orm:audit_log는 같은 연결에 설치한 다른 매니페스트의 작업 테이블과 변경 테이블을 표시하고, orm:audit는 현재 작업 아래에서 모든 삽입·갱신·삭제를 기록하는 트리거를 만든다.",
+      "inputs": {
+        "type": "SchemaDocument",
+        "fields": [
+          "orm:audit_log",
+          "orm:audit"
+        ]
+      },
+      "outputs": {
+        "type": "SchemaManifest",
+        "fields": [
+          "audit_tables",
+          "audit_triggers"
+        ]
+      },
+      "state": [
+        "declare the operation and change tables",
+        "install the triggers with the audited tables",
+        "record each changed row inside the named operation"
+      ],
+      "errors": [
+        {
+          "code": "SCHEMA_INVALID",
+          "when": "an audit directive names an unknown entity, a redacted path outside a JSON column, or a key column"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [
+        "tests/schema/cases.json",
+        "clients/rust/orm/tests/testdata/audit_log.json",
+        "clients/rust/orm/tests/testdata/audit_item.json"
+      ],
+      "tests": [
+        "clients/go/orm/audit_test.go",
+        "clients/go/orm/audit_large_test.go",
+        "internal/ormgen/audit_test.go",
+        "internal/ormgen/audit_physical_test.go",
+        "clients/php/tests/model_test.php",
+        "clients/php/tests/schema_test.php",
+        "clients/php/tests/schema_db_test.php",
+        "clients/rust/orm/tests/audit.rs",
+        "clients/rust/orm-build/tests/schema_cases.rs",
+        "tests/typescript/model.mjs",
+        "tests/typescript/schema-cases.mjs"
+      ],
+      "docs": [
+        "docs/schema.md"
+      ],
+      "verification": [
+        {
+          "id": "audit-go",
+          "command": "go test ./clients/go/orm -run 'Audit' -count=1 && go test ./internal/ormgen -run 'Audit' -count=1"
+        }
+      ]
+    },
+    {
+      "id": "point_type",
+      "title": "Point type",
+      "title_ko": "point 타입",
+      "status": "partial",
+      "description": "A point column stores a coordinate pair. Every dialect renders the point literal and its text conversion, and the Go model client binds and reads typed point values. The PHP, Rust, and TypeScript schema tools render the same DDL without typed client values.",
+      "description_ko": "point 컬럼은 좌표 쌍을 담는다. 모든 dialect가 point 리터럴과 텍스트 변환을 만들고, Go 모델 클라이언트는 타입으로 된 point 값을 bind하고 읽는다. PHP, Rust, TypeScript 스키마 도구는 같은 DDL을 만들지만 타입으로 된 클라이언트 값은 없다.",
+      "inputs": {
+        "type": "SchemaDocument",
+        "fields": [
+          "point"
+        ]
+      },
+      "outputs": {
+        "type": "SchemaManifest",
+        "fields": [
+          "point_columns"
+        ]
+      },
+      "state": [
+        "accept the point type",
+        "render the dialect conversion",
+        "bind and read typed values in the Go client"
+      ],
+      "errors": [
+        {
+          "code": "SCHEMA_INVALID",
+          "when": "a column names a type outside the supported type list"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "partial",
+        "rust": "partial",
+        "typescript": "partial"
+      },
+      "fixtures": [
+        "tests/schema/cases.json"
+      ],
+      "tests": [
+        "engine/point_test.go",
+        "internal/ormgen/point_test.go",
+        "clients/go/orm/point_test.go",
+        "clients/php/tests/schema_test.php",
+        "clients/rust/orm-build/tests/schema_cases.rs",
+        "tests/typescript/schema-cases.mjs"
+      ],
+      "docs": [
+        "docs/dialects.md"
+      ],
+      "verification": [
+        {
+          "id": "point-go",
+          "command": "go test ./engine -run Point -count=1 && go test ./internal/ormgen -run Point -count=1 && go test ./clients/go/orm -run Point -count=1"
+        }
+      ]
+    },
+    {
+      "id": "interface_contract",
+      "title": "Common interface verification",
+      "title_ko": "공통 인터페이스 검증",
+      "status": "implemented",
+      "description": "Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.",
+      "description_ko": "모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.",
+      "inputs": {
+        "type": "InterfaceManifest",
+        "fields": [
+          "components",
+          "symbols"
+        ]
+      },
+      "outputs": {
+        "type": "InterfaceDeclarations",
+        "fields": [
+          "per-language symbols"
+        ]
+      },
+      "state": [
+        "extract the declarations of each language",
+        "compare them with the common interface",
+        "fail on any difference"
+      ],
+      "errors": [
+        {
+          "code": "interface-check",
+          "when": "a language's extracted declarations differ from the manifest, or a component diagram differs from the manifest"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass"
+      },
+      "fixtures": [
+        "contracts/interfaces.json"
+      ],
+      "tests": [
+        "engine/interface_test.go",
+        "clients/go/orm/shape_test.go",
+        "tests/interfaces/php.php",
+        "tests/interfaces/rust/src/main.rs",
+        "tests/interfaces/typescript.mjs"
+      ],
+      "docs": [
+        "docs/interfaces.md",
+        "docs/interface-implementation.md"
+      ],
+      "verification": [
+        {
+          "id": "interface-self-test",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" go run ./tests/interfaces/check --self-test"
+        }
+      ]
+    },
+    {
+      "id": "performance_gate",
+      "title": "Hot-path performance standard",
+      "title_ko": "hot-path 성능 기준",
+      "status": "partial",
+      "description": "The Go and PHP clients keep hot-path latency within a measured ratio of the raw driver on the seeded MySQL bench database, and make perf-check fails when a workload exceeds its recorded bound. The Rust bench harness measures without an enforced bound, and the TypeScript standard is not built.",
+      "description_ko": "Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
+      "inputs": {
+        "type": "BenchmarkDatabase",
+        "fields": [
+          "battle rows"
+        ]
+      },
+      "outputs": {
+        "type": "GateReport",
+        "fields": [
+          "native latency",
+          "client latency",
+          "ratio"
+        ]
+      },
+      "state": [
+        "seed the bench database",
+        "alternate native and client pairs",
+        "compare each ratio with its recorded bound"
+      ],
+      "errors": [
+        {
+          "code": "perf-check",
+          "when": "a workload's client/native ratio exceeds its recorded bound; the runner prints the measured pair and the bound"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "partial",
+        "typescript": "planned"
+      },
+      "fixtures": [
+        "docs/perf-raw-go-native.txt",
+        "docs/perf-raw-rust-native.txt",
+        "docs/perf-raw-rust-native-2.txt"
+      ],
+      "tests": [
+        "bench/go/gate_test.go",
+        "bench/go/native_test.go",
+        "clients/php/tests/perf_gate.php",
+        "clients/rust/tests/src/client_bench.rs"
+      ],
+      "docs": [
+        "docs/perf.md"
+      ],
+      "verification": [
+        {
+          "id": "perf-gates",
+          "command": "./scripts/perf-test.sh"
         }
       ]
     },

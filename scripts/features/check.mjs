@@ -1,6 +1,6 @@
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { resolve } from 'node:path';
+import path, { resolve } from 'node:path';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
@@ -96,6 +96,61 @@ for (const feature of manifest.features ?? []) {
       errors.push(`${feature.id}: invalid vector contract source: ${error.message}`);
     }
   }
+}
+
+// tests.language-parity: every client claim names a test of that language and
+// every language test file belongs to a feature. A shared vector contract
+// covers all clients because the conformance comparator fails when one
+// language does not run the declared vectors.
+const languageTests = {
+  go: { roots: ['clients/go', 'engine', 'internal', 'cmd', 'bench/go'], match: file => file.endsWith('_test.go') },
+  php: { roots: ['clients/php/tests', 'tests/interfaces/php.php'], match: () => true },
+  rust: { roots: ['clients/rust/orm/tests', 'clients/rust/orm-build/tests', 'clients/rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
+  typescript: { roots: ['clients/typescript', 'tests/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('tests/typescript/') && file.endsWith('.mjs')) },
+};
+const skipDirectories = new Set(['node_modules', 'target', 'dist']);
+const walk = async directory => {
+  const entries = await readdir(resolve(root, directory), { recursive: true, withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const parts = entry.parentPath ? [entry.parentPath, entry.name] : [entry.path, entry.name];
+    const file = path.relative(root, resolve(...parts)).split(path.sep).join('/');
+    if (!file.split('/').some(part => skipDirectories.has(part))) files.push(file);
+  }
+  return files;
+};
+const existing = {};
+for (const [language, spec] of Object.entries(languageTests)) {
+  const files = new Set();
+  for (const directory of spec.roots) {
+    try {
+      for (const file of await walk(directory)) if (spec.match(file)) files.add(file);
+    } catch (error) {
+      if (error.code === 'ENOTDIR') {
+        if (spec.match(directory)) files.add(directory);
+      } else {
+        throw error;
+      }
+    }
+  }
+  existing[language] = files;
+}
+const claimsLanguage = (language, relative) => languageTests[language].roots.some(directory => relative === directory || relative.startsWith(directory + '/'));
+const listedByFeatures = new Set();
+for (const feature of manifest.features ?? []) {
+  for (const relative of [...(feature.fixtures ?? []), ...(feature.tests ?? [])]) listedByFeatures.add(relative);
+}
+for (const feature of manifest.features ?? []) {
+  for (const language of clients) {
+    const status = feature.clients[language];
+    const backed = feature.tests.some(relative => claimsLanguage(language, relative)) || Boolean(feature.vector_contract);
+    if ((status === 'pass' || status === 'partial') && !backed) errors.push(`${feature.id}: clients.${language} ${status} names no test of that language`);
+    if (feature.status === 'implemented' && status !== 'pass') errors.push(`${feature.id}: implemented feature is not pass in ${language}`);
+  }
+}
+for (const [language, files] of Object.entries(existing)) {
+  for (const file of files) if (!listedByFeatures.has(file)) errors.push(`${file}: ${language} test file belongs to no feature`);
 }
 
 if (runVerification && errors.length === 0) {
