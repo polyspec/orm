@@ -16,7 +16,7 @@
     {
       "id": "aes.version-column",
       "source": "schema/*.mmd",
-      "checker": "aes-check",
+      "checker": "schema-check",
       "failure": "a table with an aes style does not contain a non-null aes_key_version column"
     },
     {
@@ -130,7 +130,20 @@
       "id": "git.subject-format",
       "source": "git history",
       "checker": "git-check",
-      "failure": "a new commit subject does not use type: concise English description"
+      "failure": "a new commit subject does not use type: concise English description",
+      "baseline": "7e51de95528d8e7ae848ed889124c0bd2fc25b61",
+      "types": [
+        "feat",
+        "fix",
+        "docs",
+        "test",
+        "build",
+        "chore",
+        "refactor",
+        "perf",
+        "merge"
+      ],
+      "subject_max": 72
     }
   ]
 }

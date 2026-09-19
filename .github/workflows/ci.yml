@@ -93,7 +93,7 @@ jobs:
           go run ./bench/seedaes -driver postgres -dsn 'postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
       - name: feature, documentation, and package contracts
-        run: make feature-check docs-rules-check docs-check docs-verify-idempotent package-check
+        run: make feature-check git-check docs-rules-check docs-check docs-verify-idempotent package-check
       - name: decoder fuzz smoke checks
         run: make fuzz-check
       - name: Go
