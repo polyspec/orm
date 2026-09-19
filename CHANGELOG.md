@@ -1,5 +1,7 @@
 # Changelog
 
+- Enforce the declared commit-subject rule: `make git-check` checks every subject after a baseline recorded in `contracts/rules.json` for the `type: concise English description` format and the recorded length limit, and runs with the contract checks in CI. The rule registry names the target that actually runs the AES version-column check.
+
 - Run the TypeScript client database tests in `make client-db-check`: the check drops the language selection that ran only Go, PHP, and Rust, so one check runs every language's client tests against MySQL, PostgreSQL, and SQLite.
 
 - Enforce test-language parity in the feature check: it scans the test roots of Go, PHP, Rust, and TypeScript, fails when a client `pass` or `partial` claim names no test of that language, fails when an `implemented` feature is not `pass` in every client, and fails when a language test file belongs to no feature. The feature manifest adds `audit_triggers`, `point_type`, `interface_contract`, and `performance_gate`, and every client claim names a test of that language or a shared conformance or schema-case record.
