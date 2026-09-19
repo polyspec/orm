@@ -69,9 +69,10 @@ jobs:
       - name: SQLite 3.46+ for PHP
         # PHP links the system SQLite (3.45 on Ubuntu 24.04); every client
         # requires 3.46, so a newer library in /usr/local/lib takes its place.
+        # pdo_sqlite needs the column metadata functions the system build has.
         run: |
           curl -fsSL https://www.sqlite.org/2024/sqlite-autoconf-3460100.tar.gz | tar -xz -C /tmp
-          (cd /tmp/sqlite-autoconf-3460100 && ./configure --prefix=/usr/local --quiet && make -s -j"$(nproc)" && sudo make -s install)
+          (cd /tmp/sqlite-autoconf-3460100 && CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA" ./configure --prefix=/usr/local --quiet && make -s -j"$(nproc)" && sudo make -s install)
           sudo ldconfig
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
