@@ -115,6 +115,12 @@
       ]
     },
     {
+      "id": "tests.language-parity",
+      "source": "contracts/features.json and the language test files",
+      "checker": "feature-check",
+      "failure": "a client pass or partial claim names no test of that language, an implemented feature is not pass in every client, or a language test file belongs to no feature"
+    },
+    {
       "id": "status.evidence",
       "source": "docs/checklist.md",
       "checker": "checklist-check",
