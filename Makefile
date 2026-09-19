@@ -1,7 +1,7 @@
-.PHONY: check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check
+.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check schema-check rust-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
+check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
 	go test ./...
 
 feature-check:
@@ -48,6 +48,11 @@ perf-check:
 
 ts-check:
 	npm run typescript:check && npm run typescript:test
+
+# ts-min-check runs the TypeScript tests on the lowest Node release that
+# package.json supports.
+ts-min-check:
+	PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 schema-check:
 	npm run schema:check
