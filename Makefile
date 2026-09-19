@@ -25,7 +25,7 @@ client-unit-check:
 	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
 
 client-db-check:
-	ORM_CLIENT_DB_LANGS=go,php,rust ./scripts/client-db-test.sh
+	./scripts/client-db-test.sh
 
 conformance-check:
 	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --locked --release -p orm-tests --bin conformance
