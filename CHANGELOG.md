@@ -1,5 +1,7 @@
 # Changelog
 
+- Test soft delete in the PHP, TypeScript, and Rust clients: a read filters rows whose `deleted_at` holds a value, and a delete rewrites to a guarded update that sets the timestamp on rows without one. The Rust test runs the model client on SQLite and checks every executed statement.
+
 - The PHP performance gate runs its native baseline through the same typed row conversion as the client's assembly: the baseline decodes the cells and converts them into row values, so the client/native ratio measures the client machinery and not the typed conversion itself. The 100-row bound moves from 1.50 to 1.25 on the measured ratios (PHP 8.4.25, local socket: PK 1.20–1.31, 100 rows 1.06–1.12).
 
 - The TypeScript client requires Node.js 22.16 or later, the first release whose `node:sqlite` provides every statement option the driver uses (`setReturnArrays`); `orm-gen` no longer prints the Node 22 experimental warning for `node:sqlite`, so its output is the same on every supported Node release. `make ts-min-check` runs the TypeScript tests on the lowest supported release.

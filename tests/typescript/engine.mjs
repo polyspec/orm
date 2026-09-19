@@ -57,6 +57,16 @@ const want = 'SELECT "a"."seq" AS "a__seq", "a"."user_seq" AS "a__user_seq", "a"
 check(plan.steps.length === 1 && plan.steps[0].sql === want, `plan SQL: ${plan.steps[0].sql}`);
 check(plan.steps[0].bind_slots.map(s => s.param).join(',') === '0,1', 'plan binds');
 
+// Soft delete: reads filter rows with a deleted_at value and a delete
+// rewrites to a guarded update that sets the timestamp.
+const softRead = engine.compile({ ...base, entity: 'soft_record', kind: 'all', n_params: 0 });
+check(softRead.steps[0].sql.includes('"a"."deleted_at" IS NULL'), `soft-delete read filter: ${softRead.steps[0].sql}`);
+const softDelete = engine.compile({ ...base, entity: 'soft_record', kind: 'delete', n_params: 1, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
+check(
+  softDelete.steps[0].sql.startsWith('UPDATE "soft_record" SET "deleted_at" = CURRENT_TIMESTAMP') && softDelete.steps[0].sql.includes('"soft_record"."deleted_at" IS NULL'),
+  `soft-delete guarded update: ${softDelete.steps[0].sql}`,
+);
+
 const split = splitSQL("-- note\nCREATE TABLE a (x TEXT DEFAULT 'a;b');\n/* c; */ CREATE FUNCTION f() AS $$ BEGIN; END; $$;\nSELECT 1");
 check(split.length === 3 && split[0] === "CREATE TABLE a (x TEXT DEFAULT 'a;b')" && split[1].endsWith('$$') && split[2] === 'SELECT 1', `splitSQL: ${JSON.stringify(split)}`);
 check(engine.installStatements().every(s => !s.startsWith('DROP ')), 'install statements never drop tables');
