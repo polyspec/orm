@@ -73,6 +73,17 @@ foreach ([
     expect(code(fn() => $mysql->compile($ir)) === $code, "validation: $name");
 }
 
+$softRead = $request(['kind' => 'all', 'entity' => 'soft_record', 'n_params' => 0]);
+$softDelete = $request(['kind' => 'delete', 'entity' => 'soft_record', 'n_params' => 1, 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 0]]]]]);
+foreach ($engines as $d => $engine) {
+    $q = static fn(string $name): string => $d === 'mysql' ? "`$name`" : "\"$name\"";
+    $read = $engine->plan($softRead)['steps'][0]['sql'];
+    expect(str_contains($read, $q('a') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete read filter: $read");
+    $delete = $engine->plan($softDelete)['steps'][0]['sql'];
+    $mark = 'SET ' . $q('deleted_at') . ' = ' . ($d === 'sqlite' ? '?' : 'CURRENT_TIMESTAMP');
+    expect(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
+}
+
 $fulltext = $request(['kind' => 'all', 'entity' => 'battle', 'where' => ['items' => [['pred' => ['op' => 'match', 'match' => $manifest->entities['battle']['fulltext'][0], 'p' => 0]]]], 'n_params' => 1]);
 expect(code(fn() => $engines['sqlite']->compile($fulltext)) === Code::OPERATOR_NOT_ALLOWED, 'sqlite full-text');
 expect(str_contains($engines['postgres']->compile($fulltext)['steps'][0]['sql'], "plainto_tsquery('simple', \$1)"), 'postgres full-text');
