@@ -1,7 +1,7 @@
-.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check
+.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: feature-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
+check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
 	go test ./...
 
 feature-check:
@@ -88,3 +88,6 @@ rust-driver-check:
 
 typescript-build:
 	npm run typescript:build
+
+git-check:
+	node scripts/git/check.mjs
