@@ -18,7 +18,7 @@ Dialect differences are in [dialects.md](dialects.md), configuration is in [conf
 | MySQL 8.0.2+ / MariaDB 10.2+ | Primary target; PostgreSQL 12+ and SQLite 3.46+ use the same plan |
 | PHP 8.4+ (`pdo_mysql`) | Required for PHP; add `pdo_pgsql`/`pdo_sqlite` for those databases |
 | Rust 1.98+ | Required for Rust |
-| Node.js 22.12+ | Required for TypeScript |
+| Node.js 22.16+ | Required for TypeScript |
 
 ```sh
 git clone https://github.com/polyspec/orm && cd orm

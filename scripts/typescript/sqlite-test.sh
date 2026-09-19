@@ -1,6 +1,6 @@
 #!/bin/sh
-# Runs the TypeScript model integration test. SQLite always runs; set
-# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN to include MySQL and PostgreSQL.
+# Runs the TypeScript model integration test on SQLite, MySQL and PostgreSQL;
+# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN must name test databases.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
