@@ -40,6 +40,8 @@ jobs:
       # empty databases for the schema tool tests of every language, which drop every table
       ORM_TOOLS_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_tools"
       ORM_TOOLS_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_tools?sslmode=disable"
+      # the bench database the hot-path gates of every check select
+      ORM_BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
@@ -130,8 +132,6 @@ jobs:
           (cd clients/rust && cargo test --locked -p orm codec)
           php tests/codec/check.php
       - name: hot-path regression gate
-        env:
-          ORM_BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench"
         run: make perf-check
       - name: physical migration recovery
         run: CI=true ./scripts/db-test.sh
