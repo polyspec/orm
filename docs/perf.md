@@ -29,12 +29,14 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 3. Regression check (`make perf-check`)
 
-The check measures the generated client and an equivalent native result for 300 p50 samples in one process. Both sides select the same non-lazy columns, and the PHP baseline also decodes and constructs the same generated row result. CI fails when a median ratio exceeds its bound.
+The check measures the generated client and an equivalent native result for 300 p50 samples in one process. Both sides select the same non-lazy columns. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|
 | Go | 1.35 | 1.25 | `bench/go` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
-| PHP | 1.35 | 1.50 | `clients/php/tests/perf_gate.php <schema.json>` |
+| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php <schema.json>` |
+
+With the converted baseline, PHP 8.4.25 on the local socket measures a PK ratio of 1.20–1.31 and a 100-row ratio of 1.06–1.12 across runs; the PK ratio is dominated by the fixed request build and plan cost of about 10.5µs per query. PHP 8.5.10 measures 1.14 and 1.02.
 
 The ratio varies by hardware and approaches 1 as round-trip time increases. A bound change requires a measurement and an update to this page.
 
