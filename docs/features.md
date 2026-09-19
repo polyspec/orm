@@ -16,6 +16,10 @@ The executable source is the repository feature manifest. Read the manifest, the
 | authenticated_encryption | Authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | parameter_chunking | Parameter chunking | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | constraints_and_relations | Constraints and relations | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| audit_triggers | Audit triggers | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| point_type | Point type | partial | go: pass<br>php: partial<br>rust: partial<br>typescript: partial |
+| interface_contract | Common interface verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| performance_gate | Hot-path performance standard | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned |
 | conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 
 ## Current behavior
@@ -32,6 +36,10 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `authenticated_encryption`: Encode authenticated versioned AES values and blind indexes, read mixed key versions, and rotate every encrypted column of a table in batches.
 - `parameter_chunking`: Pad relation key lists to size classes, split relation keys and oversized root IN lists at the driver bind limit, merge the results, and reject root shapes that a merge would change.
 - `constraints_and_relations`: Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.
+- `audit_triggers`: Write an audit trail from schema directives. orm:audit_log declares the operation and change tables of another manifest installed on the same connection, and orm:audit attaches triggers that record every insert, update, and delete against the current operation.
+- `point_type`: A point column stores a coordinate pair. Every dialect renders the point literal and its text conversion, and the Go model client binds and reads typed point values. The PHP, Rust, and TypeScript schema tools render the same DDL without typed client values.
+- `interface_contract`: Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.
+- `performance_gate`: The Go and PHP clients keep hot-path latency within a measured ratio of the raw driver on the seeded MySQL bench database, and make perf-check fails when a workload exceeds its recorded bound. The Rust bench harness measures without an enforced bound, and the TypeScript standard is not built.
 - `conformance_verification`: Run the same model chains in Go, PHP, Rust, and TypeScript on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.
