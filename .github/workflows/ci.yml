@@ -43,7 +43,11 @@ jobs:
       # the bench database the hot-path gates of every check select
       ORM_BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench"
     steps:
+      # git-check reads history from the recorded subject-format baseline, so
+      # the checkout must carry the full commit graph.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v6
         with: { go-version: "1.27" }
       - uses: actions/setup-node@v7
