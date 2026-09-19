@@ -3,6 +3,7 @@ package model_test
 import (
 	"database/sql"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
@@ -62,14 +64,19 @@ func dropTables(t *testing.T, driver, dsn string) {
 	sqlDriver := "pgx"
 	if driver == "mysql" {
 		sqlDriver = "mysql"
-		native = strings.TrimPrefix(dsn, "mysql://")
-		if i := strings.Index(native, "?socket="); i >= 0 {
-			host := native[:i]
-			socket := native[i+len("?socket="):]
-			at := strings.Index(host, "@")
-			slash := strings.Index(host, "/")
-			native = host[:at] + "@unix(" + socket + ")" + host[slash:]
+		u, err := url.Parse(dsn)
+		if err != nil {
+			t.Fatal(err)
 		}
+		cfg := mysql.NewConfig()
+		cfg.User = u.User.Username()
+		cfg.Passwd, _ = u.User.Password()
+		cfg.DBName = strings.TrimPrefix(u.Path, "/")
+		cfg.Net, cfg.Addr = "tcp", u.Host
+		if socket := u.Query().Get("socket"); socket != "" {
+			cfg.Net, cfg.Addr = "unix", socket
+		}
+		native = cfg.FormatDSN()
 	}
 	raw, err := sql.Open(sqlDriver, native)
 	if err != nil {
