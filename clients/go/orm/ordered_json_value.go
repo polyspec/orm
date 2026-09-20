@@ -47,6 +47,12 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 		}
 		return parsed, nil
 	}
+	// A nil pointer or interface encodes as null without invoking a marshaler;
+	// encoding/json keeps the same contract and a value-receiver marshaler such
+	// as time.Time.MarshalJSON panics on a nil pointer.
+	if (reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer) && reflectValue.IsNil() {
+		return orderedjson.Null(), nil
+	}
 	if reflectValue.CanInterface() {
 		if marshaler, ok := reflectValue.Interface().(json.Marshaler); ok {
 			body, err := marshaler.MarshalJSON()
@@ -69,9 +75,6 @@ func orderedJSONReflect(reflectValue reflect.Value) (*orderedjson.Value, error) 
 		}
 	}
 	if reflectValue.Kind() == reflect.Interface || reflectValue.Kind() == reflect.Pointer {
-		if reflectValue.IsNil() {
-			return orderedjson.Null(), nil
-		}
 		return orderedJSONReflect(reflectValue.Elem())
 	}
 	return orderedJSONKind(reflectValue)

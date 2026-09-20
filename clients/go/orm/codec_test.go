@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/go"
 )
@@ -264,6 +265,21 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	want := `{"body":{"number":900719925474099312345678901234567890}}`
 	if encoded != want {
 		t.Fatalf("encoded custom JSON value = %q, want %q", encoded, want)
+	}
+}
+
+func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
+	type value struct {
+		Body    string     `json:"body"`
+		Revoked *time.Time `json:"revokedAt"`
+	}
+	encoded, err := Encode([]string{"json"}, value{Body: "kept"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"body":"kept","revokedAt":null}`
+	if encoded != want {
+		t.Fatalf("encoded nil marshaler pointer = %q, want %q", encoded, want)
 	}
 }
 
