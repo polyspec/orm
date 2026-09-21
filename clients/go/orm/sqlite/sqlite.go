@@ -34,6 +34,8 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
 	case 787, 1811: // SQLITE_CONSTRAINT_FOREIGNKEY / _VTab
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
+	case 275: // SQLITE_CONSTRAINT_CHECK
+		return &ir.Error{Code: orm.CodeConstraint, Msg: se.Error()}
 	case 9: // SQLITE_INTERRUPT: the statement was cancelled
 		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
 	}

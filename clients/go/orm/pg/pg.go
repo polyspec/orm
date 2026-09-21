@@ -32,6 +32,8 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: pe.Error()}
 	case "23503": // foreign_key_violation
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: pe.Error()}
+	case "23514": // check_violation
+		return &ir.Error{Code: orm.CodeConstraint, Msg: pe.Error()}
 	case "57014": // query_canceled, including statement_timeout
 		return &ir.Error{Code: orm.CodeCanceled, Msg: pe.Error()}
 	}

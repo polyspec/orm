@@ -18,7 +18,7 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 	}
 	defer db.Close()
 	ctx := context.Background()
-	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON; CREATE TABLE parent (id INTEGER PRIMARY KEY); CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER NOT NULL REFERENCES parent(id), code TEXT NOT NULL UNIQUE); INSERT INTO parent(id) VALUES (1); INSERT INTO child(parent_id, code) VALUES (1, 'one')`); err != nil {
+	if _, err := db.ExecContext(ctx, `PRAGMA foreign_keys = ON; CREATE TABLE parent (id INTEGER PRIMARY KEY); CREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER NOT NULL REFERENCES parent(id), code TEXT NOT NULL UNIQUE); CREATE TABLE checked (value TEXT CHECK (value <> '')); INSERT INTO parent(id) VALUES (1); INSERT INTO child(parent_id, code) VALUES (1, 'one')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,6 +29,7 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 	}{
 		{name: "duplicate", stmt: `INSERT INTO child(parent_id, code) VALUES (1, 'one')`, want: orm.CodeDuplicateKey},
 		{name: "foreign key", stmt: `INSERT INTO child(parent_id, code) VALUES (99, 'two')`, want: orm.CodeForeignKey},
+		{name: "check constraint", stmt: `INSERT INTO checked(value) VALUES ('')`, want: orm.CodeConstraint},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

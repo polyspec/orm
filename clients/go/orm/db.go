@@ -412,6 +412,8 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeDuplicateKey, Msg: me.Error()}
 	case me.Number == 1451 || me.Number == 1452:
 		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
+	case me.Number == 3819 || me.Number == 4025: // check constraint violated
+		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	case me.Number == 1298:
@@ -445,6 +447,9 @@ func IsDuplicateKey(err error) bool { return ErrorCode(err) == CodeDuplicateKey 
 
 // IsForeignKey reports a FOREIGN_KEY error.
 func IsForeignKey(err error) bool { return ErrorCode(err) == CodeForeignKey }
+
+// IsConstraint reports a database constraint violation independent of the driver.
+func IsConstraint(err error) bool { return ErrorCode(err) == CodeConstraint }
 
 // IsNoRows reports a NO_ROWS error.
 func IsNoRows(err error) bool { return ErrorCode(err) == CodeNoRows }
