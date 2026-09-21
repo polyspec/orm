@@ -369,7 +369,7 @@ func (x *BattleModel) Relation(child orm.Model) *BattleModel { x.m.Relation(fals
 // Relations attaches related rows loaded by a separate query.
 func (x *BattleModel) Relations(child orm.Model) *BattleModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *BattleModel) Get() (*BattleModel, error) { return oneBattle(x.m) }
 
 func oneBattle(c *orm.Core) (*BattleModel, error) {

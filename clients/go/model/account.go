@@ -111,7 +111,7 @@ func (x *AccountModel) Relation(child orm.Model) *AccountModel { x.m.Relation(fa
 // Relations attaches related rows loaded by a separate query.
 func (x *AccountModel) Relations(child orm.Model) *AccountModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *AccountModel) Get() (*AccountModel, error) { return oneAccount(x.m) }
 
 func oneAccount(c *orm.Core) (*AccountModel, error) {

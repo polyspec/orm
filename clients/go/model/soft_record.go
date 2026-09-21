@@ -135,7 +135,7 @@ func (x *SoftRecordModel) Relations(child orm.Model) *SoftRecordModel {
 	return x
 }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *SoftRecordModel) Get() (*SoftRecordModel, error) { return oneSoftRecord(x.m) }
 
 func oneSoftRecord(c *orm.Core) (*SoftRecordModel, error) {

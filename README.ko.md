@@ -22,7 +22,7 @@ let battles = Battle::new().connect(&slave1).gets_by_service_seq_and_is_close(7,
 const battles = await new Battle().connect(slave1).getsByServiceSeqAndIsClose(7, false);
 ```
 
-`get`은 행 하나 또는 null, `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델을 실행하면 `CONFIG`를 반환한다.
+`get`은 행 하나를 반환하며 일치하는 행이 없으면 `NO_ROWS` 오류를 반환한다. `gets`는 컬렉션, `getCount`는 개수를 반환한다. 모델은 `connect`로 데이터베이스 연결을 받는다. `connection.transaction(fn)` 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다. 관계 자식은 `connect`를 호출하지 않으면 부모 연결을 사용한다. 트랜잭션 밖에서 연결 없는 모델을 실행하면 `CONFIG`를 반환한다.
 
 ## 동작 구조
 

@@ -318,7 +318,7 @@ const rows = await new Battle().connect(slave1)
 - Conditions: the first condition has no prefix, following conditions use `and<Chain>`, `or<Chain>`, or `and()` and `or()`, and groups use `and(fn)` and `or(fn)`. Operator prefixes, value shapes, and chain rules are in [dsl.md](dsl.md).
 - Finders: `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` accept any column chain, such as `getsByServiceSeqAndIsClose(7, false)`.
 - Columns: `addColumn<Col>()`, `removeColumn<Col>()`, `removeAllColumns()`, and `addAllColumns()`. `text`, `blob`, and styled columns are excluded from the default SELECT and added with `addColumn<Col>()`.
-- Terminals: `get` returns one row or null. `gets` returns a collection, which is empty when no row matches. `getCount` returns a count.
+- Terminals: `get` returns one row and `NO_ROWS` when no row matches. `gets` returns a collection, which is empty when no row matches. `getCount` returns a count.
 - A collection is an ordered map keyed by PK or `keyName<Col>()`: `first()`, `count()`, and `toArray()` are available, and iteration yields `key => row`.
 - `toArray()` returns the rows as a list of maps in collection order: Go `rows.ToArray()`, Rust `rows.to_array()`, PHP `$rows->toArray()`, and TypeScript `rows.toArray()`. Iteration keeps the keys and their types.
 

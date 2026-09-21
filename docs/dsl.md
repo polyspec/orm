@@ -118,7 +118,7 @@ Key   = [Operator] Column
 
 | Method | Result |
 |---|---|
-| `get()` | one row, or null when no row matches |
+| `get()` | one row; returns `NO_ROWS` when no row matches |
 | `gets()` | collection of rows |
 | `getBy<Chain>(…)` | `get()` with the chain as condition |
 | `getsBy<Chain>(…)` | `gets()` with the chain as condition |

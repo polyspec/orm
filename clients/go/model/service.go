@@ -111,7 +111,7 @@ func (x *ServiceModel) Relation(child orm.Model) *ServiceModel { x.m.Relation(fa
 // Relations attaches related rows loaded by a separate query.
 func (x *ServiceModel) Relations(child orm.Model) *ServiceModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *ServiceModel) Get() (*ServiceModel, error) { return oneService(x.m) }
 
 func oneService(c *orm.Core) (*ServiceModel, error) {

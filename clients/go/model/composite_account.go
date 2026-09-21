@@ -131,7 +131,7 @@ func (x *CompositeAccountModel) Relations(child orm.Model) *CompositeAccountMode
 	return x
 }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *CompositeAccountModel) Get() (*CompositeAccountModel, error) {
 	return oneCompositeAccount(x.m)
 }

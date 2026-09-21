@@ -38,7 +38,7 @@ let battles = Battle::new().connect(&slave1).gets_by_service_seq_and_is_close(7,
 ```typescript
 const battles = await new Battle().connect(slave1).getsByServiceSeqAndIsClose(7, false);
 ```
-`get` returns one row or null, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
+`get` returns one row and returns `NO_ROWS` when no row matches, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
 - **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
