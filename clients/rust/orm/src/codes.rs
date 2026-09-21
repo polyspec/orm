@@ -59,3 +59,5 @@ pub const DEADLOCK: &str = "DEADLOCK";
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
 /// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
 pub const FOREIGN_KEY: &str = "FOREIGN_KEY";
+/// driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
+pub const CONSTRAINT: &str = "CONSTRAINT";
