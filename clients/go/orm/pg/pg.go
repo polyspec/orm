@@ -26,6 +26,8 @@ func mapErr(err error) error {
 		return err
 	}
 	switch pe.Code {
+	case "55P03": // lock_not_available
+		return &ir.Error{Code: orm.CodeLockNotAvailable, Msg: pe.Error()}
 	case "40P01", "40001": // deadlock_detected, serialization_failure
 		return &ir.Error{Code: orm.CodeDeadlock, Msg: pe.Error()}
 	case "23505": // unique_violation

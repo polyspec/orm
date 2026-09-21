@@ -41,6 +41,9 @@ func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) error {
 	for {
 		if _, err := tx.tx.ExecContext(ctx, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
 			if mapped := mapDriverErr(err); !sqliteLockRetryable(err, mapped) || strings.HasSuffix(mode, "_nowait") {
+				if strings.HasSuffix(mode, "_nowait") && sqliteLockRetryable(err, mapped) {
+					return &ir.Error{Code: CodeLockNotAvailable, Msg: mapped.Error()}
+				}
 				return mapped
 			}
 			if err := waitForSQLiteLock(ctx); err != nil {

@@ -61,6 +61,8 @@ codes:
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----
+  - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
+    origin: driver
   - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000

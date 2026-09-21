@@ -548,7 +548,14 @@ pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str)
             .execute(&mut **tx)
             .await;
     }
-    result.map_err(Error::from)
+    result.map_err(|error| {
+        let mapped = Error::from(error);
+        if nowait && mapped.is_deadlock() {
+            Error::Engine { code: codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
+        } else {
+            mapped
+        }
+    })
 }
 
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.

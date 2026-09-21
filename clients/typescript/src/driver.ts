@@ -56,6 +56,7 @@ function driverError(name: DriverName, error: unknown): OrmError {
   if (error instanceof OrmError) return error;
   const source = error as { code?: string; errcode?: number; message?: string };
   const message = source.message ?? String(error);
+  const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
   // that was stopped before it finished.
   if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9) {
@@ -64,7 +65,7 @@ function driverError(name: DriverName, error: unknown): OrmError {
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
   const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787;
   const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 5 || source.errcode === 6 || source.errcode === 261 || source.errcode === 262;
-  const code = duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER';
+  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER';
   return new OrmError(code, `${name}: ${message}`, error);
 }
 
@@ -407,8 +408,14 @@ class SqliteTx implements DriverTransaction {
   /** SQLite has no row-lock clause; one lock row serializes ORM lock requests. */
   public async rowLock(mode: string): Promise<void> {
     if (mode === '') return;
-    this.state.db.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
-    this.state.db.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
+    try {
+      this.state.db.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+      this.state.db.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
+    } catch (error) {
+      const mapped = driverError(this.name, error);
+      if (mode.endsWith('_nowait') && mapped.code === 'DEADLOCK') throw new OrmError('LOCK_NOT_AVAILABLE', mapped.message, error);
+      throw mapped;
+    }
   }
 }
 

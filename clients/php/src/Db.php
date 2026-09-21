@@ -653,7 +653,11 @@ final class Db
             }
             $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
         } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->driver);
+            $mapped = OrmException::fromDriver($e, $this->driver);
+            if ($noWait && $mapped instanceof OrmException && $mapped->code_ === Code::DEADLOCK) {
+                throw new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e);
+            }
+            throw $mapped;
         } finally {
             if ($noWait) {
                 $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
