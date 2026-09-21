@@ -628,6 +628,9 @@ func (c *Core) Create() (Model, error) {
 		c.ent.Assign(m.self, ent.Auto, id)
 	}
 	st.loaded = true
+	if tx := ex.transaction(); tx != nil && ent.Auto != "" {
+		tx.recordInserted(c.ent.Name, id)
+	}
 	for _, pk := range ent.PK {
 		v := m.value(pk)
 		if isZero(v) {

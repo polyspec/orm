@@ -169,6 +169,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 |---|---|
 | `lock(key)` | transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction |
 | `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
+| `wasInserted(entity, sequence)` | reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback |
 | `schema().install(manifestJson)` | creates the missing tables, keys, indexes, comments, and triggers of the manifest on every database and keeps existing tables; on MySQL a call inside a transaction returns `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)`, `schema().empty()` | schema inspection |
 | `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED` |

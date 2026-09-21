@@ -166,6 +166,22 @@ func (u *Utils) Local(key string) (string, error) {
 	return v, nil
 }
 
+// WasInserted reports whether a generated ORM insert for entity and its
+// signed sequence key succeeded in the active transaction. The fact is local
+// to the transaction, is restored across savepoint rollback, and is identical
+// for every adapter. It does not inspect driver-specific transaction state.
+func (u *Utils) WasInserted(entity string, key int64) (bool, error) {
+	t, err := u.active("wasInserted")
+	if err != nil {
+		return false, err
+	}
+	if entity == "" || key <= 0 {
+		return false, configErr("inserted entity and positive key are required")
+	}
+	_, ok := t.inserted[entity][key]
+	return ok, nil
+}
+
 // SchemaUtils installs and inspects schemas.
 type SchemaUtils struct{ u *Utils }
 

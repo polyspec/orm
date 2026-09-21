@@ -169,6 +169,7 @@ classDiagram
 |---|---|
 | `lock(key)` | 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요 |
 | `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
+| `wasInserted(entity, sequence)` | 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원 |
 | `schema().install(manifestJson)` | 모든 데이터베이스에서 매니페스트의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)`, `schema().empty()` | 스키마 확인 |
 | `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환 |
