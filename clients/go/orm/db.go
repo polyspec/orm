@@ -149,10 +149,12 @@ func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	}
 	var waiting bool
 	err := d.sql.QueryRowContext(ctx, `SELECT EXISTS(
-		SELECT 1 FROM pg_stat_activity
-		WHERE datname=current_database()
-		  AND pid<>pg_backend_pid()
-		  AND wait_event_type='Lock'
+		SELECT 1
+		FROM pg_locks l
+		JOIN pg_stat_activity a ON a.pid=l.pid
+		WHERE a.datname=current_database()
+		  AND a.pid<>pg_backend_pid()
+		  AND NOT l.granted
 	)`).Scan(&waiting)
 	return waiting, mapDriverErr(err)
 }
