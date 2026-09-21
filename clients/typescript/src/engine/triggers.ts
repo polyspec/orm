@@ -24,7 +24,7 @@ export function auditLogMarker(l: AuditLog): string {
 
 export function auditMarker(table: string, a: AuditDeclaration): string {
   let s = `${triggerMarker}audit table=${table} mode=${a.mode}`;
-  if ((a.site ?? '') !== '') s += ` site=${a.site}`;
+  if ((a.site ?? '') !== '') s += ` service=${a.site}`;
   if ((a.redact ?? []).length > 0) s += ` redact=${a.redact!.map(p => p.join('.')).join(',')}`;
   return s;
 }
@@ -105,7 +105,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
   b += `${markers}\n`;
   b += `DECLARE\n  audit_operation_id text := current_setting(${literal(l.context)}, true);\n  audit_operation_seq bigint;\n`;
   if (a.mode === 'changes') {
-    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n";
   }
   b += 'BEGIN\n';
   b += `  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION ${contextMessage}; END IF;\n`;
@@ -130,7 +130,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
     }
     b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
     b += '  END IF;\n';
-    if ((a.site ?? '') !== '') b += `  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.site!)}::text ELSE NEW.${q(a.site!)}::text END;\n`;
+    if ((a.site ?? '') !== '') b += `  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.site!)}::text ELSE NEW.${q(a.site!)}::text END;\n`;
     const keys = e.pk.flatMap(k => [literal(k), `to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.${q(k)} ELSE NEW.${q(k)} END)`]);
     b += `  audit_key := jsonb_build_object(${keys.join(', ')});\n`;
     for (const path of a.redact ?? []) {
@@ -139,7 +139,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
         b += `  IF ${v} #> ${p} IS NOT NULL THEN ${v} := jsonb_set(${v}, ${p}, '{"redacted": true, "present": true}'::jsonb); END IF;\n`;
       }
     }
-    b += `  INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, TG_OP, audit_site, ${literal(e.table)}, audit_key, audit_old, audit_new);\n`;
+    b += `  INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, TG_OP, audit_service, ${literal(e.table)}, audit_key, audit_old, audit_new);\n`;
   }
   b += '  RETURN NULL;\nEND\n$$;';
   const table = q(e.table);
@@ -229,7 +229,7 @@ function auditKey(e: Entity, event: string, dialect: string, q: Quote): string {
   return `${dialect === 'mysql' ? 'JSON_OBJECT(' : 'json_object('}${parts.join(', ')})`;
 }
 
-function auditSite(a: AuditDeclaration, event: string, q: Quote): string {
+function auditService(a: AuditDeclaration, event: string, q: Quote): string {
   if ((a.site ?? '') === '') return 'NULL';
   if (event === 'UPDATE') return `COALESCE(NEW.${q(a.site!)}, OLD.${q(a.site!)})`;
   return `${rowOf(event)}.${q(a.site!)}`;
@@ -277,7 +277,7 @@ function mysqlAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: string
           b += `  SET ${v} = IF(JSON_CONTAINS_PATH(${v}, 'one', ${p}), JSON_SET(${v}, ${p}, JSON_OBJECT('redacted', CAST('true' AS JSON), 'present', CAST('true' AS JSON))), ${v});\n`;
         }
       }
-      const insert = `INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, '${event}', ${auditSite(a, event, q)}, ${literal(e.table)}, ${auditKey(e, event, 'mysql', q)}, audit_old, audit_new);`;
+      const insert = `INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, '${event}', ${auditService(a, event, q)}, ${literal(e.table)}, ${auditKey(e, event, 'mysql', q)}, audit_old, audit_new);`;
       b += event === 'UPDATE'
         ? `  IF JSON_LENGTH(audit_old) > 0 OR JSON_LENGTH(audit_new) > 0 THEN\n    ${insert}\n  END IF;\n`
         : `  ${insert}\n`;
@@ -315,7 +315,7 @@ function sqliteAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: strin
         const redacted = (v: string) => `CASE WHEN json_type(r.${v}, ${p}) IS NOT NULL THEN json_set(r.${v}, ${p}, json_object('redacted', json('true'), 'present', json('true'))) ELSE r.${v} END`;
         source = `SELECT ${redacted('n')} AS n, ${redacted('o')} AS o FROM (${source}) AS r`;
       }
-      b += `INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) SELECT ${operation}, '${event}', ${auditSite(a, event, q)}, ${literal(e.table)}, ${auditKey(e, event, 'sqlite', q)}, v.o, v.n FROM (${source}) AS v`;
+      b += `INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) SELECT ${operation}, '${event}', ${auditService(a, event, q)}, ${literal(e.table)}, ${auditKey(e, event, 'sqlite', q)}, v.o, v.n FROM (${source}) AS v`;
       if (event === 'UPDATE') b += " WHERE v.o <> '{}' OR v.n <> '{}'";
       b += ';\n';
     }

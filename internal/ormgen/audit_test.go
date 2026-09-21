@@ -24,7 +24,7 @@ const (
 		"    bigint       seq            PK \"auto\"\n" +
 		"    bigint       operation_seq\n" +
 		"    varchar(16)  change_kind\n" +
-		"    varchar(36)  site_ref       \"?\"\n" +
+		"    varchar(36)  service_ref       \"?\"\n" +
 		"    varchar(191) table_label\n" +
 		"    jsontext     entity_ref\n" +
 		"    jsontext     before_value\n" +
@@ -32,7 +32,7 @@ const (
 		"  }\n"
 	auditItemStart = "  audit_item {\n" +
 		"    bigint       seq            PK \"auto\"\n" +
-		"    varchar(36)  site_ref\n" +
+		"    varchar(36)  service_ref\n" +
 		"    varchar(191) title\n"
 	auditItemRank = "    int          rank           \"=0\"\n"
 	auditItemEnd  = "    jsontext     payload        \"?\"\n" +
@@ -41,8 +41,8 @@ const (
 		"    bigint       seq            PK \"auto\"\n" +
 		"    varchar(191) body\n" +
 		"  }\n"
-	auditLogLine  = "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"
-	auditItemLine = "  %% orm:audit entity=audit_item mode=changes site=site_ref redact=payload.token,payload.card.number\n"
+	auditLogLine  = "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"
+	auditItemLine = "  %% orm:audit entity=audit_item mode=changes service=service_ref redact=payload.token,payload.card.number\n"
 	auditNoteLine = "  %% orm:audit entity=audit_note mode=operations\n"
 	auditHead     = auditLogTables + auditItemStart + auditItemEnd
 
@@ -54,7 +54,7 @@ const (
 	// auditNullableTitle forces a SQLite table rebuild.
 	auditNullableTitle = auditLogTables + "  audit_item {\n" +
 		"    bigint       seq            PK \"auto\"\n" +
-		"    varchar(36)  site_ref\n" +
+		"    varchar(36)  service_ref\n" +
 		"    varchar(191) title          \"?\"\n" +
 		auditItemEnd + auditLogLine + auditItemLine + auditNoteLine
 	// auditOperationsItem changes the audit mode of audit_item.
@@ -68,13 +68,13 @@ func TestAuditDirectivesBuild(t *testing.T) {
 	want := &schema.AuditLog{
 		Operation: schema.AuditTable{Table: "audit_operation", Columns: []string{"seq", "operation_uuid"}},
 		Context:   "app.operation_id",
-		Change:    schema.AuditTable{Table: "audit_change", Columns: []string{"operation_seq", "change_kind", "site_ref", "table_label", "entity_ref", "before_value", "after_value"}},
+		Change:    schema.AuditTable{Table: "audit_change", Columns: []string{"operation_seq", "change_kind", "service_ref", "table_label", "entity_ref", "before_value", "after_value"}},
 	}
 	if !reflect.DeepEqual(m.AuditLog, want) {
 		t.Fatalf("audit log = %+v", m.AuditLog)
 	}
 	audits := []schema.Audit{
-		{Entity: "audit_item", Mode: "changes", Site: "site_ref", Redact: [][]string{{"payload", "token"}, {"payload", "card", "number"}}},
+		{Entity: "audit_item", Mode: "changes", Service: "service_ref", Redact: [][]string{{"payload", "token"}, {"payload", "card", "number"}}},
 		{Entity: "audit_note", Mode: "operations"},
 	}
 	if !reflect.DeepEqual(m.Audits, audits) {
@@ -88,10 +88,10 @@ func TestAuditDirectivesBuild(t *testing.T) {
 func TestAuditDirectiveErrors(t *testing.T) {
 	cases := []struct{ want, source string }{
 		{"%% orm:audit requires %% orm:audit_log", auditHead + "  %% orm:audit entity=audit_item mode=changes\n"},
-		{"%% orm:audit_log: declared more than once", auditHead + auditLogLine + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.other_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: declared more than once", auditHead + auditLogLine + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.other_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
 		{"%% orm:audit: unknown entity missing", auditHead + auditLogLine + "  %% orm:audit entity=missing mode=changes\n"},
 		{"%% orm:audit: mode must be changes or operations", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=all\n"},
-		{"%% orm:audit: unknown column audit_item.nope", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=changes site=nope\n"},
+		{"%% orm:audit: unknown column audit_item.nope", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=changes service=nope\n"},
 		{"%% orm:audit: redact paths overlap: payload.token", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=changes redact=payload,payload.token\n"},
 		{"%% orm:audit: invalid redact path payload..token", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=changes redact=payload..token\n"},
 		{"%% orm:audit: unknown column audit_item.missing", auditHead + auditLogLine + "  %% orm:audit entity=audit_item mode=changes redact=missing.token\n"},
@@ -99,13 +99,13 @@ func TestAuditDirectiveErrors(t *testing.T) {
 		{"%% orm:audit: the audit log table audit_change cannot be audited", auditHead + auditLogLine + "  %% orm:audit entity=audit_change mode=changes\n"},
 		{"orm:audit: unknown option table", auditHead + auditLogLine + "  %% orm:audit table=audit_item mode=changes\n"},
 		{"%% orm:audit_log: change needs 7 columns", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq)\n"},
-		{"%% orm:audit_log: operation has an invalid column seq-1", auditHead + "  %% orm:audit_log operation=audit_operation(seq-1, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: operation must be table(column, ...)", auditHead + "  %% orm:audit_log operation=core.log.operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: invalid context bad-key", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=bad-key change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: operation must be table(column, ...)", auditHead + "  %% orm:audit_log operation=audit_operation context=app.operation_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: operation and change must be different tables", auditHead + "  %% orm:audit_log operation=audit_change(seq, change_kind) context=app.operation_id change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: change repeats column operation_seq", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, operation_seq, site_ref, table_label, entity_ref, before_value, after_value)\n"},
-		{"%% orm:audit_log: context is required", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) change=audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: operation has an invalid column seq-1", auditHead + "  %% orm:audit_log operation=audit_operation(seq-1, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: operation must be table(column, ...)", auditHead + "  %% orm:audit_log operation=core.log.operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: invalid context bad-key", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=bad-key change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: operation must be table(column, ...)", auditHead + "  %% orm:audit_log operation=audit_operation context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: operation and change must be different tables", auditHead + "  %% orm:audit_log operation=audit_change(seq, change_kind) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: change repeats column operation_seq", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, operation_seq, service_ref, table_label, entity_ref, before_value, after_value)\n"},
+		{"%% orm:audit_log: context is required", auditHead + "  %% orm:audit_log operation=audit_operation(seq, operation_uuid) change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"},
 	}
 	for _, c := range cases {
 		d, err := schema.Parse(c.source)
@@ -124,7 +124,7 @@ const auditExternalLog = "er" + "Diagram\n" +
 	"    bigint       seq            PK \"auto\"\n" +
 	"    varchar(191) email\n" +
 	"  }\n" +
-	"  %% orm:audit_log operation=core.operation(seq, operation_uuid) context=app.operation_id change=core.operation_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n" +
+	"  %% orm:audit_log operation=core.operation(seq, operation_uuid) context=app.operation_id change=core.operation_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n" +
 	"  %% orm:audit entity=member_account mode=changes\n"
 
 func TestAuditLogTablesAreReferences(t *testing.T) {
@@ -215,7 +215,7 @@ func TestAuditDiff(t *testing.T) {
 
 func TestTriggerDirectives(t *testing.T) {
 	bodies := []string{
-		"BEGIN\n-- orm:audit_log operation=op(seq, uuid) context=a.b change=ch(a, b, c, d, e, f, g)\n-- orm:audit table=item mode=changes site=s redact=p.q\nEND",
+		"BEGIN\n-- orm:audit_log operation=op(seq, uuid) context=a.b change=ch(a, b, c, d, e, f, g)\n-- orm:audit table=item mode=changes service=s redact=p.q\nEND",
 		"BEGIN\n-- orm:audit_log operation=op(seq, uuid) context=a.b change=ch(a, b, c, d, e, f, g)\n-- orm:audit table=gone mode=operations\nEND",
 		"BEGIN\n-- orm:immutable table=item\nEND",
 	}
@@ -223,7 +223,7 @@ func TestTriggerDirectives(t *testing.T) {
 	want := []string{
 		"%% orm:immutable entity=item",
 		"%% orm:audit_log operation=op(seq, uuid) context=a.b change=ch(a, b, c, d, e, f, g)",
-		"%% orm:audit entity=item mode=changes site=s redact=p.q",
+		"%% orm:audit entity=item mode=changes service=s redact=p.q",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("directives = %q", got)
@@ -267,7 +267,7 @@ func assertAuditCycle(t *testing.T, ctx context.Context, db *sql.DB, driver stri
 		t.Fatal(err)
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, "INSERT INTO audit_item (site_ref, title) VALUES ('s', 'free')"); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT INTO audit_item (service_ref, title) VALUES ('s', 'free')"); err != nil {
 		t.Fatalf("insert after the audit was removed: %v", err)
 	}
 }
@@ -329,7 +329,7 @@ func assertAuditWrites(t *testing.T, ctx context.Context, db *sql.DB, driver str
 	if driver == "mysql" {
 		execAudit(t, ctx, tx, "SET @`orm.app.operation_id` = NULL")
 	}
-	expectAuditError(t, ctx, tx, driver, "INSERT INTO audit_item (site_ref, title) VALUES ('s1', 'a')", "audit operation context is required")
+	expectAuditError(t, ctx, tx, driver, "INSERT INTO audit_item (service_ref, title) VALUES ('s1', 'a')", "audit operation context is required")
 	setAuditContext(t, ctx, tx, driver, "op-missing")
 	expectAuditError(t, ctx, tx, driver, "INSERT INTO audit_note (body) VALUES ('n')", "audit operation does not exist")
 	uuid := "op-1"
@@ -343,7 +343,7 @@ func assertAuditWrites(t *testing.T, ctx context.Context, db *sql.DB, driver str
 		t.Fatalf("operation seq: %v", err)
 	}
 	execAudit(t, ctx, tx, "INSERT INTO audit_note (body) VALUES ('n')")
-	execAudit(t, ctx, tx, `INSERT INTO audit_item (site_ref, title, payload) VALUES ('s1', 'a', '{"token":"t","card":{"number":"4111","brand":"v"},"k":1}')`)
+	execAudit(t, ctx, tx, `INSERT INTO audit_item (service_ref, title, payload) VALUES ('s1', 'a', '{"token":"t","card":{"number":"4111","brand":"v"},"k":1}')`)
 	var item int64
 	if err := tx.QueryRowContext(ctx, "SELECT max(seq) FROM audit_item").Scan(&item); err != nil {
 		t.Fatalf("item seq: %v", err)
@@ -352,9 +352,9 @@ func assertAuditWrites(t *testing.T, ctx context.Context, db *sql.DB, driver str
 	execAudit(t, ctx, tx, `UPDATE audit_item SET title = 'b', payload = '{"token":"u","card":{"number":"4111","brand":"v"},"k":1}' WHERE seq = `+id)
 	execAudit(t, ctx, tx, `UPDATE audit_item SET title = 'b' WHERE seq = `+id)
 	execAudit(t, ctx, tx, `DELETE FROM audit_item WHERE seq = `+id)
-	query := "SELECT operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value FROM audit_change WHERE operation_seq = ? ORDER BY seq"
+	query := "SELECT operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value FROM audit_change WHERE operation_seq = ? ORDER BY seq"
 	if driver == "postgres" {
-		query = "SELECT operation_seq, change_kind, site_ref, table_label, entity_ref::text, before_value::text, after_value::text FROM audit_change WHERE operation_seq = $1 ORDER BY seq"
+		query = "SELECT operation_seq, change_kind, service_ref, table_label, entity_ref::text, before_value::text, after_value::text FROM audit_change WHERE operation_seq = $1 ORDER BY seq"
 	}
 	rows, err := tx.QueryContext(ctx, query, operation)
 	if err != nil {
@@ -364,7 +364,7 @@ func assertAuditWrites(t *testing.T, ctx context.Context, db *sql.DB, driver str
 	redacted := map[string]any{"redacted": true, "present": true}
 	payload := map[string]any{"token": redacted, "card": map[string]any{"number": redacted, "brand": "v"}, "k": float64(1)}
 	full := func(title string) map[string]any {
-		row := map[string]any{"seq": float64(item), "site_ref": "s1", "title": title, "payload": payload}
+		row := map[string]any{"seq": float64(item), "service_ref": "s1", "title": title, "payload": payload}
 		if ranked {
 			row["rank"] = float64(0)
 		}
@@ -383,7 +383,7 @@ func assertAuditWrites(t *testing.T, ctx context.Context, db *sql.DB, driver str
 			t.Fatal(err)
 		}
 		if seq != operation || site != "s1" || table != "audit_item" || !jsonEqual(t, key, map[string]any{"seq": float64(item)}) {
-			t.Fatalf("%s change row: seq=%d site=%s table=%s key=%s", driver, seq, site, table, key)
+			t.Fatalf("%s change row: seq=%d service=%s table=%s key=%s", driver, seq, site, table, key)
 		}
 		got = append(got, []any{kind, decodeJSON(t, before), decodeJSON(t, after)})
 	}
@@ -484,7 +484,7 @@ func TestAuditRejectsRedactionThatCannotApply(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			source := auditHead + auditLogLine +
-				"  %% orm:audit entity=audit_item mode=changes site=site_ref redact=" + c.redact + "\n" +
+				"  %% orm:audit entity=audit_item mode=changes service=service_ref redact=" + c.redact + "\n" +
 				auditNoteLine
 			d, err := schema.Parse(source)
 			if err != nil {
@@ -527,7 +527,7 @@ func TestSQLiteAuditRecordsCaseOnlyChange(t *testing.T) {
 	defer tx.Rollback()
 	execAudit(t, ctx, tx, "INSERT INTO audit_operation (operation_uuid) VALUES ('op-case')")
 	setAuditContext(t, ctx, tx, "sqlite", "op-case")
-	execAudit(t, ctx, tx, "INSERT INTO audit_item (site_ref, title) VALUES ('s1', 'a')")
+	execAudit(t, ctx, tx, "INSERT INTO audit_item (service_ref, title) VALUES ('s1', 'a')")
 	execAudit(t, ctx, tx, "UPDATE audit_item SET title = 'A'")
 	var before, after string
 	err = tx.QueryRowContext(ctx, "SELECT before_value, after_value FROM audit_change WHERE change_kind = 'UPDATE'").Scan(&before, &after)

@@ -28,7 +28,7 @@ const auditLogSchema = "er" + "Diagram\n" +
 	"    bigint       seq            PK \"auto\"\n" +
 	"    bigint       operation_seq\n" +
 	"    varchar(16)  change_kind\n" +
-	"    varchar(36)  site_ref       \"?\"\n" +
+	"    varchar(36)  service_ref       \"?\"\n" +
 	"    varchar(191) table_label\n" +
 	"    jsontext     entity_ref\n" +
 	"    jsontext     before_value\n" +
@@ -40,13 +40,13 @@ const auditLogSchema = "er" + "Diagram\n" +
 const auditItemSchema = "er" + "Diagram\n" +
 	"  audit_item {\n" +
 	"    bigint       seq            PK \"auto\"\n" +
-	"    varchar(36)  site_ref\n" +
+	"    varchar(36)  service_ref\n" +
 	"    varchar(191) title\n" +
 	"    text         json_detail    \"?\"\n" +
 	"  }\n" +
 	"  %% orm:table entity=audit_item name=app.audit_item\n" +
-	"  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n" +
-	"  %% orm:audit entity=audit_item mode=changes site=site_ref redact=json_detail.secret\n"
+	"  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n" +
+	"  %% orm:audit entity=audit_item mode=changes service=service_ref redact=json_detail.secret\n"
 
 // auditManifest builds a schema, without schema-qualified tables on MySQL.
 func auditManifest(t *testing.T, source, driver string) (*schema.Manifest, []byte) {
@@ -145,15 +145,15 @@ func TestAuditTriggers(t *testing.T) {
 				}
 			}
 			operations := rowEntity("audit_operation", logs.SchemaHash, "seq", "operation_uuid")
-			changes := rowEntity("audit_change", logs.SchemaHash, "seq", "operation_seq", "change_kind", "site_ref", "table_label", "entity_ref", "before_value", "after_value")
-			items := rowEntity("audit_item", m.SchemaHash, "seq", "site_ref", "title", "json_detail")
+			changes := rowEntity("audit_change", logs.SchemaHash, "seq", "operation_seq", "change_kind", "service_ref", "table_label", "entity_ref", "before_value", "after_value")
+			items := rowEntity("audit_item", m.SchemaHash, "seq", "service_ref", "title", "json_detail")
 			model := func(ent *orm.Entity) (*orm.Core, *keywordRow) {
 				c := orm.NewCore(ent)
 				return c, ent.New(c).(*keywordRow)
 			}
 			err = db.Transaction(func() error {
 				c, _ := model(items)
-				c.Set("site_ref", "s1")
+				c.Set("service_ref", "s1")
 				c.Set("title", "a")
 				_, err := c.Create()
 				return err
@@ -178,7 +178,7 @@ func TestAuditTriggers(t *testing.T) {
 					return err
 				}
 				c, _ := model(items)
-				c.Set("site_ref", "s1")
+				c.Set("service_ref", "s1")
 				c.Set("title", "a")
 				c.Set("json_detail", map[string]any{"secret": "s3cret", "kept": "v"})
 				created, err := c.Create()
@@ -211,7 +211,7 @@ func TestAuditTriggers(t *testing.T) {
 			for _, row := range rows.All() {
 				all = append(all, row)
 				v := row.vals
-				if orm.AsInt64(v["operation_seq"]) != 1 || v["site_ref"] != "s1" || v["table_label"] != tables[0] {
+				if orm.AsInt64(v["operation_seq"]) != 1 || v["service_ref"] != "s1" || v["table_label"] != tables[0] {
 					t.Fatalf("change row: %v", v)
 				}
 				key := jsonText(t, v["entity_ref"])

@@ -22,12 +22,12 @@ const auditLargeBudget = 3 * time.Second
 const auditLargeSchema = "er" + "Diagram\n" +
 	"  audit_doc {\n" +
 	"    bigint       seq            PK \"auto\"\n" +
-	"    varchar(36)  site_ref\n" +
+	"    varchar(36)  service_ref\n" +
 	"    jsontext     body\n" +
 	"  }\n" +
 	"  %% orm:table entity=audit_doc name=app.audit_doc\n" +
-	"  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n" +
-	"  %% orm:audit entity=audit_doc mode=changes site=site_ref redact=body.secret\n"
+	"  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n" +
+	"  %% orm:audit entity=audit_doc mode=changes service=service_ref redact=body.secret\n"
 
 // TestAuditLargeUnicodeValueStaysWithinBudget writes a document of more than
 // 1 MiB whose text is mostly escaped characters, as Go's encoder writes <, >,
@@ -90,7 +90,7 @@ func TestAuditLargeUnicodeValueStaysWithinBudget(t *testing.T) {
 				}
 			}
 			operations := rowEntity("audit_operation", logs.SchemaHash, "seq", "operation_uuid")
-			docs := rowEntity("audit_doc", m.SchemaHash, "seq", "site_ref", "body")
+			docs := rowEntity("audit_doc", m.SchemaHash, "seq", "service_ref", "body")
 			model := func(ent *orm.Entity) *orm.Core {
 				c := orm.NewCore(ent)
 				ent.New(c)
@@ -126,7 +126,7 @@ func TestAuditLargeUnicodeValueStaysWithinBudget(t *testing.T) {
 				var id any
 				step("insert", func() error {
 					c := model(docs)
-					c.Set("site_ref", "s1")
+					c.Set("service_ref", "s1")
 					c.Set("body", decoded(older))
 					created, err := c.Create()
 					if err == nil {
@@ -208,7 +208,7 @@ func TestAuditLargeTextChangeStaysWithinBudget(t *testing.T) {
 			}
 			operations := rowEntity("audit_operation", logs.SchemaHash, "seq", "operation_uuid")
 			changes := rowEntity("audit_change", logs.SchemaHash, "seq", "change_kind")
-			docs := rowEntity("audit_doc", m.SchemaHash, "seq", "site_ref", "body")
+			docs := rowEntity("audit_doc", m.SchemaHash, "seq", "service_ref", "body")
 			model := func(ent *orm.Entity) *orm.Core {
 				c := orm.NewCore(ent)
 				ent.New(c)
@@ -242,7 +242,7 @@ func TestAuditLargeTextChangeStaysWithinBudget(t *testing.T) {
 				var id any
 				step("insert", func() error {
 					c := model(docs)
-					c.Set("site_ref", "s1")
+					c.Set("service_ref", "s1")
 					c.Set("body", jsontext.Value(older))
 					created, err := c.Create()
 					if err == nil {

@@ -349,22 +349,22 @@ async function auditTriggers(dialect, dsn) {
   const prefix = dialect === 'mysql' ? '' : 'app.';
   const logs = auditSchema('erDiagram\n'
     + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
-    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) site_ref "?"\n'
+    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref "?"\n'
     + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
     + (prefix === '' ? '' : '  %% orm:table entity=audit_operation name=app.audit_operation\n  %% orm:table entity=audit_change name=app.audit_change\n'));
   // The audited manifest writes into log tables that only the first manifest declares.
   const items = auditSchema('erDiagram\n'
-    + '  audit_item {\n    bigint seq PK "auto"\n    varchar(36) site_ref\n    varchar(191) title\n  }\n'
+    + '  audit_item {\n    bigint seq PK "auto"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n'
     + (prefix === '' ? '' : '  %% orm:table entity=audit_item name=app.audit_item\n')
-    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=app.operation_id change=${prefix}audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n`
-    + '  %% orm:audit entity=audit_item mode=changes site=site_ref\n');
+    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=app.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n`
+    + '  %% orm:audit entity=audit_item mode=changes service=service_ref\n');
   await dropAuditTables(dialect, dsn);
   const db = await connect(dsn);
   try {
     for (const json of [logs.json, items.json, items.json]) await db.utils().schema().install(json);
     const { audit_operation: AuditOperation, audit_change: AuditChange } = logs.models;
     const { audit_item: AuditItem } = items.models;
-    const item = (site, title) => { const m = new AuditItem(); m[CORE].setValue('site_ref', site); m[CORE].setValue('title', title); return m; };
+    const item = (site, title) => { const m = new AuditItem(); m[CORE].setValue('service_ref', site); m[CORE].setValue('title', title); return m; };
     let message = '';
     try { await db.transaction(async () => { await item('s1', 'a').create(); }, { retry: 0 }); } catch (error) { message = String(error.message); }
     check(message.includes('audit operation context is required'), `write without an operation: ${message}`);
@@ -388,7 +388,7 @@ async function auditTriggers(dialect, dsn) {
     const plain = v => JSON.parse(JSON.stringify(v, (_, x) => x instanceof Map ? Object.fromEntries(x) : x));
     check(rows.map(r => value(r, 'change_kind')).join(',') === 'INSERT,UPDATE', `change kinds ${rows.map(r => value(r, 'change_kind'))}`);
     for (const row of rows) {
-      check(Number(value(row, 'operation_seq')) === 1 && value(row, 'site_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
+      check(Number(value(row, 'operation_seq')) === 1 && value(row, 'service_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
       check(JSON.stringify(plain(value(row, 'entity_ref'))) === JSON.stringify({ seq: Number(seq) }), `entity key ${JSON.stringify(plain(value(row, 'entity_ref')))}`);
     }
     check(JSON.stringify(plain(value(rows[1], 'before_value'))) === '{"title":"a"}' && JSON.stringify(plain(value(rows[1], 'after_value'))) === '{"title":"b"}', 'update values');

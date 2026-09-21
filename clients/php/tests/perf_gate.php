@@ -3,6 +3,7 @@
 // decoding and the same typed row conversion, measured in alternating pairs.
 // Usage: php clients/php/tests/perf_gate.php /abs/schema.json
 // ORM_BENCH_MYSQL_DSN selects the seeded bench database.
+// ORM_PERF_<CASE>_BOUND replaces a documented bound for the measurement environment.
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';

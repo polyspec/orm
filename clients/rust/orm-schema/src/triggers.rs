@@ -47,7 +47,7 @@ pub fn audit_log_marker(l: &AuditLog) -> String {
 pub fn audit_marker(table: &str, a: &Audit) -> String {
     let mut s = format!("{TRIGGER_MARKER}audit table={table} mode={}", a.mode);
     if !a.site.is_empty() {
-        s += &format!(" site={}", a.site);
+        s += &format!(" service={}", a.site);
     }
     if !a.redact.is_empty() {
         s += &format!(" redact={}", a.redact.iter().map(|p| p.join(".")).collect::<Vec<_>>().join(","));
@@ -150,7 +150,7 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
     b += &format!("{markers}\n");
     b += &format!("DECLARE\n  audit_operation_id text := current_setting({}, true);\n  audit_operation_seq bigint;\n", literal(&l.context));
     if a.mode == "changes" {
-        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n";
     }
     b += "BEGIN\n";
     b += &format!("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION {CONTEXT_MESSAGE}; END IF;\n");
@@ -183,7 +183,7 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
         b += "  END IF;\n";
         if !a.site.is_empty() {
             let site = q(&a.site);
-            b += &format!("  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD.{site}::text ELSE NEW.{site}::text END;\n");
+            b += &format!("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.{site}::text ELSE NEW.{site}::text END;\n");
         }
         let keys: Vec<String> =
             e.pk.iter().flat_map(|k| [literal(k), format!("to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.{0} ELSE NEW.{0} END)", q(k))]).collect();
@@ -195,7 +195,7 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
             }
         }
         b += &format!(
-            "  INSERT INTO {} ({}) VALUES (audit_operation_seq, TG_OP, audit_site, {}, audit_key, audit_old, audit_new);\n",
+            "  INSERT INTO {} ({}) VALUES (audit_operation_seq, TG_OP, audit_service, {}, audit_key, audit_old, audit_new);\n",
             q(&l.change.table),
             change_columns(l, &q),
             literal(&e.table)
@@ -321,7 +321,7 @@ fn audit_key(e: &Entity, event: &str, dialect: &str, q: &dyn Fn(&str) -> String)
     format!("{}{})", if dialect == "mysql" { "JSON_OBJECT(" } else { "json_object(" }, parts.join(", "))
 }
 
-fn audit_site(a: &Audit, event: &str, q: &dyn Fn(&str) -> String) -> String {
+fn audit_service(a: &Audit, event: &str, q: &dyn Fn(&str) -> String) -> String {
     if a.site.is_empty() {
         return "NULL".into();
     }
@@ -387,7 +387,7 @@ fn mysql_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> TriggerObj
                 "INSERT INTO {} ({}) VALUES (audit_operation_seq, '{event}', {}, {}, {}, audit_old, audit_new);",
                 q(&l.change.table),
                 change_columns(l, &q),
-                audit_site(a, event, &q),
+                audit_service(a, event, &q),
                 literal(&e.table),
                 audit_key(e, event, "mysql", &q)
             );
@@ -435,7 +435,7 @@ fn sqlite_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> TriggerOb
                 "INSERT INTO {} ({}) SELECT {operation}, '{event}', {}, {}, {}, v.o, v.n FROM ({source}) AS v",
                 q(&l.change.table),
                 change_columns(l, &q),
-                audit_site(a, event, &q),
+                audit_service(a, event, &q),
                 literal(&e.table),
                 audit_key(e, event, "sqlite", &q)
             );

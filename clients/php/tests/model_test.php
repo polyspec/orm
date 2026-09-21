@@ -442,15 +442,15 @@ function auditTriggers(string $driver, string $dsn): void
     $prefix = $driver === 'mysql' ? '' : 'app.';
     $logSource = "erDiagram\n"
         . "  audit_operation {\n    bigint seq PK \"auto\"\n    varchar(36) operation_uuid UK\n  }\n"
-        . "  audit_change {\n    bigint seq PK \"auto\"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) site_ref \"?\"\n"
+        . "  audit_change {\n    bigint seq PK \"auto\"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref \"?\"\n"
         . "    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n"
         . ($prefix === '' ? '' : "  %% orm:table entity=audit_operation name=app.audit_operation\n  %% orm:table entity=audit_change name=app.audit_change\n");
     // The audited manifest writes into log tables that only the first manifest declares.
     $itemSource = "erDiagram\n"
-        . "  audit_item {\n    bigint seq PK \"auto\"\n    varchar(36) site_ref\n    varchar(191) title\n  }\n"
+        . "  audit_item {\n    bigint seq PK \"auto\"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n"
         . ($prefix === '' ? '' : "  %% orm:table entity=audit_item name=app.audit_item\n")
-        . "  %% orm:audit_log operation={$prefix}audit_operation(seq, operation_uuid) context=app.operation_id change={$prefix}audit_change(operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value)\n"
-        . "  %% orm:audit entity=audit_item mode=changes site=site_ref\n";
+        . "  %% orm:audit_log operation={$prefix}audit_operation(seq, operation_uuid) context=app.operation_id change={$prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"
+        . "  %% orm:audit entity=audit_item mode=changes service=service_ref\n";
     $table = static fn(string $name): string => match ($driver) {
         'sqlite' => "\"app__$name\"",
         'postgres' => "app.$name",
@@ -468,7 +468,7 @@ function auditTriggers(string $driver, string $dsn): void
     }
     $message = '';
     try {
-        $db->transaction(fn() => $db->pdo()->exec('INSERT INTO ' . $table('audit_item') . " (site_ref, title) VALUES ('s1', 'a')"), retry: 0);
+        $db->transaction(fn() => $db->pdo()->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')"), retry: 0);
     } catch (Throwable $e) {
         $message = $e->getMessage();
     }
@@ -477,14 +477,14 @@ function auditTriggers(string $driver, string $dsn): void
         $pdo = $db->pdo();
         $pdo->exec('INSERT INTO ' . $table('audit_operation') . " (operation_uuid) VALUES ('op-1')");
         $db->utils()->setLocal('app.operation_id', 'op-1');
-        $pdo->exec('INSERT INTO ' . $table('audit_item') . " (site_ref, title) VALUES ('s1', 'a')");
+        $pdo->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')");
         $pdo->exec('UPDATE ' . $table('audit_item') . " SET title = 'b'");
     }, retry: 0);
     $item = (int) $db->pdo()->query('SELECT seq FROM ' . $table('audit_item'))->fetchColumn();
-    $rows = $db->pdo()->query('SELECT operation_seq, change_kind, site_ref, table_label, entity_ref, before_value, after_value FROM ' . $table('audit_change') . ' ORDER BY seq')->fetchAll(PDO::FETCH_ASSOC);
+    $rows = $db->pdo()->query('SELECT operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value FROM ' . $table('audit_change') . ' ORDER BY seq')->fetchAll(PDO::FETCH_ASSOC);
     check(array_column($rows, 'change_kind') === ['INSERT', 'UPDATE'], 'change kinds ' . json_encode(array_column($rows, 'change_kind')));
     foreach ($rows as $row) {
-        check((int) $row['operation_seq'] === 1 && $row['site_ref'] === 's1' && $row['table_label'] === $prefix . 'audit_item', 'change row ' . json_encode($row));
+        check((int) $row['operation_seq'] === 1 && $row['service_ref'] === 's1' && $row['table_label'] === $prefix . 'audit_item', 'change row ' . json_encode($row));
         check(json_decode($row['entity_ref'], true) === ['seq' => $item], 'entity key ' . $row['entity_ref']);
     }
     check(json_decode($rows[1]['before_value'] ?? 'null', true) === ['title' => 'a'] && json_decode($rows[1]['after_value'] ?? 'null', true) === ['title' => 'b'], 'update values');

@@ -751,7 +751,7 @@
   "clients/rust/orm-schema/src/triggers.rs::audit_log_marker": "pub fn audit_log_marker (l : \u0026 AuditLog) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::audit_marker": "pub fn audit_marker (table : \u0026 str , a : \u0026 Audit) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::audit_of": " fn audit_of \u003c 'a \u003e (m : \u0026 'a Manifest , entity : \u0026 str) -\u003e Option \u003c \u0026 'a Audit \u003e",
-  "clients/rust/orm-schema/src/triggers.rs::audit_site": " fn audit_site (a : \u0026 Audit , event : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
+  "clients/rust/orm-schema/src/triggers.rs::audit_service": " fn audit_service (a : \u0026 Audit , event : \u0026 str , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::audit_value": " fn audit_value (c : \u0026 Col , r : \u0026 str , dialect : \u0026 str) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::change_columns": " fn change_columns (l : \u0026 AuditLog , q : \u0026 dyn Fn (\u0026 str) -\u003e String) -\u003e String",
   "clients/rust/orm-schema/src/triggers.rs::diff_triggers": "pub fn diff_triggers (from : \u0026 Manifest , to : \u0026 Manifest , dialect : \u0026 str , rebuilt : \u0026 BTreeSet \u003c String \u003e) -\u003e Result \u003c (Vec \u003c String \u003e , Vec \u003c String \u003e) , String \u003e",

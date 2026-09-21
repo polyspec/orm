@@ -22,7 +22,7 @@ var ormDirectiveOptions = map[string]map[string]bool{
 	"foreign":      {"entity": true, "columns": true, "references": true, "name": true, "on_delete": true, "deferred": true},
 	"immutable":    {"entity": true},
 	"audit_log":    {"operation": true, "context": true, "change": true},
-	"audit":        {"entity": true, "mode": true, "site": true, "redact": true},
+	"audit":        {"entity": true, "mode": true, "service": true, "redact": true},
 	"field":        {"relation": true, "fk": true, "public": true, "required": true, "order": true},
 	"public-key":   {"entity": true, "field": true, "type": true, "unique": true, "stable": true},
 	"resource-key": {"route": true, "param": true, "field": true},

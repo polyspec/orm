@@ -60,14 +60,14 @@ macro_rules! row_model {
     };
 }
 
-const CHANGE_COLUMNS: &[&str] = &["seq", "operation_seq", "change_kind", "site_ref", "table_label", "entity_ref", "before_value", "after_value"];
+const CHANGE_COLUMNS: &[&str] = &["seq", "operation_seq", "change_kind", "service_ref", "table_label", "entity_ref", "before_value", "after_value"];
 
 row_model!(Operation, OPERATION, "audit_operation", &LOG_SCHEMA, ["seq", "operation_uuid"]);
 row_model!(Change, CHANGE, "audit_change", &LOG_SCHEMA, CHANGE_COLUMNS);
-row_model!(Item, ITEM, "audit_item", &ITEM_SCHEMA, ["seq", "site_ref", "title"]);
+row_model!(Item, ITEM, "audit_item", &ITEM_SCHEMA, ["seq", "service_ref", "title"]);
 row_model!(PlainOperation, PLAIN_OPERATION, "audit_operation", &LOG_PLAIN_SCHEMA, ["seq", "operation_uuid"]);
 row_model!(PlainChange, PLAIN_CHANGE, "audit_change", &LOG_PLAIN_SCHEMA, CHANGE_COLUMNS);
-row_model!(PlainItem, PLAIN_ITEM, "audit_item", &ITEM_PLAIN_SCHEMA, ["seq", "site_ref", "title"]);
+row_model!(PlainItem, PLAIN_ITEM, "audit_item", &ITEM_PLAIN_SCHEMA, ["seq", "service_ref", "title"]);
 
 fn model<M: Model>() -> M {
     M::from_core(Core::new(M::entity()))
@@ -129,12 +129,12 @@ async fn audit_triggers() {
             .transaction(async || {
                 if plain {
                     let mut row: PlainItem = model();
-                    row.core_mut().set("site_ref", Param::from("s1"));
+                    row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     orm::model::create(&mut row).await.map(|_| ())
                 } else {
                     let mut row: Item = model();
-                    row.core_mut().set("site_ref", Param::from("s1"));
+                    row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     orm::model::create(&mut row).await.map(|_| ())
                 }
@@ -151,7 +151,7 @@ async fn audit_triggers() {
                     orm::model::create(&mut op).await?;
                     db.utils().set_local("app.operation_id", "op-1").await?;
                     let mut row: PlainItem = model();
-                    row.core_mut().set("site_ref", Param::from("s1"));
+                    row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     let created = orm::model::create(&mut row).await?;
                     let seq = created.value("seq").unwrap_or_default().as_i64();
@@ -166,7 +166,7 @@ async fn audit_triggers() {
                     orm::model::create(&mut op).await?;
                     db.utils().set_local("app.operation_id", "op-1").await?;
                     let mut row: Item = model();
-                    row.core_mut().set("site_ref", Param::from("s1"));
+                    row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     let created = orm::model::create(&mut row).await?;
                     let seq = created.value("seq").unwrap_or_default().as_i64();
@@ -197,7 +197,7 @@ async fn audit_triggers() {
         assert_eq!(rows.iter().map(|r| text(r, "change_kind")).collect::<Vec<_>>(), ["INSERT", "UPDATE"], "{driver}: change kinds");
         for row in &rows {
             assert_eq!(row["operation_seq"].as_i64(), 1, "{driver}: operation");
-            assert_eq!(text(row, "site_ref"), "s1", "{driver}: site");
+            assert_eq!(text(row, "service_ref"), "s1", "{driver}: site");
             assert_eq!(text(row, "table_label"), table_label, "{driver}: table");
             assert_eq!(json(row, "entity_ref"), format!("{{\"seq\":{seq}}}"), "{driver}: entity key");
         }
