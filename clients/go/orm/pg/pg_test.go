@@ -16,3 +16,13 @@ func TestMapErrClassifiesCheckConstraint(t *testing.T) {
 		t.Fatal("mapped PostgreSQL check error is not recognized as a constraint")
 	}
 }
+
+func TestMapErrClassifiesNowaitLock(t *testing.T) {
+	err := mapErr(&pgconn.PgError{Code: "55P03", Message: "could not obtain lock"})
+	if got := orm.ErrorCode(err); got != orm.CodeLockNotAvailable {
+		t.Fatalf("mapped PostgreSQL lock error code = %q, want %q: %v", got, orm.CodeLockNotAvailable, err)
+	}
+	if !orm.IsLockNotAvailable(err) {
+		t.Fatal("mapped PostgreSQL lock error is not recognized as lock unavailable")
+	}
+}

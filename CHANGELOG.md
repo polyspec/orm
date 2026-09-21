@@ -6,6 +6,8 @@ Expose the adapter-neutral Go transaction write fact `Utils().WasInserted(entity
 
 Expose the ORM-owned Go `DB.BackendWaitingForLock` inspection for bounded PostgreSQL concurrency orchestration. MySQL and SQLite return `false` through the same API; callers do not inspect `pg_stat_activity` or a driver connection.
 
+Add the adapter-neutral `LOCK_NOT_AVAILABLE` error for every `*_nowait` row-lock request that cannot acquire its lock. Go exposes `orm.IsLockNotAvailable`; PostgreSQL `55P03`, MySQL `3572`, and SQLite ORM row-lock contention are mapped without caller driver inspection. The condition is not a transaction retry signal.
+
 Prefix generated MySQL CHECK constraint names with their table name so distinct entities may declare the same logical check name without a database-level collision. PostgreSQL and SQLite retain the declared physical name.
 
 - Configure the CI bench database for every step: the workflow sets `ORM_BENCH_MYSQL_DSN` at the job level, so the performance-gate verification inside `make feature-check` reaches the seeded MySQL instead of failing on the local socket default.

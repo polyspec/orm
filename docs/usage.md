@@ -464,6 +464,7 @@ psql … -f app.pg.sql
 | `CONFIG` | Missing `connect` outside a transaction, a missing or misplaced connector, `connect` on a join child, or a configuration, path, or driver mismatch |
 | `LIMIT_IN_RELATION` | Relation child uses `limit`; use `groupLimit(n)` |
 | `OPTIMISTIC_LOCK` | `update(true)` found a newer `updated_ts`; read again and retry |
+| `LOCK_NOT_AVAILABLE` | A `*_nowait` row-lock request could not acquire the lock immediately; do not retry it as a transaction conflict |
 | `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the transaction retries |
 | `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 

@@ -53,6 +53,8 @@ pub const CONFIG: &str = "CONFIG";
 pub const CANCELED: &str = "CANCELED";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
+/// driver: a NOWAIT lock could not be acquired immediately
+pub const LOCK_NOT_AVAILABLE: &str = "LOCK_NOT_AVAILABLE";
 /// driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 pub const DEADLOCK: &str = "DEADLOCK";
 /// driver: MySQL 1062 / SQLSTATE 23000
