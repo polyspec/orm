@@ -130,7 +130,7 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("%s check %s: %w", e.Table, check.Name, err)
 			}
-			lines = append(lines, "  CONSTRAINT "+q(check.Name)+" CHECK ("+expr+")")
+			lines = append(lines, "  CONSTRAINT "+q(ddlCheckName(e.Table, check.Name, dialect))+" CHECK ("+expr+")")
 		}
 		if dialect == "mysql" {
 			for _, ixName := range sortedIndexNames(e.Indexes) {
@@ -216,6 +216,17 @@ func ddlTable(table, dialect string) string {
 func ddlBase(table string) string {
 	parts := strings.Split(table, ".")
 	return parts[len(parts)-1]
+}
+
+// ddlCheckName gives MySQL CHECK constraints a table-scoped physical name.
+// MySQL requires constraint names to be unique within a database, while the
+// schema contract scopes a check name to its entity. Other dialects preserve
+// the declared name because their constraint namespace is table-scoped.
+func ddlCheckName(table, name, dialect string) string {
+	if dialect != "mysql" {
+		return name
+	}
+	return boundedIdentifier("ck_"+ddlBase(table)+"_"+name, dialect)
 }
 
 func ddlIndexName(table, index, dialect string) string {
