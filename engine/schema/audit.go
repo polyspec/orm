@@ -12,7 +12,7 @@ import (
 // AuditLog names the tables that audit triggers write to and the transaction
 // setting that carries the current operation id.
 //
-//	%% orm:audit_log operation=core.operation(seq, operation_uuid) context=platform.operation_id change=core.operation_change(operation_seq, change_operation, site_id, table_name, entity_key, old_value, new_value)
+//	%% orm:audit_log operation=core.operation(seq, operation_uuid) context=platform.operation_id change=core.operation_change(operation_seq, change_operation, service_id, table_name, entity_key, old_value, new_value)
 type AuditLog struct {
 	Operation AuditTable `json:"operation"`
 	Context   string     `json:"context"`
@@ -28,12 +28,12 @@ type AuditTable struct {
 
 // Audit declares a database audit trigger on one entity.
 //
-//	%% orm:audit entity=service mode=changes site=site_id redact=secret.token
+//	%% orm:audit entity=service mode=changes service=service_id redact=secret.token
 type Audit struct {
-	Entity string     `json:"entity"`
-	Mode   string     `json:"mode"`
-	Site   string     `json:"site,omitempty"`
-	Redact [][]string `json:"redact,omitempty"`
+	Entity  string     `json:"entity"`
+	Mode    string     `json:"mode"`
+	Service string     `json:"service,omitempty"`
+	Redact  [][]string `json:"redact,omitempty"`
 }
 
 // Audit operation and change column positions.
@@ -45,7 +45,7 @@ const (
 const (
 	AuditChangeOperationSeq = iota
 	AuditChangeOperation
-	AuditChangeSite
+	AuditChangeService
 	AuditChangeTable
 	AuditChangeEntityKey
 	AuditChangeOldValue
@@ -131,9 +131,9 @@ func (m *Manifest) addAudit(x *ORMDirective) error {
 	if mode != "changes" && mode != "operations" {
 		return &BuildError{x.Line, "%% orm:audit: mode must be changes or operations"}
 	}
-	audit := Audit{Entity: name, Mode: mode, Site: x.Args["site"]}
-	if audit.Site != "" && e.Column(audit.Site) == nil {
-		return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("unknown column %s.%s", name, audit.Site)}
+	audit := Audit{Entity: name, Mode: mode, Service: x.Args["service"]}
+	if audit.Service != "" && e.Column(audit.Service) == nil {
+		return &BuildError{x.Line, "%% orm:audit: " + fmt.Sprintf("unknown column %s.%s", name, audit.Service)}
 	}
 	if value, ok := x.Args["redact"]; ok {
 		for _, item := range strings.Split(value, ",") {
