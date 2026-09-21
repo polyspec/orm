@@ -301,6 +301,7 @@ final class OrmException extends \RuntimeException
         $message = (string) ($e->errorInfo[2] ?? '');
         $code = match ($driver) {
             'postgres' => match ($state) {
+                '55P03' => Code::LOCK_NOT_AVAILABLE,
                 '40P01', '40001' => Code::DEADLOCK,
                 '23505' => Code::DUPLICATE_KEY,
                 '23503' => Code::FOREIGN_KEY,
@@ -315,6 +316,7 @@ final class OrmException extends \RuntimeException
                 default => null,
             },
             default => match (true) {
+                $num === 3572 || $state === 'ER_LOCK_NOWAIT' => Code::LOCK_NOT_AVAILABLE,
                 $num === 1213 || $state === '40001' => Code::DEADLOCK,
                 $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
                 $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,

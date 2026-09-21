@@ -17,3 +17,13 @@ func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 		}
 	}
 }
+
+func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
+	err := mapMySQLErr(&mysql.MySQLError{Number: 3572, Message: "lock not available"})
+	if got := ErrorCode(err); got != CodeLockNotAvailable {
+		t.Fatalf("mapped MySQL lock error code = %q, want %q: %v", got, CodeLockNotAvailable, err)
+	}
+	if !IsLockNotAvailable(err) {
+		t.Fatal("mapped MySQL lock error is not recognized as lock unavailable")
+	}
+}

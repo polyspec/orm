@@ -85,6 +85,9 @@ impl From<sqlx::Error> for Error {
             // message text is localized, the way pgx renders it)
             let mapped = if let Some(m) = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
                 match (m.number(), m.code()) {
+                    (3572, _) | (_, Some("ER_LOCK_NOWAIT")) => {
+                        Some((codes::LOCK_NOT_AVAILABLE, m.message().to_owned()))
+                    }
                     (1213, _) | (_, Some("40001")) => {
                         Some((codes::DEADLOCK, m.message().to_owned()))
                     }
@@ -102,6 +105,7 @@ impl From<sqlx::Error> for Error {
             } else if let Some(p) = d.try_downcast_ref::<sqlx::postgres::PgDatabaseError>() {
                 let msg = || format!("{} (SQLSTATE {})", p.message(), p.code());
                 match p.code() {
+                    "55P03" => Some((codes::LOCK_NOT_AVAILABLE, msg())),
                     "40P01" | "40001" => Some((codes::DEADLOCK, msg())),
                     "23505" => Some((codes::DUPLICATE_KEY, msg())),
                     "23503" => Some((codes::FOREIGN_KEY, msg())),

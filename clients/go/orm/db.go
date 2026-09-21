@@ -406,6 +406,8 @@ func mapMySQLErr(err error) error {
 	}
 	state := string(me.SQLState[:])
 	switch {
+	case me.Number == 3572: // ER_LOCK_NOWAIT
+		return &ir.Error{Code: CodeLockNotAvailable, Msg: me.Error()}
 	case me.Number == 1213 || state == "40001":
 		return &ir.Error{Code: CodeDeadlock, Msg: me.Error()}
 	case me.Number == 1062 || (me.Number == 0 && state == "23000"):
@@ -441,6 +443,9 @@ func TransactionConflict(message string) error {
 
 // IsDeadlock reports a DEADLOCK error.
 func IsDeadlock(err error) bool { return ErrorCode(err) == CodeDeadlock }
+
+// IsLockNotAvailable reports that a NOWAIT lock could not be acquired.
+func IsLockNotAvailable(err error) bool { return ErrorCode(err) == CodeLockNotAvailable }
 
 // IsDuplicateKey reports a DUPLICATE_KEY error.
 func IsDuplicateKey(err error) bool { return ErrorCode(err) == CodeDuplicateKey }

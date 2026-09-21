@@ -30,6 +30,7 @@ const (
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
 	CodeInternal              = "INTERNAL"               // executor
+	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
 	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
 	CodeDuplicateKey          = "DUPLICATE_KEY"          // driver: MySQL 1062 / SQLSTATE 23000
 	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
