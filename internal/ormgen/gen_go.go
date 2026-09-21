@@ -504,7 +504,7 @@ func (x *T) Relation(child orm.Model) *T { x.m.Relation(false, child); return x 
 // Relations attaches related rows loaded by a separate query.
 func (x *T) Relations(child orm.Model) *T { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *T) Get() (*T, error) { return one(x.m) }
 
 func one(c *orm.Core) (*T, error) {

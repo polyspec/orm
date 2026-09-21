@@ -134,7 +134,7 @@ func (x *CompositeMembershipModel) Relations(child orm.Model) *CompositeMembersh
 	return x
 }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *CompositeMembershipModel) Get() (*CompositeMembershipModel, error) {
 	return oneCompositeMembership(x.m)
 }

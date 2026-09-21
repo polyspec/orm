@@ -237,6 +237,29 @@ func TestConditions(t *testing.T) {
 	})
 }
 
+func TestGetMissingReturnsNoRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "model.sqlite")
+	db, err := model.Connect("sqlite://"+path, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	manifest, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Utils().Schema().Install(manifest); err != nil {
+		t.Fatal(err)
+	}
+	row, err := model.User().Connect(db).Seq(999999999).Get()
+	if row != nil {
+		t.Fatalf("missing row returned a model: %#v", row)
+	}
+	if orm.ErrorCode(err) != orm.CodeNoRows {
+		t.Fatalf("missing row error code = %q, error = %v", orm.ErrorCode(err), err)
+	}
+}
+
 func TestJoinsAndRelations(t *testing.T) {
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
