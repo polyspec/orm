@@ -132,6 +132,13 @@ func TestAuditTriggers(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
+			waiting, err := db.BackendWaitingForLock(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if driver != "postgres" && waiting {
+				t.Fatalf("non-PostgreSQL adapter reported a backend lock wait")
+			}
 			for _, text := range [][]byte{logManifest, manifest, manifest} {
 				if err := db.Utils().Schema().Install(text); err != nil {
 					t.Fatal(err)
@@ -262,6 +269,13 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	waiting, err := db.BackendWaitingForLock(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if waiting {
+		t.Fatal("SQLite reported a PostgreSQL backend lock wait")
+	}
 	manifest, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
