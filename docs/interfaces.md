@@ -135,7 +135,7 @@ The creation spelling follows the host language. The method role, stored request
 
 | Method | Result | Connection |
 |---|---|---|
-| `get` | one row, or null | model connection or active transaction |
+| `get` | one row; `NO_ROWS` when no row matches | model connection or active transaction |
 | `gets` | collection | model connection or active transaction |
 | `getsPage` | page | model connection or active transaction |
 | `getCount` | integer | model connection or active transaction |

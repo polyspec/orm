@@ -369,7 +369,7 @@ func (x *AuthorModel) Relation(child orm.Model) *AuthorModel { x.m.Relation(fals
 // Relations attaches related rows loaded by a separate query.
 func (x *AuthorModel) Relations(child orm.Model) *AuthorModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *AuthorModel) Get() (*AuthorModel, error) { return oneAuthor(x.m) }
 
 func oneAuthor(c *orm.Core) (*AuthorModel, error) {

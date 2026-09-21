@@ -127,7 +127,7 @@ func (x *ServiceRegionModel) Relations(child orm.Model) *ServiceRegionModel {
 	return x
 }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *ServiceRegionModel) Get() (*ServiceRegionModel, error) { return oneServiceRegion(x.m) }
 
 func oneServiceRegion(c *orm.Core) (*ServiceRegionModel, error) {

@@ -105,7 +105,7 @@ func (x *UserModel) Relation(child orm.Model) *UserModel { x.m.Relation(false, c
 // Relations attaches related rows loaded by a separate query.
 func (x *UserModel) Relations(child orm.Model) *UserModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *UserModel) Get() (*UserModel, error) { return oneUser(x.m) }
 
 func oneUser(c *orm.Core) (*UserModel, error) {

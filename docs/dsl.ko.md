@@ -118,7 +118,7 @@ Key   = [Operator] Column
 
 | 메서드 | 결과 |
 |---|---|
-| `get()` | 행 하나, 일치하는 행이 없으면 null |
+| `get()` | 행 하나; 일치하는 행이 없으면 `NO_ROWS` 오류 |
 | `gets()` | 행 컬렉션 |
 | `getBy<Chain>(…)` | 체인을 조건으로 사용하는 `get()` |
 | `getsBy<Chain>(…)` | 체인을 조건으로 사용하는 `gets()` |

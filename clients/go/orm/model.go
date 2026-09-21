@@ -390,11 +390,15 @@ func updatedColumn(ent *schema.Entity) string {
 	return ent.Timestamps.Updated
 }
 
-// Get runs the query and returns the first model, or nil.
+// Get runs the query and returns the first model. It returns CodeNoRows when
+// the query matches no rows; callers must not treat a missing row as success.
 func (c *Core) Get() (Model, error) {
 	rows, err := c.load("one")
-	if err != nil || len(rows.keys) == 0 {
+	if err != nil {
 		return nil, err
+	}
+	if len(rows.keys) == 0 {
+		return nil, &ir.Error{Code: CodeNoRows, Msg: "query matched no rows"}
 	}
 	return rows.items[rows.keys[0]].self, nil
 }

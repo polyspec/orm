@@ -122,7 +122,7 @@ func (x *AccountProjectModel) Relations(child orm.Model) *AccountProjectModel {
 	return x
 }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *AccountProjectModel) Get() (*AccountProjectModel, error) { return oneAccountProject(x.m) }
 
 func oneAccountProject(c *orm.Core) (*AccountProjectModel, error) {

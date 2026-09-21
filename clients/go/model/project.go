@@ -111,7 +111,7 @@ func (x *ProjectModel) Relation(child orm.Model) *ProjectModel { x.m.Relation(fa
 // Relations attaches related rows loaded by a separate query.
 func (x *ProjectModel) Relations(child orm.Model) *ProjectModel { x.m.Relation(true, child); return x }
 
-// Get returns the first matching row, or nil.
+// Get returns the first matching row. It returns orm.CodeNoRows when no row matches.
 func (x *ProjectModel) Get() (*ProjectModel, error) { return oneProject(x.m) }
 
 func oneProject(c *orm.Core) (*ProjectModel, error) {
