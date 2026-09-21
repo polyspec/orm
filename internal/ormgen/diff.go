@@ -304,14 +304,14 @@ func diffChecks(oldEnt, newEnt *schema.Entity, dialect string, quote func(string
 		oldCheck, oldOK := oldChecks[name]
 		newCheck, newOK := newChecks[name]
 		if oldOK && (!newOK || oldCheck.Expr != newCheck.Expr) {
-			drops = append(drops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quote(oldEnt.Table), quote(name)), destructive: true})
+			drops = append(drops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quote(oldEnt.Table), quote(ddlCheckName(oldEnt.Table, name, dialect))), destructive: true})
 		}
 		if newOK && (!oldOK || oldCheck.Expr != newCheck.Expr) {
 			expr, err := renderedCheckExpression(newCheck.Expr, dialect, quote)
 			if err != nil {
 				return nil, nil, fmt.Errorf("%s check %s: %w", newEnt.Table, name, err)
 			}
-			adds = append(adds, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s);", quote(newEnt.Table), quote(name), expr)})
+			adds = append(adds, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s);", quote(newEnt.Table), quote(ddlCheckName(newEnt.Table, name, dialect)), expr)})
 		}
 	}
 	return drops, adds, nil
