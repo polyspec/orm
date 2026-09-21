@@ -3,6 +3,8 @@ package orm_test
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -156,8 +158,14 @@ func TestAuditTriggers(t *testing.T) {
 			err = db.Transaction(func() error {
 				op, _ := model(operations)
 				op.Set("operation_uuid", "op-1")
-				if _, err := op.Create(); err != nil {
+				createdOperation, err := op.Create()
+				if err != nil {
 					return err
+				}
+				operationSeq := createdOperation.(*keywordRow).vals["seq"].(int64)
+				inserted, err := db.Utils().WasInserted("audit_operation", operationSeq)
+				if err != nil || !inserted {
+					return fmt.Errorf("created operation was not recorded in the active transaction: inserted=%v err=%v", inserted, err)
 				}
 				if err := db.Utils().SetLocal("app.operation_id", "op-1"); err != nil {
 					return err
@@ -227,6 +235,81 @@ func TestAuditTriggers(t *testing.T) {
 				t.Fatalf("update values: %v %v", before, after)
 			}
 		})
+	}
+}
+
+func TestWasInsertedTracksGeneratedRows(t *testing.T) {
+	source := "er" + "Diagram\n" +
+		"  record {\n" +
+		"    bigint seq PK \"auto\"\n" +
+		"    varchar(32) label\n" +
+		"  }\n" +
+		"  %% orm:table entity=record name=app.record\n"
+	d, err := schema.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eng, err := engine.New(m, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := orm.Open("sqlite://"+filepath.Join(t.TempDir(), "write-set.sqlite"), eng, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	manifest, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Utils().Schema().Install(manifest); err != nil {
+		t.Fatal(err)
+	}
+	records := rowEntity("record", m.SchemaHash, "seq", "label")
+	if err := db.Transaction(func() error {
+		c := orm.NewCore(records)
+		c.Set("label", "outer")
+		created, err := c.Create()
+		if err != nil {
+			return err
+		}
+		seq := created.(*keywordRow).vals["seq"].(int64)
+		inserted, err := db.Utils().WasInserted("record", seq)
+		if err != nil || !inserted {
+			return fmt.Errorf("outer insert was not recorded: inserted=%v err=%v", inserted, err)
+		}
+		var nestedSeq int64
+		err = db.Transaction(func() error {
+			inner := orm.NewCore(records)
+			inner.Set("label", "nested")
+			row, createErr := inner.Create()
+			if createErr != nil {
+				return createErr
+			}
+			nestedSeq = row.(*keywordRow).vals["seq"].(int64)
+			ok, checkErr := db.Utils().WasInserted("record", nestedSeq)
+			if checkErr != nil || !ok {
+				return fmt.Errorf("nested insert was not recorded: inserted=%v err=%v", ok, checkErr)
+			}
+			return errors.New("rollback nested savepoint")
+		}, orm.Retry(0))
+		if err == nil {
+			return errors.New("nested transaction unexpectedly committed")
+		}
+		ok, checkErr := db.Utils().WasInserted("record", nestedSeq)
+		if checkErr != nil {
+			return checkErr
+		}
+		if ok {
+			return errors.New("nested insert remained in the write set after savepoint rollback")
+		}
+		return nil
+	}, orm.Retry(0)); err != nil {
+		t.Fatal(err)
 	}
 }
 
