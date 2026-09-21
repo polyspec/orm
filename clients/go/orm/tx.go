@@ -58,6 +58,11 @@ type txConn struct {
 	isolation  IsolationLevel
 	sqliteMode bool
 	contextRow bool
+	// inserted records generated ORM inserts that succeeded in this
+	// transaction. It is an adapter-neutral transaction fact used by callers
+	// that must distinguish a row created in this transaction from a matching
+	// row committed earlier.
+	inserted map[string]map[int64]struct{}
 }
 
 func (t *txConn) base() *DB                { return t.db }
@@ -418,6 +423,7 @@ func (t *txConn) commit() error {
 
 // savepoint runs fn inside a savepoint of the active transaction.
 func (t *txConn) savepoint(fn func() error) (err error) {
+	insertedBefore := cloneInserted(t.inserted)
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
@@ -429,10 +435,12 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	defer func() {
 		popFrame()
 		if r := recover(); r != nil {
+			t.inserted = insertedBefore
 			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
 			panic(r)
 		}
 		if !returned {
+			t.inserted = insertedBefore
 			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
 			_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
 		}
@@ -440,6 +448,7 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	err = fn()
 	returned = true
 	if err != nil {
+		t.inserted = insertedBefore
 		if _, rbErr := t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name); rbErr != nil {
 			return mapDriverErr(rbErr)
 		}
@@ -450,6 +459,34 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		return mapDriverErr(err)
 	}
 	return nil
+}
+
+func cloneInserted(src map[string]map[int64]struct{}) map[string]map[int64]struct{} {
+	if len(src) == 0 {
+		return nil
+	}
+	dst := make(map[string]map[int64]struct{}, len(src))
+	for entity, keys := range src {
+		copied := make(map[int64]struct{}, len(keys))
+		for key := range keys {
+			copied[key] = struct{}{}
+		}
+		dst[entity] = copied
+	}
+	return dst
+}
+
+func (t *txConn) recordInserted(entity string, key int64) {
+	if entity == "" || key <= 0 {
+		return
+	}
+	if t.inserted == nil {
+		t.inserted = make(map[string]map[int64]struct{})
+	}
+	if t.inserted[entity] == nil {
+		t.inserted[entity] = make(map[int64]struct{})
+	}
+	t.inserted[entity][key] = struct{}{}
 }
 
 func (t *txConn) beginSQLiteMode() error {
