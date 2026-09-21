@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — MySQL CHECK constraint namespace
+
+Prefix generated MySQL CHECK constraint names with their table name so distinct entities may declare the same logical check name without a database-level collision. PostgreSQL and SQLite retain the declared physical name.
+
 - Configure the CI bench database for every step: the workflow sets `ORM_BENCH_MYSQL_DSN` at the job level, so the performance-gate verification inside `make feature-check` reaches the seeded MySQL instead of failing on the local socket default.
 
 - Enforce the declared commit-subject rule: `make git-check` checks every subject after a baseline recorded in `contracts/rules.json` for the `type: concise English description` format and the recorded length limit, and runs with the contract checks in CI. The rule registry names the target that actually runs the AES version-column check.

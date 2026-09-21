@@ -204,7 +204,7 @@ func TestRenderDDLAndDiffPreserveChecks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(ddl, "CONSTRAINT `positive_quantity` CHECK (`quantity` >= 0)") {
+	if !strings.Contains(ddl, "CONSTRAINT `ck_thing_positive_quantity` CHECK ((`quantity` >= 0) <> 0)") {
 		t.Fatalf("DDL omitted CHECK: %s", ddl)
 	}
 	old := testManifest(&schema.Col{Name: "id", Type: "i64", Raw: "bigint", PK: true}, &schema.Col{Name: "quantity", Type: "i32", Raw: "int"})

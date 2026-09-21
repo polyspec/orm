@@ -44,7 +44,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - `uuid` 컬럼은 PostgreSQL에서 네이티브 `uuid`, MySQL에서 `char(36)`, SQLite에서 TEXT다. 클라이언트는 uuid 값을 텍스트로 bind한다.
 - MySQL은 TEXT, BLOB, JSON, geometry 컬럼의 리터럴 기본값을 식 형식 `DEFAULT ('value')`로 기록하며 MySQL 8.0.13 이상이 필요하다. import는 이를 리터럴로 다시 읽는다.
 - Boolean은 PostgreSQL `boolean`, MySQL `BOOLEAN`/`TINYINT(1)`의 숫자 `0`/`1` 기본값, SQLite INTEGER 0/1을 사용한다. fragment와 raw에는 boolean을 bind한다.
-- CHECK 표현식은 PostgreSQL과 SQLite에서 선언한 표현식을 그대로 생성한다. MySQL은 predicate를 반환하는 `CASE` CHECK 정의를 거부하므로 명시적인 boolean 비교로 감싼다. `NULL`은 `UNKNOWN`으로 유지되어 표준 CHECK 의미를 보존한다. 생성되는 제약·인덱스 이름이 엔진 식별자 길이를 넘으면 hash 접미사를 사용해 결정적으로 줄인다.
+- CHECK 표현식은 PostgreSQL과 SQLite에서 선언한 표현식을 그대로 생성한다. MySQL은 predicate를 반환하는 `CASE` CHECK 정의를 거부하므로 명시적인 boolean 비교로 감싼다. `NULL`은 `UNKNOWN`으로 유지되어 표준 CHECK 의미를 보존한다. MySQL CHECK 이름은 table이 아니라 database 범위이므로 물리 이름에 table 이름을 접두어로 붙이고 논리 MMD 이름은 유지한다. 생성되는 제약·인덱스 이름이 엔진 식별자 길이를 넘으면 hash 접미사를 사용해 결정적으로 줄인다.
 - `bind_slots[].col_type`은 `date`, `time`, `datetime`, `point` 대상을 기록한다. 실행기는 SQLite 시간 값을 정규화하고 typed point를 bind 전에 `POINT(x y)`로 변환한다.
 - `bind_slots[].host_styles`와 `columns[].styles`는 실행기가 처리할 host stage를 기록한다. AES는 `docs/codec.md`에 정의한 `ORM-AES2\0` authenticated ciphertext format, 12바이트 random nonce, AES-256-GCM, version key derivation을 사용한다.
 - AES column에는 `aes_key_version`이 필요하다. 읽기는 저장된 version으로 설정된 key version에서 key를 선택한다. key가 없거나 ciphertext가 유효하지 않으면 `CONFIG` 또는 `CODEC_DECODE`를 반환하며 이전 version에 current key를 사용하지 않는다.

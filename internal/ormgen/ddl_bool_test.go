@@ -64,3 +64,38 @@ func TestMySQLCheckExpressionsAreExplicitlyBoolean(t *testing.T) {
 		t.Fatalf("MySQL CHECK was not explicitly boolean: %s", ddl)
 	}
 }
+
+func TestMySQLCheckNamesAreUniqueAcrossTables(t *testing.T) {
+	diagram := `erDiagram
+  accounts {
+    bigint id PK
+    varchar(120) name
+  }
+  methods {
+    bigint id PK
+    varchar(120) name
+  }
+  %% check accounts name_length : length(` + "`name`" + `) BETWEEN 1 AND 120
+  %% check methods name_length : length(` + "`name`" + `) BETWEEN 1 AND 120
+`
+	d, err := schema.Parse(diagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ddl, err := renderDDL(manifest, "mysql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"CONSTRAINT `ck_accounts_name_length` CHECK",
+		"CONSTRAINT `ck_methods_name_length` CHECK",
+	} {
+		if !strings.Contains(ddl, want) {
+			t.Fatalf("MySQL CHECK name is not table-scoped: missing %q in %s", want, ddl)
+		}
+	}
+}
