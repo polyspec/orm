@@ -34,8 +34,8 @@ func auditLogMarker(l *schema.AuditLog) string {
 
 func auditMarker(table string, a *schema.Audit) string {
 	s := triggerMarker + "audit table=" + table + " mode=" + a.Mode
-	if a.Site != "" {
-		s += " site=" + a.Site
+	if a.Service != "" {
+		s += " service=" + a.Service
 	}
 	if len(a.Redact) > 0 {
 		paths := make([]string, len(a.Redact))
@@ -170,7 +170,7 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 	b.WriteString(markers + "\n")
 	b.WriteString("DECLARE\n  audit_operation_id text := current_setting(" + sqlLiteral(l.Context) + ", true);\n  audit_operation_seq bigint;\n")
 	if a.Mode == "changes" {
-		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n")
+		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n")
 	}
 	b.WriteString("BEGIN\n")
 	b.WriteString("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION " + auditContextMessage + "; END IF;\n")
@@ -196,8 +196,8 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 		}
 		b.WriteString("    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n")
 		b.WriteString("  END IF;\n")
-		if a.Site != "" {
-			b.WriteString("  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD." + q(a.Site) + "::text ELSE NEW." + q(a.Site) + "::text END;\n")
+		if a.Service != "" {
+			b.WriteString("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD." + q(a.Service) + "::text ELSE NEW." + q(a.Service) + "::text END;\n")
 		}
 		keys := make([]string, 0, len(e.PK)*2)
 		for _, k := range e.PK {
@@ -210,7 +210,7 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 				b.WriteString("  IF " + v + " #> " + p + " IS NOT NULL THEN " + v + " := jsonb_set(" + v + ", " + p + ", '{\"redacted\": true, \"present\": true}'::jsonb); END IF;\n")
 			}
 		}
-		b.WriteString("  INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, TG_OP, audit_site, " + sqlLiteral(e.Table) + ", audit_key, audit_old, audit_new);\n")
+		b.WriteString("  INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, TG_OP, audit_service, " + sqlLiteral(e.Table) + ", audit_key, audit_old, audit_new);\n")
 	}
 	b.WriteString("  RETURN NULL;\nEND\n$$;")
 	o := triggerObject{table: e.Table, kind: "audit"}
@@ -344,14 +344,14 @@ func auditRow(event string) string {
 	return "NEW"
 }
 
-func auditSite(a *schema.Audit, event string, q func(string) string) string {
-	if a.Site == "" {
+func auditService(a *schema.Audit, event string, q func(string) string) string {
+	if a.Service == "" {
 		return "NULL"
 	}
 	if event == "UPDATE" {
-		return "COALESCE(NEW." + q(a.Site) + ", OLD." + q(a.Site) + ")"
+		return "COALESCE(NEW." + q(a.Service) + ", OLD." + q(a.Service) + ")"
 	}
-	return auditRow(event) + "." + q(a.Site)
+	return auditRow(event) + "." + q(a.Service)
 }
 
 var auditEvents = []string{"INSERT", "UPDATE", "DELETE"}
@@ -403,7 +403,7 @@ func mysqlAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, markers s
 					b.WriteString("  SET " + v + " = IF(JSON_CONTAINS_PATH(" + v + ", 'one', " + p + "), JSON_SET(" + v + ", " + p + ", JSON_OBJECT('redacted', CAST('true' AS JSON), 'present', CAST('true' AS JSON))), " + v + ");\n")
 				}
 			}
-			insert := "INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, '" + event + "', " + auditSite(a, event, q) + ", " + sqlLiteral(e.Table) + ", " + auditKey(e, event, "mysql", q) + ", audit_old, audit_new);"
+			insert := "INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, '" + event + "', " + auditService(a, event, q) + ", " + sqlLiteral(e.Table) + ", " + auditKey(e, event, "mysql", q) + ", audit_old, audit_new);"
 			if event == "UPDATE" {
 				b.WriteString("  IF JSON_LENGTH(audit_old) > 0 OR JSON_LENGTH(audit_new) > 0 THEN\n    " + insert + "\n  END IF;\n")
 			} else {
@@ -451,7 +451,7 @@ func sqliteAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, markers 
 				}
 				source = "SELECT " + redacted("n") + " AS n, " + redacted("o") + " AS o FROM (" + source + ") AS r"
 			}
-			b.WriteString("INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") SELECT " + operation + ", '" + event + "', " + auditSite(a, event, q) + ", " + sqlLiteral(e.Table) + ", " + auditKey(e, event, "sqlite", q) + ", v.o, v.n FROM (" + source + ") AS v")
+			b.WriteString("INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") SELECT " + operation + ", '" + event + "', " + auditService(a, event, q) + ", " + sqlLiteral(e.Table) + ", " + auditKey(e, event, "sqlite", q) + ", v.o, v.n FROM (" + source + ") AS v")
 			if event == "UPDATE" {
 				b.WriteString(" WHERE v.o <> '{}' OR v.n <> '{}'")
 			}

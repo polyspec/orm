@@ -26,7 +26,7 @@ final class SchemaTriggers
     {
         $s = self::MARKER . 'audit table=' . $table . ' mode=' . $a['mode'];
         if ($a['site'] !== '') {
-            $s .= ' site=' . $a['site'];
+            $s .= ' service=' . $a['site'];
         }
         if ($a['redact'] !== []) {
             $s .= ' redact=' . implode(',', array_map(static fn(array $p): string => implode('.', $p), $a['redact']));
@@ -130,7 +130,7 @@ final class SchemaTriggers
         $b .= $markers . "\n";
         $b .= "DECLARE\n  audit_operation_id text := current_setting(" . self::literal($l['context']) . ", true);\n  audit_operation_seq bigint;\n";
         if ($a['mode'] === 'changes') {
-            $b .= "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_site text;\n  audit_key jsonb;\n";
+            $b .= "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n";
         }
         $b .= "BEGIN\n";
         $b .= "  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION " . self::CONTEXT_MESSAGE . "; END IF;\n";
@@ -157,7 +157,7 @@ final class SchemaTriggers
             $b .= "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
             $b .= "  END IF;\n";
             if ($a['site'] !== '') {
-                $b .= "  audit_site := CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($a['site']) . '::text ELSE NEW.' . $q($a['site']) . "::text END;\n";
+                $b .= "  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($a['site']) . '::text ELSE NEW.' . $q($a['site']) . "::text END;\n";
             }
             $keys = [];
             foreach ($e['pk'] as $k) {
@@ -171,7 +171,7 @@ final class SchemaTriggers
                     $b .= '  IF ' . $v . ' #> ' . $p . ' IS NOT NULL THEN ' . $v . ' := jsonb_set(' . $v . ', ' . $p . ", '{\"redacted\": true, \"present\": true}'::jsonb); END IF;\n";
                 }
             }
-            $b .= '  INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ') VALUES (audit_operation_seq, TG_OP, audit_site, ' . self::literal($e['table']) . ", audit_key, audit_old, audit_new);\n";
+            $b .= '  INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ') VALUES (audit_operation_seq, TG_OP, audit_service, ' . self::literal($e['table']) . ", audit_key, audit_old, audit_new);\n";
         }
         $b .= "  RETURN NULL;\nEND\n$$;";
         $table = $q($e['table']);

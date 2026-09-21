@@ -724,7 +724,7 @@
   "clients/typescript/src/engine/triggers.ts::auditLogMarker": "export function auditLogMarker(l: AuditLog): string",
   "clients/typescript/src/engine/triggers.ts::auditMarker": "export function auditMarker(table: string, a: AuditDeclaration): string",
   "clients/typescript/src/engine/triggers.ts::auditOf": "export function auditOf(m: Manifest, entity: string): AuditDeclaration | undefined",
-  "clients/typescript/src/engine/triggers.ts::auditSite": "function auditSite(a: AuditDeclaration, event: string, q: Quote): string",
+  "clients/typescript/src/engine/triggers.ts::auditService": "function auditService(a: AuditDeclaration, event: string, q: Quote): string",
   "clients/typescript/src/engine/triggers.ts::auditValue": "function auditValue(c: Column, ref: string, dialect: string): string",
   "clients/typescript/src/engine/triggers.ts::diffTriggers": "export function diffTriggers(from: Manifest, to: Manifest, dialect: string, rebuilt: ReadonlySet\u003cstring\u003e): { drops: string[]; creates: string[]; }",
   "clients/typescript/src/engine/triggers.ts::immutableObject": "function immutableObject(e: Entity, dialect: string): TriggerObject",
