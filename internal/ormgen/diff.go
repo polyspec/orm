@@ -307,7 +307,7 @@ func diffChecks(oldEnt, newEnt *schema.Entity, dialect string, quote func(string
 			drops = append(drops, schemaChange{sql: fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quote(oldEnt.Table), quote(name)), destructive: true})
 		}
 		if newOK && (!oldOK || oldCheck.Expr != newCheck.Expr) {
-			expr, err := quotedCheckExpression(newCheck.Expr, quote)
+			expr, err := renderedCheckExpression(newCheck.Expr, dialect, quote)
 			if err != nil {
 				return nil, nil, fmt.Errorf("%s check %s: %w", newEnt.Table, name, err)
 			}
@@ -364,13 +364,13 @@ func renderSQLiteRebuild(from, to *schema.Manifest, old, next *schema.Entity, qu
 		lines = append(lines, "  PRIMARY KEY ("+joinQuoted(next.PK, quote)+")")
 	}
 	for _, unique := range next.Unique {
-		lines = append(lines, "  CONSTRAINT "+quote("uq_"+next.Table+"_"+strings.Join(unique, "_"))+" UNIQUE ("+joinQuoted(unique, quote)+")")
+		lines = append(lines, "  CONSTRAINT "+quote(boundedIdentifier("uq_"+next.Table+"_"+strings.Join(unique, "_"), "sqlite"))+" UNIQUE ("+joinQuoted(unique, quote)+")")
 	}
-	for _, fk := range sortedForeignKeys(to, next) {
+	for _, fk := range sortedForeignKeys(to, next, "sqlite") {
 		lines = append(lines, "  "+foreignKeyClause(fk, to, "sqlite", quote))
 	}
 	for _, check := range next.Checks {
-		expr, err := quotedCheckExpression(check.Expr, quote)
+		expr, err := renderedCheckExpression(check.Expr, "sqlite", quote)
 		if err != nil {
 			return "", false, fmt.Errorf("%s check %s: %w", next.Table, check.Name, err)
 		}
@@ -671,8 +671,8 @@ func diffIndexesAndForeignKeys(from, to *schema.Manifest, oldEnt, newEnt *schema
 		}
 	}
 
-	oldFKs := entityForeignKeys(from, oldEnt)
-	newFKs := entityForeignKeys(to, newEnt)
+	oldFKs := entityForeignKeys(from, oldEnt, dialect)
+	newFKs := entityForeignKeys(to, newEnt, dialect)
 	fkKeys := unionSortedKeys(oldFKs, newFKs)
 	for _, key := range fkKeys {
 		o, ook := oldFKs[key]
@@ -713,7 +713,7 @@ func entityIndexes(e *schema.Entity, dialect string) map[string]diffIndex {
 		out["index:"+name] = diffIndex{name: name, kind: "index", cols: append([]string(nil), cols...)}
 	}
 	for _, cols := range e.Unique {
-		name := "uq_" + e.Table + "_" + strings.Join(cols, "_")
+		name := boundedIdentifier("uq_"+e.Table+"_"+strings.Join(cols, "_"), dialect)
 		out["unique:"+name] = diffIndex{name: name, kind: "unique", cols: append([]string(nil), cols...)}
 	}
 	for _, cols := range e.Fulltext {
@@ -726,7 +726,11 @@ func entityIndexes(e *schema.Entity, dialect string) map[string]diffIndex {
 	return out
 }
 
-func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffForeignKey {
+func entityForeignKeys(m *schema.Manifest, e *schema.Entity, dialect ...string) map[string]diffForeignKey {
+	d := ""
+	if len(dialect) > 0 {
+		d = dialect[0]
+	}
 	out := map[string]diffForeignKey{}
 	consumed := map[string]bool{}
 	for _, rel := range e.Relations {
@@ -753,7 +757,7 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 		if !valid {
 			continue
 		}
-		name := "fk_" + e.Table + "_" + strings.Join(columns, "_")
+		name := boundedIdentifier("fk_"+e.Table+"_"+strings.Join(columns, "_"), d)
 		key := strings.Join(columns, "\x1f")
 		out[key] = diffForeignKey{name: name, columns: columns, target: rel.Target, targetCols: targetColumns, onDelete: rel.OnDelete}
 		for _, column := range columns {
@@ -764,7 +768,7 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 		if c.Ref == nil || consumed[c.Name] {
 			continue
 		}
-		fk := diffForeignKey{name: "fk_" + e.Table + "_" + c.Name, columns: []string{c.Name}, target: c.Ref.Entity, targetCols: []string{c.Ref.Column}}
+		fk := diffForeignKey{name: boundedIdentifier("fk_"+e.Table+"_"+c.Name, d), columns: []string{c.Name}, target: c.Ref.Entity, targetCols: []string{c.Ref.Column}}
 		out[c.Name] = fk
 	}
 	for _, fk := range m.ExternalFKs {
@@ -773,7 +777,7 @@ func entityForeignKeys(m *schema.Manifest, e *schema.Entity) map[string]diffFore
 		}
 		name := fk.Name
 		if name == "" {
-			name = "fk_" + strings.ReplaceAll(e.Table, ".", "_") + "_" + strings.Join(fk.Columns, "_")
+			name = boundedIdentifier("fk_"+strings.ReplaceAll(e.Table, ".", "_")+"_"+strings.Join(fk.Columns, "_"), d)
 		}
 		matched := false
 		for key, existing := range out {
@@ -809,7 +813,7 @@ func foreignKeyClause(fk diffForeignKey, m *schema.Manifest, dialect string, quo
 	for i, column := range fk.targetCols {
 		targetColumns[i] = quote(column)
 	}
-	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(strings.ReplaceAll(fk.name, ".", "_")), strings.Join(columns, ", "), quote(target), strings.Join(targetColumns, ", "))
+	stmt := fmt.Sprintf("CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", quote(boundedIdentifier(strings.ReplaceAll(fk.name, ".", "_"), dialect)), strings.Join(columns, ", "), quote(target), strings.Join(targetColumns, ", "))
 	switch fk.onDelete {
 	case "cascade":
 		stmt += " ON DELETE CASCADE"
