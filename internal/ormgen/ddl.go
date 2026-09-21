@@ -8,6 +8,7 @@
 package ormgen
 
 import (
+	"crypto/sha256"
 	"flag"
 	"fmt"
 	"os"
@@ -114,9 +115,9 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			lines = append(lines, "  PRIMARY KEY ("+strings.Join(pk, ", ")+")")
 		}
 		for _, uk := range e.Unique {
-			lines = append(lines, "  CONSTRAINT "+q("uq_"+ddlBase(e.Table)+"_"+strings.Join(uk, "_"))+" UNIQUE ("+joinQuoted(uk, q)+")")
+			lines = append(lines, "  CONSTRAINT "+q(boundedIdentifier("uq_"+ddlBase(e.Table)+"_"+strings.Join(uk, "_"), dialect))+" UNIQUE ("+joinQuoted(uk, q)+")")
 		}
-		for _, fk := range sortedForeignKeys(m, e) {
+		for _, fk := range sortedForeignKeys(m, e, dialect) {
 			target, ok := foreignKeyTargetEntity(m, fk.target)
 			if ok && dialect != "sqlite" && position[target.Name] > current {
 				deferred = append(deferred, deferredForeignKey{table: e.Table, fk: fk})
@@ -125,7 +126,7 @@ func renderDDL(m *schema.Manifest, dialect string) (string, error) {
 			lines = append(lines, "  "+foreignKeyClause(fk, m, dialect, q))
 		}
 		for _, check := range e.Checks {
-			expr, err := quotedCheckExpression(check.Expr, q)
+			expr, err := renderedCheckExpression(check.Expr, dialect, q)
 			if err != nil {
 				return "", fmt.Errorf("%s check %s: %w", e.Table, check.Name, err)
 			}
@@ -222,7 +223,28 @@ func ddlIndexName(table, index, dialect string) string {
 	if dialect == "sqlite" {
 		return ddlTable(table, dialect) + "_" + index
 	}
-	return name
+	return boundedIdentifier(name, dialect)
+}
+
+// boundedIdentifier preserves short names and deterministically shortens names
+// for engines with finite identifier limits. The digest prevents two long
+// schema-derived names from silently colliding after truncation.
+func boundedIdentifier(name, dialect string) string {
+	limit := 0
+	switch dialect {
+	case "mysql":
+		limit = 64
+	case "postgres":
+		limit = 63
+	default:
+		return name
+	}
+	if len(name) <= limit {
+		return name
+	}
+	digest := sha256.Sum256([]byte(name))
+	suffix := fmt.Sprintf("_%x", digest[:6])
+	return name[:limit-len(suffix)] + suffix
 }
 
 func ddlSchemas(m *schema.Manifest) []string {
@@ -337,8 +359,8 @@ func relationMatchesColumnReference(e *schema.Entity, rel *schema.Rel) bool {
 	return true
 }
 
-func sortedForeignKeys(m *schema.Manifest, e *schema.Entity) []diffForeignKey {
-	byColumn := entityForeignKeys(m, e)
+func sortedForeignKeys(m *schema.Manifest, e *schema.Entity, dialect ...string) []diffForeignKey {
+	byColumn := entityForeignKeys(m, e, dialect...)
 	keys := make([]string, 0, len(byColumn))
 	for key := range byColumn {
 		keys = append(keys, key)
@@ -515,11 +537,22 @@ func defaultExpression(c *schema.Col, sqlType, dialect string) string {
 		return "CURRENT_TIMESTAMP"
 	case v == "null":
 		return "NULL"
-	case isNumber(v) && c.Type == "bool" && dialect == "postgres":
-		if v == "0" {
+	case c.Type == "bool":
+		value := strings.ToLower(strings.Trim(v, "'\""))
+		truthy := value == "1" || value == "true"
+		if dialect == "postgres" {
+			if truthy {
+				return "true"
+			}
 			return "false"
 		}
-		return "true"
+		// MySQL's BOOLEAN is an alias for TINYINT(1), and strict mode
+		// rejects quoted boolean defaults such as DEFAULT 'true'. SQLite
+		// stores the same logical value as INTEGER 0/1.
+		if truthy {
+			return "1"
+		}
+		return "0"
 	case isNumber(v):
 		expr = v
 	default:
@@ -563,4 +596,20 @@ func quotedCheckExpression(expr string, quote func(string) string) (string, erro
 		expr = rest[end+1:]
 	}
 	return out.String(), nil
+}
+
+// renderedCheckExpression preserves the declared CHECK semantics while
+// satisfying dialect-specific DDL typing rules. MySQL rejects a CASE
+// expression whose branches are predicates as a CHECK expression unless the
+// result is explicitly compared as a boolean value. NULL remains NULL under
+// the comparison, so CHECK's standard TRUE-or-UNKNOWN acceptance is retained.
+func renderedCheckExpression(expr, dialect string, quote func(string) string) (string, error) {
+	rendered, err := quotedCheckExpression(expr, quote)
+	if err != nil {
+		return "", err
+	}
+	if dialect == "mysql" {
+		return "(" + rendered + ") <> 0", nil
+	}
+	return rendered, nil
 }
