@@ -136,6 +136,27 @@ func (d *DB) engineFor(hash string) *engine.Engine {
 	return processSchemas.byDriver[d.driver][hash]
 }
 
+// BackendWaitingForLock reports whether another backend of this PostgreSQL
+// connection pool is waiting for a lock. The inspection is an ORM-owned
+// orchestration capability; non-PostgreSQL adapters have no equivalent
+// backend view and return false without exposing driver SQL to callers.
+func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
+	if d == nil || d.sql == nil {
+		return false, configErr("database connection is required")
+	}
+	if d.driver != "postgres" {
+		return false, nil
+	}
+	var waiting bool
+	err := d.sql.QueryRowContext(ctx, `SELECT EXISTS(
+		SELECT 1 FROM pg_stat_activity
+		WHERE datname=current_database()
+		  AND pid<>pg_backend_pid()
+		  AND wait_event_type='Lock'
+	)`).Scan(&waiting)
+	return waiting, mapDriverErr(err)
+}
+
 func (d *DB) compile(r *ir.Request) (*plan.Plan, error) {
 	eng := d.engineFor(r.SchemaHash)
 	if eng == nil {
