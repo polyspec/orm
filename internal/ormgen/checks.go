@@ -64,7 +64,7 @@ func canonicalChecks(ctx context.Context, db *sql.DB, driver string, e *schema.E
 	}
 	exprs := make([]string, len(e.Checks))
 	for i, check := range e.Checks {
-		expr, err := quotedCheckExpression(check.Expr, quote)
+		expr, err := renderedCheckExpression(check.Expr, driver, quote)
 		if err != nil {
 			return nil, err
 		}
