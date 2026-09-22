@@ -227,6 +227,27 @@ func platform() *model.ProductModel { return model.Product().GePrice(1) }
 	if out, err := windows.CombinedOutput(); err != nil {
 		t.Fatalf("platform file: %v\n%s", err, out)
 	}
+	write("app/valid_after_error.go", `package app
+
+import "example.com/app/model"
+
+func ValidAfterUnrelatedError() *model.ProductModel { return model.Product().GePrice(1) }
+`)
+	write("app/unrelated_error.go", `package app
+
+var _ = missingName
+`)
+	err = generateGo(m, "model", "", []string{"./..."})
+	if err == nil || !strings.Contains(err.Error(), "missingName") {
+		t.Fatalf("unrelated consumer error: %v", err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(product), "GePrice") {
+		t.Fatal("a valid model method was not generated before reporting an unrelated consumer error")
+	}
 	write("app/bad.go", `package app
 
 import "example.com/app/model"

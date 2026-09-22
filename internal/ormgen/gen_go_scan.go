@@ -49,6 +49,12 @@ func (g *goGen) scan(patterns []string) error {
 				return err
 			}
 			for _, p := range loaded {
+				// The output package contains the fixed/generated implementation
+				// itself. Scanning it as a consumer turns internal helpers such as
+				// assign and connector into false method requests.
+				if p.PkgPath == modelPath {
+					continue
+				}
 				for _, f := range p.Syntax {
 					name := p.Fset.File(f.Pos()).Name()
 					if visited[name] {
@@ -114,6 +120,56 @@ func (g *goGen) modelOf(t types.Type, modelPath string) *goModel {
 	return g.byType[named.Obj().Name()]
 }
 
+// modelOfExpr resolves a generated model receiver even when the consumer
+// package has an unrelated type error. go/types marks expressions downstream
+// of that error invalid, but the constructor in a direct ORM chain still
+// identifies the model unambiguously.
+func (g *goGen) modelOfExpr(info *types.Info, e ast.Expr, modelPath string) *goModel {
+	if gm := g.modelOf(info.TypeOf(e), modelPath); gm != nil {
+		return gm
+	}
+	call, ok := e.(*ast.CallExpr)
+	if !ok {
+		return nil
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return nil
+	}
+	if gm := g.modelOfConstructor(sel); gm != nil {
+		return gm
+	}
+	gm := g.modelOfExpr(info, sel.X, modelPath)
+	if gm == nil || !returnsModel(gm, sel.Sel.Name) {
+		return nil
+	}
+	return gm
+}
+
+func returnsModel(gm *goModel, name string) bool {
+	if !gm.static[name] {
+		return true
+	}
+	switch name {
+	case "Connect", "And", "Or", "Raw", "AndRaw", "OrRaw", "On", "Relation", "Relations",
+		"Get", "Create", "Update", "Save", "Duplication", "Limit", "OrderByRandom", "OrderByRaw",
+		"GroupByRaw", "RemoveAllColumns", "AddAllColumns", "ParentNode", "GroupLimit", "DeleteLock",
+		"FetchKey", "FetchValue", "ForUpdate", "ForShare", "ForUpdateNoWait", "ForShareNoWait", "AddRawColumn":
+		return true
+	default:
+		return false
+	}
+}
+
+func (g *goGen) modelOfConstructor(sel *ast.SelectorExpr) *goModel {
+	for _, gm := range g.models {
+		if gm.ctor == sel.Sel.Name {
+			return gm
+		}
+	}
+	return nil
+}
+
 // known reports a type the checker resolved.
 func known(t types.Type) bool {
 	if t == nil {
@@ -155,10 +211,10 @@ func (g *goGen) visit(p *packages.Package, f *ast.File, modelPath string) {
 		if !ok {
 			return true
 		}
-		if !known(info.TypeOf(sel.X)) {
+		if !known(info.TypeOf(sel.X)) && g.modelOfExpr(info, sel.X, modelPath) == nil {
 			return true
 		}
-		gm := g.modelOf(info.TypeOf(sel.X), modelPath)
+		gm := g.modelOfExpr(info, sel.X, modelPath)
 		if gm == nil {
 			return true
 		}
@@ -171,17 +227,21 @@ func (g *goGen) visit(p *packages.Package, f *ast.File, modelPath string) {
 		name := sel.Sel.Name
 		args := make([]argInfo, len(call.Args))
 		for i, a := range call.Args {
-			if !known(info.TypeOf(a)) {
+			if !known(info.TypeOf(a)) && g.modelOfExpr(info, a, modelPath) == nil {
 				return true
 			}
-			args[i] = argInfo{model: g.modelOf(info.TypeOf(a), modelPath), columnFunc: isOrmFunc(info, a)}
+			args[i] = argInfo{model: g.modelOfExpr(info, a, modelPath), columnFunc: isOrmFunc(info, a)}
 		}
 		if name == "Relation" || name == "Relations" || strings.HasPrefix(name, "Join") || strings.HasPrefix(name, "LeftJoin") {
 			if len(call.Args) == 1 && args[0].model != nil {
 				g.relationGetter(pos, gm, args[0].model, name == "Relations", aliasOf(info, f, call.Args[0]))
 			}
 		}
-		if info.Selections[sel] != nil || gm.static[name] || gm.methods[name] != "" {
+		// Fixed methods and methods generated in an earlier round are already
+		// handled. A model receiver's remaining selector is a consumer method
+		// request; relying on go/types Selections here loses unresolved methods
+		// and leaves the consumer with a compile error.
+		if gm.static[name] || gm.methods[name] != "" {
 			return true
 		}
 		g.method(pos, gm, name, args)
