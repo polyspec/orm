@@ -49,18 +49,17 @@ func (g *goGen) scan(patterns []string) error {
 				return err
 			}
 			for _, p := range loaded {
-				// The output package contains the fixed/generated implementation
-				// itself. Scanning it as a consumer turns internal helpers such as
-				// assign and connector into false method requests.
-				if p.PkgPath == modelPath {
-					continue
-				}
 				for _, f := range p.Syntax {
 					name := p.Fset.File(f.Pos()).Name()
 					if visited[name] {
 						continue
 					}
 					visited[name] = true
+					// The generated files are the models themselves, not calls
+					// of a consumer.
+					if filepath.Dir(name) == outDir && ast.IsGenerated(f) {
+						continue
+					}
 					g.visit(p, f, modelPath)
 				}
 				if round == 0 {
@@ -122,11 +121,12 @@ func (g *goGen) modelOf(t types.Type, modelPath string) *goModel {
 
 // modelOfExpr resolves a generated model receiver even when the consumer
 // package has an unrelated type error. go/types marks expressions downstream
-// of that error invalid, but the constructor in a direct ORM chain still
-// identifies the model unambiguously.
+// of that error invalid, but a direct ORM chain that starts at a constructor of
+// the model package still identifies the model. An expression of a resolved
+// type is a model only when that type is one.
 func (g *goGen) modelOfExpr(info *types.Info, e ast.Expr, modelPath string) *goModel {
-	if gm := g.modelOf(info.TypeOf(e), modelPath); gm != nil {
-		return gm
+	if t := info.TypeOf(e); known(t) {
+		return g.modelOf(t, modelPath)
 	}
 	call, ok := e.(*ast.CallExpr)
 	if !ok {
@@ -136,32 +136,38 @@ func (g *goGen) modelOfExpr(info *types.Info, e ast.Expr, modelPath string) *goM
 	if !ok {
 		return nil
 	}
-	if gm := g.modelOfConstructor(sel); gm != nil {
+	if gm := g.modelOfConstructor(info, sel, modelPath); gm != nil {
 		return gm
 	}
 	gm := g.modelOfExpr(info, sel.X, modelPath)
-	if gm == nil || !returnsModel(gm, sel.Sel.Name) {
+	if gm == nil || !returnsModel(sel.Sel.Name) {
 		return nil
 	}
 	return gm
 }
 
-func returnsModel(gm *goModel, name string) bool {
-	if !gm.static[name] {
-		return true
-	}
+// returnsModel reports whether a model method returns its own model, so that a
+// chain continues on the result. Get methods return values, related models or
+// query results, and the listed methods end a chain.
+func returnsModel(name string) bool {
 	switch name {
-	case "Connect", "And", "Or", "Raw", "AndRaw", "OrRaw", "On", "Relation", "Relations",
-		"Get", "Create", "Update", "Save", "Duplication", "Limit", "OrderByRandom", "OrderByRaw",
-		"GroupByRaw", "RemoveAllColumns", "AddAllColumns", "ParentNode", "GroupLimit", "DeleteLock",
-		"FetchKey", "FetchValue", "ForUpdate", "ForShare", "ForUpdateNoWait", "ForShareNoWait", "AddRawColumn":
-		return true
-	default:
+	case "Orm_", "MarshalJSON", "ToArray", "Create", "Creates", "Update", "Save", "Delete":
 		return false
 	}
+	return !strings.HasPrefix(name, "Get")
 }
 
-func (g *goGen) modelOfConstructor(sel *ast.SelectorExpr) *goModel {
+// modelOfConstructor returns the model whose constructor the selector names in
+// the model package.
+func (g *goGen) modelOfConstructor(info *types.Info, sel *ast.SelectorExpr, modelPath string) *goModel {
+	id, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	pkg, ok := info.Uses[id].(*types.PkgName)
+	if !ok || pkg.Imported().Path() != modelPath {
+		return nil
+	}
 	for _, gm := range g.models {
 		if gm.ctor == sel.Sel.Name {
 			return gm
@@ -225,6 +231,11 @@ func (g *goGen) visit(p *packages.Package, f *ast.File, modelPath string) {
 			}
 		}
 		name := sel.Sel.Name
+		// Generated model methods are exported; an unexported name is a
+		// method of the model package's own implementation.
+		if !ast.IsExported(name) {
+			return true
+		}
 		args := make([]argInfo, len(call.Args))
 		for i, a := range call.Args {
 			if !known(info.TypeOf(a)) && g.modelOfExpr(info, a, modelPath) == nil {

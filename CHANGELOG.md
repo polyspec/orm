@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Correct the receiver resolution of the Go generator scan. A method called on the result of a `Get` method, such as `Len` on a relation collection, is not requested as a model method; a call that has the name of a model constructor but belongs to another package does not start a model chain; and the hand-written files of the output package, including its tests, are scanned while its generated files are not.
+
 Make Go `get` return the adapter-neutral `NO_ROWS` error when no row matches instead of returning `(nil, nil)`. Update the Go generator, generated model comments, examples and the SQLite contract test so callers cannot accidentally dereference a missing model; the API remains identical across database adapters.
 
 Expose the adapter-neutral Go transaction write fact `Utils().WasInserted(entity, sequence)`. Generated inserts record their auto-sequence rows, and savepoint rollback restores the write set. This lets consumers verify current-transaction ownership without PostgreSQL `xmin` or other driver SQL.

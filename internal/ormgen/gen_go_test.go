@@ -134,33 +134,7 @@ func TestSplitPair(t *testing.T) {
 // TestScanGeneratesUsedMethods generates models for a small consumer module
 // and builds it.
 func TestScanGeneratesUsedMethods(t *testing.T) {
-	if testing.Short() {
-		t.Skip("builds a temporary module")
-	}
-	root, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := t.TempDir()
-	write := func(name, body string) {
-		t.Helper()
-		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	gomod, err := os.ReadFile(filepath.Join(root, "go.mod"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	requires := strings.SplitN(string(gomod), "\n", 2)[1]
-	write("go.mod", "module example.com/app\n"+strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm v0.0.0", 1)+"\nreplace github.com/polyspec/orm => "+root+"\n")
-	if sum, err := os.ReadFile(filepath.Join(root, "go.sum")); err == nil {
-		write("go.sum", string(sum))
-	}
+	write := consumerModule(t)
 	write("app/app.go", `package app
 
 import (
@@ -200,24 +174,11 @@ import "example.com/app/model"
 
 func platform() *model.ProductModel { return model.Product().GePrice(1) }
 `)
-	t.Setenv("GOWORK", "off")
-	t.Setenv("GOFLAGS", "-mod=mod")
 	m := namesManifest(t, namesDiagram)
-	cwd, _ := os.Getwd()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	defer os.Chdir(cwd)
-	if err := os.MkdirAll("model", 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
 		t.Fatal(err)
 	}
-	build := exec.Command("go", "build", "./...")
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("%v\n%s", err, out)
-	}
+	buildConsumer(t)
 	tagged := exec.Command("go", "vet", "-tags", "integration", "./...")
 	if out, err := tagged.CombinedOutput(); err != nil {
 		t.Fatalf("build-tagged file: %v\n%s", err, out)
@@ -237,7 +198,7 @@ func ValidAfterUnrelatedError() *model.ProductModel { return model.Product().GeP
 
 var _ = missingName
 `)
-	err = generateGo(m, "model", "", []string{"./..."})
+	err := generateGo(m, "model", "", []string{"./..."})
 	if err == nil || !strings.Contains(err.Error(), "missingName") {
 		t.Fatalf("unrelated consumer error: %v", err)
 	}
