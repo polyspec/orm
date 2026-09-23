@@ -18,7 +18,9 @@ type Options struct {
 	Scan []string
 }
 
-// Generate writes the Go models described by the manifest to OutputDir.
+// Generate writes the Go models described by the manifest to OutputDir. An
+// error leaves OutputDir unchanged, except an error reporting that the scanned
+// packages do not compile with the complete models written to OutputDir.
 func Generate(options Options) error {
 	if options.Manifest == nil {
 		return fmt.Errorf("manifest is required")

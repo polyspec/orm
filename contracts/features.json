@@ -369,6 +369,7 @@
       "tests": [
         "internal/ormgen/gen_go_test.go",
         "internal/ormgen/gen_go_scan_test.go",
+        "internal/ormgen/gen_go_output_test.go",
         "clients/php/tests/engine_test.php",
         "tests/typescript/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
