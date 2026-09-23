@@ -215,6 +215,7 @@ fn main() {
 | Rust | the `orm-build` crate | `build.rs` on every `cargo build`; `orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the consumer source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.
+- `ormgen gen --lang go` writes each scan round into a temporary directory beside `--out` and replaces the generated files of `--out` only after the scan converges; files without the generated header stay. A generation failure leaves `--out` unchanged, and `ormgen` exits with status 1; the failures include an invalid chain call, a scan that does not converge, a scanned package that cannot be loaded, and generated code that does not compile. When the scan converges but the scanned packages do not compile for another reason, `--out` holds the complete models, and `ormgen` exits with status 3.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A mismatch between the generated `schema_hash` and the loaded `schema.json` stops startup with `SCHEMA_HASH_MISMATCH`.
 
 The Rust `build.rs` can also build `schema.json` from the diagrams before it generates the models:

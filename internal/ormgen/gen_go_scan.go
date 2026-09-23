@@ -1,6 +1,7 @@
 package ormgen
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
@@ -8,32 +9,37 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
 
+// scanRounds limits the rounds of a scan.
+var scanRounds = 64
+
 // scan loads the consumer packages, generates the model methods their calls
 // need, and repeats until the calls type-check against the models. A call is
 // resolved when its receiver type is known; a chain of missing methods is
-// therefore resolved one link per round.
+// therefore resolved one link per round. The packages read the files of the
+// temporary directory at the output directory through an overlay.
 func (g *goGen) scan(patterns []string) error {
-	outDir, err := filepath.Abs(g.out)
+	overlay, err := g.overlay()
 	if err != nil {
 		return err
 	}
-	own, err := packages.Load(&packages.Config{Mode: packages.NeedName, Dir: outDir}, ".")
+	dir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	if len(own) != 1 || own[0].PkgPath == "" {
-		return fmt.Errorf("%s is not a package of a Go module", g.out)
+	modelPath, err := g.modelPath(overlay)
+	if err != nil {
+		return err
 	}
-	modelPath := own[0].PkgPath
 	// Files that the default build ignores are loaded with the build tags and
 	// platform their constraints need, so a tagged test is scanned as well.
 	configs := []scanConfig{{}}
-	for round := 0; round < 64; round++ {
+	for round := 0; round < scanRounds; round++ {
 		g.pending = false
 		g.errors = nil
 		visited := map[string]bool{}
@@ -41,9 +47,11 @@ func (g *goGen) scan(patterns []string) error {
 		for i := 0; i < len(configs); i++ {
 			loaded, err := packages.Load(&packages.Config{
 				Mode:       packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
+				Dir:        dir,
 				Tests:      true,
 				BuildFlags: configs[i].buildFlags(),
 				Env:        configs[i].env(),
+				Overlay:    overlay,
 			}, patterns...)
 			if err != nil {
 				return err
@@ -57,7 +65,7 @@ func (g *goGen) scan(patterns []string) error {
 					visited[name] = true
 					// The generated files are the models themselves, not calls
 					// of a consumer.
-					if filepath.Dir(name) == outDir && ast.IsGenerated(f) {
+					if overlay[name] != nil {
 						continue
 					}
 					g.visit(p, f, modelPath)
@@ -75,32 +83,97 @@ func (g *goGen) scan(patterns []string) error {
 		if len(g.errors) > 0 {
 			sort.Strings(g.errors)
 			g.errors = slices.Compact(g.errors)
-			return fmt.Errorf("%s", strings.Join(g.errors, "\n"))
+			return errors.New(strings.Join(g.errors, "\n"))
 		}
 		if !g.pending {
-			if msg := typeErrors(pkgs); msg != "" {
-				return fmt.Errorf("the scanned packages do not compile with the generated models:\n%s", msg)
-			}
-			return nil
+			return compileErrors(dir, pkgs, overlay)
 		}
 		if err := g.write(); err != nil {
 			return err
 		}
-	}
-	return fmt.Errorf("model calls did not converge")
-}
-
-func typeErrors(pkgs []*packages.Package) string {
-	var out []string
-	for _, p := range pkgs {
-		for _, e := range p.Errors {
-			out = append(out, e.Error())
+		if overlay, err = g.overlay(); err != nil {
+			return err
 		}
 	}
-	if len(out) > 20 {
-		out = out[:20]
+	return fmt.Errorf("model calls did not converge in %d scan rounds", scanRounds)
+}
+
+// modelPath returns the import path of the output directory, which may exist
+// only in the overlay.
+func (g *goGen) modelPath(overlay map[string][]byte) (string, error) {
+	dir := g.outDir
+	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+		dir = filepath.Dir(dir)
+	} else if err != nil {
+		return "", err
 	}
-	return strings.Join(out, "\n")
+	own, err := packages.Load(&packages.Config{Mode: packages.NeedName, Dir: dir, Overlay: overlay}, g.outDir)
+	if err != nil {
+		return "", err
+	}
+	if len(own) != 1 || own[0].PkgPath == "" {
+		return "", fmt.Errorf("%s is not a package of a Go module", g.out)
+	}
+	return own[0].PkgPath, nil
+}
+
+// compileErrors returns the errors of the packages loaded by a converged scan.
+// An error in a generated file is a generation failure, and an error of a
+// package that could not be found, such as a scan pattern that names no
+// directory, is a scan failure; the other errors are a ConsumerError.
+// Positions are relative to dir.
+func compileErrors(dir string, pkgs []*packages.Package, overlay map[string][]byte) error {
+	var generated, load, consumer []string
+	for _, p := range pkgs {
+		for _, e := range p.Errors {
+			file := errorFile(e.Pos)
+			path := file
+			if path != "" && !filepath.IsAbs(path) {
+				path = filepath.Join(dir, path)
+			}
+			message := e.Msg
+			if file != "" {
+				message = e.Error()
+				if rel, err := filepath.Rel(dir, path); err == nil && !strings.HasPrefix(rel, "..") {
+					message = rel + e.Pos[len(file):] + ": " + e.Msg
+				}
+			}
+			switch {
+			case overlay[path] != nil:
+				generated = append(generated, message)
+			case p.Name == "":
+				load = append(load, message)
+			default:
+				consumer = append(consumer, message)
+			}
+		}
+	}
+	if len(generated) > 0 {
+		return fmt.Errorf("the generated models do not compile:\n%s", listErrors(generated))
+	}
+	if len(load) > 0 {
+		return fmt.Errorf("the scanned packages cannot be loaded:\n%s", listErrors(load))
+	}
+	if len(consumer) > 0 {
+		return &ConsumerError{Errors: consumer}
+	}
+	return nil
+}
+
+// errorFile returns the file of an error position of the form file:line:col.
+func errorFile(pos string) string {
+	file := pos
+	for range 2 {
+		i := strings.LastIndexByte(file, ':')
+		if i < 0 {
+			return file
+		}
+		if _, err := strconv.Atoi(file[i+1:]); err != nil {
+			return file
+		}
+		file = file[:i]
+	}
+	return file
 }
 
 // modelOf returns the generated model of a type, if it is one.

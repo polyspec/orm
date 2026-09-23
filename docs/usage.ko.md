@@ -215,6 +215,7 @@ fn main() {
 | Rust | `orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
 - Go, Rust, TypeScript 생성기는 `--scan`(Rust는 `scan`)으로 지정한 소비자 소스를 읽어 소스가 호출하는 체인 메서드를 생성한다. 그래서 잘못된 메서드 이름은 빌드를 멈춘다. PHP는 호출 시점에 체인 이름을 해석한다.
+- `ormgen gen --lang go`는 scan 회차마다 `--out` 옆의 임시 디렉터리에 파일을 쓰고, scan이 수렴한 뒤에만 `--out`의 생성 파일을 교체한다. 생성 헤더가 없는 파일은 그대로 유지한다. 생성이 실패하면 `--out`을 바꾸지 않으며 `ormgen`은 상태 1로 종료한다. 이 실패에는 잘못된 체인 호출, 수렴하지 않는 scan, 로드할 수 없는 scan 대상 패키지, 컴파일되지 않는 생성 코드가 포함된다. scan이 수렴했지만 scan한 패키지가 다른 이유로 컴파일되지 않으면 `--out`은 완전한 모델을 담고 `ormgen`은 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 생성물의 `schema_hash`와 읽은 `schema.json`이 다르면 기동 시 `SCHEMA_HASH_MISMATCH`로 멈춘다.
 
 Rust `build.rs`는 모델을 생성하기 전에 다이어그램으로 `schema.json`을 만들 수도 있다:

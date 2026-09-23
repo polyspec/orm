@@ -4,6 +4,7 @@
 package ormgen
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -90,10 +91,19 @@ func gen(args []string) {
 	if err != nil {
 		fail(err)
 	}
-	if err := genGo(m, *out, scan); err != nil {
+	// A generation failure leaves the output directory unchanged and exits
+	// with status 1. Scanned packages that do not compile with the written
+	// models exit with status 3.
+	err = genGo(m, *out, scan)
+	var consumer *ConsumerError
+	if err != nil && !errors.As(err, &consumer) {
 		fail(err)
 	}
 	fmt.Printf("ormgen: %d entities → %s (go)\n", len(m.Order), *out)
+	if consumer != nil {
+		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
+		os.Exit(3)
+	}
 }
 
 func build(args []string) {
