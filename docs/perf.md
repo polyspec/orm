@@ -36,6 +36,8 @@ The check measures the generated client and an equivalent native result for 300 
 | Go | 1.35 | 1.25 | `bench/go` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
 | PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php <schema.json>` |
 
+Both checks read the seeded bench database from `ORM_BENCH_MYSQL_DSN`. The Go check runs when `ORM_RUN_PERF_GATE=1`; a check that runs without `ORM_BENCH_MYSQL_DSN` fails and prints the variable name, and no bench test connects to a local server instead.
+
 With the converted baseline, PHP 8.4.25 on the local socket measures a PK ratio of 1.20–1.31 and a 100-row ratio of 1.06–1.12 across runs; the PK ratio is dominated by the fixed request build and plan cost of about 10.5µs per query. PHP 8.5.10 measures 1.14 and 1.02.
 
 The ratio varies by hardware and approaches 1 as round-trip time increases. A bound change requires a measurement and an update to this page.

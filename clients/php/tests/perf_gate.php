@@ -2,7 +2,7 @@
 // Hot-path gate: the model client against the same statement through PDO with the same cell
 // decoding and the same typed row conversion, measured in alternating pairs.
 // Usage: php clients/php/tests/perf_gate.php /abs/schema.json
-// ORM_BENCH_MYSQL_DSN selects the seeded bench database.
+// ORM_BENCH_MYSQL_DSN names the seeded bench database; the gate fails without it.
 // ORM_PERF_<CASE>_BOUND replaces a documented bound for the measurement environment.
 declare(strict_types=1);
 
@@ -21,7 +21,12 @@ if ($argc < 2) {
     exit(2);
 }
 
-$db = Orm::connect(getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock', new Config(
+$benchDsn = getenv('ORM_BENCH_MYSQL_DSN');
+if ($benchDsn === false || $benchDsn === '') {
+    fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips\n");
+    exit(1);
+}
+$db = Orm::connect($benchDsn, new Config(
     schemaPath: $argv[1],
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',

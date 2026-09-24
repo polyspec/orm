@@ -1,5 +1,6 @@
 #!/bin/sh
-# Hot-path gates against the local MySQL bench database (orm_bench).
+# Hot-path gates against the seeded MySQL bench database named by
+# ORM_BENCH_MYSQL_DSN; each gate fails when the variable is unset.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
