@@ -90,7 +90,7 @@ fn code_of<T>(r: orm::Result<T>) -> Value {
 /// Keeps the named values of a row.
 fn pick<M: Model>(m: Option<&M>, names: &[&str]) -> Value {
     let Some(m) = m else { return Value::Null };
-    let all = orm::model::to_json(m);
+    let all = orm::model::to_array(m).expect("array form");
     let mut out = Map::new();
     for n in names {
         out.insert((*n).to_owned(), all.get(*n).cloned().unwrap_or(Value::Null));
@@ -254,14 +254,14 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .order_by_raw("{seq} DESC")
             .gets()
             .await?;
-        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq(), int(r.get_doubled())])).collect();
+        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq(), int(r.get_doubled().expect("doubled"))])).collect();
         Ok::<Value, orm::Error>(json!({"count": count, "rows": rows}))
     });
     run!("columns", async {
         let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
         let added = battle().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;
         let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
-        Ok::<Value, orm::Error>(json!([none.to_array(), pick(Some(&added), &["seq", "name", "read_text"]), removed.to_array()]))
+        Ok::<Value, orm::Error>(json!([none.to_array()?, pick(Some(&added), &["seq", "name", "read_text"]), removed.to_array()?]))
     });
     run!("joins", async {
         let service = Service::new().on(|s: Service| s.gt_seq(0)).name("service-7");
@@ -280,7 +280,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let left =
             battle().left_join_service_module_seq_with_seq(ServiceModule::new().alias_module()).service_seq(7).order_by_seq_asc().limit(0, 1).gets().await?;
         Ok::<Value, orm::Error>(json!({
-            "rows": rows.to_array(),
+            "rows": rows.to_array()?,
             "compared": compared,
             "module": pick(left.first().and_then(|b| b.get_module()), &["seq", "name"]),
         }))
@@ -307,7 +307,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .limit(0, 3)
             .gets()
             .await?;
-        Ok::<Value, orm::Error>(rows.to_array())
+        rows.to_array()
     });
     run!("relation_empty", async {
         let rows = battle().relations(ServiceMember::new().match_user_seq_with_user_seq()).gets_by_seq(-1).await?;
@@ -321,7 +321,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .order_by_seq_asc()
             .gets()
             .await?;
-        let out: Vec<Value> = users.models().map(|u| json!([u.get_seq(), int(u.get_read_total())])).collect();
+        let out: Vec<Value> = users.models().map(|u| json!([u.get_seq(), int(u.get_read_total().expect("read_total"))])).collect();
         Ok::<Value, orm::Error>(Value::Array(out))
     });
     run!("aggregates", async {
@@ -332,7 +332,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         Ok::<Value, orm::Error>(json!({
             "sum": sum,
             "avg": format!("{avg:.4}"),
-            "groups": groups.to_array(),
+            "groups": groups.to_array()?,
             "page": {"keys": keys_of(&page.items), "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page},
         }))
     });
@@ -353,7 +353,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .order_by_seq_asc()
             .gets_by_seq(vec![42, 43])
             .await?;
-        let months: Vec<Value> = rows.models().map(|r| json!(int(r.get_start_month()))).collect();
+        let months: Vec<Value> = rows.models().map(|r| json!(int(r.get_start_month().expect("start_month")))).collect();
         Ok::<Value, orm::Error>(json!({"counts": counts, "months": months}))
     });
     run!("errors", async {
@@ -379,7 +379,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     run!("aes_values", async {
         let row = battle().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?;
         let found = battle().aes_hex_email("user42@example.com").get_count().await?;
-        Ok::<Value, orm::Error>(json!({"row": row.to_array(), "found": found}))
+        Ok::<Value, orm::Error>(json!({"row": row.to_array()?, "found": found}))
     });
     run!("write_cycle", async {
         let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -401,7 +401,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .await?;
         let seq = created.get_seq();
         mask(shared, &[seq], &[]);
-        let mut created_array = created.to_array();
+        let mut created_array = created.to_array()?;
         created_array["seq"] = json!("$SEQ");
         let loaded = battle().add_all_columns().get_by_seq(seq).await?;
         mask(shared, &[], &[loaded.get_updated_ts()]);
@@ -457,7 +457,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let all = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).order_by_tenant_id_asc().order_by_account_id_asc().gets().await?;
         all.delete(false).await?;
         let left = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).get_count().await?;
-        Ok::<Value, orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array(), "left": left}))
+        Ok::<Value, orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array()?, "left": left}))
     });
     run!("delete_recursive", async {
         let service = Service::new().connect(db).set_name("recursive").create().await?;

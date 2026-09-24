@@ -224,7 +224,7 @@ async fn joins_and_relations(t: &Target) {
     other.close().await;
     assert_eq!(code(Battle::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
     assert_eq!(code(Battle::new().connect(db).name("a").or(&User::new()).gets().await), "CONFIG", "unjoined model placement");
-    let array = b.to_array();
+    let array = b.to_array().unwrap();
     assert!(!array["writer"].is_null() && array["name"] == "alpha", "to_array: {array}");
     let _ = (&f.member, &f.users);
 }
@@ -246,9 +246,9 @@ async fn columns_and_subqueries(t: &Target) {
     let u = users.first().unwrap();
     let int =
         |v: Option<serde_json::Value>| v.and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)).or_else(|| v.as_str().and_then(|s| s.parse().ok())));
-    assert_eq!(int(u.get_read_total()), Some(20), "subquery column");
-    assert_eq!(int(u.get_doubled()), Some(2 * u.get_seq()), "raw column");
-    assert_eq!(u.get_upper_name(), Some(serde_json::json!("KIM")), "format column");
+    assert_eq!(int(u.get_read_total().unwrap()), Some(20), "subquery column");
+    assert_eq!(int(u.get_doubled().unwrap()), Some(2 * u.get_seq()), "raw column");
+    assert_eq!(u.get_upper_name().unwrap(), Some(serde_json::json!("KIM")), "format column");
     let sum = Battle::new().connect(db).service_seq(f.service.get_seq()).sum_read_count().get_sum().await.unwrap();
     let avg = Battle::new().connect(db).service_seq(f.service.get_seq()).avg_read_count().get_avg().await.unwrap();
     assert_eq!((sum, avg), (60.0, 15.0), "aggregates");
@@ -297,8 +297,8 @@ async fn writes(t: &Target) {
     let mut b = b.set_name("x");
     b.update(false).await.unwrap();
     let item = Account::new().connect(db).set_name("acc").new_label("shown").create().await.unwrap();
-    assert_eq!(item.get_label(), Some(serde_json::json!("shown")), "new value");
-    assert_eq!(item.to_array()["label"], "shown", "new value output");
+    assert_eq!(item.get_label().unwrap(), Some(serde_json::json!("shown")), "new value");
+    assert_eq!(item.to_array().unwrap()["label"], "shown", "new value output");
     let saved = Account::new().connect(db).set_seq(item.get_seq()).set_name("saved").save().await.unwrap();
     assert_eq!(saved.get_name(), "saved", "save result");
     let stored = Account::new().connect(db).get_by_seq(item.get_seq()).await.unwrap();
@@ -462,7 +462,7 @@ async fn json_values(t: &Target) {
     let got = Battle::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
     assert_eq!(got.get_json_setting().compact(), text, "jsontext json read");
     assert_eq!(got.get_jsons_tags().compact(), tags, "jsontext jsons read");
-    assert_eq!(got.to_array()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
+    assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
     let created = Battle::new()
         .connect(db)
         .set_name("json")

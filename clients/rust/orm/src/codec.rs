@@ -662,7 +662,7 @@ mod tests {
             let decoded = decode(&v.styles, &raw);
             let got = match &decoded {
                 Ok(Val::Json(j)) => j.clone(),
-                Ok(Val::Ordered(o)) => crate::value::ordered_to_json(o),
+                Ok(Val::Ordered(o)) => crate::value::ordered_to_json(o).unwrap(),
                 Ok(Val::Null) => Value::Null,
                 other => {
                     fails += 1;
@@ -698,7 +698,7 @@ mod tests {
             };
             match decode(&v.styles, &back_raw) {
                 Ok(Val::Json(j)) if norm(&j) == norm(&v.value) => {}
-                Ok(Val::Ordered(o)) if norm(&crate::value::ordered_to_json(&o)) == norm(&v.value) => {}
+                Ok(Val::Ordered(o)) if crate::value::ordered_to_json(&o).is_ok_and(|j| norm(&j) == norm(&v.value)) => {}
                 Ok(Val::Null) if v.value.is_null() => {}
                 other => {
                     fails += 1;

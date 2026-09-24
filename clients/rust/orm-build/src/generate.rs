@@ -358,7 +358,7 @@ impl<'m> Gen<'m> {
             gi,
             r,
             &format!("get_{name}"),
-            Getter { result: "Option<orm::serde_json::Value>".into(), expr: format!("self.__orm.attached({name:?})"), origin },
+            Getter { result: "orm::Result<Option<orm::serde_json::Value>>".into(), expr: format!("self.__orm.attached({name:?})"), origin },
         );
     }
 
@@ -835,7 +835,7 @@ fn model_source(gm: &Model<'_>) -> String {
     );
     let _ = write!(
         b,
-        "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::to_json(self), s)\n    }}\n}}\n\n"
+        "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::to_array(self).map_err(orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
     );
     b.push_str(&FIXED_CODE.replacen("impl T {", &format!("impl {t} {{"), 1));
     for c in &e.columns {

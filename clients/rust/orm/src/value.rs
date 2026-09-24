@@ -201,7 +201,6 @@ impl Val {
     pub fn take_json(&mut self) -> Option<serde_json::Value> {
         match self {
             Val::Json(v) => Some(std::mem::take(v)),
-            Val::Ordered(v) => Some(ordered_to_json(v)),
             Val::Null => None,
             other => Some(serde_json::Value::String(other.as_string())),
         }
@@ -238,10 +237,11 @@ impl Val {
         }
     }
 
-    /// The value in array/JSON form (what `to_map()` emits): datetimes as
-    /// "YYYY-MM-DD HH:MM:SS.ffffff", bytes as text, decoded styles as they are.
-    pub fn to_json(&self) -> serde_json::Value {
-        match self {
+    /// The value in array form: datetimes as "YYYY-MM-DD HH:MM:SS.ffffff",
+    /// bytes as text, decoded styles as they are. An ordered-json value that
+    /// serde_json cannot represent returns CODEC_ENCODE.
+    pub fn to_json(&self) -> crate::Result<serde_json::Value> {
+        Ok(match self {
             Val::Null => serde_json::Value::Null,
             Val::I64(x) => serde_json::json!(x),
             Val::F64(x) => serde_json::json!(x),
@@ -251,8 +251,8 @@ impl Val {
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
             Val::Json(v) => v.clone(),
-            Val::Ordered(v) => ordered_to_json(v),
-        }
+            Val::Ordered(v) => ordered_to_json(v)?,
+        })
     }
 
     pub fn as_datetime(&self) -> NaiveDateTime {
@@ -299,6 +299,8 @@ fn esc(s: &str) -> String {
 }
 
 /// The serde_json form of an ordered-json value (the array form of a row).
-pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> serde_json::Value {
-    serde_json::from_str(&v.compact()).expect("ordered-json text is valid JSON")
+/// A number outside the serde_json range, such as 1e400, returns CODEC_ENCODE.
+pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> crate::Result<serde_json::Value> {
+    serde_json::from_str(&v.compact())
+        .map_err(|e| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("json: the value has no serde_json form: {e}") })
 }
