@@ -165,7 +165,7 @@ fn ddl_and_diff_preserve_checks() {
     let base = || vec![id(), col("quantity", "i32", "int")];
     let mut m = thing(base());
     m.entities.get_mut("thing").unwrap().checks = vec![Check { name: "positive_quantity".into(), expr: "`quantity` >= 0".into() }];
-    contains_all(&render_ddl(&m, "mysql").unwrap(), &["CONSTRAINT `positive_quantity` CHECK (`quantity` >= 0)"]);
+    contains_all(&render_ddl(&m, "mysql").unwrap(), &["CONSTRAINT `ck_thing_positive_quantity` CHECK ((`quantity` >= 0) <> 0)"]);
     let mut old = thing(base());
     contains_all(&render_diff(&old, &m, "postgres", false).unwrap(), &[r#"ADD CONSTRAINT "positive_quantity" CHECK ("quantity" >= 0);"#]);
     old.entities.get_mut("thing").unwrap().checks = m.entities["thing"].checks.clone();

@@ -103,9 +103,9 @@ final class SchemaDdl
                 $lines[] = '  PRIMARY KEY (' . implode(', ', array_map($q, $pk)) . ')';
             }
             foreach ($e['unique'] as $uk) {
-                $lines[] = '  CONSTRAINT ' . $q('uq_' . self::base($e['table']) . '_' . implode('_', $uk)) . ' UNIQUE (' . self::joinQuoted($uk, $q) . ')';
+                $lines[] = '  CONSTRAINT ' . $q(self::boundedIdentifier('uq_' . self::base($e['table']) . '_' . implode('_', $uk), $dialect)) . ' UNIQUE (' . self::joinQuoted($uk, $q) . ')';
             }
-            foreach (self::sortedForeignKeys($m, $e) as $fk) {
+            foreach (self::sortedForeignKeys($m, $e, $dialect) as $fk) {
                 $target = self::targetEntity($m, $fk['target']);
                 if ($target !== null && $dialect !== 'sqlite' && $position[$target['name']] > $current) {
                     $deferred[] = [$e['table'], $fk];
@@ -115,11 +115,11 @@ final class SchemaDdl
             }
             foreach ($e['checks'] as $check) {
                 try {
-                    $expr = self::checkExpression($check['expr'], $q);
+                    $expr = self::renderedCheckExpression($check['expr'], $dialect, $q);
                 } catch (\RuntimeException $ex) {
                     throw new \RuntimeException("{$e['table']} check {$check['name']}: " . $ex->getMessage());
                 }
-                $lines[] = '  CONSTRAINT ' . $q($check['name']) . ' CHECK (' . $expr . ')';
+                $lines[] = '  CONSTRAINT ' . $q(self::checkName($e['table'], $check['name'], $dialect)) . ' CHECK (' . $expr . ')';
             }
             if ($dialect === 'mysql') {
                 foreach (self::sortedKeys($e['indexes'] ?? []) as $ix) {
@@ -212,7 +212,37 @@ final class SchemaDdl
 
     private static function indexName(string $table, string $index, string $dialect): string
     {
-        return $dialect === 'sqlite' ? self::table($table, $dialect) . '_' . $index : self::base($table) . '_' . $index;
+        return $dialect === 'sqlite' ? self::table($table, $dialect) . '_' . $index : self::boundedIdentifier(self::base($table) . '_' . $index, $dialect);
+    }
+
+    /**
+     * MySQL CHECK constraint names are unique within a database, while the
+     * schema scopes a check name to its entity. MySQL receives the name
+     * ck_<table>_<name>; other dialects keep the declared name.
+     */
+    public static function checkName(string $table, string $name, string $dialect): string
+    {
+        return $dialect === 'mysql' ? self::boundedIdentifier('ck_' . self::base($table) . '_' . $name, $dialect) : $name;
+    }
+
+    /**
+     * Keeps a name within the identifier limit of the dialect (MySQL 64,
+     * PostgreSQL 63). A longer name is cut and receives a suffix with the
+     * first 6 bytes of its SHA-256 digest in hex, so two long names do not
+     * collide after the cut.
+     */
+    public static function boundedIdentifier(string $name, string $dialect): string
+    {
+        $limit = match ($dialect) {
+            'mysql' => 64,
+            'postgres' => 63,
+            default => 0,
+        };
+        if ($limit === 0 || strlen($name) <= $limit) {
+            return $name;
+        }
+        $suffix = '_' . substr(hash('sha256', $name), 0, 12);
+        return substr($name, 0, $limit - strlen($suffix)) . $suffix;
     }
 
     /** @return list<string> */
@@ -345,7 +375,7 @@ final class SchemaDdl
      * The foreign keys of an entity keyed by column list.
      * @return array<string, array{name: string, columns: list<string>, target: string, target_columns: list<string>, on_delete: string, deferred: bool}>
      */
-    public static function foreignKeys(array $m, array $e): array
+    public static function foreignKeys(array $m, array $e, string $dialect = ''): array
     {
         $out = [];
         $consumed = [];
@@ -369,7 +399,7 @@ final class SchemaDdl
             if (!$valid) {
                 continue;
             }
-            $out[implode("\x1f", $columns)] = ['name' => 'fk_' . $e['table'] . '_' . implode('_', $columns), 'columns' => $columns, 'target' => $rel['target'],
+            $out[implode("\x1f", $columns)] = ['name' => self::boundedIdentifier('fk_' . $e['table'] . '_' . implode('_', $columns), $dialect), 'columns' => $columns, 'target' => $rel['target'],
                 'target_columns' => $targets, 'on_delete' => $rel['on_delete'], 'deferred' => false];
             foreach ($columns as $column) {
                 $consumed[$column] = true;
@@ -379,14 +409,14 @@ final class SchemaDdl
             if ($c['ref'] === null || isset($consumed[$c['name']])) {
                 continue;
             }
-            $out[$c['name']] = ['name' => 'fk_' . $e['table'] . '_' . $c['name'], 'columns' => [$c['name']], 'target' => $c['ref']['entity'],
+            $out[$c['name']] = ['name' => self::boundedIdentifier('fk_' . $e['table'] . '_' . $c['name'], $dialect), 'columns' => [$c['name']], 'target' => $c['ref']['entity'],
                 'target_columns' => [$c['ref']['column']], 'on_delete' => '', 'deferred' => false];
         }
         foreach ($m['external_fks'] as $fk) {
             if ($fk['entity'] !== $e['name']) {
                 continue;
             }
-            $name = $fk['name'] !== '' ? $fk['name'] : 'fk_' . str_replace('.', '_', $e['table']) . '_' . implode('_', $fk['columns']);
+            $name = $fk['name'] !== '' ? $fk['name'] : self::boundedIdentifier('fk_' . str_replace('.', '_', $e['table']) . '_' . implode('_', $fk['columns']), $dialect);
             $matched = false;
             foreach (self::sortedKeys($out) as $key) {
                 $existing = $out[$key];
@@ -409,16 +439,16 @@ final class SchemaDdl
     }
 
     /** @return list<array> */
-    public static function sortedForeignKeys(array $m, array $e): array
+    public static function sortedForeignKeys(array $m, array $e, string $dialect = ''): array
     {
-        $byColumn = self::foreignKeys($m, $e);
+        $byColumn = self::foreignKeys($m, $e, $dialect);
         return array_map(static fn(string $k): array => $byColumn[$k], self::sortedKeys($byColumn));
     }
 
     public static function foreignKeyClause(array $fk, array $m, string $dialect, \Closure $q): string
     {
         $target = isset($m['entities'][$fk['target']]) ? $m['entities'][$fk['target']]['table'] : $fk['target'];
-        $stmt = 'CONSTRAINT ' . $q(str_replace('.', '_', $fk['name'])) . ' FOREIGN KEY (' . implode(', ', array_map($q, $fk['columns'])) . ') REFERENCES '
+        $stmt = 'CONSTRAINT ' . $q(self::boundedIdentifier(str_replace('.', '_', $fk['name']), $dialect)) . ' FOREIGN KEY (' . implode(', ', array_map($q, $fk['columns'])) . ') REFERENCES '
             . $q($target) . ' (' . implode(', ', array_map($q, $fk['target_columns'])) . ')';
         $stmt .= match ($fk['on_delete']) {
             'cascade' => ' ON DELETE CASCADE',
@@ -539,14 +569,32 @@ final class SchemaDdl
         if ($v === 'null') {
             return 'NULL';
         }
-        if (self::isNumber($v) && $c['type'] === 'bool' && $dialect === 'postgres') {
-            return $v === '0' ? 'false' : 'true';
+        if ($c['type'] === 'bool') {
+            // MySQL BOOLEAN is TINYINT(1) and strict mode rejects a quoted
+            // default; SQLite stores the value as INTEGER 0/1.
+            $value = strtolower(trim($v, "'\""));
+            $truthy = $value === '1' || $value === 'true';
+            if ($dialect === 'postgres') {
+                return $truthy ? 'true' : 'false';
+            }
+            return $truthy ? '1' : '0';
         }
         $expr = self::isNumber($v) ? $v : "'" . self::str(trim($v, "'")) . "'";
         if ($dialect === 'mysql' && preg_match('/text|blob|json|geometry|point|linestring|polygon/', strtolower($type)) === 1) {
             return '(' . $expr . ')';
         }
         return $expr;
+    }
+
+    /**
+     * A CHECK expression for the dialect. MySQL rejects a CASE expression
+     * with predicate branches as a CHECK definition, so MySQL receives
+     * (expr) <> 0; NULL stays UNKNOWN and the CHECK accepts it.
+     */
+    public static function renderedCheckExpression(string $expr, string $dialect, \Closure $q): string
+    {
+        $rendered = self::checkExpression($expr, $q);
+        return $dialect === 'mysql' ? '(' . $rendered . ') <> 0' : $rendered;
     }
 
     /** A CHECK expression with its backtick identifiers quoted for the dialect. */

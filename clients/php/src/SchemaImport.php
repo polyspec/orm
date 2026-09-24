@@ -181,7 +181,9 @@ final class SchemaImport
 		ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_NAME");
         foreach ($rows->fetchAll(\PDO::FETCH_NUM) as [$table, $name, $expr]) {
             if (isset($byName[$table])) {
-                $byName[$table]['checks'][] = ['name' => $name, 'expr' => $expr];
+                // DDL writes the physical name ck_<table>_<name>; import returns the declared name.
+                $prefix = 'ck_' . $table . '_';
+                $byName[$table]['checks'][] = ['name' => str_starts_with($name, $prefix) ? substr($name, strlen($prefix)) : $name, 'expr' => $expr];
             }
         }
         return self::sorted($byName);

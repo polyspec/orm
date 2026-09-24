@@ -259,7 +259,7 @@ func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, er
 			return nil, err
 		}
 		if tb := byName[table]; tb != nil {
-			tb.Checks = append(tb.Checks, impCheck{Name: name, Expr: expr})
+			tb.Checks = append(tb.Checks, impCheck{Name: mysqlLogicalCheckName(table, name), Expr: expr})
 		}
 	}
 	if err := checks.Err(); err != nil {
@@ -561,6 +561,12 @@ func mysqlExpressionLiteral(def, extra string) (string, bool) {
 		return def, true
 	}
 	return "", false
+}
+
+// mysqlLogicalCheckName returns the declared name of a MySQL CHECK
+// constraint. DDL writes the physical name ck_<table>_<name>.
+func mysqlLogicalCheckName(table, physical string) string {
+	return strings.TrimPrefix(physical, "ck_"+table+"_")
 }
 
 func mysqlUnescape(s string) string {

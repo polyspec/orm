@@ -183,8 +183,12 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
         .await
         .map_err(err)?;
     for r in checks {
-        if let Some(t) = by_name.get_mut(&r[0].text()) {
-            t.checks.push(Check { name: r[1].text(), expr: r[2].text() });
+        let table = r[0].text();
+        // DDL writes the physical name ck_<table>_<name>; import returns the declared name.
+        let physical = r[1].text();
+        let name = physical.strip_prefix(&format!("ck_{table}_")).map_or_else(|| physical.clone(), str::to_string);
+        if let Some(t) = by_name.get_mut(&table) {
+            t.checks.push(Check { name, expr: r[2].text() });
         }
     }
     Ok(finish(order, by_name))

@@ -1,5 +1,6 @@
 // CREATE statements for a manifest (docs/dialects.md). The output is the
 // same text the schema tool writes for `ddl`.
+import { createHash } from 'node:crypto';
 import { OrmError } from '../runtime_error.js';
 import { indentJson, type Column, type Entity, type LoadedManifest, type Manifest } from './manifest.js';
 import { triggerObjects, triggerText } from './triggers.js';
@@ -42,7 +43,30 @@ export function ddlBase(table: string): string {
 
 export function ddlIndexName(table: string, index: string, dialect: string): string {
   if (dialect === 'sqlite') return `${ddlTable(table, dialect)}_${index}`;
-  return `${ddlBase(table)}_${index}`;
+  return boundedIdentifier(`${ddlBase(table)}_${index}`, dialect);
+}
+
+/**
+ * MySQL CHECK constraint names are unique within a database, while the schema
+ * scopes a check name to its entity. MySQL receives the name ck_<table>_<name>;
+ * other dialects keep the declared name.
+ */
+export function ddlCheckName(table: string, name: string, dialect: string): string {
+  return dialect === 'mysql' ? boundedIdentifier(`ck_${ddlBase(table)}_${name}`, dialect) : name;
+}
+
+/**
+ * Keeps a name within the identifier limit of the dialect (MySQL 64,
+ * PostgreSQL 63 bytes). A longer name is cut and receives a suffix with the
+ * first 6 bytes of its SHA-256 digest in hex, so two long names do not collide
+ * after the cut.
+ */
+export function boundedIdentifier(name: string, dialect: string): string {
+  const limit = dialect === 'mysql' ? 64 : dialect === 'postgres' ? 63 : 0;
+  const bytes = Buffer.from(name);
+  if (limit === 0 || bytes.length <= limit) return name;
+  const suffix = '_' + createHash('sha256').update(bytes).digest('hex').slice(0, 12);
+  return bytes.subarray(0, limit - suffix.length).toString() + suffix;
 }
 
 export function byteOrder(a: string, b: string): number {
@@ -149,7 +173,14 @@ export function defaultExpression(c: Column, type: string, dialect: string): str
   if (v === 'now' && dialect === 'sqlite') return "(strftime('%Y-%m-%d %H:%M:%f', 'now') || '000')";
   if (v === 'now') return dialect === 'mysql' && (c.precision ?? 0) > 0 ? `CURRENT_TIMESTAMP(${c.precision})` : 'CURRENT_TIMESTAMP';
   if (v === 'null') return 'NULL';
-  if (isNumber(v) && c.type === 'bool' && dialect === 'postgres') return v === '0' ? 'false' : 'true';
+  if (c.type === 'bool') {
+    // MySQL BOOLEAN is TINYINT(1) and strict mode rejects a quoted default;
+    // SQLite stores the value as INTEGER 0/1.
+    const value = v.replace(/^['"]+|['"]+$/g, '').toLowerCase();
+    const truthy = value === '1' || value === 'true';
+    if (dialect === 'postgres') return truthy ? 'true' : 'false';
+    return truthy ? '1' : '0';
+  }
   const expr = isNumber(v) ? v : `'${sqlQuote(v.replace(/^'+|'+$/g, ''))}'`;
   if (dialect === 'mysql' && /text|blob|json|geometry|point|linestring|polygon/.test(type.toLowerCase())) return `(${expr})`;
   return expr;
@@ -172,23 +203,23 @@ function sameList(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
-export function entityForeignKeys(m: Manifest, e: Entity): Map<string, ForeignKey> {
+export function entityForeignKeys(m: Manifest, e: Entity, dialect = ''): Map<string, ForeignKey> {
   const out = new Map<string, ForeignKey>();
   const consumed = new Set<string>();
   for (const rel of Object.values(e.relations ?? {})) {
     if (rel.kind !== 'one' || (!rel.foreign_key && !relationMatchesColumnReference(e, rel.keys, rel.target))) continue;
     if (rel.keys.length === 0 || rel.keys.some(key => !e.columns.some(c => c.name === key.local))) continue;
     const columns = rel.keys.map(k => k.local);
-    out.set(columns.join('\x1f'), { name: `fk_${e.table}_${columns.join('_')}`, columns, target: rel.target, targetCols: rel.keys.map(k => k.target), onDelete: rel.on_delete ?? '', deferred: false });
+    out.set(columns.join('\x1f'), { name: boundedIdentifier(`fk_${e.table}_${columns.join('_')}`, dialect), columns, target: rel.target, targetCols: rel.keys.map(k => k.target), onDelete: rel.on_delete ?? '', deferred: false });
     for (const c of columns) consumed.add(c);
   }
   for (const c of e.columns) {
     if (!c.ref || consumed.has(c.name)) continue;
-    out.set(c.name, { name: `fk_${e.table}_${c.name}`, columns: [c.name], target: c.ref.entity, targetCols: [c.ref.column], onDelete: '', deferred: false });
+    out.set(c.name, { name: boundedIdentifier(`fk_${e.table}_${c.name}`, dialect), columns: [c.name], target: c.ref.entity, targetCols: [c.ref.column], onDelete: '', deferred: false });
   }
   for (const fk of m.external_fks ?? []) {
     if (fk.entity !== e.name) continue;
-    const name = fk.name ?? `fk_${e.table.replaceAll('.', '_')}_${fk.columns.join('_')}`;
+    const name = fk.name ?? boundedIdentifier(`fk_${e.table.replaceAll('.', '_')}_${fk.columns.join('_')}`, dialect);
     let matched = false;
     for (const existing of out.values()) {
       const target = m.entities[existing.target]?.table ?? existing.target;
@@ -207,14 +238,14 @@ export function entityForeignKeys(m: Manifest, e: Entity): Map<string, ForeignKe
   return out;
 }
 
-export function sortedForeignKeys(m: Manifest, e: Entity): ForeignKey[] {
-  const byKey = entityForeignKeys(m, e);
+export function sortedForeignKeys(m: Manifest, e: Entity, dialect = ''): ForeignKey[] {
+  const byKey = entityForeignKeys(m, e, dialect);
   return sorted(byKey.keys()).map(key => byKey.get(key)!);
 }
 
 export function foreignKeyClause(fk: ForeignKey, m: Manifest, dialect: string, q: Quote): string {
   const target = m.entities[fk.target]?.table ?? fk.target;
-  let stmt = `CONSTRAINT ${q(fk.name.replaceAll('.', '_'))} FOREIGN KEY (${fk.columns.map(q).join(', ')}) REFERENCES ${q(target)} (${fk.targetCols.map(q).join(', ')})`;
+  let stmt = `CONSTRAINT ${q(boundedIdentifier(fk.name.replaceAll('.', '_'), dialect))} FOREIGN KEY (${fk.columns.map(q).join(', ')}) REFERENCES ${q(target)} (${fk.targetCols.map(q).join(', ')})`;
   switch (fk.onDelete) {
     case 'cascade': stmt += ' ON DELETE CASCADE'; break;
     case 'setnull': stmt += ' ON DELETE SET NULL'; break;
@@ -222,6 +253,16 @@ export function foreignKeyClause(fk: ForeignKey, m: Manifest, dialect: string, q
   }
   if (fk.deferred && (dialect === 'postgres' || dialect === 'sqlite')) stmt += ' DEFERRABLE INITIALLY DEFERRED';
   return stmt;
+}
+
+/**
+ * A CHECK expression for the dialect. MySQL rejects a CASE expression with
+ * predicate branches as a CHECK definition, so MySQL receives (expr) <> 0;
+ * NULL stays UNKNOWN and the CHECK accepts it.
+ */
+export function renderedCheckExpression(expr: string, dialect: string, q: Quote): string {
+  const rendered = quotedCheckExpression(expr, q);
+  return dialect === 'mysql' ? `(${rendered}) <> 0` : rendered;
 }
 
 export function quotedCheckExpression(expr: string, q: Quote): string {
@@ -295,8 +336,8 @@ export function renderDDL(loaded: LoadedManifest, dialect: string): string {
     } else {
       lines.push(`  PRIMARY KEY (${joinQuoted(e.pk, q)})`);
     }
-    for (const uk of e.unique ?? []) lines.push(`  CONSTRAINT ${q(`uq_${ddlBase(e.table)}_${uk.join('_')}`)} UNIQUE (${joinQuoted(uk, q)})`);
-    for (const fk of sortedForeignKeys(m, e)) {
+    for (const uk of e.unique ?? []) lines.push(`  CONSTRAINT ${q(boundedIdentifier(`uq_${ddlBase(e.table)}_${uk.join('_')}`, dialect))} UNIQUE (${joinQuoted(uk, q)})`);
+    for (const fk of sortedForeignKeys(m, e, dialect)) {
       const target = foreignKeyTargetEntity(m, fk.target);
       if (target && dialect !== 'sqlite' && position.get(target.name)! > current) {
         deferred.push({ table: e.table, fk });
@@ -306,8 +347,8 @@ export function renderDDL(loaded: LoadedManifest, dialect: string): string {
     }
     for (const check of e.checks ?? []) {
       let expr: string;
-      try { expr = quotedCheckExpression(check.expr, q); } catch (error) { return fail(`${e.table} check ${check.name}: ${ddlErrorText(error)}`); }
-      lines.push(`  CONSTRAINT ${q(check.name)} CHECK (${expr})`);
+      try { expr = renderedCheckExpression(check.expr, dialect, q); } catch (error) { return fail(`${e.table} check ${check.name}: ${ddlErrorText(error)}`); }
+      lines.push(`  CONSTRAINT ${q(ddlCheckName(e.table, check.name, dialect))} CHECK (${expr})`);
     }
     const indexNames = sorted(Object.keys(e.indexes ?? {}));
     if (dialect === 'mysql') {
