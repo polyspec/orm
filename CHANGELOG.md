@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make the PHP, Rust and TypeScript clients return the ordered-json value of a `json` or `jsons` stage, including `jsontext` and `json aes` columns, as the Go client does: PHP `OrderedJson\Value`, Rust `orm::ordered_json::Value`, and TypeScript `Value` of `ordered-json`. The value keeps the member order, the number text, and an empty object apart from an empty array. A write takes that value and stores its text unchanged; PHP and TypeScript also take the common value model, and Rust generated setters take only the ordered-json value. `toArray` keeps the value, and the JSON output of a model writes the decoded value. Values outside the JSON model, such as non-finite numbers, fail with `CODEC_ENCODE`.
+
 Make the Go generator scan generate a called model method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet. One `go generate` run over several model packages writes the final models of each package; a join or relation argument must still resolve to a model of the generated package.
 
 Make `get` and the generated `getBy…` terminals of the PHP, Rust and TypeScript clients fail with `NO_ROWS` when no row matches, as the Go client does, instead of returning `null` or `None`. PHP `get()` returns `static`, TypeScript `get()` returns `Promise<this>`, and Rust `get()` returns `orm::Result<Self>`. The conformance vectors `terminal_by`, `write_cycle` and `delete_recursive` record the `NO_ROWS` code of a missing row.

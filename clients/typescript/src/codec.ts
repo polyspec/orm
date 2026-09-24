@@ -1,12 +1,14 @@
 import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
-import { parse as orderedJsonParse, stringify as orderedJsonStringify } from 'ordered-json';
+import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from 'ordered-json';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 
 export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
+/** The value of a column with a json or jsons stage: an ordered-json value. */
+export type { JsonValue };
 
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
 export function blindIndex(value: unknown, key: string): string | null {
@@ -158,10 +160,15 @@ function decodeBase64(value: Uint8Array): Uint8Array {
   return new Uint8Array(Buffer.from(source, 'base64'));
 }
 
-export function decode(styles: readonly string[], raw: string | Uint8Array | null): CodecValue {
+/**
+ * Decodes a stored cell with the column's styles in reverse write order. The
+ * json and jsons stages return the ordered-json value, which keeps the member
+ * order, the number text, and an empty object apart from an empty array.
+ */
+export function decode(styles: readonly string[], raw: string | Uint8Array | null): CodecValue | JsonValue {
   if (raw === null || raw.length === 0) return null;
   let current = bytes(raw);
-  let value: CodecValue | undefined;
+  let value: CodecValue | JsonValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
     const style = styles[index]!;
     if (value !== undefined) throw new CodecError('CODEC_DECODE', `style ${style} after a decoded value`);
@@ -185,8 +192,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
       case 'json':
       case 'jsons':
         try {
-          const parsed = orderedJsonParse(string(current, 'decode'));
-          value = JSON.parse(orderedJsonStringify(parsed)) as CodecValue;
+          value = orderedJsonParse(string(current, 'decode'));
         } catch (error) {
           throw new CodecError('CODEC_DECODE', `json: ${String(error)}`);
         }
@@ -198,21 +204,26 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
   return value ?? string(current, 'decode');
 }
 
-export function encode(styles: readonly string[], value: CodecValue): EncodedValue {
+/**
+ * Encodes a value with the column's styles in write order. The json and jsons
+ * stages accept an ordered-json value, written as its compact text, or the
+ * common value model, which may contain ordered-json values.
+ */
+export function encode(styles: readonly string[], value: CodecValue | JsonValue): EncodedValue {
   if (value === null) return null;
   let current = new Uint8Array();
-  let transformed: CodecValue = value;
+  const transformed = value;
   for (let index = 0; index < styles.length; index++) {
     const style = styles[index]!;
     switch (style) {
       case 'serialize':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'serialize must be the first encoding style');
-        current = utf8.encode(phpSerialize(transformed));
+        current = utf8.encode(phpSerialize(commonValue(transformed, 'serialize')));
         break;
       case 'yaml':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'yaml must be the first style');
         try {
-          current = utf8.encode(stringifyYaml(validateCodecValue(transformed, 'yaml encode'), { version: '1.2', schema: 'core', sortMapEntries: true }));
+          current = utf8.encode(stringifyYaml(validateCodecValue(commonValue(transformed, 'yaml'), 'yaml encode'), { version: '1.2', schema: 'core', sortMapEntries: true }));
         } catch (error) {
           throw new CodecError('CODEC_ENCODE', `yaml: ${String(error)}`);
         }
@@ -220,12 +231,7 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
       case 'json':
       case 'jsons':
         if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'json must be the first style');
-        try {
-          const parsed = orderedJsonParse(JSON.stringify(transformed));
-          current = utf8.encode(orderedJsonStringify(parsed));
-        } catch (error) {
-          throw new CodecError('CODEC_ENCODE', `json: ${String(error)}`);
-        }
+        current = utf8.encode(transformed instanceof JsonValue ? orderedJsonStringify(transformed) : orderedJsonStringify(orderedJsonValue(transformed)));
         break;
       case 'base64':
         current = utf8.encode(Buffer.from(current).toString('base64'));
@@ -242,6 +248,56 @@ export function encode(styles: readonly string[], value: CodecValue): EncodedVal
     }
   }
   return string(current, 'encode');
+}
+
+/** Rejects an ordered-json value for a stage that takes the common value model. */
+function commonValue(value: CodecValue | JsonValue, style: string): CodecValue {
+  if (value instanceof JsonValue) throw new CodecError('CODEC_ENCODE', `${style}: an ordered-json value is written only by the json and jsons stages`);
+  return value;
+}
+
+/**
+ * Converts the common value model to ordered-json. Object members keep their
+ * property order; nested ordered-json values are kept as they are. Non-finite
+ * numbers and values outside the model return CODEC_ENCODE.
+ */
+export function orderedJsonValue(value: unknown): JsonValue {
+  try {
+    return orderedJsonParse(jsonText(value, 0));
+  } catch (error) {
+    if (error instanceof CodecError) throw error;
+    throw new CodecError('CODEC_ENCODE', `json: ${String(error)}`);
+  }
+}
+
+function jsonText(value: unknown, depth: number): string {
+  if (depth > 256) throw new CodecError('CODEC_ENCODE', 'json: value nesting exceeds 256 levels');
+  if (value instanceof JsonValue) return orderedJsonStringify(value);
+  if (value === null) return 'null';
+  switch (typeof value) {
+    case 'boolean': return value ? 'true' : 'false';
+    case 'string': return JSON.stringify(value);
+    case 'number':
+      if (!Number.isFinite(value)) throw new CodecError('CODEC_ENCODE', `json: non-finite number ${value}`);
+      return JSON.stringify(value);
+    case 'bigint': return value.toString();
+    case 'object': break;
+    default: throw new CodecError('CODEC_ENCODE', `json: ${typeof value} is not a JSON value`);
+  }
+  if (Array.isArray(value)) return `[${value.map(item => jsonText(item, depth + 1)).join(',')}]`;
+  if (value instanceof Uint8Array) throw new CodecError('CODEC_ENCODE', 'json: bytes are not a JSON value');
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) {
+    const toJSON = (value as { toJSON?: unknown }).toJSON;
+    if (typeof toJSON !== 'function') throw new CodecError('CODEC_ENCODE', `json: ${proto?.constructor?.name ?? 'object'} is not a JSON value`);
+    return jsonText(toJSON.call(value), depth + 1);
+  }
+  const members: string[] = [];
+  for (const [key, item] of Object.entries(value)) {
+    if (item === undefined) throw new CodecError('CODEC_ENCODE', `json: member ${JSON.stringify(key)} is undefined`);
+    members.push(`${JSON.stringify(key)}:${jsonText(item, depth + 1)}`);
+  }
+  return `{${members.join(',')}}`;
 }
 
 function decodeYaml(current: Uint8Array): CodecValue {

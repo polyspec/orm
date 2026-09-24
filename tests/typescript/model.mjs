@@ -15,6 +15,7 @@ import {
 } from '../../clients/typescript/dist/index.js';
 import { buildManifest, encodeManifest } from '../../clients/typescript/dist/schema/build.js';
 import { parseDiagram } from '../../clients/typescript/dist/schema/mermaid.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 const require = createRequire(new URL('../../clients/typescript/package.json', import.meta.url));
 const root = new URL('../..', import.meta.url).pathname;
@@ -252,6 +253,34 @@ async function writes(db) {
   await new CompositeAccount().connect(db).setTenantId(9).setAccountId(9).setName('first')
     .duplication(new CompositeAccount().setName('second')).create();
   check((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(9, 9)).getName() === 'second', 'duplication');
+  await jsonValues(db, f);
+}
+
+/**
+ * Writes jsontext columns from an ordered-json value and from the common value
+ * model and reads back ordered-json values with the same text.
+ */
+async function jsonValues(db, f) {
+  const text = '{"b":1,"a":[],"c":{},"n":1.50}';
+  const created = await new Battle().connect(db)
+    .setName('json').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
+    .setServiceModuleSeq(f.module.getSeq()).setServiceMemberSeq(f.member.getSeq())
+    .setStartDt('2026-01-02 00:00:00').setEndDt('2026-01-03 00:00:00')
+    .setJsonSetting(parseJson(text)).setJsonsTags({ b: 1, a: [], c: {} }).create();
+  const row = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
+  const setting = row.getJsonSetting();
+  check(setting instanceof JsonValue && stringifyJson(setting) === text, `jsontext read ${setting instanceof JsonValue ? stringifyJson(setting) : String(setting)}`);
+  const tags = row.getJsonsTags();
+  check(tags instanceof JsonValue && stringifyJson(tags) === '{"b":1,"a":[],"c":{}}', `common value model read ${tags instanceof JsonValue ? stringifyJson(tags) : String(tags)}`);
+  check(row.toArray().json_setting === setting, 'toArray keeps the ordered-json value');
+  const serialized = JSON.parse(JSON.stringify(row));
+  check(JSON.stringify(serialized.json_setting) === '{"b":1,"a":[],"c":{},"n":1.5}', `toJSON ${JSON.stringify(serialized.json_setting)}`);
+  const nonFinite = await code(new Battle().connect(db).setSeq(created.getSeq()).setJsonSetting({ bad: Number.NaN }).update());
+  check(String(nonFinite).includes('CODEC_ENCODE'), `non-finite number: ${nonFinite}`);
+  await row.setJsonSetting(parseJson('[{"z":0},{}]')).update();
+  const again = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
+  check(stringifyJson(again.getJsonSetting()) === '[{"z":0},{}]', `updated read ${stringifyJson(again.getJsonSetting())}`);
+  await again.delete();
 }
 
 async function transactions(db) {
@@ -427,7 +456,7 @@ async function auditTriggers(dialect, dsn) {
     query[CORE].orderBy('seq', false, []);
     const rows = [...(await query.gets()).values()];
     const value = (row, column) => row[CORE].column(column);
-    const plain = v => JSON.parse(JSON.stringify(v, (_, x) => x instanceof Map ? Object.fromEntries(x) : x));
+    const plain = v => JSON.parse(stringifyJson(v));
     check(rows.map(r => value(r, 'change_kind')).join(',') === 'INSERT,UPDATE', `change kinds ${rows.map(r => value(r, 'change_kind'))}`);
     for (const row of rows) {
       check(Number(value(row, 'operation_seq')) === 1 && value(row, 'service_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
@@ -446,7 +475,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const { json, models: { secret_config: SecretConfig } } = auditSchema('erDiagram\n'
     + '  secret_config {\n    bigint seq PK "auto"\n    int aes_key_version\n    longblob config "json aes"\n  }\n');
   await dropTable(dialect, dsn, 'secret_config');
-  const text = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.5}';
+  const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
   const updatedText = '{"token":"next-token","list":[1,"two",null]}';
   const manifestPath = join(work, 'secret_config.json');
   await writeFile(manifestPath, json);
@@ -454,7 +483,9 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const read = async db => {
     const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
     check(rows.length === 1, `rows ${rows.length}`);
-    return JSON.stringify(rows[0][CORE].column('config'));
+    const config = rows[0][CORE].column('config');
+    check(config instanceof JsonValue, 'the json aes column reads an ordered-json value');
+    return stringifyJson(config);
   };
   const one = new Map([[1, 'config-key-one']]);
   const both = new Map([[1, 'config-key-one'], [2, 'config-key-two']]);
@@ -463,7 +494,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   try {
     await first.utils().schema().install(json);
     const created = new SecretConfig().connect(first);
-    created[CORE].setValue('config', JSON.parse(text));
+    created[CORE].setValue('config', parseJson(text));
     seq = (await created.create())[CORE].column('seq');
     check(await read(first) === text, `read back ${await read(first)}`);
     const [cell, version] = await storedCell(dialect, dsn, sqlitePath);
@@ -531,7 +562,7 @@ async function auditBigintService(dialect, dsn) {
     const value = (row, column) => row[CORE].column(column);
     const got = rows.map(r => `${String(value(r, 'table_label')).replace(/^app\./, '')}:${value(r, 'service_seq') === null ? 'null' : Number(value(r, 'service_seq'))}`);
     check(got.join(',') === 'routed:42,unowned:null', `changes ${got}`);
-    const after = JSON.parse(JSON.stringify(value(rows[0], 'after_value'), (_, x) => x instanceof Map ? Object.fromEntries(x) : x));
+    const after = JSON.parse(stringifyJson(value(rows[0], 'after_value')));
     check(after.render === 'ssr', `render default ${JSON.stringify(after)}`);
   } finally { await db.close(); }
   await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);

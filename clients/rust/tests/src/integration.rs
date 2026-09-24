@@ -433,6 +433,41 @@ async fn aes_rotation(t: &Target) {
     assert_eq!(status.pending, 0, "after rotation");
 }
 
+/// A jsontext column reads back the ordered-json value of a write with its
+/// member order, number text, and `{}` apart from `[]`; the JSON null stores NULL.
+async fn json_values(t: &Target) {
+    let db = &t.db;
+    let f = seed(db).await;
+    let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
+    let tags = r#"["z",{"y":[]},-0.0]"#;
+    let seq = f.battles[0].get_seq();
+    let b = Battle::new().connect(db).get_by_seq(seq).await.unwrap();
+    let mut b = b.set_json_setting(orm::ordered_json::parse(text).unwrap()).set_jsons_tags(orm::ordered_json::parse(tags).unwrap());
+    b.update(false).await.unwrap();
+    let got = Battle::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
+    assert_eq!(got.get_json_setting().compact(), text, "jsontext json read");
+    assert_eq!(got.get_jsons_tags().compact(), tags, "jsontext jsons read");
+    assert_eq!(got.to_array()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
+    let created = Battle::new()
+        .connect(db)
+        .set_name("json")
+        .set_user_seq(f.users[0].get_seq())
+        .set_service_seq(f.service.get_seq())
+        .set_service_module_seq(f.battles[0].get_service_module_seq())
+        .set_service_member_seq(f.member.get_seq())
+        .set_start_dt(start())
+        .set_end_dt(start())
+        .set_json_setting(orm::ordered_json::parse("[]").unwrap())
+        .set_jsons_tags(orm::ordered_json::Value::null())
+        .create()
+        .await
+        .unwrap();
+    assert_eq!(created.get_json_setting().compact(), "[]", "created value");
+    let got = Battle::new().connect(db).add_all_columns().get_by_seq(created.get_seq()).await.unwrap();
+    assert_eq!(got.get_json_setting().compact(), "[]", "empty array read");
+    assert_eq!(got.get_jsons_tags().kind(), orm::ordered_json::Kind::Null, "NULL reads as the JSON null");
+}
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -450,7 +485,7 @@ async fn main() {
         t.db.close().await;
         println!("ok schema_empty ({})", t.driver);
     }
-    for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "bind_limit_splitting"] {
+    for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"] {
         for t in env.databases(name).await {
             match name {
                 "conditions" => conditions(&t).await,
@@ -459,6 +494,7 @@ async fn main() {
                 "writes" => writes(&t).await,
                 "transactions" => transactions(&t).await,
                 "aes_rotation" => aes_rotation(&t).await,
+                "json_values" => json_values(&t).await,
                 _ => bind_limit_splitting(&t).await,
             }
             t.db.close().await;

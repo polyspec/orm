@@ -14,7 +14,7 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 ### Encrypted JSON value
 
-A blob column with the stages `json aes` stores a JSON value encrypted with AES v2. The `json` stage writes the ordered-json text, and `aes` encrypts that text; a read decrypts the cell and decodes the text with the `json` stage of the client. Go returns the `*orderedjson.Value`, which keeps the member order, the number text, and an empty object apart from an empty array. PHP, Rust, and TypeScript return the value model of the [value model](#value-model) table: Rust sorts object keys, PHP reads `{}` and `[]` as the same empty array, and PHP, Rust, and TypeScript read numbers as native numbers, so `1.50` reads back as `1.5`. The entity declares the non-null integer `aes_key_version` column.
+A blob column with the stages `json aes` stores a JSON value encrypted with AES v2. The `json` stage writes the ordered-json text, and `aes` encrypts that text; a read decrypts the cell and returns the ordered-json value of the text, as for every `json` stage (see [Value model](#value-model)). The value keeps the member order, the number text, and an empty object apart from an empty array, so `1.50` reads back as `1.50`. The entity declares the non-null integer `aes_key_version` column.
 
 ```mermaid
 erDiagram
@@ -38,7 +38,7 @@ The keys come from the connection configuration: `AESKey`, `AESVersion`, and `AE
 ## Value model
 A `json` or `jsons` stage stores its text in a `jsontext` column, which is text on the three databases, so the stored text is read back as written. The stages `json aes` store the encrypted text in a blob column (see [Encrypted JSON value](#encrypted-json-value)). Data queried inside the database is modeled as columns or a child table; the ORM has no JSON path conditions and no JSON indexes.
 
-Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. JSON and JSONS columns use the ordered-json value tree, which preserves object member order and distinguishes an empty object from an empty array.
+Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. A `json` or `jsons` stage reads as the ordered-json value of every client, which preserves the object member order and the number text and distinguishes an empty object from an empty array. A write takes that value and stores its text unchanged. `toArray`/`to_array` keeps the value; a model written as JSON by the language's JSON encoder writes the decoded value, as the table lists. The other styles use the common value model.
 
 The Go JSON codec returns `*orderedjson.Value` from `Decode` and accepts that value from `Encode`. It does not use Go's `encoding/json` for user values. Portable scalar/list/map values, named scalar types, and Go structs with `json` field tags are converted to ordered-json explicitly; parsed ordered-json values retain their original order and node kinds. `jsontext.Value` and `json.RawMessage` are accepted only as already-encoded raw JSON values and are parsed immediately into ordered-json. Unsupported Go kinds, non-string map keys, `[]byte`, and non-finite numbers return `CODEC_ENCODE`.
 
@@ -47,9 +47,9 @@ Go values implementing `json.Marshaler` are encoded through `MarshalJSON`, then 
 Go `[]byte` is not a common JSON value and JSON encoding rejects it with `CODEC_ENCODE`; it is not silently converted to Go's base64 JSON string representation. Decode bytes into the common value model before assigning a JSON column.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| field type | `*orderedjson.Value` or tagged Go value | ordered-json value tree | ordered-json value tree | ordered-json value tree |
-| list | `[]any` | `Value::Array` | list array | `unknown[]` |
-| map | `map[string]any` | `Value::Object` (sorted keys) | associative array (insertion order) | `Record<string, unknown>` |
+| read value of a `json` or `jsons` stage | `*orderedjson.Value` | `orm::ordered_json::Value` | `OrderedJson\Value` | `Value` of `ordered-json` |
+| write value | `*orderedjson.Value`, or a portable or tagged Go value | `orm::ordered_json::Value` | `OrderedJson\Value`, or an array, scalar, `stdClass`, or `JsonSerializable` | `Value`, or the common value model |
+| model JSON output | the value text | `serde_json` value of the text (sorted keys) | decoded text with `stdClass` objects | decoded text |
 
 PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as a list; other keys are read as a map. Serialize-family codecs preserve the key representation. Go and Rust sort JSON map keys; PHP keeps insertion order, so bytes can differ while values remain equal.
 

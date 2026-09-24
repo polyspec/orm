@@ -6,6 +6,7 @@
 import {
   AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, User, orm,
 } from '../../clients/typescript/dist/index.js';
+import { Value as JsonValue, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 const args = process.argv.slice(2);
 let driver = 'mysql';
@@ -72,6 +73,16 @@ function code(error) {
   return error.message ?? String(error);
 }
 
+/** Replaces each ordered-json value of a result with plain JSON data. */
+function plain(value) {
+  if (value instanceof JsonValue) return JSON.parse(stringifyJson(value));
+  if (Array.isArray(value)) return value.map(plain);
+  if (value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plain(v)]));
+  }
+  return value;
+}
+
 /** Keeps the named values of a row. */
 function pick(m, ...names) {
   if (m === null || m === undefined) return null;
@@ -94,7 +105,7 @@ async function main() {
   const run = async (name, fn) => {
     log = []; maskSeqs = new Set(); maskTs = new Set();
     let res;
-    try { res = await fn(); } catch (error) { res = { error: code(error) }; }
+    try { res = plain(await fn()); } catch (error) { res = { error: code(error) }; }
     out[name] = { statements: log.map(s => ({ sql: s.sql, binds: s.binds })), result: res };
   };
   const battle = () => new Battle().connect(db);

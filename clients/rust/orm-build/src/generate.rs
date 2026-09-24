@@ -59,6 +59,9 @@ fn index_method(name: &str) -> String {
 
 /// The Rust value type of a column without null.
 fn base(c: &Column) -> &'static str {
+    if c.styles.iter().any(|s| s == "json" || s == "jsons") {
+        return ORDERED;
+    }
     if c.styled() || c.typ == "jsontext" {
         return "orm::serde_json::Value";
     }
@@ -75,13 +78,16 @@ fn base(c: &Column) -> &'static str {
     }
 }
 
+/// The type of a column with the `json` or `jsons` stage.
+const ORDERED: &str = "orm::ordered_json::Value";
+
 fn is_json(c: &Column) -> bool {
     base(c) == "orm::serde_json::Value"
 }
 
 fn field(c: &Column) -> String {
     let t = base(c);
-    if c.nullable && !is_json(c) {
+    if c.nullable && !is_json(c) && t != ORDERED {
         format!("Option<{t}>")
     } else {
         t.to_owned()
@@ -89,7 +95,7 @@ fn field(c: &Column) -> String {
 }
 
 fn copy_type(t: &str) -> bool {
-    !matches!(t, "String" | "Vec<u8>" | "orm::serde_json::Value")
+    !matches!(t, "String" | "Vec<u8>" | "orm::serde_json::Value" | ORDERED)
 }
 
 fn convert(t: &str) -> &'static str {
@@ -102,6 +108,7 @@ fn convert(t: &str) -> &'static str {
         "orm::chrono::NaiveDate" => "v.as_date()",
         "orm::Point" => "orm::parse_point(&v.as_string()).unwrap_or_default()",
         "orm::serde_json::Value" => "v.take_json().unwrap_or_default()",
+        ORDERED => "v.take_ordered()",
         "Vec<u8>" => "v.take_bytes()",
         _ => "v.take_string()",
     }
@@ -117,6 +124,7 @@ fn to_val(t: &str, x: &str) -> String {
         "orm::chrono::NaiveDate" => format!("orm::Val::Date({x})"),
         "orm::Point" => format!("orm::Val::Str(orm::point_text({x}).unwrap_or_default())"),
         "orm::serde_json::Value" => format!("orm::Val::Json({x}.clone())"),
+        ORDERED => format!("orm::Val::ordered({x}.clone())"),
         "Vec<u8>" => format!("orm::Val::Bytes({x}.clone())"),
         _ => format!("orm::Val::Str({x}.clone())"),
     }
@@ -759,7 +767,8 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("    fn core_mut(&mut self) -> &mut orm::Core {\n        &mut self.__orm\n    }\n\n");
     let _ = write!(b, "    fn from_core(core: orm::Core) -> Self {{\n        {t} {{\n            __orm: core,\n");
     for c in &e.columns {
-        let _ = writeln!(b, "            {}: Default::default(),", ident(&c.name));
+        let init = if base(c) == ORDERED { "orm::ordered_json::Value::null()" } else { "Default::default()" };
+        let _ = writeln!(b, "            {}: {init},", ident(&c.name));
     }
     b.push_str("        }\n    }\n\n");
     b.push_str("    fn into_core(self) -> orm::Core {\n        self.__orm\n    }\n\n");
@@ -815,7 +824,12 @@ fn model_source(gm: &Model<'_>) -> String {
         } else {
             let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> &{bt} {{\n        &self.{id}\n    }}\n\n");
         }
-        if is_json(c) {
+        if bt == ORDERED {
+            let _ = write!(
+                b,
+                "    /// Sets {col}; the JSON null stores NULL.\n    pub fn set_{col}(mut self, v: orm::ordered_json::Value) -> Self {{\n        self.{id} = v.clone();\n        self.__orm.set_ordered({col:?}, v);\n        self\n    }}\n\n"
+            );
+        } else if is_json(c) {
             let _ = write!(
                 b,
                 "    /// Sets {col}; a JSON null stores NULL.\n    pub fn set_{col}(mut self, v: impl Into<orm::serde_json::Value>) -> Self {{\n        let v = v.into();\n        self.{id} = v.clone();\n        self.__orm.set_json({col:?}, v);\n        self\n    }}\n\n"

@@ -21,13 +21,14 @@ fn err(code: &str, msg: impl Into<String>) -> Error {
     }
 }
 
-/// Stored cell → JSON-like value (`Val::Json`), or `Val::Null` for NULL/empty.
+/// Stored cell → decoded value, or `Val::Null` for NULL/empty. The `json` and
+/// `jsons` stages return `Val::Ordered`; the other stages return `Val::Json`.
 pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
-        // already parsed by the driver (MySQL JSON column): only a bare json style applies
+        // a driver-parsed JSON cell: only a bare json style applies
         Val::Json(v) if styles.len() == 1 && (styles[0] == "json" || styles[0] == "jsons") => {
-            return Ok(Val::Json(v.clone()))
+            v.to_string().into_bytes()
         }
         Val::Str(s) if s.is_empty() => return Ok(Val::Null),
         Val::Str(s) => s.as_bytes().to_vec(),
@@ -35,7 +36,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
         Val::Bytes(b) => b.clone(),
         other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
     };
-    let mut value: Option<Value> = None;
+    let mut value: Option<Val> = None;
     for st in styles.iter().rev() {
         if value.is_some() {
             return Err(err(
@@ -57,27 +58,66 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                     .decode(text.trim())
                     .map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
-            "serialize" => value = Some(php_unserialize(&cur)?),
+            "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
             "yaml" => {
                 validate_yaml_syntax(&cur)?;
-                value = Some(
+                value = Some(Val::Json(
                     serde_yaml_ng::from_slice(&cur)
                         .map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?,
-                );
+                ));
             }
             "json" | "jsons" => {
-                strict_json::parse_bytes(&cur)
-                    .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?;
-                value = Some(serde_json::from_slice(&cur)
-                    .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)
+                value = Some(Val::Ordered(
+                    strict_json::parse_bytes(&cur)
+                        .map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?,
+                ))
             }
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(match value {
-        Some(v) => Val::Json(v),
-        None => Val::Str(String::from_utf8_lossy(&cur).into_owned()),
-    })
+    Ok(value.unwrap_or_else(|| Val::Str(String::from_utf8_lossy(&cur).into_owned())))
+}
+
+/// An ordered-json value → stored representation. The first stage is `json`
+/// or `jsons` and writes the compact text of the value; a JSON null is NULL.
+pub fn encode_ordered(styles: &[&str], v: &strict_json::Value) -> Result<Param> {
+    if v.kind() == strict_json::Kind::Null {
+        return Ok(Param::Null);
+    }
+    match styles.first() {
+        Some(&"json") | Some(&"jsons") => finish(&styles[1..], v.compact().into_bytes()),
+        _ => Err(err(CODEC_UNSUPPORTED, format!("an ordered-json value needs the first style json, not {styles:?}"))),
+    }
+}
+
+/// Applies the stages that follow a value stage (base64, gz) to encoded bytes.
+fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
+    for st in styles {
+        match *st {
+            "base64" => {
+                cur = base64::engine::general_purpose::STANDARD
+                    .encode(&cur)
+                    .into_bytes()
+            }
+            "gz" => {
+                let mut enc =
+                    flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+                enc.write_all(&cur)
+                    .map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+                return Ok(Param::Bytes(
+                    enc.finish()
+                        .map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?,
+                ));
+            }
+            "json" | "jsons" | "serialize" | "yaml" => {
+                return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style")))
+            }
+            other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+        }
+    }
+    Ok(Param::Str(
+        String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?,
+    ))
 }
 
 /// Value → stored representation as a bind parameter (`Str`, or `Bytes` for gz).
@@ -759,8 +799,10 @@ mod tests {
                 None => Val::Null,
                 Some(b) => Val::Bytes(base64::engine::general_purpose::STANDARD.decode(b).unwrap()),
             };
-            let got = match decode(&v.styles, &raw) {
-                Ok(Val::Json(j)) => j,
+            let decoded = decode(&v.styles, &raw);
+            let got = match &decoded {
+                Ok(Val::Json(j)) => j.clone(),
+                Ok(Val::Ordered(o)) => crate::value::ordered_to_json(o),
                 Ok(Val::Null) => Value::Null,
                 other => {
                     fails += 1;
@@ -773,7 +815,10 @@ mod tests {
                 eprintln!("{}: decoded {got} want {}", v.name, v.value);
             }
             let styles: Vec<&str> = v.styles.iter().map(String::as_str).collect();
-            let enc = encode(&styles, Some(&got)).unwrap();
+            let enc = match &decoded {
+                Ok(Val::Ordered(o)) => encode_ordered(&styles, o).unwrap(),
+                _ => encode(&styles, Some(&got)).unwrap(),
+            };
             let enc_b64 = match &enc {
                 Param::Null => None,
                 Param::Str(s) => {
@@ -798,6 +843,7 @@ mod tests {
             };
             match decode(&v.styles, &back_raw) {
                 Ok(Val::Json(j)) if norm(&j) == norm(&v.value) => {}
+                Ok(Val::Ordered(o)) if norm(&crate::value::ordered_to_json(&o)) == norm(&v.value) => {}
                 Ok(Val::Null) if v.value.is_null() => {}
                 other => {
                     fails += 1;
@@ -904,5 +950,32 @@ mod tests {
             decode(&yaml, &Val::Str("1: value\n".into())).unwrap(),
             Val::Json(serde_json::json!({"1": "value"}))
         );
+    }
+
+    /// The json stage returns the ordered-json value with its member order,
+    /// number text, and {} apart from []; the write keeps the same text.
+    #[test]
+    fn json_stage_keeps_ordered_json() {
+        let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
+        for styles in [vec!["json"], vec!["jsons"], vec!["json", "gz"], vec!["json", "base64"]] {
+            let value = strict_json::parse(text).unwrap();
+            let stored = encode_ordered(&styles, &value).unwrap();
+            let raw = match stored {
+                Param::Str(s) => Val::Str(s),
+                Param::Bytes(b) => Val::Bytes(b),
+                other => panic!("{styles:?}: stored {other:?}"),
+            };
+            if styles.len() == 1 {
+                assert_eq!(raw, Val::Str(text.into()), "{styles:?}: stored text");
+            }
+            let owned: Vec<String> = styles.iter().map(|s| s.to_string()).collect();
+            match decode(&owned, &raw).unwrap() {
+                Val::Ordered(v) => assert_eq!(v.compact(), text, "{styles:?}: read"),
+                other => panic!("{styles:?}: read {other:?}"),
+            }
+        }
+        assert_eq!(encode_ordered(&["json"], &strict_json::Value::null()).unwrap(), Param::Null);
+        assert_eq!(encode_ordered(&["serialize"], &strict_json::parse("{}").unwrap()).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(decode(&["json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
     }
 }

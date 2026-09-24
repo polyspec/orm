@@ -87,7 +87,7 @@ function auditBigintService(string $dsn): void
         $got[] = $row->getTableLabel() . ':' . ($row->getServiceSeq() ?? 'null');
     }
     check($got === ['routed:42', 'unowned:null'], 'changes ' . implode(',', $got));
-    check(str_contains(json_encode($rows[0]->getAfterValue(), JSON_THROW_ON_ERROR), '"render":"ssr"'), 'render default');
+    check(str_contains(\OrderedJson\stringify($rows[0]->getAfterValue()), '"render":"ssr"'), 'render default');
     $db->close();
     dropTables($dsn);
 }

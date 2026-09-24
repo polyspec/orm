@@ -139,9 +139,9 @@ impl<T: Into<Param>> From<Option<T>> for Param {
     }
 }
 
-/// A value read from a row, positionally. `Json` is a styled column after decoding (docs/codec.md).
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+/// A value read from a row, positionally. `Ordered` is a column after the `json`
+/// or `jsons` stage; `Json` is a column after another style stage (docs/codec.md).
+#[derive(Debug, Clone, Default)]
 pub enum Val {
     #[default]
     Null,
@@ -153,10 +153,48 @@ pub enum Val {
     Date(NaiveDate),
     Bool(bool),
     Json(serde_json::Value),
+    Ordered(ordered_json::Value),
+}
+
+/// Ordered-json values are equal when their compact texts are equal.
+impl PartialEq for Val {
+    fn eq(&self, other: &Val) -> bool {
+        match (self, other) {
+            (Val::Null, Val::Null) => true,
+            (Val::I64(a), Val::I64(b)) => a == b,
+            (Val::F64(a), Val::F64(b)) => a == b,
+            (Val::Str(a), Val::Str(b)) => a == b,
+            (Val::Bytes(a), Val::Bytes(b)) => a == b,
+            (Val::DateTime(a), Val::DateTime(b)) => a == b,
+            (Val::Date(a), Val::Date(b)) => a == b,
+            (Val::Bool(a), Val::Bool(b)) => a == b,
+            (Val::Json(a), Val::Json(b)) => a == b,
+            (Val::Ordered(a), Val::Ordered(b)) => a.compact() == b.compact(),
+            _ => false,
+        }
+    }
 }
 
 
 impl Val {
+    /// An ordered-json value; the JSON null is `Val::Null`.
+    pub fn ordered(v: ordered_json::Value) -> Val {
+        if v.kind() == ordered_json::Kind::Null {
+            Val::Null
+        } else {
+            Val::Ordered(v)
+        }
+    }
+
+    /// Moves an ordered-json value out (leaves Null); NULL is the JSON null.
+    pub fn take_ordered(&mut self) -> ordered_json::Value {
+        match std::mem::take(self) {
+            Val::Ordered(v) => v,
+            Val::Null => ordered_json::Value::null(),
+            other => ordered_json::Value::string(&other.as_string()),
+        }
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Val::Null)
     }
@@ -193,6 +231,7 @@ impl Val {
     pub fn take_json(&mut self) -> Option<serde_json::Value> {
         match self {
             Val::Json(v) => Some(std::mem::take(v)),
+            Val::Ordered(v) => Some(ordered_to_json(v)),
             Val::Null => None,
             other => Some(serde_json::Value::String(other.as_string())),
         }
@@ -224,6 +263,7 @@ impl Val {
             Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
             Val::Date(d) => d.to_string(),
             Val::Json(v) => v.to_string(),
+            Val::Ordered(v) => v.compact(),
             Val::Null => String::new(),
         }
     }
@@ -241,6 +281,7 @@ impl Val {
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
             Val::Json(v) => v.clone(),
+            Val::Ordered(v) => ordered_to_json(v),
         }
     }
 
@@ -287,4 +328,9 @@ fn esc(s: &str) -> String {
     s.replace('\\', "\\\\")
         .replace('%', "\\%")
         .replace('_', "\\_")
+}
+
+/// The serde_json form of an ordered-json value (the array form of a row).
+pub(crate) fn ordered_to_json(v: &ordered_json::Value) -> serde_json::Value {
+    serde_json::from_str(&v.compact()).expect("ordered-json text is valid JSON")
 }
