@@ -31,6 +31,7 @@ pub type OnQuery = Arc<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
+    /// Key of aes_version for aes writes; empty takes aes_keys[aes_version].
     pub aes_key: String,
     pub blind_index_key: String,
     pub aes_version: i32,
@@ -318,8 +319,16 @@ impl Db {
         if cfg.aes_version == 0 {
             cfg.aes_version = 1;
         }
-        if cfg.aes_keys.is_empty() && !cfg.aes_key.is_empty() {
-            cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
+        // aes_key is the key of aes_version: writes encrypt with it, and
+        // aes_keys holds it at aes_version.
+        if cfg.aes_keys.is_empty() {
+            if !cfg.aes_key.is_empty() {
+                cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
+            }
+        } else if cfg.aes_key.is_empty() {
+            cfg.aes_key = cfg.aes_keys.get(&cfg.aes_version).cloned().unwrap_or_default();
+        } else if cfg.aes_keys.get(&cfg.aes_version) != Some(&cfg.aes_key) {
+            return Err(Error::Config(format!("aes_key differs from aes_keys[{}]", cfg.aes_version)));
         }
         Ok(Db {
             inner: Arc::new(DbInner {

@@ -399,6 +399,13 @@ $tests['aes rotation'] =function (Db $db, string $dsn): void {
     check($status->total === 4 && $status->pending === 4, 'status');
     check($db->utils()->aes()->rotate(new Battle, $keyring) === 4, 'rotate');
     check($db->utils()->aes()->status(new Battle, $keyring)->pending === 0, 'after rotation');
+    global $schema;
+    // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
+    $versioned = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
+    (new Battle)($versioned)->getBySeq($f['battles'][1]->getSeq())->setAesHexEmail('second@example.com')->update();
+    $current = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
+    check((new Battle)($current)->getBySeq($f['battles'][1]->getSeq())->getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
+    check(code(fn() => new Config(schemaPath: $schema, aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
 };
 
 // Inserts and reads more values than SQLite binds in one statement: the inserts

@@ -12,6 +12,7 @@ import { Engine } from './engine/index.js';
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
 
 export interface ConnectOptions {
+  /** key of aesVersion for aes writes; absent takes aesKeys[aesVersion] */
   aesKey?: string;
   blindIndexKey?: string;
   aesVersion?: number;
@@ -220,10 +221,14 @@ export class Db {
 
   private constructor(public readonly pool: DriverPool, public readonly zone: string, engine: Engine, options: ConnectOptions) {
     this.engines.set(engine.schemaHash, engine);
-    this.aesKey = options.aesKey ?? '';
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
+    // aesKey is the key of aesVersion: writes encrypt with it, and aesKeys holds it at aesVersion.
+    const given = options.aesKey ?? '';
+    const listed = options.aesKeys?.get(this.aesVersion) ?? '';
+    if (given !== '' && options.aesKeys !== undefined && listed !== given) throw new OrmError('CONFIG', `aesKey differs from aesKeys[${this.aesVersion}]`);
+    this.aesKey = given !== '' ? given : listed;
     const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
     this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
     this.onQuery = options.onQuery;

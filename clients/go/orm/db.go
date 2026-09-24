@@ -24,7 +24,7 @@ import (
 // Config is the connection configuration. Paths and secrets are declared,
 // never discovered.
 type Config struct {
-	AESKey             string           // secret "aes" for aes and aes_hex columns
+	AESKey             string           // key of AESVersion for aes writes; empty takes AESKeys[AESVersion]
 	BlindIndexKey      string           // secret for encrypted equality indexes
 	AESVersion         int32            // version written with AES payloads; zero selects 1
 	AESKeys            map[int32]string // every declared version, used to decode mixed-version rows
@@ -242,8 +242,16 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 	if cfg.AESVersion == 0 {
 		cfg.AESVersion = 1
 	}
-	if len(cfg.AESKeys) == 0 && cfg.AESKey != "" {
+	// AESKey is the key of AESVersion: writes encrypt with it, and AESKeys
+	// holds it at AESVersion.
+	switch {
+	case len(cfg.AESKeys) == 0 && cfg.AESKey != "":
 		cfg.AESKeys = map[int32]string{cfg.AESVersion: cfg.AESKey}
+	case cfg.AESKey == "":
+		cfg.AESKey = cfg.AESKeys[cfg.AESVersion]
+	case cfg.AESKeys[cfg.AESVersion] != cfg.AESKey:
+		s.Close()
+		return nil, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
 	}
 	if err := RegisterEngine(eng); err != nil {
 		s.Close()

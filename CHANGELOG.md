@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make AES writes in the Go, PHP, Rust and TypeScript clients encrypt with the key of the current version, `AESKeys[AESVersion]`, when only the key list and the version are configured; such a write failed with `secret aes not configured`. A configured `AESKey` that differs from `AESKeys[AESVersion]` fails the connection with `CONFIG`.
+
 Make the PHP, Rust and TypeScript clients return the ordered-json value of a `json` or `jsons` stage, including `jsontext` and `json aes` columns, as the Go client does: PHP `OrderedJson\Value`, Rust `orm::ordered_json::Value`, and TypeScript `Value` of `ordered-json`. The value keeps the member order, the number text, and an empty object apart from an empty array. A write takes that value and stores its text unchanged; PHP and TypeScript also take the common value model, and Rust generated setters take only the ordered-json value. `toArray` keeps the value, and the JSON output of a model writes the decoded value. Values outside the JSON model, such as non-finite numbers, fail with `CODEC_ENCODE`.
 
 Make the Go generator scan generate a called model method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet. One `go generate` run over several model packages writes the final models of each package; a join or relation argument must still resolve to a model of the generated package.

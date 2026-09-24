@@ -316,7 +316,7 @@ async function transactions(db) {
   check(db.utils().stats().openConnections >= 1, `stats: ${JSON.stringify(db.utils().stats())}`);
 }
 
-async function aesRotation(db) {
+async function aesRotation(db, dsn) {
   const f = await seed(db);
   const b = await new Battle().connect(db).getBySeq(f.battles[0].getSeq());
   await b.setAesHexEmail('person@example.com').update();
@@ -329,6 +329,17 @@ async function aesRotation(db) {
   check(rotated === 4, `rotated ${rotated}`);
   status = await db.utils().aes().status(new Battle(), keyring);
   check(status.pending === 0, `after rotation: ${JSON.stringify(status)}`);
+  // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
+  const versioned = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
+  const current = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
+  try {
+    check(await code((async () => { await (await new Battle().connect(versioned).getBySeq(f.battles[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
+    check((await new Battle().connect(current).getBySeq(f.battles[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
+    check(await code(Db.connect(dsn, schemaPath, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
+  } finally {
+    await versioned.close();
+    await current.close();
+  }
 }
 
 function connect(dsn) {
