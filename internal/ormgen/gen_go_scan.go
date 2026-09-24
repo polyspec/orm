@@ -309,14 +309,22 @@ func (g *goGen) visit(p *packages.Package, f *ast.File, modelPath string) {
 		if !ast.IsExported(name) {
 			return true
 		}
+		// An argument of an unresolved type, such as a value computed with a
+		// method that another model package does not have yet, is a value:
+		// the generated signature depends only on the method name. A joined
+		// model argument must resolve to a model of this package.
 		args := make([]argInfo, len(call.Args))
+		unresolved := false
 		for i, a := range call.Args {
-			if !known(info.TypeOf(a)) && g.modelOfExpr(info, a, modelPath) == nil {
-				return true
-			}
 			args[i] = argInfo{model: g.modelOfExpr(info, a, modelPath), columnFunc: isOrmFunc(info, a)}
+			if !known(info.TypeOf(a)) && args[i].model == nil {
+				unresolved = true
+			}
 		}
-		if name == "Relation" || name == "Relations" || strings.HasPrefix(name, "Join") || strings.HasPrefix(name, "LeftJoin") {
+		if unresolved && modelArgument(name) {
+			return true
+		}
+		if modelArgument(name) {
 			if len(call.Args) == 1 && args[0].model != nil {
 				g.relationGetter(pos, gm, args[0].model, name == "Relations", aliasOf(info, f, call.Args[0]))
 			}
@@ -331,6 +339,11 @@ func (g *goGen) visit(p *packages.Package, f *ast.File, modelPath string) {
 		g.method(pos, gm, name, args)
 		return true
 	})
+}
+
+// modelArgument reports whether a model method takes a model argument.
+func modelArgument(name string) bool {
+	return name == "Relation" || name == "Relations" || strings.HasPrefix(name, "Join") || strings.HasPrefix(name, "LeftJoin")
 }
 
 // aliasOf finds the Alias<Name> call applied to a relation child: in the
