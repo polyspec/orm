@@ -29,7 +29,7 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 3. Regression check (`make perf-check`)
 
-The check measures the generated client and an equivalent native result for 300 p50 samples in one process. Both sides select the same non-lazy columns. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
+The check measures the generated client and an equivalent native result in one process: 100 warm-up pairs, then 1,000 adjacent pairs whose order alternates, and it compares the median of the per-pair client/native ratios with the bound. Load that slows one pair slows both of its sides, so the median ratio does not follow the machine load. Each check also runs beside one busy process per CPU (`TestHotPathGateUnderLoad`, and `ORM_PERF_CPU_LOAD=1` for the PHP check) and must pass there as well. Both sides select the same non-lazy columns. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|

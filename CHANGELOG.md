@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make the Go and PHP hot-path checks compare the median of 1,000 per-pair client/native ratios, measured after 100 warm-up pairs in alternating order, with the unchanged bounds (1.35 and 1.25), and run each check a second time beside one busy process per CPU (`TestHotPathGateUnderLoad`, `ORM_PERF_CPU_LOAD=1`). `make perf-check` runs both.
+
 Reduce the allocations of the Go client when it reads rows: row models hold no statement builder until they are used as one, row cores and row states are allocated in one block per result, the loaded key values are a slice instead of a map, and the MySQL driver reads datetime cells in the connection time zone, so the client does not convert them again. The 100-row list of the bench allocates 270,611 B and 4,336 objects per query instead of 358,386 B and 5,233; results are unchanged.
 
 Make the Rust `orm-gen` command tests fail when `ORM_TOOLS_MYSQL_DSN` or `ORM_TOOLS_POSTGRES_DSN` is unset instead of leaving out that database.
