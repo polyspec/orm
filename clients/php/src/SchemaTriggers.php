@@ -25,8 +25,8 @@ final class SchemaTriggers
     public static function auditMarker(string $table, array $a): string
     {
         $s = self::MARKER . 'audit table=' . $table . ' mode=' . $a['mode'];
-        if ($a['site'] !== '') {
-            $s .= ' service=' . $a['site'];
+        if ($a['service'] !== '') {
+            $s .= ' service=' . $a['service'];
         }
         if ($a['redact'] !== []) {
             $s .= ' redact=' . implode(',', array_map(static fn(array $p): string => implode('.', $p), $a['redact']));
@@ -156,8 +156,8 @@ final class SchemaTriggers
             }
             $b .= "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
             $b .= "  END IF;\n";
-            if ($a['site'] !== '') {
-                $b .= "  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($a['site']) . '::text ELSE NEW.' . $q($a['site']) . "::text END;\n";
+            if ($a['service'] !== '') {
+                $b .= "  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD." . $q($a['service']) . '::text ELSE NEW.' . $q($a['service']) . "::text END;\n";
             }
             $keys = [];
             foreach ($e['pk'] as $k) {
@@ -192,10 +192,24 @@ final class SchemaTriggers
         ];
     }
 
-    /** A column value for a JSON object on MySQL and SQLite. */
-    /** A PostgreSQL JSON value; a text column holding JSON is recorded as JSON. */
+    /** The value an audit change records for a redacted value. */
+    private const REDACTED_MARKER = '{"redacted": true, "present": true}';
+
+    /** Whether a column holds an AES stage, which an audit change records as the redaction marker. */
+    private static function redacted(array $c): bool
+    {
+        return in_array('aes', $c['styles'] ?? [], true);
+    }
+
+    /**
+     * A PostgreSQL JSON value; a text column holding JSON is recorded as JSON, and an AES column
+     * as the redaction marker, or null when it holds no value.
+     */
     private static function postgresValue(array $c, string $ref): string
     {
+        if (self::redacted($c)) {
+            return 'CASE WHEN ' . $ref . ' IS NULL THEN NULL ELSE ' . self::literal(self::REDACTED_MARKER) . '::jsonb END';
+        }
         $type = SchemaDdl::type($c, 'postgres');
         if ($type === 'text' || str_starts_with($type, 'varchar')) {
             return 'CASE WHEN ' . $ref . ' IS JSON THEN ' . $ref . '::jsonb ELSE to_jsonb(' . $ref . ') END';
@@ -218,8 +232,18 @@ final class SchemaTriggers
         return $parts === [] ? "'{}'::jsonb" : implode(' || ', $parts);
     }
 
+    /**
+     * A column value for a JSON object on MySQL and SQLite; an AES column is recorded as the
+     * redaction marker, or null when it holds no value.
+     */
     private static function value(array $c, string $ref, string $dialect): string
     {
+        if (self::redacted($c)) {
+            if ($dialect === 'sqlite') {
+                return 'json(CASE WHEN ' . $ref . ' IS NULL THEN NULL ELSE ' . self::literal(self::REDACTED_MARKER) . ' END)';
+            }
+            return 'CAST(IF(' . $ref . ' IS NULL, NULL, ' . self::literal(self::REDACTED_MARKER) . ') AS JSON)';
+        }
         if ($dialect === 'sqlite') {
             return match (SchemaDdl::type($c, 'sqlite')) {
                 'BLOB' => 'CASE WHEN ' . $ref . " IS NULL THEN NULL ELSE '\\x' || lower(hex(" . $ref . ')) END',
@@ -293,15 +317,15 @@ final class SchemaTriggers
         return ($dialect === 'mysql' ? 'JSON_OBJECT(' : 'json_object(') . implode(', ', $parts) . ')';
     }
 
-    private static function site(array $a, string $event, \Closure $q): string
+    private static function service(array $a, string $event, \Closure $q): string
     {
-        if ($a['site'] === '') {
+        if ($a['service'] === '') {
             return 'NULL';
         }
         if ($event === 'UPDATE') {
-            return 'COALESCE(NEW.' . $q($a['site']) . ', OLD.' . $q($a['site']) . ')';
+            return 'COALESCE(NEW.' . $q($a['service']) . ', OLD.' . $q($a['service']) . ')';
         }
-        return self::row($event) . '.' . $q($a['site']);
+        return self::row($event) . '.' . $q($a['service']);
     }
 
     private static function mysqlAudit(array $m, array $e, array $a, string $markers): array
@@ -348,7 +372,7 @@ final class SchemaTriggers
                         $b .= '  SET ' . $v . ' = IF(JSON_CONTAINS_PATH(' . $v . ", 'one', " . $p . '), JSON_SET(' . $v . ', ' . $p . ", JSON_OBJECT('redacted', CAST('true' AS JSON), 'present', CAST('true' AS JSON))), " . $v . ");\n";
                     }
                 }
-                $insert = 'INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ") VALUES (audit_operation_seq, '" . $event . "', " . self::site($a, $event, $q) . ', '
+                $insert = 'INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ") VALUES (audit_operation_seq, '" . $event . "', " . self::service($a, $event, $q) . ', '
                     . self::literal($e['table']) . ', ' . self::key($e, $event, 'mysql', $q) . ', audit_old, audit_new);';
                 $b .= $event === 'UPDATE'
                     ? "  IF JSON_LENGTH(audit_old) > 0 OR JSON_LENGTH(audit_new) > 0 THEN\n    " . $insert . "\n  END IF;\n"
@@ -389,7 +413,7 @@ final class SchemaTriggers
                         . ", json_object('redacted', json('true'), 'present', json('true'))) ELSE r." . $v . ' END';
                     $source = 'SELECT ' . $redacted('n') . ' AS n, ' . $redacted('o') . ' AS o FROM (' . $source . ') AS r';
                 }
-                $b .= 'INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ') SELECT ' . $operation . ", '" . $event . "', " . self::site($a, $event, $q) . ', '
+                $b .= 'INSERT INTO ' . $q($l['change']['table']) . ' (' . self::changeColumns($l, $q) . ') SELECT ' . $operation . ", '" . $event . "', " . self::service($a, $event, $q) . ', '
                     . self::literal($e['table']) . ', ' . self::key($e, $event, 'sqlite', $q) . ', v.o, v.n FROM (' . $source . ') AS v';
                 if ($event === 'UPDATE') {
                     $b .= " WHERE v.o <> '{}' OR v.n <> '{}'";

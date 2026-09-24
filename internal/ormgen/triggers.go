@@ -229,10 +229,18 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 	return o
 }
 
+// auditRedactedMarker is the value an audit change records for a redacted
+// value.
+const auditRedactedMarker = `{"redacted": true, "present": true}`
+
 // postgresAuditValue renders a column value for a PostgreSQL JSON object. A
 // text column holding JSON, such as jsontext, is recorded as JSON, as it is on
-// MySQL and SQLite.
+// MySQL and SQLite. An AES column is recorded as the redaction marker, or
+// null when it holds no value.
 func postgresAuditValue(c *schema.Col, ref string) string {
+	if slices.Contains(c.Styles, "aes") {
+		return "CASE WHEN " + ref + " IS NULL THEN NULL ELSE " + sqlLiteral(auditRedactedMarker) + "::jsonb END"
+	}
 	if t, err := ddlType(c, "postgres"); err == nil && (t == "text" || strings.HasPrefix(t, "varchar")) {
 		return "CASE WHEN " + ref + " IS JSON THEN " + ref + "::jsonb ELSE to_jsonb(" + ref + ") END"
 	}
@@ -263,7 +271,15 @@ func postgresRowObject(e *schema.Entity, row string, q func(string) string) stri
 // Binary values use PostgreSQL's hex text form. SQLite stores JSON as text, so
 // valid JSON text in a text column becomes a JSON value, as a PostgreSQL json
 // column does; the rule uses the storage type, which a live schema reports.
+// An AES column is recorded as the redaction marker, or null when it holds no
+// value.
 func auditValue(c *schema.Col, ref, dialect string) string {
+	if slices.Contains(c.Styles, "aes") {
+		if dialect == "sqlite" {
+			return "json(CASE WHEN " + ref + " IS NULL THEN NULL ELSE " + sqlLiteral(auditRedactedMarker) + " END)"
+		}
+		return "CAST(IF(" + ref + " IS NULL, NULL, " + sqlLiteral(auditRedactedMarker) + ") AS JSON)"
+	}
 	if dialect == "sqlite" {
 		switch t, _ := ddlType(c, "sqlite"); t {
 		case "BLOB":

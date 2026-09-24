@@ -46,8 +46,8 @@ pub fn audit_log_marker(l: &AuditLog) -> String {
 
 pub fn audit_marker(table: &str, a: &Audit) -> String {
     let mut s = format!("{TRIGGER_MARKER}audit table={table} mode={}", a.mode);
-    if !a.site.is_empty() {
-        s += &format!(" service={}", a.site);
+    if !a.service.is_empty() {
+        s += &format!(" service={}", a.service);
     }
     if !a.redact.is_empty() {
         s += &format!(" redact={}", a.redact.iter().map(|p| p.join(".")).collect::<Vec<_>>().join(","));
@@ -181,9 +181,9 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
         }
         b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
         b += "  END IF;\n";
-        if !a.site.is_empty() {
-            let site = q(&a.site);
-            b += &format!("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.{site}::text ELSE NEW.{site}::text END;\n");
+        if !a.service.is_empty() {
+            let service = q(&a.service);
+            b += &format!("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.{service}::text ELSE NEW.{service}::text END;\n");
         }
         let keys: Vec<String> =
             e.pk.iter().flat_map(|k| [literal(k), format!("to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.{0} ELSE NEW.{0} END)", q(k))]).collect();
@@ -221,8 +221,21 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
     }
 }
 
-/// A PostgreSQL JSON value; a text column holding JSON is recorded as JSON.
+/// The value an audit change records for a redacted value.
+const REDACTED_MARKER: &str = r#"{"redacted": true, "present": true}"#;
+
+/// Whether a column holds an AES stage, whose value an audit change records
+/// as the redaction marker, or null when it holds no value.
+fn redacted_column(c: &Col) -> bool {
+    c.styles.iter().any(|s| s == "aes")
+}
+
+/// A PostgreSQL JSON value; a text column holding JSON is recorded as JSON,
+/// and an AES column as the redaction marker.
 fn postgres_value(c: &Col, r: &str) -> String {
+    if redacted_column(c) {
+        return format!("CASE WHEN {r} IS NULL THEN NULL ELSE {}::jsonb END", literal(REDACTED_MARKER));
+    }
     let t = ddl_type(c, "postgres").unwrap_or_default();
     if t == "text" || t.starts_with("varchar") {
         return format!("CASE WHEN {r} IS JSON THEN {r}::jsonb ELSE to_jsonb({r}) END");
@@ -245,8 +258,15 @@ fn postgres_row_object(e: &Entity, row: &str, q: &dyn Fn(&str) -> String) -> Str
 /// A column value for a JSON object on MySQL and SQLite. Binary values use
 /// PostgreSQL's hex text form. SQLite stores JSON as text, so valid JSON text
 /// in a text column becomes a JSON value; the rule uses the storage type,
-/// which a live schema reports.
+/// which a live schema reports. An AES column is recorded as the redaction
+/// marker.
 fn audit_value(c: &Col, r: &str, dialect: &str) -> String {
+    if redacted_column(c) {
+        if dialect == "sqlite" {
+            return format!("json(CASE WHEN {r} IS NULL THEN NULL ELSE {} END)", literal(REDACTED_MARKER));
+        }
+        return format!("CAST(IF({r} IS NULL, NULL, {}) AS JSON)", literal(REDACTED_MARKER));
+    }
     if dialect == "sqlite" {
         return match ddl_type(c, "sqlite").as_deref() {
             Ok("BLOB") => format!("CASE WHEN {r} IS NULL THEN NULL ELSE '\\x' || lower(hex({r})) END"),
@@ -322,13 +342,13 @@ fn audit_key(e: &Entity, event: &str, dialect: &str, q: &dyn Fn(&str) -> String)
 }
 
 fn audit_service(a: &Audit, event: &str, q: &dyn Fn(&str) -> String) -> String {
-    if a.site.is_empty() {
+    if a.service.is_empty() {
         return "NULL".into();
     }
     if event == "UPDATE" {
-        return format!("COALESCE(NEW.{}, OLD.{})", q(&a.site), q(&a.site));
+        return format!("COALESCE(NEW.{}, OLD.{})", q(&a.service), q(&a.service));
     }
-    format!("{}.{}", row_of(event), q(&a.site))
+    format!("{}.{}", row_of(event), q(&a.service))
 }
 
 fn mysql_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> TriggerObject {

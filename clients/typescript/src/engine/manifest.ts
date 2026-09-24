@@ -90,7 +90,7 @@ export interface AuditLog {
 export interface AuditDeclaration {
   readonly entity: string;
   readonly mode: 'changes' | 'operations';
-  readonly site?: string;
+  readonly service?: string;
   readonly redact?: readonly (readonly string[])[];
 }
 

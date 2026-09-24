@@ -131,7 +131,7 @@ fn orm_directive_options(kind: &str) -> Option<&'static [&'static str]> {
         "foreign" => &["entity", "columns", "references", "name", "on_delete", "deferred"],
         "immutable" => &["entity"],
         "audit_log" => &["operation", "context", "change"],
-        "audit" => &["entity", "mode", "site", "redact"],
+        "audit" => &["entity", "mode", "service", "redact"],
         "field" => &["relation", "fk", "public", "required", "order"],
         "public-key" => &["entity", "field", "type", "unique", "stable"],
         "resource-key" => &["route", "param", "field"],

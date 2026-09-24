@@ -24,7 +24,7 @@ export function auditLogMarker(l: AuditLog): string {
 
 export function auditMarker(table: string, a: AuditDeclaration): string {
   let s = `${triggerMarker}audit table=${table} mode=${a.mode}`;
-  if ((a.site ?? '') !== '') s += ` service=${a.site}`;
+  if ((a.service ?? '') !== '') s += ` service=${a.service}`;
   if ((a.redact ?? []).length > 0) s += ` redact=${a.redact!.map(p => p.join('.')).join(',')}`;
   return s;
 }
@@ -130,7 +130,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
     }
     b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
     b += '  END IF;\n';
-    if ((a.site ?? '') !== '') b += `  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.site!)}::text ELSE NEW.${q(a.site!)}::text END;\n`;
+    if ((a.service ?? '') !== '') b += `  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.service!)}::text ELSE NEW.${q(a.service!)}::text END;\n`;
     const keys = e.pk.flatMap(k => [literal(k), `to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.${q(k)} ELSE NEW.${q(k)} END)`]);
     b += `  audit_key := jsonb_build_object(${keys.join(', ')});\n`;
     for (const path of a.redact ?? []) {
@@ -160,9 +160,15 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
   };
 }
 
-/** A column value for a JSON object on MySQL and SQLite. */
-/** A PostgreSQL JSON value; a text column holding JSON is recorded as JSON. */
+/** The value an audit change records for a redacted value. */
+const redactedMarker = '{"redacted": true, "present": true}';
+
+/**
+ * A PostgreSQL JSON value; a text column holding JSON is recorded as JSON, and
+ * an AES column as the redaction marker, or null when it holds no value.
+ */
 function postgresValue(c: Column, ref: string): string {
+  if ((c.styles ?? []).includes('aes')) return `CASE WHEN ${ref} IS NULL THEN NULL ELSE ${literal(redactedMarker)}::jsonb END`;
   const type = ddlType(c, 'postgres');
   if (type === 'text' || type.startsWith('varchar')) return `CASE WHEN ${ref} IS JSON THEN ${ref}::jsonb ELSE to_jsonb(${ref}) END`;
   return `to_jsonb(${ref})`;
@@ -179,7 +185,15 @@ function postgresRowObject(e: Entity, row: string, q: Quote): string {
   return parts.length === 0 ? "'{}'::jsonb" : parts.join(' || ');
 }
 
+/**
+ * A column value for a JSON object on MySQL and SQLite; an AES column is
+ * recorded as the redaction marker, or null when it holds no value.
+ */
 function auditValue(c: Column, ref: string, dialect: string): string {
+  if ((c.styles ?? []).includes('aes')) {
+    if (dialect === 'sqlite') return `json(CASE WHEN ${ref} IS NULL THEN NULL ELSE ${literal(redactedMarker)} END)`;
+    return `CAST(IF(${ref} IS NULL, NULL, ${literal(redactedMarker)}) AS JSON)`;
+  }
   if (dialect === 'sqlite') {
     switch (ddlType(c, 'sqlite')) {
       case 'BLOB': return `CASE WHEN ${ref} IS NULL THEN NULL ELSE '\\x' || lower(hex(${ref})) END`;
@@ -230,9 +244,9 @@ function auditKey(e: Entity, event: string, dialect: string, q: Quote): string {
 }
 
 function auditService(a: AuditDeclaration, event: string, q: Quote): string {
-  if ((a.site ?? '') === '') return 'NULL';
-  if (event === 'UPDATE') return `COALESCE(NEW.${q(a.site!)}, OLD.${q(a.site!)})`;
-  return `${rowOf(event)}.${q(a.site!)}`;
+  if ((a.service ?? '') === '') return 'NULL';
+  if (event === 'UPDATE') return `COALESCE(NEW.${q(a.service!)}, OLD.${q(a.service!)})`;
+  return `${rowOf(event)}.${q(a.service!)}`;
 }
 
 function mysqlAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: string): TriggerObject {

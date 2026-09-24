@@ -17,6 +17,7 @@ case "$LANGS" in *,go,*)
 esac
 case "$LANGS" in *,php,*)
   php clients/php/tests/model_test.php
+  php clients/php/tests/aes_json_test.php
   php clients/php/tests/schema_db_test.php
 esac
 case "$LANGS" in *,typescript,*)
