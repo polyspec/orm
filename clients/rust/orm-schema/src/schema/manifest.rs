@@ -577,6 +577,12 @@ fn build_column(dc: &DColumn) -> Result<Col, String> {
     if c.typ == "jsontext" && c.styles.is_empty() {
         c.styles = vec!["json".into()];
     }
+    if c.typ == "jsontext" && c.styles != ["json"] && c.styles != ["jsons"] {
+        return Err(format!(
+            "column {}: a jsontext column takes only the json or jsons stage; store an encrypted JSON value in a blob column with the stages json aes",
+            dc.name
+        ));
+    }
     if dc.name == "aes_key_version" {
         c.lazy = true;
     }
@@ -845,7 +851,7 @@ impl Manifest {
         }
         for e in self.ordered() {
             for c in &e.columns {
-                if c.styles.first().is_some_and(|s| s == "aes") {
+                if c.styles.iter().any(|s| s == "aes") {
                     let version = e.column(&e.aes_version);
                     let valid = version.is_some_and(|v| !v.nullable && (v.typ == "i32" || v.typ == "i64"));
                     if !valid {

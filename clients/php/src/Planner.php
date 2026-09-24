@@ -699,7 +699,7 @@ final class Planner
     private static function hasAes(array $ent): bool
     {
         foreach ($ent['columns'] as $c) {
-            if (($c['styles'][0] ?? '') === 'aes') {
+            if (in_array('aes', $c['styles'] ?? [], true)) {
                 return true;
             }
         }
@@ -709,7 +709,7 @@ final class Planner
     private static function assignsAes(array $ent, array $set): bool
     {
         foreach ($set as $a) {
-            if ((Manifest::column($ent, $a['column'])['styles'][0] ?? '') === 'aes') {
+            if (in_array('aes', Manifest::column($ent, $a['column'])['styles'] ?? [], true)) {
                 return true;
             }
         }
@@ -734,7 +734,7 @@ final class Planner
             return;
         }
         foreach ($ent['columns'] as $c) {
-            if (($c['styles'][0] ?? '') === 'aes' && !self::assigned($set, $c['name'])) {
+            if (in_array('aes', $c['styles'] ?? [], true) && !self::assigned($set, $c['name'])) {
                 throw self::err(Code::IR_INVALID, 'AES update must assign every AES column; missing ' . $c['name']);
             }
         }

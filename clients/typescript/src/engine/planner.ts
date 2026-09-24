@@ -98,11 +98,11 @@ function hasGroupBy(q: RequestQuery): boolean {
 function styles(c: Column): readonly string[] { return c.styles ?? []; }
 
 function aesVersionColumn(ent: Entity): string {
-  return ent.columns.some(c => styles(c)[0] === 'aes') ? 'aes_key_version' : '';
+  return ent.columns.some(c => styles(c).includes('aes')) ? 'aes_key_version' : '';
 }
 
 function assignsAES(ent: Entity, set: readonly Assignment[]): boolean {
-  return set.some(a => { const c = columnOf(ent, a.column); return c !== undefined && styles(c)[0] === 'aes'; });
+  return set.some(a => { const c = columnOf(ent, a.column); return c !== undefined && styles(c).includes('aes'); });
 }
 
 function assigned(set: readonly Assignment[], column: string): boolean { return set.some(a => a.column === column); }
@@ -114,7 +114,7 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
   if (assigned(set, version)) fail('IR_INVALID', `${version} is managed by the AES writer`);
   if (!requireComplete || !assignsAES(ent, set)) return;
   for (const col of ent.columns) {
-    if (styles(col)[0] === 'aes' && !assigned(set, col.name)) fail('IR_INVALID', `AES update must assign every AES column; missing ${col.name}`);
+    if (styles(col).includes('aes') && !assigned(set, col.name)) fail('IR_INVALID', `AES update must assign every AES column; missing ${col.name}`);
   }
 }
 

@@ -170,13 +170,9 @@ fn is_aes(col: &ColumnSchema) -> bool {
     col.styles.iter().any(|s| s == "aes")
 }
 
-fn first_aes(col: &ColumnSchema) -> bool {
-    col.styles.first().map(|s| s == "aes").unwrap_or(false)
-}
-
 /// The version column written with AES values.
 fn aes_version_column(ent: &EntitySchema) -> &'static str {
-    if ent.columns.iter().any(first_aes) {
+    if ent.columns.iter().any(is_aes) {
         "aes_key_version"
     } else {
         ""
@@ -188,7 +184,7 @@ fn assigned(set: &[ir::Assign], col: &str) -> bool {
 }
 
 fn assigns_aes(ent: &EntitySchema, set: &[ir::Assign]) -> bool {
-    set.iter().any(|a| ent.column(&a.column).map(first_aes).unwrap_or(false))
+    set.iter().any(|a| ent.column(&a.column).map(is_aes).unwrap_or(false))
 }
 
 /// Keeps the row-level key-version invariant: the version is managed by the
@@ -205,7 +201,7 @@ fn validate_aes_assignments(ent: &EntitySchema, set: &[ir::Assign], require_comp
         return Ok(());
     }
     for col in &ent.columns {
-        if first_aes(col) && !assigned(set, &col.name) {
+        if is_aes(col) && !assigned(set, &col.name) {
             return Err(err(codes::IR_INVALID, format!("AES update must assign every AES column; missing {}", col.name)));
         }
     }

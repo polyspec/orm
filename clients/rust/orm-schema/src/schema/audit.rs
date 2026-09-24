@@ -32,7 +32,7 @@ pub struct Audit {
     pub entity: String,
     pub mode: String,
     #[serde(default)]
-    pub site: String,
+    pub service: String,
     #[serde(default, deserialize_with = "super::manifest::null_default")]
     pub redact: Vec<Vec<String>>,
 }
@@ -112,9 +112,9 @@ pub(super) fn add_audit(m: &mut Manifest, x: &OrmDirective) -> Result<(), BuildE
     if mode != "changes" && mode != "operations" {
         return Err(berr(x.line, "%% orm:audit: mode must be changes or operations"));
     }
-    let mut audit = Audit { entity: name.to_owned(), mode: mode.to_owned(), site: arg(x, "site").to_owned(), redact: Vec::new() };
-    if !audit.site.is_empty() && e.column(&audit.site).is_none() {
-        return Err(berr(x.line, format!("%% orm:audit: unknown column {name}.{}", audit.site)));
+    let mut audit = Audit { entity: name.to_owned(), mode: mode.to_owned(), service: arg(x, "service").to_owned(), redact: Vec::new() };
+    if !audit.service.is_empty() && e.column(&audit.service).is_none() {
+        return Err(berr(x.line, format!("%% orm:audit: unknown column {name}.{}", audit.service)));
     }
     if let Some(value) = x.args.get("redact") {
         for item in value.split(',') {
@@ -166,7 +166,7 @@ pub(super) fn audit_log_json(l: &AuditLog) -> J {
 }
 
 pub(super) fn audit_json(a: &Audit) -> J {
-    let mut o = Obj::new().str("entity", &a.entity).str("mode", &a.mode).str_omit("site", &a.site);
+    let mut o = Obj::new().str("entity", &a.entity).str("mode", &a.mode).str_omit("service", &a.service);
     if !a.redact.is_empty() {
         o = o.put("redact", J::Arr(a.redact.iter().map(|p| json::strs(p)).collect()));
     }
