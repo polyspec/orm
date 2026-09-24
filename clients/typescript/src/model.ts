@@ -76,10 +76,12 @@ export abstract class Model implements ModelLike {
   public forShareNoWait(): this { this[CORE].lock = 'share_nowait'; return this; }
   public duplication(model: this): this { this[CORE].setDuplication(model); return this; }
 
-  /** Returns the first matching row, or null. */
-  public async get(): Promise<this | null> {
+  /** Returns the first matching row; NO_ROWS when no row matches. */
+  public async get(): Promise<this> {
     const rows = await load(this[CORE], 'one');
-    return (rows.first() as this | undefined) ?? null;
+    const row = rows.first() as this | undefined;
+    if (row === undefined) throw new OrmError('NO_ROWS', 'query matched no rows');
+    return row;
   }
   /** Returns the matching rows. */
   public async gets(): Promise<Collection<this>> { return load(this[CORE], 'all') as Promise<Collection<this>>; }
