@@ -140,6 +140,7 @@ pub(crate) struct OrderSpec {
 pub(crate) enum SetValue {
     Value(Param),
     Json(serde_json::Value),
+    Ordered(ordered_json::Value),
     Null,
     Raw(RawSpec),
     Plus(Param),
@@ -579,6 +580,13 @@ impl Core {
     /// Records a stored value of a column with codec styles.
     pub fn set_json(&mut self, column: &str, value: serde_json::Value) {
         let v = if value.is_null() { SetValue::Null } else { SetValue::Json(value) };
+        self.put_set(column, v);
+    }
+
+    /// Records the ordered-json value of a column with the `json` or `jsons`
+    /// stage; the JSON null stores NULL.
+    pub fn set_ordered(&mut self, column: &str, value: ordered_json::Value) {
+        let v = if value.kind() == ordered_json::Kind::Null { SetValue::Null } else { SetValue::Ordered(value) };
         self.put_set(column, v);
     }
 

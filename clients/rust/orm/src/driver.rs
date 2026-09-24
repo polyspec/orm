@@ -36,6 +36,7 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> bool {
         Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Val::Date(d) => d.to_string(),
         Val::Json(j) => j.to_string(),
+        Val::Ordered(j) => j.compact(),
     };
     let b = match p {
         Param::Null => return false,
@@ -81,6 +82,7 @@ pub(crate) fn parent_values<'a>(
                     Val::DateTime(t) => Param::DateTime(*t),
                     Val::Date(d) => Param::Date(*d),
                     Val::Json(j) => Param::Str(j.to_string()),
+                    Val::Ordered(j) => Param::Str(j.compact()),
                     Val::Null => Param::Null,
                 });
             }

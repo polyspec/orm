@@ -1,5 +1,5 @@
-//! Encrypted JSON value: a `json aes` column takes a JSON value, reads it back
-//! unchanged, rotates to another key version, and takes an update, on SQLite,
+//! Encrypted JSON value: a `json aes` column takes an ordered-json value, reads
+//! it back byte-for-byte, rotates to another key version, and takes an update, on SQLite,
 //! MySQL and PostgreSQL. The test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
@@ -70,14 +70,14 @@ async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
     Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("{dsn}: {e}"))
 }
 
-/// The config value of the single row, as JSON text.
+/// The config value of the single row, as its compact ordered-json text.
 async fn read(db: &Db) -> String {
     let mut q = connected(db);
     q.core_mut().add_all_columns();
     let rows = orm::model::gets(&q).await.unwrap().into_vec();
     assert_eq!(rows.len(), 1, "rows");
     match &rows[0].values["config"] {
-        Val::Json(v) => v.to_string(),
+        Val::Ordered(v) => v.compact(),
         other => panic!("config is {other:?}"),
     }
 }
@@ -120,9 +120,9 @@ async fn aes_json_column() {
         ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
         ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
     ];
-    // serde_json objects keep their keys sorted, so the texts use sorted keys.
-    let text = r#"{"a":[true,null,"x"],"n":-12.5,"token":"s3cret-token","z":{"a":[],"b":1}}"#;
-    let updated = r#"{"list":[1,"two",null],"token":"next-token"}"#;
+    // Member order, number text, and {} apart from [] survive the round trip.
+    let text = r#"{"token":"s3cret-token","b":1,"a":[],"c":{},"n":1.50,"z":[true,null,"x"]}"#;
+    let updated = r#"{"token":"next-token","list":[1,"two",null],"e":{}}"#;
     let one: &[(i32, &str)] = &[(1, "config-key-one")];
     let both: &[(i32, &str)] = &[(1, "config-key-one"), (2, "config-key-two")];
     for (driver, dsn) in &targets {
@@ -130,7 +130,7 @@ async fn aes_json_column() {
         drop_table(&first).await;
         first.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = connected(&first);
-        row.core_mut().set_json("config", serde_json::from_str(text).unwrap());
+        row.core_mut().set_ordered("config", orm::ordered_json::parse(text).unwrap());
         let seq = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}")).value("seq").unwrap_or_default().as_i64();
         assert_eq!(read(&first).await, text, "{driver}: read back");
         let (cell, version) = stored(&first).await;
@@ -146,7 +146,7 @@ async fn aes_json_column() {
         let again = open(dsn, both, 1).await;
         let mut changed = connected(&again);
         changed.core_mut().set("seq", Param::I64(seq));
-        changed.core_mut().set_json("config", serde_json::from_str(updated).unwrap());
+        changed.core_mut().set_ordered("config", orm::ordered_json::parse(updated).unwrap());
         orm::model::update(&mut changed, false).await.unwrap_or_else(|e| panic!("{driver}: update: {e}"));
         assert_eq!(stored(&again).await.1, 1, "{driver}: updated version");
         assert_eq!(read(&again).await, updated, "{driver}: updated read");

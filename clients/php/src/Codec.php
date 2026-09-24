@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Orm;
 
+use OrderedJson\Value;
 use Symfony\Component\Yaml\Yaml;
 use function OrderedJson\parse as orderedJsonParse;
 use function OrderedJson\stringify as orderedJsonStringify;
@@ -126,9 +127,10 @@ final class Codec
                     break;
                 case 'json':
                 case 'jsons':
+                    // The ordered-json value keeps the member order, the number text, and {} apart from [].
                     try {
-                        $v = json_decode(orderedJsonStringify(orderedJsonParse($v)), true, 512, JSON_THROW_ON_ERROR);
-                    } catch (\JsonException $e) {
+                        $v = orderedJsonParse($v);
+                    } catch (\InvalidArgumentException $e) {
                         throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage());
                     }
                     break;
@@ -169,7 +171,11 @@ final class Codec
                     break;
                 case 'json':
                 case 'jsons':
-                    $cur = orderedJsonStringify(orderedJsonParse(json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)));
+                    try {
+                        $cur = orderedJsonStringify(orderedJsonParse(self::jsonText($value)));
+                    } catch (\JsonException | \InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage());
+                    }
                     break;
                 case 'base64':
                     $cur = base64_encode($cur);
@@ -182,6 +188,44 @@ final class Codec
             }
         }
         return $styles[count($styles) - 1] === 'gz' ? new Bytes($cur) : $cur;
+    }
+
+    /**
+     * The JSON text of an ordered-json value or of the common value model. An
+     * ordered-json value, also inside an array, is written as its compact text.
+     */
+    private static function jsonText(mixed $value): string
+    {
+        if ($value instanceof Value) {
+            return orderedJsonStringify($value);
+        }
+        if (is_array($value)) {
+            $parts = [];
+            if (array_is_list($value)) {
+                foreach ($value as $item) {
+                    $parts[] = self::jsonText($item);
+                }
+                return '[' . implode(',', $parts) . ']';
+            }
+            foreach ($value as $key => $item) {
+                $parts[] = self::jsonText((string) $key) . ':' . self::jsonText($item);
+            }
+            return '{' . implode(',', $parts) . '}';
+        }
+        if ($value instanceof \stdClass) {
+            $parts = [];
+            foreach (get_object_vars($value) as $key => $item) {
+                $parts[] = self::jsonText((string) $key) . ':' . self::jsonText($item);
+            }
+            return '{' . implode(',', $parts) . '}';
+        }
+        if ($value instanceof \JsonSerializable) {
+            return self::jsonText($value->jsonSerialize());
+        }
+        if (is_object($value) || is_resource($value)) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . get_debug_type($value) . ' is not a JSON value');
+        }
+        return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
     private static function validateYamlValue(mixed $value): void

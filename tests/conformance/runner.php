@@ -117,6 +117,15 @@ $db = Orm::connect($dsn, new Config(
 ));
 
 $out = [];
+/** A result with every ordered-json value decoded; objects are stdClass, so {} stays apart from []. */
+function plain(mixed $v): mixed
+{
+    if ($v instanceof OrderedJson\Value) {
+        return json_decode(OrderedJson\stringify($v), false, 512, JSON_THROW_ON_ERROR);
+    }
+    return is_array($v) ? array_map('plain', $v) : $v;
+}
+
 function run(string $name, callable $fn): void
 {
     global $out, $log, $maskSeqs, $maskTs;
@@ -124,7 +133,7 @@ function run(string $name, callable $fn): void
     $maskSeqs = [];
     $maskTs = [];
     try {
-        $res = $fn();
+        $res = plain($fn());
     } catch (Throwable $e) {
         $res = ['error' => code($e)];
     }

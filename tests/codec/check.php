@@ -15,9 +15,12 @@ $vectors = json_decode(file_get_contents("$root/vectors.json"), true, 512, JSON_
 $fail = 0;
 $canon = fn(mixed $v): string => json_encode(canon($v), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
-/** Value model: sequential arrays are lists, other arrays are maps with sorted string keys. */
+/** Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted string keys. */
 function canon(mixed $v): mixed
 {
+    if ($v instanceof \OrderedJson\Value) {
+        $v = json_decode(\OrderedJson\stringify($v), true, 512, JSON_THROW_ON_ERROR);
+    }
     if (!is_array($v)) {
         return $v;
     }
