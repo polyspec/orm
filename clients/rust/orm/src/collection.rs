@@ -203,9 +203,9 @@ impl<M: Model> Collection<M> {
         .await
     }
 
-    /// The models as arrays.
-    pub fn to_array(&self) -> serde_json::Value {
-        serde_json::Value::Array(self.models().map(|m| crate::model::to_json(m)).collect())
+    /// The models as arrays; CODEC_ENCODE when a value has no serde_json form.
+    pub fn to_array(&self) -> crate::Result<serde_json::Value> {
+        Ok(serde_json::Value::Array(self.models().map(|m| crate::model::to_array(m)).collect::<crate::Result<_>>()?))
     }
 }
 
@@ -213,7 +213,7 @@ impl<M: Model> Collection<M> {
 pub trait AnyCollection: Any + Send + Sync {
     fn models_dyn(&self) -> Vec<&dyn AnyModel>;
     fn as_any(&self) -> &dyn Any;
-    fn to_json(&self) -> serde_json::Value;
+    fn to_array_dyn(&self) -> crate::Result<serde_json::Value>;
 }
 
 impl<M: Model> AnyCollection for Collection<M> {
@@ -225,14 +225,14 @@ impl<M: Model> AnyCollection for Collection<M> {
         self
     }
 
-    fn to_json(&self) -> serde_json::Value {
+    fn to_array_dyn(&self) -> crate::Result<serde_json::Value> {
         self.to_array()
     }
 }
 
 impl<M: Model> serde::Serialize for Collection<M> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
-        self.to_array().serialize(s)
+        self.to_array().map_err(serde::ser::Error::custom)?.serialize(s)
     }
 }
 

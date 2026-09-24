@@ -35,7 +35,7 @@
   "symbol_hashes": {
     "go": "sha256:10ee5bdbfe1d254ac061e23fdd87eae23d6d42513b0aa0f2381bcc9f1ddda137",
     "php": "sha256:c92b1709f4976ab547a64686abd85398d37c1ab710f6eb602466b373f6a8005d",
-    "rust": "sha256:dfb36e314cd288c6395d444e3fbcc795e5aea6f72863c2c538a77d65d40abf21",
+    "rust": "sha256:36604a0b30cdffc7d7e33002f0553ae591a37c4c97d739cab9705e85f1b0eec5",
     "typescript": "sha256:9514fbf8a41ddb175607c2b0046e5c8aeb110b655958208ec2e1354ba6b0f765"
   },
   "prohibited_symbols": [
@@ -1005,7 +1005,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::to_array",
-          "signature": "pub fn to_array(&self) -> orm::serde_json::Value"
+          "signature": "pub fn to_array(&self) -> orm::Result<orm::serde_json::Value>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.toArray",

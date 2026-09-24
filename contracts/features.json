@@ -151,7 +151,8 @@
         "tests/typescript/model.mjs",
         "clients/rust/tests/src/integration.rs",
         "engine/engine_test.go",
-        "clients/go/orm/jsontext_order_test.go"
+        "clients/go/orm/jsontext_order_test.go",
+        "clients/rust/orm/tests/model_output.rs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -166,6 +167,10 @@
         {
           "id": "queries-php",
           "command": "php clients/php/tests/model_test.php"
+        },
+        {
+          "id": "queries-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test model_output"
         },
         {
           "id": "queries-typescript",

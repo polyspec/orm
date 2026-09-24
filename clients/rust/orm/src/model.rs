@@ -1069,8 +1069,9 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool) -> Result<()> 
 
 /// The row values: columns, added outputs, attached values, and relation
 /// results. Relations merged with parent_node add their columns where the row
-/// has no value of the same name.
-pub fn to_json(m: &dyn AnyModel) -> serde_json::Value {
+/// has no value of the same name. A value that serde_json cannot represent
+/// returns CODEC_ENCODE.
+pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
     let c = m.core_dyn();
     let mut out = serde_json::Map::new();
     let empty = RowState::default();
@@ -1087,7 +1088,7 @@ pub fn to_json(m: &dyn AnyModel) -> serde_json::Value {
             Some(v) => v,
             None => st.extra.get(name).cloned().unwrap_or(Val::Null),
         };
-        out.insert(name.clone(), v.to_json());
+        out.insert(name.clone(), v.to_json()?);
     }
     for (name, v) in &c.news {
         out.entry(name.clone()).or_insert_with(|| v.clone());
@@ -1095,19 +1096,19 @@ pub fn to_json(m: &dyn AnyModel) -> serde_json::Value {
     for (name, rel) in &st.related {
         let v = match &rel.value {
             RelatedValue::One(None) => serde_json::Value::Null,
-            RelatedValue::One(Some(child)) => to_json(child.as_ref()),
-            RelatedValue::Many(coll) => coll.to_json(),
+            RelatedValue::One(Some(child)) => to_array(child.as_ref())?,
+            RelatedValue::Many(coll) => coll.to_array_dyn()?,
         };
         out.entry(name.clone()).or_insert(v);
     }
     for rel in st.related.values() {
         if let (true, RelatedValue::One(Some(child))) = (rel.flat, &rel.value) {
-            if let serde_json::Value::Object(fields) = to_json(child.as_ref()) {
+            if let serde_json::Value::Object(fields) = to_array(child.as_ref())? {
                 for (k, v) in fields {
                     out.entry(k).or_insert(v);
                 }
             }
         }
     }
-    serde_json::Value::Object(out)
+    Ok(serde_json::Value::Object(out))
 }

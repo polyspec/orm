@@ -608,11 +608,11 @@ impl Core {
     }
 
     /// A value attached with `new_<name>` or an added output column.
-    pub fn attached(&self, name: &str) -> Option<serde_json::Value> {
+    pub fn attached(&self, name: &str) -> crate::Result<Option<serde_json::Value>> {
         if let Some(v) = self.news.get(name) {
-            return Some(v.clone());
+            return Ok(Some(v.clone()));
         }
-        self.row.as_ref().and_then(|r| r.extra.get(name)).map(|v| v.to_json())
+        self.row.as_ref().and_then(|r| r.extra.get(name)).map(|v| v.to_json()).transpose()
     }
 
     /// Sets the duplicate-key update of the next create.

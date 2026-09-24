@@ -189,7 +189,7 @@ async fn audit_triggers() {
             orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
         };
         let text = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].as_string();
-        let json = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].to_json().to_string();
+        let json = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].to_json().unwrap().to_string();
         assert_eq!(rows.len(), 2, "{driver}: change rows");
         assert_eq!(rows.iter().map(|r| text(r, "change_kind")).collect::<Vec<_>>(), ["INSERT", "UPDATE"], "{driver}: change kinds");
         for row in &rows {
