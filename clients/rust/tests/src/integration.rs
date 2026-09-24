@@ -463,6 +463,12 @@ async fn json_values(t: &Target) {
     assert_eq!(got.get_json_setting().compact(), text, "jsontext json read");
     assert_eq!(got.get_jsons_tags().compact(), tags, "jsontext jsons read");
     assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
+    let out = got.to_json().unwrap();
+    assert!(out.contains(&format!(r#""json_setting":{text}"#)) && out.contains(&format!(r#""jsons_tags":{tags}"#)), "JSON output: {out}");
+    assert_eq!(serde_json::to_string(&got).unwrap(), out, "serde output");
+    let rows = Battle::new().connect(db).add_all_columns().seq(seq).gets().await.unwrap();
+    assert_eq!(serde_json::to_string(&rows).unwrap(), format!("[{out}]"), "collection serde output");
+    assert_eq!(rows.to_json().unwrap(), format!("[{out}]"), "collection JSON output");
     let created = Battle::new()
         .connect(db)
         .set_name("json")

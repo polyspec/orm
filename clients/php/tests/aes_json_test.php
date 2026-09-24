@@ -89,6 +89,17 @@ function text(mixed $value): string
     return stringify($value);
 }
 
+/** The OrmException code of json_encode($value), or 'no error'. */
+function jsonEncodeCode(mixed $value): string
+{
+    try {
+        json_encode($value, JSON_THROW_ON_ERROR);
+    } catch (\Orm\OrmException $e) {
+        return $e->code_;
+    }
+    return 'no error';
+}
+
 function aesJsonColumn(string $dsn): void
 {
     global $json;
@@ -107,7 +118,14 @@ function aesJsonColumn(string $dsn): void
     check(text($row->getConfig()) === $value, 'read back');
     check(text($row->getDoc()) === $doc, 'jsontext read back');
     check(text($row->toArray()['doc']) === $doc, 'toArray keeps the ordered-json value');
-    check(json_encode($row, JSON_THROW_ON_ERROR) === json_encode(json_decode('{"seq":' . $seq . ',"config":' . $value . ',"doc":' . $doc . '}')), 'json_encode of the model');
+    $rowJson = '{"seq":' . $seq . ',"config":' . $value . ',"doc":' . $doc . '}';
+    check($row->toJson() === $rowJson, 'toJson keeps the member order and the number text');
+    check(jsonEncodeCode($row) === 'CODEC_ENCODE', 'json_encode of a model with an ordered-json value fails');
+    $rows = (new SecretConfig)($first)->addAllColumns()->seq($seq)->gets();
+    check($rows->toJson() === '[' . $rowJson . ']', 'collection toJson');
+    check(jsonEncodeCode($rows) === 'CODEC_ENCODE', 'json_encode of a collection with an ordered-json value fails');
+    check((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
+        && json_encode((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
     $native = (new SecretConfig)($first)->setConfig(['k' => [1, 2]])->setDoc(['a' => 1.5])->create()->getSeq();
     $read = (new SecretConfig)($first)->addAllColumns()->getBySeq($native);
     check(text($read->getConfig()) === '{"k":[1,2]}' && text($read->getDoc()) === '{"a":1.5}', 'native value write');

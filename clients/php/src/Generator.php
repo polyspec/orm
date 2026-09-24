@@ -18,7 +18,7 @@ final class Generator
         'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw', 'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit',
         'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait', 'duplication',
         'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
-        'save', 'delete', 'deleteRow', 'connection', 'toArray', 'jsonSerialize', 'meta', 'readColumn', 'writeColumn',
+        'save', 'delete', 'deleteRow', 'connection', 'toArray', 'toJson', 'jsonSerialize', 'meta', 'readColumn', 'writeColumn',
         'registerJoins', '__call', '__clone',
     ];
 

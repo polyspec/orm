@@ -273,8 +273,23 @@ async function jsonValues(db, f) {
   const tags = row.getJsonsTags();
   check(tags instanceof JsonValue && stringifyJson(tags) === '{"b":1,"a":[],"c":{}}', `common value model read ${tags instanceof JsonValue ? stringifyJson(tags) : String(tags)}`);
   check(row.toArray().json_setting === setting, 'toArray keeps the ordered-json value');
-  const serialized = JSON.parse(JSON.stringify(row));
-  check(JSON.stringify(serialized.json_setting) === '{"b":1,"a":[],"c":{},"n":1.5}', `toJSON ${JSON.stringify(serialized.json_setting)}`);
+  // JSON output writes an ordered-json value as its stored text, in row order.
+  const rowText = JSON.stringify(row);
+  check(rowText.includes(`"json_setting":${text}`), `JSON.stringify(model) ${rowText}`);
+  check(JSON.stringify(row.toJSON()) === rowText, 'toJSON is the JSON.stringify form');
+  check(Object.keys(JSON.parse(rowText)).join(',') === Object.keys(row.toArray()).join(','), 'JSON output keeps the row order');
+  check(row.toJSONText() === rowText, `toJSONText ${row.toJSONText()}`);
+  const indexKeyed = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
+  indexKeyed.setJsonSetting(parseJson('{"b":1,"1":2}'));
+  check(await code(Promise.resolve().then(() => JSON.stringify(indexKeyed))) === 'CODEC_ENCODE', 'JSON.stringify rejects a key that JavaScript reorders');
+  check(indexKeyed.toJSONText().includes('"json_setting":{"b":1,"1":2}'), `toJSONText keeps a reordered key ${indexKeyed.toJSONText()}`);
+  const listed = await new Battle().connect(db).addAllColumns().seq([created.getSeq()]).gets();
+  const listText = JSON.stringify(listed);
+  check(listText.startsWith('[{') && listText.includes(`"json_setting":${text}`), `JSON.stringify(collection) ${listText}`);
+  check(listed.toJSONText() === listText, 'collection toJSONText');
+  const owner = await new User().connect(db).relations(new Battle().addAllColumns().matchSeqWithUserSeq().seq([created.getSeq()])).seq(f.users[0].getSeq()).get();
+  const ownerText = JSON.stringify(owner);
+  check(ownerText.includes(`"json_setting":${text}`), `JSON.stringify(model with relation) ${ownerText}`);
   const nonFinite = await code(new Battle().connect(db).setSeq(created.getSeq()).setJsonSetting({ bad: Number.NaN }).update());
   check(String(nonFinite).includes('CODEC_ENCODE'), `non-finite number: ${nonFinite}`);
   await row.setJsonSetting(parseJson('[{"z":0},{}]')).update();

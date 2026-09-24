@@ -203,6 +203,11 @@ impl<M: Model> Collection<M> {
         .await
     }
 
+    /// The JSON text of the models: an array of the models' JSON output.
+    pub fn to_json(&self) -> crate::Result<String> {
+        Ok(format!("[{}]", self.models().map(|m| crate::model::to_json(m)).collect::<crate::Result<Vec<_>>>()?.join(",")))
+    }
+
     /// The models as arrays; CODEC_ENCODE when a value has no serde_json form.
     pub fn to_array(&self) -> crate::Result<serde_json::Value> {
         Ok(serde_json::Value::Array(self.models().map(|m| crate::model::to_array(m)).collect::<crate::Result<_>>()?))
@@ -214,6 +219,7 @@ pub trait AnyCollection: Any + Send + Sync {
     fn models_dyn(&self) -> Vec<&dyn AnyModel>;
     fn as_any(&self) -> &dyn Any;
     fn to_array_dyn(&self) -> crate::Result<serde_json::Value>;
+    fn to_json_dyn(&self) -> crate::Result<String>;
 }
 
 impl<M: Model> AnyCollection for Collection<M> {
@@ -228,11 +234,15 @@ impl<M: Model> AnyCollection for Collection<M> {
     fn to_array_dyn(&self) -> crate::Result<serde_json::Value> {
         self.to_array()
     }
+
+    fn to_json_dyn(&self) -> crate::Result<String> {
+        self.to_json()
+    }
 }
 
 impl<M: Model> serde::Serialize for Collection<M> {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
-        self.to_array().map_err(serde::ser::Error::custom)?.serialize(s)
+        crate::model::raw_json(self.to_json()).map_err(serde::ser::Error::custom)?.serialize(s)
     }
 }
 

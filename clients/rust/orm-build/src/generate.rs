@@ -57,6 +57,7 @@ const FIXED: &[&str] = &[
     "for_update_no_wait",
     "for_share_no_wait",
     "to_array",
+    "to_json",
 ];
 
 /// Methods every model has from its derived traits.
@@ -835,7 +836,7 @@ fn model_source(gm: &Model<'_>) -> String {
     );
     let _ = write!(
         b,
-        "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::to_array(self).map_err(orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
+        "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::raw_json(orm::model::to_json(self)).map_err(orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
     );
     b.push_str(&FIXED_CODE.replacen("impl T {", &format!("impl {t} {{"), 1));
     for c in &e.columns {
