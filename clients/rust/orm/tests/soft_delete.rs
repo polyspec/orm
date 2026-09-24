@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use chrono::NaiveDateTime;
 use orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 
-static SCHEMA: Schema = Schema::new(include_bytes!("../../../../schema/schema.json"), "07c725aadc45a65d");
+static SCHEMA: Schema = Schema::new(include_bytes!("../../../../schema/schema.json"), "16198b563e2e3cae");
 
 static ENTITY: Entity =
     Entity { name: "soft_record", schema: &SCHEMA, new: orm::model::new_boxed::<SoftRecord>, collect: orm::model::collect_boxed::<SoftRecord> };

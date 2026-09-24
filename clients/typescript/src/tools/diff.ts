@@ -313,10 +313,10 @@ function removeDropStatement(s: string): string {
  * A physical column difference. The update time is a column property only on
  * MySQL; the other dialects assign it in the planned UPDATE statement.
  */
-/** The type, raw type, and length a dialect stores; a MySQL uuid column is char(36). */
+/** The type, raw type, and length a dialect stores; a MySQL uuid column is char(36), and a PostgreSQL enum column is text. */
 export function columnStorage(c: SchemaColumn, dialect: string): [string, string, number] {
   if (dialect === 'mysql' && str(c.raw).toLowerCase() === 'uuid') return [c.type, mysqlUUID, 36];
-  if (c.type === 'jsontext' || c.type === 'text') return ['text', dialect === 'mysql' ? mysqlJSONText : 'text', 0];
+  if (c.type === 'jsontext' || c.type === 'text' || (c.type === 'enum' && dialect === 'postgres')) return ['text', dialect === 'mysql' ? mysqlJSONText : 'text', 0];
   return [c.type, str(c.raw), c.len ?? 0];
 }
 

@@ -118,6 +118,19 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
   }
 }
 
+/**
+ * An insert assigns every required column: a NOT NULL column without a default
+ * that is neither automatic nor the AES key version the planner writes. MySQL
+ * fills an omitted NOT NULL ENUM column with its first value.
+ */
+function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void {
+  const version = aesVersionColumn(ent);
+  for (const col of ent.columns) {
+    if (col.nullable || col.default !== undefined || col.auto || col.name === version || assigned(set, col.name)) continue;
+    fail('IR_INVALID', `required column ${ent.name}.${col.name} is not set`);
+  }
+}
+
 function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[] {
   for (const a of [...set]) {
     const col = columnOf(ent, a.column);
@@ -714,6 +727,7 @@ export class Planner {
     const input = r.set ?? [];
     const set = addBlindIndexAssignments(ent, [...input]);
     validateAESAssignments(ent, set, false);
+    validateRequiredAssignments(ent, set);
     const version = aesVersionColumn(ent);
     const cols: string[] = [];
     const vals: string[] = [];

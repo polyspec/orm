@@ -2,6 +2,10 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+필수 컬럼(NOT NULL, 기본값 없음, `auto` 아님, AES 키 버전 아님)을 생략한 삽입은 Go, PHP, Rust, TypeScript 클라이언트에서 MySQL·PostgreSQL·SQLite 모두 문장을 실행하기 전에 `IR_INVALID: required column <entity>.<column> is not set`으로 실패한다. MySQL은 생략한 NOT NULL `enum` 컬럼에 첫 번째 값을 저장했고 PostgreSQL과 SQLite는 각자의 드라이버 오류를 반환했다. 벤치 스키마는 NOT NULL `enum` 컬럼을 가진 엔터티 `task`를 추가하고, conformance 벡터 `required_columns`는 생략한 `enum` 컬럼과 생략한 텍스트 컬럼의 오류를 기록한다.
+
+Go, PHP, Rust, TypeScript 도구의 스키마 diff, `validate`, migration 검증은 PostgreSQL `enum` 컬럼과 라이브 텍스트 컬럼을 같다고 비교한다. `enum` 컬럼이 있는 스키마의 migration은 PostgreSQL에서 `MIGRATION_VERIFY_FAILED`로 검증에 실패했다.
+
 `make test-servers`와 `make test-servers-stop`을 추가한다. `make test-servers`는 `.runtime/servers` 아래에서 MySQL 8.4와 PostgreSQL 17을 127.0.0.1의 TCP 포트로 시작하고, `orm_test`, `orm_tools`, `orm_bench` 데이터베이스를 만들고, MySQL·PostgreSQL·SQLite 벤치 데이터베이스를 시드하고, 환경 파일 `.runtime/servers/env`를 쓴다. 두 번째 시작은 파일 내용을 출력하고 아무것도 바꾸지 않는다. `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `conformance-check`, `db-test`, `perf-check`는 이 파일을 읽고 파일이 없으면 실패한다. `make db-test`는 `ORM_TOOLS_MYSQL_DSN`과 `ORM_TOOLS_POSTGRES_DSN`이 가리키는 데이터베이스에서 물리 migration 테스트를 실행하며 컨테이너를 시작하지 않는다. `tests/compose.yaml`은 삭제한다. conformance 검사와 실행기는 DSN이 필요하며 로컬 소켓에 연결하지 않는다. PHP, Rust, TypeScript 실행기는 `--dsn`만 받는다.
 
 Go·PHP hot-path 검사는 준비 작업 100쌍 뒤 순서를 번갈아 측정한 1,000쌍의 쌍별 client/native 비율 중앙값을 바뀌지 않은 한도(1.35, 1.25)와 비교하고, CPU마다 바쁜 프로세스 하나를 함께 실행한 상태로 한 번 더 실행한다(`TestHotPathGateUnderLoad`, `ORM_PERF_CPU_LOAD=1`). `make perf-check`가 두 실행을 모두 수행한다.

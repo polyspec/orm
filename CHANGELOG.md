@@ -2,6 +2,10 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make an insert that omits a required column (NOT NULL, no default, not `auto`, not the AES key version) fail with `IR_INVALID: required column <entity>.<column> is not set` before the statement runs, in the Go, PHP, Rust and TypeScript clients on MySQL, PostgreSQL and SQLite. MySQL stored the first value of an omitted NOT NULL `enum` column, and PostgreSQL and SQLite returned their own driver errors. The bench schema adds the entity `task` with a NOT NULL `enum` column, and the conformance vector `required_columns` records the error for an omitted `enum` column and an omitted text column.
+
+Make schema diff, `validate` and migration verification in the Go, PHP, Rust and TypeScript tools compare a PostgreSQL `enum` column with the live text column as equal. A migration of a schema with an `enum` column failed verification on PostgreSQL with `MIGRATION_VERIFY_FAILED`.
+
 Add `make test-servers` and `make test-servers-stop`. `make test-servers` starts MySQL 8.4 and PostgreSQL 17 under `.runtime/servers` with TCP listeners on 127.0.0.1, creates the databases `orm_test`, `orm_tools` and `orm_bench`, seeds the MySQL, PostgreSQL and SQLite bench databases, and writes the environment file `.runtime/servers/env`; a second start prints the file and changes nothing. `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `conformance-check`, `db-test` and `perf-check` read that file and fail when it is missing. `make db-test` runs the physical migration tests on the databases named by `ORM_TOOLS_MYSQL_DSN` and `ORM_TOOLS_POSTGRES_DSN` and no longer starts containers; `tests/compose.yaml` is removed. The conformance check and runners require a DSN and no longer connect to a local socket; the PHP, Rust and TypeScript runners take only `--dsn`.
 
 Make the Go and PHP hot-path checks compare the median of 1,000 per-pair client/native ratios, measured after 100 warm-up pairs in alternating order, with the unchanged bounds (1.35 and 1.25), and run each check a second time beside one busy process per CPU (`TestHotPathGateUnderLoad`, `ORM_PERF_CPU_LOAD=1`). `make perf-check` runs both.

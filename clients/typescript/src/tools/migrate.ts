@@ -9,7 +9,7 @@ import { sameTriggers } from '../engine/triggers.js';
 import { jsonString, object, optString, quoted } from '../schema/json.js';
 import type { SchemaManifest } from '../schema/build.js';
 import type { ToolDb, ToolValue } from './db.js';
-import { loadedOf, renderDiff, sqliteTypeMatches } from './diff.js';
+import { columnStorage, loadedOf, renderDiff, sqliteTypeMatches } from './diff.js';
 import { alignLiveChecks } from './checks.js';
 import { liveManifest } from './introspect.js';
 
@@ -349,7 +349,7 @@ export function schemaMatches(want: SchemaManifest, live: SchemaManifest, driver
     for (const wc of wantColumns) {
       const lc = liveColumns.find(c => c.name === wc.name);
       if (!lc) return false;
-      const typeMatch = driver === 'sqlite' ? sqliteTypeMatches(wc.type, lc.type) : wc.type === lc.type;
+      const typeMatch = driver === 'sqlite' ? sqliteTypeMatches(wc.type, lc.type) : columnStorage(wc, driver)[0] === columnStorage(lc, driver)[0];
       if ((wc.comment ?? '') !== (lc.comment ?? '') || Boolean(wc.nullable) !== Boolean(lc.nullable) || !typeMatch) return false;
     }
   }

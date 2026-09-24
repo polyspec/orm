@@ -2,7 +2,7 @@
 
 Reference: [Common interface v1](interfaces.md), [machine specification](../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../tests/interfaces/README.md).
 
-Local verification: **22 conformance vectors × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite produce the same statements, binds, and results**. The final CI run is required before completion.
+Local verification: **25 conformance vectors × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite produce the same statements, binds, and results**. The final CI run is required before completion.
 
 | Interface | Implementation and verification |
 |---|---|

@@ -287,7 +287,7 @@ final class SchemaTool
         } catch (SchemaError $e) {
             throw new \RuntimeException('live schema does not build: ' . $e->getMessage());
         }
-        $diffs = SchemaImport::differences($m, $lm);
+        $diffs = SchemaImport::differences($m, $lm, $driver);
         foreach ($diffs as $d) {
             echo $d, "\n";
         }

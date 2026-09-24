@@ -535,12 +535,13 @@ func columnChanged(a, b *schema.Col, dialect string) bool {
 
 // columnStorage returns the type, raw type, and length a dialect stores: a
 // MySQL uuid column is char(36), and a jsontext column is the dialect's text
-// type, which a live schema reports without the codec.
+// type, which a live schema reports without the codec. A PostgreSQL enum
+// column is text, which a live schema reports without the value list.
 func columnStorage(c *schema.Col, dialect string) (string, string, int) {
 	if dialect == "mysql" && strings.EqualFold(c.Raw, "uuid") {
 		return c.Type, mysqlUUID, 36
 	}
-	if c.Type == "jsontext" || c.Type == "text" {
+	if c.Type == "jsontext" || c.Type == "text" || (c.Type == "enum" && dialect == "postgres") {
 		raw := "text"
 		if dialect == "mysql" {
 			raw = mysqlJSONText

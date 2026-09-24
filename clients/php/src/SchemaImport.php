@@ -848,7 +848,7 @@ final class SchemaImport
      * clients would get wrong.
      * @return list<string>
      */
-    public static function differences(array $want, array $live): array
+    public static function differences(array $want, array $live, string $driver): array
     {
         $out = [];
         $list = static fn(array $v): string => '[' . implode(' ', $v) . ']';
@@ -867,7 +867,7 @@ final class SchemaImport
                     $out[] = "{$we['table']}.{$wc['name']}: column missing in the database";
                     continue;
                 }
-                if ($wc['type'] !== $lc['type']) {
+                if (SchemaDiff::columnStorage($wc, $driver)[0] !== SchemaDiff::columnStorage($lc, $driver)[0]) {
                     $out[] = "{$we['table']}.{$wc['name']}: type {$wc['type']} in manifest, {$lc['type']} in the database";
                 }
                 if ($wc['nullable'] !== $lc['nullable']) {

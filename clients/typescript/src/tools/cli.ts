@@ -26,7 +26,7 @@ import { byteOrder, listText } from '../schema/json.js';
 import { parseDiagram, SchemaParseError, type Diagram } from '../schema/mermaid.js';
 import { alignSourceChecks } from '../tools/checks.js';
 import { openToolDb, parseToolDsn, type ToolDb } from '../tools/db.js';
-import { loadedOf, renderDiff } from '../tools/diff.js';
+import { columnStorage, loadedOf, renderDiff } from '../tools/diff.js';
 import { filterManagedTables, readTables, renderMermaid, withTriggerDirectives } from '../tools/introspect.js';
 import { checksumText, migrate, ToolError } from '../tools/migrate.js';
 import {
@@ -360,7 +360,7 @@ async function validate(args: readonly string[]): Promise<number> {
     try { diagram = parseDiagram(renderMermaid(tables)); } catch (error) { throw new ToolError(`live schema does not parse: ${message(error)}`); }
     let lm: SchemaManifest;
     try { lm = buildManifest([diagram]); } catch (error) { throw new ToolError(`live schema does not build: ${message(error)}`); }
-    const diffs = diffManifests(want, lm);
+    const diffs = diffManifests(want, lm, db.driver);
     for (const d of diffs) process.stdout.write(d + '\n');
     if (diffs.length > 0) {
       console.error(`orm-gen: ${diffs.length} differences between ${schema} and the live database`);
@@ -372,7 +372,7 @@ async function validate(args: readonly string[]): Promise<number> {
 }
 
 /** What the clients would get wrong against the live manifest. */
-function diffManifests(want: SchemaManifest, live: SchemaManifest): string[] {
+function diffManifests(want: SchemaManifest, live: SchemaManifest, dialect: string): string[] {
   const out: string[] = [];
   for (const name of want.order ?? []) {
     const we = want.entities![name]!;
@@ -382,7 +382,7 @@ function diffManifests(want: SchemaManifest, live: SchemaManifest): string[] {
     for (const wc of we.columns ?? []) {
       const lc = liveCols.get(wc.name);
       if (!lc) { out.push(`${we.table}.${wc.name}: column missing in the database`); continue; }
-      if (wc.type !== lc.type) out.push(`${we.table}.${wc.name}: type ${wc.type} in manifest, ${lc.type} in the database`);
+      if (columnStorage(wc, dialect)[0] !== columnStorage(lc, dialect)[0]) out.push(`${we.table}.${wc.name}: type ${wc.type} in manifest, ${lc.type} in the database`);
       if (Boolean(wc.nullable) !== Boolean(lc.nullable)) out.push(`${we.table}.${wc.name}: nullable ${Boolean(wc.nullable)} in manifest, ${Boolean(lc.nullable)} in the database`);
       if (Boolean(wc.auto) !== Boolean(lc.auto)) out.push(`${we.table}.${wc.name}: auto_increment ${Boolean(wc.auto)} in manifest, ${Boolean(lc.auto)} in the database`);
       if ((wc.styles ?? []).join(',') !== (lc.styles ?? []).join(',')) {
