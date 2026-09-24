@@ -127,7 +127,7 @@ async fn connection_time_zone() {
             let mut row = event(&db);
             row.core_mut().set("start_dt", Param::DateTime(start));
             orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
-            let got = orm::model::get(&event(&db)).await.unwrap().unwrap_or_else(|| panic!("{label}: no row"));
+            let got = orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
             let skew = (got.created_ts - before).num_seconds().abs();
             assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);

@@ -62,8 +62,8 @@ impl T {
         self
     }
 
-    /// Returns the first matching row.
-    pub async fn get(&self) -> orm::Result<Option<Self>> {
+    /// Returns the first matching row; NO_ROWS when no row matches.
+    pub async fn get(&self) -> orm::Result<Self> {
         orm::model::get(self).await
     }
 

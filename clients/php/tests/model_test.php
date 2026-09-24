@@ -170,7 +170,7 @@ $tests['conditions'] = function (Db $db, string $dsn): void {
     check((new Battle)($db)->gtStartDt($start->modify('+90 minutes'))->getCount() === 2, 'time compare');
     $one = (new Battle)($db)->getByName('gamma');
     check($one !== null && $one->getReadCount() === 20, 'getBy');
-    check((new Battle)($db)->getByName('missing') === null, 'get without a row');
+    check(code(static fn() => (new Battle)($db)->getByName('missing')) === 'NO_ROWS', 'get without a row');
     $q = (new Battle)($db)->serviceSeq($svc);
     check($q->getCountByIsClose(true) === 2 && $q->getCount() === 4, 'terminal changed the model');
     check((new Battle)($db)->raw('{read_count} >= ?', [20])->getCount() === 2, 'raw');
@@ -279,7 +279,7 @@ $tests['writes'] = function (Db $db, string $dsn): void {
     (new ServiceMember)($db)->setServiceSeq($service->getSeq())->setUserSeq($f['users'][0]->getSeq())->create();
     $loaded = (new Service)($db)->relations((new ServiceMember)->matchSeqWithServiceSeq())->getBySeq($service->getSeq());
     $loaded->delete(true);
-    check((new ServiceMember)($db)->getCountByServiceSeq($service->getSeq()) === 0 && (new Service)($db)->getBySeq($service->getSeq()) === null, 'delete(true)');
+    check((new ServiceMember)($db)->getCountByServiceSeq($service->getSeq()) === 0 && code(static fn() => (new Service)($db)->getBySeq($service->getSeq())) === 'NO_ROWS', 'delete(true)');
 };
 
 $tests['transactions'] = function (Db $db, string $dsn): void {

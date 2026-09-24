@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:b2671eab62c96268306f8aa6d1fd74278cddf5d621e3f0aa5682b3b1fe44c292",
-    "php": "sha256:297aa8506cc0a583295c473e8af5af4bfb8e6bd34437dc61bb067b2aa2a6d9a5",
-    "rust": "sha256:4bf119328a773a6b295c5023f4a1fca234ee293a9b7842129c375d4e0955ae40",
-    "typescript": "sha256:014c23cca4f0d2a7f660c90f2d41fec54848761bdecac502da2db60fc9153b5e"
+    "go": "sha256:3778a38637b8b02beb943b623cf482cf883c453ece358a303bc6c0b7bc256a2d",
+    "php": "sha256:4ebc103c8aeaf2ece522a081d98fa1272ce3edb4b8019dc7b44cc9bae5e2bfac",
+    "rust": "sha256:7912d18be24ac23e633d992ffa3c7dca2de02c5c7182d19f777d6365c7a617ed",
+    "typescript": "sha256:a6c8e6b2723d46bf21d325172353acde787e375b557adb1e085ca4e7ff08d03e"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -584,10 +584,11 @@
       "id": "Model.get",
       "for": "entity",
       "inputs": [],
-      "output": "Optional<Model>",
+      "output": "Model",
       "errors": [
         "CONFIG",
         "IR_INVALID",
+        "NO_ROWS",
         "driver or codec error"
       ],
       "state": "The model is not changed; the same model can run again",
@@ -598,15 +599,15 @@
         },
         "php": {
           "symbol": "clients/php/src/Model.php::Orm\\Model::get",
-          "signature": "public function get(): ?static"
+          "signature": "public function get(): static"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get",
-          "signature": "pub async fn get(&self) -> orm::Result<Option<Self>>"
+          "signature": "pub async fn get(&self) -> orm::Result<Self>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.get",
-          "signature": "public async get(): Promise<this | null>"
+          "signature": "public async get(): Promise<this>"
         }
       }
     },

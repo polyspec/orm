@@ -163,10 +163,10 @@ run('conditions_values', fn() => array_map(static fn(Battle $q): int => $q->getC
 
 run('terminal_by', function () use ($battle, $cols): array {
     $one = $battle()->getBySeq(42);
-    $missing = $battle()->getBySeq(-1);
+    $missing = caught(fn() => $battle()->getBySeq(-1));
     $rows = $battle()->orderBySeqAsc()->limit(0, 2)->getsByServiceSeqAndIsClose(7, false);
     $count = $battle()->getCountByServiceSeq(7);
-    return ['one' => pick($one, ...$cols), 'missing' => $missing === null, 'rows' => picks($rows, ...$cols), 'count' => $count];
+    return ['one' => pick($one, ...$cols), 'missing' => $missing, 'rows' => picks($rows, ...$cols), 'count' => $count];
 });
 
 run('terminal_reuse', function () use ($battle): array {
@@ -290,8 +290,8 @@ run('write_cycle', function () use ($battle): array {
     $again = $battle()->addAllColumns()->getBySeq($seq);
     $updated = pick($again, 'name', 'read_count', 'price', 'ip', 'aes_hex_email', 'json_setting', 'serialize_data', 'start_dt');
     $again->delete();
-    $gone = $battle()->getBySeq($seq);
-    return ['created' => $createdArray, 'updated' => $updated, 'stale' => $stale, 'deleted' => $gone === null];
+    $gone = caught(fn() => $battle()->getBySeq($seq));
+    return ['created' => $createdArray, 'updated' => $updated, 'stale' => $stale, 'deleted' => $gone];
 });
 
 run('now_defaults', function () use ($battle): array {
@@ -338,7 +338,7 @@ run('delete_recursive', function () use ($db): array {
     mask($seqs);
     $loaded->delete(true);
     $left = (new ServiceMember)($db)->getCountByServiceSeq($seq);
-    return ['members' => $members, 'members_left' => $left, 'service_left' => (new Service)($db)->getBySeq($seq) !== null];
+    return ['members' => $members, 'members_left' => $left, 'service_left' => caught(fn() => (new Service)($db)->getBySeq($seq))];
 });
 
 run('transactions', function () use ($db): array {

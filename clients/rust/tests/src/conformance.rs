@@ -239,10 +239,10 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     });
     run!("terminal_by", async {
         let one = battle().get_by_seq(42).await?;
-        let missing = battle().get_by_seq(-1).await?;
+        let missing = battle().get_by_seq(-1).await;
         let rows = battle().order_by_seq_asc().limit(0, 2).gets_by_service_seq_and_is_close(7, false).await?;
         let count = battle().get_count_by_service_seq(7).await?;
-        Ok::<Value, orm::Error>(json!({"one": pick(one.as_ref(), &cols), "missing": missing.is_none(), "rows": picks(&rows, &cols), "count": count}))
+        Ok::<Value, orm::Error>(json!({"one": pick(Some(&one), &cols), "missing": code_of(missing), "rows": picks(&rows, &cols), "count": count}))
     });
     run!("terminal_reuse", async {
         let q = battle().service_seq(7).order_by_seq_asc().limit(0, 2);
@@ -268,9 +268,9 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let added = battle().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;
         let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
         Ok::<Value, orm::Error>(json!([
-            none.map(|m| m.to_array()),
-            pick(added.as_ref(), &["seq", "name", "read_text"]),
-            removed.map(|m| m.to_array())
+            none.to_array(),
+            pick(Some(&added), &["seq", "name", "read_text"]),
+            removed.to_array()
         ]))
     });
     run!("joins", async {
@@ -406,7 +406,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     run!("aes_values", async {
         let row = battle().remove_all_columns().add_column_aes_hex_email().add_column_aes_hex_phone().get_by_seq(42).await?;
         let found = battle().aes_hex_email("user42@example.com").get_count().await?;
-        Ok::<Value, orm::Error>(json!({"row": row.map(|r| r.to_array()), "found": found}))
+        Ok::<Value, orm::Error>(json!({"row": row.to_array(), "found": found}))
     });
     run!("write_cycle", async {
         let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -430,17 +430,17 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         mask(shared, &[seq], &[]);
         let mut created_array = created.to_array();
         created_array["seq"] = json!("$SEQ");
-        let loaded = battle().add_all_columns().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        let loaded = battle().add_all_columns().get_by_seq(seq).await?;
         mask(shared, &[], &[loaded.get_updated_ts()]);
         let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
         loaded.update(true).await?;
         let mut loaded = loaded.set_name("stale");
         let stale = loaded.update(true).await;
-        let again = battle().add_all_columns().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        let again = battle().add_all_columns().get_by_seq(seq).await?;
         let updated = pick(Some(&again), &["name", "read_count", "price", "ip", "aes_hex_email", "json_setting", "serialize_data", "start_dt"]);
         again.delete(false).await?;
-        let gone = battle().get_by_seq(seq).await?;
-        Ok::<Value, orm::Error>(json!({"created": created_array, "updated": updated, "stale": code_of(stale), "deleted": gone.is_none()}))
+        let gone = battle().get_by_seq(seq).await;
+        Ok::<Value, orm::Error>(json!({"created": created_array, "updated": updated, "stale": code_of(stale), "deleted": code_of(gone)}))
     });
     run!("now_defaults", async {
         let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -457,7 +457,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .await?;
         let seq = created.get_seq();
         mask(shared, &[seq], &[]);
-        let loaded = battle().get_by_seq(seq).await?.ok_or(orm::Error::NoRows)?;
+        let loaded = battle().get_by_seq(seq).await?;
         let (created_ts, updated_ts) = (loaded.get_created_ts(), loaded.get_updated_ts());
         // The runner connects in +00:00, so the wall-clock value is UTC.
         let near = (created_ts - before).num_seconds().abs() < 60;
@@ -498,14 +498,13 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .connect(db)
             .relations(ServiceMember::new().match_seq_with_service_seq())
             .get_by_seq(seq)
-            .await?
-            .ok_or(orm::Error::NoRows)?;
+            .await?;
         let members = loaded.get_service_member_models().map(|c| c.len()).unwrap_or(0);
         mask(shared, &seqs, &[]);
         loaded.delete(true).await?;
         let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
-        let service2 = Service::new().connect(db).get_by_seq(seq).await?;
-        Ok::<Value, orm::Error>(json!({"members": members, "members_left": left, "service_left": service2.is_some()}))
+        let service2 = Service::new().connect(db).get_by_seq(seq).await;
+        Ok::<Value, orm::Error>(json!({"members": members, "members_left": left, "service_left": code_of(service2)}))
     });
     run!("transactions", async {
         let events = Mutex::new(Vec::new());

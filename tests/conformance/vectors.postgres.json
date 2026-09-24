@@ -233,7 +233,7 @@
       "expect": {
         "result": {
           "count": 1000,
-          "missing": true,
+          "missing": "NO_ROWS",
           "one": {
             "is_close": true,
             "is_display": false,
@@ -902,7 +902,7 @@
             "start_dt": "2026-06-01 00:00:00.000000",
             "user_seq": 1
           },
-          "deleted": true,
+          "deleted": "NO_ROWS",
           "stale": "CONFIG",
           "updated": {
             "aes_hex_email": "cycle@example.com",
@@ -1118,7 +1118,7 @@
         "result": {
           "members": 2,
           "members_left": 0,
-          "service_left": false
+          "service_left": "NO_ROWS"
         },
         "statements": [
           {

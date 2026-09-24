@@ -152,9 +152,9 @@ async fn conditions(t: &Target) {
     assert_eq!(Battle::new().connect(db).ne_cover_url(Null).and_lk_name("lph").get_count().await.unwrap(), 1, "not null and like");
     assert_eq!(Battle::new().connect(db).between_read_count([10, 20]).get_count().await.unwrap(), 2, "between");
     assert_eq!(Battle::new().connect(db).gt_start_dt(start() + chrono::Duration::minutes(90)).get_count().await.unwrap(), 2, "time compare");
-    let one = Battle::new().connect(db).get_by_name("gamma").await.unwrap().expect("gamma");
+    let one = Battle::new().connect(db).get_by_name("gamma").await.unwrap();
     assert_eq!(one.get_read_count(), 20, "get_by");
-    assert!(Battle::new().connect(db).get_by_name("missing").await.unwrap().is_none(), "get without a row");
+    assert_eq!(code(Battle::new().connect(db).get_by_name("missing").await), "NO_ROWS", "get without a row");
     let q = Battle::new().connect(db).service_seq(svc);
     let first = q.get_count_by_is_close(true).await.unwrap();
     let second = q.get_count().await.unwrap();
@@ -211,8 +211,7 @@ async fn joins_and_relations(t: &Target) {
         .relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner())
         .get_by_name("beta")
         .await
-        .unwrap()
-        .expect("beta");
+        .unwrap();
     assert_eq!(external.get_owner().map(|u| u.get_name()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Battle::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
@@ -271,10 +270,10 @@ async fn columns_and_subqueries(t: &Target) {
 async fn writes(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap().unwrap();
+    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap();
     let mut b = b.set_name("renamed").plus_read_count(5);
     b.update(true).await.unwrap();
-    let again = Battle::new().connect(db).get_by_seq(b.get_seq()).await.unwrap().unwrap();
+    let again = Battle::new().connect(db).get_by_seq(b.get_seq()).await.unwrap();
     assert_eq!((again.get_name(), again.get_read_count()), ("renamed", 5), "update");
     let mut b = b.set_name("stale");
     assert_eq!(code(b.update(true).await), "CONFIG", "optimistic update without a fresh version");
@@ -287,9 +286,9 @@ async fn writes(t: &Target) {
     assert_eq!(item.to_array()["label"], "shown", "new value output");
     let saved = Account::new().connect(db).set_seq(item.get_seq()).set_name("saved").save().await.unwrap();
     assert_eq!(saved.get_name(), "saved", "save result");
-    let stored = Account::new().connect(db).get_by_seq(item.get_seq()).await.unwrap().unwrap();
+    let stored = Account::new().connect(db).get_by_seq(item.get_seq()).await.unwrap();
     assert_eq!(stored.get_name(), "saved", "save as update");
-    Battle::new().connect(db).get_by_seq(f.battles[3].get_seq()).await.unwrap().unwrap().delete(false).await.unwrap();
+    Battle::new().connect(db).get_by_seq(f.battles[3].get_seq()).await.unwrap().delete(false).await.unwrap();
     assert_eq!(Battle::new().connect(db).get_count().await.unwrap(), 3, "delete");
     let rows = Battle::new().connect(db).is_close(true).gets().await.unwrap();
     rows.delete(false).await.unwrap();
@@ -304,14 +303,14 @@ async fn writes(t: &Target) {
         .create()
         .await
         .unwrap();
-    let got = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(9, 9).await.unwrap().unwrap();
+    let got = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(9, 9).await.unwrap();
     assert_eq!(got.get_name(), "second", "duplication");
     let service = Service::new().connect(db).set_name("tree").create().await.unwrap();
     ServiceMember::new().connect(db).set_service_seq(service.get_seq()).set_user_seq(f.users[1].get_seq()).create().await.unwrap();
-    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq()).await.unwrap().unwrap();
+    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq()).await.unwrap();
     tree.delete(true).await.unwrap();
     assert_eq!(ServiceMember::new().connect(db).get_count_by_service_seq(service.get_seq()).await.unwrap(), 0, "recursive delete");
-    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq()).await.unwrap().unwrap();
+    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq()).await.unwrap();
     let json = serde_json::to_value(&copy).unwrap();
     assert_eq!(json["name"], "service", "serialize");
 }
@@ -421,7 +420,7 @@ async fn bind_limit_splitting(t: &Target) {
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap().unwrap();
+    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap();
     let mut b = b.set_aes_hex_email("person@example.com");
     b.update(false).await.unwrap();
     let found = Battle::new().connect(db).aes_hex_email("person@example.com").get_count().await.unwrap();

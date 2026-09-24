@@ -507,8 +507,8 @@ export interface Battle {
   betweenStartDt(v0: readonly [string | Date, string | Date]): this;
   coverUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   geReadCount(v0: number | ValueFunction): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getCountByIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): Promise<number>;
   getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
@@ -615,8 +615,8 @@ export interface User {
   andLkName(v0: string): this;
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
@@ -702,8 +702,8 @@ export interface Service {
   andLkName(v0: string): this;
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
@@ -803,8 +803,8 @@ export interface ServiceModule {
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
@@ -910,7 +910,7 @@ export interface ServiceMember {
   aliasWriter(): this;
   andLtSeq(v0: number | ValueFunction): this;
   andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
@@ -1017,8 +1017,8 @@ export interface CompositeAccount {
   andLbName(v0: string): this;
   andLkName(v0: string): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
@@ -1109,7 +1109,7 @@ export interface CompositeMembership {
   aliasModule(): this;
   aliasOwner(): this;
   aliasWriter(): this;
-  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   newLabel(value: unknown): this;
   possibleIsClose(value: unknown): this;
   tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
@@ -1199,8 +1199,8 @@ export interface SoftRecord {
   andLkName(v0: string): this;
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
@@ -1286,8 +1286,8 @@ export interface Account {
   andLkName(v0: string): this;
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
@@ -1373,8 +1373,8 @@ export interface Project {
   andLkName(v0: string): this;
   andLtSeq(v0: number | ValueFunction): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this | null>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this | null>;
+  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;

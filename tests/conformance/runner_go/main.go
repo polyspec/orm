@@ -256,10 +256,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		missing, err := battle().GetBySeq(-1)
-		if err != nil {
-			return nil, err
-		}
+		_, missing := battle().GetBySeq(-1)
 		rows, err := battle().OrderBySeqAsc().Limit(0, 2).GetsByServiceSeqAndIsClose(7, false)
 		if err != nil {
 			return nil, err
@@ -268,7 +265,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"one": pick(one, cols...), "missing": missing == nil, "rows": picks(rows, cols...), "count": count}, nil
+		return map[string]any{"one": pick(one, cols...), "missing": code(missing), "rows": picks(rows, cols...), "count": count}, nil
 	})
 	run("terminal_reuse", func() (any, error) {
 		q := battle().ServiceSeq(7).OrderBySeqAsc().Limit(0, 2)
@@ -513,8 +510,8 @@ func main() {
 		if err := again.Delete(); err != nil {
 			return nil, err
 		}
-		gone, err := battle().GetBySeq(seq)
-		return map[string]any{"created": createdArray, "updated": updated, "stale": code(stale), "deleted": gone == nil}, err
+		_, gone := battle().GetBySeq(seq)
+		return map[string]any{"created": createdArray, "updated": updated, "stale": code(stale), "deleted": code(gone)}, nil
 	})
 	run("now_defaults", func() (any, error) {
 		start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
@@ -601,8 +598,8 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		service2, err := model.Service().Connect(db).GetBySeq(seq)
-		return map[string]any{"members": members, "members_left": left, "service_left": service2 != nil}, err
+		_, service2 := model.Service().Connect(db).GetBySeq(seq)
+		return map[string]any{"members": members, "members_left": left, "service_left": code(service2)}, nil
 	})
 	run("transactions", func() (any, error) {
 		boom := errors.New("boom")

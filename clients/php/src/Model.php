@@ -1421,10 +1421,10 @@ abstract class Model implements \JsonSerializable
         return $this->assemble($db, $r, $plan, $result);
     }
 
-    /** The first matching row, or null. */
-    public function get(): ?static
+    /** The first matching row; NO_ROWS when no row matches. */
+    public function get(): static
     {
-        return $this->load('one')->first();
+        return $this->load('one')->first() ?? throw new OrmException(Code::NO_ROWS, 'query matched no rows');
     }
 
     /** The matching rows. */

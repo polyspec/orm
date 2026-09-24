@@ -417,7 +417,7 @@ impl<'m> Gen<'m> {
             };
             let Some((params, args)) = self.chain_params(gi, r, &keys) else { return };
             let (result, body) = match prefix {
-                "get_by_" => ("orm::Result<Option<Self>>", format!("orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
+                "get_by_" => ("orm::Result<Self>", format!("orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
                 "gets_by_" => ("orm::Result<orm::Collection<Self>>", format!("orm::model::gets_core(&self.__orm.by(KEYS, {args}), \"all\").await")),
                 _ => ("orm::Result<i64>", format!("orm::model::get_count(&self.__orm.by(KEYS, {args})).await")),
             };

@@ -61,6 +61,11 @@ function norm(v) {
   return v;
 }
 
+/** The code of the error of a promise, or null when it resolves. */
+async function caught(promise) {
+  try { await promise; return null; } catch (error) { return code(error); }
+}
+
 function code(error) {
   if (error === undefined || error === null) return null;
   if (typeof error.code === 'string' && error.code !== '') return error.code;
@@ -134,10 +139,10 @@ async function main() {
   });
   await run('terminal_by', async () => {
     const one = await battle().getBySeq(42);
-    const missing = await battle().getBySeq(-1);
+    const missing = await caught(battle().getBySeq(-1));
     const rows = await battle().orderBySeqAsc().limit(0, 2).getsByServiceSeqAndIsClose(7, false);
     const count = await battle().getCountByServiceSeq(7);
-    return { one: pick(one, ...cols), missing: missing === null, rows: picks(rows, ...cols), count };
+    return { one: pick(one, ...cols), missing, rows: picks(rows, ...cols), count };
   });
   await run('terminal_reuse', async () => {
     const q = battle().serviceSeq(7).orderBySeqAsc().limit(0, 2);
@@ -266,8 +271,8 @@ async function main() {
     const again = await battle().addAllColumns().getBySeq(seq);
     const updated = pick(again, 'name', 'read_count', 'price', 'ip', 'aes_hex_email', 'json_setting', 'serialize_data', 'start_dt');
     await again.delete();
-    const gone = await battle().getBySeq(seq);
-    return { created: createdArray, updated, stale, deleted: gone === null };
+    const gone = await caught(battle().getBySeq(seq));
+    return { created: createdArray, updated, stale, deleted: gone };
   });
   await run('now_defaults', async () => {
     const start = new Date(Date.UTC(2026, 5, 1));
@@ -319,8 +324,8 @@ async function main() {
     mask(seqs);
     await loaded.delete(true);
     const left = await new ServiceMember().connect(db).getCountByServiceSeq(seq);
-    const service2 = await new Service().connect(db).getBySeq(seq);
-    return { members, members_left: left, service_left: service2 !== null };
+    const service2 = await caught(new Service().connect(db).getBySeq(seq));
+    return { members, members_left: left, service_left: service2 };
   });
   await run('transactions', async () => {
     const boom = new Error('boom');

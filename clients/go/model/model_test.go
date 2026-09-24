@@ -202,8 +202,8 @@ func TestConditions(t *testing.T) {
 		if one == nil || one.GetReadCount() != 20 {
 			t.Fatalf("getBy: %+v", one)
 		}
-		if none := must(model.Battle().Connect(db).GetByName("missing")); none != nil {
-			t.Fatal("get without a row must return nil")
+		if none, err := model.Battle().Connect(db).GetByName("missing"); none != nil || orm.ErrorCode(err) != orm.CodeNoRows {
+			t.Fatalf("get without a row: %v, %v; want NO_ROWS", none, err)
 		}
 		q := model.Battle().Connect(db).ServiceSeq(svc)
 		first := must(q.GetCountByIsClose(true))
