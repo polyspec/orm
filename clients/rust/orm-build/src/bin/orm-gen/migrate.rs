@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::time::SystemTime;
 
-use orm_build::ddl::{ddl_column, ddl_table, manifest_from_ddl, quoted_check_expression, render_create_ddl, render_diff, SCHEMA_METADATA_PREFIX};
+use orm_build::ddl::{ddl_column, ddl_table, manifest_from_ddl, rendered_check_expression, render_create_ddl, render_diff, SCHEMA_METADATA_PREFIX};
 use orm_build::migration::{
     checksum_text, plan_id, plan_sql, rfc3339_nano, safe_migration_id, schema_matches, split_sql, sqlite_rebuild_markers, validate_plan_operations,
     Log, PlanFile, Record,
@@ -110,7 +110,7 @@ async fn canonical_checks(conn: &mut Conn, driver: &str, e: &orm_build::schema::
     let mysql_q = |s: &str| format!("`{s}`");
     let other_q = |s: &str| format!("\"{s}\"");
     let quote: &dyn Fn(&str) -> String = if driver == "mysql" { &mysql_q } else { &other_q };
-    let exprs = e.checks.iter().map(|c| quoted_check_expression(&c.expr, quote)).collect::<Result<Vec<_>, _>>()?;
+    let exprs = e.checks.iter().map(|c| rendered_check_expression(&c.expr, driver, quote)).collect::<Result<Vec<_>, _>>()?;
     if driver == "sqlite" {
         return Ok(exprs);
     }

@@ -191,15 +191,15 @@ final class SchemaDiff
             $o = $oldChecks[$name] ?? null;
             $n = $newChecks[$name] ?? null;
             if ($o !== null && ($n === null || $o['expr'] !== $n['expr'])) {
-                $drops[] = ['ALTER TABLE ' . $quote($old['table']) . ' DROP CONSTRAINT ' . $quote($name) . ';', true];
+                $drops[] = ['ALTER TABLE ' . $quote($old['table']) . ' DROP CONSTRAINT ' . $quote(SchemaDdl::checkName($old['table'], $name, $dialect)) . ';', true];
             }
             if ($n !== null && ($o === null || $o['expr'] !== $n['expr'])) {
                 try {
-                    $expr = SchemaDdl::checkExpression($n['expr'], $quote);
+                    $expr = SchemaDdl::renderedCheckExpression($n['expr'], $dialect, $quote);
                 } catch (\RuntimeException $e) {
                     throw new \RuntimeException("{$next['table']} check $name: " . $e->getMessage());
                 }
-                $adds[] = ['ALTER TABLE ' . $quote($next['table']) . ' ADD CONSTRAINT ' . $quote($name) . " CHECK ($expr);", false];
+                $adds[] = ['ALTER TABLE ' . $quote($next['table']) . ' ADD CONSTRAINT ' . $quote(SchemaDdl::checkName($next['table'], $name, $dialect)) . " CHECK ($expr);", false];
             }
         }
         return [$drops, $adds];
@@ -249,14 +249,14 @@ final class SchemaDiff
             $lines[] = '  PRIMARY KEY (' . SchemaDdl::joinQuoted($pk, $quote) . ')';
         }
         foreach ($next['unique'] as $unique) {
-            $lines[] = '  CONSTRAINT ' . $quote('uq_' . $next['table'] . '_' . implode('_', $unique)) . ' UNIQUE (' . SchemaDdl::joinQuoted($unique, $quote) . ')';
+            $lines[] = '  CONSTRAINT ' . $quote(SchemaDdl::boundedIdentifier('uq_' . $next['table'] . '_' . implode('_', $unique), 'sqlite')) . ' UNIQUE (' . SchemaDdl::joinQuoted($unique, $quote) . ')';
         }
-        foreach (SchemaDdl::sortedForeignKeys($to, $next) as $fk) {
+        foreach (SchemaDdl::sortedForeignKeys($to, $next, 'sqlite') as $fk) {
             $lines[] = '  ' . SchemaDdl::foreignKeyClause($fk, $to, 'sqlite', $quote);
         }
         foreach ($next['checks'] as $check) {
             try {
-                $expr = SchemaDdl::checkExpression($check['expr'], $quote);
+                $expr = SchemaDdl::renderedCheckExpression($check['expr'], 'sqlite', $quote);
             } catch (\RuntimeException $e) {
                 throw new \RuntimeException("{$next['table']} check {$check['name']}: " . $e->getMessage());
             }
@@ -484,8 +484,8 @@ final class SchemaDiff
                 $indexAdds[] = [self::createIndex($next['table'], $n, $dialect, $quote), false];
             }
         }
-        $oldFks = SchemaDdl::foreignKeys($from, $old);
-        $newFks = SchemaDdl::foreignKeys($to, $next);
+        $oldFks = SchemaDdl::foreignKeys($from, $old, $dialect);
+        $newFks = SchemaDdl::foreignKeys($to, $next, $dialect);
         foreach (SchemaDdl::sortedKeys($oldFks + $newFks) as $key) {
             $o = $oldFks[$key] ?? null;
             $n = $newFks[$key] ?? null;
@@ -524,7 +524,7 @@ final class SchemaDiff
             $out['index:' . $name] = ['name' => (string) $name, 'kind' => 'index', 'cols' => $cols];
         }
         foreach ($e['unique'] as $cols) {
-            $name = 'uq_' . $e['table'] . '_' . implode('_', $cols);
+            $name = SchemaDdl::boundedIdentifier('uq_' . $e['table'] . '_' . implode('_', $cols), $dialect);
             $out['unique:' . $name] = ['name' => $name, 'kind' => 'unique', 'cols' => $cols];
         }
         foreach ($dialect === 'sqlite' ? [] : $e['fulltext'] as $cols) {

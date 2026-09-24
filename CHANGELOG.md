@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make the PHP, Rust and TypeScript schema generators write the MySQL DDL that the Go generator writes: CHECK constraint names `ck_<table>_<name>`, CHECK expressions in the form `(expr) <> 0`, boolean defaults `0`/`1` on MySQL and SQLite and `false`/`true` on PostgreSQL, and constraint and index names shortened to 64 bytes on MySQL and 63 bytes on PostgreSQL with a SHA-256 suffix. MySQL import in all four generators removes the `ck_<table>_` prefix and returns the declared check name, so an unchanged MySQL table with a CHECK constraint has no diff.
+
 Add the encrypted JSON value: a blob column with the stages `json aes`, such as `longblob config "json aes"`, stores the ordered-json text of a value encrypted with AES v2 and the row's `aes_key_version`. The Go, PHP, Rust and TypeScript clients write, read, update and rotate it on SQLite, MySQL and PostgreSQL. Go reads back the ordered-json value with its member order and number text; PHP, Rust and TypeScript read back their JSON value model, as for a `json` column. An `aes` stage may follow another stage, and a `jsontext` column rejects every stage other than `json` or `jsons`. Audit change rows record every AES column as `{"redacted": true, "present": true}` instead of its ciphertext. The PHP, Rust and TypeScript schema builders read the audit `service=` option, as the Go builder does.
 
 Render a MySQL `enum(a_b)` column as `enum('a','b')` in every schema generator; the unquoted value list was rejected by MySQL. PostgreSQL audit triggers insert the `service` column value with its own type, or NULL for an entity without `service=`, so a change table with an integer service column accepts the change rows.

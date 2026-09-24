@@ -81,7 +81,7 @@ final class SchemaChecks
         $quote = $driver === 'mysql' ? static fn(string $s): string => '`' . $s . '`' : static fn(string $s): string => '"' . $s . '"';
         $exprs = [];
         foreach ($e['checks'] as $check) {
-            $exprs[] = SchemaDdl::checkExpression($check['expr'], $quote);
+            $exprs[] = SchemaDdl::renderedCheckExpression($check['expr'], $driver, $quote);
         }
         if ($driver === 'sqlite') {
             return $exprs;
