@@ -105,7 +105,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
   b += `${markers}\n`;
   b += `DECLARE\n  audit_operation_id text := current_setting(${literal(l.context)}, true);\n  audit_operation_seq bigint;\n`;
   if (a.mode === 'changes') {
-    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n";
+    b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_key jsonb;\n";
   }
   b += 'BEGIN\n';
   b += `  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION ${contextMessage}; END IF;\n`;
@@ -130,7 +130,9 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
     }
     b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
     b += '  END IF;\n';
-    if ((a.service ?? '') !== '') b += `  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.service!)}::text ELSE NEW.${q(a.service!)}::text END;\n`;
+    // The service value keeps its column type, so the change table's service
+    // column can have any type the audited column converts to.
+    const service = (a.service ?? '') === '' ? 'NULL' : `CASE TG_OP WHEN 'DELETE' THEN OLD.${q(a.service!)} ELSE NEW.${q(a.service!)} END`;
     const keys = e.pk.flatMap(k => [literal(k), `to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.${q(k)} ELSE NEW.${q(k)} END)`]);
     b += `  audit_key := jsonb_build_object(${keys.join(', ')});\n`;
     for (const path of a.redact ?? []) {
@@ -139,7 +141,7 @@ function postgresAudit(m: Manifest, e: Entity, a: AuditDeclaration, markers: str
         b += `  IF ${v} #> ${p} IS NOT NULL THEN ${v} := jsonb_set(${v}, ${p}, '{"redacted": true, "present": true}'::jsonb); END IF;\n`;
       }
     }
-    b += `  INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, TG_OP, audit_service, ${literal(e.table)}, audit_key, audit_old, audit_new);\n`;
+    b += `  INSERT INTO ${q(l.change.table)} (${changeColumns(l, q)}) VALUES (audit_operation_seq, TG_OP, ${service}, ${literal(e.table)}, audit_key, audit_old, audit_new);\n`;
   }
   b += '  RETURN NULL;\nEND\n$$;';
   const table = q(e.table);

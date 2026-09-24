@@ -150,7 +150,7 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
     b += &format!("{markers}\n");
     b += &format!("DECLARE\n  audit_operation_id text := current_setting({}, true);\n  audit_operation_seq bigint;\n", literal(&l.context));
     if a.mode == "changes" {
-        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n";
+        b += "  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_key jsonb;\n";
     }
     b += "BEGIN\n";
     b += &format!("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION {CONTEXT_MESSAGE}; END IF;\n");
@@ -181,10 +181,14 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
         }
         b += "    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n";
         b += "  END IF;\n";
-        if !a.service.is_empty() {
-            let service = q(&a.service);
-            b += &format!("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD.{service}::text ELSE NEW.{service}::text END;\n");
-        }
+        // The service value keeps its column type, so the change table's
+        // service column can have any type the audited column converts to.
+        let service = if a.service.is_empty() {
+            "NULL".to_owned()
+        } else {
+            let column = q(&a.service);
+            format!("CASE TG_OP WHEN 'DELETE' THEN OLD.{column} ELSE NEW.{column} END")
+        };
         let keys: Vec<String> =
             e.pk.iter().flat_map(|k| [literal(k), format!("to_jsonb(CASE TG_OP WHEN 'DELETE' THEN OLD.{0} ELSE NEW.{0} END)", q(k))]).collect();
         b += &format!("  audit_key := jsonb_build_object({});\n", keys.join(", "));
@@ -195,9 +199,10 @@ fn postgres_audit(l: &AuditLog, e: &Entity, a: &Audit, markers: &str) -> Trigger
             }
         }
         b += &format!(
-            "  INSERT INTO {} ({}) VALUES (audit_operation_seq, TG_OP, audit_service, {}, audit_key, audit_old, audit_new);\n",
+            "  INSERT INTO {} ({}) VALUES (audit_operation_seq, TG_OP, {}, {}, audit_key, audit_old, audit_new);\n",
             q(&l.change.table),
             change_columns(l, &q),
+            service,
             literal(&e.table)
         );
     }

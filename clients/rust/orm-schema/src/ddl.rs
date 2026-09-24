@@ -194,6 +194,11 @@ pub(crate) fn ddl_type(c: &Col, dialect: &str) -> Result<String, String> {
             // jsontext keeps the stored text, which a document type would normalize.
             return Ok(MYSQL_JSONTEXT.into());
         }
+        if c.typ == "enum" {
+            // MySQL takes the enum values as string literals.
+            let values: Vec<String> = c.r#enum.iter().map(|v| format!("'{}'", sql_quote(v))).collect();
+            return Ok(format!("enum({})", values.join(",")));
+        }
         let mut t = c.raw.replace('_', ",");
         if c.unsigned && !t.contains("unsigned") {
             t += " unsigned";

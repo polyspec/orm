@@ -78,6 +78,8 @@ export function ddlType(c: Column, dialect: string): string {
     if (c.raw!.toLowerCase() === 'uuid') return mysqlUUID;
     // jsontext keeps the stored text, which a document type would normalize.
     if (c.type === 'jsontext') return mysqlJSONText;
+    // MySQL takes the enum values as string literals.
+    if (c.type === 'enum') return `enum(${(c.enum ?? []).map(v => `'${sqlQuote(v)}'`).join(',')})`;
     let t = c.raw!.replaceAll('_', ',');
     if (c.unsigned && !t.includes('unsigned')) t += ' unsigned';
     return t;

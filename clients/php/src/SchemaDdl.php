@@ -446,6 +446,10 @@ final class SchemaDdl
                 // jsontext keeps the stored text, which a document type would normalize.
                 return self::MYSQL_JSONTEXT;
             }
+            if ($c['type'] === 'enum') {
+                // MySQL takes the enum values as string literals.
+                return 'enum(' . implode(',', array_map(static fn(string $v): string => "'" . self::str($v) . "'", $c['enum'])) . ')';
+            }
             $t = str_replace('_', ',', $c['raw']);
             if ($c['unsigned'] && !str_contains($t, 'unsigned')) {
                 $t .= ' unsigned';
