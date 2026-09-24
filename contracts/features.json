@@ -1176,6 +1176,7 @@
       ],
       "tests": [
         "bench/go/dsn_test.go",
+        "bench/go/client_test.go",
         "bench/go/gate_test.go",
         "bench/go/native_test.go",
         "clients/php/tests/perf_gate.php",

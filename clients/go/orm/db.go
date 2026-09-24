@@ -217,7 +217,7 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 		}
 		return nil, configErr("%s", msg)
 	}
-	s, err := sql.Open(sqlDriver, dsn.native)
+	s, err := openSQL(sqlDriver, dsn)
 	if err != nil {
 		return nil, configErr("%s", err)
 	}
@@ -350,6 +350,25 @@ func RegisterDriver(name, sqlDriver string, mapErr func(error) error) {
 	defer driverMu.Unlock()
 	sqlDrivers[name] = sqlDriver
 	errMappers[name] = mapErr
+}
+
+// openSQL opens the database/sql pool. The MySQL driver reads datetime cells
+// in the connection time zone, so a cell arrives as the value localTime
+// returns unchanged.
+func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
+	if dsn.driver != "mysql" || sqlDriver != "mysql" {
+		return sql.Open(sqlDriver, dsn.native)
+	}
+	cfg, err := mysql.ParseDSN(dsn.native)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Loc = dsn.location
+	connector, err := mysql.NewConnector(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return sql.OpenDB(connector), nil
 }
 
 func lookupDriver(name string) (string, bool) {

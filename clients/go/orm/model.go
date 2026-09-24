@@ -18,12 +18,44 @@ type rowState struct {
 	loaded   bool
 	names    []string
 	hidden   map[string]bool
-	original map[string]any
+	original originals
 	extra    map[string]any
 	related  map[string]any
 	relNames []string
 	cascade  map[string]bool
 	flat     []string
+}
+
+// originals holds the loaded key and update time values of a row, which
+// identify the row in a later update or delete.
+type originals []originalValue
+
+type originalValue struct {
+	name  string
+	value any
+}
+
+func (o originals) get(name string) (any, bool) {
+	for _, v := range o {
+		if v.name == name {
+			return v.value, true
+		}
+	}
+	return nil, false
+}
+
+func (o *originals) set(name string, value any) {
+	for i := range *o {
+		if (*o)[i].name == name {
+			(*o)[i].value = value
+			return
+		}
+	}
+	*o = append(*o, originalValue{name, value})
+}
+
+func (o *originals) remove(name string) {
+	*o = slices.DeleteFunc(*o, func(v originalValue) bool { return v.name == name })
 }
 
 func (s *rowState) addName(name string) {
@@ -74,6 +106,25 @@ type assembler struct {
 	// made collects the models created for each builder core; relations with
 	// their own connection attach to them after the plan runs.
 	made map[*Core][]*Core
+	// cores and states are allocated in blocks for the rows of the plan.
+	cores  []Core
+	states []rowState
+}
+
+// rowBlock is the number of row cores and row states allocated at once for
+// rows beyond the root rows, which assemble allocates in one block.
+const rowBlock = 16
+
+// newRow returns the core and the row state of a new row model of ent.
+func (a *assembler) newRow(ent *Entity) (*Core, *rowState) {
+	if len(a.cores) == 0 {
+		a.cores = make([]Core, rowBlock)
+		a.states = make([]rowState, rowBlock)
+	}
+	c, st := &a.cores[0], &a.states[0]
+	a.cores, a.states = a.cores[1:], a.states[1:]
+	c.ent = ent
+	return c, st
 }
 
 // rowShape is the part of a row state that is equal for every row of one
@@ -121,9 +172,10 @@ func (a *assembler) shape(b *Core, asm *plan.Assemble) *rowShape {
 
 func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 	sh := a.shape(b, asm)
-	m := b.ent.New(NewCore(b.ent)).Orm_()
+	core, st := a.newRow(b.ent)
+	m := b.ent.New(core).Orm_()
 	m.conn = a.conn
-	st := &rowState{loaded: true, names: sh.names, hidden: sh.hidden}
+	*st = rowState{loaded: true, names: sh.names, hidden: sh.hidden}
 	m.row = st
 	for i, col := range asm.Columns {
 		v := row[col.Index]
@@ -138,13 +190,13 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 		}
 		st.extra[col.Name] = v
 	}
-	st.original = make(map[string]any, sh.original)
+	st.original = make(originals, 0, sh.original)
 	for _, name := range sh.keys {
-		st.original[name] = m.value(name)
+		st.original.set(name, m.value(name))
 	}
 	if sh.updated != "" {
 		if v, ok := b.ent.Value(m.self, sh.updated); ok {
-			st.original[sh.updated] = v
+			st.original.set(sh.updated, v)
 		}
 	}
 	for _, name := range b.news {
@@ -278,6 +330,7 @@ func (c *Core) load(kind string) (*collection, error) {
 
 func (c *Core) assemble(ex executor, r *request, res *result, asm *plan.Assemble) (*collection, error) {
 	a := &assembler{res: res, req: r, db: ex.base(), conn: c.conn}
+	a.cores, a.states = make([]Core, len(res.main)), make([]rowState, len(res.main))
 	if len(r.external) > 0 {
 		a.made = map[*Core][]*Core{}
 	}
@@ -393,6 +446,7 @@ func updatedColumn(ent *schema.Entity) string {
 // Get runs the query and returns the first model. It returns CodeNoRows when
 // the query matches no rows; callers must not treat a missing row as success.
 func (c *Core) Get() (Model, error) {
+	c.ensureStatement()
 	rows, err := c.load("one")
 	if err != nil {
 		return nil, err
@@ -405,6 +459,7 @@ func (c *Core) Get() (Model, error) {
 
 // Gets runs the query and returns the collection.
 func Gets[T Model](c *Core) (*Collection[T], error) {
+	c.ensureStatement()
 	rows, err := c.load("all")
 	if err != nil {
 		return nil, err
@@ -414,6 +469,7 @@ func Gets[T Model](c *Core) (*Collection[T], error) {
 
 // GetsCount runs a grouped count; each model carries row_count.
 func GetsCount[T Model](c *Core) (*Collection[T], error) {
+	c.ensureStatement()
 	rows, err := c.load("group_count")
 	if err != nil {
 		return nil, err
@@ -423,6 +479,7 @@ func GetsCount[T Model](c *Core) (*Collection[T], error) {
 
 // GetsPage returns one page and the total count.
 func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
+	c.ensureStatement()
 	if page < 1 || perPage < 1 {
 		return nil, configErr("getsPage requires a positive page and perPage")
 	}
@@ -450,6 +507,7 @@ func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
 
 // GetCount returns the number of matching rows.
 func (c *Core) GetCount() (int64, error) {
+	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
 		return 0, err
@@ -459,10 +517,10 @@ func (c *Core) GetCount() (int64, error) {
 }
 
 // GetSum returns the sum of the column selected with sum<Col>().
-func (c *Core) GetSum() (float64, error) { return c.aggregate("sum") }
+func (c *Core) GetSum() (float64, error) { c.ensureStatement(); return c.aggregate("sum") }
 
 // GetAvg returns the average of the column selected with avg<Col>().
-func (c *Core) GetAvg() (float64, error) { return c.aggregate("avg") }
+func (c *Core) GetAvg() (float64, error) { c.ensureStatement(); return c.aggregate("avg") }
 
 func (c *Core) aggregate(fn string) (float64, error) {
 	if c.aggFn != fn {
@@ -482,6 +540,7 @@ func titled(s string) string { return string(s[0]-'a'+'A') + s[1:] }
 
 // GetQuery returns the statement of gets() without executing it.
 func (c *Core) GetQuery() (*Statement, error) {
+	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
 		return nil, err
@@ -571,6 +630,7 @@ func (c *Core) writeRequest(kind string, d *DB) (*request, *schema.Entity, error
 
 // Create inserts the model and returns the created model.
 func (c *Core) Create() (Model, error) {
+	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
 		return nil, err
@@ -609,7 +669,7 @@ func (c *Core) Create() (Model, error) {
 	}
 	m := c.ent.New(NewCore(c.ent)).Orm_()
 	m.conn = c.conn
-	st := &rowState{original: map[string]any{}}
+	st := &rowState{}
 	m.row = st
 	for _, s := range c.sets {
 		st.addName(s.column)
@@ -640,7 +700,7 @@ func (c *Core) Create() (Model, error) {
 		if isZero(v) {
 			st.loaded = false
 		}
-		st.original[pk] = v
+		st.original.set(pk, v)
 	}
 	for _, name := range c.news {
 		m.New(name, c.newValues[name])
@@ -665,6 +725,7 @@ func isZero(v any) bool {
 // Creates inserts models in multi-row statements in one transaction and
 // returns the inserted row count.
 func Creates[T Model](c *Core, models []T) (int64, error) {
+	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
 		return 0, err
@@ -741,7 +802,7 @@ func (c *Core) keyValues(ent *schema.Entity) (map[string]any, error) {
 	keys := map[string]any{}
 	for _, pk := range ent.PK {
 		if c.row != nil && c.row.loaded {
-			keys[pk] = c.row.original[pk]
+			keys[pk], _ = c.row.original.get(pk)
 			continue
 		}
 		found := false
@@ -772,6 +833,7 @@ func keyWhere(r *request, ent *schema.Entity, keys map[string]any) {
 // Update writes the changed columns of the row. Update(true) also requires
 // the stored updated_ts to equal the value that was read.
 func (c *Core) Update(optimistic []bool) error {
+	c.ensureStatement()
 	if len(optimistic) > 1 {
 		return configErr("update accepts one flag")
 	}
@@ -811,7 +873,7 @@ func (c *Core) Update(optimistic []bool) error {
 	if len(optimistic) == 1 && optimistic[0] {
 		version, ok := any(nil), false
 		if loaded && column != "" {
-			version, ok = c.row.original[column]
+			version, ok = c.row.original.get(column)
 		}
 		if !ok || version == nil {
 			return configErr("update(true) requires a row loaded with its update time column")
@@ -825,10 +887,10 @@ func (c *Core) Update(optimistic []bool) error {
 	if loaded {
 		for _, s := range c.sets {
 			if slices.Contains(ent.PK, s.column) && !s.plus && !s.minus && s.raw == nil {
-				c.row.original[s.column] = s.value
+				c.row.original.set(s.column, s.value)
 			}
 		}
-		delete(c.row.original, column)
+		c.row.original.remove(column)
 	}
 	c.sets = nil
 	return nil
@@ -870,6 +932,7 @@ func (c *Core) withAESColumns(ent *schema.Entity) ([]setSpec, error) {
 
 // Save updates the row when its primary key is known, otherwise creates it.
 func (c *Core) Save() (Model, error) {
+	c.ensureStatement()
 	ex, err := c.terminal()
 	if err != nil {
 		return nil, err
@@ -890,6 +953,7 @@ func (c *Core) Save() (Model, error) {
 // Delete deletes the row. Delete(true) first deletes loaded relation rows
 // that belong to it, except relations marked with deleteLock.
 func (c *Core) Delete(recursive []bool) error {
+	c.ensureStatement()
 	if len(recursive) > 1 {
 		return configErr("delete accepts one flag")
 	}
