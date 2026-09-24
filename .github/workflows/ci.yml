@@ -115,7 +115,7 @@ jobs:
       - name: TypeScript
         run: make ts-check
       - name: Rust
-        run: make rust-check rust-150-check rust-driver-check
+        run: make rust-check rust-fmt-check rust-150-check rust-driver-check
       - name: client database tests (SQLite, MySQL, PostgreSQL)
         run: make client-db-check
       - name: conformance (4 languages identical on 3 databases)
