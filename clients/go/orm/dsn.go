@@ -54,8 +54,8 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 			// MySQL bounds SELECT statements with max_execution_time.
 			q.Set("max_execution_time", strconv.Itoa(statementTimeoutMs))
 		}
-		// Datetime cells arrive as UTC-located wall-clock values, which
-		// localTime places in the connection time zone.
+		// Datetime cells arrive as time.Time values; openSQL sets the driver
+		// location to the connection time zone.
 		q.Set("parseTime", "true")
 		auth := ""
 		if u.User != nil {

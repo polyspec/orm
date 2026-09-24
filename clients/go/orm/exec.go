@@ -113,6 +113,9 @@ func (d *DB) localTime(v any) any {
 			}
 		}
 	case time.Time:
+		if x.Location() == d.location {
+			return v
+		}
 		if x.Location() == time.UTC {
 			return time.Date(x.Year(), x.Month(), x.Day(), x.Hour(), x.Minute(), x.Second(), x.Nanosecond(), d.location)
 		}
