@@ -51,11 +51,7 @@ pub fn is_value_function(name: &str) -> bool {
 }
 
 fn quote_with(q: &str, ident: &str) -> String {
-    ident
-        .split('.')
-        .map(|part| format!("{q}{}{q}", part.replace(q, &format!("{q}{q}"))))
-        .collect::<Vec<_>>()
-        .join(".")
+    ident.split('.').map(|part| format!("{q}{}{q}", part.replace(q, &format!("{q}{q}")))).collect::<Vec<_>>().join(".")
 }
 
 /// The great-circle distance. `x2` and `y2` are called once per occurrence so
@@ -213,11 +209,7 @@ impl Dialect {
                 format!("MATCH({}) AGAINST ({ph}{mode})", cols.join(", "))
             }
             _ => {
-                let doc = if cols.len() > 1 {
-                    format!("coalesce({}, '')", cols.join(", '') || ' ' || coalesce("))
-                } else {
-                    cols.join(" || ' ' || ")
-                };
+                let doc = if cols.len() > 1 { format!("coalesce({}, '')", cols.join(", '') || ' ' || coalesce(")) } else { cols.join(" || ' ' || ") };
                 let f = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
                 format!("to_tsvector('simple', {doc}) @@ {f}('simple', {ph})")
             }

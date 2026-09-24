@@ -191,13 +191,7 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>) 
         if let Some(on) = &j.child.on {
             child.on = Some(group(r, on, &j.child, f)?);
         }
-        q.joins.push(ir::Join {
-            rel: last_segment(&path),
-            kind: j.kind.to_owned(),
-            query: Box::new(child),
-            left: j.left.clone(),
-            right: j.right.clone(),
-        });
+        q.joins.push(ir::Join { rel: last_segment(&path), kind: j.kind.to_owned(), query: Box::new(child), left: j.left.clone(), right: j.right.clone() });
     }
     if !c.where_.items.is_empty() {
         q.where_ = Some(group(r, &c.where_.items, c, f)?);

@@ -20,20 +20,20 @@ pub mod tx;
 pub mod utils;
 pub mod value;
 
-pub use chrono;
-pub use serde;
-pub use serde_json;
-pub use ordered_json;
 pub use args::{
-    date, day_of_week, days_ago, days_later, distance, hours_ago, hours_later, minutes_ago, minutes_later, month,
-    months_ago, months_later, now, point_x, point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
+    date, day_of_week, days_ago, days_later, distance, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, point_x,
+    point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
 };
+pub use chrono;
 pub use collection::{Collection, Key, Page};
 pub use core::Core;
 pub use db::{Config, Db, DbStats, OnQuery, Statement};
 pub use engine::Dialect;
 pub use model::{AnyModel, Entity, Model};
+pub use ordered_json;
 pub use schema::{Manifest, Schema};
+pub use serde;
+pub use serde_json;
 pub use tx::{transaction_conflict, Isolation, Transaction};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{parse_point, point_text, Param, Point, Val};
@@ -59,11 +59,7 @@ impl std::fmt::Display for Error {
             Error::Engine { code, msg } => write!(f, "{code}: {msg}"),
             Error::Sqlx(e) => write!(f, "sqlx: {e}"),
             Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
-            Error::OptimisticLock => write!(
-                f,
-                "{}: row changed since it was read",
-                codes::OPTIMISTIC_LOCK
-            ),
+            Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
         }
     }
@@ -86,20 +82,13 @@ impl From<sqlx::Error> for Error {
             // message text is localized, the way pgx renders it)
             let mapped = if let Some(m) = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
                 match (m.number(), m.code()) {
-                    (3572, _) | (_, Some("ER_LOCK_NOWAIT")) => {
-                        Some((codes::LOCK_NOT_AVAILABLE, m.message().to_owned()))
-                    }
-                    (1213, _) | (_, Some("40001")) => {
-                        Some((codes::DEADLOCK, m.message().to_owned()))
-                    }
+                    (3572, _) | (_, Some("ER_LOCK_NOWAIT")) => Some((codes::LOCK_NOT_AVAILABLE, m.message().to_owned())),
+                    (1213, _) | (_, Some("40001")) => Some((codes::DEADLOCK, m.message().to_owned())),
                     (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
                     (1317, _) | (3024, _) => Some((codes::CANCELED, m.message().to_owned())),
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
                     (1298, _) => {
-                        return Error::Config(format!(
-                            "dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)",
-                            m.message()
-                        ))
+                        return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
                     }
                     _ => None,
                 }
@@ -127,10 +116,7 @@ impl From<sqlx::Error> for Error {
                 None
             };
             if let Some((code, msg)) = mapped {
-                return Error::Engine {
-                    code: code.into(),
-                    msg,
-                };
+                return Error::Engine { code: code.into(), msg };
             }
         }
         Error::Sqlx(e)
@@ -155,10 +141,7 @@ impl Error {
     }
 
     pub(crate) fn internal(msg: impl Into<String>) -> Error {
-        Error::Engine {
-            code: codes::INTERNAL.into(),
-            msg: msg.into(),
-        }
+        Error::Engine { code: codes::INTERNAL.into(), msg: msg.into() }
     }
 }
 

@@ -36,8 +36,7 @@ pub async fn trigger_bodies(conn: &mut Conn, driver: &str) -> Result<Vec<String>
 /// The literal of an expression default such as DEFAULT ('x'), which MySQL
 /// reports as _utf8mb4\\'x\\'; the expression text escapes the literal.
 fn mysql_expression_literal(def: &str) -> Option<String> {
-    static RE: std::sync::LazyLock<regex::Regex> =
-        std::sync::LazyLock::new(|| regex::Regex::new(r"^_[A-Za-z0-9]+\\'(.*)\\'$").expect("mysql default pattern"));
+    static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| regex::Regex::new(r"^_[A-Za-z0-9]+\\'(.*)\\'$").expect("mysql default pattern"));
     if let Some(caps) = RE.captures(def) {
         return Some(mysql_unescape(&mysql_unescape(&caps[1])));
     }

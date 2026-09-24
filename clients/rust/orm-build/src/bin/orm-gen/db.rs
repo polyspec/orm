@@ -235,9 +235,7 @@ impl ToolDsn {
             "postgres" if (host.is_empty() && !url.query_pairs().any(|(k, _)| k == "host")) || database.is_empty() => {
                 return Err("MIGRATION_CONFIG: postgres DSN must include host and database".into())
             }
-            "sqlite" if !url.path().starts_with('/') || !host.is_empty() => {
-                return Err("MIGRATION_CONFIG: sqlite DSN must be sqlite://<absolute path>".into())
-            }
+            "sqlite" if !url.path().starts_with('/') || !host.is_empty() => return Err("MIGRATION_CONFIG: sqlite DSN must be sqlite://<absolute path>".into()),
             "mysql" | "postgres" | "sqlite" => {}
             _ => return Err(format!("MIGRATION_CONFIG: unsupported DSN scheme {}; want mysql, postgres, or sqlite", orm_build::schema::quote_text(&dialect))),
         }

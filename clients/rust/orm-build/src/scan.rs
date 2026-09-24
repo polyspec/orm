@@ -38,9 +38,8 @@ pub struct Scan {
 }
 
 /// Methods that do not return the model they are called on.
-const TERMINALS: &[&str] = &[
-    "get", "gets", "get_count", "gets_count", "get_sum", "get_avg", "gets_page", "get_query", "create", "creates", "update", "save", "delete", "to_array",
-];
+const TERMINALS: &[&str] =
+    &["get", "gets", "get_count", "gets_count", "get_sum", "get_avg", "gets_page", "get_query", "create", "creates", "update", "save", "delete", "to_array"];
 
 pub fn returns_model(name: &str) -> bool {
     !TERMINALS.contains(&name) && !name.starts_with("get_") && !name.starts_with("gets_by_")

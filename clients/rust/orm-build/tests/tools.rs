@@ -112,10 +112,7 @@ fn account_thing(action: &str, index: Option<&str>) -> Manifest {
     let parent = entity("account", vec![id()]);
     let mut child = entity(
         "thing",
-        vec![
-            id(),
-            Col { fk: true, reference: Some(Ref { entity: "account".into(), column: "id".into() }), ..col("account_id", "i64", "bigint") },
-        ],
+        vec![id(), Col { fk: true, reference: Some(Ref { entity: "account".into(), column: "id".into() }), ..col("account_id", "i64", "bigint") }],
     );
     child.relations.insert(
         "account".into(),
@@ -215,11 +212,18 @@ fn diff_uses_explicit_renames() {
 #[test]
 fn diff_drops_child_constraints_before_table_rename() {
     let owner = || entity("owner", vec![id()]);
-    let mut entry = entity("entry", vec![id(), Col { reference: Some(Ref { entity: "owner".into(), column: "id".into() }), ..col("owner_id", "i64", "bigint") }]);
+    let mut entry =
+        entity("entry", vec![id(), Col { reference: Some(Ref { entity: "owner".into(), column: "id".into() }), ..col("owner_id", "i64", "bigint") }]);
     entry.indexes.insert("owner_idx".into(), vec!["owner_id".into()]);
     entry.relations.insert(
         "owner".into(),
-        Rel { name: "owner".into(), kind: "one".into(), target: "owner".into(), keys: vec![RelKey { local: "owner_id".into(), target: "id".into() }], ..Default::default() },
+        Rel {
+            name: "owner".into(),
+            kind: "one".into(),
+            target: "owner".into(),
+            keys: vec![RelKey { local: "owner_id".into(), target: "id".into() }],
+            ..Default::default()
+        },
     );
     let mut record = entry.clone();
     record.name = "record".into();
@@ -282,10 +286,7 @@ fn render_mermaid_restores_foreign_keys() {
     let m = schema::build(&[schema::parse(&source).unwrap()]).unwrap();
     let rel = m.entities["membership"].relations.values().find(|r| r.target == "account").expect("relation");
     assert_eq!(rel.on_delete, "cascade");
-    assert_eq!(
-        rel.keys,
-        vec![RelKey { local: "tenant_id".into(), target: "tenant_id".into() }, RelKey { local: "account_id".into(), target: "id".into() }]
-    );
+    assert_eq!(rel.keys, vec![RelKey { local: "tenant_id".into(), target: "tenant_id".into() }, RelKey { local: "account_id".into(), target: "id".into() }]);
 }
 
 #[test]
@@ -394,9 +395,12 @@ fn sqlite_introspection_reads_generated_keys_and_clock_defaults() {
 #[test]
 fn diff_adds_commented_columns_and_ignores_sqlite_fulltext() {
     let base = Manifest::load(
-        &schema::build(&[schema::parse("erDiagram\n  note {\n    bigint id PK\n    varchar(64) title\n    text body \"?\"\n  }\n  %% fulltext note (title, body)\n").unwrap()])
-            .unwrap()
-            .marshal_indent(),
+        &schema::build(&[schema::parse(
+            "erDiagram\n  note {\n    bigint id PK\n    varchar(64) title\n    text body \"?\"\n  }\n  %% fulltext note (title, body)\n",
+        )
+        .unwrap()])
+        .unwrap()
+        .marshal_indent(),
     )
     .unwrap();
     let next = schema::build(&[schema::parse(

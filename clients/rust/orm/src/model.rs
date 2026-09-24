@@ -8,13 +8,13 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 
 use crate::collection::{AnyCollection, Collection, Key, Page};
-use crate::core::{config, Core, CondGroup, CondKind, CondNode, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
+use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
 use crate::db::{Db, Executor, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
 use crate::ir;
-use crate::schema::{EntitySchema, Schema};
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
+use crate::schema::{EntitySchema, Schema};
 use crate::tx::resolve;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
@@ -217,7 +217,8 @@ fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
     if binds <= limit {
         return Ok(Vec::new());
     }
-    let too_large = || Error::Engine { code: codes::IR_INVALID.into(), msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}") };
+    let too_large =
+        || Error::Engine { code: codes::IR_INVALID.into(), msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}") };
     let q = &req.ir.query;
     let Some(where_) = &q.where_ else { return Err(too_large()) };
     if q.limit.is_some() || !q.order.is_empty() || !q.group_by.is_empty() || !q.group_by_expr.is_empty() {
@@ -391,7 +392,12 @@ impl<'a> Assembler<'a> {
         }
         for ch in &asm.children {
             if ch.kind == "join" {
-                let child = b.joins.iter().find(|j| result_name(&j.child, false) == ch.rel).map(|j| j.child.as_ref()).ok_or_else(|| Error::internal(format!("join result {} without a model", ch.rel)))?;
+                let child = b
+                    .joins
+                    .iter()
+                    .find(|j| result_name(&j.child, false) == ch.rel)
+                    .map(|j| j.child.as_ref())
+                    .ok_or_else(|| Error::internal(format!("join result {} without a model", ch.rel)))?;
                 let casm = ch.assemble.as_ref().expect("join child has an assemble");
                 let present = casm.columns.first().map(|c| !row[c.index].is_null()).unwrap_or(false);
                 let value = if present {
@@ -529,10 +535,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         let mut q = (**ch).clone();
         q.match_left.clear();
         q.alias.clear();
-        let pred = CondNode {
-            conn: "",
-            kind: CondKind::Pred(PredSpec { column: ch.match_right.clone(), op: "in", value: PredValue::List(values) }),
-        };
+        let pred = CondNode { conn: "", kind: CondKind::Pred(PredSpec { column: ch.match_right.clone(), op: "in", value: PredValue::List(values) }) };
         if q.where_.items.is_empty() {
             q.where_ = CondGroup { items: vec![pred], pending: "" };
         } else {
@@ -912,7 +915,15 @@ fn key_where(req: &mut Req, ent: &EntitySchema, keys: &HashMap<String, Param>) {
     let mut g = ir::Group::default();
     for (i, pk) in ent.pk.iter().enumerate() {
         let p = req.p(keys[pk].clone());
-        g.items.push(ir::Item::Pred { pred: Box::new(ir::Pred { conn: if i > 0 { "and".into() } else { String::new() }, column: pk.clone(), op: "eq".into(), p: Some(p), ..Default::default() }) });
+        g.items.push(ir::Item::Pred {
+            pred: Box::new(ir::Pred {
+                conn: if i > 0 { "and".into() } else { String::new() },
+                column: pk.clone(),
+                op: "eq".into(),
+                p: Some(p),
+                ..Default::default()
+            }),
+        });
     }
     req.ir.query.where_ = Some(g);
 }

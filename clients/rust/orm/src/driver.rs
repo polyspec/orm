@@ -12,9 +12,9 @@ use sqlx::postgres::{PgRow, PgTypeInfo, Postgres};
 use sqlx::sqlite::{Sqlite, SqliteRow};
 use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
 
-use crate::db::Zone;
 use crate::collection::Key;
 use crate::db::Pool;
+use crate::db::Zone;
 use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
 use crate::row::{decode_styled, read_cell, read_row, DriverRow};
 use crate::value::{transform, Param, Val};
@@ -54,11 +54,7 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> bool {
 
 /// Distinct non-null values a relation step binds, first-seen order, from the
 /// parent rows that pass `if_parent`.
-pub(crate) fn parent_values<'a>(
-    pr: &ParentRef,
-    parents: impl Iterator<Item = &'a [Val]>,
-    params: &[Param],
-) -> Vec<Param> {
+pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, params: &[Param]) -> Vec<Param> {
     let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for row in parents {
@@ -98,10 +94,7 @@ pub(crate) fn parent_values<'a>(
 /// number shifts by n-1 (docs/dialects.md).
 pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (String, Vec<Param>) {
     let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
-    assert!(
-        width > 0 && vals.len().is_multiple_of(width),
-        "invalid relation parent key values"
-    );
+    assert!(width > 0 && vals.len().is_multiple_of(width), "invalid relation parent key values");
     let tuples = vals.len() / width;
     let mut n = 1;
     while n < tuples {
@@ -113,12 +106,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> (Str
     }
     let mut sql = String::with_capacity(st.sql.len() + 4 * n);
     if numbered {
-        let parent = st
-            .bind_slots
-            .iter()
-            .position(|b| b.from == "parent")
-            .map(|i| i + 1)
-            .unwrap_or(0);
+        let parent = st.bind_slots.iter().position(|b| b.from == "parent").map(|i| i + 1).unwrap_or(0);
         let bytes = st.sql.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
@@ -184,10 +172,7 @@ pub(crate) fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
         return Ok(v.clone());
     }
     let Param::Str(s) = v else {
-        return Err(Error::Config(format!(
-            "transform {} needs a string",
-            b.transform
-        )));
+        return Err(Error::Config(format!("transform {} needs a string", b.transform)));
     };
     Ok(Param::Str(transform(&b.transform, s)))
 }
@@ -234,29 +219,17 @@ pub(crate) fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
         }
         None
     }
-    plan.steps
-        .iter()
-        .filter_map(|s| s.assemble.as_deref())
-        .find_map(|a| find(a, id))
-        .expect("relation step without a child spec")
+    plan.steps.iter().filter_map(|s| s.assemble.as_deref()).find_map(|a| find(a, id)).expect("relation step without a child spec")
 }
 
 /// Prepares `sql` with no declared parameter types so the server infers them, and returns them.
-pub(crate) async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(
-    e: E,
-    sql: &str,
-) -> Result<Arc<[PgTypeInfo]>> {
-    let stmt = e
-        .prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str())
-        .await?;
+pub(crate) async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(e: E, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
+    let stmt = e.prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str()).await?;
     match stmt.parameters() {
         Some(sqlx::Either::Left(types)) => Ok(Arc::from(types.to_vec())),
-        _ => Err(Error::internal(
-            "postgres did not describe the statement's parameters",
-        )),
+        _ => Err(Error::internal("postgres did not describe the statement's parameters")),
     }
 }
-
 
 pub(crate) fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> {
     match p {
@@ -293,16 +266,8 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.f")
         .or_else(|_| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f"))
         .ok()
-        .or_else(|| {
-            chrono::DateTime::parse_from_rfc3339(s)
-                .ok()
-                .map(|t| t.naive_utc())
-        })
-        .or_else(|| {
-            NaiveDate::parse_from_str(s, "%Y-%m-%d")
-                .ok()
-                .map(|d| d.and_hms_opt(0, 0, 0).unwrap())
-        })
+        .or_else(|| chrono::DateTime::parse_from_rfc3339(s).ok().map(|t| t.naive_utc()))
+        .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
 }
 
 /// Binds one PostgreSQL parameter as the type the server inferred for its placeholder
@@ -310,12 +275,7 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
 /// that type is CONFIG (the statement text and the value are named).
 pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize, zone: Zone) -> Result<PgQuery<'q>> {
     let name = ty.name();
-    let bad = || {
-        Error::Config(format!(
-            "postgres parameter ${} is {name}: cannot bind {p:?}",
-            i + 1
-        ))
-    };
+    let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
     macro_rules! int {
         ($t:ty) => {
             match p {
@@ -323,9 +283,7 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
                 Param::I64(x) => q.bind(<$t>::try_from(*x).map_err(|_| bad())?),
                 Param::Bool(b) => q.bind(*b as $t),
                 Param::Str(s) => q.bind(s.trim().parse::<$t>().map_err(|_| bad())?),
-                Param::F64(x) if x.fract() == 0.0 => {
-                    q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?)
-                }
+                Param::F64(x) if x.fract() == 0.0 => q.bind(<$t>::try_from(*x as i64).map_err(|_| bad())?),
                 _ => return Err(bad()),
             }
         };
@@ -384,10 +342,12 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
             Param::Null => q.bind(Option::<chrono::DateTime<chrono::Utc>>::None),
             Param::DateTime(t) => q.bind(zone.instant(*t).ok_or_else(bad)?),
             Param::Date(d) => q.bind(zone.instant(d.and_hms_opt(0, 0, 0).unwrap()).ok_or_else(bad)?),
-            Param::Str(s) => match chrono::DateTime::parse_from_str(s.trim(), "%Y-%m-%d %H:%M:%S%.f%:z").or_else(|_| chrono::DateTime::parse_from_rfc3339(s.trim())) {
-                Ok(t) => q.bind(t.with_timezone(&chrono::Utc)),
-                Err(_) => q.bind(zone.instant(parse_datetime(s).ok_or_else(bad)?).ok_or_else(bad)?),
-            },
+            Param::Str(s) => {
+                match chrono::DateTime::parse_from_str(s.trim(), "%Y-%m-%d %H:%M:%S%.f%:z").or_else(|_| chrono::DateTime::parse_from_rfc3339(s.trim())) {
+                    Ok(t) => q.bind(t.with_timezone(&chrono::Utc)),
+                    Err(_) => q.bind(zone.instant(parse_datetime(s).ok_or_else(bad)?).ok_or_else(bad)?),
+                }
+            }
             _ => return Err(bad()),
         },
         "DATE" => match p {
@@ -399,9 +359,7 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
         },
         "JSONB" | "JSON" => match p {
             Param::Null => q.bind(Option::<sqlx::types::Json<serde_json::Value>>::None),
-            Param::Str(s) => q.bind(sqlx::types::Json(
-                serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?,
-            )),
+            Param::Str(s) => q.bind(sqlx::types::Json(serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?)),
             _ => return Err(bad()),
         },
         "BYTEA" => match p {
@@ -415,20 +373,11 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
             Param::Str(s) => q.bind(s.trim().parse::<std::net::IpAddr>().map_err(|_| bad())?),
             _ => return Err(bad()),
         },
-        other => {
-            return Err(Error::Config(format!(
-                "postgres parameter ${} has type {other}, which the executor cannot bind",
-                i + 1
-            )))
-        }
+        other => return Err(Error::Config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
     })
 }
 
-pub(crate) async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(
-    sql: &str,
-    args: &[Param],
-    e: E,
-) -> sqlx::Result<Vec<MySqlRow>> {
+pub(crate) async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<MySqlRow>> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_mysql(q, a);
@@ -436,11 +385,7 @@ pub(crate) async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(
     q.fetch_all(e).await
 }
 
-pub(crate) async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(
-    sql: &str,
-    args: &[Param],
-    e: E,
-) -> sqlx::Result<(u64, u64)> {
+pub(crate) async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_mysql(q, a);
@@ -451,11 +396,7 @@ pub(crate) async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(
 
 pub(crate) fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo], zone: Zone) -> Result<PgQuery<'q>> {
     if types.len() != args.len() {
-        return Err(Error::internal(format!(
-            "postgres described {} parameters, the plan binds {}",
-            types.len(),
-            args.len()
-        )));
+        return Err(Error::internal(format!("postgres described {} parameters, the plan binds {}", types.len(), args.len())));
     }
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for (i, (a, ty)) in args.iter().zip(types).enumerate() {
@@ -474,22 +415,12 @@ pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(
     Ok(pg_query(sql, args, types, zone)?.fetch_all(e).await?)
 }
 
-pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(
-    sql: &str,
-    args: &[Param],
-    types: &[PgTypeInfo],
-    zone: Zone,
-    e: E,
-) -> Result<(u64, u64)> {
+pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, e: E) -> Result<(u64, u64)> {
     let r = pg_query(sql, args, types, zone)?.execute(e).await?;
     Ok((0, r.rows_affected()))
 }
 
-pub(crate) async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(
-    sql: &str,
-    args: &[Param],
-    e: E,
-) -> sqlx::Result<Vec<SqliteRow>> {
+pub(crate) async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<SqliteRow>> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_sqlite(q, a);
@@ -497,11 +428,7 @@ pub(crate) async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(
     q.fetch_all(e).await
 }
 
-pub(crate) async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(
-    sql: &str,
-    args: &[Param],
-    e: E,
-) -> sqlx::Result<(u64, u64)> {
+pub(crate) async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
         q = bind_sqlite(q, a);
@@ -516,39 +443,23 @@ pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str)
     }
     let tx = match target {
         Target::Tx(TxInner::Sqlite(tx)) => tx,
-        Target::Pool(Pool::Sqlite(_)) => {
-            return Err(Error::Config("SQLite row locks require an ORM transaction".into()))
-        }
+        Target::Pool(Pool::Sqlite(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
         _ => return Ok(()),
     };
     let nowait = mode.ends_with("_nowait");
-    let previous: i64 = sqlx::query_scalar("PRAGMA busy_timeout")
-        .fetch_one(&mut **tx)
-        .await?;
+    let previous: i64 = sqlx::query_scalar("PRAGMA busy_timeout").fetch_one(&mut **tx).await?;
     if nowait {
-        sqlx::raw_sql("PRAGMA busy_timeout=0")
-            .execute(&mut **tx)
-            .await?;
+        sqlx::raw_sql("PRAGMA busy_timeout=0").execute(&mut **tx).await?;
     }
     let result = async {
-        sqlx::raw_sql(
-            "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))",
-        )
-        .execute(&mut **tx)
-        .await?;
-        sqlx::raw_sql(
-            "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"",
-        )
-        .execute(&mut **tx)
-        .await?;
+        sqlx::raw_sql("CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))").execute(&mut **tx).await?;
+        sqlx::raw_sql("INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"").execute(&mut **tx).await?;
         Ok::<(), sqlx::Error>(())
     }
     .await;
     if nowait {
         let statement = format!("PRAGMA busy_timeout={previous}");
-        let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str())
-            .execute(&mut **tx)
-            .await;
+        let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut **tx).await;
     }
     result.map_err(|error| {
         let mapped = Error::from(error);
@@ -571,34 +482,17 @@ pub(crate) fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (
 }
 
 pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
-    let width = st
-        .parent
-        .as_ref()
-        .map(|parent| parent.keys.len())
-        .unwrap_or(0);
+    let width = st.parent.as_ref().map(|parent| parent.keys.len()).unwrap_or(0);
     if width == 0 || !vals.len().is_multiple_of(width) {
-        return Err(Error::Engine {
-            code: crate::codes::IR_INVALID.into(),
-            msg: format!("relation {} has invalid parent key values", st.id),
-        });
+        return Err(Error::Engine { code: crate::codes::IR_INVALID.into(), msg: format!("relation {} has invalid parent key values", st.id) });
     }
-    let non_parent = st
-        .bind_slots
-        .iter()
-        .filter(|bind| bind.from != "parent")
-        .count();
+    let non_parent = st.bind_slots.iter().filter(|bind| bind.from != "parent").count();
     let limit: usize = if driver == "sqlite" { 999 } else { 65535 };
     let max_tuples = (limit.saturating_sub(non_parent)) / width;
     if max_tuples == 0 {
         return Err(Error::Engine {
             code: crate::codes::IR_INVALID.into(),
-            msg: format!(
-                "relation {} needs at least {} bind parameters but {} permits {}",
-                st.id,
-                non_parent + width,
-                driver,
-                limit
-            ),
+            msg: format!("relation {} needs at least {} bind parameters but {} permits {}", st.id, non_parent + width, driver, limit),
         });
     }
     let mut chunk_tuples = 1usize;
@@ -613,7 +507,6 @@ pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Resu
     }
     Ok(chunks)
 }
-
 
 /// The first cell of the first row (Null when there is no row).
 pub(crate) fn first_cell(rows: &[DriverRow], zone: Zone) -> Result<Val> {
@@ -653,19 +546,13 @@ pub(crate) struct MySqlOwnedTx {
 
 impl MySqlOwnedTx {
     pub(crate) async fn commit(mut self) -> sqlx::Result<()> {
-        let mut conn = self
-            .conn
-            .take()
-            .expect("active MySQL transaction connection");
+        let mut conn = self.conn.take().expect("active MySQL transaction connection");
         sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
         Ok(())
     }
 
     pub(crate) async fn rollback(mut self) -> sqlx::Result<()> {
-        let mut conn = self
-            .conn
-            .take()
-            .expect("active MySQL transaction connection");
+        let mut conn = self.conn.take().expect("active MySQL transaction connection");
         sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
         Ok(())
     }

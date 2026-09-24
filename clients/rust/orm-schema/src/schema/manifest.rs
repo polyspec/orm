@@ -215,10 +215,28 @@ fn berr(line: usize, msg: impl Into<String>) -> BuildError {
 /// (docs/dsl.md §9). SQL keywords are allowed because every dialect quotes
 /// identifiers.
 pub const RESERVED_SEGMENTS: &[&str] = &["and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"];
-pub const RESERVED_PREFIXES: &[&str] =
-    &["and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext"];
-pub const RESERVED_COLUMNS: &[&str] =
-    &["and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "save", "raw", "on", "random"];
+pub const RESERVED_PREFIXES: &[&str] = &[
+    "and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext",
+];
+pub const RESERVED_COLUMNS: &[&str] = &[
+    "and",
+    "or",
+    "get",
+    "gets",
+    "gets_page",
+    "get_query",
+    "limit",
+    "alias",
+    "connect",
+    "create",
+    "creates",
+    "update",
+    "delete",
+    "save",
+    "raw",
+    "on",
+    "random",
+];
 const RESERVED_ENTITIES: &[&str] = &["connect", "schema_hash"];
 
 static RE_TYPE_PAREN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([a-z]+)(?:\(([^)]*)\))?$").unwrap());
@@ -532,9 +550,7 @@ fn build_column(dc: &DColumn) -> Result<Col, String> {
             }
         }
         "jsontext" => c.typ = "jsontext".into(),
-        "json" => {
-            return Err(format!("column {}: type json is not supported; use jsontext, which stores the ordered-json text", dc.name))
-        }
+        "json" => return Err(format!("column {}: type json is not supported; use jsontext, which stores the ordered-json text", dc.name)),
         "enum" => {
             c.typ = "enum".into();
             if arg.is_empty() {
@@ -701,7 +717,14 @@ impl Manifest {
         let child = self.entities.get_mut(&r.child).unwrap();
         child.relations.insert(
             child_name.clone(),
-            Rel { name: child_name, kind: "one".into(), target: parent_name_.clone(), keys: child_keys, on_delete: r.on_delete.clone(), foreign_key: overlapping },
+            Rel {
+                name: child_name,
+                kind: "one".into(),
+                target: parent_name_.clone(),
+                keys: child_keys,
+                on_delete: r.on_delete.clone(),
+                foreign_key: overlapping,
+            },
         );
         let parent = self.entities.get_mut(&r.parent).unwrap();
         parent.relations.insert(
@@ -874,10 +897,7 @@ impl Manifest {
                 if let Some(reference) = &c.reference {
                     let exists = self.entities.get(&reference.entity).is_some_and(|t| t.column(&reference.column).is_some());
                     if !exists {
-                        return Err(berr(
-                            c.line,
-                            format!("{}.{} -> {}.{}: target does not exist", e.name, c.name, reference.entity, reference.column),
-                        ));
+                        return Err(berr(c.line, format!("{}.{} -> {}.{}: target does not exist", e.name, c.name, reference.entity, reference.column)));
                     }
                 }
             }
@@ -1010,7 +1030,8 @@ fn entity_json(e: &Entity) -> J {
 }
 
 fn col_json(c: &Col) -> J {
-    let mut o = Obj::new().str("name", &c.name).str_omit("renamed_from", &c.renamed_from).str("type", &c.typ).str("raw", &c.raw).bool_omit("nullable", c.nullable);
+    let mut o =
+        Obj::new().str("name", &c.name).str_omit("renamed_from", &c.renamed_from).str("type", &c.typ).str("raw", &c.raw).bool_omit("nullable", c.nullable);
     if let Some(d) = &c.default {
         o = o.str("default", d);
     }
@@ -1028,12 +1049,7 @@ fn col_json(c: &Col) -> J {
     if let Some(r) = &c.reference {
         o = o.put("ref", Obj::new().str("entity", &r.entity).str("column", &r.column).done());
     }
-    o.bool_omit("pk", c.pk)
-        .bool_omit("fk", c.fk)
-        .bool_omit("uk", c.uk)
-        .str_omit("describe", &c.describe)
-        .str_omit("comment", &c.comment)
-        .done()
+    o.bool_omit("pk", c.pk).bool_omit("fk", c.fk).bool_omit("uk", c.uk).str_omit("describe", &c.describe).str_omit("comment", &c.comment).done()
 }
 
 fn rel_json(r: &Rel) -> J {
