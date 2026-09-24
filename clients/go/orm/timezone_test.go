@@ -250,12 +250,14 @@ func TestStatementTimeout(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			db, err := orm.Open(dsn, eng, orm.Config{StatementTimeoutMs: 200})
+			// The table and its rows are created without a statement timeout;
+			// only the checked statement runs on the connection with the timeout.
+			setup, err := orm.Open(dsn, eng, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer db.Close()
-			if err := db.Utils().Schema().Install(manifest); err != nil {
+			defer setup.Close()
+			if err := setup.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
 			ent := zoneEntity(m.SchemaHash)
@@ -267,13 +269,18 @@ func TestStatementTimeout(t *testing.T) {
 				for i := 0; i < rows; i++ {
 					row := orm.NewCore(ent)
 					ent.New(row)
-					row.Connect(db)
+					row.Connect(setup)
 					row.Set("start_dt", time.Now())
 					if _, err := row.Create(); err != nil {
 						t.Fatal(err)
 					}
 				}
 			}
+			db, err := orm.Open(dsn, eng, orm.Config{StatementTimeoutMs: 200})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
 			c := orm.NewCore(ent)
 			ent.New(c)
 			c.Connect(db)
