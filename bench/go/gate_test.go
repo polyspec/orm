@@ -52,9 +52,9 @@ func TestHotPathGate(t *testing.T) {
 	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
 		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
 	}
-	sqlDB := open(t) // skips without a local MySQL
+	sqlDB := open(t)
 	ctx := context.Background()
-	db, err := model.Connect(dsn(), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	db, err := model.Connect(dsn(t), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		t.Fatal(err)
 	}

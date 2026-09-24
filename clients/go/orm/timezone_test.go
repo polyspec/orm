@@ -194,9 +194,7 @@ func TestPoolSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
+		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
 			eng, err := engine.New(m, driver)
 			if err != nil {
@@ -244,9 +242,7 @@ func TestStatementTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
+		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")

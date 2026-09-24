@@ -180,9 +180,7 @@ func TestAuditLargeTextChangeStaysWithinBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	for driver, dsn := range targets {
-		if dsn == "" {
-			continue
-		}
+		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
 			tables := []string{"app.audit_doc", "app.audit_change", "app.audit_operation"}
 			if driver == "mysql" {

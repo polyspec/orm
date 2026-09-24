@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make the Go and PHP hot-path gates and the Go bench fail when `ORM_BENCH_MYSQL_DSN` is unset instead of connecting to a local socket, and make the Go client tests `TestAuditLargeTextChangeStaysWithinBudget`, `TestPoolSize` and `TestStatementTimeout` fail when `ORM_TEST_MYSQL_DSN` or `ORM_TEST_POSTGRES_DSN` is unset instead of leaving out that database.
+
 Make the Rust array output return an error instead of stopping the process: `to_array` of a model or collection, `Val::to_json`, and the getters of attached values return `orm::Result`, and a value that serde_json cannot represent, such as the number `1e400`, returns `CODEC_ENCODE`. Serde serialization of a model reports the same error through the serializer.
 
 Add `make rust-fmt-check`, which runs `cargo fmt --all --check` on the Rust workspace with `clients/rust/rustfmt.toml`; `make check` and CI run it.
