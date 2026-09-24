@@ -257,7 +257,11 @@ fn postgres_row_object(e: &Entity, row: &str, q: &dyn Fn(&str) -> String) -> Str
             format!("jsonb_build_object({})", args.join(", "))
         })
         .collect();
-    if parts.is_empty() { "'{}'::jsonb".into() } else { parts.join(" || ") }
+    if parts.is_empty() {
+        "'{}'::jsonb".into()
+    } else {
+        parts.join(" || ")
+    }
 }
 
 /// A column value for a JSON object on MySQL and SQLite. Binary values use
@@ -330,19 +334,18 @@ fn row_of(event: &str) -> &'static str {
 }
 
 fn audit_key(e: &Entity, event: &str, dialect: &str, q: &dyn Fn(&str) -> String) -> String {
-    let parts: Vec<String> = e
-        .pk
-        .iter()
-        .flat_map(|k| {
-            let c = e.column(k).expect("primary key column");
-            let value = if event == "UPDATE" {
-                format!("COALESCE({}, {})", audit_value(c, &format!("NEW.{}", q(k)), dialect), audit_value(c, &format!("OLD.{}", q(k)), dialect))
-            } else {
-                audit_value(c, &format!("{}.{}", row_of(event), q(k)), dialect)
-            };
-            [literal(k), value]
-        })
-        .collect();
+    let parts: Vec<String> =
+        e.pk.iter()
+            .flat_map(|k| {
+                let c = e.column(k).expect("primary key column");
+                let value = if event == "UPDATE" {
+                    format!("COALESCE({}, {})", audit_value(c, &format!("NEW.{}", q(k)), dialect), audit_value(c, &format!("OLD.{}", q(k)), dialect))
+                } else {
+                    audit_value(c, &format!("{}.{}", row_of(event), q(k)), dialect)
+                };
+                [literal(k), value]
+            })
+            .collect();
     format!("{}{})", if dialect == "mysql" { "JSON_OBJECT(" } else { "json_object(" }, parts.join(", "))
 }
 

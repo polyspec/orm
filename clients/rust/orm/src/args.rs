@@ -113,7 +113,26 @@ pub mod kind {
     macro_rules! kinds {
         ($($name:ident),*) => { $( #[doc(hidden)] pub struct $name; )* };
     }
-    kinds!(Int, IntNull, Float, FloatNull, Decimal, DecimalNull, Text, TextNull, Bool, BoolNull, Time, TimeNull, Bytes, BytesNull, Point, PointNull, Styled, StyledNull);
+    kinds!(
+        Int,
+        IntNull,
+        Float,
+        FloatNull,
+        Decimal,
+        DecimalNull,
+        Text,
+        TextNull,
+        Bool,
+        BoolNull,
+        Time,
+        TimeNull,
+        Bytes,
+        BytesNull,
+        Point,
+        PointNull,
+        Styled,
+        StyledNull
+    );
 }
 
 /// One condition value as the runtime records it.

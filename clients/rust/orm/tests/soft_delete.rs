@@ -10,12 +10,8 @@ use orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 
 static SCHEMA: Schema = Schema::new(include_bytes!("../../../../schema/schema.json"), "07c725aadc45a65d");
 
-static ENTITY: Entity = Entity {
-    name: "soft_record",
-    schema: &SCHEMA,
-    new: orm::model::new_boxed::<SoftRecord>,
-    collect: orm::model::collect_boxed::<SoftRecord>,
-};
+static ENTITY: Entity =
+    Entity { name: "soft_record", schema: &SCHEMA, new: orm::model::new_boxed::<SoftRecord>, collect: orm::model::collect_boxed::<SoftRecord> };
 
 #[derive(Clone)]
 struct SoftRecord {
@@ -79,11 +75,9 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let config = Config {
         aes_key: "test-aes-key".into(),
         blind_index_key: "test-blind-key".into(),
-        on_query: Some(Arc::new(
-            move |sql: &str, _: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
-                hook.lock().unwrap().push(sql.to_owned());
-            },
-        )),
+        on_query: Some(Arc::new(move |sql: &str, _: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
+            hook.lock().unwrap().push(sql.to_owned());
+        })),
         ..Default::default()
     };
     let db = Db::connect(&dsn, 1, config).await.unwrap();
@@ -99,13 +93,7 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let gone_row = rows.models().find(|r| r.name == "gone").cloned().expect("the gone row is readable");
     orm::model::delete(&gone_row, false).await.unwrap();
     assert_eq!(orm::model::get_count(record(&db).core()).await.unwrap(), 1, "reads exclude soft-deleted rows");
-    let names = orm::model::gets(&record(&db))
-        .await
-        .unwrap()
-        .models()
-        .map(|r| r.name.clone())
-        .collect::<Vec<_>>()
-        .join(",");
+    let names = orm::model::gets(&record(&db)).await.unwrap().models().map(|r| r.name.clone()).collect::<Vec<_>>().join(",");
     assert_eq!(names, "keep", "a soft-deleted row is not readable");
     let statements = logged.lock().unwrap().clone();
     let update = statements.iter().find(|sql| sql.starts_with("UPDATE \"soft_record\"")).expect("delete rewrites to an update");

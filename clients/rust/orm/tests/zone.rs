@@ -22,12 +22,8 @@ static SCHEMA: Schema = Schema::new(include_bytes!("testdata/zone_schema.json"),
 /// one at a time.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-static ENTITY: Entity = Entity {
-    name: "zone_event",
-    schema: &SCHEMA,
-    new: orm::model::new_boxed::<ZoneEvent>,
-    collect: orm::model::collect_boxed::<ZoneEvent>,
-};
+static ENTITY: Entity =
+    Entity { name: "zone_event", schema: &SCHEMA, new: orm::model::new_boxed::<ZoneEvent>, collect: orm::model::collect_boxed::<ZoneEvent> };
 
 #[derive(Clone)]
 struct ZoneEvent {
@@ -108,15 +104,15 @@ async fn connection_time_zone() {
     std::fs::create_dir_all(&tmp).unwrap();
     let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
     let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
-    let targets = vec![
-        ("sqlite".to_owned(), String::new()),
-        ("mysql".to_owned(), mysql_dsn),
-        ("postgres".to_owned(), postgres_dsn),
-    ];
+    let targets = vec![("sqlite".to_owned(), String::new()), ("mysql".to_owned(), mysql_dsn), ("postgres".to_owned(), postgres_dsn)];
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
     for (driver, base) in &targets {
         for zone in ["+00:00", "+09:00", "-05:30", "Asia/Seoul"] {
-            let base = if driver == "sqlite" { format!("sqlite://{}", tmp.join(format!("zone{}.sqlite", zone.replace([':', '/', '+'], "_"))).display()) } else { base.clone() };
+            let base = if driver == "sqlite" {
+                format!("sqlite://{}", tmp.join(format!("zone{}.sqlite", zone.replace([':', '/', '+'], "_"))).display())
+            } else {
+                base.clone()
+            };
             let sep = if base.contains('?') { '&' } else { '?' };
             let dsn = format!("{base}{sep}timezone={}", zone.replace('+', "%2B"));
             let label = format!("{driver}/{zone}");
