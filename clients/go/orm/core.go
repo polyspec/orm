@@ -140,6 +140,29 @@ type Core struct {
 	// target is the model a group callback stands for.
 	target *Core
 
+	// statement holds the query a builder core describes. A row core that the
+	// assembler creates for a loaded row has none until it is used as a builder.
+	*statement
+
+	sets        []setSpec
+	news        []string
+	newValues   map[string]any
+	duplication *Core
+
+	row *rowState
+}
+
+// ensureStatement gives a row core a statement when it is used as a builder
+// or runs a statement; the assembler creates row cores without one.
+func (c *Core) ensureStatement() {
+	if c.statement == nil {
+		c.statement = &statement{}
+	}
+}
+
+// statement is the query part of a builder core: conditions, joins,
+// relations, columns, order, grouping, limit, locks, and result keys.
+type statement struct {
 	where     condGroup
 	on        *condGroup
 	joins     []joinSpec
@@ -163,18 +186,11 @@ type Core struct {
 	keyName               string
 	fetchKey              func(Model) any
 	fetchValue            func(Model) any
-
-	sets        []setSpec
-	news        []string
-	newValues   map[string]any
-	duplication *Core
-
-	row *rowState
 }
 
 // NewCore creates the core of a new model of ent. Generated constructors call it.
 func NewCore(ent *Entity) *Core {
-	return &Core{ent: ent}
+	return &Core{ent: ent, statement: &statement{}}
 }
 
 // Bind records the generated model that owns the core.
@@ -226,7 +242,8 @@ func (c *Core) Connect(db *DB) {
 
 // Group creates the core passed to an and(fn)/or(fn) or on(fn) callback.
 func (c *Core) Group() *Core {
-	return &Core{ent: c.ent, kind: kindGroup, target: c}
+	c.ensureStatement()
+	return &Core{ent: c.ent, kind: kindGroup, target: c, statement: &statement{}}
 }
 
 func (g *condGroup) add(owner *Core, conn string, node condNode) {
@@ -255,6 +272,7 @@ func (c *Core) group() *condGroup { return &c.where }
 // Connector records and()/or() without arguments, or places the conditions of
 // a joined model with and(model)/or(model).
 func (c *Core) Connector(conn string, args []any) {
+	c.ensureStatement()
 	g := c.group()
 	switch len(args) {
 	case 0:
@@ -282,6 +300,7 @@ func (c *Core) Connector(conn string, args []any) {
 
 // AddGroup appends the conditions collected by a group callback.
 func (c *Core) AddGroup(conn string, g *Core) {
+	c.ensureStatement()
 	c.failErr(g.err)
 	if len(g.where.items) == 0 {
 		c.fail("%s group callback added no condition", conn)
@@ -296,6 +315,7 @@ func (c *Core) AddGroup(conn string, g *Core) {
 
 // On sets the join ON conditions from a callback group.
 func (c *Core) On(g *Core) {
+	c.ensureStatement()
 	if c.isGroup() {
 		c.fail("on is not allowed inside a group callback")
 		return
@@ -314,6 +334,7 @@ func (c *Core) On(g *Core) {
 
 // Raw appends a raw condition. conn is empty for the first condition.
 func (c *Core) Raw(conn, sql string, binds []any) {
+	c.ensureStatement()
 	c.group().add(c, conn, condNode{raw: &rawSpec{sql: sql, binds: binds}})
 }
 
@@ -321,6 +342,7 @@ func (c *Core) Raw(conn, sql string, binds []any) {
 // method name; args holds one value per key, and a key that receives a column
 // function takes the compared value as the following argument.
 func (c *Core) Where(conn string, keys []ChainKey, args ...any) {
+	c.ensureStatement()
 	i := 0
 	for k, key := range keys {
 		if i >= len(args) {
@@ -481,6 +503,7 @@ func tupleRows(value any, width int) ([][]any, error) {
 
 // Join adds a configured child model as an INNER or LEFT join.
 func (c *Core) Join(kind, left, right string, child Model) {
+	c.ensureStatement()
 	if c.isGroup() {
 		c.fail("join is not allowed inside a group callback")
 		return
@@ -505,6 +528,7 @@ func (c *Core) Join(kind, left, right string, child Model) {
 
 // Relation attaches a child model loaded by a separate query.
 func (c *Core) Relation(many bool, child Model) {
+	c.ensureStatement()
 	if c.isGroup() {
 		c.fail("relation is not allowed inside a group callback")
 		return
@@ -532,11 +556,13 @@ func (c *Core) ParentNode() { c.parentNode = true }
 
 // Possible loads the child only for parents whose column equals value.
 func (c *Core) Possible(column string, value any) {
+	c.ensureStatement()
 	c.possible = &setSpec{column: column, value: value}
 }
 
 // GroupLimit limits child rows per parent key.
 func (c *Core) GroupLimit(n int) {
+	c.ensureStatement()
 	if n < 1 {
 		c.fail("groupLimit requires a positive count")
 		return
@@ -545,16 +571,16 @@ func (c *Core) GroupLimit(n int) {
 }
 
 // DeleteLock excludes the relation from recursive delete.
-func (c *Core) DeleteLock() { c.deleteLock = true }
+func (c *Core) DeleteLock() { c.ensureStatement(); c.deleteLock = true }
 
 // KeyName sets the collection key column.
-func (c *Core) KeyName(column string) { c.keyName = column }
+func (c *Core) KeyName(column string) { c.ensureStatement(); c.keyName = column }
 
 // FetchKey computes the collection key of each row.
-func (c *Core) FetchKey(fn func(Model) any) { c.fetchKey = fn }
+func (c *Core) FetchKey(fn func(Model) any) { c.ensureStatement(); c.fetchKey = fn }
 
 // FetchValue replaces each loaded row value with the callback result.
-func (c *Core) FetchValue(fn func(Model) any) { c.fetchValue = fn }
+func (c *Core) FetchValue(fn func(Model) any) { c.ensureStatement(); c.fetchValue = fn }
 
 func (c *Core) addName(name string) bool {
 	if slices.Contains(c.columns.order, name) {
@@ -567,6 +593,7 @@ func (c *Core) addName(name string) bool {
 
 // AddColumn adds one column.
 func (c *Core) AddColumn(column string) {
+	c.ensureStatement()
 	if !slices.Contains(c.columns.add, column) {
 		c.columns.add = append(c.columns.add, column)
 	}
@@ -574,6 +601,7 @@ func (c *Core) AddColumn(column string) {
 
 // AddColumnFormat adds a formatted column; format contains %s for the column.
 func (c *Core) AddColumnFormat(column, name, format string) {
+	c.ensureStatement()
 	if !c.addName(name) {
 		return
 	}
@@ -585,6 +613,7 @@ func (c *Core) AddColumnFormat(column, name, format string) {
 
 // AddColumnFunc adds a column function output.
 func (c *Core) AddColumnFunc(column, name string, fn Func) {
+	c.ensureStatement()
 	if !fn.column {
 		c.fail("addColumn%s requires a column function", name)
 		return
@@ -600,6 +629,7 @@ func (c *Core) AddColumnFunc(column, name string, fn Func) {
 
 // AddColumnSub adds a scalar subquery column.
 func (c *Core) AddColumnSub(name string, fn func(Model) Model) {
+	c.ensureStatement()
 	if !c.addName(name) {
 		return
 	}
@@ -611,6 +641,7 @@ func (c *Core) AddColumnSub(name string, fn func(Model) Model) {
 
 // AddRawColumn adds a raw column.
 func (c *Core) AddRawColumn(name, sql string, binds []any) {
+	c.ensureStatement()
 	if !c.addName(name) {
 		return
 	}
@@ -622,6 +653,7 @@ func (c *Core) AddRawColumn(name, sql string, binds []any) {
 
 // RemoveColumn removes one column.
 func (c *Core) RemoveColumn(column string) {
+	c.ensureStatement()
 	if !slices.Contains(c.columns.remove, column) {
 		c.columns.remove = append(c.columns.remove, column)
 	}
@@ -638,6 +670,7 @@ func (c *Core) ForceIndex(name string) { c.index = name }
 
 // OrderBy appends an order key; fn is an optional column function.
 func (c *Core) OrderBy(column string, desc bool, fn []Func) {
+	c.ensureStatement()
 	o := orderSpec{column: column, desc: desc}
 	switch len(fn) {
 	case 0:
@@ -660,6 +693,7 @@ func (c *Core) OrderByRandom() { c.order = append(c.order, orderSpec{random: tru
 
 // OrderByRaw appends a raw order expression.
 func (c *Core) OrderByRaw(sql string) {
+	c.ensureStatement()
 	c.order = append(c.order, orderSpec{raw: &rawSpec{sql: sql}})
 }
 
@@ -668,11 +702,13 @@ func (c *Core) GroupBy(column string) { c.groupBy = append(c.groupBy, column) }
 
 // GroupByRaw appends a raw grouping expression.
 func (c *Core) GroupByRaw(sql string) {
+	c.ensureStatement()
 	c.groupRaw = append(c.groupRaw, rawSpec{sql: sql})
 }
 
 // Limit sets the row range.
 func (c *Core) Limit(offset, count int) {
+	c.ensureStatement()
 	if offset < 0 || count < 1 {
 		c.fail("limit requires a non-negative offset and a positive count")
 		return
@@ -681,10 +717,10 @@ func (c *Core) Limit(offset, count int) {
 }
 
 // Lock requests a row lock: update, share, update_nowait, or share_nowait.
-func (c *Core) Lock(mode string) { c.lock = mode }
+func (c *Core) Lock(mode string) { c.ensureStatement(); c.lock = mode }
 
 // Aggregate selects the function (sum or avg) and column of getSum or getAvg.
-func (c *Core) Aggregate(fn, column string) { c.aggFn, c.agg = fn, column }
+func (c *Core) Aggregate(fn, column string) { c.ensureStatement(); c.aggFn, c.agg = fn, column }
 
 // Set records a stored column value.
 func (c *Core) Set(column string, value any) {
@@ -753,6 +789,7 @@ func (c *Core) Duplication(m Model) {
 // By applies the chain of a getBy/getsBy/getCountBy terminal to a copy of the
 // model; the chain joins the existing conditions with AND.
 func (c *Core) By(keys []ChainKey, args ...any) *Core {
+	c.ensureStatement()
 	out := c.Clone()
 	conn := ""
 	if len(out.where.items) > 0 {
@@ -766,6 +803,11 @@ func (c *Core) By(keys []ChainKey, args ...any) *Core {
 // original model unchanged.
 func (c *Core) clone() *Core {
 	out := *c
+	st := statement{}
+	if c.statement != nil {
+		st = *c.statement
+	}
+	out.statement = &st
 	out.where = condGroup{items: slices.Clone(c.where.items), pending: c.where.pending}
 	out.joins = slices.Clone(c.joins)
 	out.relations = slices.Clone(c.relations)
