@@ -80,10 +80,7 @@ pub(crate) fn resolve(conn: &Option<Db>) -> Result<Executor> {
             Some(t) => Executor::Tx(t),
             None => Executor::Db(db.clone()),
         }),
-        None => frames()
-            .pop()
-            .map(Executor::Tx)
-            .ok_or_else(|| Error::Config("the model has no connection; use connect or run it inside a transaction".into())),
+        None => frames().pop().map(Executor::Tx).ok_or_else(|| Error::Config("the model has no connection; use connect or run it inside a transaction".into())),
     }
 }
 

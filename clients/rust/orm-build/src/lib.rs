@@ -18,11 +18,11 @@
 //! argument count fails the build.
 
 mod generate;
+pub mod live;
 mod manifest;
+pub mod migration;
 mod names;
 mod scan;
-pub mod live;
-pub mod migration;
 pub use orm_schema::{ddl, schema, triggers};
 
 use std::collections::HashSet;

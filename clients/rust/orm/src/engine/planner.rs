@@ -77,11 +77,7 @@ impl Asm {
             alias: self.alias,
             columns: self.columns,
             key: self.key,
-            children: self
-                .children
-                .into_iter()
-                .map(|ch| Child { assemble: ch.asm.map(|a| Arc::new(a.finish())), ..ch.child })
-                .collect(),
+            children: self.children.into_iter().map(|ch| Child { assemble: ch.asm.map(|a| Arc::new(a.finish())), ..ch.child }).collect(),
         }
     }
 }
@@ -414,11 +410,7 @@ impl<'m> Planner<'m> {
                 let cols: Vec<String> = out_names.iter().map(|n| format!("{w}.{}", self.d.quote(n))).collect();
                 let keys: Vec<String> = rc.child_keys.iter().map(|k| format!("{w}.{}", self.d.quote(&format!("{}__{k}", root.alias)))).collect();
                 let rn = self.d.quote("orm_rn");
-                sb = format!(
-                    "SELECT {} FROM ({sb}) AS {w} WHERE {w}.{rn} <= {per_parent} ORDER BY {}, {w}.{rn}",
-                    cols.join(", "),
-                    keys.join(", ")
-                );
+                sb = format!("SELECT {} FROM ({sb}) AS {w} WHERE {w}.{rn} <= {per_parent} ORDER BY {}, {w}.{rn}", cols.join(", "), keys.join(", "));
             } else {
                 sb.push_str(&self.render_order(&mut b, root, q)?);
                 if kind == "one" && rc.is_none() {
@@ -427,9 +419,10 @@ impl<'m> Planner<'m> {
                     sb.push_str(&self.d.limit(l.offset, l.count));
                 }
                 if !q.lock.is_empty() {
-                    let lock = self.d.row_lock(&q.lock).ok_or_else(|| {
-                        err(codes::CAPABILITY_UNSUPPORTED, format!("{} row lock {:?} is not supported", self.d.name(), q.lock))
-                    })?;
+                    let lock = self
+                        .d
+                        .row_lock(&q.lock)
+                        .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} row lock {:?} is not supported", self.d.name(), q.lock)))?;
                     sb.push_str(lock);
                 }
             }
@@ -457,11 +450,7 @@ impl<'m> Planner<'m> {
             let (parent_keys, child_keys, kind, target) = if !r.left.is_empty() {
                 (vec![r.left.clone()], vec![r.right.clone()], r.kind.clone(), self.entity(&r.query.entity)?)
             } else {
-                let rel = s
-                    .ent
-                    .relations
-                    .get(&r.rel)
-                    .ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, r.rel)))?;
+                let rel = s.ent.relations.get(&r.rel).ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, r.rel)))?;
                 let (l, t) = relation_columns(rel);
                 (l, t, rel.kind.clone(), self.entity(&rel.target)?)
             };
@@ -469,13 +458,7 @@ impl<'m> Planner<'m> {
                 Some(ip) => Some(IfParent { column: ip.column.clone(), index: asm.index_of(&ip.column)?, param: ip.p }),
                 None => None,
             };
-            let rc = RelCtx {
-                parent_step: step_id,
-                parent_keys: asm.key_refs(&parent_keys)?,
-                if_parent,
-                child_keys: child_keys.clone(),
-                kind: kind.clone(),
-            };
+            let rc = RelCtx { parent_step: step_id, parent_keys: asm.key_refs(&parent_keys)?, if_parent, child_keys: child_keys.clone(), kind: kind.clone() };
             let id = self.select_step(steps, &r.query, "all", "", Some(&rc))?;
             let child_asm = steps[id].assemble.clone().ok_or_else(|| err(codes::INTERNAL, "relation step without assembly"))?;
             let key = if !r.query.key_by.is_empty() {
@@ -620,10 +603,8 @@ impl<'m> Planner<'m> {
             asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false });
         }
         if has_aes {
-            let version = s
-                .ent
-                .column("aes_key_version")
-                .ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires aes_key_version", s.ent.name)))?;
+            let version =
+                s.ent.column("aes_key_version").ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires aes_key_version", s.ent.name)))?;
             sep(sb);
             let out = format!("{}__{}", s.alias, version.name);
             sb.push_str(&format!("{} AS {}", self.qcol(s, &version.name), self.d.quote(&out)));
@@ -641,10 +622,7 @@ impl<'m> Planner<'m> {
             let js = s.join(&j.rel).expect("scoped join");
             let mut child = Asm { entity: js.ent.name.clone(), alias: js.alias.clone(), ..Default::default() };
             self.select_list(b, js, sb, &mut child, out_names)?;
-            asm.children.push(Ch {
-                child: Child { rel: j.rel.clone(), kind: "join".into(), ..Default::default() },
-                asm: Some(child),
-            });
+            asm.children.push(Ch { child: Child { rel: j.rel.clone(), kind: "join".into(), ..Default::default() }, asm: Some(child) });
         }
         asm.key = asm.key_refs(&s.ent.pk)?;
         Ok(())
@@ -720,11 +698,7 @@ impl<'m> Planner<'m> {
             let conditions: Vec<String> = if !j.left.is_empty() {
                 vec![format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right))]
             } else {
-                let rel = s
-                    .ent
-                    .relations
-                    .get(&j.rel)
-                    .ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, j.rel)))?;
+                let rel = s.ent.relations.get(&j.rel).ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, j.rel)))?;
                 rel.keys.iter().map(|k| format!("{} = {}", self.qcol(s, &k.local), self.qcol(js, &k.target))).collect()
             };
             sb.push_str(&format!("{kw}{} AS {} ON {}", self.d.quote(&js.ent.table), self.d.quote(&js.alias), conditions.join(" AND ")));
@@ -762,9 +736,7 @@ impl<'m> Planner<'m> {
                 ir::Item::Pred { pred } => (&pred.conn, self.render_pred(b, root, s, pred)?),
                 ir::Item::Group { group } => (&group.conn, self.render_group(b, root, s, group, false)?),
                 ir::Item::Joined { joined } => {
-                    let js = s
-                        .join(&joined.join)
-                        .ok_or_else(|| err(codes::ENTITY_NOT_JOINED, format!("{} is not joined in this statement", joined.join)))?;
+                    let js = s.join(&joined.join).ok_or_else(|| err(codes::ENTITY_NOT_JOINED, format!("{} is not joined in this statement", joined.join)))?;
                     let w = js.q.where_.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("joined {} has no conditions", joined.join)))?;
                     (&joined.conn, self.render_group(b, root, js, w, false)?)
                 }
@@ -911,12 +883,7 @@ impl<'m> Planner<'m> {
     /// stages the dialect leaves to the executor are recorded on the slot.
     fn render_value(&self, b: &mut Builder, col: &ColumnSchema, i: usize) -> String {
         let styles = self.sql_styles(&col.styles);
-        let host: Vec<String> = col
-            .styles
-            .iter()
-            .filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s))
-            .cloned()
-            .collect();
+        let host: Vec<String> = col.styles.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
         let ph = b.slot(BindSlot { from: "param".into(), param: i, host_styles: host, col_type: bind_type(col), ..Default::default() });
         if styles.is_empty() && col.typ != "point" {
             return ph;
@@ -1079,11 +1046,7 @@ impl<'m> Planner<'m> {
         // A dialect without a session time zone stores the executor clock,
         // which is in the connection time zone, instead of its UTC default.
         let now_cols: Vec<&str> = if self.d.host_now() {
-            ent.columns
-                .iter()
-                .filter(|c| c.default.as_deref() == Some("now") && !assigned(&set, &c.name))
-                .map(|c| c.name.as_str())
-                .collect()
+            ent.columns.iter().filter(|c| c.default.as_deref() == Some("now") && !assigned(&set, &c.name)).map(|c| c.name.as_str()).collect()
         } else {
             Vec::new()
         };

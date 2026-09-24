@@ -96,7 +96,7 @@ pub struct Expr {
 pub struct Func {
     pub name: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-        pub ps: Vec<usize>,
+    pub ps: Vec<usize>,
 }
 
 /// A column function applied to a column of the query's entity.

@@ -7,17 +7,17 @@
 //! std::fs::write("schema/schema.json", manifest.marshal_indent() + "\n")?;
 //! ```
 
+mod audit;
 #[doc(hidden)]
 pub mod json;
-mod audit;
 mod manifest;
 mod mermaid;
 
-pub use manifest::{
-    build, build_migration_source, check_column_name, BuildError, Check, Col, Entity, ExternalFk, Manifest, Ref, Rel, RelKey, Timestamps,
-    RESERVED_COLUMNS, RESERVED_PREFIXES, RESERVED_SEGMENTS,
-};
 pub use audit::{Audit, AuditLog, AuditTable};
+pub use manifest::{
+    build, build_migration_source, check_column_name, BuildError, Check, Col, Entity, ExternalFk, Manifest, Ref, Rel, RelKey, Timestamps, RESERVED_COLUMNS,
+    RESERVED_PREFIXES, RESERVED_SEGMENTS,
+};
 pub use mermaid::{parse, DColumn, DEntity, DRelation, Diagram, Directive, OrmDirective, ParseError};
 
 #[doc(hidden)]

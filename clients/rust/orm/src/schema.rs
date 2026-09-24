@@ -156,9 +156,7 @@ impl Manifest {
     }
 
     pub fn entity(&self, name: &str) -> Result<&EntitySchema> {
-        self.entities
-            .get(name)
-            .ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned() })
+        self.entities.get(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned() })
     }
 }
 

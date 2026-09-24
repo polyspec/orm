@@ -12,8 +12,7 @@ use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgTypeInfo};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 
 use crate::driver::{
-    acquire_sqlite_row_lock, exec_mysql, exec_pg, exec_sqlite, fetch_mysql, fetch_pg, fetch_sqlite, masked,
-    param_arg, pg_describe, statement, Target, TxInner,
+    acquire_sqlite_row_lock, exec_mysql, exec_pg, exec_sqlite, fetch_mysql, fetch_pg, fetch_sqlite, masked, param_arg, pg_describe, statement, Target, TxInner,
 };
 pub use crate::driver::{NOW_MASK, SECRET_MASK};
 use crate::engine::{self, Dialect};
@@ -78,9 +77,7 @@ impl Zone {
             let secs = (hours * 3600 + minutes * 60) * if b[0] == b'-' { -1 } else { 1 };
             return FixedOffset::east_opt(secs).map(Zone::Fixed).ok_or_else(|| Error::Config(format!("dsn timezone {value:?}")));
         }
-        chrono_tz::Tz::from_str(value)
-            .map(Zone::Named)
-            .map_err(|_| Error::Config(format!("dsn timezone {value:?} is not a time zone")))
+        chrono_tz::Tz::from_str(value).map(Zone::Named).map_err(|_| Error::Config(format!("dsn timezone {value:?} is not a time zone")))
     }
 
     /// The current time in the zone.
@@ -202,16 +199,10 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if !path.starts_with('/') || path.len() < 2 {
                 return Err(bad("sqlite DSN must include an absolute database path".into()));
             }
-            let mut o = SqliteConnectOptions::new()
-                .filename(path)
-                .create_if_missing(true)
-                .foreign_keys(true)
-                .busy_timeout(std::time::Duration::from_secs(5));
+            let mut o = SqliteConnectOptions::new().filename(path).create_if_missing(true).foreign_keys(true).busy_timeout(std::time::Duration::from_secs(5));
             for p in pragmas {
-                let (name, value) = p
-                    .strip_suffix(')')
-                    .and_then(|x| x.split_once('('))
-                    .ok_or_else(|| bad(format!("sqlite DSN _pragma {p:?} must be name(value)")))?;
+                let (name, value) =
+                    p.strip_suffix(')').and_then(|x| x.split_once('(')).ok_or_else(|| bad(format!("sqlite DSN _pragma {p:?} must be name(value)")))?;
                 o = if name == "busy_timeout" {
                     let ms: u64 = value.parse().map_err(|_| bad(format!("sqlite busy_timeout {value:?}")))?;
                     o.busy_timeout(std::time::Duration::from_millis(ms))
@@ -462,7 +453,9 @@ impl Db {
                     if b.col_type == "point" {
                         v = match v {
                             Param::Null => Param::Null,
-                            Param::Point(point) => Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? }),
+                            Param::Point(point) => {
+                                Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
+                            }
                             Param::Str(text) => {
                                 let point = crate::value::parse_point(&text)?;
                                 Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
@@ -566,7 +559,9 @@ impl Db {
                 Err(e) => Err(e),
             },
             Target::Pool(Pool::Sqlite(p)) => fetch_sqlite(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
-            Target::Tx(TxInner::Sqlite(t)) => fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
+            Target::Tx(TxInner::Sqlite(t)) => {
+                fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
+            }
         };
         self.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
         r
@@ -578,7 +573,9 @@ impl Db {
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
             Target::Pool(Pool::MySql(p)) => exec_mysql(sql, &args, p).await.map_err(Error::from),
-            Target::Tx(TxInner::MySql(t)) => exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from),
+            Target::Tx(TxInner::MySql(t)) => {
+                exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from)
+            }
             Target::Pool(Pool::Postgres(p)) => match self.pg_types_pool(p, sql).await {
                 Ok(types) => exec_pg(sql, &args, &types, self.inner.zone, p).await,
                 Err(e) => Err(e),
@@ -633,7 +630,6 @@ impl Executor {
         }
     }
 
-
     pub(crate) async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
         match self {
             Executor::Db(d) => {
@@ -676,7 +672,13 @@ fn digits(b: &[u8]) -> bool {
 
 fn sqlite_date_text(text: &str) -> bool {
     let b = text.as_bytes();
-    b.len() == 10 && digits(&b[0..4]) && b[4] == b'-' && digits(&b[5..7]) && b[7] == b'-' && digits(&b[8..10]) && chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok()
+    b.len() == 10
+        && digits(&b[0..4])
+        && b[4] == b'-'
+        && digits(&b[5..7])
+        && b[7] == b'-'
+        && digits(&b[8..10])
+        && chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok()
 }
 
 /// `YYYY-MM-DD[ T]HH:MM:SS[.f{1,6}][Z|±HH:MM]` as stored SQLite text in the

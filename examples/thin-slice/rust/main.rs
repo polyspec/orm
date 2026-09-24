@@ -18,7 +18,8 @@ const ITERATIONS: usize = 500;
 const AES_KEY: &str = "bench-salt";
 
 fn dsn() -> String {
-    std::env::var("ORM_BENCH_MYSQL_DSN").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+    std::env::var("ORM_BENCH_MYSQL_DSN")
+        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
 }
 
 fn p50(mut s: Vec<u128>) -> u128 {
@@ -33,22 +34,43 @@ async fn main() -> orm::Result<()> {
     let config = orm::Config {
         aes_key: AES_KEY.into(),
         blind_index_key: "bench-blind-index".into(),
-        on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
-            // the hook masks secret binds; the native replay needs the real key
-            let binds = binds.iter().map(|p| if *p == Param::Str(orm::db::SECRET_MASK.into()) { Param::Str(AES_KEY.into()) } else { p.clone() }).collect();
-            *hook.lock().unwrap() = (sql.to_owned(), binds);
-        })),
+        on_query: Some(Arc::new(
+            move |sql: &str,
+                  binds: &[Param],
+                  _: std::time::Duration,
+                  _: u64,
+                  _: Option<&orm::Error>| {
+                // the hook masks secret binds; the native replay needs the real key
+                let binds = binds
+                    .iter()
+                    .map(|p| {
+                        if *p == Param::Str(orm::db::SECRET_MASK.into()) {
+                            Param::Str(AES_KEY.into())
+                        } else {
+                            p.clone()
+                        }
+                    })
+                    .collect();
+                *hook.lock().unwrap() = (sql.to_owned(), binds);
+            },
+        )),
         ..Default::default()
     };
     let db = orm::Db::connect(&dsn(), 1, config).await?;
-    let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap();
 
     let query = || {
         Battle::new()
             .connect(&db)
             .service_seq(7)
             .and_is_close(false)
-            .and(|q: Battle| q.is_display(true).or(|q: Battle| q.is_display(false).and_lt_display_start_dt(now)))
+            .and(|q: Battle| {
+                q.is_display(true)
+                    .or(|q: Battle| q.is_display(false).and_lt_display_start_dt(now))
+            })
             .and_seq(vec![6, 106, 206, 306, 406])
             .order_by_seq_desc()
             .limit(0, 3)
@@ -67,7 +89,9 @@ async fn main() -> orm::Result<()> {
     let client = p50(s);
 
     let (sql, params) = last.lock().unwrap().clone();
-    let Pool::MySql(pool) = db.pool() else { panic!("the demo runs on MySQL") };
+    let Pool::MySql(pool) = db.pool() else {
+        panic!("the demo runs on MySQL")
+    };
     let mut s = Vec::with_capacity(ITERATIONS);
     for _ in 0..ITERATIONS {
         let t = Instant::now();

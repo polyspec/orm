@@ -332,11 +332,7 @@ fn foreign_key_target_entity<'a>(m: &'a Manifest, target: &str) -> Option<&'a En
 
 fn relation_matches_column_reference(e: &Entity, rel: &Rel) -> bool {
     !rel.keys.is_empty()
-        && rel.keys.iter().all(|key| {
-            e.column(&key.local)
-                .and_then(|c| c.reference.as_ref())
-                .is_some_and(|r| r.entity == rel.target && r.column == key.target)
-        })
+        && rel.keys.iter().all(|key| e.column(&key.local).and_then(|c| c.reference.as_ref()).is_some_and(|r| r.entity == rel.target && r.column == key.target))
 }
 
 /// The foreign keys of an entity keyed by their columns.
@@ -534,7 +530,11 @@ pub fn render_ddl(m: &Manifest, dialect: &str) -> Result<String, String> {
             lines.push(format!("  PRIMARY KEY ({})", join_quoted(&e.pk, q)));
         }
         for uk in &e.unique {
-            lines.push(format!("  CONSTRAINT {} UNIQUE ({})", q(&bounded_identifier(&format!("uq_{}_{}", ddl_base(&e.table), uk.join("_")), dialect)), join_quoted(uk, q)));
+            lines.push(format!(
+                "  CONSTRAINT {} UNIQUE ({})",
+                q(&bounded_identifier(&format!("uq_{}_{}", ddl_base(&e.table), uk.join("_")), dialect)),
+                join_quoted(uk, q)
+            ));
         }
         for fk in entity_foreign_keys(m, e, dialect).into_values() {
             if let Some(target) = foreign_key_target_entity(m, &fk.target) {
@@ -774,10 +774,7 @@ fn validate_sqlite_added_columns(old: &Entity, next: &Entity) -> Result<(), Stri
     for (previous, c) in match_diff_columns(old, next) {
         if let (None, Some(c)) = (previous, c) {
             if !c.nullable && c.default.is_none() && !c.auto {
-                return Err(format!(
-                    "sqlite table {} cannot add required column {} without a default during a data-preserving migration",
-                    next.table, c.name
-                ));
+                return Err(format!("sqlite table {} cannot add required column {} without a default during a data-preserving migration", next.table, c.name));
             }
         }
     }
@@ -830,7 +827,11 @@ fn diff_checks(old: &Entity, next: &Entity, dialect: &str, quote: Quote) -> Resu
         }
         if let Some(n) = n.filter(|_| differs) {
             let expr = rendered_check_expression(&n.expr, dialect, quote).map_err(|err| format!("{} check {name}: {err}", next.table))?;
-            adds.push(change(format!("ALTER TABLE {} ADD CONSTRAINT {} CHECK ({expr});", quote(&next.table), quote(&ddl_check_name(&next.table, name, dialect)))));
+            adds.push(change(format!(
+                "ALTER TABLE {} ADD CONSTRAINT {} CHECK ({expr});",
+                quote(&next.table),
+                quote(&ddl_check_name(&next.table, name, dialect))
+            )));
         }
     }
     Ok((drops, adds))
@@ -885,7 +886,11 @@ fn render_sqlite_rebuild(to: &Manifest, old: &Entity, next: &Entity, quote: Quot
         lines.push(format!("  PRIMARY KEY ({})", join_quoted(&next.pk, quote)));
     }
     for unique in &next.unique {
-        lines.push(format!("  CONSTRAINT {} UNIQUE ({})", quote(&bounded_identifier(&format!("uq_{}_{}", next.table, unique.join("_")), "sqlite")), join_quoted(unique, quote)));
+        lines.push(format!(
+            "  CONSTRAINT {} UNIQUE ({})",
+            quote(&bounded_identifier(&format!("uq_{}_{}", next.table, unique.join("_")), "sqlite")),
+            join_quoted(unique, quote)
+        ));
     }
     for fk in entity_foreign_keys(to, next, "sqlite").into_values() {
         lines.push(format!("  {}", foreign_key_clause(&fk, to, "sqlite", quote)));

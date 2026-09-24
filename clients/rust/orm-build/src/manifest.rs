@@ -107,10 +107,28 @@ fn content_hash(text: &str) -> Option<String> {
 }
 
 const RESERVED_SEGMENTS: &[&str] = &["and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"];
-const RESERVED_PREFIXES: &[&str] =
-    &["and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext"];
-const RESERVED_COLUMNS: &[&str] =
-    &["and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "save", "raw", "on", "random"];
+const RESERVED_PREFIXES: &[&str] = &[
+    "and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext",
+];
+const RESERVED_COLUMNS: &[&str] = &[
+    "and",
+    "or",
+    "get",
+    "gets",
+    "gets_page",
+    "get_query",
+    "limit",
+    "alias",
+    "connect",
+    "create",
+    "creates",
+    "update",
+    "delete",
+    "save",
+    "raw",
+    "on",
+    "random",
+];
 
 /// The column naming rules of the model syntax.
 pub fn check_column_name(n: &str) -> Result<(), String> {

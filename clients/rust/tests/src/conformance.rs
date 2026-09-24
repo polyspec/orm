@@ -206,13 +206,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         Ok::<Value, orm::Error>(picks(&rows, &cols))
     });
     run!("conditions_leading_group", async {
-        let rows = battle()
-            .and(|q: Battle| q.is_display(false).or_is_close(true))
-            .and_service_seq(7)
-            .order_by_seq_desc()
-            .limit(0, 3)
-            .gets()
-            .await?;
+        let rows = battle().and(|q: Battle| q.is_display(false).or_is_close(true)).and_service_seq(7).order_by_seq_desc().limit(0, 3).gets().await?;
         Ok::<Value, orm::Error>(picks(&rows, &cols))
     });
     run!("conditions_leading_prefix", async {
@@ -267,11 +261,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
         let added = battle().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;
         let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
-        Ok::<Value, orm::Error>(json!([
-            none.to_array(),
-            pick(Some(&added), &["seq", "name", "read_text"]),
-            removed.to_array()
-        ]))
+        Ok::<Value, orm::Error>(json!([none.to_array(), pick(Some(&added), &["seq", "name", "read_text"]), removed.to_array()]))
     });
     run!("joins", async {
         let service = Service::new().on(|s: Service| s.gt_seq(0)).name("service-7");
@@ -286,19 +276,9 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .gets()
             .await?;
         let member = ServiceMember::new();
-        let compared = battle()
-            .join_service_member_seq_with_seq(member.clone())
-            .service_seq(7)
-            .and_success_count_lt_seq(&member)
-            .get_count()
-            .await?;
-        let left = battle()
-            .left_join_service_module_seq_with_seq(ServiceModule::new().alias_module())
-            .service_seq(7)
-            .order_by_seq_asc()
-            .limit(0, 1)
-            .gets()
-            .await?;
+        let compared = battle().join_service_member_seq_with_seq(member.clone()).service_seq(7).and_success_count_lt_seq(&member).get_count().await?;
+        let left =
+            battle().left_join_service_module_seq_with_seq(ServiceModule::new().alias_module()).service_seq(7).order_by_seq_asc().limit(0, 1).gets().await?;
         Ok::<Value, orm::Error>(json!({
             "rows": rows.to_array(),
             "compared": compared,
@@ -391,14 +371,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         Ok::<Value, orm::Error>(Value::Array(errs))
     });
     run!("get_query", async {
-        let st = battle()
-            .service_seq(7)
-            .and_lk_name("x")
-            .and_aes_hex_email("user7@example.com")
-            .order_by_seq_desc()
-            .limit(0, 5)
-            .get_query()
-            .await?;
+        let st = battle().service_seq(7).and_lk_name("x").and_aes_hex_email("user7@example.com").order_by_seq_desc().limit(0, 5).get_query().await?;
         let log = Log::default();
         let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b), &log)).collect();
         Ok::<Value, orm::Error>(json!({"sql": st.sql, "binds": binds}))
@@ -494,11 +467,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
             seqs.push(member.get_seq());
         }
-        let loaded = Service::new()
-            .connect(db)
-            .relations(ServiceMember::new().match_seq_with_service_seq())
-            .get_by_seq(seq)
-            .await?;
+        let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
         let members = loaded.get_service_member_models().map(|c| c.len()).unwrap_or(0);
         mask(shared, &seqs, &[]);
         loaded.delete(true).await?;

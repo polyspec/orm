@@ -286,8 +286,8 @@ pub fn parse_order(e: &Entity, name: &str) -> Result<Vec<(String, bool)>, String
         if dir != "Asc" && dir != "Desc" {
             return Err(format!("orderBy{name}: each key ends with Asc or Desc"));
         }
-        let c = column_of(e, &part[..part.len() - 1])
-            .ok_or_else(|| format!("orderBy{name}: {} is not a column of {}", part[..part.len() - 1].concat(), e.name))?;
+        let c =
+            column_of(e, &part[..part.len() - 1]).ok_or_else(|| format!("orderBy{name}: {} is not a column of {}", part[..part.len() - 1].concat(), e.name))?;
         out.push((c.name.clone(), dir == "Desc"));
     }
     Ok(out)

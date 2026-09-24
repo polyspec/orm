@@ -13,7 +13,19 @@ use model::{Account, Battle, CompositeAccount, CompositeMembership, Service, Ser
 use orm::db::Pool;
 use orm::{AesKeyring, Collection, Db, Isolation, Null};
 
-const TABLES: &[&str] = &["account_project", "composite_membership", "composite_account", "battle", "service_member", "service_module", "soft_record", "account", "project", "user", "service"];
+const TABLES: &[&str] = &[
+    "account_project",
+    "composite_membership",
+    "composite_account",
+    "battle",
+    "service_member",
+    "service_module",
+    "soft_record",
+    "account",
+    "project",
+    "user",
+    "service",
+];
 
 struct Env {
     schema: Vec<u8>,
@@ -201,17 +213,13 @@ async fn joins_and_relations(t: &Target) {
     assert_eq!(b.get_writer().map(|u| u.get_name()), Some("kim"), "relation alias");
     assert_eq!(b.get_members().map(|c| c.len()), Some(1), "relations");
     assert_eq!(b.get_service_module_model().map(|m| m.get_name()), Some("module"), "relation");
-    let limited = User::new().connect(db).relations(Battle::new().match_seq_with_user_seq().order_by_seq_desc().group_limit(1)).order_by_seq_asc().gets().await.unwrap();
+    let limited =
+        User::new().connect(db).relations(Battle::new().match_seq_with_user_seq().order_by_seq_desc().group_limit(1)).order_by_seq_asc().gets().await.unwrap();
     let got = limited.first().and_then(|u| u.get_battle_models()).expect("battle models");
     assert_eq!(names(got), "gamma", "group_limit");
 
     let other = Db::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
-    let external = Battle::new()
-        .connect(db)
-        .relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner())
-        .get_by_name("beta")
-        .await
-        .unwrap();
+    let external = Battle::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
     assert_eq!(external.get_owner().map(|u| u.get_name()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Battle::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
@@ -236,7 +244,8 @@ async fn columns_and_subqueries(t: &Target) {
         .unwrap();
     assert_eq!(users.len(), 1, "subquery IN");
     let u = users.first().unwrap();
-    let int = |v: Option<serde_json::Value>| v.and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)).or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+    let int =
+        |v: Option<serde_json::Value>| v.and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)).or_else(|| v.as_str().and_then(|s| s.parse().ok())));
     assert_eq!(int(u.get_read_total()), Some(20), "subquery column");
     assert_eq!(int(u.get_doubled()), Some(2 * u.get_seq()), "raw column");
     assert_eq!(u.get_upper_name(), Some(serde_json::json!("KIM")), "format column");
@@ -250,7 +259,13 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!(page.items.first().map(|b| b.get_name()), Some("delta"), "page item");
     let keyed = Battle::new().connect(db).key_name_name().gets().await.unwrap();
     assert!(keyed.get("beta").is_some(), "key_name");
-    let fetched = Battle::new().connect(db).fetch_key(|b: &Battle| b.get_read_count()).fetch_value(|b: &Battle| serde_json::json!(b.get_name().len())).gets().await.unwrap();
+    let fetched = Battle::new()
+        .connect(db)
+        .fetch_key(|b: &Battle| b.get_read_count())
+        .fetch_value(|b: &Battle| serde_json::json!(b.get_name().len()))
+        .gets()
+        .await
+        .unwrap();
     assert_eq!(fetched.fetched_value(20).cloned(), Some(serde_json::json!(5)), "fetch_key and fetch_value");
     for account in [10, 11] {
         for tenant in [1, 2] {
@@ -485,7 +500,8 @@ async fn main() {
         t.db.close().await;
         println!("ok schema_empty ({})", t.driver);
     }
-    for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"] {
+    for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"]
+    {
         for t in env.databases(name).await {
             match name {
                 "conditions" => conditions(&t).await,

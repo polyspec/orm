@@ -281,7 +281,8 @@ async fn sources_and_import_round_trip() {
         assert!(t.ok(&["verify", "--dsn", "@DSN@", "--schema", "imported.json"]).starts_with("status=verified"));
         let validate = t.run(&["validate", "--dsn", "@DSN@", "--schema", "imported.json"]);
         assert!(validate.ok, "{}: {}{}", t.driver, validate.stdout, validate.stderr);
-        std::fs::write(t.dir.join("wide.mmd"), V1.replace("text         body           \"?\"", "text         body           \"?\"\n    int          extra")).unwrap();
+        std::fs::write(t.dir.join("wide.mmd"), V1.replace("text         body           \"?\"", "text         body           \"?\"\n    int          extra"))
+            .unwrap();
         let validate = t.run(&["validate", "--dsn", "@DSN@", "--schema", "wide.mmd"]);
         assert!(!validate.ok && validate.stdout.contains("item.extra: column missing in the database"), "{}: {}", t.driver, validate.stdout);
     }
@@ -334,7 +335,8 @@ async fn live_incremental_migration() {
         assert!(t.ok(&["verify", "--dsn", "@DSN@", "--schema", "target.json"]).starts_with("status=verified"), "{}", t.driver);
         unchanged("target.mmd", "repeat.sql");
         t.ok(&["plan", "--from", "db:@DSN@", "--to", "base.mmd", "--dialect", t.driver, "--out", "20260917-remove.json"]);
-        let removed = t.ok(&["apply", "--plan", "20260917-remove.json", "--dsn", "@DSN@", "--schema", "base.json", "--log-dir", "@DIR@/logs", "--allow-destructive"]);
+        let removed =
+            t.ok(&["apply", "--plan", "20260917-remove.json", "--dsn", "@DSN@", "--schema", "base.json", "--log-dir", "@DIR@/logs", "--allow-destructive"]);
         assert!(removed.starts_with("migration_id=20260917-remove status=applied"), "{}: {removed}", t.driver);
         assert!(t.ok(&["verify", "--dsn", "@DSN@", "--schema", "base.json"]).starts_with("status=verified"), "{}", t.driver);
         unchanged("base.mmd", "final.sql");
@@ -372,7 +374,8 @@ async fn sqlite_migration_rejects_a_concurrent_writer() {
     let _serial = SERIAL.lock().await;
     let Some(t) = targets("busy").into_iter().find(|t| t.driver == "sqlite") else { unreachable!() };
     let path = t.dsn.trim_start_matches("sqlite://").to_owned();
-    let mut holder = sqlx::SqliteConnection::connect_with(&sqlx::sqlite::SqliteConnectOptions::new().filename(Path::new(&path)).create_if_missing(true)).await.unwrap();
+    let mut holder =
+        sqlx::SqliteConnection::connect_with(&sqlx::sqlite::SqliteConnectOptions::new().filename(Path::new(&path)).create_if_missing(true)).await.unwrap();
     sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut holder).await.unwrap();
     sqlx::raw_sql("CREATE TABLE holder (id integer)").execute(&mut holder).await.unwrap();
     let dsn = format!("{}?_pragma=busy_timeout(100)", t.dsn);

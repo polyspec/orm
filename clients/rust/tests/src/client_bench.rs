@@ -10,15 +10,7 @@ fn stats(name: &str, mut s: Vec<u64>) {
     s.sort_unstable();
     let n = s.len();
     let p = |q: f64| s[((n as f64 - 1.0) * q) as usize];
-    println!(
-        "{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns",
-        name,
-        n,
-        s.iter().sum::<u64>() as f64 / n as f64,
-        p(0.5),
-        p(0.9),
-        p(0.99)
-    );
+    println!("{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns", name, n, s.iter().sum::<u64>() as f64 / n as f64, p(0.5), p(0.9), p(0.99));
 }
 
 /// The test DSN: `ORM_BENCH_MYSQL_DSN` when set (CI), else the local socket.
@@ -50,15 +42,7 @@ async fn main() {
     let mut s = Vec::new();
     for i in 0..iters {
         let t = Instant::now();
-        let c = Battle::new()
-            .connect(&db)
-            .service_seq((i % 100 + 1) as i64)
-            .and_is_close(false)
-            .order_by_seq_desc()
-            .limit(0, 100)
-            .gets()
-            .await
-            .unwrap();
+        let c = Battle::new().connect(&db).service_seq((i % 100 + 1) as i64).and_is_close(false).order_by_seq_desc().limit(0, 100).gets().await.unwrap();
         assert!(!c.is_empty());
         s.push(t.elapsed().as_nanos() as u64);
     }

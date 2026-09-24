@@ -109,16 +109,15 @@ fn re(pattern: &str) -> Regex {
 }
 
 static RE_ENTITY_OPEN: LazyLock<Regex> = LazyLock::new(|| re(r"^([A-Za-z_][A-Za-z0-9_]*)\s*\{\s*$"));
-static RE_COLUMN: LazyLock<Regex> = LazyLock::new(|| {
-    re(r#"^([A-Za-z_][A-Za-z0-9_()\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*((?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*)?\s*(?:"([^"]*)")?\s*$"#)
-});
-static RE_RELATION: LazyLock<Regex> =
-    LazyLock::new(|| re(r"^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$"));
+static RE_COLUMN: LazyLock<Regex> =
+    LazyLock::new(|| re(r#"^([A-Za-z_][A-Za-z0-9_()\[\]]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*((?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*)?\s*(?:"([^"]*)")?\s*$"#));
+static RE_RELATION: LazyLock<Regex> = LazyLock::new(|| re(r"^([A-Za-z_][A-Za-z0-9_]*)\s+([|}o]{1,2}[-.]{2}[|{o]{1,2})\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$"));
 static RE_DIRECTIVE: LazyLock<Regex> = LazyLock::new(|| {
-    re(r"^%%\s*(unique|index|fulltext|check|blind_index|timestamps|aes_version|soft_delete|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$")
+    re(
+        r"^%%\s*(unique|index|fulltext|check|blind_index|timestamps|aes_version|soft_delete|table_comment|column_comment|rename_table|rename_column)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$",
+    )
 });
-static RE_RELATION_NAMES: LazyLock<Regex> =
-    LazyLock::new(|| re(r"^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$"));
+static RE_RELATION_NAMES: LazyLock<Regex> = LazyLock::new(|| re(r"^(?:\(\s*([A-Za-z_][A-Za-z0-9_]*)?\s*/\s*([A-Za-z_][A-Za-z0-9_]*)?\s*\))?\s*(.*)$"));
 static RE_REF: LazyLock<Regex> = LazyLock::new(|| re(r"^([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)$"));
 static RE_DIRECTIVE_IDENT: LazyLock<Regex> = LazyLock::new(|| re(r"^[a-z][a-z0-9_-]*$"));
 static RE_ORM_NAME: LazyLock<Regex> = LazyLock::new(|| re(r"^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)?$"));
@@ -206,13 +205,8 @@ pub fn parse(src: &str) -> Result<Diagram, ParseError> {
             let Some(m) = RE_COLUMN.captures(t) else {
                 return Err(perr(line, format!("bad column line in {}: {}", entity.name, go_quote(t))));
             };
-            let mut c = DColumn {
-                typ: m[1].to_owned(),
-                name: m[2].to_owned(),
-                comment: m.get(4).map_or("", |x| x.as_str()).to_owned(),
-                line,
-                ..Default::default()
-            };
+            let mut c =
+                DColumn { typ: m[1].to_owned(), name: m[2].to_owned(), comment: m.get(4).map_or("", |x| x.as_str()).to_owned(), line, ..Default::default() };
             if let Some(keys) = m.get(3) {
                 if !keys.as_str().is_empty() {
                     c.keys = keys.as_str().split(',').map(|k| k.trim().to_owned()).collect();

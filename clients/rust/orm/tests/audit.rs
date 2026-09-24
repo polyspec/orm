@@ -22,7 +22,8 @@ static ITEM_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_it
 /// A model whose values are read and written by column name.
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $schema:expr, $columns:expr) => {
-        static $entity: Entity = Entity { name: $entity_name, schema: $schema, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
+        static $entity: Entity =
+            Entity { name: $entity_name, schema: $schema, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
 
         #[derive(Clone)]
         struct $name {
@@ -93,11 +94,7 @@ async fn drop_tables(db: &Db, driver: &str) {
     let statements: &[&'static str] = match driver {
         "postgres" => &["DROP SCHEMA IF EXISTS app CASCADE"],
         "mysql" => &["DROP TABLE IF EXISTS `audit_item`", "DROP TABLE IF EXISTS `audit_change`", "DROP TABLE IF EXISTS `audit_operation`"],
-        _ => &[
-            r#"DROP TABLE IF EXISTS "app__audit_item""#,
-            r#"DROP TABLE IF EXISTS "app__audit_change""#,
-            r#"DROP TABLE IF EXISTS "app__audit_operation""#,
-        ],
+        _ => &[r#"DROP TABLE IF EXISTS "app__audit_item""#, r#"DROP TABLE IF EXISTS "app__audit_change""#, r#"DROP TABLE IF EXISTS "app__audit_operation""#],
     };
     for statement in statements {
         exec(db, statement).await;

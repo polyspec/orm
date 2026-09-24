@@ -33,7 +33,16 @@ fn step(sql: String, binds: usize, lock: &str) -> Step {
         sql,
         lock: lock.into(),
         bind_slots: (0..binds)
-            .map(|i| BindSlot { from: "param".into(), param: i, transform: String::new(), name: String::new(), step: 0, column: String::new(), host_styles: vec![], col_type: String::new() })
+            .map(|i| BindSlot {
+                from: "param".into(),
+                param: i,
+                transform: String::new(),
+                name: String::new(),
+                step: 0,
+                column: String::new(),
+                host_styles: vec![],
+                col_type: String::new(),
+            })
             .collect(),
         assemble: None,
         parent: None,
@@ -157,7 +166,12 @@ impl<'a> Utils<'a> {
             }
             _ => {
                 self.exec(&ex, r#"CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)"#.into(), &[]).await?;
-                self.exec(&ex, r#"INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value""#.into(), &params).await?;
+                self.exec(
+                    &ex,
+                    r#"INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value""#.into(),
+                    &params,
+                )
+                .await?;
                 t.context_row.store(true, Ordering::Release);
             }
         }
@@ -241,7 +255,9 @@ impl SchemaUtils<'_> {
             "mysql" => self.u.exists("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)", &p).await,
             _ => {
                 let pattern = format!("{}\\_\\_%", name.replace('_', "\\_"));
-                self.u.exists("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", &[Param::Str(pattern)]).await
+                self.u
+                    .exists("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", &[Param::Str(pattern)])
+                    .await
             }
         }
     }
@@ -253,8 +269,22 @@ impl SchemaUtils<'_> {
         }
         match self.u.db.driver() {
             "postgres" => self.u.exists("SELECT to_regclass($1) IS NOT NULL", &[Param::Str(format!("{name}.{table}"))]).await,
-            "mysql" => self.u.exists("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)", &[Param::Str(name.into()), Param::Str(table.into())]).await,
-            _ => self.u.exists("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)", &[Param::Str(format!("{name}__{table}"))]).await,
+            "mysql" => {
+                self.u
+                    .exists(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)",
+                        &[Param::Str(name.into()), Param::Str(table.into())],
+                    )
+                    .await
+            }
+            _ => {
+                self.u
+                    .exists(
+                        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)",
+                        &[Param::Str(format!("{name}__{table}"))],
+                    )
+                    .await
+            }
         }
     }
 
@@ -496,4 +526,3 @@ impl AesUtils<'_> {
             .await
     }
 }
-

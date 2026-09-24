@@ -4,10 +4,10 @@
 use std::path::Path;
 use std::time::SystemTime;
 
-use orm_build::ddl::{ddl_column, ddl_table, manifest_from_ddl, rendered_check_expression, render_create_ddl, render_diff, SCHEMA_METADATA_PREFIX};
+use orm_build::ddl::{ddl_column, ddl_table, manifest_from_ddl, render_create_ddl, render_diff, rendered_check_expression, SCHEMA_METADATA_PREFIX};
 use orm_build::migration::{
-    checksum_text, plan_id, plan_sql, rfc3339_nano, safe_migration_id, schema_matches, split_sql, sqlite_rebuild_markers, validate_plan_operations,
-    Log, PlanFile, Record,
+    checksum_text, plan_id, plan_sql, rfc3339_nano, safe_migration_id, schema_matches, split_sql, sqlite_rebuild_markers, validate_plan_operations, Log,
+    PlanFile, Record,
 };
 use orm_build::schema::{self, Manifest};
 
@@ -130,7 +130,13 @@ async fn canonical_checks(conn: &mut Conn, driver: &str, e: &orm_build::schema::
     read
 }
 
-async fn read_probe_checks(conn: &mut Conn, driver: &str, e: &orm_build::schema::Entity, n: usize, quote: &dyn Fn(&str) -> String) -> Result<Vec<String>, String> {
+async fn read_probe_checks(
+    conn: &mut Conn,
+    driver: &str,
+    e: &orm_build::schema::Entity,
+    n: usize,
+    quote: &dyn Fn(&str) -> String,
+) -> Result<Vec<String>, String> {
     let mut by_name = std::collections::HashMap::new();
     if driver == "mysql" {
         let rows = conn.query("SHOW CREATE TABLE `__orm_check_probe`", &[]).await.map_err(|e| e.to_string())?;
@@ -153,9 +159,7 @@ async fn read_probe_checks(conn: &mut Conn, driver: &str, e: &orm_build::schema:
             by_name.insert(r[0].text(), crate::introspect::postgres_check_expr(&r[1].text()));
         }
     }
-    (0..n)
-        .map(|i| by_name.remove(&probe_check_name(i)).ok_or_else(|| format!("check {} is missing from the probe table", e.checks[i].name)))
-        .collect()
+    (0..n).map(|i| by_name.remove(&probe_check_name(i)).ok_or_else(|| format!("check {} is missing from the probe table", e.checks[i].name))).collect()
 }
 
 /// Aligns the checks of a `db:` source with the other side of a diff, which
@@ -258,11 +262,7 @@ async fn mark_failed(conn: &mut Conn, driver: &str, id: &str, detail: &str, stat
 
 /// Runs `body` on a reserved connection inside a transaction that holds the
 /// database migration lock.
-async fn with_migration_lock<T>(
-    pool: &orm::db::Pool,
-    driver: &str,
-    body: impl AsyncFnOnce(&mut Conn) -> Result<T, String>,
-) -> Result<T, String> {
+async fn with_migration_lock<T>(pool: &orm::db::Pool, driver: &str, body: impl AsyncFnOnce(&mut Conn) -> Result<T, String>) -> Result<T, String> {
     let mut conn = Conn::acquire(pool).await.map_err(|e| format!("MIGRATION_LOCK: reserve connection: {e}"))?;
     const MYSQL_LOCK: &str = "CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60))";
     match driver {
@@ -344,10 +344,7 @@ async fn foreign_key_violation(conn: &mut Conn, table: &str) -> Result<Option<St
 /// The triggers a migration drops before it rebuilds a table; the rebuild
 /// creates them again.
 fn dropped_triggers(text: &str) -> std::collections::BTreeSet<String> {
-    split_sql(text)
-        .iter()
-        .filter_map(|s| s.strip_prefix("DROP TRIGGER IF EXISTS ").map(|n| n.trim_matches('"').to_owned()))
-        .collect()
+    split_sql(text).iter().filter_map(|s| s.strip_prefix("DROP TRIGGER IF EXISTS ").map(|n| n.trim_matches('"').to_owned())).collect()
 }
 
 async fn preflight_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), String> {
@@ -371,11 +368,7 @@ async fn preflight_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), Str
         let list: Vec<String> =
             deps.iter().filter(|r| !(r[0].text() == "trigger" && dropped.contains(&r[1].text()))).map(|r| format!("{}:{}", r[0].text(), r[1].text())).collect();
         if !list.is_empty() {
-            return Err(format!(
-                "SQLITE_REBUILD_UNSAFE: table={} dependent_objects={}; provide reviewed auxiliary migration SQL",
-                m.table,
-                list.join(",")
-            ));
+            return Err(format!("SQLITE_REBUILD_UNSAFE: table={} dependent_objects={}; provide reviewed auxiliary migration SQL", m.table, list.join(",")));
         }
         if let Some(v) = foreign_key_violation(conn, &m.table).await.map_err(|e| pre(e, "foreign_key_check"))? {
             return Err(format!("SQLITE_REBUILD_UNSAFE: {v}"));
@@ -386,9 +379,8 @@ async fn preflight_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), Str
 
 async fn verify_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), String> {
     for m in sqlite_rebuild_markers(text) {
-        if let Some(v) = foreign_key_violation(conn, &m.target)
-            .await
-            .map_err(|e| format!("SQLITE_REBUILD_VERIFY: table={} foreign_key_check: {e}", m.target))?
+        if let Some(v) =
+            foreign_key_violation(conn, &m.target).await.map_err(|e| format!("SQLITE_REBUILD_VERIFY: table={} foreign_key_check: {e}", m.target))?
         {
             return Err(format!("SQLITE_REBUILD_VERIFY: {v}"));
         }
@@ -420,20 +412,17 @@ fn write_log(dir: &str, log: &Log) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| format!("MIGRATION_LOG_WRITE: mkdir {dir}: {e}"))?;
     let path = Path::new(dir).join(orm_build::migration::log_file_name(log));
     let tmp = Path::new(dir).join(format!(".migration-{}.tmp", std::process::id()));
-    std::fs::write(&tmp, log.to_json())
-        .and_then(|_| std::fs::rename(&tmp, &path))
-        .map_err(|e| {
-            let _ = std::fs::remove_file(&tmp);
-            format!("MIGRATION_LOG_WRITE: migration_id={}: {e}", log.migration_id)
-        })
+    std::fs::write(&tmp, log.to_json()).and_then(|_| std::fs::rename(&tmp, &path)).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        format!("MIGRATION_LOG_WRITE: migration_id={}: {e}", log.migration_id)
+    })
 }
 
 fn verify_log(dir: &str, r: &Record, driver: &str) -> Result<(), String> {
     let pattern = Path::new(dir).join(format!("*__{}.json", safe_migration_id(&r.migration_id)));
     for path in glob(&pattern.display().to_string()) {
         let text = std::fs::read_to_string(&path).map_err(|e| format!("MIGRATION_LOG_READ: migration_id={} file={path}: {e}", r.migration_id))?;
-        let log: Log =
-            serde_json::from_str(&text).map_err(|e| format!("MIGRATION_LOG_READ: migration_id={} file={path} invalid JSON: {e}", r.migration_id))?;
+        let log: Log = serde_json::from_str(&text).map_err(|e| format!("MIGRATION_LOG_READ: migration_id={} file={path} invalid JSON: {e}", r.migration_id))?;
         if log.matches(r, driver) {
             return Ok(());
         }
@@ -554,10 +543,7 @@ pub async fn migrate(a: &Args) -> Result<(), String> {
     update_migration(&mut conn, &driver, &id, "applied", "").await.map_err(|e| format!("MIGRATION_HISTORY_WRITE: migration_id={id}: {e}"))?;
     record.status = "applied".into();
     write_log(&log_dir, &Log::from_record(&record, &driver, &started, &now()))?;
-    println!(
-        "migration_id={id} status=applied from_schema_hash={} to_schema_hash={} operations={operations}",
-        live.schema_hash, want.schema_hash
-    );
+    println!("migration_id={id} status=applied from_schema_hash={} to_schema_hash={} operations={operations}", live.schema_hash, want.schema_hash);
     Ok(())
 }
 
@@ -617,10 +603,7 @@ pub async fn apply(a: &Args) -> Result<(), String> {
     }
     let want = load_schema_source(&schema_path, &driver).await.map_err(|e| format!("MIGRATION_SOURCE: target schema: {e}"))?;
     if want.schema_hash != plan.to_hash {
-        return Err(format!(
-            "MIGRATION_PLAN: target manifest hash does not match plan expected_hash={} actual_hash={}",
-            plan.to_hash, want.schema_hash
-        ));
+        return Err(format!("MIGRATION_PLAN: target manifest hash does not match plan expected_hash={} actual_hash={}", plan.to_hash, want.schema_hash));
     }
     let id = plan.migration_id.clone();
     let (database, mut conn, driver) = connect(&dsn).await?;
@@ -734,10 +717,7 @@ pub async fn recover(a: &Args) -> Result<(), String> {
     let want = load_schema_source(&schema_path, &driver).await.map_err(|e| format!("MIGRATION_SOURCE: target schema: {e}"))?;
     if let Some(p) = &plan {
         if want.schema_hash != p.to_hash {
-            return Err(format!(
-                "MIGRATION_PLAN: target manifest hash does not match plan expected_hash={} actual_hash={}",
-                p.to_hash, want.schema_hash
-            ));
+            return Err(format!("MIGRATION_PLAN: target manifest hash does not match plan expected_hash={} actual_hash={}", p.to_hash, want.schema_hash));
         }
         id = p.migration_id.clone();
     }
@@ -855,10 +835,7 @@ pub async fn rollback(a: &Args) -> Result<(), String> {
     };
     let status = if record.status == "rolled_back" {
         if !schema_matches(from, &live, &driver) {
-            return Err(format!(
-                "MIGRATION_ROLLBACK_DRIFT: migration_id={id} expected_source_hash={} actual_schema_hash={}",
-                plan.from_hash, live.schema_hash
-            ));
+            return Err(format!("MIGRATION_ROLLBACK_DRIFT: migration_id={id} expected_source_hash={} actual_schema_hash={}", plan.from_hash, live.schema_hash));
         }
         verify_log(&log_dir, &rollback_record, &driver)?;
         "noop"
@@ -881,9 +858,7 @@ pub async fn rollback(a: &Args) -> Result<(), String> {
             claimed = true;
             for (i, op) in plan.rollback_operations.iter().enumerate() {
                 for stmt in split_sql(&op.sql) {
-                    lock.exec(&stmt, &[])
-                        .await
-                        .map_err(|e| format!("rollback_operation={} statement={}: {e}", i + 1, orm_build::schema::quote_text(&stmt)))?;
+                    lock.exec(&stmt, &[]).await.map_err(|e| format!("rollback_operation={} statement={}: {e}", i + 1, orm_build::schema::quote_text(&stmt)))?;
                 }
             }
             Ok(())

@@ -25,7 +25,8 @@ static SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_service.json"
 /// A model whose values are read and written by column name.
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
-        static $entity: Entity = Entity { name: $entity_name, schema: &SCHEMA, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
+        static $entity: Entity =
+            Entity { name: $entity_name, schema: &SCHEMA, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
 
         #[derive(Clone)]
         struct $name {
