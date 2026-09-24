@@ -13,6 +13,21 @@
 
 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단한다. runtime은 이전 ECB 형식을 decode하지 않는다.
 
+### 암호화한 JSON 값 {#encrypted-json-value}
+
+`json aes` 단계를 가진 blob 컬럼은 AES v2로 암호화한 JSON 값을 저장한다. `json` 단계가 ordered-json 텍스트를 쓰고 `aes`가 그 텍스트를 암호화한다. 읽기는 셀을 복호화하고 클라이언트의 `json` 단계로 텍스트를 decode한다. Go는 멤버 순서, 숫자 텍스트, 빈 객체와 빈 배열의 구분을 유지하는 `*orderedjson.Value`를 반환한다. PHP, Rust, TypeScript는 [값 모델](#value-model) 표의 값을 반환한다. Rust는 객체 키를 정렬하고, PHP는 `{}`와 `[]`를 같은 빈 배열로 읽으며, PHP, Rust, TypeScript는 숫자를 네이티브 숫자로 읽으므로 `1.50`은 `1.5`로 반환된다. 엔티티는 non-null integer `aes_key_version` 컬럼을 선언한다.
+
+```mermaid
+erDiagram
+  service_config {
+    bigint   seq             PK "auto"
+    int      aes_key_version
+    longblob config             "json aes"
+  }
+```
+
+키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version으로 암호화하고 그 version을 `aes_key_version`에 기록하며, 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
+
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
 | `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | 공통 ordered-json revision `6d23a2a5e7c0c5d501d759b6d32a439661f153f2` (`0.0.1`); Go는 `v0.0.0-20260916090424-6d23a2a5e7c0`의 `github.com/polyspec/ordered-json/go`를 사용하고 Rust·PHP·TypeScript는 이 revision의 root package를 사용한다 |
@@ -21,8 +36,8 @@
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
 | `yaml` | YAML 1.2 문서 | YAML 1.2 파싱 | 단일 문서와 공통 값 모델 |
 
-## 값 모델
-`json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
+## 값 모델 {#value-model}
+`json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
 
 스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. JSON과 JSONS 컬럼은 객체 멤버 순서를 보존하고 빈 객체와 빈 배열을 구분하는 ordered-json 값 트리를 사용한다.
 

@@ -52,7 +52,8 @@ erDiagram
 
 컬럼 줄은 Mermaid 문법을 따르며 `PK`, `FK`, `UK`는 Mermaid 키워드다. 기본 키의 모든 컬럼에 `PK`를 표시하고, 선언 순서가 복합 키의 순서다. 기본 키는 올바른 명칭이면 무엇이든 되고 여러 컬럼으로 구성할 수 있다. `seq`는 자동 키의 명명 관례다.
 데이터베이스 타입을 그대로 쓴다(`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum(a_b)`, `jsontext`). 매니페스트는 이를 `i64`, `string`, `datetime` 같은 타입으로 정규화하며, PostgreSQL DDL은 `uuid`를 그대로 유지한다. `varchar`와 `char`는 양수 길이가 필요하다.
-- `jsontext` 컬럼은 JSON을 그 텍스트 그대로 담는다. PostgreSQL은 `text`, MySQL은 `LONGTEXT`, SQLite는 TEXT다. ordered-json 코덱이 멤버 순서, 적은 그대로의 중복 키, 빈 객체와 빈 배열의 구분을 유지하므로 세 데이터베이스에서 같은 값을 반환한다. 타입 `json`은 거부하며 `jsontext`로 적는다.
+- `jsontext` 컬럼은 JSON을 그 텍스트 그대로 담는다. PostgreSQL은 `text`, MySQL은 `LONGTEXT`, SQLite는 TEXT다. ordered-json 코덱이 멤버 순서, 적은 그대로의 중복 키, 빈 객체와 빈 배열의 구분을 유지하므로 세 데이터베이스에서 같은 값을 반환한다. 타입 `json`은 거부하며 `jsontext`로 적는다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받는다.
+- 암호화한 JSON 값은 `longblob config "json aes"`처럼 `json aes` 단계를 가진 blob 컬럼이며, 엔티티에 non-null integer `aes_key_version` 컬럼이 있어야 한다. 키는 연결의 AES 키 설정에서 받는다([암호화한 JSON 값](codec.ko.md#encrypted-json-value)).
 - 데이터베이스 안에서 조건·정렬·인덱스에 쓰는 데이터는 컬럼이나 자식 테이블로 만들며 `jsontext` 컬럼 안의 경로로 다루지 않는다. ORM에는 JSON 경로 조건과 JSON 인덱스가 없고, 네이티브 문서 타입(MySQL `JSON`, PostgreSQL `jsonb`)은 문서를 정규화하므로 저장한 텍스트를 유지하지 못한다. 질의 가능한 문서 타입은 자체 조건·인덱스 문법을 가진 별도 컬럼 타입이어야 하며 지금은 없다.
 
 따옴표 안의 문자열은 공백으로 구분한 속성 목록이다. 속성이 없으면 NOT NULL이고 기본값과 스타일이 없다.
@@ -112,7 +113,7 @@ Mermaid는 이 줄을 주석으로 처리하며 `ormgen`만 읽는다.
 - MySQL에서 `orm:table`은 스키마 명칭과 같은 데이터베이스에 테이블을 둔다. DDL은 그 데이터베이스를 먼저 만든다.
 - `orm:immutable`은 엔티티 테이블의 갱신, 삭제, truncate를 거부하는 데이터베이스 트리거를 만든다. MySQL에는 truncate 트리거가 없으므로 갱신과 삭제만 거부한다.
 - `orm:audit_log`는 작업 테이블(순번 컬럼과 식별자 컬럼), 현재 작업 식별자를 담는 트랜잭션 설정, 변경 테이블과 그 일곱 컬럼을 표시한 순서대로 지정한다. `orm:foreign`의 대상처럼 두 테이블은 같은 연결에 설치한 다른 매니페스트에 속할 수 있으므로 명칭과 컬럼 개수만 검사하며, 감사 로그는 스키마마다 하나만 선언한다.
-- `orm:audit`는 엔티티 테이블에 작업을 요구하는 트리거를 만든다. 설정이 비어 있으면 `audit operation context is required`, 그 식별자의 작업 행이 없으면 `audit operation does not exist`로 쓰기가 실패한다. `mode=changes`는 삽입·갱신·삭제된 행마다 변경 행을 하나 기록한다. 변경 행에는 작업 순번, `INSERT`/`UPDATE`/`DELETE`, `service` 컬럼 값, 테이블 명칭, JSON 객체로 된 기본 키, JSON 객체로 된 이전 행과 새 행이 들어간다. 갱신은 바뀐 컬럼만 기록하고 바뀐 것이 없으면 행을 쓰지 않는다. `redact`는 지정한 JSON 경로를 `{"redacted": true, "present": true}`로 바꾼다. 가린 컬럼은 존재해야 하고 키 컬럼일 수 없으며, 점으로 이어진 경로는 JSON을 담을 수 있는 컬럼에만 쓸 수 있다. `mode=operations`는 아무것도 기록하지 않는다. 감사 로그 테이블은 감사 대상이 될 수 없다.
+- `orm:audit`는 엔티티 테이블에 작업을 요구하는 트리거를 만든다. 설정이 비어 있으면 `audit operation context is required`, 그 식별자의 작업 행이 없으면 `audit operation does not exist`로 쓰기가 실패한다. `mode=changes`는 삽입·갱신·삭제된 행마다 변경 행을 하나 기록한다. 변경 행에는 작업 순번, `INSERT`/`UPDATE`/`DELETE`, `service` 컬럼 값, 테이블 명칭, JSON 객체로 된 기본 키, JSON 객체로 된 이전 행과 새 행이 들어간다. 갱신은 바뀐 컬럼만 기록하고 바뀐 것이 없으면 행을 쓰지 않는다. `redact`는 지정한 JSON 경로를 `{"redacted": true, "present": true}`로 바꾼다. 가린 컬럼은 존재해야 하고 키 컬럼일 수 없으며, 점으로 이어진 경로는 JSON을 담을 수 있는 컬럼에만 쓸 수 있다. `aes` 단계를 가진 컬럼은 평문이나 암호문이 아니라 항상 `{"redacted": true, "present": true}`로 기록한다. `mode=operations`는 아무것도 기록하지 않는다. 감사 로그 테이블은 감사 대상이 될 수 없다.
 - 애플리케이션은 트랜잭션 안에서 `utils().setLocal(<setting>, id)`로 작업 식별자를 설정한다. PostgreSQL은 트랜잭션 설정을, MySQL은 `setLocal`이 설정하고 트랜잭션 끝에서 지우는 사용자 변수 `` @`orm.<setting>` ``를, SQLite는 `orm__context` 테이블을 읽는다. PostgreSQL은 truncate에도 작업을 요구한다. MySQL과 SQLite에는 truncate 트리거가 없다.
 - JSON 행 값: PostgreSQL은 `to_jsonb`를 사용한다. MySQL과 SQLite는 컬럼을 명칭 순으로 나열한다. 이진 값은 `\x`와 소문자 16진수로 기록하고, SQLite는 텍스트 컬럼의 유효한 JSON 텍스트를 JSON으로 읽으며, MySQL은 point를 WKT로 기록한다.
 - 트리거에는 지시문을 담은 `-- orm:` 주석이 있으므로 `ormgen import`, `validate`, `migrate`, `db:` 소스가 현재 스키마에서 지시문을 다시 읽는다. `ormgen diff`는 바뀐 트리거를 테이블 변경 전에 지우고 변경 후에 만들며, 재생성한 SQLite 테이블의 트리거를 다시 만든다.

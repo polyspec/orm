@@ -12,6 +12,21 @@ Column styles are stored in the manifest `styles: [...]` in **write order** (`gz
 
 Every AES column has a non-null integer `aes_key_version` column in the same entity. New writes use `secrets.aes_version`. Reads use the stored row version to select `secrets.aes_keys[version]`. Missing versions and authentication failures stop the operation. The runtime does not decode the previous ECB format.
 
+### Encrypted JSON value
+
+A blob column with the stages `json aes` stores a JSON value encrypted with AES v2. The `json` stage writes the ordered-json text, and `aes` encrypts that text; a read decrypts the cell and decodes the text with the `json` stage of the client. Go returns the `*orderedjson.Value`, which keeps the member order, the number text, and an empty object apart from an empty array. PHP, Rust, and TypeScript return the value model of the [value model](#value-model) table: Rust sorts object keys, PHP reads `{}` and `[]` as the same empty array, and PHP, Rust, and TypeScript read numbers as native numbers, so `1.50` reads back as `1.5`. The entity declares the non-null integer `aes_key_version` column.
+
+```mermaid
+erDiagram
+  service_config {
+    bigint   seq             PK "auto"
+    int      aes_key_version
+    longblob config             "json aes"
+  }
+```
+
+The keys come from the connection configuration: `AESKey`, `AESVersion`, and `AESKeys` in Go `orm.Config`; `aesKey`, `aesVersion`, and `aesKeys` in PHP `Config` and the TypeScript connection options; and `aes_key`, `aes_version`, and `aes_keys` in Rust `orm::Config`. A write encrypts with the current version and records it in `aes_key_version`; a read selects the key of the stored version. `utils().aes().rotate(model, keyring)` re-encrypts every row whose version differs from the keyring's current version. A `jsontext` column takes only the `json` or `jsons` stage, so an encrypted JSON value is always a blob column. Audit change rows record an AES column as `{"redacted": true, "present": true}`, never as its plaintext or ciphertext.
+
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
 | `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | Common ordered-json revision `6d23a2a5e7c0c5d501d759b6d32a439661f153f2` (`0.0.1`); Go uses `github.com/polyspec/ordered-json/go` at `v0.0.0-20260916090424-6d23a2a5e7c0`, and Rust/PHP/TypeScript use the root package at this revision |
@@ -21,7 +36,7 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 | `yaml` | YAML 1.2 document | YAML 1.2 parse | single document and common value model |
 
 ## Value model
-A `json` or `jsons` stage stores its text in a `jsontext` column, which is text on the three databases, so the stored text is read back as written. Data queried inside the database is modeled as columns or a child table; the ORM has no JSON path conditions and no JSON indexes.
+A `json` or `jsons` stage stores its text in a `jsontext` column, which is text on the three databases, so the stored text is read back as written. The stages `json aes` store the encrypted text in a blob column (see [Encrypted JSON value](#encrypted-json-value)). Data queried inside the database is modeled as columns or a child table; the ORM has no JSON path conditions and no JSON indexes.
 
 Styled columns use JSON-like values: null, bool, integer (i64), float (f64), string, list, and string-keyed map. JSON and JSONS columns use the ordered-json value tree, which preserves object member order and distinguishes an empty object from an empty array.
 
