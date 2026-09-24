@@ -53,6 +53,24 @@
    }
   },
   {
+   "name": "clients/go/orm/aes_keys_test.go#1",
+   "mmd": "erDiagram\n  secret_note {\n    bigint   seq             PK \"auto\"\n    int      aes_key_version\n    longblob note             \"aes\"\n  }\n",
+   "manifest": {
+    "sha256": "38f03c8f8beb73ab888193568aead64ee6162731acb3f7bb618c502f6d46a3b0"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "840d3595496709eb99603e6693f57430971c6ff4a8e7dfd1f7177e47f7f5ec38"
+    },
+    "postgres": {
+     "sha256": "3abb9cceaf1546a04ef930b25a8b47e2526bd290fd15a667e3ed4ffe708c2f10"
+    },
+    "sqlite": {
+     "sha256": "90d38442000d70e2046d53664a2e54e827d690baf11841ad970ad69cfb408a53"
+    }
+   }
+  },
+  {
    "name": "clients/go/orm/audit_large_test.go#1",
    "mmd": "erDiagram\n  audit_doc {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    jsontext     body\n  }\n  %% orm:table entity=audit_doc name=app.audit_doc\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_doc mode=changes service=service_ref redact=body.secret\n",
    "manifest": {
@@ -1318,6 +1336,24 @@
    }
   },
   {
+   "name": "internal/ormgen/gen_go_packages_test.go#1",
+   "mmd": "erDiagram\n  note {\n    bigint        seq          PK \"auto\"\n    bigint        product_seq\n  }\n",
+   "manifest": {
+    "sha256": "12191833aa466ae8197a8f1e076d976597b5037614977a7dd453bf0bb8088916"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "73ffa5e1c886ffb63eea622a593e54d7e4f979780451d8ead31dc3d31c562ce1"
+    },
+    "postgres": {
+     "sha256": "5ac41bd3155f71939463689d045afb9da939ef236831d6172619c3285e8384c6"
+    },
+    "sqlite": {
+     "sha256": "1b26057f6e51bb0c8d35981968767adb4f8965e5ec1d15681521f3fec0a492f9"
+    }
+   }
+  },
+  {
    "name": "internal/ormgen/gen_go_test.go#1",
    "mmd": "erDiagram\n  product {\n    bigint        seq          PK \"auto\"\n    bigint        brand_seq\n    varchar(50)   name\n    text          body            \"?\"\n    int           price           \"=0\"\n    datetime(6)   sale_start_dt   \"?\"\n    point         location        \"?\"\n  }\n  brand {\n    bigint        seq          PK \"auto\"\n    int           min_price       \"=0\"\n  }\n  %% fulltext product (name, body)\n",
    "manifest": {
@@ -2147,6 +2183,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "sha256": "b700b6f92a10590b4025344851fe3f0abfd79528a86240cf5c8f01506354cc9b"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "936ef96c9162f3ed1e964ab2572ccdea2a6f6c0a5313549bc4a5881a032b372c"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "936ef96c9162f3ed1e964ab2572ccdea2a6f6c0a5313549bc4a5881a032b372c"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "3df36a54c17bfbfe5350463566eb08fa93df53cec691ccc10e70f490d7e39df7"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "3df36a54c17bfbfe5350463566eb08fa93df53cec691ccc10e70f490d7e39df7"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "285a074916c1f7cfe8bc9b1f32dcae48a8c6fc836e2090006a3b29f3f285f2ce"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "285a074916c1f7cfe8bc9b1f32dcae48a8c6fc836e2090006a3b29f3f285f2ce"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
@@ -16261,6 +16339,48 @@
    "error": "sqlite table product cannot add required column brand_seq without a default during a data-preserving migration"
   },
   {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "3c66708bb1df604420a1bae48feaef65054ecc04bac23d5e7519fbf1995b4382"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "3c66708bb1df604420a1bae48feaef65054ecc04bac23d5e7519fbf1995b4382"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "bd583b449fa8a18f7b020abe5609ff63a6677699a529587465dac8b94f2cbb86"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "bd583b449fa8a18f7b020abe5609ff63a6677699a529587465dac8b94f2cbb86"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "d1411162a3034baa155c36a80525ee05ca4e778ccb8e6505cf58b574a60979ed"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "d1411162a3034baa155c36a80525ee05ca4e778ccb8e6505cf58b574a60979ed"
+  },
+  {
    "from": "internal/ormgen/gen_go_test.go#1",
    "to": "internal/ormgen/gen_go_output_test.go#1",
    "dialect": "mysql",
@@ -22767,6 +22887,24 @@
    "sha256": "568451f85adc1c733f4f36cdc77efc58b6dcd48cd70b96d15f61e9c4ea38a14d"
   },
   {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "mysql",
+   "sha256": "35968623f6232562df6f0121136a841fdd4ab97c59fb4616d3cb8eed4fba3fe9"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "postgres",
+   "sha256": "9ee1dbb8681be5444dc67fc68cc31e6876c14cc40123b9f5c865a88e85e953a7"
+  },
+  {
+   "from": "clients/go/orm/aes_keys_test.go#1",
+   "to": "clients/go/orm/aes_keys_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "b7796c7ec94acd1c10ffe1b4b006347cbaa1620c25d8d9de68f39ca482e4ed05"
+  },
+  {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "mysql",
@@ -28813,6 +28951,24 @@
    "to": "internal/ormgen/gen_go_test.go#1",
    "dialect": "sqlite",
    "error": "MIGRATION_PLAN: sqlite table product cannot add required column brand_seq without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "mysql",
+   "sha256": "a47bed025db4f75ac7c45bbb4c0b7bf38ba98ce9d60cc376f9fdc18a5686829d"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "postgres",
+   "sha256": "f38f64f9db08b232ace272ba6f61b23e5166ba28dcdc11ba44f72f0af5451ee0"
+  },
+  {
+   "from": "internal/ormgen/gen_go_packages_test.go#1",
+   "to": "internal/ormgen/gen_go_packages_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "522dfca3ca7a243031e6475dde96eb8954314621f202e4de6da42f2ced7a1a4b"
   },
   {
    "from": "internal/ormgen/gen_go_test.go#1",
