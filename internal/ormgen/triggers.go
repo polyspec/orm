@@ -170,7 +170,7 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 	b.WriteString(markers + "\n")
 	b.WriteString("DECLARE\n  audit_operation_id text := current_setting(" + sqlLiteral(l.Context) + ", true);\n  audit_operation_seq bigint;\n")
 	if a.Mode == "changes" {
-		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_service text;\n  audit_key jsonb;\n")
+		b.WriteString("  audit_old jsonb := '{}'::jsonb;\n  audit_new jsonb := '{}'::jsonb;\n  audit_key jsonb;\n")
 	}
 	b.WriteString("BEGIN\n")
 	b.WriteString("  IF audit_operation_id IS NULL OR audit_operation_id = '' THEN RAISE EXCEPTION " + auditContextMessage + "; END IF;\n")
@@ -196,8 +196,11 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 		}
 		b.WriteString("    IF audit_old::text = '{}' AND audit_new::text = '{}' THEN RETURN NULL; END IF;\n")
 		b.WriteString("  END IF;\n")
+		// The service value keeps its column type, so the change table's
+		// service column can have any type the audited column converts to.
+		service := "NULL"
 		if a.Service != "" {
-			b.WriteString("  audit_service := CASE TG_OP WHEN 'DELETE' THEN OLD." + q(a.Service) + "::text ELSE NEW." + q(a.Service) + "::text END;\n")
+			service = "CASE TG_OP WHEN 'DELETE' THEN OLD." + q(a.Service) + " ELSE NEW." + q(a.Service) + " END"
 		}
 		keys := make([]string, 0, len(e.PK)*2)
 		for _, k := range e.PK {
@@ -210,7 +213,7 @@ func postgresAudit(m *schema.Manifest, e *schema.Entity, a *schema.Audit, marker
 				b.WriteString("  IF " + v + " #> " + p + " IS NOT NULL THEN " + v + " := jsonb_set(" + v + ", " + p + ", '{\"redacted\": true, \"present\": true}'::jsonb); END IF;\n")
 			}
 		}
-		b.WriteString("  INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, TG_OP, audit_service, " + sqlLiteral(e.Table) + ", audit_key, audit_old, audit_new);\n")
+		b.WriteString("  INSERT INTO " + q(l.Change.Table) + " (" + auditChangeColumns(l, q) + ") VALUES (audit_operation_seq, TG_OP, " + service + ", " + sqlLiteral(e.Table) + ", audit_key, audit_old, audit_new);\n")
 	}
 	b.WriteString("  RETURN NULL;\nEND\n$$;")
 	o := triggerObject{table: e.Table, kind: "audit"}

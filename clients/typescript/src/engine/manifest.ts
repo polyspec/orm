@@ -17,6 +17,7 @@ export interface Column {
   readonly len?: number;
   readonly precision?: number;
   readonly scale?: number;
+  readonly enum?: readonly string[];
   readonly styles?: readonly string[];
   readonly blind_index?: string;
   readonly ref?: { readonly entity: string; readonly column: string };
