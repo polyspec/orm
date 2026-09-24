@@ -224,6 +224,6 @@ impl T {
     }
 
     /// Returns the row values.
-    pub fn to_array(&self) -> orm::serde_json::Value {
-        orm::model::to_json(self)
+    pub fn to_array(&self) -> orm::Result<orm::serde_json::Value> {
+        orm::model::to_array(self)
     }

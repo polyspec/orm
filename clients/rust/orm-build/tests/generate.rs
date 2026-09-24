@@ -40,8 +40,8 @@ fn generates_called_methods() {
         "pub fn order_by_seq_desc_and_start_dt_asc(mut self) -> Self",
         "pub async fn get_count_by_seq_and_ne_start_dt<V0: orm::args::EqArg<orm::args::kind::Int>, V1: orm::args::EqArg<orm::args::kind::Time>>(&self, v0: V0, v1: V1) -> orm::Result<i64>",
         "pub fn add_raw_column_total(mut self, sql: &str, binds: impl orm::Binds) -> Self",
-        "pub fn get_total(&self) -> Option<orm::serde_json::Value>",
-        "pub fn get_label(&self) -> Option<orm::serde_json::Value>",
+        "pub fn get_total(&self) -> orm::Result<Option<orm::serde_json::Value>>",
+        "pub fn get_label(&self) -> orm::Result<Option<orm::serde_json::Value>>",
         "pub static SCHEMA: orm::Schema",
     ] {
         assert!(text.contains(want), "missing {want}");

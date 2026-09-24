@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+Rust 배열 출력은 프로세스를 멈추지 않고 오류를 반환한다. 모델과 컬렉션의 `to_array`, `Val::to_json`, 첨부 값 getter는 `orm::Result`를 반환하고, 숫자 `1e400`처럼 serde_json이 표현할 수 없는 값은 `CODEC_ENCODE`를 반환한다. 모델의 serde 직렬화는 같은 오류를 serializer로 보고한다.
+
 `make rust-fmt-check`를 추가한다. 이 target은 `clients/rust/rustfmt.toml`로 Rust workspace에 `cargo fmt --all --check`를 실행하며, `make check`와 CI가 실행한다.
 
 Go, PHP, Rust, TypeScript 클라이언트에서 키 목록과 버전만 설정하면 AES 쓰기는 현재 버전의 키 `AESKeys[AESVersion]`로 암호화한다. 이전에는 이 쓰기가 `secret aes not configured`로 실패했다. 설정한 `AESKey`가 `AESKeys[AESVersion]`과 다르면 연결이 `CONFIG`로 실패한다.

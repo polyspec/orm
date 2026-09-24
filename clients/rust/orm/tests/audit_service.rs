@@ -130,7 +130,7 @@ async fn audit_bigint_service() {
             })
             .collect();
         assert_eq!(got, ["routed:42", "unowned:null"], "{driver}: changes");
-        assert_eq!(rows[0]["after_value"].to_json()["render"], "ssr", "{driver}: render default");
+        assert_eq!(rows[0]["after_value"].to_json().unwrap()["render"], "ssr", "{driver}: render default");
 
         drop_tables(&db).await;
         db.close().await;

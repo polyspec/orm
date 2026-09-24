@@ -34,7 +34,7 @@ var outputs = map[string]map[string]string{
 	"InsertedRows":      {"go": "(int64,error)", "php": "int", "rust": "orm::Result<u64>", "typescript": "Promise<number>"},
 	"ModelSuccess":      {"go": "error", "php": "void", "rust": "orm::Result<()>", "typescript": "Promise<void>"},
 	"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
-	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "orm::serde_json::Value", "typescript": "Record<string,unknown>"},
+	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "orm::Result<orm::serde_json::Value>", "typescript": "Record<string,unknown>"},
 	"Db":                {"go": "(*orm.DB,error)", "php": "Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>"},
 	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>"},
 	"Utils":             {"go": "*Utils", "php": "Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils"},
