@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+Go 생성기의 scan은 호출 인자의 타입이 확정되지 않아도 호출한 모델 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓰며, join과 relation 인자는 여전히 생성하는 패키지의 모델로 확정되어야 한다.
+
 PHP, Rust, TypeScript 클라이언트의 `get`과 생성된 `getBy…` 종결 메서드는 일치하는 행이 없으면 `null`이나 `None`을 반환하지 않고 Go 클라이언트처럼 `NO_ROWS`로 실패한다. PHP `get()`은 `static`, TypeScript `get()`은 `Promise<this>`, Rust `get()`은 `orm::Result<Self>`를 반환한다. conformance 벡터 `terminal_by`, `write_cycle`, `delete_recursive`는 없는 행의 `NO_ROWS` 코드를 기록한다.
 
 PHP, Rust, TypeScript 스키마 생성기가 Go 생성기와 같은 MySQL DDL을 출력한다. CHECK 제약 이름은 `ck_<table>_<name>`, CHECK 표현식은 `(expr) <> 0` 형식, boolean 기본값은 MySQL과 SQLite에서 `0`/`1`, PostgreSQL에서 `false`/`true`이며, 제약·인덱스 이름은 MySQL 64바이트, PostgreSQL 63바이트를 넘으면 SHA-256 접미사를 붙여 줄인다. 네 생성기의 MySQL import는 `ck_<table>_` 접두어를 제거해 선언한 check 이름을 반환하므로 CHECK 제약을 가진 MySQL 테이블이 바뀌지 않았으면 diff가 없다.
