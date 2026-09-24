@@ -128,7 +128,7 @@ such as one past `statementTimeoutMs`); other driver errors keep the driver mess
     ORM_TOOLS_MYSQL_DSN='mysql://root@localhost/orm_php_tools?socket=/tmp/mysql.sock' \
       ORM_TOOLS_POSTGRES_DSN='postgres:///orm_php_tools?host=/tmp' \
       php clients/php/tests/schema_db_test.php   # drops every table in those databases
-    go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite
+    go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite -dsn <bench DSN>
 
 `model_test.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
 unset; each DSN names an empty test database (its tables are dropped and installed with

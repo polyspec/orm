@@ -475,11 +475,13 @@ psql … -f app.pg.sql
 ## 12. 확인
 
 ```sh
+make test-servers                                        # MySQL, PostgreSQL, 시드한 벤치 데이터베이스
+. .runtime/servers/env                                   # 테스트의 DSN 변수
 go test ./...                                            # 엔진, 생성기, Go 클라이언트
 npm run typescript:test                                  # TypeScript 클라이언트
 (cd clients/rust && cargo test --workspace)              # Rust 클라이언트
-go run ./tests/conformance/check run                     # 네 클라이언트의 같은 결과 (MySQL)
-go run ./tests/conformance/check run -driver postgres -dsn 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00'
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # 네 클라이언트의 같은 결과 (MySQL)
+go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```
 
 예제: [`examples/thin-slice`](../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../examples/complex)(조인·그룹·2단 관계·집계).

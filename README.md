@@ -47,11 +47,10 @@ const battles = await new Battle().connect(slave1).getsByServiceSeqAndIsClose(7,
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
 - **Equality**: `tests/conformance` runs the same vectors in the four clients and compares the SQL, binds, and results.
 
-## Quick start (MySQL 8.x, local socket)
+## Quick start (MySQL 8.4 and PostgreSQL 17)
 ```sh
-mysql -uroot orm_bench < bench/sql/battle.sql
-mysql -uroot orm_bench < bench/sql/seed.mysql.sql                  # schema + 100k rows
-go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench'
+make test-servers                                                   # servers, databases, bench schema + 100k rows
+. .runtime/servers/env                                              # the DSN variables of the tests
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 (cd clients/go/model && go generate)                                # Go models
 php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/gen --namespace 'App\Orm'
@@ -60,7 +59,7 @@ php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/ge
 go test ./...
 npm run typescript:test
 (cd clients/rust && cargo test --workspace)
-go run ./tests/conformance/check run -driver mysql                  # compares the four clients
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the four clients
 ```
 
 ## Documents

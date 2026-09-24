@@ -2,33 +2,22 @@
 // database and prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}
 // with the same chains, result shapes, and masking as runner_go.
 //
-// Usage: node runner_typescript.mjs [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>
+// Usage: node runner_typescript.mjs --dsn URI <schema.json>
 import {
   AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, User, orm,
 } from '../../clients/typescript/dist/index.js';
 import { Value as JsonValue, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 const args = process.argv.slice(2);
-let driver = 'mysql';
-let dsnFlag = '';
+let dsn = '';
 const rest = [];
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--driver') driver = args[++i];
-  else if (args[i] === '--dsn') dsnFlag = args[++i];
+  if (args[i] === '--dsn') dsn = args[++i];
   else rest.push(args[i]);
 }
-if (rest.length !== 1) {
-  console.error('usage: runner_typescript.mjs [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>');
+if (rest.length !== 1 || !dsn) {
+  console.error('usage: runner_typescript.mjs --dsn URI <schema.json>');
   process.exit(2);
-}
-
-function dsn() {
-  if (dsnFlag !== '') return dsnFlag;
-  switch (driver) {
-    case 'postgres': return 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00';
-    case 'sqlite': return 'sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00';
-  }
-  return 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&timezone=%2B00:00';
 }
 
 let log = [];
@@ -96,7 +85,7 @@ const picks = (rows, ...names) => rows.values().map(m => pick(m, ...names));
 const keysOf = rows => rows.keys();
 
 async function main() {
-  const db = await Db.connect(dsn(), rest[0], {
+  const db = await Db.connect(dsn, rest[0], {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },

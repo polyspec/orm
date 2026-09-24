@@ -2,7 +2,7 @@
 // prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 // other runners print the same document for the same chains.
 //
-// Usage: runner_go [-driver mysql|postgres|sqlite] [-dsn URI] <schema.json>
+// Usage: runner_go [-driver mysql|postgres|sqlite] -dsn URI <schema.json>
 package main
 
 import (
@@ -96,22 +96,9 @@ func code(err error) any {
 }
 
 var (
-	driver  = "mysql"
-	dsnFlag = ""
+	driver = "mysql"
+	dsn    = ""
 )
-
-func dsn() string {
-	if dsnFlag != "" {
-		return dsnFlag
-	}
-	switch driver {
-	case "postgres":
-		return "postgres:///orm_bench?host=/tmp&timezone=%2B00:00"
-	case "sqlite":
-		return "sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00"
-	}
-	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&timezone=%2B00:00"
-}
 
 // pick keeps the named values of a row.
 func pick(m orm.Model, names ...string) map[string]any {
@@ -151,14 +138,14 @@ func main() {
 			driver = args[i+1]
 			i++
 		case "-dsn":
-			dsnFlag = args[i+1]
+			dsn = args[i+1]
 			i++
 		default:
 			rest = append(rest, args[i])
 		}
 	}
-	if len(rest) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] [-dsn URI] <schema.json>")
+	if len(rest) != 1 || dsn == "" {
+		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] -dsn URI <schema.json>")
 		os.Exit(2)
 	}
 	js, err := os.ReadFile(rest[0])
@@ -168,7 +155,7 @@ func main() {
 	eng, err := engine.New(m, driver)
 	check(err)
 	check(orm.CheckSchemaHash(eng, model.SchemaHash))
-	db, err := orm.Open(dsn(), eng, orm.Config{
+	db, err := orm.Open(dsn, eng, orm.Config{
 		AESKey:        "bench-salt",
 		BlindIndexKey: "bench-blind-index",
 		OnQuery: func(e orm.Event) {

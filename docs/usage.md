@@ -475,11 +475,13 @@ psql … -f app.pg.sql
 ## 12. Verification
 
 ```sh
+make test-servers                                        # MySQL, PostgreSQL, and the seeded bench databases
+. .runtime/servers/env                                   # the DSN variables of the tests
 go test ./...                                            # engine, generator, and Go client
 npm run typescript:test                                  # TypeScript client
 (cd clients/rust && cargo test --workspace)              # Rust client
-go run ./tests/conformance/check run                     # four clients, identical results on MySQL
-go run ./tests/conformance/check run -driver postgres -dsn 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00'
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # four clients, identical results on MySQL
+go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```
 
 Examples: [`examples/thin-slice`](../examples/thin-slice) (Go, PHP, and Rust, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, two-level relations, and aggregates).

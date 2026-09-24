@@ -35,9 +35,8 @@ const battles = await new Battle().connect(slave1).getsByServiceSeqAndIsClose(7,
 ## 빠른 시작
 
 ```sh
-mysql -uroot orm_bench < bench/sql/battle.sql
-mysql -uroot orm_bench < bench/sql/seed.mysql.sql
-go run ./bench/seedaes -driver mysql -dsn 'root@unix(/tmp/mysql.sock)/orm_bench'
+make test-servers
+. .runtime/servers/env
 go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 (cd clients/go/model && go generate)
 php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/gen --namespace 'App\Orm'
@@ -46,7 +45,7 @@ php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/ge
 go test ./...
 npm run typescript:test
 (cd clients/rust && cargo test --workspace)
-go run ./tests/conformance/check run -driver mysql
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"
 ```
 
 ## 도구
