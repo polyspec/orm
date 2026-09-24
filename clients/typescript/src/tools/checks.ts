@@ -4,7 +4,7 @@
 // same database and read back through the same catalog path; SQLite keeps the
 // text it was given, so its form is the rendered DDL text.
 import type { Column } from '../engine/manifest.js';
-import { ddlColumn, ddlErrorText, ddlTable, quotedCheckExpression, type Quote } from '../engine/ddl.js';
+import { ddlColumn, ddlErrorText, ddlTable, renderedCheckExpression, type Quote } from '../engine/ddl.js';
 import { manifestHash, type SchemaEntity, type SchemaManifest } from '../schema/build.js';
 import { openToolDb, type ToolDb } from './db.js';
 import { postgresCheckExpr, sqliteBalancedParen } from './introspect.js';
@@ -50,7 +50,7 @@ export async function alignLiveChecks(db: ToolDb, live: SchemaManifest, want: Sc
 /** The catalog form of each declared check of e, in declaration order. */
 async function canonicalChecks(db: ToolDb, e: SchemaEntity): Promise<string[]> {
   const quote: Quote = db.driver === 'mysql' ? s => '`' + s + '`' : s => `"${s}"`;
-  const exprs = (e.checks ?? []).map(check => quotedCheckExpression(check.expr, quote));
+  const exprs = (e.checks ?? []).map(check => renderedCheckExpression(check.expr, db.driver, quote));
   if (db.driver === 'sqlite') return exprs;
   const lines = (e.columns ?? []).map(c => ddlColumn({ ...c, auto: false } as unknown as Column, db.driver, quote));
   exprs.forEach((expr, i) => lines.push(`CONSTRAINT ${quote(probeCheckName(i))} CHECK (${expr})`));

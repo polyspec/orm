@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+PHP, Rust, TypeScript 스키마 생성기가 Go 생성기와 같은 MySQL DDL을 출력한다. CHECK 제약 이름은 `ck_<table>_<name>`, CHECK 표현식은 `(expr) <> 0` 형식, boolean 기본값은 MySQL과 SQLite에서 `0`/`1`, PostgreSQL에서 `false`/`true`이며, 제약·인덱스 이름은 MySQL 64바이트, PostgreSQL 63바이트를 넘으면 SHA-256 접미사를 붙여 줄인다. 네 생성기의 MySQL import는 `ck_<table>_` 접두어를 제거해 선언한 check 이름을 반환하므로 CHECK 제약을 가진 MySQL 테이블이 바뀌지 않았으면 diff가 없다.
+
 암호화한 JSON 값을 추가한다. `longblob config "json aes"`처럼 `json aes` 단계를 가진 blob 컬럼은 값의 ordered-json 텍스트를 AES v2와 행의 `aes_key_version`으로 암호화해 저장한다. Go, PHP, Rust, TypeScript 클라이언트는 SQLite, MySQL, PostgreSQL에서 이 값을 쓰고, 읽고, 갱신하고, 키를 교체한다. Go는 멤버 순서와 숫자 텍스트를 유지한 ordered-json 값을 반환하고, PHP, Rust, TypeScript는 `json` 컬럼과 같은 JSON 값 모델을 반환한다. `aes` 단계는 다른 단계 뒤에 올 수 있고, `jsontext` 컬럼은 `json`·`jsons`가 아닌 단계를 거부한다. 감사 변경 행은 모든 AES 컬럼을 암호문 대신 `{"redacted": true, "present": true}`로 기록한다. PHP, Rust, TypeScript 스키마 빌더도 Go 빌더처럼 감사 `service=` 옵션을 읽는다.
 
 모든 스키마 생성기가 MySQL `enum(a_b)` 컬럼을 `enum('a','b')`로 출력한다. 따옴표 없는 값 목록은 MySQL이 거부했다. PostgreSQL 감사 트리거는 `service` 컬럼 값을 그 컬럼의 타입 그대로, `service=`가 없는 엔티티는 NULL로 넣으므로 정수 service 컬럼을 가진 변경 테이블도 변경 행을 받는다.

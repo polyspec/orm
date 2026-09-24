@@ -117,7 +117,10 @@ export async function readTables(db: ToolDb, only?: Set<string>): Promise<ImpTab
 		JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
 		WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.CONSTRAINT_TYPE='CHECK'
 		ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_NAME`)) {
-    byName.get(s(row[0]))?.checks.push({ name: s(row[1]), expr: s(row[2]) });
+    // DDL writes the physical name ck_<table>_<name>; import returns the declared name.
+    const prefix = `ck_${s(row[0])}_`;
+    const name = s(row[1]);
+    byName.get(s(row[0]))?.checks.push({ name: name.startsWith(prefix) ? name.slice(prefix.length) : name, expr: s(row[2]) });
   }
   return byteSorted([...byName.keys()]).map(name => byName.get(name)!);
 }

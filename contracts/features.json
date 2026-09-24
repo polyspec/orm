@@ -539,6 +539,7 @@
         "clients/rust/orm/tests/zone.rs",
         "clients/go/orm/install_test.go",
         "internal/ormgen/live_diff_test.go",
+        "internal/ormgen/live_diff_server_test.go",
         "internal/ormgen/migrate_physical_test.go",
         "internal/ormgen/mysql_defects_test.go",
         "internal/ormgen/rename_test.go",

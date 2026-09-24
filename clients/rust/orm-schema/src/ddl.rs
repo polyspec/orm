@@ -46,8 +46,46 @@ fn ddl_index_name(table: &str, index: &str, dialect: &str) -> String {
     if dialect == "sqlite" {
         format!("{}_{index}", ddl_table(table, dialect))
     } else {
-        format!("{}_{index}", ddl_base(table))
+        bounded_identifier(&format!("{}_{index}", ddl_base(table)), dialect)
     }
+}
+
+/// MySQL CHECK constraint names are unique within a database, while the
+/// schema scopes a check name to its entity. MySQL receives the name
+/// ck_<table>_<name>; other dialects keep the declared name.
+fn ddl_check_name(table: &str, name: &str, dialect: &str) -> String {
+    if dialect == "mysql" {
+        bounded_identifier(&format!("ck_{}_{name}", ddl_base(table)), dialect)
+    } else {
+        name.to_owned()
+    }
+}
+
+/// Keeps a name within the identifier limit of the dialect (MySQL 64,
+/// PostgreSQL 63 bytes). A longer name is cut and receives a suffix with the
+/// first 6 bytes of its SHA-256 digest in hex, so two long names do not
+/// collide after the cut.
+fn bounded_identifier(name: &str, dialect: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let limit = match dialect {
+        "mysql" => 64,
+        "postgres" => 63,
+        _ => return name.to_owned(),
+    };
+    if name.len() <= limit {
+        return name.to_owned();
+    }
+    let digest = Sha256::digest(name.as_bytes());
+    let suffix: String = std::iter::once("_".to_owned()).chain(digest[..6].iter().map(|b| format!("{b:02x}"))).collect();
+    format!("{}{suffix}", String::from_utf8_lossy(&name.as_bytes()[..limit - suffix.len()]))
+}
+
+/// A CHECK expression for the dialect. MySQL rejects a CASE expression with
+/// predicate branches as a CHECK definition, so MySQL receives (expr) <> 0;
+/// NULL stays UNKNOWN and the CHECK accepts it.
+pub fn rendered_check_expression(expr: &str, dialect: &str, quote: Quote) -> Result<String, String> {
+    let rendered = quoted_check_expression(expr, quote)?;
+    Ok(if dialect == "mysql" { format!("({rendered}) <> 0") } else { rendered })
 }
 
 fn ddl_schemas(m: &Manifest) -> Vec<String> {
@@ -149,8 +187,18 @@ fn default_expression(c: &Col, sql_type: &str, dialect: &str) -> String {
     if v == "null" {
         return "NULL".into();
     }
-    if is_number(v) && c.typ == "bool" && dialect == "postgres" {
-        return if v == "0" { "false" } else { "true" }.into();
+    if c.typ == "bool" {
+        // MySQL BOOLEAN is TINYINT(1) and strict mode rejects a quoted
+        // default; SQLite stores the value as INTEGER 0/1.
+        let value = v.trim_matches(|ch| ch == '\'' || ch == '"').to_lowercase();
+        let truthy = value == "1" || value == "true";
+        return match (dialect == "postgres", truthy) {
+            (true, true) => "true",
+            (true, false) => "false",
+            (false, true) => "1",
+            (false, false) => "0",
+        }
+        .into();
     }
     let expr = if is_number(v) { v.to_owned() } else { format!("'{}'", sql_quote(v.trim_matches('\''))) };
     let t = sql_type.to_lowercase();
@@ -245,7 +293,7 @@ pub(crate) fn ddl_type(c: &Col, dialect: &str) -> Result<String, String> {
 }
 
 #[doc(hidden)]
-pub fn quoted_check_expression(expr: &str, quote: Quote) -> Result<String, String> {
+fn quoted_check_expression(expr: &str, quote: Quote) -> Result<String, String> {
     let mut out = String::new();
     let mut rest = expr;
     while !rest.is_empty() {
@@ -292,7 +340,7 @@ fn relation_matches_column_reference(e: &Entity, rel: &Rel) -> bool {
 }
 
 /// The foreign keys of an entity keyed by their columns.
-fn entity_foreign_keys(m: &Manifest, e: &Entity) -> BTreeMap<String, ForeignKey> {
+fn entity_foreign_keys(m: &Manifest, e: &Entity, dialect: &str) -> BTreeMap<String, ForeignKey> {
     let mut out: BTreeMap<String, ForeignKey> = BTreeMap::new();
     let mut consumed = BTreeSet::new();
     for rel in e.relations.values() {
@@ -304,7 +352,7 @@ fn entity_foreign_keys(m: &Manifest, e: &Entity) -> BTreeMap<String, ForeignKey>
         }
         let columns: Vec<String> = rel.keys.iter().map(|k| k.local.clone()).collect();
         let target_cols: Vec<String> = rel.keys.iter().map(|k| k.target.clone()).collect();
-        let name = format!("fk_{}_{}", e.table, columns.join("_"));
+        let name = bounded_identifier(&format!("fk_{}_{}", e.table, columns.join("_")), dialect);
         consumed.extend(columns.iter().cloned());
         out.insert(
             columns.join("\x1f"),
@@ -319,7 +367,7 @@ fn entity_foreign_keys(m: &Manifest, e: &Entity) -> BTreeMap<String, ForeignKey>
         out.insert(
             c.name.clone(),
             ForeignKey {
-                name: format!("fk_{}_{}", e.table, c.name),
+                name: bounded_identifier(&format!("fk_{}_{}", e.table, c.name), dialect),
                 columns: vec![c.name.clone()],
                 target: r.entity.clone(),
                 target_cols: vec![r.column.clone()],
@@ -329,7 +377,11 @@ fn entity_foreign_keys(m: &Manifest, e: &Entity) -> BTreeMap<String, ForeignKey>
         );
     }
     for fk in m.external_fks.iter().filter(|fk| fk.entity == e.name) {
-        let name = if fk.name.is_empty() { format!("fk_{}_{}", e.table.replace('.', "_"), fk.columns.join("_")) } else { fk.name.clone() };
+        let name = if fk.name.is_empty() {
+            bounded_identifier(&format!("fk_{}_{}", e.table.replace('.', "_"), fk.columns.join("_")), dialect)
+        } else {
+            fk.name.clone()
+        };
         let matched = out.iter_mut().find(|(_, existing)| {
             let target = m.entities.get(&existing.target).map_or(existing.target.as_str(), |t| t.table.as_str());
             target == fk.target_table && existing.columns == fk.columns && existing.target_cols == fk.target_columns
@@ -358,7 +410,7 @@ fn foreign_key_clause(fk: &ForeignKey, m: &Manifest, dialect: &str, quote: Quote
     let target = m.entities.get(&fk.target).map_or(fk.target.as_str(), |e| e.table.as_str());
     let mut stmt = format!(
         "CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {} ({})",
-        quote(&fk.name.replace('.', "_")),
+        quote(&bounded_identifier(&fk.name.replace('.', "_"), dialect)),
         join_quoted(&fk.columns, quote),
         quote(target),
         join_quoted(&fk.target_cols, quote)
@@ -482,9 +534,9 @@ pub fn render_ddl(m: &Manifest, dialect: &str) -> Result<String, String> {
             lines.push(format!("  PRIMARY KEY ({})", join_quoted(&e.pk, q)));
         }
         for uk in &e.unique {
-            lines.push(format!("  CONSTRAINT {} UNIQUE ({})", q(&format!("uq_{}_{}", ddl_base(&e.table), uk.join("_"))), join_quoted(uk, q)));
+            lines.push(format!("  CONSTRAINT {} UNIQUE ({})", q(&bounded_identifier(&format!("uq_{}_{}", ddl_base(&e.table), uk.join("_")), dialect)), join_quoted(uk, q)));
         }
-        for fk in entity_foreign_keys(m, e).into_values() {
+        for fk in entity_foreign_keys(m, e, dialect).into_values() {
             if let Some(target) = foreign_key_target_entity(m, &fk.target) {
                 if dialect != "sqlite" && position.get(target.name.as_str()).is_some_and(|p| *p > current) {
                     deferred.push((e.table.clone(), fk));
@@ -494,8 +546,8 @@ pub fn render_ddl(m: &Manifest, dialect: &str) -> Result<String, String> {
             lines.push(format!("  {}", foreign_key_clause(&fk, m, dialect, q)));
         }
         for check in &e.checks {
-            let expr = quoted_check_expression(&check.expr, q).map_err(|err| format!("{} check {}: {err}", e.table, check.name))?;
-            lines.push(format!("  CONSTRAINT {} CHECK ({expr})", q(&check.name)));
+            let expr = rendered_check_expression(&check.expr, dialect, q).map_err(|err| format!("{} check {}: {err}", e.table, check.name))?;
+            lines.push(format!("  CONSTRAINT {} CHECK ({expr})", q(&ddl_check_name(&e.table, &check.name, dialect))));
         }
         if dialect == "mysql" {
             for (ix, cols) in &e.indexes {
@@ -743,7 +795,7 @@ fn sqlite_needs_rebuild(from: &Manifest, to: &Manifest, old: &Entity, next: &Ent
             _ => {}
         }
     }
-    let (old_fks, new_fks) = (entity_foreign_keys(from, old), entity_foreign_keys(to, next));
+    let (old_fks, new_fks) = (entity_foreign_keys(from, old, ""), entity_foreign_keys(to, next, ""));
     if old_fks.len() != new_fks.len() {
         return true;
     }
@@ -774,11 +826,11 @@ fn diff_checks(old: &Entity, next: &Entity, dialect: &str, quote: Quote) -> Resu
             _ => true,
         };
         if o.is_some() && differs {
-            drops.push(destructive(format!("ALTER TABLE {} DROP CONSTRAINT {};", quote(&old.table), quote(name))));
+            drops.push(destructive(format!("ALTER TABLE {} DROP CONSTRAINT {};", quote(&old.table), quote(&ddl_check_name(&old.table, name, dialect)))));
         }
         if let Some(n) = n.filter(|_| differs) {
-            let expr = quoted_check_expression(&n.expr, quote).map_err(|err| format!("{} check {name}: {err}", next.table))?;
-            adds.push(change(format!("ALTER TABLE {} ADD CONSTRAINT {} CHECK ({expr});", quote(&next.table), quote(name))));
+            let expr = rendered_check_expression(&n.expr, dialect, quote).map_err(|err| format!("{} check {name}: {err}", next.table))?;
+            adds.push(change(format!("ALTER TABLE {} ADD CONSTRAINT {} CHECK ({expr});", quote(&next.table), quote(&ddl_check_name(&next.table, name, dialect)))));
         }
     }
     Ok((drops, adds))
@@ -833,13 +885,13 @@ fn render_sqlite_rebuild(to: &Manifest, old: &Entity, next: &Entity, quote: Quot
         lines.push(format!("  PRIMARY KEY ({})", join_quoted(&next.pk, quote)));
     }
     for unique in &next.unique {
-        lines.push(format!("  CONSTRAINT {} UNIQUE ({})", quote(&format!("uq_{}_{}", next.table, unique.join("_"))), join_quoted(unique, quote)));
+        lines.push(format!("  CONSTRAINT {} UNIQUE ({})", quote(&bounded_identifier(&format!("uq_{}_{}", next.table, unique.join("_")), "sqlite")), join_quoted(unique, quote)));
     }
-    for fk in entity_foreign_keys(to, next).into_values() {
+    for fk in entity_foreign_keys(to, next, "sqlite").into_values() {
         lines.push(format!("  {}", foreign_key_clause(&fk, to, "sqlite", quote)));
     }
     for check in &next.checks {
-        let expr = quoted_check_expression(&check.expr, quote).map_err(|err| format!("{} check {}: {err}", next.table, check.name))?;
+        let expr = rendered_check_expression(&check.expr, "sqlite", quote).map_err(|err| format!("{} check {}: {err}", next.table, check.name))?;
         lines.push(format!("  CONSTRAINT {} CHECK ({expr})", quote(&check.name)));
     }
     let (mut target_cols, mut source_cols) = (Vec::new(), Vec::new());
@@ -1042,7 +1094,7 @@ fn entity_indexes(e: &Entity, dialect: &str) -> BTreeMap<String, Index> {
         out.insert(format!("index:{name}"), Index { name: name.clone(), kind: "index", cols: cols.clone() });
     }
     for cols in &e.unique {
-        let name = format!("uq_{}_{}", e.table, cols.join("_"));
+        let name = bounded_identifier(&format!("uq_{}_{}", e.table, cols.join("_")), dialect);
         out.insert(format!("unique:{name}"), Index { name, kind: "unique", cols: cols.clone() });
     }
     for cols in e.fulltext.iter().filter(|_| dialect != "sqlite") {
@@ -1086,7 +1138,7 @@ fn diff_indexes_and_foreign_keys(
             index_adds.push(change(create_index(&next.table, n, dialect, quote)?));
         }
     }
-    let (old_fks, new_fks) = (entity_foreign_keys(from, old), entity_foreign_keys(to, next));
+    let (old_fks, new_fks) = (entity_foreign_keys(from, old, dialect), entity_foreign_keys(to, next, dialect));
     let keys: BTreeSet<&String> = old_fks.keys().chain(new_fks.keys()).collect();
     for key in keys {
         let (o, n) = (old_fks.get(key), new_fks.get(key));

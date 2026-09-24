@@ -1,7 +1,7 @@
 // Migration SQL between two manifests (`orm-gen diff`, docs/schema.md §4).
 import type { Column, Entity, LoadedManifest, Manifest } from '../engine/manifest.js';
 import {
-  ddlColumn, ddlErrorText, ddlType, defaultExpression, mysqlJSONText, mysqlUUID, entityForeignKeys, foreignKeyClause, isNumber, joinQuoted, quotedCheckExpression,
+  ddlColumn, ddlErrorText, ddlType, defaultExpression, mysqlJSONText, mysqlUUID, entityForeignKeys, foreignKeyClause, isNumber, joinQuoted, renderedCheckExpression, boundedIdentifier, ddlCheckName,
   renderDDL, sortedForeignKeys, sqlQuote, type ForeignKey, type Quote,
 } from '../engine/ddl.js';
 import { byteOrder, quoted } from '../schema/json.js';
@@ -168,12 +168,12 @@ function diffChecks(oldEnt: SchemaEntity, newEnt: SchemaEntity, dialect: string,
     const oldCheck = oldChecks.get(name);
     const newCheck = newChecks.get(name);
     if (oldCheck && (!newCheck || oldCheck.expr !== newCheck.expr)) {
-      drops.push({ sql: `ALTER TABLE ${quote(oldEnt.table)} DROP CONSTRAINT ${quote(name)};`, destructive: true });
+      drops.push({ sql: `ALTER TABLE ${quote(oldEnt.table)} DROP CONSTRAINT ${quote(ddlCheckName(oldEnt.table, name, dialect))};`, destructive: true });
     }
     if (newCheck && (!oldCheck || oldCheck.expr !== newCheck.expr)) {
       let expr: string;
-      try { expr = quotedCheckExpression(newCheck.expr, quote); } catch (error) { throw new Error(`${newEnt.table} check ${name}: ${ddlErrorText(error)}`); }
-      adds.push({ sql: `ALTER TABLE ${quote(newEnt.table)} ADD CONSTRAINT ${quote(name)} CHECK (${expr});`, destructive: false });
+      try { expr = renderedCheckExpression(newCheck.expr, dialect, quote); } catch (error) { throw new Error(`${newEnt.table} check ${name}: ${ddlErrorText(error)}`); }
+      adds.push({ sql: `ALTER TABLE ${quote(newEnt.table)} ADD CONSTRAINT ${quote(ddlCheckName(newEnt.table, name, dialect))} CHECK (${expr});`, destructive: false });
     }
   }
   return [drops, adds];
@@ -225,11 +225,11 @@ function renderSQLiteRebuild(from: SchemaManifest, to: SchemaManifest, old: Sche
   } else {
     lines.push(`  PRIMARY KEY (${joinQuoted(pk, quote)})`);
   }
-  for (const unique of next.unique ?? []) lines.push(`  CONSTRAINT ${quote(`uq_${next.table}_${unique.join('_')}`)} UNIQUE (${joinQuoted(unique, quote)})`);
-  for (const fk of sortedForeignKeys(asManifest(to), asEntity(next))) lines.push('  ' + foreignKeyClause(fk, asManifest(to), 'sqlite', quote));
+  for (const unique of next.unique ?? []) lines.push(`  CONSTRAINT ${quote(boundedIdentifier(`uq_${next.table}_${unique.join('_')}`, 'sqlite'))} UNIQUE (${joinQuoted(unique, quote)})`);
+  for (const fk of sortedForeignKeys(asManifest(to), asEntity(next), 'sqlite')) lines.push('  ' + foreignKeyClause(fk, asManifest(to), 'sqlite', quote));
   for (const check of next.checks ?? []) {
     let expr: string;
-    try { expr = quotedCheckExpression(check.expr, quote); } catch (error) { throw new Error(`${next.table} check ${check.name}: ${ddlErrorText(error)}`); }
+    try { expr = renderedCheckExpression(check.expr, 'sqlite', quote); } catch (error) { throw new Error(`${next.table} check ${check.name}: ${ddlErrorText(error)}`); }
     lines.push(`  CONSTRAINT ${quote(check.name)} CHECK (${expr})`);
   }
   const targetCols: string[] = [];
@@ -385,8 +385,8 @@ function diffIndexesAndForeignKeys(from: SchemaManifest, to: SchemaManifest, old
     if (o) indexDrops.push({ sql: dropIndex(oldEnt.table, o, dialect, quote), destructive: false });
     if (n) indexAdds.push({ sql: createIndex(newEnt.table, n, dialect, quote), destructive: false });
   }
-  const oldFKs = foreignKeys(from, oldEnt);
-  const newFKs = foreignKeys(to, newEnt);
+  const oldFKs = foreignKeys(from, oldEnt, dialect);
+  const newFKs = foreignKeys(to, newEnt, dialect);
   for (const key of sortedNames(new Set([...oldFKs.keys(), ...newFKs.keys()]))) {
     const o = oldFKs.get(key);
     const n = newFKs.get(key);
@@ -398,8 +398,8 @@ function diffIndexesAndForeignKeys(from: SchemaManifest, to: SchemaManifest, old
   return [[...foreignDrops, ...indexDrops], [...indexAdds, ...foreignAdds]];
 }
 
-function foreignKeys(m: SchemaManifest, e: SchemaEntity): Map<string, ForeignKey> {
-  return entityForeignKeys(asManifest(m), asEntity(e));
+function foreignKeys(m: SchemaManifest, e: SchemaEntity, dialect = ''): Map<string, ForeignKey> {
+  return entityForeignKeys(asManifest(m), asEntity(e), dialect);
 }
 
 function foreignKeysEqual(left: ForeignKey, right: ForeignKey, compareName: boolean): boolean {
@@ -415,7 +415,7 @@ function entityIndexes(e: SchemaEntity, dialect: string): Map<string, DiffIndex>
   const out = new Map<string, DiffIndex>();
   for (const [name, cols] of Object.entries(e.indexes ?? {})) out.set('index:' + name, { name, kind: 'index', cols: [...cols] });
   for (const cols of e.unique ?? []) {
-    const name = `uq_${e.table}_${cols.join('_')}`;
+    const name = boundedIdentifier(`uq_${e.table}_${cols.join('_')}`, dialect);
     out.set('unique:' + name, { name, kind: 'unique', cols: [...cols] });
   }
   for (const cols of e.fulltext ?? []) {
