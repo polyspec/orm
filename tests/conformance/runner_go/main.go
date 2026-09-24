@@ -523,6 +523,26 @@ func main() {
 		}
 		return map[string]any{"created_near_clock": near, "created_equals_updated": createdTs.Equal(updatedTs)}, nil
 	})
+	run("required_columns", func() (any, error) {
+		task := func() *model.TaskModel { return model.Task().Connect(db) }
+		failure := func(err error) any {
+			if err == nil {
+				return nil
+			}
+			return map[string]any{"error": code(err), "message": err.Error()}
+		}
+		_, missingState := task().SetTitle("draft").Create()
+		_, missingTitle := task().SetState("open").Create()
+		created, err := task().SetTitle("draft").SetState("open").Create()
+		if err != nil {
+			return nil, err
+		}
+		mask([]int64{created.GetSeq()})
+		if err := created.Delete(); err != nil {
+			return nil, err
+		}
+		return map[string]any{"missing_state": failure(missingState), "missing_title": failure(missingTitle)}, nil
+	})
 	run("creates_and_save", func() (any, error) {
 		rows := []*model.CompositeAccountModel{
 			model.CompositeAccount().SetTenantId(900).SetAccountId(1).SetName("a"),

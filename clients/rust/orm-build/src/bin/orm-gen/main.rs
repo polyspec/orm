@@ -183,7 +183,7 @@ async fn validate_command(argv: &[String]) -> Result<(), String> {
     let tables = live::without_managed(&introspect::read_tables(&mut conn, &dsn.dialect, None).await?);
     let diagram = schema::parse(&live::render_mermaid(&tables, None)).map_err(|e| format!("live schema does not parse: {e}"))?;
     let lm = schema::build(&[diagram]).map_err(|e| format!("live schema does not build: {e}"))?;
-    let diffs = diff_manifests(&m, &lm);
+    let diffs = diff_manifests(&m, &lm, &dsn.dialect);
     for d in &diffs {
         println!("{d}");
     }
@@ -201,7 +201,7 @@ fn list(v: &[String]) -> String {
 }
 
 /// What the clients would get wrong against the live schema.
-fn diff_manifests(want: &schema::Manifest, live: &schema::Manifest) -> Vec<String> {
+fn diff_manifests(want: &schema::Manifest, live: &schema::Manifest, dialect: &str) -> Vec<String> {
     let mut out = Vec::new();
     for we in want.ordered() {
         let Some(le) = live.entities.get(&we.name) else {
@@ -213,7 +213,7 @@ fn diff_manifests(want: &schema::Manifest, live: &schema::Manifest) -> Vec<Strin
                 out.push(format!("{}.{}: column missing in the database", we.table, wc.name));
                 continue;
             };
-            if wc.typ != lc.typ {
+            if ddl::column_storage(wc, dialect).0 != ddl::column_storage(lc, dialect).0 {
                 out.push(format!("{}.{}: type {} in manifest, {} in the database", we.table, wc.name, wc.typ, lc.typ));
             }
             if wc.nullable != lc.nullable {

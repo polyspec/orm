@@ -416,7 +416,7 @@ final class SchemaDiff
 
     /**
      * The type, raw type, and length a dialect stores; a MySQL uuid column is
-     * char(36).
+     * char(36), and a PostgreSQL enum column is text.
      * @return array{string, string, int}
      */
     public static function columnStorage(array $c, string $dialect): array
@@ -424,7 +424,7 @@ final class SchemaDiff
         if ($dialect === 'mysql' && strcasecmp($c['raw'], 'uuid') === 0) {
             return [$c['type'], SchemaDdl::MYSQL_UUID, 36];
         }
-        if ($c['type'] === 'jsontext' || $c['type'] === 'text') {
+        if ($c['type'] === 'jsontext' || $c['type'] === 'text' || ($c['type'] === 'enum' && $dialect === 'postgres')) {
             return ['text', $dialect === 'mysql' ? SchemaDdl::MYSQL_JSONTEXT : 'text', 0];
         }
         return [$c['type'], $c['raw'], $c['len']];

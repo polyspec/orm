@@ -2,7 +2,7 @@
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-로컬 검증: **conformance 벡터 22개 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 완료 전에 최종 CI 실행이 필요하다.
+로컬 검증: **conformance 벡터 25개 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 완료 전에 최종 CI 실행이 필요하다.
 
 | 인터페이스 | 구현과 검증 |
 |---|---|

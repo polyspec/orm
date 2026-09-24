@@ -204,6 +204,20 @@ fn validate_aes_assignments(ent: &EntitySchema, set: &[ir::Assign], require_comp
     Ok(())
 }
 
+/// An insert assigns every required column: a NOT NULL column without a
+/// default that is neither automatic nor the AES key version the planner
+/// writes. MySQL fills an omitted NOT NULL ENUM column with its first value.
+fn validate_required_assignments(ent: &EntitySchema, set: &[ir::Assign]) -> Result<()> {
+    let version = aes_version_column(ent);
+    for col in &ent.columns {
+        if col.nullable || col.default.is_some() || col.auto || col.name == version || assigned(set, &col.name) {
+            continue;
+        }
+        return Err(err(codes::IR_INVALID, format!("required column {}.{} is not set", ent.name, col.name)));
+    }
+    Ok(())
+}
+
 fn add_blind_index_assignments(ent: &EntitySchema, mut set: Vec<ir::Assign>) -> Vec<ir::Assign> {
     for a in set.clone() {
         let Some(col) = ent.column(&a.column) else { continue };
@@ -1028,6 +1042,7 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, false)?;
+        validate_required_assignments(ent, &set)?;
         let version = aes_version_column(ent);
         let mut cols = Vec::new();
         let mut vals = Vec::new();
