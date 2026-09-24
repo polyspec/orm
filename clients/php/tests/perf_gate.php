@@ -3,7 +3,7 @@
 // decoding and the same typed row conversion, measured in alternating pairs.
 // Usage: php clients/php/tests/perf_gate.php /abs/schema.json
 // ORM_BENCH_MYSQL_DSN names the seeded bench database; the gate fails without it.
-// ORM_PERF_<CASE>_BOUND replaces a documented bound for the measurement environment.
+// ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -32,24 +32,70 @@ $db = Orm::connect($benchDsn, new Config(
     blindIndexKey: 'bench-blind-index',
 ));
 
-/** @return array{0: int, 1: int} */
-function pairedP50(Closure $client, Closure $native, int $iterations = 300): array
+/**
+ * Measures client and native in adjacent pairs after a warm-up, alternating
+ * which side runs first, and returns the median client and native times and
+ * the median of the per-pair client/native ratios. Load that slows one pair
+ * slows both of its sides, so the median ratio does not follow the machine load.
+ * @return array{0: int, 1: int, 2: float}
+ */
+function pairedRatio(Closure $client, Closure $native, int $warm = 100, int $pairs = 1000): array
 {
-    for ($i = 0; $i < 50; $i++) {
+    for ($i = 0; $i < $warm; $i++) {
         $client();
         $native();
     }
     $times = [[], []];
-    for ($i = 0; $i < $iterations; $i++) {
+    $ratios = [];
+    for ($i = 0; $i < $pairs; $i++) {
+        $pair = [0, 0];
         foreach (($i & 1) === 0 ? [0, 1] : [1, 0] as $side) {
             $start = hrtime(true);
             ($side === 0 ? $client : $native)();
-            $times[$side][] = hrtime(true) - $start;
+            $pair[$side] = hrtime(true) - $start;
         }
+        $times[0][] = $pair[0];
+        $times[1][] = $pair[1];
+        $ratios[] = $pair[0] / $pair[1];
     }
     sort($times[0]);
     sort($times[1]);
-    return [$times[0][intdiv($iterations, 2)], $times[1][intdiv($iterations, 2)]];
+    sort($ratios);
+    $mid = intdiv($pairs, 2);
+    return [$times[0][$mid], $times[1][$mid], $ratios[$mid]];
+}
+
+/**
+ * Starts one busy PHP process per CPU when ORM_PERF_CPU_LOAD=1, so the gate
+ * runs under CPU load; the processes end when the gate ends.
+ * @return list<resource>
+ */
+function cpuLoad(): array
+{
+    if (getenv('ORM_PERF_CPU_LOAD') !== '1') {
+        return [];
+    }
+    $cpus = (int) trim((string) shell_exec('getconf _NPROCESSORS_ONLN'));
+    if ($cpus < 1) {
+        fwrite(STDERR, "gate: the CPU count is unknown\n");
+        exit(2);
+    }
+    $load = [];
+    for ($i = 0; $i < $cpus; $i++) {
+        $process = proc_open([PHP_BINARY, '-r', 'while (true) {}'], [], $pipes);
+        if ($process === false) {
+            fwrite(STDERR, "gate: a load process did not start\n");
+            exit(2);
+        }
+        $load[] = $process;
+    }
+    register_shutdown_function(static function () use ($load): void {
+        foreach ($load as $process) {
+            proc_terminate($process, 9);
+            proc_close($process);
+        }
+    });
+    return $load;
 }
 
 /** The statement, decode cells and typed row conversion a model terminal runs, prepared on
@@ -134,12 +180,12 @@ $cases = [
     ['pk', static fn() => (new Battle)($db)->seq(42), 1.35],
     ['list100', static fn() => (new Battle)($db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100), 1.25],
 ];
+$load = cpuLoad();
 $failed = false;
 foreach ($cases as [$name, $query, $bound]) {
     $native = native($db, $query());
-    [$clientNs, $nativeNs] = pairedP50(static fn() => $query()->gets(), $native);
-    $ratio = $clientNs / $nativeNs;
-    printf("%-8s native %7.1fµs  client %7.1fµs  ratio %.2f (bound %.2f)\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound);
+    [$clientNs, $nativeNs, $ratio] = pairedRatio(static fn() => $query()->gets(), $native);
+    printf("%-8s native %7.1fµs  client %7.1fµs  ratio %.2f (bound %.2f)%s\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound, $load === [] ? '' : ' under CPU load');
     if ($ratio > $bound) {
         $failed = true;
     }

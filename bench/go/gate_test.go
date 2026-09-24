@@ -10,7 +10,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"sort"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,34 +27,95 @@ import (
 const (
 	pkBound   = 1.35
 	listBound = 1.25
-	gateIters = 300
+	gateWarm  = 100
+	gatePairs = 1000
 )
 
-func pairedP50(tb testing.TB, native, client func()) (time.Duration, time.Duration) {
+// pairedRatio measures native and client in adjacent pairs, alternating which
+// side runs first, and returns the median native and client times and the
+// median of the per-pair client/native ratios. Load that slows one pair slows
+// both of its sides, so the median ratio does not follow the machine load.
+func pairedRatio(tb testing.TB, native, client func()) (time.Duration, time.Duration, float64) {
 	tb.Helper()
-	for i := 0; i < 50; i++ {
+	for i := 0; i < gateWarm; i++ {
 		native()
 		client()
 	}
-	n := make([]time.Duration, gateIters)
-	c := make([]time.Duration, gateIters)
-	for i := range n {
+	n := make([]time.Duration, gatePairs)
+	c := make([]time.Duration, gatePairs)
+	ratios := make([]float64, gatePairs)
+	timed := func(f func()) time.Duration {
 		start := time.Now()
-		native()
-		n[i] = time.Since(start)
-		start = time.Now()
-		client()
-		c[i] = time.Since(start)
+		f()
+		return time.Since(start)
+	}
+	for i := range n {
+		if i%2 == 0 {
+			n[i] = timed(native)
+			c[i] = timed(client)
+		} else {
+			c[i] = timed(client)
+			n[i] = timed(native)
+		}
+		ratios[i] = float64(c[i]) / float64(n[i])
 	}
 	sort.Slice(n, func(i, j int) bool { return n[i] < n[j] })
 	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
-	return n[len(n)/2], c[len(c)/2]
+	sort.Float64s(ratios)
+	return n[len(n)/2], c[len(c)/2], ratios[len(ratios)/2]
 }
 
 func TestHotPathGate(t *testing.T) {
 	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
 		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
 	}
+	hotPathGate(t)
+}
+
+// TestHotPathGateUnderLoad runs the gate while one busy process per CPU
+// runs beside it. Load slows the native and the client side of each pair
+// alike, so the verdict equals the verdict without load.
+func TestHotPathGateUnderLoad(t *testing.T) {
+	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
+		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
+	}
+	var load []*exec.Cmd
+	for i := 0; i < runtime.NumCPU(); i++ {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestCPULoad$")
+		cmd.Env = append(os.Environ(), "ORM_BENCH_CPU_LOAD=1")
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		load = append(load, cmd)
+	}
+	defer func() {
+		for _, cmd := range load {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
+	hotPathGate(t)
+}
+
+// TestCPULoad is the busy process of TestHotPathGateUnderLoad; it runs only
+// when that test starts it with ORM_BENCH_CPU_LOAD=1 and ends when killed.
+func TestCPULoad(t *testing.T) {
+	if os.Getenv("ORM_BENCH_CPU_LOAD") != "1" {
+		return
+	}
+	x := uint64(1)
+	for {
+		x = x*6364136223846793005 + 1442695040888963407
+		loadSink.Store(x)
+	}
+}
+
+// loadSink keeps the busy loop's result observable.
+var loadSink atomic.Uint64
+
+// hotPathGate measures every workload and fails t when a ratio exceeds its bound.
+func hotPathGate(t *testing.T) {
+	t.Helper()
 	sqlDB := open(t)
 	ctx := context.Background()
 	db, err := model.Connect(dsn(t), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
@@ -85,8 +149,7 @@ func TestHotPathGate(t *testing.T) {
 			bound: listBound,
 		},
 	} {
-		na, cl := pairedP50(t, c.native, c.client)
-		ratio := float64(cl) / float64(na)
+		na, cl, ratio := pairedRatio(t, c.native, c.client)
 		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
 			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
 		if ratio > c.bound {
