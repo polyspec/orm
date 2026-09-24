@@ -243,10 +243,13 @@ final class Orm
 /** Connection options. */
 final class Config
 {
+    /** key of aesVersion for aes writes; empty takes aesKeys[aesVersion] */
+    public readonly string $aesKey;
+
     public function __construct(
         /** absolute path of schema.json the models were generated from */
         public readonly string $schemaPath,
-        public readonly string $aesKey = '',
+        string $aesKey = '',
         public readonly string $blindIndexKey = '',
         public readonly int $aesVersion = 1,
         /** @var array<int, string> every declared AES key version */
@@ -269,6 +272,10 @@ final class Config
         if ($aesVersion < 1 || $planCacheSize < 1 || $statementCacheSize < 1) {
             throw new OrmException(Code::CONFIG, 'AES version and cache sizes must be positive');
         }
+        if ($aesKey !== '' && $aesKeys !== [] && ($aesKeys[$aesVersion] ?? '') !== $aesKey) {
+            throw new OrmException(Code::CONFIG, "aesKey differs from aesKeys[$aesVersion]");
+        }
+        $this->aesKey = $aesKey !== '' ? $aesKey : ($aesKeys[$aesVersion] ?? '');
     }
 
     public function keyring(): AesKeyring

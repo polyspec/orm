@@ -760,8 +760,10 @@
         "clients/go/orm/hostcodec_test.go",
         "clients/go/orm/aes_rotation_test.go",
         "clients/go/orm/aes_json_test.go",
+        "clients/go/orm/aes_keys_test.go",
         "clients/php/tests/aes_json_test.php",
         "clients/rust/orm/tests/aes_json.rs",
+        "clients/rust/orm/tests/aes_keys.rs",
         "tests/typescript/model.mjs",
         "clients/php/tests/hostcodec.php",
         "tests/typescript/codec-vector.mjs",
@@ -787,7 +789,7 @@
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm codec"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test aes_keys"
         }
       ]
     },

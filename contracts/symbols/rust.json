@@ -1091,7 +1091,7 @@
   "clients/rust/orm/src/core.rs::config": "pub (crate) fn config (msg : impl Into \u003c String \u003e) -\u003e Error",
   "clients/rust/orm/src/core.rs::next_id": " fn next_id () -\u003e u64",
   "clients/rust/orm/src/core.rs::predicate": " fn predicate (key : \u0026 ChainKey , arg : Arg , single : bool) -\u003e crate :: Result \u003c PredSpec \u003e",
-  "clients/rust/orm/src/db.rs::Config": "pub struct Config  { pub aes_key : String , pub blind_index_key : String , pub aes_version : i32 , pub aes_keys : BTreeMap \u003c i32 , String \u003e , pub plan_cache_size : usize , pub statement_cache_size : usize , # [doc = \" Bound of every statement of the connection in milliseconds; zero keeps\"] # [doc = \" the server default.\"] pub statement_timeout_ms : u32 , pub on_query : Option \u003c OnQuery \u003e , }",
+  "clients/rust/orm/src/db.rs::Config": "pub struct Config  { # [doc = \" Key of aes_version for aes writes; empty takes aes_keys[aes_version].\"] pub aes_key : String , pub blind_index_key : String , pub aes_version : i32 , pub aes_keys : BTreeMap \u003c i32 , String \u003e , pub plan_cache_size : usize , pub statement_cache_size : usize , # [doc = \" Bound of every statement of the connection in milliseconds; zero keeps\"] # [doc = \" the server default.\"] pub statement_timeout_ms : u32 , pub on_query : Option \u003c OnQuery \u003e , }",
   "clients/rust/orm/src/db.rs::Config as Default::default": " fn default () -\u003e Self",
   "clients/rust/orm/src/db.rs::Config#field.aes_key": "String",
   "clients/rust/orm/src/db.rs::Config#field.aes_keys": "BTreeMap \u003c i32 , String \u003e",

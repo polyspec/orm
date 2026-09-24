@@ -26,7 +26,7 @@ erDiagram
   }
 ```
 
-키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version으로 암호화하고 그 version을 `aes_key_version`에 기록하며, 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
+키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
