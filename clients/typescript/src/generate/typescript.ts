@@ -116,7 +116,7 @@ class Generator {
   /** The declaration of a method named by the chain grammar. */
   public declare(e: Entity, name: string): string | undefined {
     const P = name[0]!.toUpperCase() + name.slice(1);
-    for (const [prefix, result] of [['GetsBy', 'Promise<Collection<this>>'], ['GetBy', 'Promise<this | null>'], ['GetCountBy', 'Promise<number>']] as const) {
+    for (const [prefix, result] of [['GetsBy', 'Promise<Collection<this>>'], ['GetBy', 'Promise<this>'], ['GetCountBy', 'Promise<number>']] as const) {
       if (!P.startsWith(prefix)) continue;
       const keys = parseChain(this.m, e, P.slice(prefix.length));
       return keys ? `${name}(${this.chainParams(e, keys)}): ${result};` : undefined;

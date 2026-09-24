@@ -22,7 +22,7 @@ var languages = []string{"go", "php", "rust", "typescript"}
 // symbol snapshot cannot silently change the common API.
 var outputs = map[string]map[string]string{
 	"Chain":             {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this"},
-	"Optional<Model>":   {"go": "(*{Entity}Model,error)", "php": "?static", "rust": "orm::Result<Option<Self>>", "typescript": "Promise<this|null>"},
+	"Model":             {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<Self>", "typescript": "Promise<this>"},
 	"Collection<Model>": {"go": "(*orm.Collection[*{Entity}Model],error)", "php": "Orm\\Collection", "rust": "orm::Result<orm::Collection<Self>>", "typescript": "Promise<Collection<this>>"},
 	"Count":             {"go": "(int64,error)", "php": "int", "rust": "orm::Result<i64>", "typescript": "Promise<number>"},
 	"Aggregate":         {"go": "(float64,error)", "php": "float", "rust": "orm::Result<f64>", "typescript": "Promise<number>"},

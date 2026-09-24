@@ -585,14 +585,14 @@ fn typed<M: Model>(m: Box<dyn AnyModel>) -> M {
     *m.into_any().downcast::<M>().expect("model type")
 }
 
-/// Runs the query and returns the first model.
-pub async fn get<M: Model>(m: &M) -> Result<Option<M>> {
+/// Runs the query and returns the first model; NO_ROWS when no row matches.
+pub async fn get<M: Model>(m: &M) -> Result<M> {
     get_core(m.core()).await
 }
 
-pub async fn get_core<M: Model>(c: &Core) -> Result<Option<M>> {
+pub async fn get_core<M: Model>(c: &Core) -> Result<M> {
     let rows = load(c, "one").await?;
-    Ok(rows.items.into_iter().next().map(|(_, m)| typed(m)))
+    rows.items.into_iter().next().map(|(_, m)| typed(m)).ok_or(Error::NoRows)
 }
 
 /// Runs the query and returns the models.
