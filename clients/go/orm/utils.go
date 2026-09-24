@@ -273,11 +273,16 @@ func (s *SchemaUtils) Installed(name, table string) (bool, error) {
 	}
 }
 
-// Empty reports whether the database has no user tables.
+// Empty reports whether the database holds no user content. On PostgreSQL a
+// schema other than public, information_schema and the pg_ schemas is content
+// even without objects, and so is a table, partitioned table, view,
+// materialized view or foreign table in public. On MySQL a table or view of the
+// connected database is content, and on SQLite a table or view other than the
+// sqlite_ and orm__ tables is content.
 func (s *SchemaUtils) Empty() (bool, error) {
 	switch s.u.db.driver {
 	case "postgres":
-		return s.exists(`SELECT NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema' AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))`)
+		return s.exists(`SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))`)
 	case "mysql":
 		return s.exists("SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())")
 	default:

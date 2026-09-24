@@ -158,9 +158,17 @@ export class SchemaUtils {
     }
   }
 
+  /**
+   * Reports whether the database holds no user content. On PostgreSQL a schema
+   * other than public, information_schema and the pg_ schemas is content even
+   * without objects, and so is a table, partitioned table, view, materialized
+   * view or foreign table in public. On MySQL a table or view of the connected
+   * database is content, and on SQLite a table or view other than the sqlite_
+   * and orm__ tables is content.
+   */
   public async empty(): Promise<boolean> {
     switch (this.db.driver) {
-      case 'postgres': return this.check("SELECT NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))");
+      case 'postgres': return this.check("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))");
       case 'mysql': return this.check('SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())');
       default: return this.check("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')");
     }

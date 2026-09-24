@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+Go, PHP, Rust, TypeScript 클라이언트에서 PostgreSQL `schema().empty()`가 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마를 객체 유무와 관계없이 내용으로 판정하도록 한다. 빈 스키마만 있는 데이터베이스는 더 이상 비어 있다고 보고되지 않는다. `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블은 계속 내용이며 MySQL과 SQLite의 의미는 바뀌지 않는다. Rust `integration` 테스트도 다른 클라이언트 테스트처럼 `ORM_TEST_MYSQL_DSN` 또는 `ORM_TEST_POSTGRES_DSN`이 없으면 SQLite만 실행하지 않고 실패한다.
+
 `ormgen gen --lang go`가 scan 회차마다 출력 디렉터리 옆의 임시 디렉터리에 파일을 쓰고 scan은 package overlay로 그 파일을 읽으며, scan이 수렴한 뒤에만 출력 디렉터리의 생성 파일을 교체하도록 한다. 잘못된 체인 호출, 수렴하지 않는 scan, 로드할 수 없는 scan 대상 패키지, 컴파일되지 않는 생성 코드를 포함한 생성 실패는 출력 디렉터리를 바이트 단위로 그대로 두고 상태 1로 종료한다. scan한 패키지가 다른 이유로 컴파일되지 않으면 출력 디렉터리에 완전한 모델을 남기고 상태 3으로 종료한다.
 
 Go generator scan의 receiver 해석을 바로잡는다. relation collection의 `Len`처럼 `Get` 메서드의 결과에 호출한 메서드는 model 메서드로 요청하지 않고, model 생성자와 이름이 같지만 다른 package에 속한 호출은 model 체인을 시작하지 않으며, 출력 package의 직접 작성한 파일은 테스트를 포함해 scan하고 생성된 파일은 scan하지 않는다.

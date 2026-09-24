@@ -32,8 +32,8 @@ let current = '';
 
 const manifestJson = await readFile(schemaPath, 'utf8');
 
-/** Drops the schema tables, then installs the schema through the connection. */
-async function install(dialect, dsn) {
+/** Drops the schema tables. */
+async function dropTables(dialect, dsn) {
   const drops = renderDDL(loadManifest(manifestJson), dialect).split('\n').filter(line => line.startsWith('DROP TABLE IF EXISTS ')).map(line => line.replace(/;$/, ''));
   const url = new URL(dsn);
   if (dialect === 'mysql') {
@@ -42,18 +42,51 @@ async function install(dialect, dsn) {
     for (const s of drops) await conn.query(s);
     await conn.end();
   } else if (dialect === 'postgres') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, database: url.pathname.slice(1), user: url.username || undefined });
-    await client.connect();
-    await client.query('SET client_min_messages = warning');
-    for (const s of drops) await client.query(`${s} CASCADE`);
-    await client.end();
+    await postgres(dsn, drops.map(s => `${s} CASCADE`));
   }
+}
+
+/** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
+async function postgres(dsn, statements) {
+  const url = new URL(dsn);
+  const { Client } = require('pg');
+  const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
+  await client.connect();
+  try {
+    await client.query('SET client_min_messages = warning');
+    for (const s of statements) await client.query(s);
+  } finally { await client.end(); }
+}
+
+/** Drops the schema tables, then installs the schema through the connection. */
+async function install(dialect, dsn) {
+  await dropTables(dialect, dsn);
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
     await db.utils().schema().install(manifestJson);
     await db.utils().schema().install(manifestJson);
+  } finally { await db.close(); }
+}
+
+/**
+ * Checks schema().empty() on the test database without the schema tables, with
+ * an empty PostgreSQL schema other than public, and with the installed tables.
+ */
+async function schemaEmpty(dialect, dsn) {
+  await dropTables(dialect, dsn);
+  const db = await connect(dsn);
+  try {
+    check(await db.utils().schema().empty(), 'a database without tables');
+    if (dialect === 'postgres') {
+      await postgres(dsn, ['CREATE SCHEMA unowned_empty']);
+      try {
+        check(!(await db.utils().schema().empty()), 'an empty schema other than public');
+      } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
+      check(await db.utils().schema().empty(), 'the empty schema dropped');
+    }
+    await db.utils().schema().install(manifestJson);
+    check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
 }
 
@@ -423,6 +456,12 @@ targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, transactions, aesRotation, bindLimitSplitting };
 
 try {
+  for (const [dialect, dsn] of targets) {
+    current = `${dialect}/schemaEmpty`;
+    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
+    try { await schemaEmpty(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    console.log(`${current} done`);
+  }
   for (const [dialect, dsn] of targets) {
     for (const [name, fn] of Object.entries(cases)) {
       current = `${dialect}/${name}`;

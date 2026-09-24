@@ -55,9 +55,9 @@ register_shutdown_function(static function () use ($work): void {
     @rmdir($work);
 });
 
-function database(string $driver, string $dsn): Db
+function dropTables(string $driver, string $dsn): void
 {
-    global $schema, $tables;
+    global $tables;
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
     $raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     if ($driver === 'mysql') {
@@ -69,10 +69,39 @@ function database(string $driver, string $dsn): Db
     if ($driver === 'mysql') {
         $raw->exec('SET FOREIGN_KEY_CHECKS = 1');
     }
-    $raw = null;
+}
+
+function database(string $driver, string $dsn): Db
+{
+    global $schema;
+    dropTables($driver, $dsn);
     $db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
     $db->utils()->schema()->install((string) file_get_contents($schema));
     return $db;
+}
+
+/**
+ * Checks schema()->empty() on the test database without the test tables, with
+ * an empty PostgreSQL schema other than public, and with the installed tables.
+ */
+function schemaEmpty(string $driver, string $dsn): void
+{
+    global $schema;
+    dropTables($driver, $dsn);
+    $db = Orm::connect($dsn, new Config(schemaPath: $schema));
+    check($db->utils()->schema()->empty() === true, 'a database without tables');
+    if ($driver === 'postgres') {
+        $db->pdo()->exec('CREATE SCHEMA unowned_empty');
+        try {
+            check($db->utils()->schema()->empty() === false, 'an empty schema other than public');
+        } finally {
+            $db->pdo()->exec('DROP SCHEMA unowned_empty');
+        }
+        check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
+    }
+    $db->utils()->schema()->install((string) file_get_contents($schema));
+    check($db->utils()->schema()->empty() === false, 'installed tables');
+    $db->close();
 }
 
 $targets = ['sqlite' => "sqlite://$work/model.sqlite?timezone=%2B00:00"];
@@ -492,6 +521,17 @@ function auditTriggers(string $driver, string $dsn): void
         'postgres' => $pdo->exec('DROP SCHEMA IF EXISTS app CASCADE'),
         default => array_map(static fn(string $n) => $pdo->exec('DROP TABLE IF EXISTS ' . $table($n)), ['audit_item', 'audit_change', 'audit_operation']),
     };
+}
+
+foreach ($targets as $driver => $dsn) {
+    $current = "schema empty/$driver";
+    try {
+        schemaEmpty($driver, $dsn);
+    } catch (Throwable $e) {
+        $failures++;
+        fwrite(STDERR, "FAIL $current: $e\n");
+    }
+    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
 
 foreach ($targets as $driver => $dsn) {
