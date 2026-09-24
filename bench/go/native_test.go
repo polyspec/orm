@@ -1,9 +1,10 @@
-// S0 native baseline: database/sql + go-sql-driver over the local socket.
+// S0 native baseline: database/sql + go-sql-driver on the seeded bench
+// database named by ORM_BENCH_MYSQL_DSN.
 // Workloads: PK get, 100-row list, INSERT, 4-step relation chain (1 parent +
 // 3 IN-batched children, assembled in Go). Run:
 //
-//	go test ./bench/go -run xxx -bench . -benchmem -benchtime 3s
-//	ORM_BENCH_PAR=64 go test ./bench/go -run xxx -bench Par -benchmem
+//	ORM_BENCH_MYSQL_DSN=mysql://… go test ./bench/go -run xxx -bench . -benchmem -benchtime 3s
+//	ORM_BENCH_MYSQL_DSN=mysql://… ORM_BENCH_PAR=64 go test ./bench/go -run xxx -bench Par -benchmem
 package bench
 
 import (
@@ -21,14 +22,24 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 )
 
-const localDSN = "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"
-
-// dsn is the local socket unless ORM_BENCH_MYSQL_DSN names another server (CI).
-func dsn() string {
-	if v := os.Getenv("ORM_BENCH_MYSQL_DSN"); v != "" {
-		return v
+// benchDSN returns the seeded bench database named by ORM_BENCH_MYSQL_DSN; an
+// unset variable is an error.
+func benchDSN() (string, error) {
+	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
+	if v == "" {
+		return "", fmt.Errorf("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and bench tests never skip")
 	}
-	return localDSN
+	return v, nil
+}
+
+// dsn returns the bench database DSN and fails tb when it is not configured.
+func dsn(tb testing.TB) string {
+	tb.Helper()
+	v, err := benchDSN()
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return v
 }
 
 // nativeDSN converts the DSN URI to the go-sql-driver form used by the
@@ -123,7 +134,7 @@ func prep(db *sql.DB, q string) *sql.Stmt {
 }
 
 func open(tb testing.TB) *sql.DB {
-	native, err := nativeDSN(dsn())
+	native, err := nativeDSN(dsn(tb))
 	if err != nil {
 		tb.Fatal(err)
 	}
