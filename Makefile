@@ -1,7 +1,7 @@
-.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check
+.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
+check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
 	go test ./...
 
 feature-check:
@@ -75,6 +75,11 @@ docs-verify-idempotent:
 
 docs-rules-check:
 	npm run docs:rules-check
+
+# rust-fmt-check fails when cargo fmt would change a source of the Rust
+# workspace (clients/rust/rustfmt.toml).
+rust-fmt-check:
+	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo fmt --all --check
 
 rust-150-check:
 	./scripts/check-rust-150.sh
