@@ -7,7 +7,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 
 - The model syntax of the [DSL](dsl.md) is implemented in Go, PHP, Rust, and TypeScript.
 - Every client validates and plans statements in the application process and ships its own model generator. No compiler service, daemon, WASM module, or extension is used.
-- The four clients produce the same statements, binds, and results for **21 conformance vectors on MySQL, PostgreSQL, and SQLite**. Codec coverage is 80 vectors across the four clients.
+- The four clients produce the same statements, binds, and results for **25 conformance vectors on MySQL, PostgreSQL, and SQLite**. Codec coverage is 80 vectors across the four clients.
 - Open work: the conformance checker and recorded vectors, removal of the old compiler service sources, contracts, per-language schema tools, performance remeasurement, and the final CI and Pages runs.
 
 ## Common interface verification

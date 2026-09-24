@@ -6,7 +6,7 @@ namespace App\Orm;
 
 use Orm\Registry;
 
-Registry::generated('07c725aadc45a65d');
+Registry::generated('16198b563e2e3cae');
 Registry::register(Battle::class);
 Registry::register(User::class);
 Registry::register(Service::class);
@@ -18,3 +18,4 @@ Registry::register(SoftRecord::class);
 Registry::register(Account::class);
 Registry::register(Project::class);
 Registry::register(AccountProject::class);
+Registry::register(Task::class);

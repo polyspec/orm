@@ -7,7 +7,7 @@ use regex::Regex;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-use crate::ddl::{render_diff, sqlite_type_matches};
+use crate::ddl::{column_storage, render_diff, sqlite_type_matches};
 use crate::schema::json::{self, Obj, J};
 use crate::schema::Manifest;
 
@@ -33,7 +33,8 @@ pub fn schema_matches(want: &Manifest, live: &Manifest, driver: &str) -> bool {
             && we.columns.len() == le.columns.len()
             && we.columns.iter().all(|wc| {
                 let Some(lc) = le.column(&wc.name) else { return false };
-                let type_match = if driver == "sqlite" { sqlite_type_matches(&wc.typ, &lc.typ) } else { wc.typ == lc.typ };
+                let type_match =
+                    if driver == "sqlite" { sqlite_type_matches(&wc.typ, &lc.typ) } else { column_storage(wc, driver).0 == column_storage(lc, driver).0 };
                 wc.comment == lc.comment && wc.nullable == lc.nullable && type_match
             })
     })

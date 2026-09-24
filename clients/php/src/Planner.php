@@ -740,6 +740,22 @@ final class Planner
         }
     }
 
+    /**
+     * An insert assigns every required column: a NOT NULL column without a
+     * default that is neither automatic nor the AES key version the planner
+     * writes. MySQL fills an omitted NOT NULL ENUM column with its first value.
+     */
+    private static function checkRequiredAssignments(array $ent, array $set): void
+    {
+        $version = self::hasAes($ent) ? 'aes_key_version' : '';
+        foreach ($ent['columns'] as $c) {
+            if (!empty($c['nullable']) || array_key_exists('default', $c) || !empty($c['auto']) || $c['name'] === $version || self::assigned($set, $c['name'])) {
+                continue;
+            }
+            throw self::err(Code::IR_INVALID, 'required column ' . $ent['name'] . '.' . $c['name'] . ' is not set');
+        }
+    }
+
     private static function withBlindIndexes(array $ent, array $set): array
     {
         foreach ($set as $a) {
@@ -816,6 +832,7 @@ final class Planner
         $ent = $this->m->entities[$r['entity']];
         $set = self::withBlindIndexes($ent, $r['set']);
         self::checkAesAssignments($ent, $set, false);
+        self::checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent) && !self::assigned($set, 'aes_key_version');
         $cols = [];
         $vals = [];

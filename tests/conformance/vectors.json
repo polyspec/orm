@@ -1013,6 +1013,37 @@
       }
     },
     {
+      "name": "required_columns",
+      "chain": "create() without the NOT NULL enum column state, create() without the NOT NULL column title, create() with both, delete()",
+      "expect": {
+        "result": {
+          "missing_state": {
+            "error": "IR_INVALID",
+            "message": "IR_INVALID: required column task.state is not set"
+          },
+          "missing_title": {
+            "error": "IR_INVALID",
+            "message": "IR_INVALID: required column task.title is not set"
+          }
+        },
+        "statements": [
+          {
+            "binds": [
+              "draft",
+              "open"
+            ],
+            "sql": "INSERT INTO `task` (`title`, `state`) VALUES (?, ?)"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "DELETE FROM `task` WHERE `task`.`seq` = ?"
+          }
+        ]
+      }
+    },
+    {
       "name": "creates_and_save",
       "chain": "creates(models), duplication(model)-\u003ecreate(), save(), tuple condition, collection delete",
       "expect": {

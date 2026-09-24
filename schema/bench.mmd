@@ -82,6 +82,11 @@ erDiagram
     bigint        account_seq PK, FK "-> account.seq"
     bigint        project_seq PK, FK "-> project.seq"
   }
+  task {
+    bigint        seq   PK "auto"
+    varchar(191)  title
+    enum(open_done) state
+  }
 
   user           ||--o{ battle         : user_seq
   service        ||--o{ battle         : service_seq

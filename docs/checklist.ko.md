@@ -7,7 +7,7 @@
 
 - [DSL](dsl.md)의 모델 문법이 Go, PHP, Rust, TypeScript에 구현되어 있다.
 - 모든 클라이언트는 애플리케이션 프로세스 안에서 문장을 검증하고 계획하며, 자기 모델 생성기를 제공한다. 컴파일러 서비스, 데몬, WASM 모듈, 확장은 사용하지 않는다.
-- 네 클라이언트는 **MySQL, PostgreSQL, SQLite에서 conformance 벡터 21개**에 대해 같은 문장, bind, 결과를 만든다. 코덱 검사는 네 클라이언트에서 벡터 80개다.
+- 네 클라이언트는 **MySQL, PostgreSQL, SQLite에서 conformance 벡터 25개**에 대해 같은 문장, bind, 결과를 만든다. 코덱 검사는 네 클라이언트에서 벡터 80개다.
 - 남은 작업: conformance 검사기와 기록된 벡터, 이전 컴파일러 서비스 소스 제거, contracts, 언어별 스키마 도구, 성능 재측정, 최종 CI와 Pages 실행.
 
 ## 공통 인터페이스 검증

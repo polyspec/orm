@@ -10,6 +10,7 @@ use App\Orm\CompositeAccount;
 use App\Orm\Service;
 use App\Orm\ServiceMember;
 use App\Orm\ServiceModule;
+use App\Orm\Task;
 use App\Orm\User;
 use Orm\AesKeyring;
 use Orm\Collection;
@@ -312,6 +313,23 @@ run('now_defaults', function () use ($battle): array {
     $near = abs((float) $createdTs->format('U.u') - $before) < 60;
     $loaded->delete();
     return ['created_near_clock' => $near, 'created_equals_updated' => $createdTs == $updatedTs];
+});
+
+run('required_columns', function () use ($db): array {
+    $failure = static function (callable $fn): ?array {
+        try {
+            $fn();
+        } catch (Throwable $e) {
+            return ['error' => code($e), 'message' => $e->getMessage()];
+        }
+        return null;
+    };
+    $missingState = $failure(fn() => (new Task)($db)->setTitle('draft')->create());
+    $missingTitle = $failure(fn() => (new Task)($db)->setState('open')->create());
+    $created = (new Task)($db)->setTitle('draft')->setState('open')->create();
+    mask([$created->getSeq()]);
+    $created->delete();
+    return ['missing_state' => $missingState, 'missing_title' => $missingTitle];
 });
 
 run('creates_and_save', function () use ($db): array {

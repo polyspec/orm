@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 orm::models!();
 
-use model::{Battle, CompositeAccount, Service, ServiceMember, ServiceModule, User};
+use model::{Battle, CompositeAccount, Service, ServiceMember, ServiceModule, Task, User};
 use orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -84,6 +84,13 @@ fn code_of<T>(r: orm::Result<T>) -> Value {
     match r {
         Ok(_) => Value::Null,
         Err(e) => code(&e),
+    }
+}
+
+fn failure<T>(r: orm::Result<T>) -> Value {
+    match r {
+        Ok(_) => Value::Null,
+        Err(e) => json!({"error": code(&e), "message": e.to_string()}),
     }
 }
 
@@ -423,6 +430,14 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let near = (created_ts - before).num_seconds().abs() < 60;
         loaded.delete(false).await?;
         Ok::<Value, orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
+    });
+    run!("required_columns", async {
+        let missing_state = failure(Task::new().connect(db).set_title("draft").create().await);
+        let missing_title = failure(Task::new().connect(db).set_state("open").create().await);
+        let created = Task::new().connect(db).set_title("draft").set_state("open").create().await?;
+        mask(shared, &[created.get_seq()], &[]);
+        created.delete(false).await?;
+        Ok::<Value, orm::Error>(json!({"missing_state": missing_state, "missing_title": missing_title}))
     });
     run!("creates_and_save", async {
         let rows = vec![

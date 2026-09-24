@@ -1,5 +1,5 @@
 {
-  "schema_hash": "07c725aadc45a65d",
+  "schema_hash": "16198b563e2e3cae",
   "order": [
     "battle",
     "user",
@@ -11,7 +11,8 @@
     "soft_record",
     "account",
     "project",
-    "account_project"
+    "account_project",
+    "task"
   ],
   "entities": {
     "account": {
@@ -801,6 +802,39 @@
       ],
       "relations": {},
       "soft_delete": "deleted_at"
+    },
+    "task": {
+      "name": "task",
+      "table": "task",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "raw": "varchar(191)",
+          "len": 191
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "raw": "enum(open_done)",
+          "enum": [
+            "open",
+            "done"
+          ]
+        }
+      ],
+      "relations": {}
     },
     "user": {
       "name": "user",

@@ -54,10 +54,12 @@ Column lines follow Mermaid syntax; `PK`, `FK`, and `UK` are Mermaid keywords. M
 Write the database type directly (`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum(a_b)`, `jsontext`). The manifest normalizes it to types such as `i64`, `string`, and `datetime`; PostgreSQL DDL keeps a native `uuid`. `varchar` and `char` require a positive length.
 - A `jsontext` column holds JSON as its exact text: `text` on PostgreSQL, `LONGTEXT` on MySQL, and TEXT on SQLite. The ordered-json codec keeps the member order, the duplicate keys as written, and an empty object apart from an empty array, so the value reads back identically on the three databases. Every client returns the ordered-json value of the column and writes that value's text unchanged ([value model](codec.md#value-model)). The type `json` is rejected; write `jsontext`. A `jsontext` column takes only the `json` or `jsons` stage.
 - An encrypted JSON value is a blob column with the stages `json aes`, such as `longblob config "json aes"`, in an entity with a non-null integer `aes_key_version` column. The connection's AES key configuration supplies the keys ([encrypted JSON value](codec.md#encrypted-json-value)).
-- An `enum(a_b)` column is `enum('a','b')` on MySQL and text on PostgreSQL and SQLite.
+- An `enum(a_b)` column is `enum('a','b')` on MySQL and text on PostgreSQL and SQLite. `ormgen diff`, `validate`, and migration verification compare a PostgreSQL `enum` column with a live text column as equal, because the live schema holds no value list.
 - Data that is filtered, sorted, or indexed inside the database is modeled as columns or a child table, never as a path into a `jsontext` column: the ORM has no JSON path conditions and no JSON indexes, and the native document types (MySQL `JSON`, PostgreSQL `jsonb`) normalize the document, so they cannot keep the stored text. A queryable document type would be a separate column type with its own condition and index syntax; it does not exist.
 
 The quoted string is a space-separated attribute list. Without it the column is NOT NULL, has no default, and has no style.
+
+A required column is NOT NULL, has no default, is not `auto`, and is not the `aes_key_version` column that the ORM writes with AES values. Every insert (`create()`, `creates()`, `duplication()` with `create()`, and `save()` without a primary key) sets every required column; otherwise the client fails with `IR_INVALID: required column <entity>.<column> is not set` before the statement runs, in all four clients and on MySQL, PostgreSQL, and SQLite. MySQL would otherwise store the first value of an omitted NOT NULL `enum` column.
 
 | Attribute | Meaning |
 |---|---|

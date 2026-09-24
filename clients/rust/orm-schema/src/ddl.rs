@@ -1026,12 +1026,12 @@ fn column_changed(a: &Col, b: &Col, dialect: &str) -> bool {
 }
 
 /// The type, raw type, and length a dialect stores; a MySQL uuid column is
-/// char(36).
-pub(crate) fn column_storage<'a>(c: &'a Col, dialect: &str) -> (&'a str, &'a str, i64) {
+/// char(36), and a PostgreSQL enum column is text.
+pub fn column_storage<'a>(c: &'a Col, dialect: &str) -> (&'a str, &'a str, i64) {
     if dialect == "mysql" && c.raw.eq_ignore_ascii_case("uuid") {
         return (&c.typ, MYSQL_UUID, 36);
     }
-    if c.typ == "jsontext" || c.typ == "text" {
+    if c.typ == "jsontext" || c.typ == "text" || (c.typ == "enum" && dialect == "postgres") {
         return ("text", if dialect == "mysql" { MYSQL_JSONTEXT } else { "text" }, 0);
     }
     (&c.typ, &c.raw, c.len)

@@ -25,6 +25,7 @@ const TABLES: &[&str] = &[
     "project",
     "user",
     "service",
+    "task",
 ];
 
 struct Env {

@@ -26,7 +26,7 @@ $root = dirname(__DIR__, 3);
 $schema = "$root/schema/schema.json";
 $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 @mkdir($work, 0o700, true);
-$tables = ['account_project', 'composite_membership', 'composite_account', 'battle', 'service_member', 'service_module', 'soft_record', 'account', 'project', 'user', 'service'];
+$tables = ['account_project', 'composite_membership', 'composite_account', 'battle', 'service_member', 'service_module', 'soft_record', 'account', 'project', 'user', 'service', 'task'];
 
 $failures = 0;
 function check(bool $ok, string $message): void

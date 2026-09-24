@@ -199,7 +199,7 @@ $tests['every source produces its target schema'] = function () use ($work): voi
         $dest = sqlite("$work/target-$i.sqlite");
         SchemaMigrate::execute($dest, 'sqlite', $diff);
         $actual = SchemaImport::liveManifest($dest, 'sqlite');
-        check(SchemaMigrate::schemaMatches($target, $actual, 'sqlite'), "$source target: " . implode('; ', SchemaImport::differences($target, $actual)));
+        check(SchemaMigrate::schemaMatches($target, $actual, 'sqlite'), "$source target: " . implode('; ', SchemaImport::differences($target, $actual, 'sqlite')));
     }
 };
 

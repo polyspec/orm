@@ -1128,6 +1128,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
+	if err := validateRequiredAssignments(ent, set); err != nil {
+		return nil, err
+	}
 	var cols, vals []string
 	for _, a := range set {
 		col := ent.Column(a.Column)
@@ -1250,6 +1253,21 @@ func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete
 		if slices.Contains(col.Styles, "aes") && !assigned(set, col.Name) {
 			return &ir.Error{Code: "IR_INVALID", Msg: "AES update must assign every AES column; missing " + col.Name}
 		}
+	}
+	return nil
+}
+
+// validateRequiredAssignments rejects an insert that omits a required column:
+// a NOT NULL column without a default that is neither automatic nor the AES
+// key version the planner writes. MySQL fills an omitted NOT NULL ENUM column
+// with its first value, so the rule runs before any database sees the row.
+func validateRequiredAssignments(ent *schema.Entity, set []ir.Assign) error {
+	version := aesVersionColumn(ent)
+	for _, col := range ent.Columns {
+		if col.Nullable || col.Default != nil || col.Auto || col.Name == version || assigned(set, col.Name) {
+			continue
+		}
+		return &ir.Error{Code: "IR_INVALID", Msg: "required column " + ent.Name + "." + col.Name + " is not set"}
 	}
 	return nil
 }

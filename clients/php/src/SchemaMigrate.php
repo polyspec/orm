@@ -427,7 +427,9 @@ final class SchemaMigrate
                 if ($lc === null) {
                     return false;
                 }
-                $typeMatch = $driver === 'sqlite' ? SchemaDiff::sqliteTypeMatches($wc['type'], $lc['type']) : $wc['type'] === $lc['type'];
+                $typeMatch = $driver === 'sqlite'
+                    ? SchemaDiff::sqliteTypeMatches($wc['type'], $lc['type'])
+                    : SchemaDiff::columnStorage($wc, $driver)[0] === SchemaDiff::columnStorage($lc, $driver)[0];
                 if ($wc['comment'] !== $lc['comment'] || $wc['nullable'] !== $lc['nullable'] || !$typeMatch) {
                     return false;
                 }

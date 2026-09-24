@@ -2082,19 +2082,19 @@
   },
   {
    "name": "schema/bench.mmd",
-   "mmd": "erDiagram\n  battle {\n    bigint        seq                      PK  \"auto\"\n    varchar(191)  name\n    text          description                  \"?\"\n    datetime(6)   created_ts                   \"=now\"\n    datetime(6)   updated_ts                   \"=now onupdate\"\n    tinyint       is_close                     \"=0\"\n    tinyint       is_display                   \"=0\"\n    datetime(6)   display_start_dt             \"?\"\n    datetime(6)   display_end_dt               \"?\"\n    tinyint       is_allday                    \"=0\"\n    int           target_team_player_count     \"=0 unsigned\"\n    int           success_count                \"=0 unsigned\"\n    int           player_count                 \"=0 unsigned\"\n    int           read_count                   \"=0 unsigned\"\n    varchar(191)  cover_url                    \"?\"\n    bigint        user_seq                 FK\n    bigint        service_seq              FK\n    bigint        service_module_seq       FK\n    bigint        service_member_seq       FK\n    datetime(6)   start_dt\n    datetime(6)   end_dt\n    varchar(36)   uuid                     UK  \"?\"\n    tinyint       is_single_play               \"=0\"\n    int           like_count                   \"=0 unsigned\"\n    int           aes_key_version              \"=1\"\n    varchar(255)  aes_hex_email                \"?\"\n    char(64)      email_blind_index            \"? lazy\"\n    varchar(255)  aes_hex_phone                \"?\"\n    char(64)      phone_blind_index            \"? lazy\"\n    decimal(13_3) price                        \"?\"\n    varbinary(16) ip                           \"?\"\n    blob          gz_extend                    \"?\"\n    jsontext      json_setting                 \"?\"\n    jsontext      jsons_tags                   \"?\"\n    text          base64_extra                 \"?\"\n    text          serialize_data               \"?\"\n  }\n  user {\n    bigint        seq   PK \"auto\"\n    varchar(191)  name\n  }\n  service {\n    bigint        seq   PK \"auto\"\n    varchar(191)  name\n  }\n  service_module {\n    bigint        seq   PK \"auto\"\n    bigint        service_seq FK\n    varchar(191)  name\n  }\n  service_member {\n    bigint        seq   PK \"auto\"\n    bigint        service_seq FK\n    bigint        user_seq    FK\n  }\n  composite_account {\n    bigint        tenant_id PK\n    bigint        account_id PK\n    varchar(191)  name\n  }\n  composite_membership {\n    bigint        tenant_id PK, FK\n    bigint        account_id PK, FK\n    varchar(191)  role\n  }\n  soft_record {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n    datetime(6)   deleted_at \"?\"\n  }\n  account {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n  }\n  project {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n  }\n  account_project {\n    bigint        account_seq PK, FK \"-\u003e account.seq\"\n    bigint        project_seq PK, FK \"-\u003e project.seq\"\n  }\n\n  user           ||--o{ battle         : user_seq\n  service        ||--o{ battle         : service_seq\n  service_module ||--o{ battle         : service_module_seq\n  service_member ||--o{ battle         : service_member_seq\n  service        ||--o{ service_module : service_seq\n  service        ||--o{ service_member : service_seq\n  user           ||--o{ service_member : user_seq\n  composite_account ||--o{ composite_membership : \"(tenant_id, account_id) (account / memberships) cascade\"\n\n  %% index battle (service_module_seq, is_close, is_display, is_allday) ik\n  %% index battle (service_seq, is_close) ix_service\n  %% index battle (user_seq, is_close) ix_user\n  %% index battle (email_blind_index) ix_email_blind_index\n  %% index battle (phone_blind_index) ix_phone_blind_index\n  %% blind_index battle aes_hex_email email_blind_index\n  %% blind_index battle aes_hex_phone phone_blind_index\n  %% fulltext battle (name, description)\n  %% soft_delete soft_record deleted_at\n",
+   "mmd": "erDiagram\n  battle {\n    bigint        seq                      PK  \"auto\"\n    varchar(191)  name\n    text          description                  \"?\"\n    datetime(6)   created_ts                   \"=now\"\n    datetime(6)   updated_ts                   \"=now onupdate\"\n    tinyint       is_close                     \"=0\"\n    tinyint       is_display                   \"=0\"\n    datetime(6)   display_start_dt             \"?\"\n    datetime(6)   display_end_dt               \"?\"\n    tinyint       is_allday                    \"=0\"\n    int           target_team_player_count     \"=0 unsigned\"\n    int           success_count                \"=0 unsigned\"\n    int           player_count                 \"=0 unsigned\"\n    int           read_count                   \"=0 unsigned\"\n    varchar(191)  cover_url                    \"?\"\n    bigint        user_seq                 FK\n    bigint        service_seq              FK\n    bigint        service_module_seq       FK\n    bigint        service_member_seq       FK\n    datetime(6)   start_dt\n    datetime(6)   end_dt\n    varchar(36)   uuid                     UK  \"?\"\n    tinyint       is_single_play               \"=0\"\n    int           like_count                   \"=0 unsigned\"\n    int           aes_key_version              \"=1\"\n    varchar(255)  aes_hex_email                \"?\"\n    char(64)      email_blind_index            \"? lazy\"\n    varchar(255)  aes_hex_phone                \"?\"\n    char(64)      phone_blind_index            \"? lazy\"\n    decimal(13_3) price                        \"?\"\n    varbinary(16) ip                           \"?\"\n    blob          gz_extend                    \"?\"\n    jsontext      json_setting                 \"?\"\n    jsontext      jsons_tags                   \"?\"\n    text          base64_extra                 \"?\"\n    text          serialize_data               \"?\"\n  }\n  user {\n    bigint        seq   PK \"auto\"\n    varchar(191)  name\n  }\n  service {\n    bigint        seq   PK \"auto\"\n    varchar(191)  name\n  }\n  service_module {\n    bigint        seq   PK \"auto\"\n    bigint        service_seq FK\n    varchar(191)  name\n  }\n  service_member {\n    bigint        seq   PK \"auto\"\n    bigint        service_seq FK\n    bigint        user_seq    FK\n  }\n  composite_account {\n    bigint        tenant_id PK\n    bigint        account_id PK\n    varchar(191)  name\n  }\n  composite_membership {\n    bigint        tenant_id PK, FK\n    bigint        account_id PK, FK\n    varchar(191)  role\n  }\n  soft_record {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n    datetime(6)   deleted_at \"?\"\n  }\n  account {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n  }\n  project {\n    bigint        seq PK \"auto\"\n    varchar(191)  name\n  }\n  account_project {\n    bigint        account_seq PK, FK \"-\u003e account.seq\"\n    bigint        project_seq PK, FK \"-\u003e project.seq\"\n  }\n  task {\n    bigint        seq   PK \"auto\"\n    varchar(191)  title\n    enum(open_done) state\n  }\n\n  user           ||--o{ battle         : user_seq\n  service        ||--o{ battle         : service_seq\n  service_module ||--o{ battle         : service_module_seq\n  service_member ||--o{ battle         : service_member_seq\n  service        ||--o{ service_module : service_seq\n  service        ||--o{ service_member : service_seq\n  user           ||--o{ service_member : user_seq\n  composite_account ||--o{ composite_membership : \"(tenant_id, account_id) (account / memberships) cascade\"\n\n  %% index battle (service_module_seq, is_close, is_display, is_allday) ik\n  %% index battle (service_seq, is_close) ix_service\n  %% index battle (user_seq, is_close) ix_user\n  %% index battle (email_blind_index) ix_email_blind_index\n  %% index battle (phone_blind_index) ix_phone_blind_index\n  %% blind_index battle aes_hex_email email_blind_index\n  %% blind_index battle aes_hex_phone phone_blind_index\n  %% fulltext battle (name, description)\n  %% soft_delete soft_record deleted_at\n",
    "manifest": {
-    "sha256": "8a09dfee953c83f4ffc1ecb43eb576bf2afa9efb0023603465591a7fc51b6207"
+    "sha256": "fdf8b5228a87288beedfbd04c344291852f3d81f6bd0c654d0e1ac0909fd7e17"
    },
    "ddl": {
     "mysql": {
-     "sha256": "485c6254c48431880e8ff47ef17501494e8d03e15b381484ddc84fb2b66bca44"
+     "sha256": "aa5df5def769a2f517ae29c34904ea30e4e7d5f08c0492db207902678262616b"
     },
     "postgres": {
-     "sha256": "02796230619026aa5c3fb3789af6f72b44e1353f3905f29913d1a2645e261e4c"
+     "sha256": "162399a99af13be6cea421621aa3bb534942ff5dda3b2bfd9c4f9951cc4909fb"
     },
     "sqlite": {
-     "sha256": "0fd954a8e422eb9e7d56a692ba8c5a5d8d3ce57638066d771a6212c443283af9"
+     "sha256": "50343c3e347e20e9f586876a07a6c66c7d70cf86c7e38d5dfdc26e08c569b6a0"
     }
    }
   }
@@ -4079,7 +4079,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "9d6e885007ba6496666a363c057f4987eb02596908b1e7ae7e322f04020396ed"
+   "sha256": "d788f66ef8b53139112728960f3e8072b5eb05a9b94d2658a19d4acb6a0b512b"
   },
   {
    "from": "engine/composite_key_test.go#1",
@@ -4093,7 +4093,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "30dfa482056515025f2a3fb957449359514ca029cd5e06f904425966da2e12e1"
+   "sha256": "a54eeb2f876228e2e94ca418ac5f4b3a968387243a4a9d69fd8313bf62107c91"
   },
   {
    "from": "engine/composite_key_test.go#1",
@@ -4107,7 +4107,7 @@
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "97068947ee721360e15e8fa0b35a63b542c2844ea5e339ba46cc7bd17dcb41c1"
+   "sha256": "c77e5881649cd2f7ef6ae10b5aa7c148f5feed2514926aed878f5fbf32c79a72"
   },
   {
    "from": "engine/composite_key_test.go#1",
@@ -4667,7 +4667,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "5b7a4d7fcffc707ba860549a5210332c9bbca2418d4467aba4eb4f68c5e225d6"
+   "sha256": "b70c12442226b3bffba2d9f44e6ed88ca842ea0f9a8c6f6992f72c34a3891549"
   },
   {
    "from": "engine/planner/soft_delete_test.go#1",
@@ -4681,7 +4681,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e528938c7988e7435b4a4813107f82f0c2b11962feda5a700e966962ef4590ec"
+   "sha256": "a25df8d5b1962179d57d73247071ab36423a2cb8ea3c7b568343406efce4ead8"
   },
   {
    "from": "engine/planner/soft_delete_test.go#1",
@@ -5423,7 +5423,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "9d9cdb6c0bb2847876bf0d4ff598dec4fa5a94b399cbdeeb956bb70655324416"
+   "sha256": "8625fa1cddaae3905fa4302664394262351c9953487edd743092207865856178"
   },
   {
    "from": "engine/schema/fuzz_test.go#1",
@@ -5437,7 +5437,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "6db0fe866a00c5237d102788ef3d6375f790f19c132fef54e839940c5890f9da"
+   "sha256": "79e3bb4802430791f86372a1c97eae9d7e2924f13e21febabcc92c8075fac090"
   },
   {
    "from": "engine/schema/fuzz_test.go#1",
@@ -6473,7 +6473,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "16b8a81ccce9caac8ccb10ea52a536f49ee2e839985b045faa2bce646a2d65a6"
+   "sha256": "54ba01bdacbe1fa13496f7a4fa704b684e5e9e21627bb4c9b0ee03ee021dec05"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
@@ -6487,7 +6487,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "7b301b20fb24554b1a4a974ecdbd38e43edc4e005c4352f18afb2acbdc890fea"
+   "sha256": "6f70701b946b11645dae36b233b68e547605a4c61f54a6b0924b8a7130a1069c"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
@@ -6501,7 +6501,7 @@
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "ce63a9012ba30413e29aa4ff8784d1f17e4adadc1043f479e964392f377f61f6"
+   "sha256": "45a86623499caccac59355c11cc8273c86628cca02ca56024db95d2e7519aac7"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
@@ -7061,7 +7061,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "5b7a4d7fcffc707ba860549a5210332c9bbca2418d4467aba4eb4f68c5e225d6"
+   "sha256": "b70c12442226b3bffba2d9f44e6ed88ca842ea0f9a8c6f6992f72c34a3891549"
   },
   {
    "from": "engine/schema/manifest_test.go#3",
@@ -7075,7 +7075,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e528938c7988e7435b4a4813107f82f0c2b11962feda5a700e966962ef4590ec"
+   "sha256": "a25df8d5b1962179d57d73247071ab36423a2cb8ea3c7b568343406efce4ead8"
   },
   {
    "from": "engine/schema/manifest_test.go#3",
@@ -7733,7 +7733,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "9287667284f5ab442d92914b85c61ebe111402b1a836772feb0e7712e91b0a74"
+   "sha256": "0d541351cdd8a36c784d0e85ecab4d6bcf2f1dd71a7d82cbdb3e78d0349730dc"
   },
   {
    "from": "engine/schema/manifest_test.go#13",
@@ -7747,7 +7747,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "1435bce4d1a8a47baa13b881bdf584062df2540161f54c0192b1a78ddaa196a9"
+   "sha256": "1de1b057db810b596883e1b1959c85f10eddb9cc96f383bd4d1e4c4764cb8e53"
   },
   {
    "from": "engine/schema/manifest_test.go#13",
@@ -8321,7 +8321,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "7dc3ac69edf210b66d340eb25c39758e390748f95734151da6557b0cba51629e"
+   "sha256": "0102ed1dfdd72635e80c4c03a69902b9361bb32ca6a56ff4d4ad6fb424c5bb51"
   },
   {
    "from": "engine/schema/manifest_test.go#14",
@@ -8335,7 +8335,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "282514e46da3149ae9608b96a447af62884fe10730551e65100501a817b30bba"
+   "sha256": "9659ca34e191aa21a48e044751c0439badeef4244cbe8d6c0aeca52a81364a79"
   },
   {
    "from": "engine/schema/manifest_test.go#14",
@@ -8909,7 +8909,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "66bd65ebdaf8fd63164334861bf1620e2e099088a61f20dd9595adc7f6ba0dc0"
+   "sha256": "f7b669046cc60efc071680753094cdae479fc5df3ea27382e59e97c0d7377153"
   },
   {
    "from": "engine/schema/manifest_test.go#33",
@@ -8923,7 +8923,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "3d8bcb1e3671f27864910200bc5454cef52778596ee3079728db67b013f67625"
+   "sha256": "b8a22c0c67e0474c292d0ad4edc4d55ba3adaef2520b33fbe140042579ed9e52"
   },
   {
    "from": "engine/schema/manifest_test.go#33",
@@ -10253,7 +10253,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "36ccb496cde5b5ed2113edde083035338fa80e8ddb74fa39d1082f40a4849945"
+   "sha256": "afda04b525326cb375b9088040c5f9247a2e4d70e3404ba2c03cb6e219d4b0d9"
   },
   {
    "from": "engine/schema/mermaid_test.go#20",
@@ -10267,7 +10267,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "98d49ebf3eb878ebadb9b99f918ba47374bad04616498e3570858d4de7605543"
+   "sha256": "9385957728cfe5d474d32975555b02c18af43af4d121d951ae04b36b7ceac67a"
   },
   {
    "from": "engine/schema/mermaid_test.go#20",
@@ -11429,7 +11429,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "1c21ef224bd910072c2192e952475782a7f8f340a0727848b7d90a0fa1ca8790"
+   "sha256": "7f61b9897c9b5887a108cb560d7e441ede3ec759b16525aaca361df0cb8f9121"
   },
   {
    "from": "engine/schema/overlapping_foreign_keys_test.go#1",
@@ -11443,7 +11443,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "4b480b9cdc528b78dd63f0a1846db174ca4a43a3fd67504b527cb91e50b75ec6"
+   "sha256": "ab437af76e7d1468d6e2dd0346ae4bf50047cc58c098bde7079b95d191d3999f"
   },
   {
    "from": "engine/schema/overlapping_foreign_keys_test.go#1",
@@ -14495,7 +14495,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "07f63be1c4418a3b3eac52a169c8f1998c36446572e71ab826ef5f34a64f0758"
+   "sha256": "2b74ca79ac06c3144f61467ff9825bc2b49f9d1ceacb7832f5c5de6b380994ec"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
@@ -14509,7 +14509,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "6a9ad287871b3af0a45d720a8caa8049953ec0b1046f223d5c1fff7e6d3ba806"
+   "sha256": "0050407d5306c434b46c84c4ce77ff581ee1b25e9f538ba33bb866fefa1ef796"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
@@ -16973,7 +16973,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "0c9ed10c1aa8658486f5f94276a956c244a2bdd37d2eb03c3098d1ebbe28900c"
+   "sha256": "39007523fc812d7b92259e7b5fdcddc8001f8613e6a98e4b4b8f69ae0e2b7e61"
   },
   {
    "from": "internal/ormgen/migrate_physical_test.go#2",
@@ -16987,7 +16987,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "f8bfced43ca1533e1f739bc903dbc7c9aa6b2a231d78a9994c9cba6f9c6e9168"
+   "sha256": "e5aad3e4f5878419dd8d797add5a5c95facd77c449456900f4979c6ed17988ad"
   },
   {
    "from": "internal/ormgen/migrate_physical_test.go#2",
@@ -18317,7 +18317,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "02a6f057060400b2ff46cc70444f062bf7d0735018e8fd2f366f0061924d35a3"
+   "sha256": "dcc544ab60c8015e7436254a5e0fc58d7d4581a946ed9bb8bf8cdc4730eaeb02"
   },
   {
    "from": "internal/ormgen/migrate_test.go#1",
@@ -18331,7 +18331,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "8f1d905c8264814389cc67a1de77a7b7c1ac0b2ec8bd3adc42eafcda6d5c9396"
+   "sha256": "8c96f64afd5c4c240f85e8afb8058e6ae6f94a7edef0f7ade63724bbe754d01c"
   },
   {
    "from": "internal/ormgen/migrate_test.go#1",
@@ -18905,7 +18905,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "3277737ead3e50989fcbe378954bf41b4386ccb568bf34898b899420087ebe85"
+   "sha256": "8af4a064b6c9ee1ccd432982f8a9fb221914daee84db1a2af8f10d68c41c1d14"
   },
   {
    "from": "internal/ormgen/migrate_test.go#2",
@@ -18919,7 +18919,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e94b5e65d9410e73d573442eae6ae5a195206cd551775bbc4e24b513d3a54f3d"
+   "sha256": "252746be443503986e59fe960195f8cb213ca4a9a3f653f82ce4707d241ae077"
   },
   {
    "from": "internal/ormgen/migrate_test.go#2",
@@ -21551,7 +21551,7 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d7436ae65ffb5af1a098049ff930565ac10d4007f921d6f3afcab428c18239e8"
+   "sha256": "9f484bf235cf2d39be7914a16bab711adfc9df59996fb3264cdefdda3096be4e"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#1",
@@ -21565,7 +21565,7 @@
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "64626ac78a172ec986dd6561163ec99080c2fee309f7e708c711ed26b62ff66d"
+   "sha256": "6cc362804ba871c5edd87dff680e1eb448658f80641c3ea6178aa62f29110c18"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#1",
@@ -22139,7 +22139,7 @@
    "to": "engine/composite_key_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "bc62b5a2ffa70f66a2f1b11383b644f3496322c86f6ae6e3841b2a6daad4a71e"
+   "sha256": "e77269b6626b76a534f4bd8288d866c2bbe8689dfe593fe6cbeb868042d0c6d4"
   },
   {
    "from": "schema/bench.mmd",
@@ -22153,7 +22153,7 @@
    "to": "engine/composite_key_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "0c66a2760a935117a76a0f4648719dab5b5c9c4e985c2ab6ada65a8d55d6cc11"
+   "sha256": "5c2cf30b96f3591c8d6c42bf64ca3bd23dbbaece4667cbfdbd9428e4630f1442"
   },
   {
    "from": "schema/bench.mmd",
@@ -22181,7 +22181,7 @@
    "to": "engine/planner/soft_delete_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "f5864c02071336ca88317bf1bc21f22d906c7d866277d332bd9d22ccc3c05727"
+   "sha256": "5e39ce86937423410512691d8fd9322272506aa4a0e424cb4066d2ec6e84cc47"
   },
   {
    "from": "schema/bench.mmd",
@@ -22195,7 +22195,7 @@
    "to": "engine/planner/soft_delete_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "cf313cd6bd5bcf3ff3c6eaee8f5ad96e89853907443160075bb1a7a69c609c77"
+   "sha256": "0ca830feebd8d6644d1fc2cae3e7bfd00e5b493ec3900dbe645f15a22a4a9a8a"
   },
   {
    "from": "schema/bench.mmd",
@@ -22223,7 +22223,7 @@
    "to": "engine/schema/fuzz_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "bda38a788b6505d8134075bb6dd749e775bc5e3dfd53fe436b7d0cbbe6cb8732"
+   "sha256": "8ce3bb6a7b683f1f95c5fa6b4ebe22b6ea6936cd7182fba57e1a06a6205e3132"
   },
   {
    "from": "schema/bench.mmd",
@@ -22237,7 +22237,7 @@
    "to": "engine/schema/fuzz_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d2a1b5f7db772400c34ba461e0acc9bdaa13aeea92e3cbb7537fb3a5eeb8fa88"
+   "sha256": "f96c969c331d70cf41b727c79fda4b366d89144d22f914567f6f206923fce038"
   },
   {
    "from": "schema/bench.mmd",
@@ -22251,7 +22251,7 @@
    "to": "engine/schema/fuzz_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "1bdb7e8719aa05ef6712ab506fd8870c33963425b33d6119e976817fc1cd4c1c"
+   "sha256": "35e399b7e5978019331829bbebfbec4ea48bab7fb5dc51ddc2d3200a1fe5d777"
   },
   {
    "from": "schema/bench.mmd",
@@ -22265,7 +22265,7 @@
    "to": "engine/schema/manifest_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "b36d77eb2081ba8cac5f5a08e1042e8a0a49df1c2eb2910cd8edacc133072121"
+   "sha256": "c6d1018cc3be662c4886aad573cb235aee6d4a6d3298c6da777e8af09fcf8845"
   },
   {
    "from": "schema/bench.mmd",
@@ -22279,7 +22279,7 @@
    "to": "engine/schema/manifest_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "2438f86e0e04b315b7dccaaccb4af2ea48c9dc9e1e84c593ba2d51addfc2b154"
+   "sha256": "f6fe77a9a999e7c9ff8123b5fab988fb7eff2916bcf35e1c5ee7b0fdfb8537e1"
   },
   {
    "from": "schema/bench.mmd",
@@ -22307,7 +22307,7 @@
    "to": "engine/schema/manifest_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "f5864c02071336ca88317bf1bc21f22d906c7d866277d332bd9d22ccc3c05727"
+   "sha256": "5e39ce86937423410512691d8fd9322272506aa4a0e424cb4066d2ec6e84cc47"
   },
   {
    "from": "schema/bench.mmd",
@@ -22321,7 +22321,7 @@
    "to": "engine/schema/manifest_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "cf313cd6bd5bcf3ff3c6eaee8f5ad96e89853907443160075bb1a7a69c609c77"
+   "sha256": "0ca830feebd8d6644d1fc2cae3e7bfd00e5b493ec3900dbe645f15a22a4a9a8a"
   },
   {
    "from": "schema/bench.mmd",
@@ -22349,7 +22349,7 @@
    "to": "engine/schema/manifest_test.go#13",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "32e5e31ccf6179be9713545aa3c6f16e1f3216bc037017d0aaf86899ba17dd8f"
+   "sha256": "b83f896714aa5fbd2ae59768ea89cf771a8f0a1404f1c769ae46f2656e82f9bc"
   },
   {
    "from": "schema/bench.mmd",
@@ -22363,7 +22363,7 @@
    "to": "engine/schema/manifest_test.go#13",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "c22f67b38fc07cfc3eb9aa80b192bc354b8f76e413e7687ce1b661062abb1647"
+   "sha256": "121455c36a27101e8f23e5700627c8bf813e876806b67bc266dece67fb982e58"
   },
   {
    "from": "schema/bench.mmd",
@@ -22391,7 +22391,7 @@
    "to": "engine/schema/manifest_test.go#14",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "2b85210390b369c269ab0fed66287a501dbf89f30a05ab4534f935a3193dc945"
+   "sha256": "add94920e10e20419ce090c9bdcd046a134b3ae329dfee6f0cdab223ab2049d3"
   },
   {
    "from": "schema/bench.mmd",
@@ -22405,7 +22405,7 @@
    "to": "engine/schema/manifest_test.go#14",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "7815590fc95a119f7ea6ebcffc62fc7de7a4f69b68fec3d039ede47a100e8e32"
+   "sha256": "84755ce0abd7189883f86c7e6cfa9170dce68e59762ea65f77aa1d6c8e83ce02"
   },
   {
    "from": "schema/bench.mmd",
@@ -22433,7 +22433,7 @@
    "to": "engine/schema/manifest_test.go#33",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "1e3c76992559345bc26268d49e7a8beb81225cbc4e4e298ff4a9860e509e0ac2"
+   "sha256": "742f8efab3774f56c14f62ad3b7751964f917f9ca2b79fa8f119a271e76ff5d9"
   },
   {
    "from": "schema/bench.mmd",
@@ -22447,7 +22447,7 @@
    "to": "engine/schema/manifest_test.go#33",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "2bccef719dae9758d4a483361f583ee2ac4b68f092367f802fd6b96097a3dac7"
+   "sha256": "229297a2fec910ce1fdfcb525ca37343402e6e928276bc5706cd7f74907db8a7"
   },
   {
    "from": "schema/bench.mmd",
@@ -22475,7 +22475,7 @@
    "to": "engine/schema/mermaid_test.go#20",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "7058ce296d1afeee4f39b7d586e38e13f96481b23d59db09212a6c07fe492239"
+   "sha256": "5b337741bcd001b20ecbbf9573eb6532b51cf08a6d98424aaab62b484d1950bc"
   },
   {
    "from": "schema/bench.mmd",
@@ -22489,7 +22489,7 @@
    "to": "engine/schema/mermaid_test.go#20",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d40a8710e01342516bd2340b242ef2367f680b395e64045812f5e3a8b9bce36a"
+   "sha256": "1252d982eac905e65a07d19eb3a9de68e4e98632e35990a20bee53e44c302303"
   },
   {
    "from": "schema/bench.mmd",
@@ -22559,7 +22559,7 @@
    "to": "engine/schema/overlapping_foreign_keys_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "7f7434a14b783f75fe82072b5c4f730d0f550f72f5c87e0ee16700b4f6176e94"
+   "sha256": "623d936319f93266e9f92ba2e1f4acfd225cb6d56a53d0c3dbaf7ee09fbc84a6"
   },
   {
    "from": "schema/bench.mmd",
@@ -22573,7 +22573,7 @@
    "to": "engine/schema/overlapping_foreign_keys_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "f083377de1d75484c12b26c1bc107e99fb9b0a2553c5186bf077445f9a159e58"
+   "sha256": "b000c5c6adcd446bd39e7226a8f93dcba57ebbc06a1e0b6ba410043e40c28548"
   },
   {
    "from": "schema/bench.mmd",
@@ -22601,7 +22601,7 @@
    "to": "internal/ormgen/composite_migration_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "7ac942a45b3019811a0f69ca3adca5847db57c60b66586b6397400dab5e7dd57"
+   "sha256": "ae8df98ca4f3671a2981703026af5c97fde0af0ece80aae80416a0d0265bfe60"
   },
   {
    "from": "schema/bench.mmd",
@@ -22615,7 +22615,7 @@
    "to": "internal/ormgen/composite_migration_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "8d3877d3164f2fc9421c4396da5d2f69fa32f6cf120c0d17953f2988cdc633ae"
+   "sha256": "74ea3eb9eb839ef39f80f8d6e2cbd9f0583cff0c2eaf5d768a982306a0cdc873"
   },
   {
    "from": "schema/bench.mmd",
@@ -22643,7 +22643,7 @@
    "to": "internal/ormgen/migrate_physical_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "1bcd72feef8209cc3e16c2559527276e78337112bd5e5451bac2f00fc7880516"
+   "sha256": "a7f3e71615eccad9b46e356cfcdee09bbeef44838602d917e96a5df15b434e10"
   },
   {
    "from": "schema/bench.mmd",
@@ -22657,7 +22657,7 @@
    "to": "internal/ormgen/migrate_physical_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d17cb62828af25661d6650b2cbbe3709ae849c9fb65d8af14e2bc1c7bcfdb871"
+   "sha256": "8fbb2dc6f86a240ae7c68a510d045345ffbda54ae219acfd08cf139bd0e50e7a"
   },
   {
    "from": "schema/bench.mmd",
@@ -22685,7 +22685,7 @@
    "to": "internal/ormgen/migrate_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "0231b1e9b91b215a8c445412c0f2f378d77884d80299f7adfac0c8a4449413d2"
+   "sha256": "69bd8d595dcfb8e692d483046540ea9554aa72670e8592bbbdcb90e5db9a11b5"
   },
   {
    "from": "schema/bench.mmd",
@@ -22699,7 +22699,7 @@
    "to": "internal/ormgen/migrate_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "851369f8032ac0bd8b8be3d107a348a892c3b6a71b97461d09fd6cd5b3aa4b95"
+   "sha256": "6eacebb255e71bc3331c9015ccad2f5f3d0420a15f2ed830c4967ccfcaa12040"
   },
   {
    "from": "schema/bench.mmd",
@@ -22727,7 +22727,7 @@
    "to": "internal/ormgen/migrate_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "e2cbde3453168ba4c5df04b6fe93cd8bc95aeadacfd34647b2bbdfb9471d5f15"
+   "sha256": "114e714be18e71d3d0964d44eeedac5d2cec42ee4fa9872bcfe96d83589c94cc"
   },
   {
    "from": "schema/bench.mmd",
@@ -22741,7 +22741,7 @@
    "to": "internal/ormgen/migrate_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "21c93c91541990305c4ff7a9bb91d236a7557957144173c0a361d673ab05e488"
+   "sha256": "259ed62fa79d12c367079e542adbfc8a1e29bdca645eb3ea1d64e5db6d410d46"
   },
   {
    "from": "schema/bench.mmd",
@@ -22769,7 +22769,7 @@
    "to": "internal/ormgen/schema_source_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "e25414bdd664c4af4458881db8c0a247b2eea8ba6ca82dbef6aee564d5f76eef"
+   "sha256": "aae2a45658d83876689c72018e1705998c75a6207e3df842a80c9e77ddbefb75"
   },
   {
    "from": "schema/bench.mmd",
@@ -22783,7 +22783,7 @@
    "to": "internal/ormgen/schema_source_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d973ff18beb6cc748f6ae208a82ded891f92b59ec6ccc54bbd351b4fda7c1c3c"
+   "sha256": "f294859b45cb88890777e2bc9c9b9a43084a7c7bada4af3383e7e31d826ac9e5"
   },
   {
    "from": "schema/bench.mmd",
@@ -22811,42 +22811,42 @@
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "24ae25b98cf1db1730edb821f9c8b9dee4e8d9fb1208493e33c8aef599bc01ec"
+   "sha256": "bc71c1de7f80f4f9a0cf26e7da7e3d66d11f6c8c01bf96909c9c7ca990c230bf"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "24ae25b98cf1db1730edb821f9c8b9dee4e8d9fb1208493e33c8aef599bc01ec"
+   "sha256": "bc71c1de7f80f4f9a0cf26e7da7e3d66d11f6c8c01bf96909c9c7ca990c230bf"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "1bb31f97c282a213bea9b34f18e443ecfcecf0afbcac5794cdb283cfea202878"
+   "sha256": "a86ba146b118a449140b8436648d42d86aaa68524aaf43a0ecb9b5c3dc704a4b"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "1bb31f97c282a213bea9b34f18e443ecfcecf0afbcac5794cdb283cfea202878"
+   "sha256": "a86ba146b118a449140b8436648d42d86aaa68524aaf43a0ecb9b5c3dc704a4b"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "c10b3c4c96f6bf250a578e66507db1be3066dc46321898c2f4325b6323f67831"
+   "sha256": "f5fd2588da68798ce7bb22b4e168ab7e66fe209a2137facd3ceab8e8a6d11948"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "c10b3c4c96f6bf250a578e66507db1be3066dc46321898c2f4325b6323f67831"
+   "sha256": "f5fd2588da68798ce7bb22b4e168ab7e66fe209a2137facd3ceab8e8a6d11948"
   }
  ],
  "plans": [
@@ -23700,13 +23700,13 @@
    "from": "engine/composite_key_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "9da84bcc1e5b5e3bbcf6a947a3db91e4fc0a073656a9ec9224fa9c7da9060fdd"
+   "sha256": "9f4617904ef5bbe9d47c3f4e20252aa8cf56991bff610851bb6b025b092e888d"
   },
   {
    "from": "engine/composite_key_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "f5f73de7d726772c8d3eb5c6108e0307f94368a93f6a2eb4fe11bc87db618e6b"
+   "sha256": "1d5350f53de2b40260931f935f8a5737386ed044ac53c3c20d33b93637852feb"
   },
   {
    "from": "engine/composite_key_test.go#1",
@@ -23952,13 +23952,13 @@
    "from": "engine/planner/soft_delete_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "ec745f4a2e8594ce7e200196be4e784c6b4057f4fc112260ef74fdd7b9e45b36"
+   "sha256": "befbd8a8f9c2d8ed348714eb9ffb47ef0f093ddcbdada5784d5bb28d0ea899c2"
   },
   {
    "from": "engine/planner/soft_delete_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "f8702562e13047e23d2ea8eb33623d7b0618155e1f474683d58ba87c64decc35"
+   "sha256": "e4089a73bfb4c8c1c7480a59447c17c90bb4ad89961b8e536696ed1c6dee8a17"
   },
   {
    "from": "engine/planner/soft_delete_test.go#1",
@@ -24276,13 +24276,13 @@
    "from": "engine/schema/fuzz_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "9829d0017ae5c1c7bd7c6b04d1279c1648586b17f72ce67cdd95a74062f0096d"
+   "sha256": "ab30bee722848ca111f3c9bccbfe56d9551fa031532e44d4d794a892cb267074"
   },
   {
    "from": "engine/schema/fuzz_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "bd40b51c352a4e9217c0f6f0caa0fae133c744eb8a49d107dd6c73cf7aa1297c"
+   "sha256": "35212212adf041f4b0bfd4200020b6b5bbf271b8e8317aabdb37d6bfa71c6852"
   },
   {
    "from": "engine/schema/fuzz_test.go#1",
@@ -24726,13 +24726,13 @@
    "from": "engine/schema/manifest_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "4af5a6051d223d209f3802ade6bb1565482da0a8451385cfe692f73ea867758f"
+   "sha256": "bb3da35214a7ed57efba6b22f1b7f629bda0cd6c89a1cf00d87d555eda1b0923"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "169af8bfd702ab17807fc913f9bab7ec315301877077b9d6cf9b5e79f1e1f8f8"
+   "sha256": "62e9380ece7ca063ef47f657f0d10dd723082118ced930e24556c7a1be963345"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
@@ -24978,13 +24978,13 @@
    "from": "engine/schema/manifest_test.go#3",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "ec745f4a2e8594ce7e200196be4e784c6b4057f4fc112260ef74fdd7b9e45b36"
+   "sha256": "befbd8a8f9c2d8ed348714eb9ffb47ef0f093ddcbdada5784d5bb28d0ea899c2"
   },
   {
    "from": "engine/schema/manifest_test.go#3",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "f8702562e13047e23d2ea8eb33623d7b0618155e1f474683d58ba87c64decc35"
+   "sha256": "e4089a73bfb4c8c1c7480a59447c17c90bb4ad89961b8e536696ed1c6dee8a17"
   },
   {
    "from": "engine/schema/manifest_test.go#3",
@@ -25266,13 +25266,13 @@
    "from": "engine/schema/manifest_test.go#13",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "f9bbb9278cdbd51af5f255ef38f04d333a3a27373e735aae5bd832b4bac8f1c2"
+   "sha256": "61f19b32336073d787858ca41272ce3c6e549446d90a729531bf47b8b00f0959"
   },
   {
    "from": "engine/schema/manifest_test.go#13",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "10163a642808503c32a785ea99655b8df1ac637f276843248171e3bd507f34f9"
+   "sha256": "59f6e05a003cf310a99b2455de646c8dee405defca81b9536f99376679e6c31e"
   },
   {
    "from": "engine/schema/manifest_test.go#13",
@@ -25518,13 +25518,13 @@
    "from": "engine/schema/manifest_test.go#14",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "ae86a1f6ae7373898203bb3c514ef76d00db680f6302236b5679e5a4e5579f5c"
+   "sha256": "bee10bf84c1502cb63a30805ab019c273f8b9e8ca0e6cd9ba0398ae0dcd338e4"
   },
   {
    "from": "engine/schema/manifest_test.go#14",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "ff5e3ee7a0ec0154957be467e4b486798b7de969b7b96386d6a135132a1c3d21"
+   "sha256": "c84ef64c0e8f88acdbe160b2c6e03e45b19986d2594479210f5b34ea3577b776"
   },
   {
    "from": "engine/schema/manifest_test.go#14",
@@ -25770,13 +25770,13 @@
    "from": "engine/schema/manifest_test.go#33",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "40b0ee3f3bfcbca21660a14be8aa229b7ec77b296ca919d50326b81ea97120da"
+   "sha256": "106bcf813bf75937dcd1feda4b152bef4975caafdcbed5ec08e118ac2c53a02c"
   },
   {
    "from": "engine/schema/manifest_test.go#33",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "485818207cc7ce221cd4b9e87fc20fb4128babd6832b9699ad94939e2c585851"
+   "sha256": "91dd1f7619301585d2178375fd42e0666d376e6c2b36bd90688d75e34aec75d5"
   },
   {
    "from": "engine/schema/manifest_test.go#33",
@@ -26346,13 +26346,13 @@
    "from": "engine/schema/mermaid_test.go#20",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "a4636d7eb6176cbc62c3d54de38622abd0fd798397d7fcedaec5e8521af79c7e"
+   "sha256": "a854fa66f1680c3bd714a4532bb19801360f564b741cc371583b42bf2339b7ce"
   },
   {
    "from": "engine/schema/mermaid_test.go#20",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "855ad29d05691cc7516ea58894db58bfa568986040042d019dad12d03a352a88"
+   "sha256": "11a6a114d4a01b652323efcf3d3e8048dd12918cc9e7836b4e204f81f63733d8"
   },
   {
    "from": "engine/schema/mermaid_test.go#20",
@@ -26850,13 +26850,13 @@
    "from": "engine/schema/overlapping_foreign_keys_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "c5fb3f1b007c90e9dbe7cdc499c608070af50210754a2bd58d5d61e187318b03"
+   "sha256": "872ed51f3f77f94c11097b35240008e7da354bed67289ab86afedd3e22910aa8"
   },
   {
    "from": "engine/schema/overlapping_foreign_keys_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "e8cca2a54272a41117f84e27137212bc501d1ce5ad6f4a0f0e9f83a2dfd0bf3a"
+   "sha256": "5947622b974d60ce2b5b510569f663b11572361f690aeacf78097cc4da2ab173"
   },
   {
    "from": "engine/schema/overlapping_foreign_keys_test.go#1",
@@ -28164,13 +28164,13 @@
    "from": "internal/ormgen/composite_migration_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "7e0af46c7974715c7aa236384471fb5b50defa94da0bef37acd8a7b0b90631dd"
+   "sha256": "c5e0084b10b597fd8420bf9e93c433698bfbc1ff596fb0a700d5e6ae2f6474b3"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "2cf8c369cd256adbdee66e442e6347d80145e464d0394e574277c666a7b24988"
+   "sha256": "526ca834167119da4828aa4ba00884a88617591cadf0306081c7b08b2eb531dc"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
@@ -29226,13 +29226,13 @@
    "from": "internal/ormgen/migrate_physical_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "adf64c9c8d23e34b8d34c02b4b2e8c243e22784f4b7ff3fa0c9f9821c16d1d12"
+   "sha256": "3e8b9de3660a580f0eda2a4223927781a5892e0b64b577998597e720ff12c0a0"
   },
   {
    "from": "internal/ormgen/migrate_physical_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "850c82cee2d86958cc7c006a35930a447ea792cc1d9c6b503e0d6c60c00c6d6f"
+   "sha256": "c9391bbb82ae559ae597c416b41c3a14585c5da52b090fc7891d6c275beacac5"
   },
   {
    "from": "internal/ormgen/migrate_physical_test.go#2",
@@ -29802,13 +29802,13 @@
    "from": "internal/ormgen/migrate_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "f4ebeb83046769fd226018742f0fde9254612a34c1e07a0771e7260d8f66fb25"
+   "sha256": "304d424a66bc3774641203f920ecc21a92272e4403669ba8ac1fbd9ea71c483f"
   },
   {
    "from": "internal/ormgen/migrate_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "8d0e676b88cdf1c3da1321e847c43589ee557e4e1532029e5a2ea7152f077dba"
+   "sha256": "94f2c2e3856ed87871bb7a782be8f0f90d3e21ceb458f6242f3d09e723f743ec"
   },
   {
    "from": "internal/ormgen/migrate_test.go#1",
@@ -30054,13 +30054,13 @@
    "from": "internal/ormgen/migrate_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "95e936efcf8907356b846057deeddd63abee7593c7dd0dfbbb0a4729f81c794b"
+   "sha256": "72e38c23e2823cefba4512fb4f42ed74d803da3cc62d1838b58abedd3bb08384"
   },
   {
    "from": "internal/ormgen/migrate_test.go#2",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "31187237d7afd43b66b8e234693611055f4b1e4c95482ff9b929878e32d26c48"
+   "sha256": "5222f70b7878cf9c6b4dd939d44e2140e701b708dea85d41128aa79019cb2118"
   },
   {
    "from": "internal/ormgen/migrate_test.go#2",
@@ -31188,13 +31188,13 @@
    "from": "internal/ormgen/schema_source_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "38a1db7ddc473078517fe2af202ae11d7cffe5340146d6a1577274b9059554c6"
+   "sha256": "fcbcc76992689eaa4b3b2af5a35a0ebd3d2303636c1304bd6435050e038e4d43"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#1",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "b15cba7b2d8ce71ccbda653c8eea46cdb78d86586bf28f54ff6389c05e1c61be"
+   "sha256": "aef7e9d441984b537ebe9865e52cfafe985c8e314c9100155936e1a5efa69a7d"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#1",
@@ -31440,13 +31440,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/composite_key_test.go#1",
    "dialect": "mysql",
-   "sha256": "7515c6f721b62f9cf294621b0e6bbbb101ba212e663c59bcbace06590d80279f"
+   "sha256": "c98182e4c5cab02bfe518a48753a9aa88dd91a23416d18578938a9c8639b534d"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/composite_key_test.go#1",
    "dialect": "postgres",
-   "sha256": "9e62c643cad49709fdc06de14bfcf5c215c4fa1ed2e75af7bc47bc3035fcae22"
+   "sha256": "5b743da5b75291c60ffc217e4cd71d15b6b8e2da3b881097193dac7d27b59bc9"
   },
   {
    "from": "schema/bench.mmd",
@@ -31458,13 +31458,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/planner/soft_delete_test.go#1",
    "dialect": "mysql",
-   "sha256": "0d9dfb0c969df7a9d014f81a7c6b97f58f3a375a80805ae3c060943097609e19"
+   "sha256": "e530230f2f55d018c30029b9693575f44ee5f9f17aaef1e8f963dfbc954b185f"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/planner/soft_delete_test.go#1",
    "dialect": "postgres",
-   "sha256": "4a8459c8667ed6e6182e4b1a60d7c2c3791c0189bc6823d27d252acde3319b9b"
+   "sha256": "1ee49ef0b6533c7adfc008de067af5088500d99cc4c39a77e2973cfecb5239d3"
   },
   {
    "from": "schema/bench.mmd",
@@ -31476,13 +31476,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/fuzz_test.go#1",
    "dialect": "mysql",
-   "sha256": "fe24aa91627a340e18124f3c85f238c5be1be2edaa6891c732953c0705e73a4b"
+   "sha256": "33e8300a97c3482e5a84539ca1886e673c3804e8b143abbe54e3bd723b1c33ca"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/fuzz_test.go#1",
    "dialect": "postgres",
-   "sha256": "bec68d713d0ad138f67381284a23c832340af25b2d9e9d843ddfa87d5a15b2c0"
+   "sha256": "f05667b55de17f39824de1f6b03d18b2b0344c94040448b17cb4de4c5aac7f4c"
   },
   {
    "from": "schema/bench.mmd",
@@ -31494,13 +31494,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#2",
    "dialect": "mysql",
-   "sha256": "f450e1e130bee9fb2e05db9de797d346af6fe99fd7229030ceb3f92d42c9b24d"
+   "sha256": "6c3eca401b511c6df9033032be0000d01d520aa38812b84a3e068fc46dcdd2df"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#2",
    "dialect": "postgres",
-   "sha256": "1b5211aa4a4137116d1e2e48a4be1d402681a23733b14835f7d8c2077ca62ad3"
+   "sha256": "bbe7e890e4fef4bf32a615e7b512ba1fa790924f6fbf8da05d6af06914e60828"
   },
   {
    "from": "schema/bench.mmd",
@@ -31512,13 +31512,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#3",
    "dialect": "mysql",
-   "sha256": "0d9dfb0c969df7a9d014f81a7c6b97f58f3a375a80805ae3c060943097609e19"
+   "sha256": "e530230f2f55d018c30029b9693575f44ee5f9f17aaef1e8f963dfbc954b185f"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#3",
    "dialect": "postgres",
-   "sha256": "4a8459c8667ed6e6182e4b1a60d7c2c3791c0189bc6823d27d252acde3319b9b"
+   "sha256": "1ee49ef0b6533c7adfc008de067af5088500d99cc4c39a77e2973cfecb5239d3"
   },
   {
    "from": "schema/bench.mmd",
@@ -31530,13 +31530,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#13",
    "dialect": "mysql",
-   "sha256": "b9e3ef5c2997b9b79c3b3d7529be1af04dc0b7698c78003560489fa14954a09a"
+   "sha256": "17a0fc8f2bc99be10956fd476f8e61aa8bfab205cb8d17b1ae3395cc04983df8"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#13",
    "dialect": "postgres",
-   "sha256": "f9d7db93bb1731696935f010fb5c35161fb0d57d922190dd5d7c63d48136f457"
+   "sha256": "01295114c32e7c86f57e6445d4ee86719580d5d1ff1a3ea98ca695d11d314c6e"
   },
   {
    "from": "schema/bench.mmd",
@@ -31548,13 +31548,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#14",
    "dialect": "mysql",
-   "sha256": "ae0c513dbda3cfc5f9a678170f75e2cde9d33d31fc4eef300d534b6f50f9986d"
+   "sha256": "43ca339604ee3bf8fdecdd6f99bc7aeba3e92e58085112faee302437a166b4e6"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#14",
    "dialect": "postgres",
-   "sha256": "0d1315a7c79d12ceb27e90ef1fa97329bef606a0c0610868595412167a075032"
+   "sha256": "920760411c258f097e872b09894c0fa765b9ef49ac3c1e548cde8152ebb46e39"
   },
   {
    "from": "schema/bench.mmd",
@@ -31566,13 +31566,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#33",
    "dialect": "mysql",
-   "sha256": "c336c668dfe319c0e890cf69a4a15c9a637c50371a1d3831033679f743dfb96a"
+   "sha256": "4cbe562a75909b916fd864c8f69d85d4f3be2f961aa4c1db2a475876503015ec"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/manifest_test.go#33",
    "dialect": "postgres",
-   "sha256": "9b13ffdc94d38d7006e0f81c8baff0d5bc178a93099a4a9fe5820da52c6ecf20"
+   "sha256": "9c8aedfe9feba9fba3caeddf74452b3646073f566596df919f67a022b8bad6c2"
   },
   {
    "from": "schema/bench.mmd",
@@ -31584,13 +31584,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/mermaid_test.go#20",
    "dialect": "mysql",
-   "sha256": "f2409b0e7a16bffae15843001b060b66768686ee34f942e865dd8280c8821fb5"
+   "sha256": "d5d8a1b0870956cbf0ba4ae525a81026ac50c4553d9bcf32bb24fc4be855bd96"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/mermaid_test.go#20",
    "dialect": "postgres",
-   "sha256": "a76129b60fa4e06c3ac0572c6b4250377b4c8b3dc8adecd7ee140c738e2f52a6"
+   "sha256": "7e49a969488fb658bbb5a8b5142b364f80ae0bb3b6931be74432708457827ed9"
   },
   {
    "from": "schema/bench.mmd",
@@ -31620,13 +31620,13 @@
    "from": "schema/bench.mmd",
    "to": "engine/schema/overlapping_foreign_keys_test.go#1",
    "dialect": "mysql",
-   "sha256": "9d74e37f4c638a842bff0ff7ab809323bc5a58ccc012bdd0930767ba45726f2c"
+   "sha256": "037b862762559d581ab12eb5b15fc0fbd241719176b008ab006d292450f92eb2"
   },
   {
    "from": "schema/bench.mmd",
    "to": "engine/schema/overlapping_foreign_keys_test.go#1",
    "dialect": "postgres",
-   "sha256": "cdb0a5e042d2dc1f5dd18f809c30cb801ca236950876b8fffa7331fbff8da584"
+   "sha256": "a1a5b7f0a1c9731ec41e46aabad91c54fbe1f851f525ef928905a9f9abc9fe1a"
   },
   {
    "from": "schema/bench.mmd",
@@ -31638,13 +31638,13 @@
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/composite_migration_test.go#1",
    "dialect": "mysql",
-   "sha256": "23fd7329c6282c7946a8571ccd107201ea554a3aa236be33df322b84e8be8633"
+   "sha256": "663ab68b83839420c27779951f25b76a1d3522558833f5662b8aae31fa5106ba"
   },
   {
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/composite_migration_test.go#1",
    "dialect": "postgres",
-   "sha256": "a9ebaab839c4ba62d4969d02e1f62e096a77751939a8494c53b08ad11999470a"
+   "sha256": "b5c9270894e62ce64f772c5323840304939f8cff1c3a8bffc6b6371d6c0cc96f"
   },
   {
    "from": "schema/bench.mmd",
@@ -31656,13 +31656,13 @@
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_physical_test.go#2",
    "dialect": "mysql",
-   "sha256": "895028fc369c7c23d1548fced04e28219e859bfa4c28a2e3e7f36d6607aa497f"
+   "sha256": "373a76c3901ec850a2df428b1917f36aca7c93811880be8ae11ed75cf61f0a8e"
   },
   {
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_physical_test.go#2",
    "dialect": "postgres",
-   "sha256": "4060e6fed6658930d0f16b566b488281e1d8ec8ff8edfc80df3fee80c275e9cc"
+   "sha256": "c7fe07bc2fbc19413f58b7d6f746386c80579f086099c6132e757200cc5e7f2a"
   },
   {
    "from": "schema/bench.mmd",
@@ -31674,13 +31674,13 @@
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_test.go#1",
    "dialect": "mysql",
-   "sha256": "d7410518e182913f0972c371820cf3a77ab662f38432862346db7a4ea1f21311"
+   "sha256": "76bf861b788d3c7166cecb7f300970b2e6e84bb9b7c3cdacbf8ae6e80d27731d"
   },
   {
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_test.go#1",
    "dialect": "postgres",
-   "sha256": "6fa417662043cb8898c8c7ab32c680fcb42eb0040d443c283bb082d408b84016"
+   "sha256": "a215609461ee67810a205a0beca17c407f6ed5987c8440ee10d6432d8dfdf30c"
   },
   {
    "from": "schema/bench.mmd",
@@ -31692,13 +31692,13 @@
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_test.go#2",
    "dialect": "mysql",
-   "sha256": "8ddec81f5a1d883d3b083f946f9f79813631fcf09515430212bbbae5bd5dcaac"
+   "sha256": "11e1198d445cae4a9b8701456ecca00ea2c9a536d40cd0681ea144c7acd26d49"
   },
   {
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/migrate_test.go#2",
    "dialect": "postgres",
-   "sha256": "4a2838c7784086e0330bb869b4af7a1b8efc8245b660460ae4a8a452c8cd2408"
+   "sha256": "fb5ba68875a501a41d4e9250b1c25b720c8007a32a7d59b6886f813c67bb6d9d"
   },
   {
    "from": "schema/bench.mmd",
@@ -31710,13 +31710,13 @@
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/schema_source_test.go#1",
    "dialect": "mysql",
-   "sha256": "854ea62ab600c5c91940c4a1c222688ad748319c468e40fc8dcca55d6bb077d5"
+   "sha256": "c00eb51a0c2e119e061e7c8ce1c3d7a9d784b93c2fc69a1c4438e3d84cfd7a90"
   },
   {
    "from": "schema/bench.mmd",
    "to": "internal/ormgen/schema_source_test.go#1",
    "dialect": "postgres",
-   "sha256": "385f330c8e1ab304f4eccad34f0568c0bab620d51a293f924efd987494e0960b"
+   "sha256": "ebc81a260a6e389110744c39a10fb53b7fde73e627bbf84141fb3a914e1bbde5"
   },
   {
    "from": "schema/bench.mmd",
@@ -31728,19 +31728,19 @@
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "mysql",
-   "sha256": "1d0de4e3442c8ddf6416199fb34788b9ff0ee5bfe4d531495273a47e0c4ef3c5"
+   "sha256": "35167c2e1ee71e766cb51fdda405b60cd3f41f3e1d28f94e85d1b37d8fc79422"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "postgres",
-   "sha256": "557868567210555be717a24e3b65f05aa238d25c02940bb1d7e4f078cf8db7a4"
+   "sha256": "814e717299fe4d1758af766d7ee4b9f38b0da27d6e95efaf20dae76ecc8674b1"
   },
   {
    "from": "schema/bench.mmd",
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
-   "sha256": "2fb56cbbb1e8265b3a40ff1eb7b3e4f07e7a5d36da0847639f1e989db5042014"
+   "sha256": "20629eee56a667aab7c39bf137593542e9fe984387249a47dea11746d482db8e"
   }
  ]
 }

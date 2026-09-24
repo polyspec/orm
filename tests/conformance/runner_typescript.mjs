@@ -4,7 +4,7 @@
 //
 // Usage: node runner_typescript.mjs --dsn URI <schema.json>
 import {
-  AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, User, orm,
+  AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, Task, User, orm,
 } from '../../clients/typescript/dist/index.js';
 import { Value as JsonValue, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
@@ -290,6 +290,22 @@ async function main() {
     const near = Math.abs(Date.parse(createdTs.replace(' ', 'T') + 'Z') - before) < 60_000;
     await loaded.delete();
     return { created_near_clock: near, created_equals_updated: createdTs === updatedTs };
+  });
+  await run('required_columns', async () => {
+    const failure = async (fn) => {
+      try {
+        await fn();
+      } catch (e) {
+        return { error: code(e), message: e.message };
+      }
+      return null;
+    };
+    const missingState = await failure(() => new Task().connect(db).setTitle('draft').create());
+    const missingTitle = await failure(() => new Task().connect(db).setState('open').create());
+    const created = await new Task().connect(db).setTitle('draft').setState('open').create();
+    mask([created.getSeq()]);
+    await created.delete();
+    return { missing_state: missingState, missing_title: missingTitle };
   });
   await run('creates_and_save', async () => {
     const rows = [

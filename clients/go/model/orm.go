@@ -14,7 +14,7 @@ import (
 var _ time.Time
 
 // SchemaHash is the hash of the schema the models were generated from.
-const SchemaHash = "07c725aadc45a65d"
+const SchemaHash = "16198b563e2e3cae"
 
 var ormSchema = &orm.Schema{Hash: SchemaHash}
 
@@ -45,7 +45,7 @@ func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {
-	*BattleModel | *UserModel | *ServiceModel | *ServiceModuleModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel
+	*BattleModel | *UserModel | *ServiceModel | *ServiceModuleModel | *ServiceMemberModel | *CompositeAccountModel | *CompositeMembershipModel | *SoftRecordModel | *AccountModel | *ProjectModel | *AccountProjectModel | *TaskModel
 }
 
 type argBoolEq interface {
@@ -86,7 +86,7 @@ type argTimeEq interface {
 
 // hasSeq is a model with the column seq.
 type hasSeq interface {
-	*BattleModel | *UserModel | *ServiceModel | *ServiceModuleModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel
+	*BattleModel | *UserModel | *ServiceModel | *ServiceModuleModel | *ServiceMemberModel | *SoftRecordModel | *AccountModel | *ProjectModel | *TaskModel
 	Orm_() *orm.Core
 }
 
