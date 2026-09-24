@@ -98,6 +98,13 @@ jobs:
           go run ./bench/seedaes -driver mysql -dsn 'root@tcp(127.0.0.1:3306)/orm_bench?parseTime=true'
           go run ./bench/seedaes -driver postgres -dsn 'postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable'
           go run ./bench/seedaes -driver sqlite -dsn 'file:/tmp/orm_bench.sqlite'
+      - name: write the environment file of the database checks
+        # The make targets of the database checks read .runtime/servers/env.
+        run: |
+          mkdir -p .runtime/servers
+          for name in ORM_TEST_MYSQL_DSN ORM_TEST_POSTGRES_DSN ORM_TOOLS_MYSQL_DSN ORM_TOOLS_POSTGRES_DSN ORM_BENCH_MYSQL_DSN BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do
+            printf "export %s='%s'\n" "$name" "$(printenv "$name")"
+          done > .runtime/servers/env
       - name: feature, documentation, and package contracts
         run: make feature-check git-check docs-rules-check docs-check docs-verify-idempotent package-check
       - name: decoder fuzz smoke checks
@@ -119,12 +126,7 @@ jobs:
       - name: client database tests (SQLite, MySQL, PostgreSQL)
         run: make client-db-check
       - name: conformance (4 languages identical on 3 databases)
-        run: |
-          (cd clients/rust && cargo build --locked --release -p orm-tests --bin conformance)
-          npm run typescript:build
-          go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
-          go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
-          go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
+        run: make conformance-check
       - name: common state and execution contracts
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
@@ -138,4 +140,4 @@ jobs:
       - name: hot-path regression gate
         run: make perf-check
       - name: physical migration recovery
-        run: CI=true ./scripts/db-test.sh
+        run: make db-test

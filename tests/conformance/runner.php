@@ -1,6 +1,6 @@
 <?php
 // Conformance runner (PHP). Runs the chains of runner_go/main.go and prints the same document.
-// Usage: php tests/conformance/runner.php <schema.json> [--driver mysql|postgres|sqlite] [--dsn URI]
+// Usage: php tests/conformance/runner.php <schema.json> --dsn URI
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
@@ -19,20 +19,14 @@ use Orm\Orm;
 use Orm\OrmException;
 
 $schema = $argv[1] ?? throw new RuntimeException('schema.json required');
-$driver = 'mysql';
 $dsn = null;
 for ($i = 2; $i < $argc; $i++) {
     match ($argv[$i]) {
-        '--driver' => $driver = $argv[++$i],
         '--dsn' => $dsn = $argv[++$i],
         default => throw new RuntimeException("unknown argument {$argv[$i]}"),
     };
 }
-$dsn ??= match ($driver) {
-    'postgres' => 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00',
-    'sqlite' => 'sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00',
-    default => 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&timezone=%2B00:00',
-};
+$dsn ?? throw new RuntimeException('--dsn required');
 
 $log = [];
 $maskSeqs = [];

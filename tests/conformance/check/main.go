@@ -2,7 +2,7 @@
 // compares each vector's statements and result against tests/conformance/vectors.json
 // after canonicalizing the JSON (sorted keys, shortest numbers).
 //
-//	go run ./tests/conformance/check run [-driver postgres|sqlite -langs go,php,rust -dsn …]  # run runners, then compare
+//	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite -langs go,php,rust]  # run runners, then compare
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
 //	go run ./tests/conformance/check record [-driver …] out/go.json                             # fill expectations from one output
 //
@@ -56,13 +56,16 @@ func main() {
 	}
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
-	fs.StringVar(&dsn, "dsn", "", "database DSN URI for every runner (empty = the local bench database)")
+	fs.StringVar(&dsn, "dsn", "", "bench database DSN URI for every runner (required by run)")
 	fs.StringVar(&langs, "langs", "go,php,rust,typescript", "runners to execute")
 	fs.Parse(os.Args[2:])
 	root, err := os.Getwd()
 	must(err)
 	switch os.Args[1] {
 	case "run":
+		if dsn == "" {
+			usage()
+		}
 		out := filepath.Join(root, "tests", "conformance", "out", driverDir())
 		must(os.MkdirAll(out, 0o755))
 		if err := os.Mkdir(lockDir, 0o755); err != nil {
@@ -99,7 +102,7 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check run [-driver d -dsn x -langs go,php,rust,typescript] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
+	fmt.Fprintln(os.Stderr, "usage: check run -dsn x [-driver d -langs go,php,rust,typescript] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
 	os.Exit(2)
 }
 
@@ -144,16 +147,9 @@ func runAll(root, out string) {
 	if want["typescript"] {
 		build(exec.Command("npm", "run", "build", "--prefix", "clients/typescript"))
 	}
-	flags := []string{"--driver", driver}
-	if dsn != "" {
-		flags = append(flags, "--dsn", dsn)
-	}
+	flags := []string{"--dsn", dsn}
 	if want["go"] {
-		args := []string{"run", "./tests/conformance/runner_go", "-driver", driver}
-		if dsn != "" {
-			args = append(args, "-dsn", dsn)
-		}
-		capture(filepath.Join(out, "go.json"), exec.Command("go", append(args, schema)...))
+		capture(filepath.Join(out, "go.json"), exec.Command("go", "run", "./tests/conformance/runner_go", "-driver", driver, "-dsn", dsn, schema))
 	}
 	if want["php"] {
 		capture(filepath.Join(out, "php.json"), exec.Command("php", append([]string{"tests/conformance/runner.php", schema}, flags...)...))
