@@ -1,8 +1,8 @@
 # Conformance vectors
 
 One document, four runners. Every vector is the same chain written in Go,
-PHP, Rust, and TypeScript; each runner executes it against the local MySQL (`orm_bench`,
-`/tmp/mysql.sock`) and prints
+PHP, Rust, and TypeScript; each runner executes it against the seeded bench database
+`orm_bench` and prints
 
 ```json
 {"<vector>": {"statements": [{"sql": "...", "binds": [...]}], "result": ...}}
@@ -26,15 +26,20 @@ datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
 ## Run
 
 ```sh
-(cd clients/rust && cargo build --locked --release -p orm-tests --bin conformance)
-npm run typescript:build
-go run ./tests/conformance/check run                  # MySQL: runs all four, compares
-go run ./tests/conformance/check run -driver postgres -dsn 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00'
-go run ./tests/conformance/check run -driver sqlite -dsn 'sqlite:///tmp/orm_bench.sqlite?timezone=%2B00:00'
+make test-servers
+make conformance-check
 ```
-`-langs go,php` limits which runners execute. Every runner receives the same DSN
-URI; without `-dsn` the runners use the local bench database with the time zone
-`+00:00`. `check record -driver <db> out/<db>/go.json` refreshes that database's
+`make conformance-check` reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and
+`BENCH_SQLITE_DSN` from the environment file of `make test-servers` and runs
+
+```sh
+go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
+go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
+go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
+```
+`check run` requires `-dsn` and passes the same DSN URI to every runner; each
+DSN selects the time zone `+00:00`. `-langs go,php` limits which runners
+execute. `check record -driver <db> out/<db>/go.json` refreshes that database's
 expectations after a deliberate change.
 
 Every client plans its statements in its own process. `check run` holds the

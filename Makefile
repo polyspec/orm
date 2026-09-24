@@ -1,12 +1,26 @@
-.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check
+.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
+# make test-servers starts the MySQL and PostgreSQL servers of the database
+# checks on these ports and writes TEST_ENV; the database checks read TEST_ENV
+# and fail when it is missing.
+TEST_MYSQL_PORT = 33171
+TEST_POSTGRES_PORT = 55471
+TEST_ENV = .runtime/servers/env
+WITH_TEST_ENV = test -f $(TEST_ENV) || { echo "$(TEST_ENV) is missing; run make test-servers" >&2; exit 1; }; . ./$(TEST_ENV) &&
+
 check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
-	go test ./...
+	$(WITH_TEST_ENV) go test ./...
+
+test-servers:
+	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT)
+
+test-servers-stop:
+	./scripts/test-servers.sh stop
 
 feature-check:
 	node scripts/features/build.mjs --check
-	node scripts/features/check.mjs --run
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
 
 feature-docs:
 	node scripts/features/build.mjs
@@ -25,14 +39,14 @@ client-unit-check:
 	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
 
 client-db-check:
-	./scripts/client-db-test.sh
+	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
 
 conformance-check:
 	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --locked --release -p orm-tests --bin conformance
 	npm run typescript:build
-	go run ./tests/conformance/check run -driver mysql
-	go run ./tests/conformance/check run -driver postgres
-	go run ./tests/conformance/check run -driver sqlite
+	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
+	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver postgres -dsn "$$BENCH_POSTGRES_DSN"
+	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 
 interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
@@ -41,18 +55,18 @@ go-model-check:
 	cd clients/go/model && go generate ./ && git diff --exit-code -- .
 
 db-test:
-	./scripts/db-test.sh
+	$(WITH_TEST_ENV) ./scripts/db-test.sh
 
 perf-check:
-	./scripts/perf-test.sh
+	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
 ts-check:
-	npm run typescript:check && npm run typescript:test
+	npm run typescript:check && $(WITH_TEST_ENV) npm run typescript:test
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports.
 ts-min-check:
-	PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
+	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 schema-check:
 	npm run schema:check

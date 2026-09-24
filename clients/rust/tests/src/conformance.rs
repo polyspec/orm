@@ -2,7 +2,7 @@
 //! prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 //! other runners print the same document for the same chains.
 //!
-//! Usage: conformance [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>
+//! Usage: conformance --dsn URI <schema.json>
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -116,38 +116,25 @@ fn int(v: Option<Value>) -> i64 {
 
 struct Args {
     schema: String,
-    driver: String,
-    dsn: Option<String>,
+    dsn: String,
 }
 
 impl Args {
     fn parse() -> Args {
         let mut rest = Vec::new();
-        let (mut driver, mut dsn) = ("mysql".to_owned(), None);
+        let mut dsn = None;
         let mut it = std::env::args().skip(1);
         while let Some(a) = it.next() {
             match a.as_str() {
-                "--driver" => driver = it.next().expect("--driver value"),
                 "--dsn" => dsn = Some(it.next().expect("--dsn value")),
                 _ => rest.push(a),
             }
         }
-        if rest.len() != 1 {
-            eprintln!("usage: conformance [--driver mysql|postgres|sqlite] [--dsn URI] <schema.json>");
+        let (Some(dsn), 1) = (dsn, rest.len()) else {
+            eprintln!("usage: conformance --dsn URI <schema.json>");
             std::process::exit(2);
-        }
-        Args { schema: rest[0].clone(), driver, dsn }
-    }
-
-    fn dsn(&self) -> String {
-        if let Some(d) = &self.dsn {
-            return d.clone();
-        }
-        match self.driver.as_str() {
-            "postgres" => "postgres:///orm_bench?host=/tmp&timezone=%2B00:00".into(),
-            "sqlite" => "sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00".into(),
-            _ => "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock&timezone=%2B00:00".into(),
-        }
+        };
+        Args { schema: rest[0].clone(), dsn }
     }
 }
 
@@ -168,7 +155,7 @@ async fn main() {
         })),
         ..Default::default()
     };
-    let db = Db::connect(&args.dsn(), 4, config).await.expect("connect");
+    let db = Db::connect(&args.dsn, 4, config).await.expect("connect");
     let out = run_all(&db, &shared).await;
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
     db.close().await;

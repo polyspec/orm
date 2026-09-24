@@ -21,15 +21,20 @@
 ## 실행
 
 ```sh
-(cd clients/rust && cargo build --locked --release -p orm-tests --bin conformance)
-npm run typescript:build
-go run ./tests/conformance/check run
-go run ./tests/conformance/check run -driver postgres -dsn 'postgres:///orm_bench?host=/tmp&timezone=%2B00:00'
-go run ./tests/conformance/check run -driver sqlite -dsn 'sqlite:///tmp/orm_bench.sqlite?timezone=%2B00:00'
+make test-servers
+make conformance-check
 ```
 
-`-langs go,php`는 지정한 실행기만 실행한다. 모든 실행기는 같은 DSN URI를 받는다.
-DSN을 생략하면 로컬 bench 데이터베이스를 시간대 `+00:00`으로 사용한다.
+`make conformance-check`는 `make test-servers`의 환경 파일에서 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
+
+```sh
+go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
+go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
+go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
+```
+
+`check run`은 `-dsn`이 필요하며 모든 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다.
+`-langs go,php`는 지정한 실행기만 실행한다.
 `check record -driver <db> out/<db>/go.json`은 검토 후 기대값을 갱신할 때 사용한다.
 
 각 클라이언트는 자기 프로세스에서 SQL을 조립한다. `check run`은 실행기가 bench 데이터베이스를 쓰는 동안 디렉터리 잠금 `/tmp/orm-conformance.lock`을 잡으며, 두 번째 실행은 기다리지 않고 실패한다.

@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+`make test-servers`와 `make test-servers-stop`을 추가한다. `make test-servers`는 `.runtime/servers` 아래에서 MySQL 8.4와 PostgreSQL 17을 127.0.0.1의 TCP 포트로 시작하고, `orm_test`, `orm_tools`, `orm_bench` 데이터베이스를 만들고, MySQL·PostgreSQL·SQLite 벤치 데이터베이스를 시드하고, 환경 파일 `.runtime/servers/env`를 쓴다. 두 번째 시작은 파일 내용을 출력하고 아무것도 바꾸지 않는다. `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `conformance-check`, `db-test`, `perf-check`는 이 파일을 읽고 파일이 없으면 실패한다. `make db-test`는 `ORM_TOOLS_MYSQL_DSN`과 `ORM_TOOLS_POSTGRES_DSN`이 가리키는 데이터베이스에서 물리 migration 테스트를 실행하며 컨테이너를 시작하지 않는다. `tests/compose.yaml`은 삭제한다. conformance 검사와 실행기는 DSN이 필요하며 로컬 소켓에 연결하지 않는다. PHP, Rust, TypeScript 실행기는 `--dsn`만 받는다.
+
 Go·PHP hot-path 검사는 준비 작업 100쌍 뒤 순서를 번갈아 측정한 1,000쌍의 쌍별 client/native 비율 중앙값을 바뀌지 않은 한도(1.35, 1.25)와 비교하고, CPU마다 바쁜 프로세스 하나를 함께 실행한 상태로 한 번 더 실행한다(`TestHotPathGateUnderLoad`, `ORM_PERF_CPU_LOAD=1`). `make perf-check`가 두 실행을 모두 수행한다.
 
 Go 클라이언트가 행을 읽을 때의 할당을 줄인다. 행 모델은 빌더로 쓰기 전까지 문장 빌더를 갖지 않고, 행 core와 행 상태는 결과마다 한 블록으로 할당하며, 불러온 키 값은 map 대신 slice로 저장하고, MySQL 드라이버가 datetime 셀을 연결 시간대로 읽으므로 클라이언트가 다시 변환하지 않는다. 벤치의 100행 목록은 쿼리당 358,386 B와 객체 5,233개 대신 270,611 B와 객체 4,336개를 할당하며 결과는 같다.
