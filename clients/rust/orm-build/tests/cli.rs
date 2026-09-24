@@ -132,6 +132,22 @@ fn mysql_url(dsn: &str) -> String {
 /// time.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// The DSN in `var`; an unset or empty variable is an error, so a test never
+/// leaves out a database.
+fn required_dsn(var: &str) -> Result<String, String> {
+    match std::env::var(var) {
+        Ok(dsn) if !dsn.is_empty() => Ok(dsn),
+        _ => Err(format!("{var} is required; database tests never skip")),
+    }
+}
+
+#[test]
+fn unset_database_dsn_is_an_error() {
+    let var = "ORM_TOOLS_UNSET_DSN_FOR_TEST";
+    assert!(std::env::var(var).is_err(), "{var} must stay unset");
+    assert_eq!(required_dsn(var), Err(format!("{var} is required; database tests never skip")));
+}
+
 fn targets(test: &str) -> Vec<Target> {
     let base = std::env::temp_dir().join(format!("orm-gen-cli-{}-{test}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
@@ -142,14 +158,8 @@ fn targets(test: &str) -> Vec<Target> {
         for (name, text) in [("v1.mmd", V1), ("v2.mmd", V2)] {
             std::fs::write(dir.join(name), text).unwrap();
         }
-        let dsn = if driver == "sqlite" {
-            format!("sqlite://{}", dir.join("db.sqlite").display())
-        } else {
-            match std::env::var(var) {
-                Ok(dsn) if !dsn.is_empty() => dsn,
-                _ => continue,
-            }
-        };
+        let dsn =
+            if driver == "sqlite" { format!("sqlite://{}", dir.join("db.sqlite").display()) } else { required_dsn(var).unwrap_or_else(|e| panic!("{e}")) };
         out.push(Target { driver, dsn, dir });
     }
     out
