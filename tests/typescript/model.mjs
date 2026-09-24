@@ -490,6 +490,53 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   await dropTable(dialect, dsn, 'secret_config');
 }
 
+/**
+ * Installs an enum column with a default and audit triggers whose change table
+ * has a bigint service column: an entity with service= records its bigint
+ * value and an entity without it records NULL.
+ */
+async function auditBigintService(dialect, dsn) {
+  const prefix = dialect === 'mysql' ? '' : 'app.';
+  const table = name => (prefix === '' ? '' : `  %% orm:table entity=${name} name=app.${name}\n`);
+  const { json, models } = auditSchema('erDiagram\n'
+    + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
+    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    bigint service_seq "?"\n'
+    + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
+    + '  routed {\n    bigint seq PK "auto"\n    bigint service_seq\n    enum(csr_ssr) render "=ssr"\n  }\n'
+    + '  unowned {\n    bigint seq PK "auto"\n    varchar(32) label\n  }\n'
+    + table('audit_operation') + table('audit_change') + table('routed') + table('unowned')
+    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=app.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)\n`
+    + '  %% orm:audit entity=routed mode=changes service=service_seq\n'
+    + '  %% orm:audit entity=unowned mode=changes\n');
+  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
+  const db = await connect(dsn);
+  try {
+    await db.utils().schema().install(json);
+    const { audit_operation: AuditOperation, audit_change: AuditChange, routed: Routed, unowned: Unowned } = models;
+    await db.transaction(async () => {
+      const op = new AuditOperation();
+      op[CORE].setValue('operation_uuid', 'op-1');
+      await op.create();
+      await db.utils().setLocal('app.operation_id', 'op-1');
+      const routed = new Routed();
+      routed[CORE].setValue('service_seq', 42);
+      await routed.create();
+      const unowned = new Unowned();
+      unowned[CORE].setValue('label', 'a');
+      await unowned.create();
+    }, { retry: 0 });
+    const query = new AuditChange().connect(db).addAllColumns();
+    query[CORE].orderBy('seq', false, []);
+    const rows = [...(await query.gets()).values()];
+    const value = (row, column) => row[CORE].column(column);
+    const got = rows.map(r => `${String(value(r, 'table_label')).replace(/^app\./, '')}:${value(r, 'service_seq') === null ? 'null' : Number(value(r, 'service_seq'))}`);
+    check(got.join(',') === 'routed:42,unowned:null', `changes ${got}`);
+    const after = JSON.parse(JSON.stringify(value(rows[0], 'after_value'), (_, x) => x instanceof Map ? Object.fromEntries(x) : x));
+    check(after.render === 'ssr', `render default ${JSON.stringify(after)}`);
+  } finally { await db.close(); }
+  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
+}
+
 /** The stored config cell and key version of the single secret_config row. */
 async function storedCell(dialect, dsn, sqlitePath) {
   const sql = 'SELECT config, aes_key_version FROM secret_config';
@@ -517,10 +564,10 @@ async function dropTable(dialect, dsn, table) {
   }
 }
 
-async function dropAuditTables(dialect, dsn) {
+async function dropAuditTables(dialect, dsn, tables = ['audit_item', 'audit_change', 'audit_operation']) {
   if (dialect === 'mysql') {
     const conn = await mysqlConnection(dsn);
-    for (const table of ['audit_item', 'audit_change', 'audit_operation']) await conn.query(`DROP TABLE IF EXISTS ${table}`);
+    for (const table of tables) await conn.query(`DROP TABLE IF EXISTS ${table}`);
     await conn.end();
   } else if (dialect === 'postgres') {
     const client = postgresClient(dsn);
@@ -613,6 +660,12 @@ try {
     current = `${dialect}/auditTriggers`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     try { await auditTriggers(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    console.log(`${current} done`);
+  }
+  for (const [dialect, dsn] of targets) {
+    current = `${dialect}/auditBigintService`;
+    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
+    try { await auditBigintService(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
   }
   for (const [dialect, dsn] of targets) {

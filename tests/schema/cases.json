@@ -45,7 +45,7 @@
      "sha256": "a7182dfbdb36a487e36eb971223a45db62bb98188b93cc268fdd37013ed1b223"
     },
     "postgres": {
-     "sha256": "6f5e82bde9997076cc3a85b2611084d9f1bd8040a4917e1d2df7743ba7013670"
+     "sha256": "6b2fd25d810bd55ad819fd67a44f9753f2c9f543d4293e5e58fac0915ca93a41"
     },
     "sqlite": {
      "sha256": "f4a358b78ed56b0981b44350ce2f9080a2fb6f6f8b455ecd7379985f6e8d9759"
@@ -63,10 +63,28 @@
      "sha256": "d4665e62f4970407ad4853bc9e95d5163b4cc59d11b85214badabc7efdb77d72"
     },
     "postgres": {
-     "sha256": "f92f49434c7d98396d1f573a303eac2a2913d1d5a136457b9b053c315c0f2264"
+     "sha256": "aabaf8b2dbb2e52b7e75cd048e4eb27bec34892e799950fccf712319af6b568f"
     },
     "sqlite": {
      "sha256": "9eb3ce3b1295d3b43f86619c165283486c98a0777376a4e8a0e1cf9595adb52a"
+    }
+   }
+  },
+  {
+   "name": "clients/go/orm/audit_service_test.go#1",
+   "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    bigint       service_seq       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  routed {\n    bigint       seq            PK \"auto\"\n    bigint       service_seq\n    enum(csr_ssr) render           \"=ssr\"\n  }\n  unowned {\n    bigint       seq            PK \"auto\"\n    varchar(32)  label\n  }\n  %% orm:table entity=audit_operation name=app.audit_operation\n  %% orm:table entity=audit_change name=app.audit_change\n  %% orm:table entity=routed name=app.routed\n  %% orm:table entity=unowned name=app.unowned\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=routed mode=changes service=service_seq\n  %% orm:audit entity=unowned mode=changes\n",
+   "manifest": {
+    "sha256": "3e4f503bb80e8bc263d05f481862ba9cb3de6ef4330437c12fe9e20d3c069f64"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "fc741261ee9454110aa2b37a50ed4e8f98f55a68d5f960769de90024915a4f87"
+    },
+    "postgres": {
+     "sha256": "4a0fb1c297fa4c8b59b1ceffc2b02208d3d6b3a49d0ad14e9fd5c8560d08434c"
+    },
+    "sqlite": {
+     "sha256": "0618e5c9e950f6175c91eb3b2e445631174aea2ac1b428fe396cc03820c9ca46"
     }
    }
   },
@@ -99,7 +117,7 @@
      "sha256": "0ca0e754f19e3db28b9c8bf27ab57916148a777a5928fce1e46e224e844cc66e"
     },
     "postgres": {
-     "sha256": "2d1eff4973614c881f358414bc1f6310c9c428e49d99881a6c527b7cc4bed5b6"
+     "sha256": "8c5e08a159910afb20cb281428593f9a755a940905114e4f36fc66098fdb7967"
     },
     "sqlite": {
      "sha256": "d8a575b7e0850d45e4d2583cd9f9066dda051faad6ff7f99af79bba33d9066a9"
@@ -882,7 +900,7 @@
      "sha256": "97e8a2f47573b4b875972c7f3bedcc5e608e6a2c9a9763bb2e53a3e7a9215b70"
     },
     "postgres": {
-     "sha256": "c5ccc9c56640ad9c3492460d6c979560263cdbb75d933a007bbbbfe0bc48fd7a"
+     "sha256": "d2bb296f6ec339caae3fadde8462cb7ddb8920849c3fbb5d6f84c6a8e5f62371"
     },
     "sqlite": {
      "sha256": "ecf85acbb045d7487d320ceb87af7efad7d8df76fbb8d8ff2c4ac6a7a267c616"
@@ -900,7 +918,7 @@
      "sha256": "025d696720b49653fb388be739c98812345da4c4d0313ec77c98668b2c6eb1fd"
     },
     "postgres": {
-     "sha256": "54e19920d7a62546cc5dc81c71be69f62e4480a4d9b77dd515db42bc29316b47"
+     "sha256": "790ab7c7d1db96a9fb12a67c36fb23fb517724e168f4e0740fdf1000ad893545"
     },
     "sqlite": {
      "sha256": "5b4cea5c44dc40d02f768d101a946570f408583a81186d0a45f03b96ae80745b"
@@ -936,7 +954,7 @@
      "sha256": "8d1cd0d6ae482b8405fcfbf2546b9d24accfefa354a5d554f22bfcb761e08c74"
     },
     "postgres": {
-     "sha256": "3a0c3dcf017057fe5402f48414961948feb14df48d319bfecfd0db4331ea5561"
+     "sha256": "5b03c0727867e1bcec62a90f6de36b6f25e58a33ab94baff66d10bb9813906af"
     },
     "sqlite": {
      "sha256": "455167d92191efc9d589e6da9cd5b45a353c5b766e273f504d8b279ecb0ec6be"
@@ -1105,7 +1123,7 @@
      "sha256": "387b56c8430e78969e0ecf4c571f39a2e707a0ba7814ff7f17a5e818909062fa"
     },
     "postgres": {
-     "sha256": "8e61c6e14b5c5f98d8101d977bd623fcd9723fcbb09cfc458f1091ad448f5c86"
+     "sha256": "f398ae2cb9a5bf303e84200d3b162f1ae1296563ae98ba2c95b023d12de50eb2"
     },
     "sqlite": {
      "sha256": "4c5640bb984258f463ca9dbcaa688c4241fba120490ebd89b579ae3b543a13c0"
@@ -2171,6 +2189,426 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "sha256": "58e24e7278a397cc6459a329210a577a8ffddbd357e429a0cad915ad580abe93"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "1bd532ba8059397e004753f5cee94f6f0e2586b4e300f1332b709a957f29aa87"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "1bd532ba8059397e004753f5cee94f6f0e2586b4e300f1332b709a957f29aa87"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "824678eccc4b7fce074b213637ad96213e2a820c9879b42271e4f477e770ceed"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "824678eccc4b7fce074b213637ad96213e2a820c9879b42271e4f477e770ceed"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "5584a35d30830b9557ec50410fc6282586305ddd618fb470d86e55aa6c5ace6b"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "5584a35d30830b9557ec50410fc6282586305ddd618fb470d86e55aa6c5ace6b"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "e680348b9909e53a78c119c2b23205dac000bdef11cc465c4e34da2739de36a0"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `app.audit_change` DROP COLUMN `service_seq`;"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "7466f33341765c19a74296657af1af2927537d873f756bc11c9d968ec63a2cfa"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE \"app.audit_change\" DROP COLUMN \"service_seq\";"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "7b8e0e3429713c9fe3a14c7a3a567c83eb45836ea25a037d615d1d5cef0da695"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: SELECT 'orm-sqlite-rebuild table=app.audit_change target=app.audit_change temp=__orm_rebuild_app.audit_change';\nPRAGMA defer_foreign_keys = ON;\nCREATE TABLE \"__orm_rebuild_app.audit_change\" (\n  \"seq\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"operation_seq\" INTEGER NOT NULL,\n  \"change_kind\" TEXT NOT NULL,\n  \"service_ref\" TEXT,\n  \"table_label\" TEXT NOT NULL,\n  \"entity_ref\" TEXT NOT NULL,\n  \"before_value\" TEXT NOT NULL,\n  \"after_value\" TEXT NOT NULL\n);\nINSERT INTO \"__orm_rebuild_app.audit_change\" (\"seq\", \"operation_seq\", \"change_kind\", \"table_label\", \"entity_ref\", \"before_value\", \"after_value\") SELECT \"seq\", \"operation_seq\", \"change_kind\", \"table_label\", \"entity_ref\", \"before_value\", \"after_value\" FROM \"app.audit_change\";\nDROP TABLE \"app.audit_change\";\nALTER TABLE \"__orm_rebuild_app.audit_change\" RENAME TO \"app.audit_change\";\nCREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nDELETE FROM orm_schema_comments WHERE table_name='app.audit_change';"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "7effbfccea58b7f5d9015865b1213e3458940c00d7c9a68c217bd82b6358cf90"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `app.audit_change` DROP COLUMN `service_ref`;"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "5bf9a27098f3db87733b38245ada94207ba3119d9ef7629614c7915c1548d87d"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE \"app.audit_change\" DROP COLUMN \"service_ref\";"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "780ae5c9b8c53d9a66e17b31ae24eeda135414537ca671d254f3d092e415c6c5"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: SELECT 'orm-sqlite-rebuild table=app.audit_change target=app.audit_change temp=__orm_rebuild_app.audit_change';\nPRAGMA defer_foreign_keys = ON;\nCREATE TABLE \"__orm_rebuild_app.audit_change\" (\n  \"seq\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"operation_seq\" INTEGER NOT NULL,\n  \"change_kind\" TEXT NOT NULL,\n  \"service_seq\" INTEGER,\n  \"table_label\" TEXT NOT NULL,\n  \"entity_ref\" TEXT NOT NULL,\n  \"before_value\" TEXT NOT NULL,\n  \"after_value\" TEXT NOT NULL\n);\nINSERT INTO \"__orm_rebuild_app.audit_change\" (\"seq\", \"operation_seq\", \"change_kind\", \"table_label\", \"entity_ref\", \"before_value\", \"after_value\") SELECT \"seq\", \"operation_seq\", \"change_kind\", \"table_label\", \"entity_ref\", \"before_value\", \"after_value\" FROM \"app.audit_change\";\nDROP TABLE \"app.audit_change\";\nALTER TABLE \"__orm_rebuild_app.audit_change\" RENAME TO \"app.audit_change\";\nCREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nDELETE FROM orm_schema_comments WHERE table_name='app.audit_change';"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
@@ -10952,6 +11390,48 @@
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
@@ -11095,14 +11575,14 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "965a341cb030b84baea8b0f2f271a06dc4cb85dca44bdb3d027490218c9ed0fe"
+   "sha256": "ae4111ac5dbec649255952a911665eb046276f681e4edcddfe7c0ab39799806a"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "965a341cb030b84baea8b0f2f271a06dc4cb85dca44bdb3d027490218c9ed0fe"
+   "sha256": "ae4111ac5dbec649255952a911665eb046276f681e4edcddfe7c0ab39799806a"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -11137,14 +11617,14 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "a7b753f065bb0dc6215cb9f65802a06b8ad827b63b2a2e1b1c42034412cf49e0"
+   "sha256": "9d148ba9c33b991a152327853b3d02a9b68927256f170baa505b948de25f3bad"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "a7b753f065bb0dc6215cb9f65802a06b8ad827b63b2a2e1b1c42034412cf49e0"
+   "sha256": "9d148ba9c33b991a152327853b3d02a9b68927256f170baa505b948de25f3bad"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -11221,14 +11701,14 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "422e42459159fc872bf209842ea93ca654d32fdde606af28016219b9a3bfddc7"
+   "sha256": "7bee1d7f3e6b9ced4ebda59cc39b5f1e0a9b26f6d7b79230b3cea8bb37f7809f"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "422e42459159fc872bf209842ea93ca654d32fdde606af28016219b9a3bfddc7"
+   "sha256": "7bee1d7f3e6b9ced4ebda59cc39b5f1e0a9b26f6d7b79230b3cea8bb37f7809f"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -11285,6 +11765,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "sha256": "13a37a8c5c5175d3fed0bb049de6cec4063d0c3d7c2b8d4ae275638df0f084a7"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11473,14 +11995,14 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d31884ceefd672c2f1e144a6050b93b0138bc03a6b29050ee4eb3341182a03b8"
+   "sha256": "032932bca059264c113abf7e9783136dad77c3b202273dad491b9a01f53ea033"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "d31884ceefd672c2f1e144a6050b93b0138bc03a6b29050ee4eb3341182a03b8"
+   "sha256": "032932bca059264c113abf7e9783136dad77c3b202273dad491b9a01f53ea033"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11515,14 +12037,14 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "c8998ce53abe0f6d68fce7bc055f33b84ebe787eb0b6ab4ec53b236f0dc2a9b2"
+   "sha256": "701e5fa2246133cc778adec578e0a53fc6c4267a8c521a45a85d413746c45cd8"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "c8998ce53abe0f6d68fce7bc055f33b84ebe787eb0b6ab4ec53b236f0dc2a9b2"
+   "sha256": "701e5fa2246133cc778adec578e0a53fc6c4267a8c521a45a85d413746c45cd8"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11599,7 +12121,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "498cce7489db7ff9e605e2896d026ef04553daf39bc1afb0cd81f25ce8470cf6"
+   "sha256": "581a1628cbcd12a670dd7c51dac379e5ce5052e404750fc898c153c40738da29"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11663,6 +12185,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "sha256": "3a4cde3c5684ff6b6dd574257f58c1b5cb61f778169c5feb31fcc4f8cf288ffa"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11893,14 +12457,14 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "4b58a2eb9c2e1f99550f660db2b30ade50c1a1dd91a62f59e04a02753c0f6a8f"
+   "sha256": "c84b44c18a32880ec165d7795925c648eebd34ccaecd2d8b9e7fcb73a51e362c"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "4b58a2eb9c2e1f99550f660db2b30ade50c1a1dd91a62f59e04a02753c0f6a8f"
+   "sha256": "c84b44c18a32880ec165d7795925c648eebd34ccaecd2d8b9e7fcb73a51e362c"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -12041,6 +12605,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "sha256": "4341035d2df31cba7e8394cea68aba39882565ef0cd1f53ad1c0db3eff135410"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12229,7 +12835,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "32104180f0d5e5e73bc79e1ca15fc31b9214aead4c9624ad7e2809773be8e024"
+   "sha256": "a2b039370b0652b294dba09752091de3d5b15177ef2925a53efa8f9e60a69ba7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12355,7 +12961,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "7a44c3910aeaeca545d4e463405446813007a2015c61277d2661e34ce6eb2dc5"
+   "sha256": "d876d9a22b55b7b02ca8675d69a8b1a37d7af9d60b64a456fdf0db3d30577367"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12419,6 +13025,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "destructive schema change requires --allow-destructive: SELECT 'orm-sqlite-rebuild table=audit_item target=audit_item temp=__orm_rebuild_audit_item';\nPRAGMA defer_foreign_keys = ON;\nCREATE TABLE \"__orm_rebuild_audit_item\" (\n  \"seq\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"service_ref\" TEXT NOT NULL,\n  \"title\" TEXT NOT NULL,\n  \"payload\" TEXT\n);\nINSERT INTO \"__orm_rebuild_audit_item\" (\"seq\", \"service_ref\", \"title\", \"payload\") SELECT \"seq\", \"service_ref\", \"title\", \"payload\" FROM \"audit_item\";\nDROP TABLE \"audit_item\";\nALTER TABLE \"__orm_rebuild_audit_item\" RENAME TO \"audit_item\";\nCREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nDELETE FROM orm_schema_comments WHERE table_name='audit_item';"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12607,7 +13255,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "73b7c4d479d735cb39f3b47d6c5c0c6b65775ba1c58a0d61e53678c0265a80ff"
+   "sha256": "121d31c021aa7fd4c3c4ae0038e09317ebc9e61f793c6346d1d935a9446d8be2"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12649,14 +13297,14 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "37555c9ba4f92658d3978dbe42b9753e49b7e15490335e79b568525bfa673176"
+   "sha256": "073692ab313cf22acbdccccf6a730a8cb8fdc198db30a216f7c59ce31db8e8d4"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "37555c9ba4f92658d3978dbe42b9753e49b7e15490335e79b568525bfa673176"
+   "sha256": "073692ab313cf22acbdccccf6a730a8cb8fdc198db30a216f7c59ce31db8e8d4"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12733,7 +13381,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "a8e4ca4eb723e9f93d1037fafc215ca17ec64316886e6ab7aa6904de04c054b0"
+   "sha256": "a036e177aab66e0a71598fc827e00cf896c3cd045c66138e10030c5c99302cce"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12797,6 +13445,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "destructive schema change requires --allow-destructive: SELECT 'orm-sqlite-rebuild table=audit_item target=audit_item temp=__orm_rebuild_audit_item';\nPRAGMA defer_foreign_keys = ON;\nCREATE TABLE \"__orm_rebuild_audit_item\" (\n  \"seq\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"service_ref\" TEXT NOT NULL,\n  \"title\" TEXT NOT NULL,\n  \"payload\" TEXT\n);\nINSERT INTO \"__orm_rebuild_audit_item\" (\"seq\", \"service_ref\", \"title\", \"payload\") SELECT \"seq\", \"service_ref\", \"title\", \"payload\" FROM \"audit_item\";\nDROP TABLE \"audit_item\";\nALTER TABLE \"__orm_rebuild_audit_item\" RENAME TO \"audit_item\";\nCREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nDELETE FROM orm_schema_comments WHERE table_name='audit_item';"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -13027,7 +13717,7 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "a1303ebea479f43941541eb34d856fe069153a1018c0d0871a7fc9e63370b94e"
+   "sha256": "333cf359925fed794852456c2c5ff7cac3702d3c0987b8719ea73e7467b76f4d"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -13175,6 +13865,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "destructive schema change requires --allow-destructive: SELECT 'orm-sqlite-rebuild table=audit_item target=audit_item temp=__orm_rebuild_audit_item';\nPRAGMA defer_foreign_keys = ON;\nCREATE TABLE \"__orm_rebuild_audit_item\" (\n  \"seq\" INTEGER PRIMARY KEY AUTOINCREMENT,\n  \"service_ref\" TEXT NOT NULL,\n  \"title\" TEXT NOT NULL,\n  \"payload\" TEXT\n);\nINSERT INTO \"__orm_rebuild_audit_item\" (\"seq\", \"service_ref\", \"title\", \"payload\") SELECT \"seq\", \"service_ref\", \"title\", \"payload\" FROM \"audit_item\";\nDROP TABLE \"audit_item\";\nALTER TABLE \"__orm_rebuild_audit_item\" RENAME TO \"audit_item\";\nCREATE TABLE IF NOT EXISTS orm_schema_comments (table_name TEXT NOT NULL, column_name TEXT NOT NULL, comment TEXT NOT NULL, PRIMARY KEY (table_name, column_name));\nDELETE FROM orm_schema_comments WHERE table_name='audit_item';"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13363,14 +14095,14 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "4860eff636ef74bd921a72d211d1081bec9032aa63c9bacf0d5ccd3e0f357df7"
+   "sha256": "867d25364835416171494e159bc926a9998adb5217e8e7d3453939406ccd6d45"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "4860eff636ef74bd921a72d211d1081bec9032aa63c9bacf0d5ccd3e0f357df7"
+   "sha256": "867d25364835416171494e159bc926a9998adb5217e8e7d3453939406ccd6d45"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13405,14 +14137,14 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "a97f7acd60b627d5fda7ec290b852c952e8ddddb70a74fa15ee6f55dddffdf06"
+   "sha256": "1c6caaea7dbfc2c654df3acb9c32a7714d7cb4b89d50779f61f1e270a6a10dbc"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "a97f7acd60b627d5fda7ec290b852c952e8ddddb70a74fa15ee6f55dddffdf06"
+   "sha256": "1c6caaea7dbfc2c654df3acb9c32a7714d7cb4b89d50779f61f1e270a6a10dbc"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13489,7 +14221,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "d313c8ba86d481aeac80e322c87a8cd84b72e7818cb1a9c5f192f09a8f54ac68"
+   "sha256": "2ba6dc677d6bf7e1d7b8cfa23724386bfe6402599d3ac743d9b2db431e43a7af"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -22053,6 +22785,186 @@
    "sha256": "9766ff13015fa74b7774ef2980a65353a47bc226a738261bb3e5784f259dc420"
   },
   {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "sha256": "f478a98ba6fe6d64d97b2c6b0007d19e88d92bfadd64c41cbc6edf8eddb0818c"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "sha256": "0da97a1e739edbb86bd5fa266af85badaaee96b72b6af03b97d59cd61b99de59"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "981067acd6d8bc979710104bd1777aba9c5b3a22ca8a3c35a6eb10f0665feeff"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "mysql",
+   "sha256": "691eac4a9c07b8d53ed931fa22f95a8981279a98c4555bfcc5c0f6669d15bb5b"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "postgres",
+   "sha256": "b93abf8b3817b9bf0226c2e3d24d121ba51f280257b4f233089d15508da92255"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "clients/go/orm/audit_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "330bd8b48b2512528b7af0caa4c9f13b8fcd62b3a7f3b310564c00c28e804bcd"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#2",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#3",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#4",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#5",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#6",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_service_test.go#1",
+   "to": "internal/ormgen/audit_test.go#7",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename app.audit_change -\u003e audit_change requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "sha256": "704308528f39b3b8a861887da44ebe2216020dbda914763431baa62faeb98e3c"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "sha256": "6ef860628d712e836921be1dca3b87111433679dae050e367d498d7405f2b065"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "6731bcfc2c66ea5011dd0fb533c2eb4a3bbc79684b0da523bd57307b4f0f8522"
+  },
+  {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
@@ -25816,6 +26728,24 @@
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
    "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
@@ -25878,7 +26808,7 @@
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "ebdfb69ece262a59f9df1c15377d5094154f429172c88061c72a9f3cde9f28c9"
+   "sha256": "660c96b94a43a50974779c5dc24947cf6b0e44d353811e8d11c5fc18ad99e902"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -25896,7 +26826,7 @@
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "ab758381b4d01d80d5c4d69fc28f98e7bd90659bf3c758d0fcaee44ef64ced1e"
+   "sha256": "467fe6a91b8a6e57df9237fbb9072582c440711919c1580708848e12211ce2f5"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -25932,7 +26862,7 @@
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "418626ff420d884a304511a617a46fb4a92cc671d47e3fed4d8efd42b944045b"
+   "sha256": "0ad9a41da78a36f250ae6fa56654297c1deee0c8e3e2dd0af93d470fd9fa8cb3"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
@@ -25957,6 +26887,24 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "aa40389c172071948f0242be23b64a7bffcdbe8011a71f5a5ce30bfa010e900d"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#2",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -26040,7 +26988,7 @@
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "20000ec6af75bfc724763e35f59b30fbe19645153abf8c20330ea419a82feaa2"
+   "sha256": "0dc2edaf5bed1f2f080550bd3bee8db9e242b406da73ddbf083838125c7ca61d"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -26058,7 +27006,7 @@
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "7b9799a46cfa8dc03ac3d02e9e64b0e79581bb5828ced81d777bc9fe29361bda"
+   "sha256": "ed82feaa4d0d632049417e4b94525fa223b9d473f92119d258f1171367647f21"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -26094,7 +27042,7 @@
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "0455e75e856110ce52f54ce09151a12a72a7706bd96689d1a1cbf9f8a267fa44"
+   "sha256": "4fda83a4ceaff3966cf22f72136b2619bda30e97ec37147b791eb5a8764c6114"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -26119,6 +27067,24 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "8d3e3e62fcd1b9757b451d81ee26e3e5bf2acb34a3e30a13cdcf68580255136c"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#3",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -26166,7 +27132,7 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "e726a2247c165258a462658e4048b064b3a02084744955aaa1174f06f5029026"
+   "sha256": "0dcb835a44ec690aa30bee6081e5d29464c8003db203c03940d1e8e7aebc04c4"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -26184,7 +27150,7 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "6e077b93825e2419f4ef5db38ae64f9934916bbbc6a687987c9fbfa7c716f978"
+   "sha256": "b398cde596d2dff8bd429c85f939cedc89f70918ec8b5ae13bcb113b66890083"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -26220,7 +27186,7 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "4c7c4a247f41256e2bf8c9ae26c7bc4ae11ca4f31cf8427708d4f99149cbda38"
+   "sha256": "afc2ff5a98292600c92cb298787a1ba79f445c9ef5f6bbbc509b976318e4f54e"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -26238,7 +27204,7 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "9ecbc8d6c8c6611f22f24b773180c38bdaba2ee25a45d224b88231f56dffd833"
+   "sha256": "d42be11798f972d7ab32e3650e03a85ddf83265bc2f2304984031ac963c7349c"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -26274,13 +27240,31 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "7a10a693791fa84c9939edc9f6f3f93980d73d595ac4bdd0438ebc49de8ca3a6"
+   "sha256": "fda9a230c2eded9c7529031ca990fd3f23e23cc2605eb3827a24f6f3bcb39291"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "8a8cea51b00080a4c836a226f558c39f19174ecd4b3edf43eb02d5cd7984eb2e"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#4",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26328,7 +27312,7 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "a24e042807365567f1b7e274684d1b958b6414e35701f813641fdab34f123074"
+   "sha256": "b2e5ef8fe62396c0b28835da459104d09e3dd68943c6d1c4d90f0fb96d7263c2"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26346,7 +27330,7 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "b5bf964e64f43528dc6e45b49a43bb9c581ca3d5021bc77cd261a951548a8db8"
+   "sha256": "6956a648d5b6fb8198d2eca8c3547654dae102671ba93b2c17a01a949c693b55"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26364,7 +27348,7 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "023c54d3ebb02f3f697704db3503c8f85583f1d046f9865d345b59650782c9fa"
+   "sha256": "0a0dc92d50ca8265b0ec556b7bd45e4c21d1bd0e2e3c026510dbe3f499291d50"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26400,7 +27384,7 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "f76a4024cec8932c419f1f7b97be77a7eb93b370b47d12a4f919f917355b8a66"
+   "sha256": "037853cbddf5d3000631ea44f8bab3630986ac8de1dd54fb19d9853347b4cfa1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26418,7 +27402,7 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "a85183211543e126a777dde9adc24aa15fe8a726821fc7072ecaaa21a169d52d"
+   "sha256": "4fbbbef9802fd01f7502631ba678e707ab3f605c6e3dea90c172f9cdd15b13f8"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -26436,13 +27420,31 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "8fabd27c2379cbe8e60ccc6b5446da39d6eaa5a4d93f38b0a0b2db2eeaf23596"
+   "sha256": "bbcc59ed1ebcdb39be774a7b884428188774986544be38a23a9be78f7c13c492"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "dadde2001668c22e131b0292f74db88662f1c291faeb07311819618962d96d75"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#5",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -26526,7 +27528,7 @@
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "3d8e9345bee25db2a6b50546000cdceaeebd10a30fb9def330068f2343254943"
+   "sha256": "805fe7812331c37fc7376137642282c438547159029181a8529916b40e1f2931"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -26544,7 +27546,7 @@
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "ab27a849b72d53037c11834fb5de94ecfa5ab7915b851372d976445fc2c6f4fe"
+   "sha256": "1b7bc3ddcef8196f50db05d8d1c2863f5d0505e244b3d5a36805c87f2813b576"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -26580,7 +27582,7 @@
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "7b30b453975703156edd867dec568c5a4b051fb98135bb8cd7ca62d128cf7108"
+   "sha256": "7b3f06b05b3cf5bbb7cd4faaec28980337ede9159b5794cbc702a575edf581f1"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -26605,6 +27607,24 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "abce3d525d28389b341667ccdd823c265fa459ebba87faee040ec0ea4e9cb745"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#6",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26652,7 +27672,7 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "f91b276df8f4d5d00c859833c6ab30db8fa6e4e13fa4576d482ec830694b1fc7"
+   "sha256": "728963af2255c4ed8a683c27c5543ab43ceb1cafc388e3f893209aee681d61cf"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26670,7 +27690,7 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "aa2bb2ea589b993ccb390d896837f5c4542815bdc647c5d29a9dfc2377231241"
+   "sha256": "e2a209281b3e425dd6c28fd9bebe6901254267f169186c6c0d48127b5865b6f1"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26706,7 +27726,7 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "c5f99cc0940cdb0e93101d85f59f42223e39249be820b62cb2dea67fc3e2db16"
+   "sha256": "c6fcb7d60836758daae6c0e7c5faded02ae203b5615ce2c6be1af5debb58a934"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26724,7 +27744,7 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "2c1fa0271edc35134c6caaf8e5682ec8d008a0a32cf76176594d6a43af82cb05"
+   "sha256": "577e2887f30f5c3cfca11d143da73af70f33a5e99ab5fb2770551d3ba7a7fb5c"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26760,13 +27780,31 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "d6a72456470fa5c29a0144ce58efca44600d0d5aef334eb4b4ce59e0fdf85e92"
+   "sha256": "6ae221bcf503c29467da4962030e074e2bc0808a431ef552a86b918a9d564fd1"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "sha256": "e8d3c8ab7b3827291b43412398e300c87dbbb6d1b57d6ecbcbbe6c7d6579dcb5"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "mysql",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "postgres",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
+  },
+  {
+   "from": "internal/ormgen/audit_test.go#7",
+   "to": "clients/go/orm/audit_service_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: table rename audit_change -\u003e app.audit_change requires explicit migration"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -26850,7 +27888,7 @@
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "c83be66e4cf67fb3fee728b6fb8503ee6378781a2553e7d0454e482c9b843534"
+   "sha256": "67538f2239034e752d9b654844d1b5c8659f7769fbf4296d7008524e4d345add"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -26868,7 +27906,7 @@
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "dab569416a972369e6e176da0ab989a694753fabb71bdbf8613c172914536c93"
+   "sha256": "8aea00d46f7c300c5e2393f16e6c79c8c3efd629b3210f6094864e0c94ea53c4"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -26904,7 +27942,7 @@
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "344a8b4e8d29c7be5c575ac9be4210ef81e589796ffd34c2ea2546c5b35e4506"
+   "sha256": "186066e0edf110f1930d688065b874de9802bf6856a821b41273da8efe8b8f20"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",

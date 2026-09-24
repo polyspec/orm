@@ -976,11 +976,14 @@
       "fixtures": [
         "tests/schema/cases.json",
         "clients/rust/orm/tests/testdata/audit_log.json",
-        "clients/rust/orm/tests/testdata/audit_item.json"
+        "clients/rust/orm/tests/testdata/audit_item.json", "clients/rust/orm/tests/testdata/audit_service.json"
       ],
       "tests": [
         "clients/go/orm/audit_test.go",
         "clients/go/orm/audit_large_test.go",
+        "clients/go/orm/audit_service_test.go",
+        "clients/php/tests/audit_service_test.php",
+        "clients/rust/orm/tests/audit_service.rs",
         "internal/ormgen/audit_test.go",
         "internal/ormgen/audit_physical_test.go",
         "clients/php/tests/model_test.php",

@@ -434,6 +434,14 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 			// normalize.
 			return mysqlJSONText, nil
 		}
+		if c.Type == "enum" {
+			// MySQL takes the enum values as string literals.
+			values := make([]string, len(c.Enum))
+			for i, v := range c.Enum {
+				values[i] = "'" + sqlQuote(v) + "'"
+			}
+			return "enum(" + strings.Join(values, ",") + ")", nil
+		}
 		t := strings.ReplaceAll(c.Raw, "_", ",")
 		if c.Unsigned && !strings.Contains(t, "unsigned") {
 			t += " unsigned"
