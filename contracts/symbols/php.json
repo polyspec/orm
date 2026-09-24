@@ -189,6 +189,7 @@
   "clients/php/src/Codec.php::Orm\\Codec::hostDecode": "public static function hostDecode(mixed $raw, array $styles, string $aesKey): ?string",
   "clients/php/src/Codec.php::Orm\\Codec::hostEncode": "public static function hostEncode(mixed $v, array $styles, string $aesKey): Orm\\Bytes|string|null",
   "clients/php/src/Codec.php::Orm\\Codec::isHostStyle": "public static function isHostStyle(string $style): bool",
+  "clients/php/src/Codec.php::Orm\\Codec::jsonText": "private static function jsonText(mixed $value): string",
   "clients/php/src/Codec.php::Orm\\Codec::normalize": "private static function normalize(mixed $v): mixed",
   "clients/php/src/Codec.php::Orm\\Codec::packIp": "private static function packIp(string $s): string",
   "clients/php/src/Codec.php::Orm\\Codec::point": "public static function point(mixed $value): array",

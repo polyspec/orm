@@ -1,14 +1,17 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { CodecError, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
 const aesVectors = JSON.parse(await readFile('tests/codec/aes-vectors.json', 'utf8')).vectors;
 const canonical = value => {
+  if (value instanceof JsonValue) return canonical(JSON.parse(stringifyJson(value)));
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
   return value;
 };
 const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+const shown = value => JSON.stringify(canonical(value));
 const output = {};
 let failures = 0;
 if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') failures++;
@@ -23,8 +26,13 @@ for (const vector of vectors) {
     failures++;
     continue;
   }
+  const jsonStage = vector.styles.includes('json') || vector.styles.includes('jsons');
+  if (jsonStage && decoded !== null && !(decoded instanceof JsonValue)) {
+    console.error(`${vector.name}: a json stage decoded ${typeof decoded}, not an ordered-json value`);
+    failures++;
+  }
   if (!same(decoded, vector.value)) {
-    console.error(`${vector.name}: decoded ${JSON.stringify(decoded)} want ${JSON.stringify(vector.value)}`);
+    console.error(`${vector.name}: decoded ${shown(decoded)} want ${JSON.stringify(vector.value)}`);
     failures++;
   }
   const encoded = encodeCodec(vector.styles, decoded);
@@ -37,7 +45,7 @@ for (const vector of vectors) {
   }
   const roundTrip = decodeCodec(vector.styles, encoded);
   if (!same(roundTrip, vector.value)) {
-    console.error(`${vector.name}: round trip ${JSON.stringify(roundTrip)} want ${JSON.stringify(vector.value)}`);
+    console.error(`${vector.name}: round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
     failures++;
   }
 }
@@ -92,6 +100,22 @@ for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
   if (decoded !== expected) { console.error(`ip ${address}: ${decoded} want ${expected}`); failures++; }
 }
 
+const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
+const orderedRead = decodeCodec(['json'], orderedText);
+if (!(orderedRead instanceof JsonValue) || stringifyJson(orderedRead) !== orderedText) {
+  console.error(`json read: ${orderedRead instanceof JsonValue ? stringifyJson(orderedRead) : String(orderedRead)}`);
+  failures++;
+}
+for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
+  const written = encodeCodec(['json'], value);
+  if (written !== orderedText) { console.error(`json write of ${name}: ${written}`); failures++; }
+}
+for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
+  try { encodeCodec(['json'], value); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
+  catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
+}
+try { encodeCodec(['serialize'], parseJson('{}')); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
+catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`serialize of an ordered-json value: ${String(error)}`); failures++; } }
 if (!same(decodeCodec(['yaml'], '1: value\n'), { 1: 'value' })) {
   console.error('YAML integer map key: expected string key');
   failures++;

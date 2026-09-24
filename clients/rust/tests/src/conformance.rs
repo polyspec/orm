@@ -421,7 +421,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .set_price(12.5)
             .set_ip("10.0.0.1")
             .set_aes_hex_email("cycle@example.com")
-            .set_json_setting(json!({"a": 1}))
+            .set_json_setting(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal"))
             .set_serialize_data(json!({"k": "v"}))
             .new_label("created")
             .create()

@@ -1,7 +1,7 @@
 <?php
 // Encrypted JSON value test on SQLite, MySQL and PostgreSQL: a `json aes` column
-// takes a JSON value, reads it back unchanged, rotates to another key version,
-// and takes an update. The models are generated from the test schema into a
+// and a jsontext column take an ordered-json value, read it back with the same
+// text, rotate to another key version, and take an update. The models are generated from the test schema into a
 // temporary directory, so the test runs in its own process.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases; the
 // test fails when either is unset.
@@ -19,6 +19,10 @@ use Orm\Generator;
 use Orm\Manifest;
 use Orm\Orm;
 use Orm\SchemaBuilder;
+use OrderedJson\Value;
+
+use function OrderedJson\parse;
+use function OrderedJson\stringify;
 
 $work = sys_get_temp_dir() . '/orm-php-aes-json-' . getmypid();
 @mkdir($work, 0o700, true);
@@ -31,6 +35,7 @@ $source = "erDiagram\n"
     . "    bigint   seq             PK \"auto\"\n"
     . "    int      aes_key_version\n"
     . "    longblob config             \"json aes\"\n"
+    . "    jsontext doc                \"?\"\n"
     . "  }\n";
 $schema = "$work/schema.json";
 $json = SchemaBuilder::json(SchemaBuilder::fromSources([$source]));
@@ -75,9 +80,13 @@ function open(string $dsn, array $keys, int $version): Db
     return Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
 }
 
+/** The ordered-json text of a read value; a value of another type fails the test. */
 function text(mixed $value): string
 {
-    return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    if (!$value instanceof Value) {
+        throw new RuntimeException('json value is ' . get_debug_type($value) . ', not an ordered-json value');
+    }
+    return stringify($value);
 }
 
 function aesJsonColumn(string $dsn): void
@@ -85,15 +94,24 @@ function aesJsonColumn(string $dsn): void
     global $json;
     $pdo = raw($dsn);
     $pdo->exec('DROP TABLE IF EXISTS secret_config');
-    $value = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.5}';
+    $value = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.50,"e":{}}';
+    $doc = '{"b":1,"a":[],"c":{},"n":1.50}';
     $updated = '{"token":"next-token","list":[1,"two",null]}';
     $one = [1 => 'config-key-one'];
     $both = [1 => 'config-key-one', 2 => 'config-key-two'];
 
     $first = open($dsn, $one, 1);
     $first->utils()->schema()->install($json);
-    $seq = (new SecretConfig)($first)->setConfig(json_decode($value, true))->create()->getSeq();
-    check(text((new SecretConfig)($first)->addAllColumns()->getBySeq($seq)->getConfig()) === $value, 'read back');
+    $seq = (new SecretConfig)($first)->setConfig(parse($value))->setDoc(parse($doc))->create()->getSeq();
+    $row = (new SecretConfig)($first)->addAllColumns()->getBySeq($seq);
+    check(text($row->getConfig()) === $value, 'read back');
+    check(text($row->getDoc()) === $doc, 'jsontext read back');
+    check(text($row->toArray()['doc']) === $doc, 'toArray keeps the ordered-json value');
+    check(json_encode($row, JSON_THROW_ON_ERROR) === json_encode(json_decode('{"seq":' . $seq . ',"config":' . $value . ',"doc":' . $doc . '}')), 'json_encode of the model');
+    $native = (new SecretConfig)($first)->setConfig(['k' => [1, 2]])->setDoc(['a' => 1.5])->create()->getSeq();
+    $read = (new SecretConfig)($first)->addAllColumns()->getBySeq($native);
+    check(text($read->getConfig()) === '{"k":[1,2]}' && text($read->getDoc()) === '{"a":1.5}', 'native value write');
+    (new SecretConfig)($first)->getBySeq($native)->delete();
     [$cell, $version] = stored($dsn);
     check(str_starts_with($cell, "ORM-AES2\0") && !str_contains($cell, 's3cret-token') && $version === 1, "stored version $version");
     $first->close();
@@ -109,7 +127,7 @@ function aesJsonColumn(string $dsn): void
     $rotated->close();
 
     $again = open($dsn, $both, 1);
-    (new SecretConfig)($again)->getBySeq($seq)->setConfig(json_decode($updated, true))->update();
+    (new SecretConfig)($again)->getBySeq($seq)->setConfig(parse($updated))->update();
     check(stored($dsn)[1] === 1, 'updated version');
     check(text((new SecretConfig)($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
     $again->close();

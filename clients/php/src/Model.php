@@ -1853,11 +1853,16 @@ abstract class Model implements \JsonSerializable
         return $out;
     }
 
+    /**
+     * The row values for json_encode. An ordered-json value becomes its decoded
+     * form with objects as stdClass, which keeps the member order and {} apart
+     * from []; json_encode writes numbers as PHP numbers.
+     */
     public function jsonSerialize(): mixed
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            $out[$name] = $v;
+            $out[$name] = $v instanceof \OrderedJson\Value ? json_decode(\OrderedJson\stringify($v), false, 512, JSON_THROW_ON_ERROR) : $v;
         }
         return (object) $out;
     }

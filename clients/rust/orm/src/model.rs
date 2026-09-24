@@ -153,6 +153,7 @@ pub(crate) fn val_param(v: &Val) -> Param {
         Val::Date(d) => Param::Date(*d),
         Val::Bool(b) => Param::Bool(*b),
         Val::Json(j) => Param::Str(j.to_string()),
+        Val::Ordered(j) => Param::Str(j.compact()),
     }
 }
 
@@ -714,12 +715,21 @@ fn encode(ent: &EntitySchema, column: &str, v: &serde_json::Value) -> Result<Par
     crate::codec::encode(&col.codec_styles(), Some(v))
 }
 
+fn encode_ordered(ent: &EntitySchema, column: &str, v: &ordered_json::Value) -> Result<Param> {
+    let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    crate::codec::encode_ordered(&col.codec_styles(), v)
+}
+
 fn assign(r: &mut Req, ent: &EntitySchema, s: &SetSpec) -> Result<ir::Assign> {
     let mut a = ir::Assign { column: s.column.clone(), ..Default::default() };
     match &s.value {
         SetValue::Null => a.null = true,
         SetValue::Value(v) => a.p = Some(r.p(v.clone())),
         SetValue::Json(v) => match encode(ent, &s.column, v)? {
+            Param::Null => a.null = true,
+            p => a.p = Some(r.p(p)),
+        },
+        SetValue::Ordered(v) => match encode_ordered(ent, &s.column, v)? {
             Param::Null => a.null = true,
             p => a.p = Some(r.p(p)),
         },
@@ -782,6 +792,9 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             }
             SetValue::Json(v) => {
                 out.assign(&s.column, Val::Json(v.clone()));
+            }
+            SetValue::Ordered(v) => {
+                out.assign(&s.column, Val::Ordered(v.clone()));
             }
             SetValue::Null => {
                 out.assign(&s.column, Val::Null);
@@ -847,6 +860,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
                         SetValue::Value(v) => v.clone(),
                         SetValue::Null => Param::Null,
                         SetValue::Json(v) => encode(&ent, &s.column, v)?,
+                        SetValue::Ordered(v) => encode_ordered(&ent, &s.column, v)?,
                         _ => return Err(config("creates accepts stored values only")),
                     };
                     let p = req.p(v);
@@ -924,7 +938,13 @@ fn with_aes_columns<M: Model>(m: &M, ent: &EntitySchema) -> Result<Vec<SetSpec>>
             return Err(config(format!("changing an AES column of {} requires a row loaded with {}", ent.name, col.name)));
         }
         let v = m.value(&col.name).unwrap_or(Val::Null);
-        sets.push(SetSpec { column: col.name.clone(), value: if v.is_null() { SetValue::Null } else { SetValue::Value(val_param(&v)) } });
+        let value = match v {
+            Val::Null => SetValue::Null,
+            Val::Ordered(o) => SetValue::Ordered(o),
+            Val::Json(j) => SetValue::Json(j),
+            other => SetValue::Value(val_param(&other)),
+        };
+        sets.push(SetSpec { column: col.name.clone(), value });
     }
     Ok(sets)
 }

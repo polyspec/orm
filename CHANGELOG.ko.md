@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+PHP, Rust, TypeScript 클라이언트는 Go 클라이언트처럼 `jsontext`와 `json aes` 컬럼을 포함한 `json`·`jsons` 단계의 ordered-json 값을 반환한다. PHP는 `OrderedJson\Value`, Rust는 `orm::ordered_json::Value`, TypeScript는 `ordered-json`의 `Value`를 반환한다. 이 값은 멤버 순서, 숫자 텍스트, 빈 객체와 빈 배열의 구분을 유지한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. PHP와 TypeScript는 공통 값 모델도 받고, Rust 생성 setter는 ordered-json 값만 받는다. `toArray`는 이 값을 유지하고 모델의 JSON 출력은 decode한 값을 쓴다. 유한하지 않은 수처럼 JSON 모델 밖의 값은 `CODEC_ENCODE`로 실패한다.
+
 Go 생성기의 scan은 호출 인자의 타입이 확정되지 않아도 호출한 모델 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓰며, join과 relation 인자는 여전히 생성하는 패키지의 모델로 확정되어야 한다.
 
 PHP, Rust, TypeScript 클라이언트의 `get`과 생성된 `getBy…` 종결 메서드는 일치하는 행이 없으면 `null`이나 `None`을 반환하지 않고 Go 클라이언트처럼 `NO_ROWS`로 실패한다. PHP `get()`은 `static`, TypeScript `get()`은 `Promise<this>`, Rust `get()`은 `orm::Result<Self>`를 반환한다. conformance 벡터 `terminal_by`, `write_cycle`, `delete_recursive`는 없는 행의 `NO_ROWS` 코드를 기록한다.

@@ -1,5 +1,6 @@
 import { CORE, Core, RowState, configError, isModel, type EntityDef, type ModelLike, type SetSpec } from './core.js';
-import { encode, parsePoint, type CodecValue } from './codec.js';
+import { encode, parsePoint, type CodecValue, type JsonValue } from './codec.js';
+import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from 'ordered-json';
 import { Db, keyOfValues, keyText, keyValue, normalizeTime, paginate, query, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
 import type { Assemble, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey, type ColumnSchema, type EntitySchema, type SchemaSet } from './names.js';
@@ -112,7 +113,7 @@ export abstract class Model implements ModelLike {
   public async delete(recursive = false): Promise<void> { await deleteRow(this[CORE], recursive); }
 
   public toArray(): Record<string, unknown> { return toArray(this[CORE]); }
-  public toJSON(): Record<string, unknown> { return toArray(this[CORE]); }
+  public toJSON(): Record<string, unknown> { return toJson(this[CORE]); }
 }
 
 /** An ordered set of rows keyed by primary key, key column, or key callback. */
@@ -138,7 +139,7 @@ export class Collection<T extends Model = Model> implements Iterable<T> {
     await inTransaction(first[CORE].conn, async () => { for (const row of this.values()) await deleteOne(row[CORE], recursive); });
   }
   public toArray(): Array<Record<string, unknown>> { return this.values().map(row => row.toArray()); }
-  public toJSON(): Array<Record<string, unknown>> { return this.toArray(); }
+  public toJSON(): Array<Record<string, unknown>> { return this.values().map(row => row.toJSON()); }
   public [Symbol.iterator](): Iterator<T> { return this.values()[Symbol.iterator](); }
 }
 
@@ -395,7 +396,7 @@ function encodeValue(schema: EntitySchema, column: string, value: unknown): unkn
   if (col === undefined) throw new OrmError('COLUMN_UNKNOWN', `${schema.name}.${column}`);
   const codec = (col.styles ?? []).filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
   if (codec.length === 0 || value === null) return value;
-  return encode(codec, value as CodecValue);
+  return encode(codec, value as CodecValue | JsonValue);
 }
 
 function assign(r: WriteRequest, schema: EntitySchema, s: SetSpec): NonNullable<Request['set']>[number] {
@@ -605,6 +606,21 @@ function pairs(c: Core): Array<[string, unknown]> {
 
 export function toArray(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, arrayValue(v)]));
+}
+
+/**
+ * The row values for JSON.stringify: toArray with every ordered-json value
+ * converted to plain JSON data, because an ordered-json value has no toJSON.
+ */
+function toJson(c: Core): Record<string, unknown> {
+  return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
+}
+
+function jsonValue(value: unknown): unknown {
+  if (value instanceof OrderedJsonValue) return JSON.parse(orderedJsonStringify(value));
+  if (isModel(value)) return toJson(value[CORE]);
+  if (value instanceof Collection) return value.toJSON();
+  return arrayValue(value);
 }
 
 /** Resolves a method named by the chain grammar. */
