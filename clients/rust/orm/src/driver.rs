@@ -551,7 +551,7 @@ pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str)
     result.map_err(|error| {
         let mapped = Error::from(error);
         if nowait && mapped.is_deadlock() {
-            Error::Engine { code: codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
+            Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
         } else {
             mapped
         }
