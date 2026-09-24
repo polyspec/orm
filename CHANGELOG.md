@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make the JSON output of a model keep each ordered-json value as its stored text, with the member order and number text unchanged, as the Go client does. PHP adds `Model::toJson()` and `Collection::toJson()`, and `json_encode` of a row that holds an ordered-json value fails with `CODEC_ENCODE`. TypeScript `JSON.stringify` of a model or collection writes the stored text through `JSON.rawJSON` and fails with `CODEC_ENCODE` when JavaScript would reorder a member key; `toJSONText()` writes the exact text in every case. Rust adds `to_json()` on models and collections, and serde serialization writes the same text as a serde_json raw value.
+
 Make the Go and PHP hot-path gates and the Go bench fail when `ORM_BENCH_MYSQL_DSN` is unset instead of connecting to a local socket, and make the Go client tests `TestAuditLargeTextChangeStaysWithinBudget`, `TestPoolSize` and `TestStatementTimeout` fail when `ORM_TEST_MYSQL_DSN` or `ORM_TEST_POSTGRES_DSN` is unset instead of leaving out that database.
 
 Make the Rust array output return an error instead of stopping the process: `to_array` of a model or collection, `Val::to_json`, and the getters of attached values return `orm::Result`, and a value that serde_json cannot represent, such as the number `1e400`, returns `CODEC_ENCODE`. Serde serialization of a model reports the same error through the serializer.

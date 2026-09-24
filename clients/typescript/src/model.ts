@@ -114,6 +114,8 @@ export abstract class Model implements ModelLike {
 
   public toArray(): Record<string, unknown> { return toArray(this[CORE]); }
   public toJSON(): Record<string, unknown> { return toJson(this[CORE]); }
+  /** Returns the JSON text of the row: members in row order, an ordered-json value as its stored text. */
+  public toJSONText(): string { return rowText(this[CORE]); }
 }
 
 /** An ordered set of rows keyed by primary key, key column, or key callback. */
@@ -140,6 +142,8 @@ export class Collection<T extends Model = Model> implements Iterable<T> {
   }
   public toArray(): Array<Record<string, unknown>> { return this.values().map(row => row.toArray()); }
   public toJSON(): Array<Record<string, unknown>> { return this.values().map(row => row.toJSON()); }
+  /** Returns the JSON text of the rows; see Model.toJSONText. */
+  public toJSONText(): string { return `[${this.values().map(row => row.toJSONText()).join(',')}]`; }
   public [Symbol.iterator](): Iterator<T> { return this.values()[Symbol.iterator](); }
 }
 
@@ -609,15 +613,55 @@ export function toArray(c: Core): Record<string, unknown> {
 }
 
 /**
- * The row values for JSON.stringify: toArray with every ordered-json value
- * converted to plain JSON data, because an ordered-json value has no toJSON.
+ * The row values for JSON.stringify, in row order. JSON.stringify writes an
+ * ordered-json value with its stored member order and number text; toJSONText
+ * returns the same text.
  */
 function toJson(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
 }
 
+/** JSON.rawJSON, which the ES2024 lib typings do not declare. */
+const rawJSON = (JSON as { rawJSON?: (text: string) => unknown }).rawJSON;
+
+/** An object key that JavaScript orders before the other keys. */
+const arrayIndex = /^(0|[1-9][0-9]*)$/;
+
+/**
+ * The JSON.stringify form of an ordered-json value: objects and arrays are
+ * rebuilt in member order and every scalar is a JSON.rawJSON of its stored
+ * token. A key that JavaScript reorders (an array index) or whose stored token
+ * differs from its JSON.stringify form cannot keep the stored text and fails
+ * with CODEC_ENCODE; toJSONText writes such a value.
+ */
+function rawValue(value: OrderedJsonValue): unknown {
+  if (rawJSON === undefined) throw new OrmError('CODEC_ENCODE', 'JSON.rawJSON is required to write an ordered-json value');
+  if (value.kind === 'array') return value.items.map(rawValue);
+  if (value.kind !== 'object') return rawJSON(orderedJsonStringify(value));
+  return Object.fromEntries(value.keys.map(key => {
+    const name = key.stringValue();
+    if ((name.length < 11 && arrayIndex.test(name) && Number(name) < 4294967295) || JSON.stringify(name) !== key.raw) {
+      throw new OrmError('CODEC_ENCODE', `JSON.stringify cannot keep the object key ${key.raw}; use toJSONText`);
+    }
+    return [name, rawValue(value.members.get(name)!)];
+  }));
+}
+
+/** The JSON text of a row value: an ordered-json value as its stored text. */
+function jsonText(value: unknown): string {
+  if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
+  if (isModel(value)) return rowText(value[CORE]);
+  if (value instanceof Collection) return value.toJSONText();
+  return JSON.stringify(arrayValue(value) ?? null);
+}
+
+/** The JSON text of a row, members in row order. */
+function rowText(c: Core): string {
+  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(v)}`).join(',')}}`;
+}
+
 function jsonValue(value: unknown): unknown {
-  if (value instanceof OrderedJsonValue) return JSON.parse(orderedJsonStringify(value));
+  if (value instanceof OrderedJsonValue) return rawValue(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
   return arrayValue(value);

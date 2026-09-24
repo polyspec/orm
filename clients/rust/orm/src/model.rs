@@ -1112,3 +1112,69 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
     }
     Ok(serde_json::Value::Object(out))
 }
+
+/// The JSON text of the row: the members of `to_array` in row order, with an
+/// ordered-json value written as its text, so its member order and number
+/// text stay as stored.
+pub fn to_json(m: &dyn AnyModel) -> Result<String> {
+    let members = json_members(m)?;
+    let parts: Vec<String> = members.iter().map(|(name, text)| format!("{}:{text}", serde_json::Value::String(name.clone()))).collect();
+    Ok(format!("{{{}}}", parts.join(",")))
+}
+
+/// The JSON output as a serde_json raw value, which a serde_json serializer
+/// writes unchanged; serde serialization of models and collections uses it.
+pub fn raw_json(text: Result<String>) -> Result<Box<serde_json::value::RawValue>> {
+    serde_json::value::RawValue::from_string(text?)
+        .map_err(|e| Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: format!("json: model output: {e}") })
+}
+
+/// The members of the JSON output of a row: name and JSON text.
+fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
+    let c = m.core_dyn();
+    let mut out: Vec<(String, String)> = Vec::new();
+    let add = |out: &mut Vec<(String, String)>, name: &str, text: String| {
+        if !out.iter().any(|(n, _)| n == name) {
+            out.push((name.to_owned(), text));
+        }
+    };
+    let empty = RowState::default();
+    let st = c.row.as_ref().unwrap_or(&empty);
+    let mut names = st.names.clone();
+    if c.row.is_none() {
+        names = c.sets.iter().map(|s| s.column.clone()).collect();
+    }
+    for name in &names {
+        if st.hidden.contains(name) {
+            continue;
+        }
+        let v = match m.value_dyn(name) {
+            Some(v) => v,
+            None => st.extra.get(name).cloned().unwrap_or(Val::Null),
+        };
+        let text = match &v {
+            Val::Ordered(o) => o.compact(),
+            other => other.to_json()?.to_string(),
+        };
+        add(&mut out, name, text);
+    }
+    for (name, v) in &c.news {
+        add(&mut out, name, v.to_string());
+    }
+    for (name, rel) in &st.related {
+        let text = match &rel.value {
+            RelatedValue::One(None) => "null".to_owned(),
+            RelatedValue::One(Some(child)) => to_json(child.as_ref())?,
+            RelatedValue::Many(coll) => coll.to_json_dyn()?,
+        };
+        add(&mut out, name, text);
+    }
+    for rel in st.related.values() {
+        if let (true, RelatedValue::One(Some(child))) = (rel.flat, &rel.value) {
+            for (name, text) in json_members(child.as_ref())? {
+                add(&mut out, &name, text);
+            }
+        }
+    }
+    Ok(out)
+}

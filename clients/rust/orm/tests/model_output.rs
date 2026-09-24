@@ -1,5 +1,7 @@
-//! Array output of a model: a value that serde_json cannot represent, such
-//! as the number 1e400, returns CODEC_ENCODE instead of stopping the process.
+//! Output of a model: the JSON output writes an ordered-json value as its
+//! text, and the array output of a value that serde_json cannot represent,
+//! such as the number 1e400, returns CODEC_ENCODE instead of stopping the
+//! process.
 
 use std::collections::BTreeMap;
 
@@ -58,5 +60,16 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
     match Val::Ordered(value).to_json() {
         Err(e) => assert_eq!(e.code(), "CODEC_ENCODE", "{e}"),
         Ok(v) => panic!("Val::to_json returned {v}"),
+    }
+}
+
+#[test]
+fn json_output_keeps_the_ordered_json_text() {
+    for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"n":1e400}"#] {
+        let value = orm::ordered_json::parse(text).unwrap();
+        let mut row = Secret::from_core(Core::new(&SECRET));
+        row.core_mut().set_ordered("config", value.clone());
+        assert!(row.assign("config", Val::Ordered(value)));
+        assert_eq!(orm::model::to_json(&row).unwrap(), format!(r#"{{"config":{text}}}"#));
     }
 }

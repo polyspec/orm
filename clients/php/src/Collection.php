@@ -145,6 +145,12 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return array_map(static fn(Model $m): array => $m->toArray(), $this->all());
     }
 
+    /** The models as a JSON array of Model::toJson texts. */
+    public function toJson(): string
+    {
+        return '[' . implode(',', array_map(static fn(Model $m): string => $m->toJson(), $this->all())) . ']';
+    }
+
     public function jsonSerialize(): array
     {
         return $this->all();
