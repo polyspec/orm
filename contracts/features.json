@@ -465,6 +465,7 @@
         "engine/schema/fuzz_test.go",
         "engine/schema/manifest_property_test.go",
         "internal/ormgen/ddl_uuid_test.go",
+        "internal/ormgen/ddl_bool_test.go",
         "internal/ormgen/schema_features_test.go",
         "internal/ormgen/schema_source_test.go",
         "internal/ormgen/tooldb_test.go"
@@ -920,6 +921,8 @@
         "internal/ormgen/ddl_external_fk_test.go",
         "internal/ormgen/ddl_immutable_test.go",
         "clients/go/orm/sqlite/sqlite_test.go",
+        "clients/go/orm/driver_error_test.go",
+        "clients/go/orm/pg/pg_test.go",
         "clients/php/tests/schema_test.php",
         "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm/tests/soft_delete.rs",
@@ -932,7 +935,7 @@
       "verification": [
         {
           "id": "constraints-go",
-          "command": "go test ./engine/... ./internal/ormgen -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1"
+          "command": "go test ./engine/... ./internal/ormgen -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
         }
       ]
     },
