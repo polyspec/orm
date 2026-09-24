@@ -527,6 +527,9 @@ func buildColumn(dc *DColumn) (*Col, error) {
 	if c.Type == "jsontext" && len(c.Styles) == 0 {
 		c.Styles = []string{"json"}
 	}
+	if c.Type == "jsontext" && !slices.Equal(c.Styles, []string{"json"}) && !slices.Equal(c.Styles, []string{"jsons"}) {
+		return nil, fmt.Errorf("column %s: a jsontext column takes only the json or jsons stage; store an encrypted JSON value in a blob column with the stages json aes", dc.Name)
+	}
 	// The AES version is plaintext metadata. Keep it out of the default
 	// projection while retaining it in explicit rotation queries.
 	if dc.Name == "aes_key_version" {
@@ -790,7 +793,7 @@ func (m *Manifest) validate(allowMissingAESVersion bool) error {
 	for _, name := range m.Order {
 		e := m.Entities[name]
 		for _, c := range e.Columns {
-			if len(c.Styles) > 0 && c.Styles[0] == "aes" {
+			if slices.Contains(c.Styles, "aes") {
 				version := e.Column(e.AESVersion)
 				if version == nil || version.Nullable || (version.Type != "i32" && version.Type != "i64") {
 					if allowMissingAESVersion && version == nil {

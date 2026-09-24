@@ -108,7 +108,7 @@ export interface SchemaAuditLog {
 export interface SchemaAudit {
   entity: string;
   mode: string;
-  site?: string;
+  service?: string;
   redact?: string[][];
 }
 
@@ -232,7 +232,7 @@ export function encodeManifest(m: SchemaManifest): string {
     ['audits', optList(m.audits, a => object([
       ['entity', jsonString(a.entity)],
       ['mode', jsonString(a.mode)],
-      ['site', optString(a.site)],
+      ['service', optString(a.service)],
       ['redact', optList(a.redact, path => stringList(path))],
     ]))],
   ]);
@@ -376,10 +376,10 @@ function addAudit(m: SchemaManifest, x: OrmDirective): void {
   const mode = x.args.mode ?? '';
   if (mode !== 'changes' && mode !== 'operations') throw new SchemaBuildError(x.line, '%% orm:audit: mode must be changes or operations');
   const audit: SchemaAudit = { entity: name, mode };
-  const site = x.args.site ?? '';
-  if (site !== '') {
-    if (!entityColumn(e, site)) throw new SchemaBuildError(x.line, `%% orm:audit: unknown column ${name}.${site}`);
-    audit.site = site;
+  const service = x.args.service ?? '';
+  if (service !== '') {
+    if (!entityColumn(e, service)) throw new SchemaBuildError(x.line, `%% orm:audit: unknown column ${name}.${service}`);
+    audit.service = service;
   }
   if (Object.hasOwn(x.args, 'redact')) {
     const redact: string[][] = [];
@@ -590,6 +590,9 @@ function buildColumn(dc: DColumn): SchemaColumn {
   const styles = c.styles ?? [];
   if (styles.length === 1 && styles[0] === 'ip') c.type = 'inet';
   if (c.type === 'jsontext' && styles.length === 0) c.styles = ['json'];
+  if (c.type === 'jsontext' && !(c.styles!.length === 1 && (c.styles![0] === 'json' || c.styles![0] === 'jsons'))) {
+    throw new Error(`column ${dc.name}: a jsontext column takes only the json or jsons stage; store an encrypted JSON value in a blob column with the stages json aes`);
+  }
   // The AES version is plaintext metadata outside the default projection.
   if (dc.name === 'aes_key_version') c.lazy = true;
   // Large or encoded columns are lazy by default; aes_hex stays eager.
@@ -782,7 +785,7 @@ function validate(m: SchemaManifest, allowMissingAESVersion: boolean): void {
     const line = e.line ?? 0;
     const columns = e.columns ?? [];
     for (const c of columns) {
-      if ((c.styles ?? [])[0] === 'aes') {
+      if ((c.styles ?? []).includes('aes')) {
         const version = entityColumn(e, e.aes_version ?? '');
         if (!version || version.nullable || (version.type !== 'i32' && version.type !== 'i64')) {
           if (allowMissingAESVersion && !version) continue;

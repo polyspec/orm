@@ -14,10 +14,10 @@ fn require_dsn(var: &str) -> String {
     }
 }
 
-static LOG_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log.json"), "35b6d3b7a427c672");
-static ITEM_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item.json"), "1bc7bcaa76c9579b");
-static LOG_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log_plain.json"), "bb6df84cd3d12ffd");
-static ITEM_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item_plain.json"), "0043a90d8c51943f");
+static LOG_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log.json"), "2224506956429dd0");
+static ITEM_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item.json"), "d156b54c9f792507");
+static LOG_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log_plain.json"), "e13f02f8e6ffeaeb");
+static ITEM_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item_plain.json"), "826284c989a0a7a8");
 
 /// A model whose values are read and written by column name.
 macro_rules! row_model {

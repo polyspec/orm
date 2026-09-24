@@ -184,9 +184,9 @@ final class SchemaBuilder
         if ($mode !== 'changes' && $mode !== 'operations') {
             throw new SchemaError($x['line'], '%% orm:audit: mode must be changes or operations');
         }
-        $audit = ['entity' => $name, 'mode' => $mode, 'site' => $x['args']['site'] ?? '', 'redact' => []];
-        if ($audit['site'] !== '' && !isset($e['cols'][$audit['site']])) {
-            throw new SchemaError($x['line'], "%% orm:audit: unknown column $name.{$audit['site']}");
+        $audit = ['entity' => $name, 'mode' => $mode, 'service' => $x['args']['service'] ?? '', 'redact' => []];
+        if ($audit['service'] !== '' && !isset($e['cols'][$audit['service']])) {
+            throw new SchemaError($x['line'], "%% orm:audit: unknown column $name.{$audit['service']}");
         }
         if (array_key_exists('redact', $x['args'])) {
             foreach (explode(',', $x['args']['redact']) as $item) {
@@ -527,6 +527,9 @@ final class SchemaBuilder
         if ($c['type'] === 'jsontext' && $c['styles'] === []) {
             $c['styles'] = ['json'];
         }
+        if ($c['type'] === 'jsontext' && $c['styles'] !== ['json'] && $c['styles'] !== ['jsons']) {
+            throw new \InvalidArgumentException("column $name: a jsontext column takes only the json or jsons stage; store an encrypted JSON value in a blob column with the stages json aes");
+        }
         if ($name === 'aes_key_version') {
             $c['lazy'] = true;
         }
@@ -814,7 +817,7 @@ final class SchemaBuilder
         foreach ($this->m['order'] as $name) {
             $e = $this->m['entities'][$name];
             foreach ($e['columns'] as $c) {
-                if ($c['styles'] !== [] && $c['styles'][0] === 'aes') {
+                if (in_array('aes', $c['styles'], true)) {
                     $version = isset($e['cols'][$e['aes_version']]) ? $e['columns'][$e['cols'][$e['aes_version']]] : null;
                     if ($version === null || $version['nullable'] || ($version['type'] !== 'i32' && $version['type'] !== 'i64')) {
                         if ($allowMissingAesVersion && $version === null) {
@@ -923,7 +926,7 @@ final class SchemaBuilder
                 'change' => ['table' => $doc['audit_log']['change']['table'] ?? '', 'columns' => $doc['audit_log']['change']['columns'] ?? null],
             ] : null,
             'audits' => array_map(static fn(array $a): array => [
-                'entity' => $a['entity'] ?? '', 'mode' => $a['mode'] ?? '', 'site' => $a['site'] ?? '', 'redact' => $a['redact'] ?? [],
+                'entity' => $a['entity'] ?? '', 'mode' => $a['mode'] ?? '', 'service' => $a['service'] ?? '', 'redact' => $a['redact'] ?? [],
             ], $doc['audits'] ?? []),
         ];
         foreach ($doc['entities'] ?? [] as $name => $e) {
@@ -1026,8 +1029,8 @@ final class SchemaBuilder
         if (($m['audits'] ?? []) !== []) {
             $doc['audits'] = array_map(static function (array $a): array {
                 $out = ['entity' => $a['entity'], 'mode' => $a['mode']];
-                if ($a['site'] !== '') {
-                    $out['site'] = $a['site'];
+                if ($a['service'] !== '') {
+                    $out['service'] = $a['service'];
                 }
                 if ($a['redact'] !== []) {
                     $out['redact'] = $a['redact'];

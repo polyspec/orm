@@ -1216,7 +1216,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 
 func aesVersionColumn(ent *schema.Entity) string {
 	for _, col := range ent.Columns {
-		if len(col.Styles) > 0 && col.Styles[0] == "aes" {
+		if slices.Contains(col.Styles, "aes") {
 			return "aes_key_version"
 		}
 	}
@@ -1225,7 +1225,7 @@ func aesVersionColumn(ent *schema.Entity) string {
 
 func assignsAES(ent *schema.Entity, set []ir.Assign) bool {
 	for _, assign := range set {
-		if col := ent.Column(assign.Column); col != nil && len(col.Styles) > 0 && col.Styles[0] == "aes" {
+		if col := ent.Column(assign.Column); col != nil && slices.Contains(col.Styles, "aes") {
 			return true
 		}
 	}
@@ -1247,7 +1247,7 @@ func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete
 		return nil
 	}
 	for _, col := range ent.Columns {
-		if len(col.Styles) > 0 && col.Styles[0] == "aes" && !assigned(set, col.Name) {
+		if slices.Contains(col.Styles, "aes") && !assigned(set, col.Name) {
 			return &ir.Error{Code: "IR_INVALID", Msg: "AES update must assign every AES column; missing " + col.Name}
 		}
 	}

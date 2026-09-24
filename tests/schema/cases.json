@@ -3,20 +3,70 @@
  "plan_name": "fixture",
  "cases": [
   {
-   "name": "clients/go/orm/audit_large_test.go#1",
-   "mmd": "erDiagram\n  audit_doc {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    jsontext     body\n  }\n  %% orm:table entity=audit_doc name=app.audit_doc\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_doc mode=changes service=service_ref redact=body.secret\n",
+   "name": "clients/go/orm/aes_json_test.go#1",
+   "mmd": "erDiagram\n  secret_config {\n    bigint   seq             PK \"auto\"\n    int      aes_key_version\n    longblob config             \"json aes\"\n  }\n",
    "manifest": {
-    "sha256": "fce1e53bb1b81fb874076b5686e590debd7e5dfe1afe6a3333892c2c392d1764"
+    "sha256": "06a1bf5a05a4057af26255cc8223d2a8561bdbfacc75adeca772a653d8642a1b"
    },
    "ddl": {
     "mysql": {
-     "sha256": "f65fa13318b34d52321151da98c429d49d69b07d27a44d3f57879a065102d686"
+     "sha256": "67ff8e0497fa0883f59ab4e3ceaf2e1fdfd26f2c38fff27f5d84ddf7e0bf4c58"
     },
     "postgres": {
-     "sha256": "163a2ed003a26d470fc38c353b9b74aac2ab5437a36a8fecb1467161f8b2765a"
+     "sha256": "8049c90af9996d2698218442f02eac90c4e7e12e904742e04df3ff72c35d543f"
     },
     "sqlite": {
-     "sha256": "80fdd46b5d2767f9393c7cd16596342f14434e0d0fb66ca74abcc2c4091df1eb"
+     "sha256": "b1be2e591ead5e80fca7ed34a4f48c3c0ed4955094825beb3faf45d48d7b060e"
+    }
+   }
+  },
+  {
+   "name": "clients/go/orm/aes_json_test.go#2",
+   "mmd": "erDiagram\n  secret_config {\n    bigint seq PK \"auto\"\n    longblob config \"json aes\"\n  }\n",
+   "manifest": {
+    "error": "line 2: secret_config.config requires a non-null integer aes version column"
+   }
+  },
+  {
+   "name": "clients/go/orm/aes_json_test.go#3",
+   "mmd": "erDiagram\n  secret_config {\n    bigint seq PK \"auto\"\n    int aes_key_version\n    jsontext config \"json aes\"\n  }\n",
+   "manifest": {
+    "error": "line 5: column config: a jsontext column takes only the json or jsons stage; store an encrypted JSON value in a blob column with the stages json aes"
+   }
+  },
+  {
+   "name": "clients/go/orm/aes_json_test.go#4",
+   "mmd": "erDiagram\n  audit_secret {\n    bigint       seq             PK \"auto\"\n    varchar(36)  service_ref\n    int          aes_key_version\n    longblob     config             \"json aes\"\n  }\n  %% orm:table entity=audit_secret name=app.audit_secret\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_secret mode=changes\n",
+   "manifest": {
+    "sha256": "6cead776c7aea93986544ebdb704fb7ed54f16e35f9f792955b58e4d12eae5ec"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "a7182dfbdb36a487e36eb971223a45db62bb98188b93cc268fdd37013ed1b223"
+    },
+    "postgres": {
+     "sha256": "6f5e82bde9997076cc3a85b2611084d9f1bd8040a4917e1d2df7743ba7013670"
+    },
+    "sqlite": {
+     "sha256": "f4a358b78ed56b0981b44350ce2f9080a2fb6f6f8b455ecd7379985f6e8d9759"
+    }
+   }
+  },
+  {
+   "name": "clients/go/orm/audit_large_test.go#1",
+   "mmd": "erDiagram\n  audit_doc {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    jsontext     body\n  }\n  %% orm:table entity=audit_doc name=app.audit_doc\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_doc mode=changes service=service_ref redact=body.secret\n",
+   "manifest": {
+    "sha256": "df8fc31f3b24b7e2326f04af443f0b18ec2d12fe8a5ab5e64afc27be7385ff9e"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "d4665e62f4970407ad4853bc9e95d5163b4cc59d11b85214badabc7efdb77d72"
+    },
+    "postgres": {
+     "sha256": "f92f49434c7d98396d1f573a303eac2a2913d1d5a136457b9b053c315c0f2264"
+    },
+    "sqlite": {
+     "sha256": "9eb3ce3b1295d3b43f86619c165283486c98a0777376a4e8a0e1cf9595adb52a"
     }
    }
   },
@@ -24,17 +74,17 @@
    "name": "clients/go/orm/audit_test.go#1",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  %% orm:table entity=audit_operation name=app.audit_operation\n  %% orm:table entity=audit_change name=app.audit_change\n",
    "manifest": {
-    "sha256": "ac5a75753c930b0f8247e5b72fac889fa10c071413831079013d3accc34053ac"
+    "sha256": "b2d9f3bc3162739797c43172a54a28ae871a313020b03b153afa7f975eaa4dac"
    },
    "ddl": {
     "mysql": {
-     "sha256": "142102fe0e3f21c6f943077bc7655f24bc9098c25b20b705bbd037e96795f15f"
+     "sha256": "d569d624f84481474e0af786e3642ea91ece836ef7f360753b7a9589f09b3058"
     },
     "postgres": {
-     "sha256": "a68a9d7899e07372ac22eae0de59e6fc5341bc1498e2276da125991058ca0b33"
+     "sha256": "ef05eac7fc92cc8877a92acdbde25d40989c2edae17308301e303b14961736ae"
     },
     "sqlite": {
-     "sha256": "0a830e857531895623f83e924f509ee1f4a714e614a52f0671a8b0c020093fae"
+     "sha256": "ba1cc4f529c05a36623cd1e35fdfb9839b2af2dc5b026f32a57251895d604805"
     }
    }
   },
@@ -42,17 +92,35 @@
    "name": "clients/go/orm/audit_test.go#2",
    "mmd": "erDiagram\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    text         json_detail    \"?\"\n  }\n  %% orm:table entity=audit_item name=app.audit_item\n  %% orm:audit_log operation=app.audit_operation(seq, operation_uuid) context=app.operation_id change=app.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_item mode=changes service=service_ref redact=json_detail.secret\n",
    "manifest": {
-    "sha256": "9198d19530ed91b7d44fe936cea8446cd8d7a5eb5fd763ce10afb2d29c019120"
+    "sha256": "38718e978b82744ad38c9cda06d6ac7e474fbd574b9adff39e038640f3533915"
    },
    "ddl": {
     "mysql": {
-     "sha256": "2455350934d9acbabcca3dc10dead81788d8380c9dc5d533c2062420209598a1"
+     "sha256": "0ca0e754f19e3db28b9c8bf27ab57916148a777a5928fce1e46e224e844cc66e"
     },
     "postgres": {
-     "sha256": "672540d1736016e35a39054599599b0b2dc0f9125870ce595c7c80f8dee3766a"
+     "sha256": "2d1eff4973614c881f358414bc1f6310c9c428e49d99881a6c527b7cc4bed5b6"
     },
     "sqlite": {
-     "sha256": "57cfae8c25e6329d039a02a0be5f17684b97817bf5f22c5125f6be024654cbf8"
+     "sha256": "d8a575b7e0850d45e4d2583cd9f9066dda051faad6ff7f99af79bba33d9066a9"
+    }
+   }
+  },
+  {
+   "name": "clients/go/orm/audit_test.go#3",
+   "mmd": "erDiagram\n  record {\n    bigint seq PK \"auto\"\n    varchar(32) label\n  }\n  %% orm:table entity=record name=app.record\n",
+   "manifest": {
+    "sha256": "c54ab33fbff5c325cbe7ada6f3dfda1902f328cc9a997a1f8d9fa309120d7749"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "e6e9dd2449e41f30bcf3d7093ea4f622013a1692c8ee006bff896fae332071b5"
+    },
+    "postgres": {
+     "sha256": "4d664b9159f2592fc84fe6fcc9f0430d2c0cca5abeb391e2d8d91b0b011d0997"
+    },
+    "sqlite": {
+     "sha256": "7e079e4cd385624b053a77d86b1ccb563308af53f6b4beb7713de6c5a5a8e00a"
     }
    }
   },
@@ -566,7 +634,7 @@
    },
    "ddl": {
     "mysql": {
-     "sha256": "be855b08c8be6260cec3ed9ce4df51f2df6c600ad7b4c9bfeacd883fd371b59a"
+     "sha256": "2fc7cfa70113fec606db04b138fe291c552d2b88b47d06bbc738c71a1f4989d7"
     },
     "postgres": {
      "sha256": "5677bb7b185e290714da825706778775e06c4cdd64e677f11cc25c8dff5422b5"
@@ -771,17 +839,17 @@
    "name": "internal/ormgen/audit_test.go#1",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n",
    "manifest": {
-    "sha256": "f69ca10513b47d14a2983d968efbe1c739919349dfab261e6147d43e42a3ac6a"
+    "sha256": "e8cbf26edad8be382669c85e6f391f2e81eb4c9cf8951df3a8e5b4cd5bd98a1d"
    },
    "ddl": {
     "mysql": {
-     "sha256": "c9ce35f772f9bb3ccf728834106fd19093d302f50e20f8564e1649a1633581a7"
+     "sha256": "3820f99605d45252a9a64b8f7a57c6a1fe25efa497ce670b94b9aa02caf2d2c6"
     },
     "postgres": {
-     "sha256": "59b4dc95026aa61c678c41137568e49cee7594add09e3ddc47beee28f83c8f7e"
+     "sha256": "c77484539604b875d8f41ad8d46baf783a115c9e3d6b4aa1230ead9754604961"
     },
     "sqlite": {
-     "sha256": "25cf0f23f2917a30b2643a32abffc034aa54069de9ced6dddb24d63c817d953d"
+     "sha256": "726bddc8cd8f7c5b1e669cb8fa4d95bc0f29494029b4b95de19bbbb4d0f62354"
     }
    }
   },
@@ -789,17 +857,17 @@
    "name": "internal/ormgen/audit_test.go#2",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n",
    "manifest": {
-    "sha256": "23cfa2cbb8d90f2f6ac2d31007d6ed47f505d60438db79a975e2398c66e82ef8"
+    "sha256": "cc8aff1f9dce1f7eb7dd639a17488ef056101897f31122290fb22220ffc023f2"
    },
    "ddl": {
     "mysql": {
-     "sha256": "8f06a09ba998516e26578fdb425bf3c1db5b43d0b28d688932d07d7570499190"
+     "sha256": "5e277020c3209342546e669e4abd21ad941db02b2663ef17bb6cee3b8ef3e389"
     },
     "postgres": {
-     "sha256": "97d36d0b0b11c1333fc2560df0b608c59b0dafa76e80f6a03b5bb7b3d350a15f"
+     "sha256": "11ce906f8ca5a577b9c67625c780e25fe4d0c55483d8eebfc7148cdacc11e836"
     },
     "sqlite": {
-     "sha256": "102ed05cf207559adc6ad0f412d41e3dacfb2af001f6cc4fa010240ddeed1fc2"
+     "sha256": "2f03df604b385913f2d8c9a2210a6cde3e21d2c869cf77183566bfa12dbf91d8"
     }
    }
   },
@@ -807,17 +875,17 @@
    "name": "internal/ormgen/audit_test.go#3",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_item mode=changes service=service_ref redact=payload.token,payload.card.number\n  %% orm:audit entity=audit_note mode=operations\n",
    "manifest": {
-    "sha256": "20d14a827817c4ea389291c42bd4d5987ed382431952e423f727cbbd878f7de1"
+    "sha256": "43c7645751c6839d00b301ccb4b479467595d7a0198c92eaf5a58b77fc206668"
    },
    "ddl": {
     "mysql": {
-     "sha256": "c5efa4143b6ea8995f073e5679977a1dbdf85e578c7b57f3573b4a7158ae865b"
+     "sha256": "97e8a2f47573b4b875972c7f3bedcc5e608e6a2c9a9763bb2e53a3e7a9215b70"
     },
     "postgres": {
-     "sha256": "38589c53bc5667122649ba802d9fcdece39e350b2f1fd190000c3b330b247e8a"
+     "sha256": "c5ccc9c56640ad9c3492460d6c979560263cdbb75d933a007bbbbfe0bc48fd7a"
     },
     "sqlite": {
-     "sha256": "ab06e461188bdfad985c460ac26a26f010bab0f1f91f5b136cfaa139fb82e537"
+     "sha256": "ecf85acbb045d7487d320ceb87af7efad7d8df76fbb8d8ff2c4ac6a7a267c616"
     }
    }
   },
@@ -825,17 +893,17 @@
    "name": "internal/ormgen/audit_test.go#4",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    int          rank           \"=0\"\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_item mode=changes service=service_ref redact=payload.token,payload.card.number\n  %% orm:audit entity=audit_note mode=operations\n",
    "manifest": {
-    "sha256": "ead7457bf3af57f5affd72364e9f5119ab58499e838be924f0864eea3f410b78"
+    "sha256": "370ae272828913664f567ed71c319e9fbca44748822afeb6b62224cbf53239d7"
    },
    "ddl": {
     "mysql": {
-     "sha256": "ffca8f6dbaeaa6a78f2a95020b6fe7af48455b3e4c9a13616ddfa95ee3e03ba5"
+     "sha256": "025d696720b49653fb388be739c98812345da4c4d0313ec77c98668b2c6eb1fd"
     },
     "postgres": {
-     "sha256": "634c249ded6f439aeb369c20df9b8f32e41be504c88bcddc9375f401f203f6bf"
+     "sha256": "54e19920d7a62546cc5dc81c71be69f62e4480a4d9b77dd515db42bc29316b47"
     },
     "sqlite": {
-     "sha256": "b765b057c0b5946e4796b2bf19b31df39426e78b367fd85c5d4b6bd8febbac6b"
+     "sha256": "5b4cea5c44dc40d02f768d101a946570f408583a81186d0a45f03b96ae80745b"
     }
    }
   },
@@ -843,17 +911,17 @@
    "name": "internal/ormgen/audit_test.go#5",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    int          rank           \"=0\"\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_note mode=operations\n",
    "manifest": {
-    "sha256": "2475b4cb03f8a75b67f048909969f9d00f477a6c63bc6394ca76abaec7993c52"
+    "sha256": "435739be1bfafac5dadf3f341815b8dd4fef3e639a76995ec5928955bf23ace5"
    },
    "ddl": {
     "mysql": {
-     "sha256": "a8538d27c9728465e60db8cdfe4392316a5b97f39ddb0461d629b454bbfede64"
+     "sha256": "4a8f1feb17e059992e61d203d49a8c9f405dd3678f5d27b5955929e7dadc3878"
     },
     "postgres": {
-     "sha256": "acbb5b13471d742fcaf8c4f9e4059e99f824ddb11c6c15ab131aa54711481ce9"
+     "sha256": "695f89730946dbdacea2f0bbbca614912ebf25e36bab7279e1f7e739f2054c79"
     },
     "sqlite": {
-     "sha256": "00bd1f8e3c500d3dbe1b61faf8b4dda4c6c69c686f0820fb67d84ea98ad6932f"
+     "sha256": "83ccb5bc4f480dce48ad41edcc534025dfd87a0cba94a9f7408405a6d949ccf7"
     }
    }
   },
@@ -861,17 +929,17 @@
    "name": "internal/ormgen/audit_test.go#6",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title          \"?\"\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_item mode=changes service=service_ref redact=payload.token,payload.card.number\n  %% orm:audit entity=audit_note mode=operations\n",
    "manifest": {
-    "sha256": "d5d43eb7d823632f16bd48d367931efc28e5105a27354f9ec77668f619c9a52a"
+    "sha256": "9671fc308efea873b5f7c4fd14f2e8a1857c84e6cd4a266b00231acdd15b64ac"
    },
    "ddl": {
     "mysql": {
-     "sha256": "bcab701ff2d212802896c81e100f8f14eec245cf6f9e1f743588f788cc16d07d"
+     "sha256": "8d1cd0d6ae482b8405fcfbf2546b9d24accfefa354a5d554f22bfcb761e08c74"
     },
     "postgres": {
-     "sha256": "2ee91b2a7511ffd20e0acb726c0c778cfe0c789d8294c963bf5c829b58b087e0"
+     "sha256": "3a0c3dcf017057fe5402f48414961948feb14df48d319bfecfd0db4331ea5561"
     },
     "sqlite": {
-     "sha256": "f279d1e0367a1a112265fc3f6babe2d720d32dcf0fcb8db7fcface3fff261851"
+     "sha256": "455167d92191efc9d589e6da9cd5b45a353c5b766e273f504d8b279ecb0ec6be"
     }
    }
   },
@@ -879,17 +947,17 @@
    "name": "internal/ormgen/audit_test.go#7",
    "mmd": "erDiagram\n  audit_operation {\n    bigint       seq            PK \"auto\"\n    varchar(36)  operation_uuid UK\n  }\n  audit_change {\n    bigint       seq            PK \"auto\"\n    bigint       operation_seq\n    varchar(16)  change_kind\n    varchar(36)  service_ref       \"?\"\n    varchar(191) table_label\n    jsontext     entity_ref\n    jsontext     before_value\n    jsontext     after_value\n  }\n  audit_item {\n    bigint       seq            PK \"auto\"\n    varchar(36)  service_ref\n    varchar(191) title\n    jsontext     payload        \"?\"\n  }\n  audit_note {\n    bigint       seq            PK \"auto\"\n    varchar(191) body\n  }\n  %% orm:audit_log operation=audit_operation(seq, operation_uuid) context=app.operation_id change=audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=audit_item mode=operations\n  %% orm:audit entity=audit_note mode=operations\n",
    "manifest": {
-    "sha256": "91ec410e548dace1e59947bd099daf7f84fe0339fa534d07c57df207e4924f54"
+    "sha256": "bba505d0d02a8220fe72c351f1daa79df2b4586aa6a9abb5d790f399c309bd66"
    },
    "ddl": {
     "mysql": {
-     "sha256": "ff7ff88d3729b943919b909162a812fc7b58dad04bbe872ff7e9ddec1c64377b"
+     "sha256": "267eed2760c296316c5d7e81a5b39d0c235a40f50eb34e09eddf49b40dd3c7d1"
     },
     "postgres": {
-     "sha256": "6edf43fbeeb7fe111914a99ab8e1857e87076cdb853fd1e7971fb92c1d4d74e7"
+     "sha256": "51132a160d6e32fad49eb262051377c6887b4055d1a19ed4db2200b8e0ee6076"
     },
     "sqlite": {
-     "sha256": "4a7fb28315ad2e16b3297c356904237ff9f0de29831c2310b6265a865c553192"
+     "sha256": "9c309c049389b27621fa6c381190618ef4b416c28a26ec62cd7d973a45ed8b7e"
     }
    }
   },
@@ -1030,17 +1098,17 @@
    "name": "internal/ormgen/audit_test.go#27",
    "mmd": "erDiagram\n  member_account {\n    bigint       seq            PK \"auto\"\n    varchar(191) email\n  }\n  %% orm:audit_log operation=core.operation(seq, operation_uuid) context=app.operation_id change=core.operation_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n  %% orm:audit entity=member_account mode=changes\n",
    "manifest": {
-    "sha256": "d89df3453512f4dad82771437682c7714ba2b10d9a02fa883cec04fa212fcebf"
+    "sha256": "702d531c71898007dd9983c2f698011faa45f2a458d128df58fafc73ea8e13e2"
    },
    "ddl": {
     "mysql": {
-     "sha256": "ff9c9c3b44ef908d0a2d94e05f682ab47f251e7fbca55eea339150f921b66a82"
+     "sha256": "387b56c8430e78969e0ecf4c571f39a2e707a0ba7814ff7f17a5e818909062fa"
     },
     "postgres": {
-     "sha256": "e3a6b1c3d0fa0199411815c018c7a5338991b4430044e9c9018bb004dcd93ee3"
+     "sha256": "8e61c6e14b5c5f98d8101d977bd623fcd9723fcbb09cfc458f1091ad448f5c86"
     },
     "sqlite": {
-     "sha256": "814338d2d04f423c939ff6c28103222ee0d733d74089c625aae6a5743d3e5d03"
+     "sha256": "4c5640bb984258f463ca9dbcaa688c4241fba120490ebd89b579ae3b543a13c0"
     }
    }
   },
@@ -1066,6 +1134,60 @@
     },
     "sqlite": {
      "sha256": "cf8e30a24379cc450e929370daaabe3bafe1edc7f80ef255d5b52dd077c78649"
+    }
+   }
+  },
+  {
+   "name": "internal/ormgen/ddl_bool_test.go#1",
+   "mmd": "erDiagram\n  flags {\n    bigint id PK\n    boolean enabled \"=true\"\n    boolean disabled \"=false\"\n  }\n",
+   "manifest": {
+    "sha256": "2b19edd8f34bb9069f438ccb0c801e5ea92e2ec70ae7f28c744d9b20246717b4"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "f7819906b007ab73e16680032f8e21045a9cd8e087cc780d658317f6cf708401"
+    },
+    "postgres": {
+     "sha256": "ff134035b2804eea75ae078666bf2b7df04267134fe21030891fb72fd2c15db6"
+    },
+    "sqlite": {
+     "sha256": "e9cfb6ccd4114c92037a33217adddb47ded2ea88c5c01c50ef01046ec35a2174"
+    }
+   }
+  },
+  {
+   "name": "internal/ormgen/ddl_bool_test.go#2",
+   "mmd": "erDiagram\n  audit {\n    bigint id PK\n    varchar(32) host_operation\n    varchar(32) read_metadata \"?\"\n  }\n  %% check audit audit_read_metadata : CASE WHEN `host_operation` = 'audit.list' THEN `read_metadata` IS NOT NULL ELSE `read_metadata` IS NULL END\n",
+   "manifest": {
+    "sha256": "3433867c733fa248a1991eeb8d247d6a71857f472719216868b18661df948e76"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "5191f420c50c3fc02154311d2215aed36b53f2040663f287e803231cf9cb71ae"
+    },
+    "postgres": {
+     "sha256": "34d71d5ca96ff404034b408e5bd59936426c1fbbc1d8249e9dc82f1419649dfe"
+    },
+    "sqlite": {
+     "sha256": "bc121599cab59a6ae743909fe0aed12ca24643e07597226e0c574aadef457c97"
+    }
+   }
+  },
+  {
+   "name": "internal/ormgen/ddl_bool_test.go#3",
+   "mmd": "erDiagram\n  accounts {\n    bigint id PK\n    varchar(120) name\n  }\n  methods {\n    bigint id PK\n    varchar(120) name\n  }\n  %% check accounts name_length : length(`name`) BETWEEN 1 AND 120\n  %% check methods name_length : length(`name`) BETWEEN 1 AND 120\n",
+   "manifest": {
+    "sha256": "aa65550147c9a0b08a4ca20285f3d714b31cc98e98f129d23e03d1d531a94257"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "00fc457c502b97535566411ac40d726c69e276b3bc33202d3bbc4c6f589853fd"
+    },
+    "postgres": {
+     "sha256": "c7430681b47b46a33beef70c0dce2f2460fd5a0e46a2366eec6f507a38b3a308"
+    },
+    "sqlite": {
+     "sha256": "d193c20f5e2609501f4231d1606e617f619b3f5bbd7947984063117469304aee"
     }
    }
   },
@@ -1160,6 +1282,24 @@
    }
   },
   {
+   "name": "internal/ormgen/gen_go_output_test.go#1",
+   "mmd": "erDiagram\n  product {\n    bigint seq PK \"auto\"\n    int amount\n    int sum_amount\n  }\n",
+   "manifest": {
+    "sha256": "c9cf23a59bbd9571b3ac71ff19db51b441b47f6a7de9e1fc3bfac2075c0bf15a"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "bd23e80fb69dcbe60f53446f30a8c8b3eef1af58479556ce39c1810bf62651aa"
+    },
+    "postgres": {
+     "sha256": "514f608075bc7e879dcb097ce4c0406458e9d44a97b66ba70e5749b3fd6b5341"
+    },
+    "sqlite": {
+     "sha256": "cb3f660d7eb745d277c59010f2a5f7095b797df9529cf863a913c5a27305ccb2"
+    }
+   }
+  },
+  {
    "name": "internal/ormgen/gen_go_test.go#1",
    "mmd": "erDiagram\n  product {\n    bigint        seq          PK \"auto\"\n    bigint        brand_seq\n    varchar(50)   name\n    text          body            \"?\"\n    int           price           \"=0\"\n    datetime(6)   sale_start_dt   \"?\"\n    point         location        \"?\"\n  }\n  brand {\n    bigint        seq          PK \"auto\"\n    int           min_price       \"=0\"\n  }\n  %% fulltext product (name, body)\n",
    "manifest": {
@@ -1228,7 +1368,7 @@
    },
    "ddl": {
     "mysql": {
-     "sha256": "5ece897e9c363eb0bfa1951fc8e076e6484e47a76c018f0fbebcd739bdeac85e"
+     "sha256": "99a0f145f3a33dc97a8e4f8a042c2234b31bb7d996651ee35c6ea5b5a6401084"
     },
     "postgres": {
      "sha256": "94cf8d0f0b58f3f8c46f3a0c41a8b50b3b78cf007e1b49416a0b0f926fbad5a6"
@@ -1907,88 +2047,172 @@
  ],
  "diffs": [
   {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "e4b795ba634c20828d3a1bbf95eb69690214bdec836f569a17c88d16f4a13159"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "e4b795ba634c20828d3a1bbf95eb69690214bdec836f569a17c88d16f4a13159"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "200cbef83248f9cc8cfd9d01ff0997420528cb6bacb1e57b2ddfbb740626d683"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "200cbef83248f9cc8cfd9d01ff0997420528cb6bacb1e57b2ddfbb740626d683"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "6258e27ea4d5a17b93afa8602de69f14b88d9e542324580b1a2de325b5d3e6b6"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "6258e27ea4d5a17b93afa8602de69f14b88d9e542324580b1a2de325b5d3e6b6"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "7c277d95f60ed35a36141038445550b1a13420240838f22831719bbd63a91226"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "7c277d95f60ed35a36141038445550b1a13420240838f22831719bbd63a91226"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "b9fd85d4c4577c967ba436c45cfd0229e1904af525d5bf61e3ba00a2b703dbf5"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "b9fd85d4c4577c967ba436c45cfd0229e1904af525d5bf61e3ba00a2b703dbf5"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "b700b6f92a10590b4025344851fe3f0abfd79528a86240cf5c8f01506354cc9b"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "b700b6f92a10590b4025344851fe3f0abfd79528a86240cf5c8f01506354cc9b"
+  },
+  {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "c7f82b79e941daac419e454237588f128364581134f1139dc792c48a09dd221a"
+   "sha256": "40a1658edbc9f391b6d5a4662b46e0c30a7720e652836f392c9fecfafac30753"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "c7f82b79e941daac419e454237588f128364581134f1139dc792c48a09dd221a"
+   "sha256": "40a1658edbc9f391b6d5a4662b46e0c30a7720e652836f392c9fecfafac30753"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "7d863024ddc59ad04e0f52f037d5b339dbcc3a67ae4d7b7a8d2138f885a2004a"
+   "sha256": "f79ae80dd7b1c31998b78c867887ed42b0f9cb835f273f54bcc42bc3355018ed"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "7d863024ddc59ad04e0f52f037d5b339dbcc3a67ae4d7b7a8d2138f885a2004a"
+   "sha256": "f79ae80dd7b1c31998b78c867887ed42b0f9cb835f273f54bcc42bc3355018ed"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "5714bc8938ba0b4422e5ef1adeb7f32bc276add8e0084e3e493ab36133fe8baf"
+   "sha256": "58e24e7278a397cc6459a329210a577a8ffddbd357e429a0cad915ad580abe93"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "5714bc8938ba0b4422e5ef1adeb7f32bc276add8e0084e3e493ab36133fe8baf"
+   "sha256": "58e24e7278a397cc6459a329210a577a8ffddbd357e429a0cad915ad580abe93"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "81f98542383e08082f921cbb19a9ebc16082e3fb571283a57ac0300b7b6300c4"
+   "sha256": "bbc807a968871ffa7f3a159bb9b6af530716bc7b36ae6935c868be1b8e423017"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "81f98542383e08082f921cbb19a9ebc16082e3fb571283a57ac0300b7b6300c4"
+   "sha256": "bbc807a968871ffa7f3a159bb9b6af530716bc7b36ae6935c868be1b8e423017"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "baf33279d83c38ee5caee71f4e84d3d2151f36aa7142e74912b51932eced7586"
+   "sha256": "e78d12d866851718a584e6c550f76a81cb8b5657b9798fd2260d796e7034e8a6"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "baf33279d83c38ee5caee71f4e84d3d2151f36aa7142e74912b51932eced7586"
+   "sha256": "e78d12d866851718a584e6c550f76a81cb8b5657b9798fd2260d796e7034e8a6"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "2e752d5b574210ba0c91c414b5485c0a22b36e002e64517dc4b94c9fc54e15f3"
+   "sha256": "39174359534df400571f985a229e7093d902f9782c583e5237a2b0311dc08761"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "2e752d5b574210ba0c91c414b5485c0a22b36e002e64517dc4b94c9fc54e15f3"
+   "sha256": "39174359534df400571f985a229e7093d902f9782c583e5237a2b0311dc08761"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
@@ -2289,42 +2513,42 @@
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "484b401a6b14b2094a3b0d3d890cb9302540bd45774f5dd493d860955e18b33a"
+   "sha256": "01702298d03b43ffae59214a041c012dc1311d7527e801f4d14fe1e122a2b134"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "484b401a6b14b2094a3b0d3d890cb9302540bd45774f5dd493d860955e18b33a"
+   "sha256": "01702298d03b43ffae59214a041c012dc1311d7527e801f4d14fe1e122a2b134"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "f6e8629f12b56c845af9841223abca3481c86dc258a70a2664f71b8d4acc1f94"
+   "sha256": "7e7e794c99cbe46799b1ede1391440fb507a072a6abb6852b1fcaa897461a30d"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "f6e8629f12b56c845af9841223abca3481c86dc258a70a2664f71b8d4acc1f94"
+   "sha256": "7e7e794c99cbe46799b1ede1391440fb507a072a6abb6852b1fcaa897461a30d"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "fd2ca3475496935c8ae48847e3e24b1337dceb1c224667279ee343508cac0d18"
+   "sha256": "ae9d7e400d0c7559553b8c8b09a8a7d151c28c6c623302f8179f0285542a4fc0"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "fd2ca3475496935c8ae48847e3e24b1337dceb1c224667279ee343508cac0d18"
+   "sha256": "ae9d7e400d0c7559553b8c8b09a8a7d151c28c6c623302f8179f0285542a4fc0"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
@@ -2577,6 +2801,48 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "table rename app.audit_item -\u003e audit_item requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "c910206de7273ee237fbe6c360ea54f87634ef3182e72224365699806e2d82b7"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "c910206de7273ee237fbe6c360ea54f87634ef3182e72224365699806e2d82b7"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "72a4f6061f7cd139fa2cdb6db407e94cdd39b5d8e6f1230bbd097c66bc35f48b"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "72a4f6061f7cd139fa2cdb6db407e94cdd39b5d8e6f1230bbd097c66bc35f48b"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "8f2b68e3bc0a8566910f941b18fb6dc7cd6e816a981a705933b558edb7e5e1f0"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "8f2b68e3bc0a8566910f941b18fb6dc7cd6e816a981a705933b558edb7e5e1f0"
   },
   {
    "from": "clients/go/orm/jsontext_order_test.go#1",
@@ -4851,7 +5117,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "36db5595c4a489cf8b846148dd0fd84a55048cf4cfe3d3b49f7da01b3704357b"
+   "sha256": "397e196d1f66f451dbdf779364ea2934ca6c97e7648ba331be7d4990b63397ee"
   },
   {
    "from": "engine/schema/manifest_test.go#1",
@@ -8211,14 +8477,14 @@
    "to": "engine/schema/manifest_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d3cf662fbaac12be702525a8d8dd55b1c933240f192ed977d9d4c23d02aa468f"
+   "sha256": "e904775da07070455df814bb81c256a44ae4cf26bd99b7812fcad69c55f31d1f"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "engine/schema/manifest_test.go#1",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8295,14 +8561,14 @@
    "to": "engine/schema/mermaid_test.go#8",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "b86cd9336116f4400751357817455fda9ea0d02623cda3ab69f1758783a7b10d"
+   "sha256": "c3e4757919ae522f204462a6f2172113ee3285fe89cd3f2bfa05649500528b4c"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "engine/schema/mermaid_test.go#8",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8379,14 +8645,14 @@
    "to": "internal/ormgen/ddl_uuid_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d3cf662fbaac12be702525a8d8dd55b1c933240f192ed977d9d4c23d02aa468f"
+   "sha256": "e904775da07070455df814bb81c256a44ae4cf26bd99b7812fcad69c55f31d1f"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#1",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8421,14 +8687,14 @@
    "to": "internal/ormgen/ddl_uuid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "ef992f35e167815ca8bd6b481addbcaeb3830851f0a0d5db20ce9e864ccf9ffe"
+   "sha256": "fcf260bcb88f2bc1475b4d061d9f48d7e0bcbb80a950dcaa2614afa509a310ee"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8463,14 +8729,14 @@
    "to": "internal/ormgen/ddl_uuid_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "023775caf4891842ed962e1bde4cd36a9d64895a4253062c6b0ccf3038e830b0"
+   "sha256": "f187f2f59b38396ce9939999bb94f38dbc9518254f0d742bd369b9efb2edc531"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#3",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8505,14 +8771,14 @@
    "to": "internal/ormgen/schema_source_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "4e57ceda264fd2fd1497b8b05587abeb15168e5c240eb2ce1feb9ccf5af19883"
+   "sha256": "21af46b0da849912ce12247fadd8032cdab009af44248b91c49f18dddc43108d"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/schema_source_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `positive_quantity`;"
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `item` DROP CONSTRAINT `ck_item_positive_quantity`;"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -8631,7 +8897,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "0c1418e0e803d31e52b7858cce4b0de8a7413e9e7334fd1aa9e01337ec57d796"
+   "sha256": "710f8cf7a090a9c72b8a9ddfd8bfb6ee3d07f38b1fad7a57fd72341c1c53df5a"
   },
   {
    "from": "engine/schema/mermaid_test.go#8",
@@ -10731,294 +10997,294 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "8350649068ef23ece09594efb7ad4981915fa92ce761bb411dc51791a534f878"
+   "sha256": "f7e51f9ff584ebfc1de421dc83fe156d3d01703cee3c08395702efddc7c98cc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "8350649068ef23ece09594efb7ad4981915fa92ce761bb411dc51791a534f878"
+   "sha256": "f7e51f9ff584ebfc1de421dc83fe156d3d01703cee3c08395702efddc7c98cc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "3dc70660ec4eec3270a275b3c0b9eaed7bce6ac6a0a759665f3365b3621b7910"
+   "sha256": "4dea0f55f8b146ba26df322b95cbfa478f73ebf52feca993699a5caf8aad229e"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "3dc70660ec4eec3270a275b3c0b9eaed7bce6ac6a0a759665f3365b3621b7910"
+   "sha256": "4dea0f55f8b146ba26df322b95cbfa478f73ebf52feca993699a5caf8aad229e"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "3d0508a74761e8dd0e9e9a88faf9fadf6ae7e00d5e75618ffbf603a6fd0cddf9"
+   "sha256": "e4a325623b13fe752db2e7b0166fb36a998ba6145d807e1434f9a70faf4d6ee9"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "3d0508a74761e8dd0e9e9a88faf9fadf6ae7e00d5e75618ffbf603a6fd0cddf9"
+   "sha256": "e4a325623b13fe752db2e7b0166fb36a998ba6145d807e1434f9a70faf4d6ee9"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "2a201a8790905d44efb9d39b1d6f7a7fa528cf0f6fad2f21976fd049db19f332"
+   "sha256": "4e83292958ff64bbad10ac1ad04faf70ab5e979b007d35c186c1d4104e3c6d40"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "2a201a8790905d44efb9d39b1d6f7a7fa528cf0f6fad2f21976fd049db19f332"
+   "sha256": "4e83292958ff64bbad10ac1ad04faf70ab5e979b007d35c186c1d4104e3c6d40"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "20784234c7e201c727772dfa1d55140576419885d4d9f84bcf9711046778c464"
+   "sha256": "cd5d13e2c5f08cdf4a2902eb484547b991cf09c118a6833b436d2a655c398db0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "20784234c7e201c727772dfa1d55140576419885d4d9f84bcf9711046778c464"
+   "sha256": "cd5d13e2c5f08cdf4a2902eb484547b991cf09c118a6833b436d2a655c398db0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "20577c12e77bd9b863d1ea1ab037c2cfb205a8e64183696f25ba9012febed7e9"
+   "sha256": "2590a821e212f5b349899dd81f05eed460de4863fcf82cef158b833f1b63f7b0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "20577c12e77bd9b863d1ea1ab037c2cfb205a8e64183696f25ba9012febed7e9"
+   "sha256": "2590a821e212f5b349899dd81f05eed460de4863fcf82cef158b833f1b63f7b0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "6d3ced21e0910f35cafc269628f45ccb0e8aeb559c2bebd1c77d9e6b17e43742"
+   "sha256": "b0c3ad00a31e5d873638077a080354c9327fd2beac486c2489a8b5f6090d43c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "6d3ced21e0910f35cafc269628f45ccb0e8aeb559c2bebd1c77d9e6b17e43742"
+   "sha256": "b0c3ad00a31e5d873638077a080354c9327fd2beac486c2489a8b5f6090d43c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "921b5d92ab9d2412cf649e07aef319be85b047d30b4a19843c0a0e909824a7e0"
+   "sha256": "965a341cb030b84baea8b0f2f271a06dc4cb85dca44bdb3d027490218c9ed0fe"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "921b5d92ab9d2412cf649e07aef319be85b047d30b4a19843c0a0e909824a7e0"
+   "sha256": "965a341cb030b84baea8b0f2f271a06dc4cb85dca44bdb3d027490218c9ed0fe"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "56e2bdf377e2e276ae3af1678f8ea456a982b6677b45d5d810291ee2c5bf1ad1"
+   "sha256": "5718747ff6a3dd46a101f5075a1c389edf8df33c4a405dfccf9fc080c402e1cd"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "56e2bdf377e2e276ae3af1678f8ea456a982b6677b45d5d810291ee2c5bf1ad1"
+   "sha256": "5718747ff6a3dd46a101f5075a1c389edf8df33c4a405dfccf9fc080c402e1cd"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "796558ca5f9ded62f8cfa6d5c995e401f125f1ca41e63ceb1ab52776c122ae27"
+   "sha256": "a8d0a3c6d2a4ffa3f4dcf099fe9b1d24404087c53392de50442ee4a7f517e2c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "796558ca5f9ded62f8cfa6d5c995e401f125f1ca41e63ceb1ab52776c122ae27"
+   "sha256": "a8d0a3c6d2a4ffa3f4dcf099fe9b1d24404087c53392de50442ee4a7f517e2c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "27a3272aec337462051f1ed28505673a6dcbebb806f1aa9ada7773d0da3c3862"
+   "sha256": "a7b753f065bb0dc6215cb9f65802a06b8ad827b63b2a2e1b1c42034412cf49e0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "27a3272aec337462051f1ed28505673a6dcbebb806f1aa9ada7773d0da3c3862"
+   "sha256": "a7b753f065bb0dc6215cb9f65802a06b8ad827b63b2a2e1b1c42034412cf49e0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "5d2dda27a54af1b988bb9d9a7e7174d63eab17de07ebefda605680f2dfff250d"
+   "sha256": "c6790ffcb9f4f488f93c3482225ff3f1fedf75d43621b1c72566428697079aee"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "5d2dda27a54af1b988bb9d9a7e7174d63eab17de07ebefda605680f2dfff250d"
+   "sha256": "c6790ffcb9f4f488f93c3482225ff3f1fedf75d43621b1c72566428697079aee"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d25be9dfa76e791d9eeb321db4d53f3059fc27ff10cfafd4afd246594d61e59b"
+   "sha256": "136010a7a00b0480b7405a97c258a98df06e6d24cb35a33614861df1c6d01f33"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "d25be9dfa76e791d9eeb321db4d53f3059fc27ff10cfafd4afd246594d61e59b"
+   "sha256": "136010a7a00b0480b7405a97c258a98df06e6d24cb35a33614861df1c6d01f33"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "bc76bf7b1c3390045dfd4730b477ea3047f6560419c41856a5658027874b6681"
+   "sha256": "83665557ee55940aeb68b084e3a961f0ed2c2d5f18ef05a12938c109665a6c8b"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "bc76bf7b1c3390045dfd4730b477ea3047f6560419c41856a5658027874b6681"
+   "sha256": "83665557ee55940aeb68b084e3a961f0ed2c2d5f18ef05a12938c109665a6c8b"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "e6cdc2d2ffdc2efe16074a72ec95d5a6a28f684755377791ab34044523cf4fbd"
+   "sha256": "c8a87df5238cfa8ec1d191d7259f9a875efb64d2247c509df4ee0cecce6bc997"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "e6cdc2d2ffdc2efe16074a72ec95d5a6a28f684755377791ab34044523cf4fbd"
+   "sha256": "c8a87df5238cfa8ec1d191d7259f9a875efb64d2247c509df4ee0cecce6bc997"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "107dc7e9374d11db2009553435f4544cc08801b04dadbc0778f7b5ec10fea6e5"
+   "sha256": "8a174a41afbb16f8b0cee6db041a5039d4de34f2a7fe1ca6f1d43195f4a186d4"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "107dc7e9374d11db2009553435f4544cc08801b04dadbc0778f7b5ec10fea6e5"
+   "sha256": "8a174a41afbb16f8b0cee6db041a5039d4de34f2a7fe1ca6f1d43195f4a186d4"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "58c1449fa7a4c472b1a623aa974f51a8f69bbbf164e93104058692e85aa8468e"
+   "sha256": "422e42459159fc872bf209842ea93ca654d32fdde606af28016219b9a3bfddc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "58c1449fa7a4c472b1a623aa974f51a8f69bbbf164e93104058692e85aa8468e"
+   "sha256": "422e42459159fc872bf209842ea93ca654d32fdde606af28016219b9a3bfddc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "a1c7edb8fe86f6aac41afe6aebaa0987e8dd0f9c9a820cd3b1a4c5b3be0d8826"
+   "sha256": "ce4755020343e7a7b4df704ddb0e6f86a14be334c6ba67319da812217032446d"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "a1c7edb8fe86f6aac41afe6aebaa0987e8dd0f9c9a820cd3b1a4c5b3be0d8826"
+   "sha256": "ce4755020343e7a7b4df704ddb0e6f86a14be334c6ba67319da812217032446d"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "b672c895d23ef6abc9bc9d68ebd291999f38c5b1d11c7e1619af8d519b66798e"
+   "sha256": "ecb313399438c47444dcdd29fc0e9ca2e93fd9d5b9134a89d94fc7c4395a43fc"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "b672c895d23ef6abc9bc9d68ebd291999f38c5b1d11c7e1619af8d519b66798e"
+   "sha256": "ecb313399438c47444dcdd29fc0e9ca2e93fd9d5b9134a89d94fc7c4395a43fc"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "95e010407e839ce1f03c5d2f46fd24ca8e0b91a0e55aa1da819a9be9ffb5ce78"
+   "sha256": "cc63d8afa760f3a681050bd6286d81858f82db7d024a99dcafaf1af783f716c9"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "95e010407e839ce1f03c5d2f46fd24ca8e0b91a0e55aa1da819a9be9ffb5ce78"
+   "sha256": "cc63d8afa760f3a681050bd6286d81858f82db7d024a99dcafaf1af783f716c9"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "e473b2dcbee45c7f89eda4016a82ac444d2c04a573b0f3d4ecac6b3106b20973"
+   "sha256": "13a37a8c5c5175d3fed0bb049de6cec4063d0c3d7c2b8d4ae275638df0f084a7"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "e473b2dcbee45c7f89eda4016a82ac444d2c04a573b0f3d4ecac6b3106b20973"
+   "sha256": "13a37a8c5c5175d3fed0bb049de6cec4063d0c3d7c2b8d4ae275638df0f084a7"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11109,7 +11375,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "0b5ea686170fab99961ac91025343c3464d81656f5f9f1334ef77aec7f273781"
+   "sha256": "e0088c6ff07840b43011c36122e0350bd3ed4744fc3c3c0b9b99398c87566199"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11123,7 +11389,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "c2d2c124eb03020fd2311f4d9fe252e4fd1db6a68c3e5ebe80b773c529e866a1"
+   "sha256": "6fdedda90d66f370e43b453bc87ae8f8c7261267f30d63cb9cdff0b77d8f2a89"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11137,7 +11403,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "5184a23e276fe37ca9f4a642f4b55ca3cd2e883403c716813075ab4a088b7e5a"
+   "sha256": "bdd0984011fc6ea3adab0ae377cd4f9157a434259b9c8b8a106a43a47b0f1d31"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11151,175 +11417,175 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "fa0ae4c258a54ba5f6b8a6b651ab1c23e81a3a1740532b88001f913d0998abf2"
+   "sha256": "69f607b3df3c66e127919077e815609985eff33c0d5261bfa40ca01afaa8c878"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "fa0ae4c258a54ba5f6b8a6b651ab1c23e81a3a1740532b88001f913d0998abf2"
+   "sha256": "69f607b3df3c66e127919077e815609985eff33c0d5261bfa40ca01afaa8c878"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "666729e6c753eed7e9ce740c4cbf6592956f93e50d1b5dd877edfbc442297856"
+   "sha256": "7c4ab7afcefd9e1b916e64309582b8ca601d184b2ba22c7c8fe77f5ea0c21955"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "666729e6c753eed7e9ce740c4cbf6592956f93e50d1b5dd877edfbc442297856"
+   "sha256": "7c4ab7afcefd9e1b916e64309582b8ca601d184b2ba22c7c8fe77f5ea0c21955"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "9e9199df02b1542679593c0f24308fe9c03d36bf2dbca0ddd6ab76a72a4edf28"
+   "sha256": "04f2961bc969d887a8229c8a1540ddbf9674d0b5e548b087008c563009a011f6"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "9e9199df02b1542679593c0f24308fe9c03d36bf2dbca0ddd6ab76a72a4edf28"
+   "sha256": "04f2961bc969d887a8229c8a1540ddbf9674d0b5e548b087008c563009a011f6"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "59d70e323f2e5ce5963864762278589b7ade8cd46a301a7cd76a25052ed8fb4f"
+   "sha256": "7d744166ed81192d86a543067d9505e8c738c600dfe1d74776dbfb0661819ee4"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "59d70e323f2e5ce5963864762278589b7ade8cd46a301a7cd76a25052ed8fb4f"
+   "sha256": "7d744166ed81192d86a543067d9505e8c738c600dfe1d74776dbfb0661819ee4"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e3f23fbecbfcf35b72939bd1608913bedf83ad7d79ba96447f5a9f2b13734e6a"
+   "sha256": "d31884ceefd672c2f1e144a6050b93b0138bc03a6b29050ee4eb3341182a03b8"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "e3f23fbecbfcf35b72939bd1608913bedf83ad7d79ba96447f5a9f2b13734e6a"
+   "sha256": "d31884ceefd672c2f1e144a6050b93b0138bc03a6b29050ee4eb3341182a03b8"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "1434dfe71f26d461c1bd7d9cc0e2c9afafcca66b683ec4fbf1e2dce428004b82"
+   "sha256": "5264f40d45d936bfdec107c637b01fac7274fecb6ec66cc3da347598d1fce0ac"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "1434dfe71f26d461c1bd7d9cc0e2c9afafcca66b683ec4fbf1e2dce428004b82"
+   "sha256": "5264f40d45d936bfdec107c637b01fac7274fecb6ec66cc3da347598d1fce0ac"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "6b305abd7279605baebf472c48d4a278105a9226d9e7401128b41c271af1005e"
+   "sha256": "c9e75d14ed534f7ef128232d28537dfa38e1463a0497dd12d83f58aff5c2467e"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "6b305abd7279605baebf472c48d4a278105a9226d9e7401128b41c271af1005e"
+   "sha256": "c9e75d14ed534f7ef128232d28537dfa38e1463a0497dd12d83f58aff5c2467e"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "c11e2521c35ee08d1f818cb8c43004f47acf1a383d21bdd05c81592b618e76ee"
+   "sha256": "c8998ce53abe0f6d68fce7bc055f33b84ebe787eb0b6ab4ec53b236f0dc2a9b2"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "c11e2521c35ee08d1f818cb8c43004f47acf1a383d21bdd05c81592b618e76ee"
+   "sha256": "c8998ce53abe0f6d68fce7bc055f33b84ebe787eb0b6ab4ec53b236f0dc2a9b2"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "ac4d545ba2cfd2f097193082688f07a56d429d8679aac43816f1152b754492ea"
+   "sha256": "57e99148090f89171df6e48c4cdb5e498c76a729ea0cc80fb9bd9e97911ecfa9"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "ac4d545ba2cfd2f097193082688f07a56d429d8679aac43816f1152b754492ea"
+   "sha256": "57e99148090f89171df6e48c4cdb5e498c76a729ea0cc80fb9bd9e97911ecfa9"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "dd46f2a7dcf100d869c4427c01d761bbb5971966036aed825181016a0b0841cc"
+   "sha256": "e25c90a5d4f4328ceaac567f589fe9726e595f89c28b6e85df4cfdebaa0de651"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "dd46f2a7dcf100d869c4427c01d761bbb5971966036aed825181016a0b0841cc"
+   "sha256": "e25c90a5d4f4328ceaac567f589fe9726e595f89c28b6e85df4cfdebaa0de651"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "02f27f965aac2b81d7e3ee79defbc61eb61e0fce0d734404a7cf20ee968978bb"
+   "sha256": "60c4bf6737ba66f420513db3193bc108197d6114a5e48e4a932c8a133b57b9c4"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "02f27f965aac2b81d7e3ee79defbc61eb61e0fce0d734404a7cf20ee968978bb"
+   "sha256": "60c4bf6737ba66f420513db3193bc108197d6114a5e48e4a932c8a133b57b9c4"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "f989d1509311503ef930026ea8db1988cd23d822fed16a8942e63104b045c8c3"
+   "sha256": "1f1909a48d9fea75a4d0dcdc7db7a845bcc64f016ac6b1c1974c084a62294904"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "f989d1509311503ef930026ea8db1988cd23d822fed16a8942e63104b045c8c3"
+   "sha256": "1f1909a48d9fea75a4d0dcdc7db7a845bcc64f016ac6b1c1974c084a62294904"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "bc22448f969e196f0766ddbd938a8f35eb75e07dda4ebf0cba2fad0a4ae20986"
+   "sha256": "63ebb9c097e21842bd6b7f4de384b38db5042d44c1137faf48766ba288f2994c"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11333,7 +11599,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "87303983cea13f719690f9b25bea902d44e0a5179003d344fc7f17b1fbc52857"
+   "sha256": "498cce7489db7ff9e605e2896d026ef04553daf39bc1afb0cd81f25ce8470cf6"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11347,7 +11613,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "8a3f12decb9a579c7a950f3eadecb2d8037986708accb1b4f99df277e57d651c"
+   "sha256": "5243e560da44623f67f786bbb735737db6c60b9cb73405a1bf17d45d0a1c9253"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -11361,42 +11627,42 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "1f397b37b6b4374bd9cc0920da88248d246b52ff14fc470fbfff31365978a8ca"
+   "sha256": "6a467d48a78c962f28a3447966e3ba00e958513c8da53b5afe3282f7ebb50334"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "1f397b37b6b4374bd9cc0920da88248d246b52ff14fc470fbfff31365978a8ca"
+   "sha256": "6a467d48a78c962f28a3447966e3ba00e958513c8da53b5afe3282f7ebb50334"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "2131021b0f19fbecec38707c5ec113f3107e0b491ac5ddd676256e6dbe46a6db"
+   "sha256": "a3628c15b669f129b3a49b6b37d62b01e0951f871165e7d61670bca4b9d72376"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "2131021b0f19fbecec38707c5ec113f3107e0b491ac5ddd676256e6dbe46a6db"
+   "sha256": "a3628c15b669f129b3a49b6b37d62b01e0951f871165e7d61670bca4b9d72376"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "489d85dbaab0bbd5ad5aa5e2a1ebae2a49040e87adf1d1247c1f9dfc7fd11b09"
+   "sha256": "3a4cde3c5684ff6b6dd574257f58c1b5cb61f778169c5feb31fcc4f8cf288ffa"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "489d85dbaab0bbd5ad5aa5e2a1ebae2a49040e87adf1d1247c1f9dfc7fd11b09"
+   "sha256": "3a4cde3c5684ff6b6dd574257f58c1b5cb61f778169c5feb31fcc4f8cf288ffa"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11487,7 +11753,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "4ddd55d74140a90fd8e7fcccf069e75bc9fb5540ffcf90bb8088a0bd23f67470"
+   "sha256": "f05cf5d4fd1d55867e7f343553a48e3528125b760c1c13004219e85e8edd68fe"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11501,7 +11767,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "391dace412cd207b54bc769ac4ced9a932553aee29e51a9e058f503487252aab"
+   "sha256": "6ab152fae3ca686e85ade19af8391b52763ffcbaee87779986afee4a4eba64be"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11515,7 +11781,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "669c480dda29523e9a92087d744a3917f558665f1e39586c08015ab1378a1223"
+   "sha256": "9b4d24da4a21b78d11524006cbc99e7e8ff101c2dcb73b56e4ea4ea30d276efe"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11529,175 +11795,175 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "f292e1adff7e61891d3d994d99af9c65aa36cfe8d624e52a140e69fefa32d812"
+   "sha256": "8e5171d50ce5c439d5e5f8efc73ef0f7aec5ed6d2176d82309407e8c80475978"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "f292e1adff7e61891d3d994d99af9c65aa36cfe8d624e52a140e69fefa32d812"
+   "sha256": "8e5171d50ce5c439d5e5f8efc73ef0f7aec5ed6d2176d82309407e8c80475978"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e0916f4abe5d4df32ab4a54c221f89fec6c7a605249fc6d20f1e9c21a7c7f6b4"
+   "sha256": "d8c6a06e6f8b71dc8ea4322ae27cbe904fdd03995d225d5105d9696a8ca86980"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "e0916f4abe5d4df32ab4a54c221f89fec6c7a605249fc6d20f1e9c21a7c7f6b4"
+   "sha256": "d8c6a06e6f8b71dc8ea4322ae27cbe904fdd03995d225d5105d9696a8ca86980"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "66b9ae2557ff22e58acf654a4c7cbd875b25b5200b310d2c09026be5af94604d"
+   "sha256": "bd6bdfca00a226c29b893aa1140fe638cd1fba610ab2de59715235636f072ea9"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "66b9ae2557ff22e58acf654a4c7cbd875b25b5200b310d2c09026be5af94604d"
+   "sha256": "bd6bdfca00a226c29b893aa1140fe638cd1fba610ab2de59715235636f072ea9"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "5c086e5e68b90a40ed988404e7468171ff53acc9e4c2655f4fdb114ab1218eaf"
+   "sha256": "3755b6b094e602a5b2b2857cf4768011d1ecf08a62c304feacc7e319ddd045fc"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "5c086e5e68b90a40ed988404e7468171ff53acc9e4c2655f4fdb114ab1218eaf"
+   "sha256": "3755b6b094e602a5b2b2857cf4768011d1ecf08a62c304feacc7e319ddd045fc"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "cf5476af5ac139a347d3893c955bfa1eea8a678eb93807366256d4f6eb9e4559"
+   "sha256": "a9a58f51fa07b3397301641408d9efdf3bcbbfa15dceb5ef561900653f191cee"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "cf5476af5ac139a347d3893c955bfa1eea8a678eb93807366256d4f6eb9e4559"
+   "sha256": "a9a58f51fa07b3397301641408d9efdf3bcbbfa15dceb5ef561900653f191cee"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "d2b3b07dc28473379ca5d823f714edb3bde2b04d219fb75a19dda282f8f15bae"
+   "sha256": "cf1a0f4316d936029f0af60cad6e37680e4c40d94a144e8997d67672e23845c1"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "d2b3b07dc28473379ca5d823f714edb3bde2b04d219fb75a19dda282f8f15bae"
+   "sha256": "cf1a0f4316d936029f0af60cad6e37680e4c40d94a144e8997d67672e23845c1"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d6894e6f749a12d434d7b75a5e325e5d0c33f15cc0a2b01ce7cb5d06dfb478e0"
+   "sha256": "4c186a772426fcba625a34ff8d87ff89a8c4531ce77ea75137fb94fc9482afae"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "d6894e6f749a12d434d7b75a5e325e5d0c33f15cc0a2b01ce7cb5d06dfb478e0"
+   "sha256": "4c186a772426fcba625a34ff8d87ff89a8c4531ce77ea75137fb94fc9482afae"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "5f714624cda1a170839b83d1da9e8cad1ebc3f9e4b3de00d3734a79d3b639b0e"
+   "sha256": "4b58a2eb9c2e1f99550f660db2b30ade50c1a1dd91a62f59e04a02753c0f6a8f"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "5f714624cda1a170839b83d1da9e8cad1ebc3f9e4b3de00d3734a79d3b639b0e"
+   "sha256": "4b58a2eb9c2e1f99550f660db2b30ade50c1a1dd91a62f59e04a02753c0f6a8f"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "63f3a549ef2675ade66375fbac17a1c13ab86a0c7a735cd82de69b61d558849e"
+   "sha256": "5eed217f52ac913d5882205ee873e93af368320c564dca46666fcdb48688f2d6"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "63f3a549ef2675ade66375fbac17a1c13ab86a0c7a735cd82de69b61d558849e"
+   "sha256": "5eed217f52ac913d5882205ee873e93af368320c564dca46666fcdb48688f2d6"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "92070dadbbaf848272624ed3e9709fc47bdb1b6aa258ea54c21d70d8888e3616"
+   "sha256": "d796bb86b15e297ee7b12c1ebb8e2d37c3962088d2d4af865230dd6a9b42d7b4"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "92070dadbbaf848272624ed3e9709fc47bdb1b6aa258ea54c21d70d8888e3616"
+   "sha256": "d796bb86b15e297ee7b12c1ebb8e2d37c3962088d2d4af865230dd6a9b42d7b4"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "fb4e980e924bc82e91839fcd1dab41c132e1b0e204edfe7e73b29e96b917aef3"
+   "sha256": "7038389996e4bd34facd442543b90cf0da011be45a6c1b439c112a06a43bbf90"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "fb4e980e924bc82e91839fcd1dab41c132e1b0e204edfe7e73b29e96b917aef3"
+   "sha256": "7038389996e4bd34facd442543b90cf0da011be45a6c1b439c112a06a43bbf90"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "16628d16c3f7edf584810d7f7fd31b82bc1cba6086746390abad5db089a8affc"
+   "sha256": "71fab4d3ea52cfe6a530bf3137b19bfba6fe1d1e2aa68c5686a658cda6f5fc5d"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "16628d16c3f7edf584810d7f7fd31b82bc1cba6086746390abad5db089a8affc"
+   "sha256": "71fab4d3ea52cfe6a530bf3137b19bfba6fe1d1e2aa68c5686a658cda6f5fc5d"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "cd95ddb692a18fcf7ab73c383778e9cb0afa04dc86b95d39856835dfd0369630"
+   "sha256": "26c347dc20068333c0c8185d5ea9c916b1c36ed8f3c5184c344bdb0efb7d8f78"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11711,7 +11977,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "df87af5ff3db42f9b11fbf1d90c5700df067f054912e22c646ed6e880f70e660"
+   "sha256": "4c5af515973b8258596f4d0607a84eb48d3250605f92395aa897298bc91bf370"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11725,7 +11991,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "e404724d39cd0a6fb02ef06abf7e97e88b7f14affc9202f60008c2770fb9617d"
+   "sha256": "cc9cf091d5c5e13137da4efad0f2489faf6cf458ec2ef659c1715816191a1906"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -11739,42 +12005,42 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "6dcc918c388e2978191dd2372b3313dfdd1b292f94f799ba0f2989db29c93245"
+   "sha256": "b0af3770fa84a0ebed3c192676796fb87e4c0d429c71954eeb90858203a4eec8"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "6dcc918c388e2978191dd2372b3313dfdd1b292f94f799ba0f2989db29c93245"
+   "sha256": "b0af3770fa84a0ebed3c192676796fb87e4c0d429c71954eeb90858203a4eec8"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "4d461a4f5b9e38311f23692e3e0f27399aa58273fc6d16d4e45d558897dab13e"
+   "sha256": "75878907a0f87c6707eb17bfb12f81e8ca75389e13e56924e5b07c729b3ef1a0"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "4d461a4f5b9e38311f23692e3e0f27399aa58273fc6d16d4e45d558897dab13e"
+   "sha256": "75878907a0f87c6707eb17bfb12f81e8ca75389e13e56924e5b07c729b3ef1a0"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "5ae00e44ea5bb8c8e8d50911bdb39430dad1ecac5d01f9fb39cd30ffbd64b609"
+   "sha256": "4341035d2df31cba7e8394cea68aba39882565ef0cd1f53ad1c0db3eff135410"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "5ae00e44ea5bb8c8e8d50911bdb39430dad1ecac5d01f9fb39cd30ffbd64b609"
+   "sha256": "4341035d2df31cba7e8394cea68aba39882565ef0cd1f53ad1c0db3eff135410"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11865,7 +12131,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "634a7ae41769d26bd8796c49707e3fe0667f2a7f54fb89e93be9dcae0dfa3660"
+   "sha256": "339d3c79f3567fa353fa21c747bd22e94f1c4844f2b60be3b0ced225b81e4184"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11879,7 +12145,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "18c34852f4290dbd5ad1ca07226cb34071ee785d13b01f4dde5bc9e34393df6b"
+   "sha256": "dc289cec04bca8de441ba90fb30a165b6228ecacf6884aa030ac0f9cbc418dd1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11893,7 +12159,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "ee2fc4b060631e6f273213638b7f06c595a3a9323cfefc9506dd185f72d5e7dd"
+   "sha256": "e1e3720cb6d4bbdce8ab8edbc9fec850d593978feb7648c4994ef75c82cdb95a"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11907,7 +12173,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "721d8cd419b9b986b8cf2a933b3c44ecf0ab4a4e0e652d6f977c9b7a0b49dc02"
+   "sha256": "e599702dbdeda1a238cf74a430efe8261ddbb1c3d9c9243db15f061fbd29f7c9"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11921,7 +12187,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "75fe668132709f6133a79dc3cb7554a74b1e2ac377ea17ec72b00272956dd615"
+   "sha256": "f77f2033da1a2982b16983a3d0c09914bc1e8820027070ab47960682c46677d7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11935,7 +12201,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "a0e97c31679f9f6144a2025f0799f18fc17e79377ddb67cdcbc5dcea83d30672"
+   "sha256": "cc27ad139d53f92f1eaf2388cda9a548a91d166f37c3557f8b069dcef00ff441"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11949,7 +12215,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "99745b4a53e579cdbd0ef97311ec7b682705bffedaf5095ec0648196f62ee304"
+   "sha256": "6848c36000afc392b61ccd58d3168c83b16e74609007974385c5f2e4f098e1bd"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11963,7 +12229,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "66cd4c4d042ff5917306ed13447f72c7fd1fa87f8969ed0930b11ad1233d1cee"
+   "sha256": "32104180f0d5e5e73bc79e1ca15fc31b9214aead4c9624ad7e2809773be8e024"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11977,7 +12243,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "5762ee8836de0ca1f146be12006b20eaf0c5577f01552909df0f80f49989f829"
+   "sha256": "4f9ddf367cf8c0e9109a33c12b66eb1bd342f80ac5389df91224732a4cb03f71"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -11991,91 +12257,91 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "95316f1bdee1d87d8276d28bfe1bfe8c65cbc3222636ca4cec3f5451e91f7cde"
+   "sha256": "0d1e5a54c62e2caa9f773829ebb06199566c265cc6c49add2d89e59bbd509167"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "95316f1bdee1d87d8276d28bfe1bfe8c65cbc3222636ca4cec3f5451e91f7cde"
+   "sha256": "0d1e5a54c62e2caa9f773829ebb06199566c265cc6c49add2d89e59bbd509167"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "33df172e773f4af8ddc61461f69be1c756cb85eaeffdc027b24c52cc00c007ab"
+   "sha256": "633781bcd30bbf77284f238ff4a041b8cd77d1975242e9c4aa13f2436816b779"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "33df172e773f4af8ddc61461f69be1c756cb85eaeffdc027b24c52cc00c007ab"
+   "sha256": "633781bcd30bbf77284f238ff4a041b8cd77d1975242e9c4aa13f2436816b779"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "25334717af93d70188b08badad19f6817200f2f2557e8385543a2bb3ff37173f"
+   "sha256": "d2cd85751704e8bb5e1ee467603af8c694aa7c69bf39c7b57b5b73d0fabd26a5"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "25334717af93d70188b08badad19f6817200f2f2557e8385543a2bb3ff37173f"
+   "sha256": "d2cd85751704e8bb5e1ee467603af8c694aa7c69bf39c7b57b5b73d0fabd26a5"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "47f69c645d48e5bbc420c63378e9fee6a789122f3ccdbdad8c5be7e3f8990d38"
+   "sha256": "1c55e134a58911395d2af4d304fd6553e50ba5ff4fe4273de31f8061df1068fb"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "47f69c645d48e5bbc420c63378e9fee6a789122f3ccdbdad8c5be7e3f8990d38"
+   "sha256": "1c55e134a58911395d2af4d304fd6553e50ba5ff4fe4273de31f8061df1068fb"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "e66fc28d3b55d0292da9cb8de4ce722b38ab9bb26009429607d53a0f18d1d224"
+   "sha256": "e866534fcd029220bc8bf0006f0b45dd7a1195f65ca7bfa5f6bc00e80a6306a1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "e66fc28d3b55d0292da9cb8de4ce722b38ab9bb26009429607d53a0f18d1d224"
+   "sha256": "e866534fcd029220bc8bf0006f0b45dd7a1195f65ca7bfa5f6bc00e80a6306a1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "2a62c47d2f4bbb8b6fc8f88a46be66f9a9753a685ea532cf3fc4ec91e2b96faf"
+   "sha256": "2ca161d118fadfd0fb750e71289b9705eeb54f32eacc592211909e57d3de46b3"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "2a62c47d2f4bbb8b6fc8f88a46be66f9a9753a685ea532cf3fc4ec91e2b96faf"
+   "sha256": "2ca161d118fadfd0fb750e71289b9705eeb54f32eacc592211909e57d3de46b3"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "abfd8fac92919dbbbad4cf36bcd6ff9e412a1234b05c5a8e213a95de0aed0f3b"
+   "sha256": "681368ffbd974f0ee6be2dace7a43eb3af2ce03e21bacb0378d6664195f36a7a"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12089,7 +12355,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "1fc2853fb51e8d34cefdf62c0ca292ea3ec27ad574f6dd6486fd0615598c67e6"
+   "sha256": "7a44c3910aeaeca545d4e463405446813007a2015c61277d2661e34ce6eb2dc5"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12103,7 +12369,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "bf6833d71d5684ab6fde6c4f8ec5f7c72e346269e811b2f2bf06a2493edd154f"
+   "sha256": "6172a4b4ed5eb02974bd8b3ae0b2a1ee73302589c0ded4a45e5ac8e9d3b77cc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12117,7 +12383,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "f7b3fce7e14a3ba00974b77db32d9548fd89accdb8f3cc182d7d79961b8be4c6"
+   "sha256": "382d1b2d3ed32d5f78140feccbf88d9c62dc1f2f92e95a0759ce1e90df2d1d77"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12131,7 +12397,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "3e33383451248b369d4795dfc9daf957361e7d366de9b87150e90da73502b17f"
+   "sha256": "25444e98cdb09aaf05923f178e1825cd27af8f9674b8715552d3362cea6f3ed1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12145,7 +12411,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "86279e10ef89c40104e7aaf2e68f7f6b46d41ce73ce1593941aaa17037096800"
+   "sha256": "27bcc669dbcdd5c1bfb10b8e7a51302e51612c17f0d759f6944103f83e080558"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -12243,7 +12509,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "752e6d6dba21d7312e865c26078872302cf9f8df20df046de5ba351cf1c49124"
+   "sha256": "d3dfa90ded6a774c78635bf8c82f00c5fcd76fb0fa689a41795bf2259a77d005"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12257,7 +12523,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "9dc5485684049d2cd87ca873558fa8172537ddc36b274fc3edeaf855f7474519"
+   "sha256": "caddad5f1a625d43e312b8d05985f09f8435a83c2a49afbb5d94c4903246327b"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12271,7 +12537,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "710025f7e5f98f03d3d6b3a4dc1e7f330d2e04e62b0abe93c79507403795b332"
+   "sha256": "2ab59dbb2b8e460353279a57e18a89e306d9a6f85487996538d510fa16ef4d59"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12285,7 +12551,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "24892290c8e665f901537d5874afbe40e389af23dc1662b75111a85bfa8ad7d8"
+   "sha256": "0b0e0e8e1a577fdab846c54fec04771556a45e27af5ab9f75dde58cb6095425d"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12299,7 +12565,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "302d21e68e5e1a67e2bb0915af6ed0aae981362bd8d3f1781e46c45299e6a1f3"
+   "sha256": "6b1e11e19bb5fdb96b11e64dcbe0c0fcc7a8c01031b58c8e79963f3f7f18946a"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12313,7 +12579,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "1076f31c57eff6c3cf2bb4cfd8eb686c7972544b83c898a606e3b3e87172fc02"
+   "sha256": "6badf073db80c34aa6afd34487144f628f5be3cec3f0592eb6ad6f34e909f897"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12327,7 +12593,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "a6dea3b6885ee36321961ecebefd8f41a22de5c764e5fbc0e0346b58f76aa715"
+   "sha256": "18cc54b3be065f9087793297e2bf78e6aa149a0997dc9825ecfe3e40c970d22b"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12341,7 +12607,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "b18d067ac6d214af1f38821d1073aa9db840f308acc78c6d8e0b1933a930bfdd"
+   "sha256": "73b7c4d479d735cb39f3b47d6c5c0c6b65775ba1c58a0d61e53678c0265a80ff"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12355,7 +12621,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "ed7e758eded3e9bdb7160d548c0296a5465930616c1ce02a22c1f5c524043815"
+   "sha256": "58ddf77aef63a0ac275d4a84a151b335b3cd4f8c5745d401c396d06cbbacc8b1"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12369,91 +12635,91 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "6325e46d6048e48932adbecf4accd08cd344131c7acbbc4f849bf60277503e9b"
+   "sha256": "92ecaa406092f3b48953e12e114b88e58754796ffc7449a0c1f48d6625153ded"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "6325e46d6048e48932adbecf4accd08cd344131c7acbbc4f849bf60277503e9b"
+   "sha256": "92ecaa406092f3b48953e12e114b88e58754796ffc7449a0c1f48d6625153ded"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "14656e2b2e1268ace61e7e7a7f32298204ea8c909a91c2c13ce8250f199addaf"
+   "sha256": "37555c9ba4f92658d3978dbe42b9753e49b7e15490335e79b568525bfa673176"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "14656e2b2e1268ace61e7e7a7f32298204ea8c909a91c2c13ce8250f199addaf"
+   "sha256": "37555c9ba4f92658d3978dbe42b9753e49b7e15490335e79b568525bfa673176"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "1643e7c62535319d538e8730659d0b3bb1c384f04c754ed4b88d51ff6baaa103"
+   "sha256": "ac532fb1c29489d203dcd1a2833f17afbbfdfa681401e696cc53f106136e92a3"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "1643e7c62535319d538e8730659d0b3bb1c384f04c754ed4b88d51ff6baaa103"
+   "sha256": "ac532fb1c29489d203dcd1a2833f17afbbfdfa681401e696cc53f106136e92a3"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "859e61869dac03758b51a5464fc64fb3e9c346ce8c7d70363d79af704a5e28e5"
+   "sha256": "d9dfc528ddb6dcb13a9e982446bf5d71f25ab8e0dce710e00d43e10a7cf72b49"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "859e61869dac03758b51a5464fc64fb3e9c346ce8c7d70363d79af704a5e28e5"
+   "sha256": "d9dfc528ddb6dcb13a9e982446bf5d71f25ab8e0dce710e00d43e10a7cf72b49"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "ff5febaa98b7b762ead98826f3baed4f72fb3b93209a1faf2f6388bf0887b55b"
+   "sha256": "2b7c44ecc5f1736eb4cd950da1346aef2ae5b3c2aa7d757e495379099ef8babb"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "ff5febaa98b7b762ead98826f3baed4f72fb3b93209a1faf2f6388bf0887b55b"
+   "sha256": "2b7c44ecc5f1736eb4cd950da1346aef2ae5b3c2aa7d757e495379099ef8babb"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "1f0e07b93ddd8df8cddebf7c5de8cb1bd6e77295a4939f0114747da03eb94a18"
+   "sha256": "c18f6e27664cce633d1a34efa8a93492743ab15c5809cf5d967ce4ff0e1b62fb"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "1f0e07b93ddd8df8cddebf7c5de8cb1bd6e77295a4939f0114747da03eb94a18"
+   "sha256": "c18f6e27664cce633d1a34efa8a93492743ab15c5809cf5d967ce4ff0e1b62fb"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "82131f93115cf0767db7962ef6993e39ce0bd6cfe5c574cca84b00fa7bef798b"
+   "sha256": "94410865f7c8d89e5788ff0b11c7d6297b830592bbe3e2aea594d679dce54082"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12467,7 +12733,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "ced714a27e3f648b67fcd55077f140f4b336f65e3eca471ceb2ca501b47889f6"
+   "sha256": "a8e4ca4eb723e9f93d1037fafc215ca17ec64316886e6ab7aa6904de04c054b0"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12481,7 +12747,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "afd64c23ee6897a0704995ea71e0dff102bf54c3a9858057e1b5279dfe230af7"
+   "sha256": "7e5280eb7e63fa4168297b9e8ebe6e1704aadff73fa2bd337670198836b9df99"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12495,7 +12761,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d1fab7fe6bdc73f0e057211fe9dfe2b00fca2893351e53af45be42fd0f76ceb9"
+   "sha256": "f18dcb6cf852f12409ba2733aa8623e785df48b4a32f72341f06b8913ac38e99"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12509,7 +12775,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "835358302faaff5609fc4765ed3a5845713a6bbeb053cf0d05c3f95d03f824c5"
+   "sha256": "3f6c59e505022aa3d78d912f1128587ba346d6ca20b5e2ffca4bcb9c5161dbc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12523,7 +12789,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "83be0e7b33071b53efb6b318a2c8c573439951000e96585442381f6cbbddfcab"
+   "sha256": "0996661d0cbb2aa996a93e7312ec60299bc9e9ad15473f3f3ed3f3d2f652c7e0"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -12621,7 +12887,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "a66b8239ead56896c295ea4d7d78df071910e21b46e8e459832f20827fa57a93"
+   "sha256": "cd09e55ec954733f114916a84ff1f5d9b585ea7206956e90553778ba6c4e202b"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12635,7 +12901,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "6db48cc395faa8c1b84066a55352568b030c37940792c4ba4e6315f907289538"
+   "sha256": "771dc728f0fbd47b604cafba749d411cf1f1d3a5486a3281f9e71a9a11fb749b"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12649,7 +12915,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "68188da3357d30674a427b9313412773c2b4895ba7066b89aa7270d0d13bc76b"
+   "sha256": "98afc8837148f31569293c963790696d0ab211d2ef87b0c9f43f6529033f497c"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12663,7 +12929,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "d7da1a97ffcd88bc4c735a3ee6dd5d15a957bf3161565e67d857d6fc93eba783"
+   "sha256": "2d38978f257d7d93eca0591f8eee7339ebada491d5c431a79499a671c03943c0"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12677,7 +12943,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "235dc6688ab1e30a4ed91404b300891fc1a348a55041996d3d88a4eb3e3b3142"
+   "sha256": "77adca2fd5b03f34158c89802150e5a784e32c57927f9b461dc9ea12a6e247c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12691,7 +12957,7 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "3dfcd6d8a303b999b47a7df3807170d2509315ed2b4111fe84a5c8037d14fa94"
+   "sha256": "af3e5b5c07223ceaf6201d76448aab15438fc1c8640bdd4fee08e14f9284446b"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12705,7 +12971,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "16dfd8f2efcb56378cec5bcce93c550b86680e975532177a9dfaeaf46c2a20ef"
+   "sha256": "b7551fcf3ec1a83236319e6e1a5d4e13f5c4796fb5c555d93df9a39dd069b3f6"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12719,7 +12985,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "2dee547d45668cc9f85277f7b3af04edc176e747d1fa46c00e9d6687c2e2f22d"
+   "sha256": "9223f7fd0baf7f8dccac545ad690ed1f4ae1bce8331f795e979435ec2fbc70ce"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12733,7 +12999,7 @@
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "2ee3de1a85f3426cfa7ef2bccd3b1edd79f62f6224b9ceb973491c522e97af16"
+   "sha256": "d1b975f049d887f4d50bc580d4bbbec1bc3a78d6e1459033a62800b401c071e1"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12747,7 +13013,7 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "43c50b2f10446f5bc5620ff977a1ce69b4377e8a1e9cee78e064e94f3e71aba4"
+   "sha256": "c16766b878c4bbd5202b92a7f140b4b2d361a2aa19a28ca3091cd59d49a03459"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12761,7 +13027,7 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "4608fcfe17b7ece3833fe2d61356e35fc1cc0bc7555592e0a977b605e8d1c22a"
+   "sha256": "a1303ebea479f43941541eb34d856fe069153a1018c0d0871a7fc9e63370b94e"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12775,7 +13041,7 @@
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "3df3125862053f69b6e2d04f711de0e34f8e1b5b92797f2f1036b0e944c0c471"
+   "sha256": "cf3503fc7e8a096effa8718951a3ad6aa8079777ebeed94eb1d8a07a9102fa30"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12789,7 +13055,7 @@
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "98e314b110eb9ed394775e6062f88a655f8fef40d6655d41db39305ef7ce1b52"
+   "sha256": "c81317a0715a62a6d118ff5f2dc324997a5cca0f9b301ac82222551aa6db0565"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12803,7 +13069,7 @@
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "081e698c43797e9c5e9915ad794594df69df6011b806dcc3c7f8e460f7927779"
+   "sha256": "cc4bdd75e3a61cedcef7bb481e56206de5b0b504b529516063a266c3cb029988"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12817,7 +13083,7 @@
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "402fabb479fab7ed145f40af069a64a0234820ffa260e8dbf8b8ed0ef93391b8"
+   "sha256": "2a036286addff8c36762cc6e7fe0378c1f2ace05abf7d0d1df8500a954a88912"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12831,49 +13097,49 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "06fb50366d01d54b0a1033d54d0a930880fa36836595745ccbbef31335a0726d"
+   "sha256": "01c182cf51c4fff4cb145323b7af433d069be7cedc4ca4f105dac1aadab61a57"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "06fb50366d01d54b0a1033d54d0a930880fa36836595745ccbbef31335a0726d"
+   "sha256": "01c182cf51c4fff4cb145323b7af433d069be7cedc4ca4f105dac1aadab61a57"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "9db9d78e31ce2b6f475e634b205e3827ed2e9120a7337f15e8919236e0bc72fb"
+   "sha256": "3584d017d10a5d686c072674758068588371885051069203f3088c9874ecdd3a"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "9db9d78e31ce2b6f475e634b205e3827ed2e9120a7337f15e8919236e0bc72fb"
+   "sha256": "3584d017d10a5d686c072674758068588371885051069203f3088c9874ecdd3a"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "ea77bc3d6a3206cee74768f76792f3d7099ef2a709308aa229a21103dbc51512"
+   "sha256": "30d59b3b126f7339beb3196e100d520427f235a464b3c621a98b72c1c9240368"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "ea77bc3d6a3206cee74768f76792f3d7099ef2a709308aa229a21103dbc51512"
+   "sha256": "30d59b3b126f7339beb3196e100d520427f235a464b3c621a98b72c1c9240368"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "5cf100394ead793caf3b3020724d815fe18e2de6ff6e1b331acc0894e7e56905"
+   "sha256": "0418cb73715cb4246a3d419a15e5ef593ff58ca68b362cd56c0b9f00352308ce"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12887,7 +13153,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "6d788089685d755b9c76c9d4253bd80faa97f06add62b68b1024c7f4c37760ab"
+   "sha256": "69b1a09773816c30c292ac7bba409fff2687192a128893bc709896837790fcc4"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12901,7 +13167,7 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "2e005972dfe4a5c7462111dd8ec16188983f7899c73369e4fe9dd394b5a6a755"
+   "sha256": "6543cbd9857a587354b17383809910a269a4b84c707ff1e7a450c2abf9d0428f"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -12999,7 +13265,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "b35f291ef01f5d4ce8e4775f7327c09c8583a4814885f83124141589630c1d77"
+   "sha256": "36049094080c9ffeba7d7ad816342f65b99c2e4a66ddc06181f9a555526a11b1"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13013,7 +13279,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "5f53208d9725ec417175c2459fc797143fbbf44326dd981463271cfd4e2d932d"
+   "sha256": "a1b7a575c20c3fb16fadb38d38c014764e96acb82dbfe0a5ad0ba7031a2a57e3"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13027,7 +13293,7 @@
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "c61fd6ce4b9ee334a8f6230f628106d3935d18738b342c42ee6239a8dabace0a"
+   "sha256": "ed11c7076f6db7ff6541bbfec3a0bd271ecc205564bf04a2703417c2210e5e1a"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13041,175 +13307,175 @@
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "1e65355a3e4f42dcd9663868a6529dd77f3ec2614a356b7274220b992fc92531"
+   "sha256": "a27a4c0daad0f988058eda9105e259a953ca59e1623e7345b9ff5e6b18257467"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "1e65355a3e4f42dcd9663868a6529dd77f3ec2614a356b7274220b992fc92531"
+   "sha256": "a27a4c0daad0f988058eda9105e259a953ca59e1623e7345b9ff5e6b18257467"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "6515d64c1fd9e6f50807b75e0c231e54a0a6d0be74acbf09f2f047053bbcd834"
+   "sha256": "2a60a7ff0aabb69949b0972c782efb447318af35fac33fbe16969d681f591bba"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "6515d64c1fd9e6f50807b75e0c231e54a0a6d0be74acbf09f2f047053bbcd834"
+   "sha256": "2a60a7ff0aabb69949b0972c782efb447318af35fac33fbe16969d681f591bba"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "f9e9379512b50c36673771d592f601e1cb88159c2747d57d0add54fca5f08814"
+   "sha256": "69c039f2eb0fbbf384f64f1924d1ab7cd2e3d8759a6d2d0dc96201951658bbfe"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "f9e9379512b50c36673771d592f601e1cb88159c2747d57d0add54fca5f08814"
+   "sha256": "69c039f2eb0fbbf384f64f1924d1ab7cd2e3d8759a6d2d0dc96201951658bbfe"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "dfec9c79193507c6ccfb1b0f1f4d1f5edef96112198a6ddea7b6fde053734cb7"
+   "sha256": "8908e966cd1736a2861541e912063975db7a9d491f4d044d70b281d2d0e2ecd6"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "dfec9c79193507c6ccfb1b0f1f4d1f5edef96112198a6ddea7b6fde053734cb7"
+   "sha256": "8908e966cd1736a2861541e912063975db7a9d491f4d044d70b281d2d0e2ecd6"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "888332d553562b8791c571d17a843ab25ac6e2e472966932caae9a6369a49cf9"
+   "sha256": "4860eff636ef74bd921a72d211d1081bec9032aa63c9bacf0d5ccd3e0f357df7"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "888332d553562b8791c571d17a843ab25ac6e2e472966932caae9a6369a49cf9"
+   "sha256": "4860eff636ef74bd921a72d211d1081bec9032aa63c9bacf0d5ccd3e0f357df7"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "52ee89ab29d027e9a47e57be9b61c2802475b47dc8257d8656f8ce81bf37ef30"
+   "sha256": "5899a2d136a7a4e22d4735e20fe7a9c0a29ec0cbea5d382072934ca38796fac5"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "52ee89ab29d027e9a47e57be9b61c2802475b47dc8257d8656f8ce81bf37ef30"
+   "sha256": "5899a2d136a7a4e22d4735e20fe7a9c0a29ec0cbea5d382072934ca38796fac5"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "c5236e137a984566d7d22fbad3509fff82e7b815afb3c35c67415521569a3568"
+   "sha256": "21b67ec2c03ad17ec2cb77bd7556f7f64bf78bb5c14eed12bf111fe77997e2c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "c5236e137a984566d7d22fbad3509fff82e7b815afb3c35c67415521569a3568"
+   "sha256": "21b67ec2c03ad17ec2cb77bd7556f7f64bf78bb5c14eed12bf111fe77997e2c8"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "81d74744344efcb2ab4d4678fa9e720bba83848e0f958b5d07631e004f2e6a4e"
+   "sha256": "a97f7acd60b627d5fda7ec290b852c952e8ddddb70a74fa15ee6f55dddffdf06"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "81d74744344efcb2ab4d4678fa9e720bba83848e0f958b5d07631e004f2e6a4e"
+   "sha256": "a97f7acd60b627d5fda7ec290b852c952e8ddddb70a74fa15ee6f55dddffdf06"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "cb62eef97a45c4fd2b1c9b1eca734185d68f2a12e25642d687697bdd3aded451"
+   "sha256": "4ba4b4f7694f8a4f0db2e35b3e355aa56a76b58e2b32982cb9d3054f8276ab0d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "cb62eef97a45c4fd2b1c9b1eca734185d68f2a12e25642d687697bdd3aded451"
+   "sha256": "4ba4b4f7694f8a4f0db2e35b3e355aa56a76b58e2b32982cb9d3054f8276ab0d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "4e66804ef2f3e4cae3e255cd13246a9d5b17cdbce9aeba2322dee9cbedd30d8c"
+   "sha256": "d0f8e5d6a9263a7715a408f8c4786d38fc539ab0458bb69a858029662a094b3f"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "4e66804ef2f3e4cae3e255cd13246a9d5b17cdbce9aeba2322dee9cbedd30d8c"
+   "sha256": "d0f8e5d6a9263a7715a408f8c4786d38fc539ab0458bb69a858029662a094b3f"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "253c1912928d6ae8f94a0265bae7352cf15bcf8f3213967c98ea5065e9592b2c"
+   "sha256": "eca137d1deaea82be7e8fdeae2afc3166d6db998dfeec5b62b28e2e6714bffe8"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "253c1912928d6ae8f94a0265bae7352cf15bcf8f3213967c98ea5065e9592b2c"
+   "sha256": "eca137d1deaea82be7e8fdeae2afc3166d6db998dfeec5b62b28e2e6714bffe8"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "572eaed7c28c4681ff34cf5362a34e91ae48b3347924db4af1919876b4c8c117"
+   "sha256": "c28f2f3daa87f4c0dd91d316ab2a50f1e17ac1c8d6d44d051e6489231f60b146"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "572eaed7c28c4681ff34cf5362a34e91ae48b3347924db4af1919876b4c8c117"
+   "sha256": "c28f2f3daa87f4c0dd91d316ab2a50f1e17ac1c8d6d44d051e6489231f60b146"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "f568becbd3d8bb162c1a648e6391b07f95cb9b50491dbdea9f731978d40eb5c3"
+   "sha256": "f68dbdb818076e62092cf19dfd6633ddb1bb197ba63a82a816b4a817e7f2ea4d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13223,7 +13489,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "c059a0d9f2d0f52135f97de62b9076f1334d095c29aa306ffa225e3f3c458b76"
+   "sha256": "d313c8ba86d481aeac80e322c87a8cd84b72e7818cb1a9c5f192f09a8f54ac68"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13237,7 +13503,7 @@
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "728e8840f078866b79f12d68e307a73fec85457bae371d0672bf8a57fff1f568"
+   "sha256": "e6143b6e8185b31af7c2f29e4df4b41c9a6f41c72aec235213ed4b23d1ab3152"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -13251,84 +13517,84 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "447c81f12d9c7d381d1ea24ffe579c7b613ce2b53bc82346a002794a207e026d"
+   "sha256": "3a2552deeed6e3aea485dcd36095b9cb2c244db2395e4c8e7b6b338b9f54c1a3"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "447c81f12d9c7d381d1ea24ffe579c7b613ce2b53bc82346a002794a207e026d"
+   "sha256": "3a2552deeed6e3aea485dcd36095b9cb2c244db2395e4c8e7b6b338b9f54c1a3"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "28226f056bd9c6e18c881a43231c463273e6002a14f7564640ecce994fe7cf76"
+   "sha256": "a3e2e1cac196389a389c69830aae5bf4ad58cc76ea47eb114ff0d2baa905727b"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "28226f056bd9c6e18c881a43231c463273e6002a14f7564640ecce994fe7cf76"
+   "sha256": "a3e2e1cac196389a389c69830aae5bf4ad58cc76ea47eb114ff0d2baa905727b"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "0bf26417a30c3ce8ce181d50d32d256d99184c23fb6cadb9bf47b1442f78f5bb"
+   "sha256": "3b71cc08a67e63208e8d644fadec4311eb6aa4637169b66aae8d53ad96d9fcd9"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "0bf26417a30c3ce8ce181d50d32d256d99184c23fb6cadb9bf47b1442f78f5bb"
+   "sha256": "3b71cc08a67e63208e8d644fadec4311eb6aa4637169b66aae8d53ad96d9fcd9"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "e67c88a9297705b5b3f2a82e1600ba76e46723e1360c6a3b78b414dab79b6b6d"
+   "sha256": "04c2da733ba16437ac36b8b1d2d41f7cfac9fcbd22e2d6a017c2ad605102b129"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "mysql",
    "allow_destructive": false,
-   "sha256": "e67c88a9297705b5b3f2a82e1600ba76e46723e1360c6a3b78b414dab79b6b6d"
+   "sha256": "04c2da733ba16437ac36b8b1d2d41f7cfac9fcbd22e2d6a017c2ad605102b129"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "postgres",
    "allow_destructive": true,
-   "sha256": "5c6b47ebb758dd0e9183c353563b400ff2097a4f868d053528a4663bb282db66"
+   "sha256": "bebc0448152c231515d083723df7db24d315e6291dff0f6451672a3444315ec0"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "postgres",
    "allow_destructive": false,
-   "sha256": "5c6b47ebb758dd0e9183c353563b400ff2097a4f868d053528a4663bb282db66"
+   "sha256": "bebc0448152c231515d083723df7db24d315e6291dff0f6451672a3444315ec0"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "6c4e5be21e81e21289fe0018f597ccbc570627a24f48a504f4116da4cba10bff"
+   "sha256": "b238cbb2d245ddb4a8573a7335543025cda42a74822fa19a8fa80a92667aa322"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "sqlite",
    "allow_destructive": false,
-   "sha256": "6c4e5be21e81e21289fe0018f597ccbc570627a24f48a504f4116da4cba10bff"
+   "sha256": "b238cbb2d245ddb4a8573a7335543025cda42a74822fa19a8fa80a92667aa322"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
@@ -13457,6 +13723,132 @@
    "error": "sqlite table composite_account cannot add required column account_id without a default during a data-preserving migration"
   },
   {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "3178f98d026ce3772c4b9067145343c75649f36cf7855e64277854f83fa63ecb"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "3178f98d026ce3772c4b9067145343c75649f36cf7855e64277854f83fa63ecb"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "4abe4536dd9871e8cb4c35120f02a2a21476cf6614c7e450b459e4d0afb78a0d"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "4abe4536dd9871e8cb4c35120f02a2a21476cf6614c7e450b459e4d0afb78a0d"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "5fde2c98ef36fc1a570f9a5090153bd3d697d55c9368d1d6c040bd703f19454c"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "5fde2c98ef36fc1a570f9a5090153bd3d697d55c9368d1d6c040bd703f19454c"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "97c9a206bd54ad9963ae9691fa474bcd2c986b4e802a63b02f340309932bdf9c"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "97c9a206bd54ad9963ae9691fa474bcd2c986b4e802a63b02f340309932bdf9c"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "5a884b145e6474267145c4af3b3d76f8c92f12f8df1a9c53b1782912826b0fb4"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "5a884b145e6474267145c4af3b3d76f8c92f12f8df1a9c53b1782912826b0fb4"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "fdaec59c00c772cbc71be9e6faa7aa40b0ee5ee13f331dea83ef2635a0cd9e7f"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "fdaec59c00c772cbc71be9e6faa7aa40b0ee5ee13f331dea83ef2635a0cd9e7f"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "083aa9c1315262d2e7067bed67a869cb46014ad93a706c048038a0c86fbf6cc4"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "083aa9c1315262d2e7067bed67a869cb46014ad93a706c048038a0c86fbf6cc4"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "184fbf59aeacf392fdc6a2f2d7769a881d8802e869bb9ff2daa44d9788c01f6a"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "184fbf59aeacf392fdc6a2f2d7769a881d8802e869bb9ff2daa44d9788c01f6a"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "57c2d493df5c804de9316a27c3a8a8c2cc93d2790a0ab82d8079b06aaea7a332"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "57c2d493df5c804de9316a27c3a8a8c2cc93d2790a0ab82d8079b06aaea7a332"
+  },
+  {
    "from": "internal/ormgen/ddl_external_fk_test.go#1",
    "to": "engine/schema/external_fk_test.go#1",
    "dialect": "mysql",
@@ -14007,7 +14399,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "36db5595c4a489cf8b846148dd0fd84a55048cf4cfe3d3b49f7da01b3704357b"
+   "sha256": "397e196d1f66f451dbdf779364ea2934ca6c97e7648ba331be7d4990b63397ee"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#1",
@@ -14385,7 +14777,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "a83136403e1901c822dab5b497a72649a7d58b47d6133352c84304e2eaf40b31"
+   "sha256": "e21a6d3be467c138dabfa9c3485e0ca84a44e1ac509f8d8aefb104e8f19df887"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#2",
@@ -14763,7 +15155,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "3af84babd5c25b9161bcd8e68778b1bd37dc2ddccfd81a45bf39df89e47de4e4"
+   "sha256": "b926ce2b6351192dc5a54e24c24518ad04da028794f8e8c76186b1848e6980ed"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#3",
@@ -15051,6 +15443,132 @@
    "dialect": "sqlite",
    "allow_destructive": false,
    "error": "sqlite table item cannot add required column name without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "1d2854f16d3311d1424fef774e81f60dce960e306847bf6bc5e3213f7581d63e"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "1d2854f16d3311d1424fef774e81f60dce960e306847bf6bc5e3213f7581d63e"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "5a8f555f03fbb04f878741dc8d7b808bb5aab69ff15360e48adf3b3fc896532c"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "5a8f555f03fbb04f878741dc8d7b808bb5aab69ff15360e48adf3b3fc896532c"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "386b68a5340a0f4e28ee70858af04b8e7aa3a71c61c847f358500b1b4b54d0ad"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "386b68a5340a0f4e28ee70858af04b8e7aa3a71c61c847f358500b1b4b54d0ad"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "14af91890246a4515b4bcde92b7e83758531096353e0be1f394868e8d7771f36"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `product` DROP COLUMN `amount`;"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "1fe6f3af78f85899c909c926009f21b389b92e4eab0493593ec149207f2d7717"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE \"product\" DROP COLUMN \"amount\";"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "sqlite table product cannot add required column brand_seq without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "sqlite table product cannot add required column brand_seq without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "9b930a849f662bfbb51a4682bd445369e97d0b605813aa779cfe67f36494eaff"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE `product` DROP COLUMN `brand_seq`;"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "435dcec4e8d4514e319a4b201413dae6902b1c723e9273371498c429f095b7f3"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "error": "destructive schema change requires --allow-destructive: ALTER TABLE \"product\" DROP COLUMN \"brand_seq\";"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "error": "sqlite table product cannot add required column amount without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "error": "sqlite table product cannot add required column amount without a default during a data-preserving migration"
   },
   {
    "from": "internal/ormgen/gen_go_test.go#1",
@@ -20307,7 +20825,7 @@
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
    "allow_destructive": true,
-   "sha256": "5f5c8cc428201364192675837cbc11a169bb519774dc46094dfd5d79a2d61c49"
+   "sha256": "62450d5824dc70f262c51e14102e2887ee095e19b2b415a7b70110c313b164c5"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#2",
@@ -21481,40 +21999,76 @@
  ],
  "plans": [
   {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "mysql",
+   "sha256": "29b828ac9871c41dec3901bdcb3379c49ace829d22f51453449668e1abb5d3d2"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "postgres",
+   "sha256": "8413a65fc78e40c9b5efbcd1bee65b7c9cd81289313b36c607b839d947096d42"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#1",
+   "to": "clients/go/orm/aes_json_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "cac1cad80930eb2d1fec3348a944e5a08628e4e4990ff6359c4d95293da6c6c5"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "mysql",
+   "sha256": "ab0f651916a9d5d871df3e988e4d230ae5833cef439202ca168b095849e5d1b0"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "postgres",
+   "sha256": "0208e5d1f8bbf9f9ce30cd23db458319a8437d390a2c540ee502dfa74644c832"
+  },
+  {
+   "from": "clients/go/orm/aes_json_test.go#4",
+   "to": "clients/go/orm/aes_json_test.go#4",
+   "dialect": "sqlite",
+   "sha256": "568451f85adc1c733f4f36cdc77efc58b6dcd48cd70b96d15f61e9c4ea38a14d"
+  },
+  {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "mysql",
-   "sha256": "061072f8dca48264bcca5e698be96ced6a85020490d2e1f782b01362f1867c4c"
+   "sha256": "e0d1ce7e543d258956b615853d0fa2cc6c07f487d997fa1583681340d345df17"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "postgres",
-   "sha256": "6cecbd83b7c1b762717a9c99341ec9d5b621ca79f960c1ffbbca05a1c879eedc"
+   "sha256": "54fb48e1a1449ced9bb235028d6aa58881740febe6d963fa20368862b0b91734"
   },
   {
    "from": "clients/go/orm/audit_large_test.go#1",
    "to": "clients/go/orm/audit_large_test.go#1",
    "dialect": "sqlite",
-   "sha256": "92a44b9a66b78c9812f9ad119053e72a017688326a16c39999927ab036a462d2"
+   "sha256": "9766ff13015fa74b7774ef2980a65353a47bc226a738261bb3e5784f259dc420"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "2a4a48f821ff1863ee5098a00c1ba90f8d8d98b5709d99efdfe7fab6b94ea438"
+   "sha256": "78d39e8cf725dc71147a94b9a6f3c6fb9b14ba253b9d17e819fecf83fd0bc3d1"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "3b6c5b60377a304f3cd7a091290a2c188dd65c934cd6ccabac705824f7796c43"
+   "sha256": "79f0899cac8759b4b74bd9faf4a2f8dd814e26d1ff3cafd2f2cee082c5b043bc"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
    "to": "clients/go/orm/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "d538f4bda5e37ebefafaacd85cfbf85c3e13b5fbc7bdc1da9dceb051970e45de"
+   "sha256": "4b7e78854b291af98ca047bd5a658779af271a10ad88fbd186796cc740fe11fe"
   },
   {
    "from": "clients/go/orm/audit_test.go#1",
@@ -21646,19 +22200,19 @@
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "49352868f028fc246a5396c6b646ca09d976b4dba68c5a6ee24d60fe1a698d6a"
+   "sha256": "235db52b843be18c3f7552550ac8b48eb79aa7d7224a2b9ce8590b66069cbc74"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "2a1de737a289341b20158728045744d5c7b3de2ba3d1457ac0399d96a5b548ff"
+   "sha256": "6838b04d0de1769b76d6a4eb0091143ae78c6912a71cc3a5e27756aaca9b54d4"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
    "to": "clients/go/orm/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "580848edafa63e93490755acb6635dfaa1cbf1a26878a1ac44fa85f0cc859724"
+   "sha256": "8d24d0ab0d4f3e8b8873791b42e707b41afc38125332097779af92e719a321ba"
   },
   {
    "from": "clients/go/orm/audit_test.go#2",
@@ -21767,6 +22321,24 @@
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
    "error": "MIGRATION_PLAN: table rename app.audit_item -\u003e audit_item requires explicit migration"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "mysql",
+   "sha256": "cd2eb74c5d93365178fd433a5a838e781eafa885a7781eb7da6e755cdf160de2"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "postgres",
+   "sha256": "8fbc9a5a80114819f5630d3d995ef7afe563239b111eeb6c18e4aa64b1c9c20f"
+  },
+  {
+   "from": "clients/go/orm/audit_test.go#3",
+   "to": "clients/go/orm/audit_test.go#3",
+   "dialect": "sqlite",
+   "sha256": "7e26c7438d258538410791df43b0d1c1729c0728c6d8ea77b7e456d75b09c1df"
   },
   {
    "from": "clients/go/orm/jsontext_order_test.go#1",
@@ -22744,7 +23316,7 @@
    "from": "engine/schema/manifest_test.go#1",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "73326ab96a014a131007110a20e38468939a490b2d6c65ff5e25601f455b7b1c"
+   "sha256": "0331a8fea6703ce987415d085df6f87c16f4e8a707047c0a325fd307b97c3de7"
   },
   {
    "from": "engine/schema/manifest_test.go#1",
@@ -24184,7 +24756,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "engine/schema/manifest_test.go#1",
    "dialect": "mysql",
-   "sha256": "a50c8a9b71a1d7a2fa10efac394a5c76f08e4e268163ec6b2eb3d7d33c38b0a2"
+   "sha256": "590132fd22052e2315635fb4047b639ca5abae25d89a1e175a4b4397383c8604"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24220,7 +24792,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "engine/schema/mermaid_test.go#8",
    "dialect": "mysql",
-   "sha256": "a4ade6135411d2648170c6abf0544714feceb0dad935e14af3ccb98255f49575"
+   "sha256": "6f6b66dd433b2dc801eab22ffcaa581e5a2f394bb8ca91b79c5e3aef787d3977"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24256,7 +24828,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#1",
    "dialect": "mysql",
-   "sha256": "a50c8a9b71a1d7a2fa10efac394a5c76f08e4e268163ec6b2eb3d7d33c38b0a2"
+   "sha256": "590132fd22052e2315635fb4047b639ca5abae25d89a1e175a4b4397383c8604"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24274,7 +24846,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#2",
    "dialect": "mysql",
-   "sha256": "f5ee0d7df41b87eb63458b329a061202f7dede87de3f09734d7b7f25dea673be"
+   "sha256": "4b2e9bfbb685f15d38988ce980a298f0e87b87ae815ad7a9b2a0d398485e550d"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24292,7 +24864,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/ddl_uuid_test.go#3",
    "dialect": "mysql",
-   "sha256": "d81a125a55a7505d059850142c1a764c228d25c92ff5d90f2b36fc51bd3b79de"
+   "sha256": "d3be3846f91130a2f228207fbb2c73000b4948384e7e7b4f74036f727073c369"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24310,7 +24882,7 @@
    "from": "engine/schema/mermaid_test.go#2",
    "to": "internal/ormgen/schema_source_test.go#2",
    "dialect": "mysql",
-   "sha256": "64bf9ba88fc98953ca77ed262cb1f952ebf3a0a06c4e6e1ecd04798187551830"
+   "sha256": "c505fcd978b6caca75f54080c6084bb63fd99fd4ffe39dc9fe45f6dc094d5ecd"
   },
   {
    "from": "engine/schema/mermaid_test.go#2",
@@ -24364,7 +24936,7 @@
    "from": "engine/schema/mermaid_test.go#8",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "43594c71bddec7b44d90de1d6274f4eb85255644164169864dda32500f7cd68b"
+   "sha256": "f2b1a1d15b3c3a5b0248e6eac363a323b9d894c3bb7ba5643b9b5d793491933a"
   },
   {
    "from": "engine/schema/mermaid_test.go#8",
@@ -25264,127 +25836,127 @@
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "02c27eb2270cc4e046c393fe2f68ba6ebd4f84ccb01d37b8db29b811903d9eb7"
+   "sha256": "f0752b049d18c5d879edc241ee34b8c5f97a35ba88b120237d145a9ba865f80c"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "cdcec107461978227aef1cd853114223f8f9abac1bee9b33379fa6da5da3c33f"
+   "sha256": "42f6c8e19604eb7ed4f454ea04815f2d40f1f7b044f8f01ef19053bb64a3cd51"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "09552371ed10e47a5bab18b7e87a7795bba6a66a1a6555b7697b99dc22e5025c"
+   "sha256": "5a69383d32bc34ad0c4384601558992c63e0077cd9adf8affa696a68b17195a6"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "f23a0d720ce90b36d7dbbfba4e0ede47faeee756ebf396af720aed9dcd358c42"
+   "sha256": "aa0a947647e45799bed19f48fa4f126a54ac923c1186d2aff1b047be92b1dcc6"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "b904c598eb52ac72dd560497fb2b6e784d63f25d2884b03b6ee5fcfa754ea484"
+   "sha256": "034b16bcb5ae8b8f94b6b520513a6fb4836ea4300792fbb3efb03c77b4a7e980"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "7b15788eb08397241f2f675a108d0fef3ca2f8a6f96cf1dfaaa31d41c1e76594"
+   "sha256": "4bf5e949bc3afac284f35adb818817a78c20761247dfd9befd992f30b90e5d2b"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "35b2edbab059eccbd48604cd7af1057acf97ed4641f7f9780932094a5131a53b"
+   "sha256": "c856f2c76c34743b29f286031c77e8d25caf95a443732a0cbc0d118a28c149b2"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "d6d09fca59815cc6510da9658df66d5685858c4b8187d95ac205d0021c9036e7"
+   "sha256": "ebdfb69ece262a59f9df1c15377d5094154f429172c88061c72a9f3cde9f28c9"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "644ce4333c0cdbcc046981b71c0e9b6534f35963d15bc3292f7b9b519f2ffbba"
+   "sha256": "19f4acb54fe9b45bec006228b1e8092c9dffedf8ac60ea2495a857456a0b7cea"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "ae18c3b18ca424a0254b714cfec77768be7883b64b40f961c499dcc473d31042"
+   "sha256": "37565ab99852d98b78283b44f32dcd58b349f4592ad9956bca0399b70a45f6f3"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "e8b77d53d689068b813d904f587541d3a814944cd0dad79b0941d8855974c31e"
+   "sha256": "ab758381b4d01d80d5c4d69fc28f98e7bd90659bf3c758d0fcaee44ef64ced1e"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "cd872ac09b4b3338e34afa783527b212bf8df0601202ffd5081f46eec73a485a"
+   "sha256": "c84237010670df5af67b5a85fbe6708a6ea098b37f8538f5733ea08d3798a00b"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "96fece60583925e028daa915949308e7afd21b2abc770726e2bd4fb79fd0c081"
+   "sha256": "b8f243efb01813b4a13ac82b23cf721eeddc55dc3e5869e321a39c980a56c192"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "c95d6b8f2886abdef4dc8824ae3481bd57526acc61cb3e363217a2f5f74171a3"
+   "sha256": "32d4757b9a7af6a8ce5a13357eb9b97476d113641ffa713f406a02a48af9b76d"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "3e313cd44b0818d55e63edb4941b8bb68239bec7d6e0aae41bfbfd6703a57dce"
+   "sha256": "a5ef4bab1d25ab806a610b0d65bc857df09e5914e158f312d21b62c3841ecab0"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "c920f1f0f17593dd21d4f2ad77dfd7450d2f265bc80ca3cd4380e757097c3ec0"
+   "sha256": "2fc222e9f3f2611a733eb2444d5ec67efac711cc9e258853cf7b1332f4251145"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "0d5113b31977f5332e5cd168b512ea152ce2fd6755b12bfed3524545f1db8399"
+   "sha256": "418626ff420d884a304511a617a46fb4a92cc671d47e3fed4d8efd42b944045b"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "809d93963033629c857f7d7c868fab8d2bfd19fe3d43331a8d153507b54c329d"
+   "sha256": "192bf85299ffcd76697139b6c1e1d698fd870684513bc1fc29af0c67cf376827"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "ec56cd85891eee14798689c24889f19950a2091eb7710d997a8343891acb3d30"
+   "sha256": "040806e6cc87ecec33fe11774050d4c49206c65cf7c8260c7259fb4b39693df2"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "ed0c6daa6843ac265fac5ee82009f8a4e3f2aa9c8111b47edc0477234140a149"
+   "sha256": "ffe79a8416d36d94a2056ddbb202bb1fd7caf0dce0e238bf3612acf020aef51a"
   },
   {
    "from": "internal/ormgen/audit_test.go#1",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "46750746e1596daccd0e6ce7aa1e79ded9b62818ad21223c60136488d4b305cd"
+   "sha256": "aa40389c172071948f0242be23b64a7bffcdbe8011a71f5a5ce30bfa010e900d"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
@@ -25426,127 +25998,127 @@
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "11613c5fe63766d2fe4752aa54d6d2ceb7cc32daf3c25c6653588f7d75829850"
+   "sha256": "63e37e661ab108650017fcc94e85527e486c64309060eac61a9bc64281a5c06a"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "1bf2c59fef7f8336e422fdee1906d44e85ea5513d9c4751b807327c844cd805c"
+   "sha256": "81d6ac868956fd7e204eb2d0c53541bc97f230bebccdf79bc3603e656792c8b0"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "c72dd3f446473cae4dae237005eb6079810f52ca4c158bcb3dbb4fa8241ec7fc"
+   "sha256": "351e5291c7ab38b3c45fba7902991076a089abd17674dc311a098757bddbd5d8"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "b12906527983fa870e82131daa0fb1e09b6f719ecb72373c1be3e9d9350f0609"
+   "sha256": "e5dc08d319cee72421e0b623c56191fd87376b57d68a4fb467c8545e4c955c38"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "273795b932fe36b861bcbb86508beb399a90fd7524f11b7d75fb0c40716b63eb"
+   "sha256": "d7fee650a6127867e8c5a3e889a02273d1cd4efff458800954a990646d1616b7"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "81953cbcb99633b6a4bd572d0e56c689dc2d5a1055db288fe8a4fd00d683b844"
+   "sha256": "448bd694084dfb51a3807ca0c72bc239a6e3b304b6570b449964fc741118a4dd"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "c625737fd5b69e72b92a2f8260be50d2e92510ea620de49f117f8586902e6f52"
+   "sha256": "c9d5dc520cce1d340fe6051cbea6e2f2b6c9497367a5ef7eb6fd1dae4f6e9404"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "0c8d50665e1990a22b7aa6527d934b6b4469d152c3e2189951b773136bd375ad"
+   "sha256": "20000ec6af75bfc724763e35f59b30fbe19645153abf8c20330ea419a82feaa2"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "008b60dd3c928a89aa89e460dbf4e9390292ba971687dc22758967d61b50a3ea"
+   "sha256": "8bac318bcbca820742cf7eaed177383b9fee37c5e26e73280e3c24c35b90d003"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "8bf0a6c7492d24796c4f78aa4cf83ffb3969ddf1ffb69f7d725ab3ffe1207acd"
+   "sha256": "404788ca51c1fb2db873713312a11eba98cf3d5fc4783f056c52df552ac619a2"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "6f644809232ce4b3435a434e925d63668beb4ef4bf7ee915431be71ac9b0e454"
+   "sha256": "7b9799a46cfa8dc03ac3d02e9e64b0e79581bb5828ced81d777bc9fe29361bda"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "4895b142b7fac32e3f6b587a812bac3eb9216a95ad45e56728bcf33f45729ac0"
+   "sha256": "20e1305188fe24c45851cb5665ace3bc2d8e78f3acae4dfee15040c7818a28ae"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "402c7919882e4ed3db811f8e1eb31f540f050b8bcb9b652613984a61b1cd014b"
+   "sha256": "75fd59312fcc87079cf0333e5ff23218859cae8bb2c39acdbfd67c6114d217b3"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "47c6049d3aac0988d07aa173d0e4ee5261bb1b147c42747bebed223991ddd6a9"
+   "sha256": "49c436eb1bd2aed8f546ea5210284e75c3caad37000c67e49ccbd751abea86b0"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "acfa96a3a1f08b0dd80355d87a8d8f0185d2bae3e48a525b361833695d83806d"
+   "sha256": "bec1294b1b1010578101542a14dd392655971daa43672fd257781cabf8b1eeef"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "f7105ed95a063faf9d0072876e3c2d5b637f4505634fc1835c9d2300dab236e9"
+   "sha256": "69d5e8eb4036347b888bbf6ab79889eee1c801bd82871e8e15884e9051cffcda"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "8c1bdd2058505f01a65150301a0befc4c8c8caac5a3fe7e37b679226b53ab3ca"
+   "sha256": "0455e75e856110ce52f54ce09151a12a72a7706bd96689d1a1cbf9f8a267fa44"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "35071c860b0711972743f2488ece4b4b7dc80061b7426e899470f80959ad3151"
+   "sha256": "1362c4f1840af89c8c66058de75a5d412c78c570c65a27a584c54a6ef7d9d7a6"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "6d26798bb8d88e9b03a00984d441377bfbb5d2c9618a1307f8e8c7323dd4e52b"
+   "sha256": "0a156396b064910deb0d3e7ecb6b56a627afa888a701a9833f634954fa9df107"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "af1f1bb12ee863358e40695800fead045f279a8f9e09553da6758dd0316d6ded"
+   "sha256": "7559d182c6c446eb93460198061a3ded2d5e5bfaf1471b79ff32b299247f2f85"
   },
   {
    "from": "internal/ormgen/audit_test.go#2",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "bc28ac176c62af71c07b2a998fa21d46040d549659b2399bb304624d6860a5c5"
+   "sha256": "8d3e3e62fcd1b9757b451d81ee26e3e5bf2acb34a3e30a13cdcf68580255136c"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
@@ -25588,127 +26160,127 @@
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "2d4dbdf5ffcc63a32af1f37363dc148b5be7917225440e8f1ecf90bb102e93d0"
+   "sha256": "90dbcf663657ad6d188806ed3c96b72a7fbef1734a6a76587b3087746d86237d"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "26ee8dd13ae0582b51f82a210c04d5457b13977b5289ba10cea9bde27ffbe785"
+   "sha256": "e726a2247c165258a462658e4048b064b3a02084744955aaa1174f06f5029026"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "0a1c3befaf4fc427ceaf69780047e897e4cdc7d6b13bb1355c976d8f37263ab0"
+   "sha256": "79adb1b21fd2cdc6209e4f8958be5e2046cc382902756c5cc337c922025a68d0"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "e271c49c306bd5739ef5677f73a5067f1ca9f637a36197005adb82c8cd980a64"
+   "sha256": "372e2640ca676dbc3dfbca004ae82b047911c694354d80a6f3c8d28a99d28a61"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "d7fa350cf60cd43edb29b1596c5d0bf52c0d4d7552a067a6c05f1b35e354ec53"
+   "sha256": "6e077b93825e2419f4ef5db38ae64f9934916bbbc6a687987c9fbfa7c716f978"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "956d12bcc16b9a35e3d1fd08947eac89bdda409720b16c93e77877a501c2bf71"
+   "sha256": "7804d9f9c451b34098fdbe8f1ea77e305229eaf559b68aa233538a11419bee65"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "639984844b2d295c8f7f089b362605d45b5620686859da26d476a29ebf38bc4f"
+   "sha256": "af969c5d5753e60cd10d0e429de639fa23df1ac723243a819c516d9b7e70fd59"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "4a325e43794c77d2a0e1919c6fae3f77d2b106558321fd032c68cf19bc1d57e6"
+   "sha256": "bbd01ed785467598b6cda0bf4b3ba171ae979c1b9ca4886eb2e344c754d3a0df"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "c81d85305947865cf0de68a5dc30310a16a9df28ddc7e4b01da60e4a30065dbf"
+   "sha256": "37c752c3e7652ce9b431850c8b7bda874ee74e2232254ed8e57ff9b53fbe2c66"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "4e9cb0e856e4367cb180f64a7019eebad9c90b91017e44b32a66ab5616225aaa"
+   "sha256": "9227b9639eaf07630435f8f52adeff85b5a3a60049f85882afc50b2a0db9042c"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "466b14c3f89f3b47a0b98ad5142c1c195ba8753d18ca4378cf56a2712a6af623"
+   "sha256": "4c7c4a247f41256e2bf8c9ae26c7bc4ae11ca4f31cf8427708d4f99149cbda38"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "ec22fb438a2b834e162742f98f1cf3ca99c1b38887f4b7a90afcf04c53a3fa05"
+   "sha256": "fe77d8ef157e37f6edf31f5503d7e9c8798a2819fe4a93661167a490d9a0332b"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "26c50dd582594efa1351947100be3f8e45f8e3ea034611935fedbd3aecc88172"
+   "sha256": "f281606f2f0e37a99d1c3b818e513ee1ba5162ee459f5d7aed90e2af4aa89b96"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "31ed48cf56d9a2c15e6e4905534c435ffc840e2f90a63e0806999dc3cf0ff856"
+   "sha256": "9ecbc8d6c8c6611f22f24b773180c38bdaba2ee25a45d224b88231f56dffd833"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "c5afe11397170683c41bb321e889c779cd66107ea40f8b3ed8cd0607cef2f494"
+   "sha256": "bfb50423803ecb699257dfe220de20494d8145d820758fdd9053f4f136656dc3"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "f4ca32c59bcf0fe57ddc548f6605708fe519b6b2829db199ebbb5ddc702906e1"
+   "sha256": "7a0a28161013ce119de40e8cb31a3b9cdbb3dde32087e4e16cba0fb22dc5a997"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "268c5a3c5e9308d1763a4c37bd9d89c8f91ac580d62a64c5b48c13d6a0de8da2"
+   "sha256": "93b543412be3a868c4541f457244549e02a16167e16e72bafd457b98236aecc2"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "f48c21e826961d4830e5a4e6fe0e534593d37915d74085a5e9c68fbe7c55b776"
+   "sha256": "e26a594daac5efac37f3327975ee8db9ee74ee747ea6d47ac36994c76b0766db"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "ec32ba665388928efc1b6f8a2e7bc5e26518f2c0a8e1a497fff2a764c2564909"
+   "sha256": "1443c3289233cdc65f7bcee598990bc0fc834767053dd489efbfcc7022ec18a4"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "abaa569edc42da7d2c27070e7857966c29869e35f91ee95a7d8e8aec13383d9c"
+   "sha256": "7a10a693791fa84c9939edc9f6f3f93980d73d595ac4bdd0438ebc49de8ca3a6"
   },
   {
    "from": "internal/ormgen/audit_test.go#3",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "80395857fa82063270c2a0633254e786eb4ca0be0e15b482420b899cb1534009"
+   "sha256": "8a8cea51b00080a4c836a226f558c39f19174ecd4b3edf43eb02d5cd7984eb2e"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
@@ -25750,127 +26322,127 @@
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "07a969da3fa7a7af707eec1c49a29f9d975521e4f15663f34f4ef9b9852a162d"
+   "sha256": "da684591f81c32f177ea92a229fe2099c2eaf726d12c990cf6516ccf3e836aa7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "8fa6a7eb6ad0cafabe5f1d21ca532dfce0f2ffc299b7048f77af895a9dfee9fa"
+   "sha256": "a24e042807365567f1b7e274684d1b958b6414e35701f813641fdab34f123074"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "67907c1c4d2f2280768d09a8ab5006b5196d779cd5cb4f61b51c9b273ab3280f"
+   "sha256": "e01e5df5bd07b0aef3a7def2c97224a9b57587e5ad5975293ace62895c1425ff"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "ce1129a46f910a6fd200733cc762ca17ca249be6758828640fbb7baf1cfc0fb2"
+   "sha256": "3c5ba13169888a290b91befabd7879f2163e3923737305e0de9ab542ec2986ce"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "9a59168756f4fef739053aeb0a8707c9d8dea7f3b197e01e42b4c7979b4dda73"
+   "sha256": "b5bf964e64f43528dc6e45b49a43bb9c581ca3d5021bc77cd261a951548a8db8"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "ae4bc491da40a2f7a966c24d550e6fe3602af3d4b3a120520c55121b7105ca4d"
+   "sha256": "4d3165ba9ae0e158d61af044499834204cfba303b2ddc5bad8115f92deb1bea1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "c32eacff454144f3416aab9f342d624db299cb992cf0fb32060dfe9c2e664a0b"
+   "sha256": "16ac66a322da389998d34cb9023b953da6a64a46266ac70d38d0a7a3f70e2cd7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "0b6701a599cb5a696329a65137885c9d4aad62cfd95a21ca7e2d07973c964cf5"
+   "sha256": "023c54d3ebb02f3f697704db3503c8f85583f1d046f9865d345b59650782c9fa"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "01f5d4f2efe39762ebf881ae0cb1ec0d9fbad47c844bf64a54c4866f2aa4f9b3"
+   "sha256": "6756fb4622333b884d3a4e2e7478de7dd564250579d152d3a650c92e745870a8"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "3694fb7551167b5aff5c247ea20c0132e5efa9eb64fe50faa18592390ea0a44a"
+   "sha256": "dc8bee03ee01581d4577571447a66be879b26fc1de698c66529cdc0a3c527b54"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "b5fcc81e51addad0b43ca6bb7fdf7b33f81674d7a6c05615abdaa91f88ec97fd"
+   "sha256": "e49c3998ffb0678c168250bad35f46704b0e1c3e9abdc837d446a2a2a4345cf5"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "b57042e05dce8f0dcef6fe0251d36bab97d8251b33130ffa885880dd38b53762"
+   "sha256": "b65c54071d88388e55d3d826b5f89418c3538561d88f1e522c430bdb191d35e7"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "e5fcb83915fae7b73de7debe896fbbe0a43686d2c07b45122cf92ad68bb294fe"
+   "sha256": "f7f37156bc054ca3dd12c9e1caf640d79a3491233051dd5e7ca246725e896fce"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "20c55763988bd2a6e8a56122973cab518b885bb15ac059e05ca99f9c24db0030"
+   "sha256": "f76a4024cec8932c419f1f7b97be77a7eb93b370b47d12a4f919f917355b8a66"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "1414909027f391c93c95b8781171832e9d1528cd85aa1694732291dad7211d52"
+   "sha256": "682413639556ac69da1293c2a2ba41f76a40c30276aa4b95f32712bd37e167ea"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "d34e779bdbbe2cd2ed6057f0e3a7b00183ebd33060f97e064e19c6c0eb5a5202"
+   "sha256": "3e23de697999f6e887f1bd1fdba895ba610f1477ed144f2e4db0c31112c4d49a"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "dbe1a320bec7076be08426bf257795dc9fdff4898a6372a6c32cbaa0b31f44ff"
+   "sha256": "a85183211543e126a777dde9adc24aa15fe8a726821fc7072ecaaa21a169d52d"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "82d9e28bec624e9142f25e48060a61a8a4b10a7e5bf730e68580fe43e8016cd2"
+   "sha256": "f58e9c24bb0169cf7e4f96e471b004b711dd9ae1f0392dad2952966c8fe01615"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "3ddc9a9b3f91d214085c650bf3c9c618f69b09678588060f1834ce0b9b0af715"
+   "sha256": "d4c237fd6be383991b1775d150451363d9bb032f95ac2aad853da0d05042a2f1"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "452c3f2d322f49dda18beb3a1ad17a74abb40eb4ae55f9da9894ddb1b87addf0"
+   "sha256": "8fabd27c2379cbe8e60ccc6b5446da39d6eaa5a4d93f38b0a0b2db2eeaf23596"
   },
   {
    "from": "internal/ormgen/audit_test.go#4",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "491406e8c627a7431636eeabbff759c840255300a47a4661f10c7aec9bf90975"
+   "sha256": "dadde2001668c22e131b0292f74db88662f1c291faeb07311819618962d96d75"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
@@ -25912,127 +26484,127 @@
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "2f003230ef9be6c7cb648a840c1f5abca1127785f3b45837799b10c05a3f9c34"
+   "sha256": "c43cc4a4e60d955141dc4d103dcaf1f5c22f5060f167c1b8dcba8d93749a6791"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "c3e8ceed9dd62f368b6ae7e32a882c76c0dddb5c1669778a1d8a1680f174cf13"
+   "sha256": "362dda0229fb09f5433bdac5bcf32c567f225dbaec0665d9670d3c0c8f609da6"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "90048a603cafc14165546bc3f4441f0bebbbc6c740df597cbeb5191187169fa2"
+   "sha256": "dde372412c95df1ccc29193b9ef77b66a9ed0280cc4dd78b6eb89ccd3cabef99"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "6c3e49f22c71268b3c4aca434dffac48db5d03d31991e534e2a8d84043d0fa40"
+   "sha256": "164bb14459f657f2f186b49102b2c9f2791ee1d94392c3c2e05e9e36cbdfec5b"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "a36d5f6188cac2e755b8f880bebeaed2deae90a79a7db2d8def4311614917cf1"
+   "sha256": "03d2708a60dfe33d47f67e32793bdde86baf24e8551382e5f02ef5b254d0ffbf"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "41481fd395d79486682dff430402f0890140c88a44683629f655c4c7dabb4338"
+   "sha256": "31e4aa3b088ef5988e222ad2e04a572a542a1116acde28970361c3acf0645a46"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "9ad1fdb6fb6e96d7479e9614d49f37a7b5da4bc053c304516e1589b1509b6eba"
+   "sha256": "234810bacbadc7bc9b336bcae219477a61cf2630eeaa5f91ef908e9167434574"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "991a0db42be89f33542cdaf722486bcfb142b01e7d9f08b540ca770dbca3afc5"
+   "sha256": "3d8e9345bee25db2a6b50546000cdceaeebd10a30fb9def330068f2343254943"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "5f6df3d47da17520b3ed4fbe736f9a594130b406704b8f8018d895d83601c721"
+   "sha256": "cf738c1ee52dc2ae68b9f4435c0035d67fe3f568556e72a54e71595e20ed948b"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "926b0287fd43c072599739c1359e157d871ef5bb7f5702340960b63c6796eac3"
+   "sha256": "def2f78638b7d04450787799d7253a3ad93a100b08177588886cd10d89080b87"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "4a5e7c5a942e327367fe0c9f0e1accf040dc7f4d5d09eb546bead3ceaa0d8cfe"
+   "sha256": "ab27a849b72d53037c11834fb5de94ecfa5ab7915b851372d976445fc2c6f4fe"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "1498d9d35268be656594a3b656e98d37d0e709785fad0ee4031b49ebf4fee951"
+   "sha256": "50dd58d206b3237cfb1d790e7a0497f83ac58b7ea884d74cfde6dd5fbec5379d"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "2b0d089c7700b86d71c2574396d5dc0c1496bafcbc97e5f613908454ba98fdbe"
+   "sha256": "1b6a1f9f00e633c77468dd411562da5a25463c2b088890a5c8c33a965679d92a"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "5cbf1eb7c61328c1e03d36f00fa403f4820f6aa44752c29c3cc86529c3094c21"
+   "sha256": "1ef6737c7b80bfa3020da1cf892f344c10de388e468dc253f8ade9ffb18232c7"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "a3b71137442f503d1f5d2c734e6df82650802ed73c8d2e773210a12435ff50a4"
+   "sha256": "d49f2add75ca374ded20f794a2b49be6d7f0afaf548156b60f2813fc1d3b8112"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "361ad6f0eec77e5822128909979e5effc465319a6cc7c3e1c17ec2c08914d4aa"
+   "sha256": "3c48722b6ce09e479caf5511235513df12a4146120e4657df3460e167e2ae04e"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "84d311d99b49c5e0e1337e7056d74329542594a598997ef6c693249be7e47cdc"
+   "sha256": "7b30b453975703156edd867dec568c5a4b051fb98135bb8cd7ca62d128cf7108"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "cd1846f48c5652722445798a305f363d2d44c4c72402ace04f317022ec89d022"
+   "sha256": "3ce628bea76109d67c9de531d9b635f15a543ea899393d38059263c5845ca240"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "b2d300128fc5293373caa744a202bc11b55ed6d864b2f45390bd071c007e355d"
+   "sha256": "f9e60c68a2777c128b4a683f74e1ca19422b28299a1dd1256d821f0b0752680d"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "06de2222e0797e975a06452a8a6b7e0d39780ede51c8dc2579ce22c1cf6d837b"
+   "sha256": "234c348d8c8b3186370b17bcccc9cd23867fdabcae52df7d73b858194fc7bd4a"
   },
   {
    "from": "internal/ormgen/audit_test.go#5",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "8d56063668600b5ced9f57d80dfc445ccd1983a61d89b74030bf340bde823abb"
+   "sha256": "abce3d525d28389b341667ccdd823c265fa459ebba87faee040ec0ea4e9cb745"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
@@ -26074,127 +26646,127 @@
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "4828b3f7ff9ac177010f0701c603f4161c95d02f717e2ee29281bf899b8eb788"
+   "sha256": "f37883b426aebea55dadad946442f00ec3547b53e56fc7867345a8bd51231dc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "ad6206aea1365abe38784d2dd1a7b2bc72c645480e55d11c213eeffc022644b3"
+   "sha256": "f91b276df8f4d5d00c859833c6ab30db8fa6e4e13fa4576d482ec830694b1fc7"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "8ad39783544bf83e878944bc9f1247de637758746f9821bc07325045b7bd579b"
+   "sha256": "357767cb8328e3dd6e76ca563dc6fb4cb116f1f58c1d79854a3cb16108f9c8b1"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "f65fbe6095f50a914c495af3919fc6076439b1ead14e7a27165cbabf1ccf9c19"
+   "sha256": "1aad2f7d3db38e2d753c59d64cfbe769a87dc8f3d44ef6065f74c983c850b038"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "5cee4d750417ef8b230157b0bbd0ec4c3925b90cd1deb6e99fdee0b9097802cc"
+   "sha256": "aa2bb2ea589b993ccb390d896837f5c4542815bdc647c5d29a9dfc2377231241"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "c022084cdfa3fe62486e29f8da64acbfcf1fdbe696b93e4dfec4b79d915398d4"
+   "sha256": "d92b22409db892d04b9586e3e9aecbe7a267b95ed3fa807d1040d9b9369e26d6"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "6f1e7a9b205d043da5db0a9299c5dd42efebd64c6cb60e67ac0bb7053926afbf"
+   "sha256": "006dd9049240d1f32a73235a69328d12c450313c46fe9a321b30fbd98230ada1"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "bff0e0753b1781036a8dfa9b339623418fad0eac4bfe0a88f3a511f832691294"
+   "sha256": "ef219c49a5f078c621789957a618118b6c1e8c4382511c2f13a2d4835a2d89c9"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "b370e077c102a0bb00176268dfa246b3cd98ab5efa1d4c64e6cc03a899eb3edb"
+   "sha256": "f3bd0f099f606c3ba7b609573356c2cdf54cbd6177ac638408a145ec35025b22"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "a0375b7775fedd700c3aa80b31fca658eee64cb73cfc4e95fe5c51bec237be7f"
+   "sha256": "617b1d5d0a8c8c54cbdce74c27b03f458e0775a46b7c31412cd609259d9de58a"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "fcfa9957642f796b23212b540e638c380c39398aa50f3c0fb06f00f3fdf54ec6"
+   "sha256": "c5f99cc0940cdb0e93101d85f59f42223e39249be820b62cb2dea67fc3e2db16"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "234a46c00f5c6f8566e991a5ae25fc3f32fb46559f4f3acc0bd6409c9d06db4c"
+   "sha256": "bb22b5550a71a367e4395b68996ac8f07fe934d73e48f462014615d00bd1409e"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "ea767609bd047253edccfff65994d287efd68563f98d88ebbad933b5ad92bd3a"
+   "sha256": "1a9f43cd74d2409e0c19bea8386424c686edb644a2e19c3e3865b372dc1e4282"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "ef20638d51d518f9761b2d41fdde98019884d628f1d47b13fb6177953960f76c"
+   "sha256": "2c1fa0271edc35134c6caaf8e5682ec8d008a0a32cf76176594d6a43af82cb05"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "87973613d9f110816db871a7ee58a4896f5272ad77c17595e874bef83a94d2fb"
+   "sha256": "a493d748fd9fd969080438365bceb68a7fcd7f7fc13b7bc9ef0f605136b4ff65"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "0bda970e4d0aef81e8fd464ab8ab5e0f6b59251cc4d3c0c585a4147300d74fec"
+   "sha256": "176909b6d96be8cf29c031429d5791deb41ad3998895cbe2501b0a39930ee5fa"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "3a072283473ba6e4e1acf0616cbae42cdb0b4d171ec9045a6178f83da246812c"
+   "sha256": "3116d8e84e7cd6a1bc7bf90a94096e744d07e609cd36264f7da8e5a5b135e213"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "b3ce7391b00ba2ef0d46284563e337f90ddd75e97af25d313519bee468823909"
+   "sha256": "15d0968c1f31478d788d701db416bd7f958e3803b0e39979b2025e6856e297cd"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "eeb35045eb29857a0f6270481cd1f4767a8da3383001351d915cf4787a4bd790"
+   "sha256": "29db995683ed93ddb3b49958c5b73d9b5b08015eb61526c8d79d70dbd70ae43a"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "9bd714ee8d6cdcc9a036db13a64a2dabc3d90104fc97afd24ac7038cb091baff"
+   "sha256": "d6a72456470fa5c29a0144ce58efca44600d0d5aef334eb4b4ce59e0fdf85e92"
   },
   {
    "from": "internal/ormgen/audit_test.go#6",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "b3601f296eda3d71ae8c6e051a265b56e37973520878e6379b7bd3ffc91abafb"
+   "sha256": "e8d3c8ab7b3827291b43412398e300c87dbbb6d1b57d6ecbcbbe6c7d6579dcb5"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
@@ -26236,145 +26808,145 @@
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "mysql",
-   "sha256": "cea579f84e1fa6db070a69a260253bd81bebbe1e8551e2da8e0bdc5d54fc93fb"
+   "sha256": "9e1fc7beb5ec1e2117f8b883faf4d792ff0a18257c451961adba6fae212d3dbd"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "postgres",
-   "sha256": "db35c2493b45e016e58b8b9179ba43e6e7beb67dcab5620c23547d3708ae740c"
+   "sha256": "d8acffbef7df07cd7053dcf24b0575f3b03c8c7b0a2eb76312590c8677d356e3"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#1",
    "dialect": "sqlite",
-   "sha256": "5060b1ce860332f121390c20c9db2f0d8fdaabb8fd321c864d65633015886ff8"
+   "sha256": "0a10b08b52e053885bc7e317b4d76643ef85ac9b9666d369416d771b0edccb1a"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "mysql",
-   "sha256": "a2f9c3a61881807a1ab38ec37abf0b6c4ea107c791946a48bec20d07640e9558"
+   "sha256": "8ca564b04704b6302df915177cebdc6244352404e538958ced24e84b7f00868e"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "postgres",
-   "sha256": "db2852325ebdfd6d9e2894486e3140b2a4e48e9119d3277b0b86354bbbefccaf"
+   "sha256": "ff0e33cce4fa0c57fe4d199188230d16f44c54f6a63c3ddcbc15aa671fa61bf3"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#2",
    "dialect": "sqlite",
-   "sha256": "ab16bdd3288dc064b3e906c3943292820a74cd965d837f15143dbaf11df05f33"
+   "sha256": "5845b495f29ec4929796ba3ac524f57e3e20c4caa8f85ef10875b32e920aa15d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "mysql",
-   "sha256": "c985de8decf595012f972ee143a9b4974c565fcd0fdc28ffd048eb12739277dc"
+   "sha256": "6b9582ab277e2be991461bce93705283654a8a0e14884c6184539dbe4740e07e"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "postgres",
-   "sha256": "689b9a6eaf18f5f4e02aadb20471906dfda9d2af2549b5cf59a4aa053d82c7c8"
+   "sha256": "c83be66e4cf67fb3fee728b6fb8503ee6378781a2553e7d0454e482c9b843534"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#3",
    "dialect": "sqlite",
-   "sha256": "afe42e36ba2c2a2db25a893f8fbc1e1ee20a453c6e0734c14e6f679c8ee15761"
+   "sha256": "badc9f3dbc89bd48aa06161dd1ed882883d7606237027b7ca0148f36386b75b6"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "mysql",
-   "sha256": "e848f3ea324ab35cdc77014f9bf3b01a45276bc3031b0f48ea667a402f886b57"
+   "sha256": "8d59b0123dbd7d3df9861546956f41e18c2599ee63de47b80ae7406948ee0b6e"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "postgres",
-   "sha256": "e2a864d5d6e4a42102807f11cb48fdfde66986a4f07069dd6cfbeb9f339fc6ad"
+   "sha256": "dab569416a972369e6e176da0ab989a694753fabb71bdbf8613c172914536c93"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#4",
    "dialect": "sqlite",
-   "sha256": "5f54f023fac17b3a3c47a67032f40f5a20ad7a7a37c12de482933d99fbddd25b"
+   "sha256": "812efe74da5349315bf678233816f7dcd80aeaf29d6cb84bd1b7f59820795c0e"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "mysql",
-   "sha256": "7c259936d916fdb626b2b9d4203f3b12651a49af384d6e1dcc9e5dcb2ffcf11e"
+   "sha256": "6f8b8ef061eda12692a4e36a530e382a26cbc2058285fe20b79c1600c4dcfd83"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "postgres",
-   "sha256": "df2336fed464c29345ffab96f9723d28bd5f1bec9fefe0a1c9e5f99e3c057288"
+   "sha256": "6c5a82006a1de68eb6b426e5019f574fc8399c00cdd37ea1cf011f6de896c96e"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#5",
    "dialect": "sqlite",
-   "sha256": "3f5566c1cd67341310a6b0948a28ec44844a3727402a2ea08e8eeb05ca4dbdd7"
+   "sha256": "9c6ca6dec754289e552fdd3cfdf1dca92066ec483d70cf96b36cafe40214567d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "mysql",
-   "sha256": "4da2dea7f1facc87dc52853b7ba1db01929c4046aeebe388a26a6ffc3912c395"
+   "sha256": "6df20011c3d070160c0d47103a3e732e91f650ccfcbeb5c1bcc64b6fd831ae46"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "postgres",
-   "sha256": "210a6c7413a2b358b16d5c81377adbfbc426130cb04a61d6b0341a5aa8524389"
+   "sha256": "344a8b4e8d29c7be5c575ac9be4210ef81e589796ffd34c2ea2546c5b35e4506"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#6",
    "dialect": "sqlite",
-   "sha256": "6f789c1e3ebfdeb1c9933a138e49e0cd67ef8d0d819658f71474913d8df18f33"
+   "sha256": "cc6dc0ca45a4151fdf3d42ac2e19eb79e4ae89007ed00e6f3737337fc51251b5"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "mysql",
-   "sha256": "fc2af78fb27d49467b6306f293c01f76f7788f461604a535f2ef5644c3b10be3"
+   "sha256": "b6385d0bd629b321d63eae0280e84d58032b434773896ec29aa8e2cc0887c08d"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "postgres",
-   "sha256": "4f7f934bbd98a9812d96ce0534b9b262d6f32b334509f33180667e2a0efd7ac3"
+   "sha256": "883c06f28cfd9ed5aa2711d425d78d75675bab46207b87856b30ced2d58c125a"
   },
   {
    "from": "internal/ormgen/audit_test.go#7",
    "to": "internal/ormgen/audit_test.go#7",
    "dialect": "sqlite",
-   "sha256": "4358a66705e01f41f1c4c234a292d4508ef62475a2952562a9ccdb5805a79f5e"
+   "sha256": "bc848b57b40948c6ef3d7c0aa7c9a5ba50662b93322b111b164d71de2b01c913"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "mysql",
-   "sha256": "001376ea194c1d845b2da8fafe371742921121af11f961eb9b7e587694c52366"
+   "sha256": "2bab9b23b1a73b575028f3c0ed2a4b211455465a33e84fee12246726e010a8e9"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "postgres",
-   "sha256": "ea0f6eac9e540dc06d3db4876e11cab93670276be224449e350aeff01df73435"
+   "sha256": "27fa71877b62607ac9900f7c5e144af54c9995d097d2587ad55dd9ecae1b5604"
   },
   {
    "from": "internal/ormgen/audit_test.go#27",
    "to": "internal/ormgen/audit_test.go#27",
    "dialect": "sqlite",
-   "sha256": "8696bf33cac9d3a067b9bddf10ba0ad2d8f92c5d65b392978d821fdafcf499a2"
+   "sha256": "e078efe21acce9821bfd40588e68fefb9d9ef2040ed0ce184b6e4507ed549d29"
   },
   {
    "from": "internal/ormgen/composite_migration_test.go#1",
@@ -26429,6 +27001,60 @@
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "error": "MIGRATION_PLAN: sqlite table composite_account cannot add required column account_id without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "mysql",
+   "sha256": "b36e541238104585df1c8bcd529e8b7924f9c975e3ee11fa8ca360c962830356"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "postgres",
+   "sha256": "633d79caba8bee33b06d81cf5753bd4e4cf173a46f5fbc9d41d567edc429334c"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#1",
+   "to": "internal/ormgen/ddl_bool_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "c1dcf9013088ee8b1dda3cb852e96c8b1346728f2c19cb6f8fc89bb42bfc95f6"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "mysql",
+   "sha256": "b3f9cb88782278b7b92f7733fd8007395a363e8fa7243fda991e40bdacc9d549"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "postgres",
+   "sha256": "2d1f4408571fc55ea9e1a0fe55546783ab1ab313c9e7e19365cb37cffd23c6b0"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#2",
+   "to": "internal/ormgen/ddl_bool_test.go#2",
+   "dialect": "sqlite",
+   "sha256": "d0d3a7d1cf16db364d58f553bba349627aef8b4498314465e5c5cd1f159383de"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "mysql",
+   "sha256": "105220b936827970fe03038e6b3f8465c0ad6e7a2f9c823a5b5f667031e0fb9b"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "postgres",
+   "sha256": "06ed3eb3881c09fc8c980e14e1caa287b753b71256344d2d1fdbe6df3bb2da04"
+  },
+  {
+   "from": "internal/ormgen/ddl_bool_test.go#3",
+   "to": "internal/ormgen/ddl_bool_test.go#3",
+   "dialect": "sqlite",
+   "sha256": "5aa6b56029b80d7d6ab824183acbd2e6cd21dbaf242a59ed5b5fa1d22a2c8805"
   },
   {
    "from": "internal/ormgen/ddl_external_fk_test.go#1",
@@ -26668,7 +27294,7 @@
    "from": "internal/ormgen/ddl_uuid_test.go#1",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "73326ab96a014a131007110a20e38468939a490b2d6c65ff5e25601f455b7b1c"
+   "sha256": "0331a8fea6703ce987415d085df6f87c16f4e8a707047c0a325fd307b97c3de7"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#1",
@@ -26830,7 +27456,7 @@
    "from": "internal/ormgen/ddl_uuid_test.go#2",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "397e32959405219388d430562dc802efc13f38eb21411f773f9d7985ace117d6"
+   "sha256": "3570b1e54a9052f7f14405be08cc927c103befbe396310c93b103fd0d96427de"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#2",
@@ -26992,7 +27618,7 @@
    "from": "internal/ormgen/ddl_uuid_test.go#3",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "3f66f207ec392a657e7523bc93f9f2cb12aa8169eaf3e0f8ef6baf9ee02954d1"
+   "sha256": "47623d25d8f4813ec64a4870aefea5da15a5cb27025e02adb35905a5aa975458"
   },
   {
    "from": "internal/ormgen/ddl_uuid_test.go#3",
@@ -27113,6 +27739,60 @@
    "to": "internal/ormgen/schema_source_test.go#2",
    "dialect": "sqlite",
    "error": "MIGRATION_PLAN: sqlite table item cannot add required column name without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "sha256": "1bf02a2eb4acd5c81a65c4aeea894209065615926f3d857d14113131c6e4760f"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "sha256": "e51830c7ff82a366f60a9f7c1f16a86bf0c20fde1db61d50fd8d35d0b0e5307f"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "b9a8e40d0b920518ad910551a6d3ed26d35f54c3c6b8b05832e74b5a0386ba48"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "mysql",
+   "sha256": "48169e2dbd3873ec428e6f3da067afc29df601a6e7509299ae05476842ff34dc"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "postgres",
+   "sha256": "de343c29e4c0d82762fd7fe6ea7f2b7b33cd18425d4d8e518e74c4b23b5ae3dc"
+  },
+  {
+   "from": "internal/ormgen/gen_go_output_test.go#1",
+   "to": "internal/ormgen/gen_go_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: sqlite table product cannot add required column brand_seq without a default during a data-preserving migration"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "mysql",
+   "sha256": "a7a0e61799cde83563546caa8c2dc41fa1b9dbd19e7c690efca113c9944838f9"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "postgres",
+   "sha256": "832c605991954d7e33881a05d1eb626993c9df547110527e4cad3eb3f0ffef94"
+  },
+  {
+   "from": "internal/ormgen/gen_go_test.go#1",
+   "to": "internal/ormgen/gen_go_output_test.go#1",
+   "dialect": "sqlite",
+   "error": "MIGRATION_PLAN: sqlite table product cannot add required column amount without a default during a data-preserving migration"
   },
   {
    "from": "internal/ormgen/gen_go_test.go#1",
@@ -29368,7 +30048,7 @@
    "from": "internal/ormgen/schema_source_test.go#2",
    "to": "engine/schema/mermaid_test.go#2",
    "dialect": "mysql",
-   "sha256": "bb084767d12ce1d59de3600af553c7b06f8125bbd865297b953123caa6d4dcb5"
+   "sha256": "b1a5c84ab9288fe24cac902086b7d94589b66ebf770d2c323a6d59b34ce1048e"
   },
   {
    "from": "internal/ormgen/schema_source_test.go#2",

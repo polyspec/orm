@@ -5,7 +5,7 @@
 // The test drops and recreates the schema tables in those databases.
 //
 // Usage: node tests/typescript/model.mjs (after npm run typescript:build)
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,13 +32,24 @@ let current = '';
 
 const manifestJson = await readFile(schemaPath, 'utf8');
 
+/** A mysql2 connection to the database, host, port, or socket of a DSN. */
+function mysqlConnection(dsn) {
+  const url = new URL(dsn);
+  return require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
+}
+
+/** A pg client for the database, host, and port of a DSN. */
+function postgresClient(dsn) {
+  const url = new URL(dsn);
+  const { Client } = require('pg');
+  return new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
+}
+
 /** Drops the schema tables. */
 async function dropTables(dialect, dsn) {
   const drops = renderDDL(loadManifest(manifestJson), dialect).split('\n').filter(line => line.startsWith('DROP TABLE IF EXISTS ')).map(line => line.replace(/;$/, ''));
-  const url = new URL(dsn);
   if (dialect === 'mysql') {
-    const mysql = require('mysql2/promise');
-    const conn = await mysql.createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, database: url.pathname.slice(1) });
+    const conn = await mysqlConnection(dsn);
     for (const s of drops) await conn.query(s);
     await conn.end();
   } else if (dialect === 'postgres') {
@@ -48,9 +59,7 @@ async function dropTables(dialect, dsn) {
 
 /** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
 async function postgres(dsn, statements) {
-  const url = new URL(dsn);
-  const { Client } = require('pg');
-  const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
+  const client = postgresClient(dsn);
   await client.connect();
   try {
     await client.query('SET client_min_messages = warning');
@@ -359,7 +368,7 @@ async function mysqlInstallInsideTransaction(db) {
 function auditSchema(source) {
   const manifest = buildManifest([parseDiagram(source)]);
   const entities = new Map(Object.values(manifest.entities).map(e => [e.name, {
-    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [],
+    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [], ...(e.aes_version ? { aesVersion: e.aes_version } : {}),
     columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable, styles: c.styles }])),
   }]));
   const set = { hash: manifest.schema_hash, entities };
@@ -429,16 +438,92 @@ async function auditTriggers(dialect, dsn) {
   await dropAuditTables(dialect, dsn);
 }
 
-async function dropAuditTables(dialect, dsn) {
-  const url = new URL(dsn);
+/**
+ * Writes a JSON value to an encrypted `json aes` column, reads it back, rotates
+ * the row to the next key version, and updates it with the first key version.
+ */
+async function aesJsonColumn(dialect, dsn, sqlitePath) {
+  const { json, models: { secret_config: SecretConfig } } = auditSchema('erDiagram\n'
+    + '  secret_config {\n    bigint seq PK "auto"\n    int aes_key_version\n    longblob config "json aes"\n  }\n');
+  await dropTable(dialect, dsn, 'secret_config');
+  const text = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.5}';
+  const updatedText = '{"token":"next-token","list":[1,"two",null]}';
+  const manifestPath = join(work, 'secret_config.json');
+  await writeFile(manifestPath, json);
+  const open = (keys, version) => Db.connect(dsn, manifestPath, { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
+  const read = async db => {
+    const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
+    check(rows.length === 1, `rows ${rows.length}`);
+    return JSON.stringify(rows[0][CORE].column('config'));
+  };
+  const one = new Map([[1, 'config-key-one']]);
+  const both = new Map([[1, 'config-key-one'], [2, 'config-key-two']]);
+  const first = await open(one, 1);
+  let seq;
+  try {
+    await first.utils().schema().install(json);
+    const created = new SecretConfig().connect(first);
+    created[CORE].setValue('config', JSON.parse(text));
+    seq = (await created.create())[CORE].column('seq');
+    check(await read(first) === text, `read back ${await read(first)}`);
+    const [cell, version] = await storedCell(dialect, dsn, sqlitePath);
+    check(Buffer.from(cell).subarray(0, 9).toString('latin1') === 'ORM-AES2\0' && !Buffer.from(cell).includes('s3cret-token') && Number(version) === 1, `stored version ${version}`);
+  } finally { await first.close(); }
+  const second = await open(both, 2);
+  try {
+    check(await read(second) === text, 'mixed-version read');
+    const keyring = new AesKeyring(both, 2);
+    check(await second.utils().aes().rotate(new SecretConfig(), keyring) === 1, 'rotate');
+    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 2, 'rotated version');
+  } finally { await second.close(); }
+  const rotated = await open(new Map([[2, 'config-key-two']]), 2);
+  try { check(await read(rotated) === text, 'rotated read'); } finally { await rotated.close(); }
+  const again = await open(both, 1);
+  try {
+    const changed = new SecretConfig().connect(again);
+    changed[CORE].setValue('seq', seq);
+    changed[CORE].setValue('config', JSON.parse(updatedText));
+    await changed.update();
+    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
+    check(await read(again) === updatedText, `updated read ${await read(again)}`);
+  } finally { await again.close(); }
+  await dropTable(dialect, dsn, 'secret_config');
+}
+
+/** The stored config cell and key version of the single secret_config row. */
+async function storedCell(dialect, dsn, sqlitePath) {
+  const sql = 'SELECT config, aes_key_version FROM secret_config';
+  if (dialect === 'sqlite') {
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(sqlitePath);
+    try { const row = db.prepare(sql).get(); return [row.config, row.aes_key_version]; } finally { db.close(); }
+  }
   if (dialect === 'mysql') {
-    const mysql = require('mysql2/promise');
-    const conn = await mysql.createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, database: url.pathname.slice(1) });
+    const conn = await mysqlConnection(dsn);
+    try { const [rows] = await conn.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await conn.end(); }
+  }
+  const client = postgresClient(dsn);
+  await client.connect();
+  try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
+}
+
+/** Drops one table on MySQL and PostgreSQL; each SQLite case starts from a new file. */
+async function dropTable(dialect, dsn, table) {
+  if (dialect === 'mysql') {
+    const conn = await mysqlConnection(dsn);
+    try { await conn.query(`DROP TABLE IF EXISTS ${table}`); } finally { await conn.end(); }
+  } else if (dialect === 'postgres') {
+    await postgres(dsn, [`DROP TABLE IF EXISTS ${table}`]);
+  }
+}
+
+async function dropAuditTables(dialect, dsn) {
+  if (dialect === 'mysql') {
+    const conn = await mysqlConnection(dsn);
     for (const table of ['audit_item', 'audit_change', 'audit_operation']) await conn.query(`DROP TABLE IF EXISTS ${table}`);
     await conn.end();
   } else if (dialect === 'postgres') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, database: url.pathname.slice(1), user: url.username || undefined });
+    const client = postgresClient(dsn);
     await client.connect();
     await client.query('SET client_min_messages = warning');
     await client.query('DROP SCHEMA IF EXISTS app CASCADE');
@@ -528,6 +613,13 @@ try {
     current = `${dialect}/auditTriggers`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     try { await auditTriggers(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    console.log(`${current} done`);
+  }
+  for (const [dialect, dsn] of targets) {
+    current = `${dialect}/aesJsonColumn`;
+    const sqlitePath = join(work, 'model.sqlite');
+    if (dialect === 'sqlite') await rm(sqlitePath, { force: true });
+    try { await aesJsonColumn(dialect, dialect === 'sqlite' ? `sqlite://${sqlitePath}` : dsn, sqlitePath); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
   }
   for (const [dialect, dsn] of targets.filter(t => t[0] === 'mysql')) {
