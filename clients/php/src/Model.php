@@ -1853,16 +1853,73 @@ abstract class Model implements \JsonSerializable
         return $out;
     }
 
+    /** Flags of json_encode for the values of toJson and jsonSerialize. */
+    public const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
+
     /**
-     * The row values for json_encode. An ordered-json value becomes its decoded
-     * form with objects as stdClass, which keeps the member order and {} apart
-     * from []; json_encode writes numbers as PHP numbers.
+     * The row as JSON text: the members in row order, related rows as nested
+     * JSON, an ordered-json value as its exact text, and other values written
+     * by json_encode with JSON_FLAGS. A value json_encode rejects returns
+     * CODEC_ENCODE.
+     */
+    public function toJson(): string
+    {
+        $parts = [];
+        foreach ($this->pairs() as [$name, $v]) {
+            $parts[] = self::jsonText($name) . ':' . self::jsonText($v);
+        }
+        return '{' . implode(',', $parts) . '}';
+    }
+
+    /** @internal the JSON text of one output value */
+    public static function jsonText(mixed $v): string
+    {
+        if ($v instanceof \OrderedJson\Value) {
+            return \OrderedJson\stringify($v);
+        }
+        if ($v instanceof Model || $v instanceof Collection) {
+            return $v->toJson();
+        }
+        if (is_array($v) && self::holdsOrderedJson($v)) {
+            if (array_is_list($v)) {
+                return '[' . implode(',', array_map(self::jsonText(...), $v)) . ']';
+            }
+            $parts = [];
+            foreach ($v as $k => $item) {
+                $parts[] = self::jsonText((string) $k) . ':' . self::jsonText($item);
+            }
+            return '{' . implode(',', $parts) . '}';
+        }
+        try {
+            return json_encode($v, self::JSON_FLAGS);
+        } catch (\JsonException $e) {
+            throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage());
+        }
+    }
+
+    private static function holdsOrderedJson(array $v): bool
+    {
+        foreach ($v as $item) {
+            if ($item instanceof \OrderedJson\Value || (is_array($item) && self::holdsOrderedJson($item))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The row values for json_encode. json_encode cannot write the exact text
+     * of an ordered-json value, so a row that holds one fails with
+     * CODEC_ENCODE; toJson writes it.
      */
     public function jsonSerialize(): mixed
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            $out[$name] = $v instanceof \OrderedJson\Value ? json_decode(\OrderedJson\stringify($v), false, 512, JSON_THROW_ON_ERROR) : $v;
+            if ($v instanceof \OrderedJson\Value || (is_array($v) && self::holdsOrderedJson($v))) {
+                throw new OrmException(Code::CODEC_ENCODE, "json_encode cannot write the ordered-json value of $name; use toJson()");
+            }
+            $out[$name] = $v;
         }
         return (object) $out;
     }

@@ -57,7 +57,7 @@ function tsField(c: Column): string {
 const baseMethods = ['connect', 'and', 'or', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations', 'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw',
   'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit', 'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait',
   'forShareNoWait', 'duplication', 'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
-  'save', 'delete', 'toArray', 'toJSON', 'constructor'];
+  'save', 'delete', 'toArray', 'toJSON', 'toJSONText', 'constructor'];
 
 function staticNames(e: Entity): Set<string> {
   const out = new Set(baseMethods);

@@ -227,3 +227,8 @@ impl T {
     pub fn to_array(&self) -> orm::Result<orm::serde_json::Value> {
         orm::model::to_array(self)
     }
+
+    /// Returns the JSON text of the row; an ordered-json value keeps its text.
+    pub fn to_json(&self) -> orm::Result<String> {
+        orm::model::to_json(self)
+    }

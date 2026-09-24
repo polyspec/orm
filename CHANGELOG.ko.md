@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+모델의 JSON 출력은 Go 클라이언트처럼 각 ordered-json 값을 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. PHP는 `Model::toJson()`과 `Collection::toJson()`을 추가하고, ordered-json 값을 가진 행의 `json_encode`는 `CODEC_ENCODE`로 실패한다. TypeScript의 모델·컬렉션 `JSON.stringify`는 `JSON.rawJSON`으로 저장한 텍스트를 쓰고 JavaScript가 멤버 키 순서를 바꾸면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust는 모델과 컬렉션에 `to_json()`을 추가하고 serde 직렬화는 같은 텍스트를 serde_json raw value로 쓴다.
+
 Go·PHP hot-path 검사와 Go bench는 `ORM_BENCH_MYSQL_DSN`이 없으면 로컬 소켓에 연결하지 않고 실패한다. Go 클라이언트 테스트 `TestAuditLargeTextChangeStaysWithinBudget`, `TestPoolSize`, `TestStatementTimeout`은 `ORM_TEST_MYSQL_DSN` 또는 `ORM_TEST_POSTGRES_DSN`이 없으면 그 데이터베이스를 빼지 않고 실패한다.
 
 Rust 배열 출력은 프로세스를 멈추지 않고 오류를 반환한다. 모델과 컬렉션의 `to_array`, `Val::to_json`, 첨부 값 getter는 `orm::Result`를 반환하고, 숫자 `1e400`처럼 serde_json이 표현할 수 없는 값은 `CODEC_ENCODE`를 반환한다. 모델의 serde 직렬화는 같은 오류를 serializer로 보고한다.
