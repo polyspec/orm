@@ -1,6 +1,7 @@
-//! Generated model integration test. SQLite always runs; MySQL and PostgreSQL
-//! run when ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name an empty test
-//! database (its tables are dropped and the schema is installed).
+//! Generated model integration test on SQLite, MySQL and PostgreSQL.
+//! ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases (the
+//! test drops its tables there and installs the schema); the test fails when
+//! either is unset.
 //!
 //! Usage: integration <schema.json>
 use std::cell::Cell;
@@ -37,16 +38,26 @@ fn code<T>(r: orm::Result<T>) -> String {
 }
 
 impl Env {
-    /// Fresh databases for each configured dialect.
+    /// Fresh databases for each dialect with the schema installed.
     async fn databases(&self, test: &str) -> Vec<Target> {
+        let targets = self.without_tables(test).await;
+        for t in &targets {
+            t.db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
+            t.db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
+        }
+        targets
+    }
+
+    /// Databases for each dialect without the test tables: a new SQLite file
+    /// and the MySQL and PostgreSQL test databases with the tables dropped.
+    async fn without_tables(&self, test: &str) -> Vec<Target> {
         let sqlite = self.tmp.join(format!("{test}.sqlite"));
         let _ = std::fs::remove_file(&sqlite);
         let mut targets = vec![("sqlite", format!("sqlite://{}?_pragma=busy_timeout(5000)", sqlite.display()))];
         for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-            if let Ok(dsn) = std::env::var(var) {
-                if !dsn.is_empty() {
-                    targets.push((driver, dsn));
-                }
+            match std::env::var(var) {
+                Ok(dsn) if !dsn.is_empty() => targets.push((driver, dsn)),
+                _ => panic!("{var} is required; database tests never skip"),
             }
         }
         let mut out = Vec::new();
@@ -69,8 +80,6 @@ impl Env {
                 }
                 Pool::Sqlite(_) => {}
             }
-            db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{driver}: schema().install: {e}"));
-            db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{driver}: schema().install again: {e}"));
             out.push(Target { driver, dsn, db });
         }
         out
@@ -368,6 +377,22 @@ async fn transactions(t: &Target) {
     assert!(db.utils().stats().open_connections >= 1, "stats");
 }
 
+/// Checks schema().empty() on a database without the test tables, with an
+/// empty PostgreSQL schema other than public, and with the installed tables.
+async fn schema_empty(t: &Target, schema: &[u8]) {
+    let db = &t.db;
+    assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
+    if let Pool::Postgres(p) = db.pool() {
+        sqlx::raw_sql("CREATE SCHEMA unowned_empty").execute(p).await.unwrap();
+        let with_schema = db.utils().schema().empty().await;
+        sqlx::raw_sql("DROP SCHEMA unowned_empty").execute(p).await.unwrap();
+        assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
+        assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
+    }
+    db.utils().schema().install(schema).await.unwrap();
+    assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
+}
+
 /// Inserts and reads more values than SQLite binds in one statement: the
 /// inserts and the root IN list are split, duplicate IN values are read once,
 /// and a shape that a merge would change is rejected.
@@ -421,6 +446,11 @@ async fn main() {
     let schema = std::fs::read(&args[1]).expect("schema.json");
     assert_eq!(orm::Manifest::load(&schema).expect("schema manifest").schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
     let env = Env { schema, tmp: tmp.clone() };
+    for t in env.without_tables("schema_empty").await {
+        schema_empty(&t, &env.schema).await;
+        t.db.close().await;
+        println!("ok schema_empty ({})", t.driver);
+    }
     for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "bind_limit_splitting"] {
         for t in env.databases(name).await {
             match name {

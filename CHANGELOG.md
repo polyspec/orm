@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Make `schema().empty()` on PostgreSQL treat a schema other than `public`, `information_schema` and the `pg_` schemas as content, with or without objects, in the Go, PHP, Rust and TypeScript clients. A database whose only content is an empty schema is no longer reported empty; tables, partitioned tables, views, materialized views and foreign tables in `public` remain content, and the MySQL and SQLite meaning is unchanged. The Rust `integration` test fails when `ORM_TEST_MYSQL_DSN` or `ORM_TEST_POSTGRES_DSN` is unset, as the other client tests do, instead of running on SQLite alone.
+
 Make `ormgen gen --lang go` write each scan round into a temporary directory beside the output directory, which the scan reads through a package overlay, and replace the generated files of the output directory only after the scan converges. A generation failure, including an invalid chain call, a scan that does not converge, a scanned package that cannot be loaded, and generated code that does not compile, leaves the output directory byte-identical and exits with status 1. Scanned packages that do not compile for another reason leave the complete models in the output directory and exit with status 3.
 
 Correct the receiver resolution of the Go generator scan. A method called on the result of a `Get` method, such as `Len` on a relation collection, is not requested as a model method; a call that has the name of a model constructor but belongs to another package does not start a model chain; and the hand-written files of the output package, including its tests, are scanned while its generated files are not.
