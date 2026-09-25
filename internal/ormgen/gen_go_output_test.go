@@ -234,9 +234,10 @@ func TestGoGenerationReportsConsumerErrorsWithCompleteOutput(t *testing.T) {
 	requireSameFiles(t, snapshotDir(t, "model"), withError)
 }
 
-// TestGoGenerationCommandReportsOutcomes checks the ormgen gen exit status and
-// messages of a consumer compile error and of a generation failure.
-func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
+// ormgenBinary builds the ormgen command into a temporary directory and
+// returns its path.
+func ormgenBinary(t *testing.T) string {
+	t.Helper()
 	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
@@ -248,6 +249,13 @@ func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build ormgen: %v\n%s", err, out)
 	}
+	return bin
+}
+
+// TestGoGenerationCommandReportsOutcomes checks the ormgen gen exit status and
+// messages of a consumer compile error and of a generation failure.
+func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
+	bin := ormgenBinary(t)
 	write, m := generatedConsumer(t)
 	js, err := m.MarshalIndent()
 	if err != nil {

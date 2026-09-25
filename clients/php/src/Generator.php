@@ -30,6 +30,57 @@ final class Generator
     /** Generates the models of $m into $outDir, replacing earlier generated files. */
     public static function generate(Manifest $m, string $outDir, string $namespace): void
     {
+        $files = self::files($m, $namespace);
+        if (!is_dir($outDir) && !mkdir($outDir, 0o755, true)) {
+            throw new OrmException(Code::CONFIG, "cannot create $outDir");
+        }
+        foreach (self::generated($outDir) as $file) {
+            unlink($file);
+        }
+        foreach ($files as $name => $body) {
+            self::write("$outDir/$name", $body);
+        }
+    }
+
+    /**
+     * Generates the models of $m without writing and returns one line for each
+     * generated file of $outDir that differs, is missing, or is extra, ordered
+     * by path.
+     * @return list<string>
+     */
+    public static function check(Manifest $m, string $outDir, string $namespace): array
+    {
+        $files = self::files($m, $namespace);
+        $lines = [];
+        foreach ($files as $name => $body) {
+            $path = "$outDir/$name";
+            if (!is_file($path)) {
+                $lines[$path] = "missing: $path";
+            } elseif (file_get_contents($path) !== $body) {
+                $lines[$path] = "differs: $path";
+            }
+        }
+        foreach (self::generated($outDir) as $path) {
+            if (!array_key_exists(basename($path), $files)) {
+                $lines[$path] = "extra: $path";
+            }
+        }
+        ksort($lines, SORT_STRING);
+        return array_values($lines);
+    }
+
+    /** @return list<string> the PHP files of $outDir that hold the generated marker */
+    private static function generated(string $outDir): array
+    {
+        return array_values(array_filter(
+            glob($outDir . '/*.php') ?: [],
+            static fn(string $file): bool => str_contains((string) file_get_contents($file), self::MARKER),
+        ));
+    }
+
+    /** @return array<string, string> the generated file bodies by file name */
+    private static function files(Manifest $m, string $namespace): array
+    {
         foreach ($m->order as $name) {
             foreach ($m->entities[$name]['columns'] as $c) {
                 self::checkColumnName($name, $c['name']);
@@ -38,21 +89,15 @@ final class Generator
         foreach ($m->order as $name) {
             self::checkNames($m->entities[$name]);
         }
-        if (!is_dir($outDir) && !mkdir($outDir, 0o755, true)) {
-            throw new OrmException(Code::CONFIG, "cannot create $outDir");
-        }
-        foreach (glob($outDir . '/*.php') ?: [] as $file) {
-            if (str_contains((string) file_get_contents($file), self::MARKER)) {
-                unlink($file);
-            }
-        }
+        $files = [];
         $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Registry;\n\nRegistry::generated(" . self::str($m->schemaHash) . ");\n";
         foreach ($m->order as $name) {
             $class = self::pascal($name);
-            self::write("$outDir/$class.php", self::model($m->entities[$name], $class, $namespace));
+            $files["$class.php"] = self::model($m->entities[$name], $class, $namespace);
             $boot .= "Registry::register($class::class);\n";
         }
-        self::write("$outDir/bootstrap.php", $boot);
+        $files['bootstrap.php'] = $boot;
+        return $files;
     }
 
     private static function write(string $path, string $body): void

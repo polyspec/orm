@@ -1,7 +1,7 @@
 //! orm-gen: schema tooling for the Rust ORM.
 //!
 //! ```text
-//! orm-gen build <schema/*.mmd...> --out schema/schema.json
+//! orm-gen build <schema/*.mmd...> --out schema/schema.json [--check]
 //! orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
 //! orm-gen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
 //! orm-gen import --dsn <dsn> --out schema/app.mmd [--tables a,b]
@@ -29,7 +29,7 @@ use orm_build::{ddl, live, schema};
 
 use crate::args::Args;
 
-const USAGE: &str = "usage: orm-gen build <files.mmd...> --out schema/schema.json
+const USAGE: &str = "usage: orm-gen build <files.mmd...> --out schema/schema.json [--check]
        orm-gen import --dsn <dsn> --out schema/app.mmd [--tables a,b]
        orm-gen validate --dsn <dsn> --schema schema/schema.json
        orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
@@ -84,7 +84,7 @@ async fn main() {
 }
 
 fn build(argv: &[String]) -> Result<(), String> {
-    let a = parse(argv, &["out"], &[]);
+    let a = parse(argv, &["out"], &["check"]);
     let out = a.value("out");
     if out.is_empty() || a.positional.is_empty() {
         usage();
@@ -113,7 +113,18 @@ fn build(argv: &[String]) -> Result<(), String> {
     for w in m.warnings() {
         eprintln!("warning: {w}");
     }
-    std::fs::write(&out, m.marshal_indent() + "\n").map_err(|e| e.to_string())?;
+    let json = m.marshal_indent() + "\n";
+    if a.flag("check") {
+        let line = match std::fs::read(&out) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => format!("missing: {out}"),
+            Err(e) => return Err(format!("read {out}: {e}")),
+            Ok(current) if current == json.as_bytes() => return Ok(()),
+            Ok(_) => format!("differs: {out}"),
+        };
+        println!("{line}");
+        exit(1);
+    }
+    std::fs::write(&out, json).map_err(|e| e.to_string())?;
     println!("orm-gen: {} entities → {out} (schema_hash {})", m.order.len(), m.schema_hash);
     Ok(())
 }

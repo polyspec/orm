@@ -273,6 +273,44 @@ $tests['the migrate command repeats as a no-op'] = function () use ($work): void
     check($code === 2 && str_contains($err, 'usage: orm-gen ddl'), "usage: $err");
 };
 
+$tests['build --check compares schema.json without writing'] = function () use ($work): void {
+    $dir = "$work/build-check";
+    @mkdir($dir, 0o700, true);
+    file_put_contents("$dir/s.mmd", "erDiagram\n  item {\n    bigint seq PK\n    varchar(32) name\n  }\n");
+    $args = ['build', "$dir/s.mmd", '--out', "$dir/schema.json", '--check'];
+    [$code, $out] = tool($args);
+    check($code === 1 && $out === "missing: $dir/schema.json\n" && !is_file("$dir/schema.json"), "missing: $code $out");
+    [$code] = tool(['build', "$dir/s.mmd", '--out', "$dir/schema.json"]);
+    check($code === 0, 'build');
+    [$code, $out, $err] = tool($args);
+    check($code === 0 && $out === '' && $err === '', "current: $code $out $err");
+    [$code, $out] = tool(['build', '--check', "$dir/s.mmd", '--out', "$dir/schema.json"]);
+    check($code === 0 && $out === '', "flag before the files: $code $out");
+    file_put_contents("$dir/schema.json", "{}\n");
+    [$code, $out] = tool($args);
+    check($code === 1 && $out === "differs: $dir/schema.json\n" && file_get_contents("$dir/schema.json") === "{}\n", "differs: $code $out");
+};
+
+$tests['gen --check compares the models without writing'] = function () use ($work): void {
+    $dir = "$work/gen-check";
+    @mkdir("$dir/model", 0o700, true);
+    $m = manifest("erDiagram\n  item {\n    bigint seq PK\n    varchar(32) name\n  }\n  tag {\n    bigint seq PK\n  }\n");
+    file_put_contents("$dir/schema.json", SchemaBuilder::json($m));
+    $args = ['gen', '--schema', "$dir/schema.json", '--out', "$dir/model", '--namespace', 'App\\Model', '--check'];
+    [$code] = tool(array_slice($args, 0, -1));
+    check($code === 0, 'gen');
+    file_put_contents("$dir/model/Notes.php", "<?php\n");
+    [$code, $out, $err] = tool($args);
+    check($code === 0 && $out === '' && $err === '', "current: $code $out $err");
+    file_put_contents("$dir/model/Item.php", "<?php\n");
+    unlink("$dir/model/Tag.php");
+    file_put_contents("$dir/model/Removed.php", "<?php\n" . \Orm\Generator::MARKER . "\n");
+    $before = array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php"));
+    [$code, $out] = tool($args);
+    check($code === 1 && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\nmissing: $dir/model/Tag.php\n", "differences: $code $out");
+    check(array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before, 'gen --check wrote files');
+};
+
 foreach ($tests as $current => $test) {
     try {
         $test();

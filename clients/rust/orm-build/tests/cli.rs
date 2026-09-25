@@ -54,6 +54,7 @@ struct Target {
 
 struct Out {
     ok: bool,
+    code: Option<i32>,
     stdout: String,
     stderr: String,
 }
@@ -62,7 +63,12 @@ impl Target {
     fn run(&self, args: &[&str]) -> Out {
         let args: Vec<String> = args.iter().map(|a| a.replace("@DSN@", &self.dsn).replace("@DIR@", &self.dir.display().to_string())).collect();
         let output = Command::new(env!("CARGO_BIN_EXE_orm-gen")).args(&args).current_dir(&self.dir).output().unwrap();
-        Out { ok: output.status.success(), stdout: String::from_utf8_lossy(&output.stdout).into(), stderr: String::from_utf8_lossy(&output.stderr).into() }
+        Out {
+            ok: output.status.success(),
+            code: output.status.code(),
+            stdout: String::from_utf8_lossy(&output.stdout).into(),
+            stderr: String::from_utf8_lossy(&output.stderr).into(),
+        }
     }
 
     fn ok(&self, args: &[&str]) -> String {
@@ -167,6 +173,31 @@ fn targets(test: &str) -> Vec<Target> {
 
 fn build(t: &Target, name: &str) {
     t.ok(&["build", &format!("{name}.mmd"), "--out", &format!("{name}.json")]);
+}
+
+/// `build --check` prints `missing:` or `differs:` for the output file, exits
+/// with status 1 on a difference, and never writes the file.
+#[test]
+fn build_check_compares_schema_json_without_writing() {
+    let dir = std::env::temp_dir().join(format!("orm-gen-cli-{}-build-check", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("v1.mmd"), V1).unwrap();
+    let t = Target { driver: "sqlite", dsn: String::new(), dir: dir.clone() };
+    let check = ["build", "v1.mmd", "--out", "v1.json", "--check"];
+    let out = t.run(&check);
+    assert_eq!((out.code, out.stdout.as_str()), (Some(1), "missing: v1.json\n"), "{}", out.stderr);
+    assert!(!dir.join("v1.json").exists(), "build --check wrote v1.json");
+    build(&t, "v1");
+    let out = t.run(&check);
+    assert_eq!((out.code, out.stdout.as_str(), out.stderr.as_str()), (Some(0), "", ""));
+    let out = t.run(&["build", "--check", "v1.mmd", "--out", "v1.json"]);
+    assert_eq!((out.code, out.stdout.as_str()), (Some(0), ""), "{}", out.stderr);
+    std::fs::write(dir.join("v1.json"), "{}\n").unwrap();
+    let out = t.run(&check);
+    assert_eq!((out.code, out.stdout.as_str()), (Some(1), "differs: v1.json\n"), "{}", out.stderr);
+    assert_eq!(std::fs::read_to_string(dir.join("v1.json")).unwrap(), "{}\n", "build --check wrote v1.json");
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]

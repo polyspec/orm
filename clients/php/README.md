@@ -34,7 +34,9 @@ vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace '
 Run it as a Composer script after the schema changes (`"scripts": {"orm-gen": "orm-gen gen --schema
 schema/schema.json --out src/Model --namespace App\\Model"}`). The generator verifies the schema
 hash, rejects column names that collide with model methods, and replaces the files it generated
-earlier; `bootstrap.php` must be required once.
+earlier; `bootstrap.php` must be required once. With `--check`, `gen` and `build` write nothing,
+print `differs:`, `missing:`, or `extra:` with each output file that is not current, and exit with
+status 1 when they print a line.
 
 ## Schema tools
 

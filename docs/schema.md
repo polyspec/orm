@@ -183,6 +183,8 @@ ormgen diff     --from old.json --to schema/schema.json --dialect postgres --out
 ormgen gen      --schema schema/schema.json --lang go --out model --scan ./...
 ```
 
+`build` and `gen` with `--check` compare their output with the existing files, print `differs:`, `missing:`, or `extra:` with each path, write nothing, and exit with status 1 when a file differs ([usage](usage.md#_3-code-generation)).
+
 Every `--dsn` and `db:` source is the client DSN URI (`mysql://`, `postgres://`, or `sqlite:///<absolute path>`), and the scheme selects the database. `ormgen import` and `ormgen validate` read MySQL, PostgreSQL, and SQLite.
 
 `tests/schema/cases.json` records the manifest, the DDL of each dialect, the diff of each manifest pair, and the `ormgen plan` file of each pair for the Mermaid fixtures of the Go tests and the bench schema (`go run ./tests/schema/record`; `make schema-check` fails when it is stale). The schema tools of every language are compared with this file.

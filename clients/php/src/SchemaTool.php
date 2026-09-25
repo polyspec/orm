@@ -6,8 +6,8 @@ namespace Orm;
 /**
  * The orm-gen commands: model generation and the schema tools.
  *
- *   orm-gen gen      --schema schema.json --out <dir> --namespace <Php\Namespace>
- *   orm-gen build    <files.mmd...> --out schema.json
+ *   orm-gen gen      --schema schema.json --out <dir> --namespace <Php\Namespace> [--check]
+ *   orm-gen build    <files.mmd...> --out schema.json [--check]
  *   orm-gen ddl      --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
  *   orm-gen diff     --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
  *   orm-gen validate --dsn <dsn> --schema <source>
@@ -20,8 +20,8 @@ namespace Orm;
 final class SchemaTool
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --schema schema.json --out <dir> --namespace <Php\\Namespace>',
-        'build' => 'orm-gen build <files.mmd...> --out schema/schema.json',
+        'gen' => 'orm-gen gen --schema schema.json --out <dir> --namespace <Php\\Namespace> [--check]',
+        'build' => 'orm-gen build <files.mmd...> --out schema/schema.json [--check]',
         'ddl' => 'orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>',
         'diff' => 'orm-gen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]',
         'validate' => 'orm-gen validate --dsn <dsn> --schema <source>',
@@ -192,11 +192,14 @@ final class SchemaTool
 
     private static function gen(array $args): int
     {
-        [$o] = self::flags($args, ['schema' => '', 'out' => '', 'namespace' => '']);
+        [$o] = self::flags($args, ['schema' => '', 'out' => '', 'namespace' => '', 'check' => false]);
         if ($o['schema'] === '' || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
             throw new UsageError('');
         }
         $manifest = Manifest::file($o['schema']);
+        if ($o['check']) {
+            return self::report(Generator::check($manifest, $o['out'], $o['namespace']));
+        }
         Generator::generate($manifest, $o['out'], $o['namespace']);
         printf("orm-gen: %d entities → %s\n", count($manifest->order), $o['out']);
         return 0;
@@ -204,7 +207,7 @@ final class SchemaTool
 
     private static function build(array $args): int
     {
-        [$o, $patterns] = self::flags($args, ['out' => ''], true);
+        [$o, $patterns] = self::flags($args, ['out' => '', 'check' => false], true);
         if ($o['out'] === '' || $patterns === []) {
             throw new UsageError('');
         }
@@ -238,9 +241,33 @@ final class SchemaTool
         foreach (SchemaBuilder::warnings($m) as $warning) {
             fwrite(self::$stderr, "warning: $warning\n");
         }
-        self::write($o['out'], SchemaBuilder::json($m));
+        $json = SchemaBuilder::json($m);
+        if ($o['check']) {
+            $current = is_file($o['out']) ? @file_get_contents($o['out']) : null;
+            if ($current === false) {
+                throw new \RuntimeException("read {$o['out']}: " . self::lastError());
+            }
+            return self::report(match ($current) {
+                null => ["missing: {$o['out']}"],
+                $json => [],
+                default => ["differs: {$o['out']}"],
+            });
+        }
+        self::write($o['out'], $json);
         printf("orm-gen: %d entities → %s (schema_hash %s)\n", count($m['order']), $o['out'], $m['schema_hash']);
         return 0;
+    }
+
+    /**
+     * Prints the lines of a check and returns exit status 1 when there is a line.
+     * @param list<string> $lines
+     */
+    private static function report(array $lines): int
+    {
+        foreach ($lines as $line) {
+            echo "$line\n";
+        }
+        return $lines === [] ? 0 : 1;
     }
 
     private static function ddl(array $args): int

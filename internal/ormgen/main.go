@@ -4,6 +4,7 @@
 package ormgen
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -52,8 +53,8 @@ func Main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json")
-	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out <directory> [--scan <package pattern>...]")
+	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json [--check]")
+	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/app.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
@@ -76,6 +77,7 @@ func gen(args []string) {
 	out := fs.String("out", "", "output directory (required)")
 	var scan stringList
 	fs.Var(&scan, "scan", "Go package pattern whose model calls are generated (repeatable)")
+	check := fs.Bool("check", false, "compare the generated files with --out without writing")
 	fs.Parse(args)
 	if *schemaPath == "" || *out == "" {
 		usage()
@@ -93,13 +95,23 @@ func gen(args []string) {
 	}
 	// A generation failure leaves the output directory unchanged and exits
 	// with status 1. Scanned packages that do not compile with the written
-	// models exit with status 3.
-	err = genGo(m, *out, scan)
+	// models exit with status 3. A check that finds a difference prints it and
+	// exits with status 1.
+	var lines []string
+	if *check {
+		lines, err = checkGo(m, *out, scan)
+	} else {
+		err = genGo(m, *out, scan)
+	}
 	var consumer *ConsumerError
 	if err != nil && !errors.As(err, &consumer) {
 		fail(err)
 	}
-	fmt.Printf("ormgen: %d entities → %s (go)\n", len(m.Order), *out)
+	if *check {
+		reportCheck(lines)
+	} else {
+		fmt.Printf("ormgen: %d entities → %s (go)\n", len(m.Order), *out)
+	}
 	if consumer != nil {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(3)
@@ -109,12 +121,13 @@ func gen(args []string) {
 func build(args []string) {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
 	out := fs.String("out", "", "output schema.json path (required)")
+	check := fs.Bool("check", false, "compare the built manifest with --out without writing")
 	// Accept flags anywhere: `ormgen build a.mmd --out x` and `ormgen build --out x a.mmd`.
 	var flags, positional []string
 	for i := 0; i < len(args); i++ {
 		if strings.HasPrefix(args[i], "-") {
 			flags = append(flags, args[i])
-			if !strings.Contains(args[i], "=") && i+1 < len(args) {
+			if !strings.Contains(args[i], "=") && strings.TrimLeft(args[i], "-") != "check" && i+1 < len(args) {
 				flags = append(flags, args[i+1])
 				i++
 			}
@@ -163,11 +176,36 @@ func build(args []string) {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile(*out, append(js, '\n'), 0o644); err != nil {
+	js = append(js, '\n')
+	if *check {
+		current, err := os.ReadFile(*out)
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			reportCheck([]string{"missing: " + *out})
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
+			os.Exit(1)
+		case !bytes.Equal(current, js):
+			reportCheck([]string{"differs: " + *out})
+		}
+		return
+	}
+	if err := os.WriteFile(*out, js, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "ormgen: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("ormgen: %d entities → %s (schema_hash %s)\n", len(m.Order), *out, m.SchemaHash)
+}
+
+// reportCheck prints the lines of a check and exits with status 1 when there
+// is a line.
+func reportCheck(lines []string) {
+	for _, line := range lines {
+		fmt.Println(line)
+	}
+	if len(lines) > 0 {
+		os.Exit(1)
+	}
 }
 
 // stringList collects a repeatable string flag.

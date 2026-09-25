@@ -63,14 +63,39 @@ func GenerateGo(m *schema.Manifest, outDir, pkg string, scan []string) error {
 
 func genGo(m *schema.Manifest, out string, scan []string) error { return generateGo(m, out, "", scan) }
 
-func generateGo(m *schema.Manifest, out, pkg string, scan []string) (err error) {
+func generateGo(m *schema.Manifest, out, pkg string, scan []string) error {
+	return runGo(m, out, pkg, scan, false, (*goGen).replace)
+}
+
+// checkGo generates the models like generateGo without changing out or its
+// parent directory and returns one line for each generated file of out that
+// differs, is missing, or is extra, ordered by path. A *ConsumerError reports
+// scanned packages that do not compile with the generated models.
+func checkGo(m *schema.Manifest, out string, scan []string) ([]string, error) {
+	var lines []string
+	err := runGo(m, out, "", scan, true, func(g *goGen) error {
+		var err error
+		lines, err = g.compare()
+		return err
+	})
+	return lines, err
+}
+
+// runGo writes the models into a temporary directory, runs the scan, and then
+// calls finish, which moves or compares the written files. The temporary
+// directory is beside out when the files move into out, and in the system
+// temporary directory for a check.
+func runGo(m *schema.Manifest, out, pkg string, scan []string, check bool, finish func(*goGen) error) (err error) {
 	g, err := newGoGen(m, out, pkg)
 	if err != nil {
 		return unchanged(out, err)
 	}
-	parent := filepath.Dir(g.outDir)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
-		return unchanged(out, err)
+	parent := ""
+	if !check {
+		parent = filepath.Dir(g.outDir)
+		if err := os.MkdirAll(parent, 0o755); err != nil {
+			return unchanged(out, err)
+		}
 	}
 	g.tmp, err = os.MkdirTemp(parent, "."+filepath.Base(g.outDir)+".ormgen-")
 	if err != nil {
@@ -90,7 +115,7 @@ func generateGo(m *schema.Manifest, out, pkg string, scan []string) (err error) 
 			return unchanged(out, err)
 		}
 	}
-	if err := g.replace(); err != nil {
+	if err := finish(g); err != nil {
 		return err
 	}
 	if consumer != nil {

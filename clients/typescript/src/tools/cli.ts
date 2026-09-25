@@ -1,7 +1,7 @@
 // orm-gen: the TypeScript schema tool.
 //
-//   orm-gen gen      --schema schema.json --out src/models [--scan <file or directory>]...
-//   orm-gen build    <files.mmd...> --out schema.json
+//   orm-gen gen      --schema schema.json --out src/models [--scan <file or directory>]... [--check]
+//   orm-gen build    <files.mmd...> --out schema.json [--check]
 //   orm-gen ddl      --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
 //   orm-gen diff     --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
 //   orm-gen migrate  --dsn <dsn> --schema <source> [--migration-id id] [--name n] [--log-dir dir] [--dry-run]
@@ -20,7 +20,7 @@ import { basename, dirname, join } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { loadManifest } from '../engine/manifest.js';
 import { ddlErrorText, renderDDL } from '../engine/ddl.js';
-import { generateTypeScript } from '../generate/typescript.js';
+import { generateTypeScript, renderTypeScript } from '../generate/typescript.js';
 import { buildManifest, manifestText, manifestWarnings, type SchemaManifest } from '../schema/build.js';
 import { byteOrder, listText } from '../schema/json.js';
 import { parseDiagram, SchemaParseError, type Diagram } from '../schema/mermaid.js';
@@ -35,8 +35,8 @@ import {
 } from '../tools/plan.js';
 import { loadSchemaSource } from '../tools/source.js';
 
-const usageText = `usage: orm-gen gen --schema schema.json --out <directory> [--scan <file or directory>]...
-       orm-gen build <files.mmd...> --out schema/schema.json
+const usageText = `usage: orm-gen gen --schema schema.json --out <directory> [--scan <file or directory>]... [--check]
+       orm-gen build <files.mmd...> --out schema/schema.json [--check]
        orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
        orm-gen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
        orm-gen migrate --dsn <dsn> --schema <source> [--migration-id id] [--dry-run]
@@ -142,19 +142,40 @@ function glob(pattern: string): string[] {
   return out;
 }
 
+/**
+ * Compares the generated text with the file at path and returns the check
+ * line: `missing` or `differs`, or none when the file holds the text.
+ */
+function compareFile(path: string, generated: string): string[] {
+  let current: string;
+  try { current = readFileSync(path, 'utf8'); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [`missing: ${path}`];
+    throw error;
+  }
+  return current === generated ? [] : [`differs: ${path}`];
+}
+
+/** Prints the lines of a check and returns exit status 1 when there is a line. */
+function report(lines: readonly string[]): number {
+  for (const line of lines) process.stdout.write(`${line}\n`);
+  return lines.length === 0 ? 0 : 1;
+}
+
 function gen(args: readonly string[]): number {
-  const { values } = parse(args, { schema: { type: 'string' }, out: { type: 'string' }, scan: { type: 'string', multiple: true } });
+  const { values } = parse(args, { schema: { type: 'string' }, out: { type: 'string' }, scan: { type: 'string', multiple: true }, check: { type: 'boolean' } });
   const schema = text(values.schema);
   const out = text(values.out);
   if (schema === '' || out === '') usage();
   const loaded = loadManifest(readFileSync(schema, 'utf8'));
-  generateTypeScript(loaded, out, (values.scan as string[] | undefined) ?? []);
+  const scan = (values.scan as string[] | undefined) ?? [];
+  if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(loaded, out, scan)));
+  generateTypeScript(loaded, out, scan);
   console.error(`orm-gen: ${loaded.manifest.order.length} models (schema ${loaded.manifest.schema_hash}) → ${out}/models.ts`);
   return 0;
 }
 
 function build(args: readonly string[]): number {
-  const { values, positionals } = parse(args, { out: { type: 'string' } }, true);
+  const { values, positionals } = parse(args, { out: { type: 'string' }, check: { type: 'boolean' } }, true);
   const out = text(values.out);
   if (out === '' || positionals.length === 0) usage();
   const files: string[] = [];
@@ -175,6 +196,7 @@ function build(args: readonly string[]): number {
   }
   const m = buildManifest(diagrams);
   for (const w of manifestWarnings(m)) console.error('warning:', w);
+  if (values.check === true) return report(compareFile(out, manifestText(m) + '\n'));
   writeFileSync(out, manifestText(m) + '\n');
   process.stdout.write(`orm-gen: ${(m.order ?? []).length} entities → ${out} (schema_hash ${m.schema_hash})\n`);
   return 0;
