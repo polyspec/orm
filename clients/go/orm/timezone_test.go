@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -178,7 +180,9 @@ func TestConnectionTimeZone(t *testing.T) {
 	}
 }
 
-// TestPoolSize applies the configured maximum of open connections.
+// TestPoolSize applies the configured maximum of open connections, 10 when
+// PoolSize is zero, and never runs more concurrent transactions or opens more
+// connections than the maximum.
 func TestPoolSize(t *testing.T) {
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool.sqlite"),
@@ -210,6 +214,50 @@ func TestPoolSize(t *testing.T) {
 			}
 			if _, err := orm.Open(dsn, eng, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative pool size: %v", err)
+			}
+			unset, err := orm.Open(dsn, eng, orm.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer unset.Close()
+			if got := unset.Stats().MaxOpenConnections; got != 10 {
+				t.Fatalf("max open connections without a pool size = %d, want 10", got)
+			}
+			if driver == "sqlite" {
+				return
+			}
+			// Each transaction holds a connection while it runs, so six
+			// transactions on a pool of two run at most two at a time.
+			bounded, err := orm.Open(dsn, eng, orm.Config{PoolSize: 2})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer bounded.Close()
+			var active, peak, opened atomic.Int32
+			var wg sync.WaitGroup
+			for i := 0; i < 6; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := bounded.Transaction(func() error {
+						n := active.Add(1)
+						defer active.Add(-1)
+						for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
+						}
+						if open := int32(bounded.Stats().OpenConnections); open > opened.Load() {
+							opened.Store(open)
+						}
+						time.Sleep(50 * time.Millisecond)
+						return nil
+					})
+					if err != nil {
+						t.Error(err)
+					}
+				}()
+			}
+			wg.Wait()
+			if peak.Load() != 2 || opened.Load() > 2 {
+				t.Fatalf("pool of 2: %d concurrent transactions, %d open connections", peak.Load(), opened.Load())
 			}
 		})
 	}

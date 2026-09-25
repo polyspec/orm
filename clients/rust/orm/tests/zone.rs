@@ -183,6 +183,56 @@ async fn pool_size() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
+/// A pool size of zero opens a pool of 10 connections, and a pool never runs
+/// more concurrent transactions or opens more connections than its maximum.
+#[tokio::test]
+async fn pool_size_bound() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+    for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
+        let dsn = require_dsn(var);
+        let unset = tokio::time::timeout(std::time::Duration::from_secs(5), Db::connect(&dsn, 0, orm::Config::default()))
+            .await
+            .unwrap_or_else(|_| panic!("{driver}: a pool size of zero did not connect"))
+            .unwrap_or_else(|e| panic!("{driver}: {e}"));
+        assert_eq!(unset.stats().max_open_connections, 10, "{driver}: pool size zero");
+        unset.close().await;
+        // Each transaction holds a connection while it runs, so six
+        // transactions on a pool of two run at most two at a time.
+        let bounded = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+        let (active, peak, opened) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
+        // A transaction future is not Send, so the tasks run on a LocalSet.
+        let local = tokio::task::LocalSet::new();
+        let mut tasks = Vec::new();
+        for _ in 0..6 {
+            let (db, active, peak, opened) = (bounded.clone(), active.clone(), peak.clone(), opened.clone());
+            tasks.push(local.spawn_local(async move {
+                let r: orm::Result<()> = db
+                    .transaction(async || {
+                        let n = active.fetch_add(1, Ordering::SeqCst) + 1;
+                        peak.fetch_max(n, Ordering::SeqCst);
+                        opened.fetch_max(db.stats().open_connections, Ordering::SeqCst);
+                        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                        active.fetch_sub(1, Ordering::SeqCst);
+                        Ok(())
+                    })
+                    .await;
+                r.unwrap();
+            }));
+        }
+        local
+            .run_until(async {
+                for task in tasks {
+                    task.await.unwrap();
+                }
+            })
+            .await;
+        let (peak, opened) = (peak.load(Ordering::SeqCst), opened.load(Ordering::SeqCst));
+        assert!(peak == 2 && opened <= 2, "{driver}: pool of 2: {peak} concurrent transactions, {opened} open connections");
+        bounded.close().await;
+    }
+}
+
 /// A slow condition of the test, per dialect. MySQL bounds SELECT statements
 /// with max_execution_time, PostgreSQL bounds every statement, and SQLite has
 /// no session timeout.

@@ -732,6 +732,31 @@ try {
       const want = dialect === 'sqlite' ? 1 : 3;
       check(sized.utils().stats().maxOpenConnections === want, `configured pool size ${sized.utils().stats().maxOpenConnections}`);
       check(await code(Db.connect(dsn, schemaPath, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
+      for (const options of [{}, { poolSize: 0 }]) {
+        const unset = await Db.connect(dsn, schemaPath, options);
+        try {
+          const got = unset.utils().stats().maxOpenConnections;
+          check(got === (dialect === 'sqlite' ? 1 : 10), `pool size ${JSON.stringify(options)}: ${got}`);
+        } finally { await unset.close(); }
+      }
+      if (dialect !== 'sqlite') {
+        // Each transaction holds a connection while it runs, so six
+        // transactions on a pool of two run at most two at a time.
+        const bounded = await Db.connect(dsn, schemaPath, { poolSize: 2 });
+        try {
+          let active = 0;
+          let peak = 0;
+          let opened = 0;
+          await Promise.all(Array.from({ length: 6 }, () => bounded.transaction(async () => {
+            active++;
+            peak = Math.max(peak, active);
+            opened = Math.max(opened, bounded.utils().stats().openConnections);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            active--;
+          })));
+          check(peak === 2 && opened <= 2, `pool of 2: ${peak} concurrent transactions, ${opened} open connections`);
+        } finally { await bounded.close(); }
+      }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
     console.log(`${current} done`);
   }
