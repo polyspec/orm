@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Add the error code `READ_ONLY` for a write that a read-only server or connection rejects: PostgreSQL SQLSTATE 25006, MySQL errors 1290 and 1792, and SQLite `SQLITE_READONLY` (8) with its extended codes. The Go, PHP, Rust and TypeScript clients return `READ_ONLY` with the driver message instead of the unmapped driver error. The database tests check the code for a write through the PostgreSQL standby and the MySQL read-only replica and for a write to a SQLite database file that the process may only read.
+
 Make a pool size of zero or unset open at most 10 connections in the Go, TypeScript and Rust clients. The Go client opened an unlimited number of connections, TypeScript `{ poolSize: 0 }` opened an unlimited number on MySQL, and Rust `Db::connect(dsn, 0, config)` panicked. Tests run six concurrent transactions on a pool of two and check that at most two run and at most two connections are open.
 
 Document in `docs/config.md` how an application uses a primary and its replicas: one connection per server, selected per model or row with `connect`; the ORM does not route statements, and SQLite is single-node only. The database tests of the four clients open a primary and a replica connection side by side on MySQL and PostgreSQL and check that a replica reads committed rows, rejects a write, and is not used by a model connected to the primary or by a model inside a transaction of the primary.

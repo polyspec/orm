@@ -63,3 +63,5 @@ pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
 pub const FOREIGN_KEY: &str = "FOREIGN_KEY";
 /// driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
 pub const CONSTRAINT: &str = "CONSTRAINT";
+/// driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+pub const READ_ONLY: &str = "READ_ONLY";

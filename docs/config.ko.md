@@ -39,7 +39,7 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽는 �
 - 모델이나 읽어 온 행은 자신이 연결된 연결만 사용한다. `master`의 트랜잭션 안에서 `slave1`에 연결한 모델은 트랜잭션 밖에서 `slave1`로 실행되고, `connect`가 없는 모델은 트랜잭션 안에서 실행된다.
 - 연결마다 풀, prepared statement, 세션 설정이 따로 있다.
 - replica는 primary가 commit한 변경을 그 뒤에 적용한다. 같은 요청의 쓰기를 읽어야 하는 읽기는 primary 연결을 사용하며, 애플리케이션이 그 연결을 선택한다.
-- replica는 쓰기를 거부한다. PostgreSQL은 SQLSTATE 25006을, `super_read_only`인 MySQL replica는 오류 1290을 반환한다. 클라이언트는 이 드라이버 오류를 ORM 오류 코드 없이 반환한다.
+- replica는 쓰기를 거부한다. PostgreSQL은 SQLSTATE 25006을, `super_read_only`인 MySQL replica는 오류 1290을 반환한다. 클라이언트는 읽기 전용 트랜잭션의 쓰기와 읽기 전용으로 열린 SQLite 데이터베이스에 대한 쓰기와 마찬가지로 드라이버 메시지와 함께 `READ_ONLY`를 반환한다.
 - 스키마 도구와 `utils().schema().install`은 primary에서 실행하고, replica는 복제로 스키마를 적용한다.
 - SQLite는 단일 노드 전용이다. SQLite 데이터베이스는 절대 경로로 지정한 로컬 파일이며, ORM은 SQLite replica를 지원하지 않는다.
 

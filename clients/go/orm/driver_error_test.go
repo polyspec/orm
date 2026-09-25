@@ -27,3 +27,12 @@ func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
 		t.Fatal("mapped MySQL lock error is not recognized as lock unavailable")
 	}
 }
+
+func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
+	for _, number := range []uint16{1290, 1792} {
+		err := mapMySQLErr(&mysql.MySQLError{Number: number, Message: "read-only"})
+		if got := ErrorCode(err); got != CodeReadOnly {
+			t.Fatalf("mapped MySQL read-only error %d = %q, want %q: %v", number, got, CodeReadOnly, err)
+		}
+	}
+}

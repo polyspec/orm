@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+읽기 전용 서버나 연결이 거부한 쓰기에 대한 오류 코드 `READ_ONLY`를 추가한다. PostgreSQL SQLSTATE 25006, MySQL 오류 1290과 1792, SQLite `SQLITE_READONLY`(8)와 그 확장 코드가 해당한다. Go, PHP, Rust, TypeScript 클라이언트는 매핑되지 않은 드라이버 오류 대신 드라이버 메시지와 함께 `READ_ONLY`를 반환한다. 데이터베이스 테스트는 PostgreSQL standby와 MySQL 읽기 전용 replica를 통한 쓰기, 그리고 프로세스가 읽기만 할 수 있는 SQLite 데이터베이스 파일에 대한 쓰기에서 이 코드를 검사한다.
+
 Go·TypeScript·Rust 클라이언트에서 pool size가 0이거나 지정하지 않으면 최대 10개의 연결을 연다. Go 클라이언트는 연결 수에 제한이 없었고, TypeScript `{ poolSize: 0 }`은 MySQL에서 제한 없이 연결을 열었으며, Rust `Db::connect(dsn, 0, config)`는 panic했다. 테스트는 크기 2인 풀에서 트랜잭션 여섯 개를 동시에 실행하고, 동시에 실행되는 트랜잭션과 열린 연결이 각각 최대 두 개인지 검사한다.
 
 `docs/config.md`에 애플리케이션이 primary와 replica를 쓰는 방법을 기술한다. 서버마다 연결을 하나씩 열고 모델이나 행마다 `connect`로 선택하며, ORM은 문을 분배하지 않고, SQLite는 단일 노드 전용이다. 네 클라이언트의 데이터베이스 테스트는 MySQL과 PostgreSQL에서 primary 연결과 replica 연결을 함께 열고, replica가 commit된 행을 읽고 쓰기를 거부하며, primary에 연결한 모델이나 primary 트랜잭션 안의 모델이 replica를 쓰지 않는지 검사한다.

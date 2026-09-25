@@ -475,6 +475,7 @@ psql … -f app.pg.sql
 | `LOCK_NOT_AVAILABLE` | `*_nowait` 행 잠금이 즉시 잠금을 얻지 못했다. transaction conflict로 재시도하지 않는다 |
 | `DUPLICATE_KEY` / `DEADLOCK` | 원문을 유지한 드라이버 오류. 교착 오류는 트랜잭션 재시도 뒤에 반환된다 |
 | `CANCELED` | 문이 끝나기 전에 중단되었다. 취소, 시간 제한, 또는 SQLite `busy_timeout`이 끝날 때까지 다른 연결이 잠금을 놓지 않은 경우이며 재시도하지 않는다 |
+| `READ_ONLY` | 쓰기가 읽기 전용 서버나 연결에 도달했다. replica, 읽기 전용 트랜잭션, 읽기 전용으로 열린 SQLite 데이터베이스가 해당한다. 쓰기는 primary 연결에서 실행한다 |
 | `CODEC_DECODE` | 저장 바이트가 선언된 컬럼 스타일과 다르다 |
 
 ---

@@ -26,3 +26,10 @@ func TestMapErrClassifiesNowaitLock(t *testing.T) {
 		t.Fatal("mapped PostgreSQL lock error is not recognized as lock unavailable")
 	}
 }
+
+func TestMapErrClassifiesReadOnly(t *testing.T) {
+	err := mapErr(&pgconn.PgError{Code: "25006", Message: "cannot execute INSERT in a read-only transaction"})
+	if got := orm.ErrorCode(err); got != orm.CodeReadOnly {
+		t.Fatalf("mapped PostgreSQL read-only error code = %q, want %q: %v", got, orm.CodeReadOnly, err)
+	}
+}

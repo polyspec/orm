@@ -475,6 +475,7 @@ psql … -f app.pg.sql
 | `LOCK_NOT_AVAILABLE` | A `*_nowait` row-lock request could not acquire the lock immediately; do not retry it as a transaction conflict |
 | `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the transaction retries |
 | `CANCELED` | The statement stopped before it finished: a cancellation, a timeout bound, or a SQLite lock that another connection still held when `busy_timeout` ended; it is not retried |
+| `READ_ONLY` | A write reached a read-only server or connection: a replica, a read-only transaction, or a SQLite database opened read-only; send the write through the primary connection |
 | `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 
 ---
