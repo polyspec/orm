@@ -183,6 +183,8 @@ ormgen diff     --from old.json --to schema/schema.json --dialect postgres --out
 ormgen gen      --schema schema/schema.json --lang go --out model --scan ./...
 ```
 
+`--check`를 붙인 `build`와 `gen`은 출력을 기존 파일과 비교해 경로마다 `differs:`, `missing:`, `extra:`를 출력하고, 아무것도 쓰지 않으며, 파일이 다르면 상태 1로 종료한다([사용법](usage.md#_3-code-generation)).
+
 모든 `--dsn`과 `db:` source는 client DSN URI(`mysql://`, `postgres://`, `sqlite:///<절대 경로>`)이며 scheme이 데이터베이스를 정한다. `ormgen import`와 `ormgen validate`는 MySQL, PostgreSQL, SQLite를 읽는다.
 
 `tests/schema/cases.json`은 Go 테스트의 Mermaid fixture와 bench 스키마에 대해 매니페스트, 방언별 DDL, 매니페스트 쌍별 diff, 쌍별 `ormgen plan` 파일을 기록한다(`go run ./tests/schema/record`; 파일이 낡으면 `make schema-check`가 실패한다). 모든 언어의 스키마 도구를 이 파일과 비교한다.

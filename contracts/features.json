@@ -330,8 +330,8 @@
       "title": "Model generation",
       "title_ko": "모델 생성",
       "status": "implemented",
-      "description": "Generate the models from schema.json with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains.",
-      "description_ko": "언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다.",
+      "description": "Generate the models from schema.json with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains. With `--check`, the Go, PHP, and TypeScript generators compare the models with the output directory without writing.",
+      "description_ko": "언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
       "inputs": {
         "type": "GeneratorRequest",
         "fields": [
@@ -376,6 +376,7 @@
         "internal/ormgen/gen_go_scan_test.go",
         "internal/ormgen/gen_go_packages_test.go",
         "internal/ormgen/gen_go_output_test.go",
+        "internal/ormgen/gen_go_check_test.go",
         "clients/php/tests/engine_test.php",
         "tests/typescript/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",

@@ -32,6 +32,30 @@ try {
   check(run('gen', '--out', out).status === 2, 'missing --schema is a usage error');
   check(run('--schema', join(root, 'schema/schema.json'), '--out', out).status === 2, 'a missing command is a usage error');
   check(run('gen', '--schema', join(work, 'missing.json'), '--out', out).status === 1, 'missing schema fails');
+
+  // --check compares models.ts and schema.json without writing.
+  const genCheck = ['gen', '--schema', join(root, 'schema/schema.json'), '--out', out, '--scan', usage, '--check'];
+  let checked = run(...genCheck);
+  check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `gen --check on current models: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  await writeFile(join(out, 'models.ts'), '// changed\n');
+  checked = run(...genCheck);
+  check(checked.status === 1 && checked.stdout === `differs: ${out}/models.ts\n`, `gen --check on changed models: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  check(await readFile(join(out, 'models.ts'), 'utf8') === '// changed\n', 'gen --check wrote models.ts');
+  await rm(join(out, 'models.ts'));
+  checked = run(...genCheck);
+  check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  const mmd = join(work, 's.mmd');
+  const json = join(work, 'schema.json');
+  await writeFile(mmd, 'erDiagram\n  item {\n    bigint seq PK\n    varchar(32) name\n  }\n');
+  checked = run('build', mmd, '--out', json, '--check');
+  check(checked.status === 1 && checked.stdout === `missing: ${json}\n`, `build --check on a missing file: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  check(run('build', mmd, '--out', json).status === 0, 'build');
+  checked = run('build', '--check', mmd, '--out', json);
+  check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `build --check on a current file: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  await writeFile(json, '{}\n');
+  checked = run('build', mmd, '--out', json, '--check');
+  check(checked.status === 1 && checked.stdout === `differs: ${json}\n`, `build --check on a changed file: ${checked.status} ${checked.stdout}${checked.stderr}`);
+  check(await readFile(json, 'utf8') === '{}\n', 'build --check wrote schema.json');
 } finally {
   await rm(work, { recursive: true, force: true });
 }

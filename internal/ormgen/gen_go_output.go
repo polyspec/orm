@@ -98,6 +98,46 @@ func (g *goGen) overlay() (map[string][]byte, error) {
 	return files, nil
 }
 
+// compare returns one line for each file of the temporary directory that is
+// missing from the output directory or differs from the file there, and for
+// each generated file of the output directory that the generation no longer
+// writes, ordered by path.
+func (g *goGen) compare() ([]string, error) {
+	names, err := goFiles(g.tmp, false)
+	if err != nil {
+		return nil, err
+	}
+	previous, err := goFiles(g.outDir, true)
+	if err != nil {
+		return nil, err
+	}
+	var lines []string
+	for _, name := range names {
+		want, err := os.ReadFile(filepath.Join(g.tmp, name))
+		if err != nil {
+			return nil, err
+		}
+		got, err := os.ReadFile(filepath.Join(g.outDir, name))
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			lines = append(lines, "missing: "+filepath.Join(g.out, name))
+		case err != nil:
+			return nil, err
+		case !bytes.Equal(got, want):
+			lines = append(lines, "differs: "+filepath.Join(g.out, name))
+		}
+	}
+	for _, name := range previous {
+		if !slices.Contains(names, name) {
+			lines = append(lines, "extra: "+filepath.Join(g.out, name))
+		}
+	}
+	slices.SortFunc(lines, func(a, b string) int {
+		return strings.Compare(a[strings.Index(a, " ")+1:], b[strings.Index(b, " ")+1:])
+	})
+	return lines, nil
+}
+
 // replace moves the files of the temporary directory into the output
 // directory. The previous generated files, and a hand-written file that a new
 // file replaces, first move into the temporary directory and move back when a
