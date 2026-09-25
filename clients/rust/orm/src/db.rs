@@ -7,9 +7,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, NaiveDateTime, Utc};
-use sqlx::mysql::{MySqlConnectOptions, MySqlPool, MySqlPoolOptions};
-use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgTypeInfo};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPool};
+use sqlx::postgres::{PgConnectOptions, PgPool, PgTypeInfo};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
 use crate::driver::{
     acquire_sqlite_row_lock, exec_mysql, exec_pg, exec_sqlite, fetch_mysql, fetch_pg, fetch_sqlite, masked, param_arg, pg_describe, statement, Target, TxInner,
@@ -40,6 +40,11 @@ pub struct Config {
     /// Bound of every statement of the connection in milliseconds; zero keeps
     /// the server default.
     pub statement_timeout_ms: u32,
+    /// Maximum idle connections of the pool; zero keeps up to the pool size.
+    pub pool_idle_size: u32,
+    /// Lifetime of a pool connection in milliseconds; zero keeps the pool
+    /// default of 30 minutes.
+    pub pool_lifetime_ms: u32,
     pub on_query: Option<OnQuery>,
 }
 
@@ -51,6 +56,8 @@ impl Default for Config {
             aes_version: 1,
             aes_keys: BTreeMap::new(),
             statement_timeout_ms: 0,
+            pool_idle_size: 0,
+            pool_lifetime_ms: 0,
             plan_cache_size: 256,
             statement_cache_size: 256,
             on_query: None,
@@ -233,6 +240,17 @@ pub enum Pool {
     Sqlite(SqlitePool),
 }
 
+impl Pool {
+    /// The number of idle connections.
+    fn num_idle(&self) -> usize {
+        match self {
+            Pool::MySql(p) => p.num_idle(),
+            Pool::Postgres(p) => p.num_idle(),
+            Pool::Sqlite(p) => p.num_idle(),
+        }
+    }
+}
+
 static NEXT_DB: AtomicU64 = AtomicU64::new(1);
 
 pub(crate) struct DbInner {
@@ -267,6 +285,30 @@ pub struct DbStats {
 /// zero; the Go and TypeScript clients use the same value.
 const DEFAULT_POOL_SIZE: u32 = 10;
 
+/// The connection a pool belongs to, set once the connection exists. The
+/// release hook of the pool reads its idle count through it.
+type PoolOwner = Arc<std::sync::OnceLock<std::sync::Weak<DbInner>>>;
+
+/// The pool options of one driver: at most `size` open connections, at most
+/// `idle` idle connections, and a connection lifetime of `lifetime_ms`
+/// milliseconds when it is not zero.
+fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owner: &PoolOwner) -> sqlx::pool::PoolOptions<DB> {
+    let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size);
+    if lifetime_ms > 0 {
+        options = options.max_lifetime(std::time::Duration::from_millis(lifetime_ms.into()));
+    }
+    if idle < size {
+        let owner = owner.clone();
+        // A released connection is closed when the pool already keeps `idle`
+        // idle connections.
+        options = options.after_release(move |_, _| {
+            let keep = owner.get().and_then(std::sync::Weak::upgrade).is_none_or(|db| db.pool.num_idle() < idle as usize);
+            Box::pin(async move { Ok(keep) })
+        });
+    }
+    options
+}
+
 impl Db {
     /// Connects to the database selected by the DSN URI with at most
     /// `pool_size` open connections; zero uses 10.
@@ -275,6 +317,11 @@ impl Db {
             return Err(Error::Config("cache sizes must be positive".into()));
         }
         let pool_size = if pool_size == 0 { DEFAULT_POOL_SIZE } else { pool_size };
+        if cfg.pool_idle_size > pool_size {
+            return Err(Error::Config(format!("pool idle size must be between 0 and the pool size {pool_size}")));
+        }
+        let idle = if cfg.pool_idle_size == 0 { pool_size } else { cfg.pool_idle_size };
+        let owner = PoolOwner::default();
         let parsed = parse_dsn(dsn)?;
         let dialect = Dialect::parse(parsed.driver()).expect("known driver");
         let cache = cfg.statement_cache_size;
@@ -283,8 +330,7 @@ impl Db {
             // MySQL bounds SELECT statements with max_execution_time;
             // PostgreSQL bounds every statement with statement_timeout.
             ConnectOptions::MySql(o) => Pool::MySql(
-                MySqlPoolOptions::new()
-                    .max_connections(pool_size)
+                pool_options::<sqlx::MySql>(pool_size, idle, cfg.pool_lifetime_ms, &owner)
                     .after_connect(move |conn, _| {
                         Box::pin(async move {
                             if timeout > 0 {
@@ -302,10 +348,12 @@ impl Db {
             // assigns to this connection and on no other.
             ConnectOptions::Postgres(o) => {
                 let o = if timeout > 0 { o.options([("statement_timeout", timeout.to_string())]) } else { o };
-                Pool::Postgres(PgPoolOptions::new().max_connections(pool_size).connect_with(o.statement_cache_capacity(cache)).await?)
+                Pool::Postgres(
+                    pool_options::<sqlx::Postgres>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?,
+                )
             }
             ConnectOptions::Sqlite(o) => {
-                let pool = SqlitePoolOptions::new().max_connections(pool_size).connect_with(o.statement_cache_capacity(cache)).await?;
+                let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;
                 let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
                 let (major, minor) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0));
@@ -329,7 +377,7 @@ impl Db {
         } else if cfg.aes_keys.get(&cfg.aes_version) != Some(&cfg.aes_key) {
             return Err(Error::Config(format!("aes_key differs from aes_keys[{}]", cfg.aes_version)));
         }
-        Ok(Db {
+        let db = Db {
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
@@ -342,7 +390,9 @@ impl Db {
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
             }),
-        })
+        };
+        let _ = owner.set(Arc::downgrade(&db.inner));
+        Ok(db)
     }
 
     pub(crate) fn id(&self) -> u64 {

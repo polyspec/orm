@@ -547,6 +547,9 @@ foreach ($targets as $driver => $dsn) {
         $db = Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
         check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: -1))) === Code::CONFIG, 'negative pool size');
+        // The PHP client has no pool, so the pool idle size and lifetime are rejected.
+        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
+        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");

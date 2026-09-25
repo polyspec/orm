@@ -183,6 +183,48 @@ async fn pool_size() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
+/// `pool_idle_size` bounds the idle connections a pool keeps, and
+/// `pool_lifetime_ms` closes a connection after its lifetime; an idle size
+/// above the pool size returns CONFIG.
+#[tokio::test]
+async fn pool_idle_size_and_lifetime() {
+    let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
+    std::fs::create_dir_all(&tmp).unwrap();
+    let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
+    for (size, idle) in [(3, 4), (0, 11)] {
+        let r = Db::connect(&dsn, size, orm::Config { pool_idle_size: idle, ..orm::Config::default() }).await;
+        assert_eq!(r.err().map(|e| e.code().to_owned()), Some(orm::codes::CONFIG.to_owned()), "pool size {size}, idle size {idle}");
+    }
+    let Pool::Sqlite(unset) = Db::connect(&dsn, 3, orm::Config::default()).await.unwrap().pool().clone() else { unreachable!() };
+    assert_eq!(unset.options().get_max_lifetime(), Some(std::time::Duration::from_secs(30 * 60)), "default lifetime");
+    unset.close().await;
+
+    // Three connections are in use at once; after they return the pool keeps
+    // one idle connection and closes the others.
+    let db = Db::connect(&dsn, 3, orm::Config { pool_idle_size: 1, ..orm::Config::default() }).await.unwrap();
+    let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
+    let mut held = Vec::new();
+    for _ in 0..3 {
+        held.push(pool.acquire().await.unwrap());
+    }
+    assert_eq!(db.stats().open_connections, 3, "three connections in use");
+    for mut conn in held {
+        conn.return_to_pool().await;
+    }
+    assert_eq!((db.stats().idle, db.stats().open_connections), (1, 1), "pool idle size 1");
+    db.close().await;
+
+    let db = Db::connect(&dsn, 2, orm::Config { pool_lifetime_ms: 100, ..orm::Config::default() }).await.unwrap();
+    let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
+    assert_eq!(pool.options().get_max_lifetime(), Some(std::time::Duration::from_millis(100)), "configured lifetime");
+    assert_eq!(db.stats().open_connections, 1, "the connection opened by connect");
+    // The pool checks the lifetime of its idle connections every 100 ms.
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    assert_eq!(db.stats().open_connections, 0, "pool lifetime 100 ms keeps a connection open after 400 ms");
+    db.close().await;
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
 /// A pool size of zero opens a pool of 10 connections, and a pool never runs
 /// more concurrent transactions or opens more connections than its maximum.
 #[tokio::test]

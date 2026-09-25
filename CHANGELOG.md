@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Add the connection options `poolIdleSize`, the maximum idle connections of the pool, and `poolLifetimeMs`, the lifetime of a pool connection in milliseconds, to the Go (`PoolIdleSize`, `PoolLifetimeMs`), TypeScript (`poolIdleSize`, `poolLifetimeMs`) and Rust (`pool_idle_size`, `pool_lifetime_ms`) clients. A connection released while the pool already keeps `poolIdleSize` idle connections is closed, and a connection whose lifetime has passed is closed while it is idle or when it is released. Zero or unset keeps the previous behavior: up to the pool size of idle connections, no lifetime in Go and TypeScript, and the 30-minute pool lifetime in Rust. A negative value or an idle size above the pool size returns `CONFIG`. The PHP client has no pool and returns `CONFIG` when either option is not zero.
+
 Add the error code `READ_ONLY` for a write that a read-only server or connection rejects: PostgreSQL SQLSTATE 25006, MySQL errors 1290 and 1792, and SQLite `SQLITE_READONLY` (8) with its extended codes. The Go, PHP, Rust and TypeScript clients return `READ_ONLY` with the driver message instead of the unmapped driver error. The database tests check the code for a write through the PostgreSQL standby and the MySQL read-only replica and for a write to a SQLite database file that the process may only read.
 
 Make a pool size of zero or unset open at most 10 connections in the Go, TypeScript and Rust clients. The Go client opened an unlimited number of connections, TypeScript `{ poolSize: 0 }` opened an unlimited number on MySQL, and Rust `Db::connect(dsn, 0, config)` panicked. Tests run six concurrent transactions on a pool of two and check that at most two run and at most two connections are open.

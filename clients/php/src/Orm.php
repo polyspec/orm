@@ -29,6 +29,9 @@ final class Orm
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
         }
+        if ($config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
+            throw new OrmException(Code::CONFIG, 'poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client has none');
+        }
         if ($driver === 'postgres' && $config->statementTimeoutMs > 0) {
             // A startup parameter belongs to the client session, so a pooler
             // in transaction mode sets it on every server connection it
@@ -290,6 +293,10 @@ final class Config
         public readonly int $poolSize = 0,
         /** bound of every statement of the connection in milliseconds; zero keeps the server default */
         public readonly int $statementTimeoutMs = 0,
+        /** maximum idle connections of a pool; the PHP client has no pool and accepts only zero */
+        public readonly int $poolIdleSize = 0,
+        /** lifetime of a pool connection in milliseconds; the PHP client has no pool and accepts only zero */
+        public readonly int $poolLifetimeMs = 0,
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,
     ) {
