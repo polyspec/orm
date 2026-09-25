@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+Go(`PoolIdleSize`, `PoolLifetimeMs`), TypeScript(`poolIdleSize`, `poolLifetimeMs`), Rust(`pool_idle_size`, `pool_lifetime_ms`) 클라이언트에 풀의 최대 유휴 연결 수 `poolIdleSize`와 풀 연결의 수명(밀리초) `poolLifetimeMs` 연결 옵션을 추가한다. 풀이 이미 `poolIdleSize`개의 유휴 연결을 유지하는 동안 반환된 연결은 닫히고, 수명이 지난 연결은 유휴 상태일 때 또는 반환될 때 닫힌다. 0이거나 지정하지 않으면 이전 동작을 유지한다. 풀 크기까지 유휴 연결을 유지하고, Go와 TypeScript는 수명이 없으며, Rust는 풀의 30분 수명을 유지한다. 음수나 풀 크기보다 큰 유휴 연결 수는 `CONFIG`를 반환한다. PHP 클라이언트에는 풀이 없으며 두 옵션 중 하나라도 0이 아니면 `CONFIG`를 반환한다.
+
 읽기 전용 서버나 연결이 거부한 쓰기에 대한 오류 코드 `READ_ONLY`를 추가한다. PostgreSQL SQLSTATE 25006, MySQL 오류 1290과 1792, SQLite `SQLITE_READONLY`(8)와 그 확장 코드가 해당한다. Go, PHP, Rust, TypeScript 클라이언트는 매핑되지 않은 드라이버 오류 대신 드라이버 메시지와 함께 `READ_ONLY`를 반환한다. 데이터베이스 테스트는 PostgreSQL standby와 MySQL 읽기 전용 replica를 통한 쓰기, 그리고 프로세스가 읽기만 할 수 있는 SQLite 데이터베이스 파일에 대한 쓰기에서 이 코드를 검사한다.
 
 Go·TypeScript·Rust 클라이언트에서 pool size가 0이거나 지정하지 않으면 최대 10개의 연결을 연다. Go 클라이언트는 연결 수에 제한이 없었고, TypeScript `{ poolSize: 0 }`은 MySQL에서 제한 없이 연결을 열었으며, Rust `Db::connect(dsn, 0, config)`는 panic했다. 테스트는 크기 2인 풀에서 트랜잭션 여섯 개를 동시에 실행하고, 동시에 실행되는 트랜잭션과 열린 연결이 각각 최대 두 개인지 검사한다.

@@ -22,6 +22,10 @@ export interface ConnectOptions {
   statementCacheSize?: number;
   /** maximum open connections; zero uses 10 */
   poolSize?: number;
+  /** maximum idle connections; zero keeps up to poolSize */
+  poolIdleSize?: number;
+  /** lifetime of a connection in milliseconds; zero keeps connections without a bound */
+  poolLifetimeMs?: number;
   /** bound of every statement of the connection in milliseconds; zero keeps the server default */
   statementTimeoutMs?: number;
 }
@@ -253,7 +257,11 @@ export class Db {
     if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
     if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError('CONFIG', 'statement timeout must not be negative');
     // Zero or unset takes the default of every client, 10 connections.
-    const pool = openDriver(dsn, parsed, options.poolSize || 10, statementCacheSize, options.statementTimeoutMs ?? 0);
+    const size = options.poolSize || 10;
+    const idleSize = options.poolIdleSize ?? 0;
+    if (idleSize < 0 || idleSize > size) throw new OrmError('CONFIG', `pool idle size must be between 0 and the pool size ${size}`);
+    if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
+    const pool = openDriver(dsn, parsed, { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 }, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, engine, options);
     try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
     return db;
