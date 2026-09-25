@@ -1,11 +1,16 @@
 .PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
-# make test-servers starts the MySQL and PostgreSQL servers of the database
-# checks on these ports and writes TEST_ENV; the database checks read TEST_ENV
-# and fail when it is missing.
+# make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
+# and the ProxySQL and PgBouncer poolers of the database checks on these ports
+# and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
+# missing.
 TEST_MYSQL_PORT = 33171
 TEST_POSTGRES_PORT = 55471
+TEST_MYSQL_REPLICA_PORT = 33181
+TEST_POSTGRES_REPLICA_PORT = 55481
+TEST_PROXYSQL_PORT = 33182
+TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 WITH_TEST_ENV = test -f $(TEST_ENV) || { echo "$(TEST_ENV) is missing; run make test-servers" >&2; exit 1; }; . ./$(TEST_ENV) &&
 
@@ -13,7 +18,7 @@ check: feature-check git-check docs-rules-check docs-check docs-verify-idempoten
 	$(WITH_TEST_ENV) go test ./...
 
 test-servers:
-	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT)
+	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 
 test-servers-stop:
 	./scripts/test-servers.sh stop
