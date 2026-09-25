@@ -3,6 +3,7 @@ package model_test
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -106,8 +107,8 @@ func TestPrimaryAndReplica(t *testing.T) {
 			if n := must(model.User().Connect(slave1).Name(name).GetCount()); n != 1 {
 				t.Fatalf("the replica reads %d rows written through the primary", n)
 			}
-			if _, err := model.User().Connect(slave1).SetName(name + "-replica").Create(); err == nil {
-				t.Fatal("a write through the replica connection succeeded")
+			if _, err := model.User().Connect(slave1).SetName(name + "-replica").Create(); orm.ErrorCode(err) != orm.CodeReadOnly {
+				t.Fatalf("a write through the replica connection: %v, want READ_ONLY", err)
 			}
 			if n := must(model.User().Connect(master).Name(name + "-replica").GetCount()); n != 0 {
 				t.Fatalf("a write through the replica connection reached the primary: %d rows", n)
@@ -135,5 +136,40 @@ func TestPrimaryAndReplica(t *testing.T) {
 				t.Fatalf("the replica reads %d of the 2 committed rows", n)
 			}
 		})
+	}
+}
+
+// TestReadOnlySQLite writes through a connection to a SQLite database file
+// that the process may only read: SQLite opens it read-only, reads succeed,
+// and a write returns READ_ONLY.
+func TestReadOnlySQLite(t *testing.T) {
+	manifest, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "read-only.sqlite")
+	dsn := "sqlite://" + path
+	writable, err := model.Connect(dsn, schemaPath, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writable.Utils().Schema().Install(manifest); err != nil {
+		t.Fatal(err)
+	}
+	must(model.User().Connect(writable).SetName("read-only").Create())
+	writable.Close()
+	if err := os.Chmod(path, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := model.Connect(dsn, schemaPath, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readOnly.Close()
+	if n := must(model.User().Connect(readOnly).Name("read-only").GetCount()); n != 1 {
+		t.Fatalf("the read-only database reads %d rows", n)
+	}
+	if _, err := model.User().Connect(readOnly).SetName("rejected").Create(); orm.ErrorCode(err) != orm.CodeReadOnly {
+		t.Fatalf("a write to the read-only database: %v, want READ_ONLY", err)
 	}
 }

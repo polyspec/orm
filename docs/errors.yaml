@@ -71,3 +71,5 @@ codes:
     origin: driver
   - code: CONSTRAINT              # MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
     origin: driver
+  - code: READ_ONLY               # a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+    origin: driver

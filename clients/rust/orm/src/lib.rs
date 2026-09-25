@@ -73,7 +73,9 @@ impl std::error::Error for Error {}
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
 /// DUPLICATE_KEY, 787 / 1811 → FOREIGN_KEY. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
-/// when busy_timeout ended) — maps to CANCELED. Everything else stays `Error::Sqlx`.
+/// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
+/// MySQL 1290 / 1792, PostgreSQL 25006, SQLite READONLY (8, primary code of any extended form) — maps
+/// to READ_ONLY. Everything else stays `Error::Sqlx`.
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
@@ -87,6 +89,7 @@ impl From<sqlx::Error> for Error {
                     (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
                     (1317, _) | (3024, _) => Some((codes::CANCELED, m.message().to_owned())),
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
+                    (1290, _) | (1792, _) => Some((codes::READ_ONLY, m.message().to_owned())),
                     (1298, _) => {
                         return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
                     }
@@ -100,6 +103,7 @@ impl From<sqlx::Error> for Error {
                     "23505" => Some((codes::DUPLICATE_KEY, msg())),
                     "23503" => Some((codes::FOREIGN_KEY, msg())),
                     "57014" => Some((codes::CANCELED, msg())),
+                    "25006" => Some((codes::READ_ONLY, msg())),
                     _ => None,
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
@@ -110,6 +114,7 @@ impl From<sqlx::Error> for Error {
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
                     (_, 787) | (_, 1811) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
                     (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
+                    (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),
                     _ => None,
                 }
             } else {

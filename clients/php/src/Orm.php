@@ -340,6 +340,7 @@ final class OrmException extends \RuntimeException
                 '23505' => Code::DUPLICATE_KEY,
                 '23503' => Code::FOREIGN_KEY,
                 '57014' => Code::CANCELED,
+                '25006' => Code::READ_ONLY,
                 default => null,
             },
             'sqlite' => match (true) {
@@ -349,6 +350,7 @@ final class OrmException extends \RuntimeException
                 in_array($num, [2067, 1555], true) || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
                 in_array($num, [787, 1811], true) || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
                 $num === 9 => Code::CANCELED,
+                is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,
                 default => null,
             },
             default => match (true) {
@@ -357,6 +359,7 @@ final class OrmException extends \RuntimeException
                 $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
                 $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
                 $num === 1317 || $num === 3024 => Code::CANCELED,
+                $num === 1290 || $num === 1792 => Code::READ_ONLY,
                 default => null,
             },
         };

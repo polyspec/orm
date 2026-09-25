@@ -450,6 +450,8 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeForeignKey, Msg: me.Error()}
 	case me.Number == 3819 || me.Number == 4025: // check constraint violated
 		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
+	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
+		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	case me.Number == 1298:
