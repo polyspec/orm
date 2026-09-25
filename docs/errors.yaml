@@ -56,14 +56,14 @@ codes:
     origin: executor
   - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
     origin: executor
-  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
     origin: executor
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----
   - code: LOCK_NOT_AVAILABLE      # a NOWAIT lock could not be acquired immediately
     origin: driver
-  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
+  - code: DEADLOCK                # MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
     origin: driver

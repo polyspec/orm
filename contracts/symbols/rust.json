@@ -1497,6 +1497,7 @@
   "clients/rust/orm/src/lib.rs::Error::internal": "pub (crate) fn internal (msg : impl Into \u003c String \u003e) -\u003e Error",
   "clients/rust/orm/src/lib.rs::Error::is_deadlock": "pub fn is_deadlock (\u0026 self) -\u003e bool",
   "clients/rust/orm/src/lib.rs::Result": "pub type Result \u003c T \u003e = std :: result :: Result \u003c T , Error \u003e ;",
+  "clients/rust/orm/src/lib.rs::sqlite_busy": "pub (crate) fn sqlite_busy (e : \u0026 sqlx :: Error) -\u003e bool",
   "clients/rust/orm/src/model.rs::AnyModel": "pub trait AnyModel  : Any + Send + Sync",
   "clients/rust/orm/src/model.rs::AnyModel::as_any": "fn as_any (\u0026 self) -\u003e \u0026 dyn Any",
   "clients/rust/orm/src/model.rs::AnyModel::assign_dyn": "fn assign_dyn (\u0026 mut self , name : \u0026 str , value : Val) -\u003e bool",

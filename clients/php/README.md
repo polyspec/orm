@@ -102,7 +102,8 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
 - PostgreSQL plans carry `$n` placeholders; the statement is prepared from its `?` form. Booleans
   are bound as `PARAM_BOOL`, binary values as `PARAM_LOB`.
 - SQLite binds integers as `PARAM_INT` and booleans as 0/1. Row locks inside a transaction take the
-  `orm__row_lock` row.
+  `orm__row_lock` row. A write transaction begins with `BEGIN IMMEDIATE` and a read-only one with
+  `BEGIN`; the connection waits for a lock up to `busy_timeout` (docs/config.md).
 - Host stages (aes, hex, ip) are applied before binding and after fetching; `tests/codec/` checks
   them byte for byte.
 - `utils()->schema()->install($manifestJson)` creates the missing tables, keys, indexes,
@@ -112,9 +113,10 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
 
 ## Errors
 `Orm\OrmException::$code_` is one of `Orm\Code::*`. Driver errors map per driver to `DEADLOCK`
-(MySQL 1213 / SQLSTATE 40001, PostgreSQL 40P01 / 40001, SQLite busy/locked), `DUPLICATE_KEY`, and
+(MySQL 1213 / SQLSTATE 40001, PostgreSQL 40P01 / 40001, SQLite locked), `DUPLICATE_KEY`, and
 `CANCELED` (MySQL 1317 / 3024, PostgreSQL 57014, SQLite 9: a statement stopped before it finished,
-such as one past `statementTimeoutMs`); other driver errors keep the driver message.
+such as one past `statementTimeoutMs`; SQLite busy: another connection held the lock when
+`busy_timeout` ended); other driver errors keep the driver message.
 
 ## Tests
 

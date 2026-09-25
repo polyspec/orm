@@ -2,7 +2,7 @@ import { Db } from '../../clients/typescript/dist/index.js';
 import { postgresZone } from '../../clients/typescript/dist/driver.js';
 
 const schemaPath = new URL('../../schema/schema.json', import.meta.url).pathname;
-for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/app?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate']) {
+for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/app?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate', 'sqlite:///tmp/x.sqlite?_txlock=deferred', 'sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {
   let failed = false;
   try { await Db.connect(dsn, schemaPath); } catch (error) { failed = error?.code === 'CONFIG'; }
   if (!failed) throw new Error(`invalid DSN was accepted: ${dsn}`);

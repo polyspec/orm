@@ -239,8 +239,12 @@ final class Db
             }
             if ($this->driver === 'sqlite') {
                 $this->pdo->exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+                // A write transaction holds the write lock from its start and
+                // waits for it up to busy_timeout; a read-only one begins deferred.
+                $this->pdo->exec($readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE');
+            } else {
+                $this->pdo->beginTransaction();
             }
-            $this->pdo->beginTransaction();
             $frame = new TxFrame($this, $readOnly, $isolation);
             if ($this->driver === 'postgres') {
                 if ($isolation !== '') {
@@ -654,7 +658,7 @@ final class Db
             $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
         } catch (\PDOException $e) {
             $mapped = OrmException::fromDriver($e, $this->driver);
-            if ($noWait && $mapped instanceof OrmException && $mapped->code_ === Code::DEADLOCK) {
+            if ($noWait && (((int) ($e->errorInfo[1] ?? 0)) & 0xff) === 5) {
                 throw new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e);
             }
             throw $mapped;

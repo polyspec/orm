@@ -49,13 +49,13 @@ pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 /// executor: missing secret, bad DSN/paths, transaction misuse
 pub const CONFIG: &str = "CONFIG";
-/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
+/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
 pub const CANCELED: &str = "CANCELED";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: a NOWAIT lock could not be acquired immediately
 pub const LOCK_NOT_AVAILABLE: &str = "LOCK_NOT_AVAILABLE";
-/// driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
+/// driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 pub const DEADLOCK: &str = "DEADLOCK";
 /// driver: MySQL 1062 / SQLSTATE 23000
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";

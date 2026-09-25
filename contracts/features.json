@@ -253,8 +253,8 @@
       "title": "Transactions",
       "title_ko": "트랜잭션",
       "status": "implemented",
-      "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values.",
-      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다.",
+      "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values. A SQLite write transaction takes the write lock at its start and waits for it up to busy_timeout.",
+      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다.",
       "inputs": {
         "type": "TransactionRequest",
         "fields": [
@@ -287,6 +287,10 @@
           "when": "the retries are exhausted"
         },
         {
+          "code": "CANCELED",
+          "when": "another SQLite connection still holds the lock when busy_timeout ends"
+        },
+        {
           "code": "CAPABILITY_UNSUPPORTED",
           "when": "the dialect rejects an option"
         }
@@ -307,7 +311,11 @@
         "tests/typescript/model.mjs",
         "clients/rust/orm/tests/zone.rs",
         "clients/rust/tests/src/integration.rs",
-        "clients/go/orm/goexit_test.go"
+        "clients/go/orm/goexit_test.go",
+        "clients/go/model/sqlite_concurrency_test.go",
+        "clients/php/tests/sqlite_concurrency_test.php",
+        "tests/typescript/sqlite-concurrency.mjs",
+        "clients/rust/orm/tests/sqlite_concurrency.rs"
       ],
       "docs": [
         "docs/config.md",
@@ -318,6 +326,10 @@
         {
           "id": "transactions-go",
           "command": "go test ./clients/go/model -run 'Transactions' -count=1"
+        },
+        {
+          "id": "transactions-sqlite-locking-go",
+          "command": "go test ./clients/go/model -run 'TestSQLite' -count=1"
         }
       ],
       "public_constraints": [

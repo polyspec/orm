@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// sqliteBusyTimeoutMs is the time in milliseconds a SQLite connection waits
+// for a lock when the DSN sets no _pragma=busy_timeout(ms).
+const sqliteBusyTimeoutMs = 5000
+
 // parsedDSN is a DSN URI split into the dialect, the native database/sql DSN,
 // and the connection time zone.
 type parsedDSN struct {
@@ -94,14 +98,20 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if !strings.HasPrefix(path, "/") {
 			return parsedDSN{}, configErr("sqlite DSN must include an absolute database path")
 		}
-		// SQLite has no FOR UPDATE; the ORM row lock keeps transactions
-		// deferred until a query requests a lock.
-		if txlock := q.Get("_txlock"); txlock != "" && strings.ToLower(txlock) != "deferred" {
-			return parsedDSN{}, configErr("sqlite DSN _txlock must be deferred")
+		// A write transaction begins with BEGIN IMMEDIATE and holds the
+		// write lock from its start; a read-only transaction begins
+		// deferred. The client selects the begin statement, so the DSN
+		// does not accept _txlock.
+		if q.Has("_txlock") {
+			return parsedDSN{}, configErr("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE")
 		}
 		q.Del("timezone")
-		q.Set("_txlock", "deferred")
-		if !strings.Contains(strings.Join(q["_pragma"], ","), "foreign_keys") {
+		q.Set("_txlock", "immediate")
+		pragmas := strings.Join(q["_pragma"], ",")
+		if !strings.Contains(pragmas, "busy_timeout") {
+			q.Add("_pragma", "busy_timeout("+strconv.Itoa(sqliteBusyTimeoutMs)+")")
+		}
+		if !strings.Contains(pragmas, "foreign_keys") {
 			q.Add("_pragma", "foreign_keys(1)")
 		}
 		out.native = "file:" + path + "?" + q.Encode()

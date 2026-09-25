@@ -6,6 +6,9 @@ namespace Orm;
 /** Opens connections and creates ORM function values. */
 final class Orm
 {
+    /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
+    private const SQLITE_BUSY_TIMEOUT_MS = 5000;
+
     /**
      * Opens the database selected by the DSN URI (mysql://, postgres://, sqlite://).
      * The optional `timezone` parameter sets the connection time zone; without
@@ -13,7 +16,8 @@ final class Orm
      */
     public static function connect(string $dsn, Config $config): Db
     {
-        [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = self::parseDsn($dsn);
+        [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = $parsed = self::parseDsn($dsn);
+        $pragmas = $parsed[6] ?? [];
         $engine = Engine::for($config->schemaPath, $driver, $config->planCacheSize);
         $generated = Registry::schemaHash();
         if ($engine->manifest->schemaHash !== $generated) {
@@ -62,7 +66,10 @@ final class Orm
                         throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
                     }
                     $pdo->exec('PRAGMA foreign_keys = ON');
-                    $pdo->exec('PRAGMA busy_timeout = 5000');
+                    $pdo->exec('PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT_MS);
+                    foreach ($pragmas as [$name, $value]) {
+                        $pdo->exec("PRAGMA $name = $value");
+                    }
             }
         } catch (\PDOException $e) {
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
@@ -71,8 +78,9 @@ final class Orm
     }
 
     /**
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string}
-     *     driver, PDO DSN, user, password, time zone, and the time zone parameter
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string, 6?: list<array{0: string, 1: string}>}
+     *     driver, PDO DSN, user, password, time zone, the time zone parameter, and the SQLite
+     *     `_pragma=name(value)` parameters
      */
     public static function parseDsn(string $dsn): array
     {
@@ -125,7 +133,23 @@ final class Orm
                 if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
                 }
-                return [$driver, 'sqlite:' . $path, null, null, $zone, $zoneName];
+                $pragmas = [];
+                foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
+                    [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+                    $key = urldecode($key);
+                    if ($key === '_txlock') {
+                        throw new OrmException(Code::CONFIG, 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+                    }
+                    if ($key !== '_pragma') {
+                        continue;
+                    }
+                    $value = urldecode($value);
+                    if (preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1) {
+                        throw new OrmException(Code::CONFIG, "sqlite DSN _pragma $value is invalid");
+                    }
+                    $pragmas[] = [$pragma[1], $pragma[2]];
+                }
+                return [$driver, 'sqlite:' . $path, null, null, $zone, $zoneName, $pragmas];
         }
     }
 
@@ -319,7 +343,9 @@ final class OrmException extends \RuntimeException
                 default => null,
             },
             'sqlite' => match (true) {
-                in_array($num, [5, 6, 261, 262], true) => Code::DEADLOCK,
+                // SQLITE_BUSY: another connection held the lock when busy_timeout ended.
+                is_int($num) && ($num & 0xff) === 5 => Code::CANCELED,
+                in_array($num, [6, 262], true) => Code::DEADLOCK,
                 in_array($num, [2067, 1555], true) || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
                 in_array($num, [787, 1811], true) || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
                 $num === 9 => Code::CANCELED,

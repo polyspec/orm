@@ -460,6 +460,7 @@
   "clients/typescript/src/driver.ts::pgExecute": "async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number): Promise\u003cDriverResult\u003e",
   "clients/typescript/src/driver.ts::postgresZone": "export function postgresZone(zone: string): string",
   "clients/typescript/src/driver.ts::sessionError": "function sessionError(setup: SessionSetup): OrmError | undefined",
+  "clients/typescript/src/driver.ts::sqliteBusy": "function sqliteBusy(name: DriverName, error: unknown): boolean",
   "clients/typescript/src/driver.ts::sqliteExecute": "function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult",
   "clients/typescript/src/driver.ts::zoneOffset": "export function zoneOffset(zone: string, instant: Date): number",
   "clients/typescript/src/engine/ddl.ts::ForeignKey": "interface ForeignKey",

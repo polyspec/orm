@@ -53,19 +53,28 @@ export interface DriverTransaction extends DriverConnection {
   rowLock(mode: string): Promise<void>;
 }
 
+/** Milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms). */
+const SQLITE_BUSY_TIMEOUT_MS = 5000;
+
+/** Reports SQLITE_BUSY or one of its extended codes. */
+function sqliteBusy(name: DriverName, error: unknown): boolean {
+  return name === 'sqlite' && (Number((error as { errcode?: number }).errcode) & 0xff) === 5;
+}
+
 function driverError(name: DriverName, error: unknown): OrmError {
   if (error instanceof OrmError) return error;
   const source = error as { code?: string; errcode?: number; message?: string };
   const message = source.message ?? String(error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
-  // that was stopped before it finished.
-  if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9) {
+  // that was stopped before it finished; SQLite BUSY reports a lock that
+  // another connection still held when busy_timeout ended.
+  if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
     return new OrmError('CANCELED', `${name}: ${message}`, error);
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
   const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787;
-  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 5 || source.errcode === 6 || source.errcode === 261 || source.errcode === 262;
+  const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 6 || source.errcode === 262;
   const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : 'DRIVER';
   return new OrmError(code, `${name}: ${message}`, error);
 }
@@ -372,7 +381,9 @@ class SqlitePoolDriver implements DriverPool {
     await this.idle();
     this.state.busy = true;
     try {
-      this.state.db.exec('BEGIN DEFERRED');
+      // A write transaction holds the write lock from its start and waits for
+      // it up to busy_timeout; a read-only one begins deferred.
+      this.state.db.exec(options.readOnly ? 'BEGIN DEFERRED' : 'BEGIN IMMEDIATE');
       if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
       if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
     } catch (error) {
@@ -418,16 +429,24 @@ class SqliteTx implements DriverTransaction {
       this.state.db.exec('ROLLBACK');
     } finally { this.release(); }
   }
-  /** SQLite has no row-lock clause; one lock row serializes ORM lock requests. */
+  /**
+   * SQLite has no row-lock clause; one lock row serializes ORM lock requests.
+   * The write waits up to busy_timeout; a NOWAIT request sets the wait to zero.
+   */
   public async rowLock(mode: string): Promise<void> {
     if (mode === '') return;
+    const noWait = mode.endsWith('_nowait');
+    const previous = noWait ? Number((this.state.db.prepare('PRAGMA busy_timeout').get() as Record<string, unknown>)['timeout']) : 0;
     try {
+      if (noWait) this.state.db.exec('PRAGMA busy_timeout = 0');
       this.state.db.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
       this.state.db.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
     } catch (error) {
       const mapped = driverError(this.name, error);
-      if (mode.endsWith('_nowait') && mapped.code === 'DEADLOCK') throw new OrmError('LOCK_NOT_AVAILABLE', mapped.message, error);
+      if (noWait && sqliteBusy(this.name, error)) throw new OrmError('LOCK_NOT_AVAILABLE', mapped.message, error);
       throw mapped;
+    } finally {
+      if (noWait) this.state.db.exec(`PRAGMA busy_timeout = ${previous}`);
     }
   }
 }
@@ -449,7 +468,7 @@ export function parseDsn(dsn: string): ParsedDsn {
       return { driver: 'postgres', zone };
     case 'sqlite:':
       if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError('CONFIG', 'sqlite DSN must include an absolute database path');
-      if ((url.searchParams.get('_txlock') ?? 'deferred') !== 'deferred') throw new OrmError('CONFIG', 'sqlite DSN _txlock must be deferred');
+      if (url.searchParams.has('_txlock')) throw new OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
       return { driver: 'sqlite', zone };
   }
   throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
@@ -520,7 +539,14 @@ export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, stateme
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, pool, config);
     }
     case 'sqlite': {
-      const db = new DatabaseSync(decodeURIComponent(url.pathname));
+      const pragmas = url.searchParams.getAll('_pragma').map(pragma => {
+        const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
+        if (!match || (match[1] === 'busy_timeout' && !/^\d+$/.test(match[2]!))) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
+        return [match[1]!, match[2]!] as const;
+      });
+      // The connection waits for a lock up to busy_timeout from its first statement.
+      const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
+      const db = new DatabaseSync(decodeURIComponent(url.pathname), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       const version = String((db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v);
       const [major, minor] = version.split('.').map(Number);
       if (major! < 3 || (major === 3 && minor! < 46)) {
@@ -528,11 +554,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, stateme
         throw new OrmError('CAPABILITY_UNSUPPORTED', `SQLite ${version} is older than 3.46`);
       }
       db.exec('PRAGMA foreign_keys = ON');
-      for (const pragma of url.searchParams.getAll('_pragma')) {
-        const match = /^([a-z_]+)\(([A-Za-z0-9_]+)\)$/.exec(pragma);
-        if (!match) throw new OrmError('CONFIG', `sqlite DSN _pragma ${pragma} is invalid`);
-        db.exec(`PRAGMA ${match[1]} = ${match[2]}`);
-      }
+      for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);
       return new SqlitePoolDriver(db, statementCacheSize);
     }
   }
