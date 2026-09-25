@@ -2,6 +2,8 @@
 
 ## Unreleased — MySQL CHECK constraint namespace
 
+Add `--check` to `build` and `gen` of Go `ormgen` and of the PHP and TypeScript `orm-gen`, and to `build` of the Rust `orm-gen`. The command generates its output without writing it, prints `differs: <path>`, `missing: <path>` or `extra: <path>` for each output file, ordered by path, and exits with status 1 when it prints a line. `extra` names a file of the output directory that holds the generated-code comment and that the generation no longer writes. Go `gen --check` runs the same scan as `gen`, in a directory under the system temporary directory, and compares its result with `--out`.
+
 Make an insert that omits a required column (NOT NULL, no default, not `auto`, not the AES key version) fail with `IR_INVALID: required column <entity>.<column> is not set` before the statement runs, in the Go, PHP, Rust and TypeScript clients on MySQL, PostgreSQL and SQLite. MySQL stored the first value of an omitted NOT NULL `enum` column, and PostgreSQL and SQLite returned their own driver errors. The bench schema adds the entity `task` with a NOT NULL `enum` column, and the conformance vector `required_columns` records the error for an omitted `enum` column and an omitted text column.
 
 Make schema diff, `validate` and migration verification in the Go, PHP, Rust and TypeScript tools compare a PostgreSQL `enum` column with the live text column as equal. A migration of a schema with an `enum` column failed verification on PostgreSQL with `MIGRATION_VERIFY_FAILED`.
