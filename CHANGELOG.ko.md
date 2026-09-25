@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+`make test-servers`는 primary의 읽기 전용 MySQL replica와 PostgreSQL standby, MySQL primary 앞의 ProxySQL, PostgreSQL primary 앞의 transaction 모드 PgBouncer도 `TEST_MYSQL_REPLICA_PORT`(33181), `TEST_POSTGRES_REPLICA_PORT`(55481), `TEST_PROXYSQL_PORT`(33182), `TEST_PGBOUNCER_PORT`(55482)에서 시작한다. 시작은 ProxySQL과 PgBouncer가 listen한 뒤 쓰는 로그 줄을 기록한 다음에 반환한다. 환경 파일에는 `ORM_TEST_MYSQL_REPLICA_DSN`, `ORM_TEST_POSTGRES_REPLICA_DSN`, `ORM_TEST_PROXYSQL_DSN`, `ORM_TEST_PGBOUNCER_DSN`, `ORM_TEST_PGBOUNCER_SINGLE_DSN`이 추가된다. 마지막 변수는 서버 연결 하나로 `orm_test`에 접속하는 PgBouncer 데이터베이스를 가리킨다.
+
 Go `ormgen`과 PHP·TypeScript `orm-gen`의 `build`와 `gen`, Rust `orm-gen`의 `build`에 `--check`를 추가한다. 이 명령은 출력을 생성하되 쓰지 않고, 출력 파일마다 `differs: <path>`, `missing: <path>`, `extra: <path>`를 경로 순서로 출력하며, 한 줄이라도 출력하면 상태 1로 종료한다. `extra`는 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일이다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하고 그 결과를 `--out`과 비교한다.
 
 필수 컬럼(NOT NULL, 기본값 없음, `auto` 아님, AES 키 버전 아님)을 생략한 삽입은 Go, PHP, Rust, TypeScript 클라이언트에서 MySQL·PostgreSQL·SQLite 모두 문장을 실행하기 전에 `IR_INVALID: required column <entity>.<column> is not set`으로 실패한다. MySQL은 생략한 NOT NULL `enum` 컬럼에 첫 번째 값을 저장했고 PostgreSQL과 SQLite는 각자의 드라이버 오류를 반환했다. 벤치 스키마는 NOT NULL `enum` 컬럼을 가진 엔터티 `task`를 추가하고, conformance 벡터 `required_columns`는 생략한 `enum` 컬럼과 생략한 텍스트 컬럼의 오류를 기록한다.

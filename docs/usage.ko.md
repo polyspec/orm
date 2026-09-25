@@ -481,7 +481,7 @@ psql … -f app.pg.sql
 ## 12. 확인
 
 ```sh
-make test-servers                                        # MySQL, PostgreSQL, 시드한 벤치 데이터베이스
+make test-servers                                        # MySQL, PostgreSQL, 각 replica, ProxySQL, PgBouncer, 시드한 벤치 데이터베이스
 . .runtime/servers/env                                   # 테스트의 DSN 변수
 go test ./...                                            # 엔진, 생성기, Go 클라이언트
 npm run typescript:test                                  # TypeScript 클라이언트

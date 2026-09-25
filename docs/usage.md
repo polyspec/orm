@@ -481,7 +481,7 @@ psql … -f app.pg.sql
 ## 12. Verification
 
 ```sh
-make test-servers                                        # MySQL, PostgreSQL, and the seeded bench databases
+make test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./...                                            # engine, generator, and Go client
 npm run typescript:test                                  # TypeScript client
