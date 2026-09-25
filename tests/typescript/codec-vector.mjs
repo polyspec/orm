@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { CodecError, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
@@ -133,6 +133,7 @@ for (const [name, operation, code] of [
   catch (error) { if (!(error instanceof CodecError) || error.code !== code) { console.error(`${name}: ${String(error)} want ${code}`); failures++; } }
 }
 
+await mkdir('tests/codec/out', { recursive: true });
 await writeFile('tests/codec/out/typescript.json', `${JSON.stringify(output, null, 2)}\n`);
 if (failures > 0) throw new Error(`TypeScript codec vectors: ${failures} failure(s)`);
 console.log(`typescript: ${vectors.length} codec vectors passed`);
