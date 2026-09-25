@@ -392,6 +392,71 @@ async fn transactions(t: &Target) {
     assert!(db.utils().stats().open_connections >= 1, "stats");
 }
 
+/// Returns after the replica has applied every change the primary committed
+/// before the call. On PostgreSQL a transaction with
+/// synchronous_commit=remote_apply that writes WAL, here a transactional
+/// logical message, commits after the standby has applied it; a transaction
+/// that writes no WAL besides its commit record does not wait. On MySQL
+/// SOURCE_POS_WAIT on the replica waits for the binary log position of the
+/// primary.
+async fn await_replica(primary: &Db, replica: &Db) {
+    use sqlx::Row;
+    match (primary.pool(), replica.pool()) {
+        (Pool::Postgres(p), _) => {
+            let mut tx = p.begin().await.unwrap();
+            sqlx::raw_sql("SET LOCAL synchronous_commit = remote_apply").execute(&mut *tx).await.unwrap();
+            let row = sqlx::raw_sql("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')::text")
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+            assert_eq!(row.get::<String, _>(0), "remote_apply", "synchronous_commit of the barrier transaction");
+            tx.commit().await.unwrap();
+        }
+        (Pool::MySql(p), Pool::MySql(r)) => {
+            let status = sqlx::raw_sql("SHOW BINARY LOG STATUS").fetch_one(p).await.unwrap();
+            let (file, position): (String, u64) = (status.get(0), status.get(1));
+            let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 10)").bind(&file).bind(position).fetch_one(r).await.unwrap();
+            assert!(waited.is_some_and(|w| w >= 0), "the replica did not reach {file}:{position}");
+        }
+        _ => unreachable!("a MySQL or PostgreSQL primary and replica"),
+    }
+}
+
+/// Opens a connection to the primary and one to its replica side by side. A
+/// model uses the connection it is connected to and no other, and a model
+/// without a connection inside a transaction uses the transaction.
+async fn primary_and_replica(t: &Target, replica_dsn: &str) {
+    let master = &t.db;
+    let slave1 = Db::connect(replica_dsn, 2, config()).await.unwrap();
+    let name = format!("replica-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+    User::new().connect(master).set_name(&name).create().await.unwrap();
+    await_replica(master, &slave1).await;
+    assert_eq!(User::new().connect(&slave1).name(name.as_str()).get_count().await.unwrap(), 1, "the replica reads the row written through the primary");
+    assert!(User::new().connect(&slave1).set_name(format!("{name}-replica")).create().await.is_err(), "a write through the replica connection is rejected");
+    assert_eq!(
+        User::new().connect(master).name(format!("{name}-replica").as_str()).get_count().await.unwrap(),
+        0,
+        "a write through the replica connection does not reach the primary"
+    );
+    // A row read through the replica is written through the primary.
+    let mut row = User::new().connect(&slave1).name(name.as_str()).get().await.unwrap().connect(master).set_name(format!("{name}-renamed"));
+    row.update(false).await.unwrap();
+    let tx_name = format!("{name}-tx");
+    let r: orm::Result<()> = master
+        .transaction(async || {
+            User::new().set_name(tx_name.as_str()).create().await?;
+            assert_eq!(User::new().connect(master).name(tx_name.as_str()).get_count().await?, 1, "the primary connection inside its transaction");
+            assert_eq!(User::new().connect(&slave1).name(tx_name.as_str()).get_count().await?, 0, "the replica connection reads no uncommitted row");
+            Ok(())
+        })
+        .await;
+    r.unwrap();
+    await_replica(master, &slave1).await;
+    let committed = vec![format!("{name}-renamed"), tx_name.clone()];
+    assert_eq!(User::new().connect(&slave1).name(committed).get_count().await.unwrap(), 2, "the replica reads the committed rows");
+    slave1.close().await;
+}
+
 /// Checks schema().empty() on a database without the test tables, with an
 /// empty PostgreSQL schema other than public, and with the installed tables.
 async fn schema_empty(t: &Target, schema: &[u8]) {
@@ -523,6 +588,17 @@ async fn main() {
             t.db.close().await;
             println!("ok {name} ({})", t.driver);
         }
+    }
+    for t in env.databases("primary_and_replica").await {
+        if t.driver == "sqlite" {
+            t.db.close().await;
+            continue;
+        }
+        let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());
+        let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
+        primary_and_replica(&t, &replica).await;
+        t.db.close().await;
+        println!("ok primary_and_replica ({})", t.driver);
     }
     let _ = std::fs::remove_dir_all(&tmp);
 }
