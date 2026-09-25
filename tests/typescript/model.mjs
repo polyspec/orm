@@ -46,6 +46,69 @@ function postgresClient(dsn) {
   return new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
 }
 
+/**
+ * Returns after the replica has applied every change the primary committed
+ * before the call. On PostgreSQL a transaction with
+ * synchronous_commit=remote_apply that writes WAL, here a transactional
+ * logical message, commits after the standby has applied it; a transaction
+ * that writes no WAL besides its commit record does not wait. On MySQL
+ * SOURCE_POS_WAIT on the replica waits for the binary log position of the
+ * primary.
+ */
+async function awaitReplica(dialect, primary, replica) {
+  if (dialect === 'postgres') {
+    const client = postgresClient(primary);
+    await client.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL synchronous_commit = remote_apply');
+      const mode = (await client.query("SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '')")).rows[0].mode;
+      if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
+      await client.query('COMMIT');
+    } finally { await client.end(); }
+    return;
+  }
+  const source = await mysqlConnection(primary);
+  const target = await mysqlConnection(replica);
+  try {
+    const [[status]] = await source.query('SHOW BINARY LOG STATUS');
+    const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
+    if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+  } finally { await source.end(); await target.end(); }
+}
+
+/**
+ * Opens a connection to the primary and one to its replica side by side. A
+ * model uses the connection it is connected to and no other, and a model
+ * without a connection inside a transaction uses the transaction.
+ */
+async function primaryAndReplica(dialect, primary, replica) {
+  await install(dialect, primary);
+  const master = await connect(primary);
+  let slave1;
+  try {
+    const name = `replica-${process.hrtime.bigint()}`;
+    await new User().connect(master).setName(name).create();
+    await awaitReplica(dialect, primary, replica);
+    slave1 = await connect(replica);
+    check(await new User().connect(slave1).name(name).getCount() === 1, 'the replica reads the row written through the primary');
+    check(await code(new User().connect(slave1).setName(`${name}-replica`).create()) !== null, 'a write through the replica connection is rejected');
+    check(await new User().connect(master).name(`${name}-replica`).getCount() === 0, 'a write through the replica connection does not reach the primary');
+    // A row read through the replica is written through the primary.
+    await (await new User().connect(slave1).name(name).get()).connect(master).setName(`${name}-renamed`).update();
+    await master.transaction(async () => {
+      await new User().setName(`${name}-tx`).create();
+      check(await new User().connect(master).name(`${name}-tx`).getCount() === 1, 'the primary connection inside its transaction');
+      check(await new User().connect(slave1).name(`${name}-tx`).getCount() === 0, 'the replica connection reads no uncommitted row');
+    });
+    await awaitReplica(dialect, primary, replica);
+    check(await new User().connect(slave1).name([`${name}-renamed`, `${name}-tx`]).getCount() === 2, 'the replica reads the committed rows');
+  } finally {
+    await master.close();
+    if (slave1) await slave1.close();
+  }
+}
+
 /** Drops the schema tables. */
 async function dropTables(dialect, dsn) {
   const drops = renderDDL(loadManifest(manifestJson), dialect).split('\n').filter(line => line.startsWith('DROP TABLE IF EXISTS ')).map(line => line.replace(/;$/, ''));
@@ -772,6 +835,14 @@ try {
       try { await connectionTimeZone(db, offset); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
       console.log(`${current} done`);
     }
+  }
+  for (const [dialect, primary] of targets) {
+    if (dialect === 'sqlite') continue;
+    current = `${dialect}/primaryAndReplica`;
+    const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
+    if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
+    try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    console.log(`${current} done`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });

@@ -22,6 +22,26 @@ sqlite:///var/lib/app.sqlite?_pragma=busy_timeout(5000)
 
 Database credentials and AES keys must not be committed, written to runtime files, or included in logs. Pass them through the client connection options after resolving them from the deployment secret source.
 
+## Primary and replicas
+
+The ORM does not route statements between servers. An application that reads from replicas opens one connection per server, one to the primary and one to each replica, and passes the connection a statement uses to the model or row with `connect`:
+
+| Language | Connections | Read through a replica | Write through the primary |
+|---|---|---|---|
+| PHP | `$master = Orm::connect($primaryDsn, $config);` `$slave1 = Orm::connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
+| Go | `master, err := model.Connect(primaryDSN, schemaPath, cfg)` `slave1, err := model.Connect(replicaDSN, schemaPath, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
+| Rust | `let master = Db::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = Db::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
+| TypeScript | `const master = await Db.connect(primaryDsn, schemaPath, options);` `const slave1 = await Db.connect(replicaDsn, schemaPath, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
+
+- A model or a loaded row uses the connection it is connected to and no other. Inside a transaction of `master`, a model connected to `slave1` runs on `slave1` outside the transaction, and a model without `connect` runs in the transaction.
+- Each connection has its own pool, prepared statements, and session settings.
+- A replica applies the changes of the primary after the primary commits them. A read that must see a write of the same request uses the primary connection; the application selects it.
+- A replica rejects a write: PostgreSQL returns SQLSTATE 25006 and a MySQL replica with `super_read_only` returns error 1290. The clients return this driver error without an ORM error code.
+- The schema tools and `utils().schema().install` run on the primary, and the replicas apply the schema through replication.
+- SQLite is single-node only. A SQLite database is a local file named by an absolute path, and the ORM supports no SQLite replica.
+
+`make test-servers` starts a replica of the MySQL primary and a standby of the PostgreSQL primary, and the database tests of the four clients check these rules on both databases.
+
 ## Connection poolers
 
 A connection pooler stands between the application and one database server and shares a small number of server connections among many client connections. The clients work through PgBouncer in transaction mode for PostgreSQL and through ProxySQL for MySQL, used as poolers only: the application connects to the pooler with the DSN of that server, and the pooler routes no statement to another server. `make client-pooler-check` runs the database tests of the four clients through both.

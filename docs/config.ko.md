@@ -22,6 +22,26 @@ sqlite:///var/lib/app.sqlite?_pragma=busy_timeout(5000)
 
 데이터베이스 자격 증명과 AES 키는 커밋하거나 런타임 파일에 기록하거나 로그에 남기지 않는다. 배포 비밀 저장소에서 값을 읽은 뒤 클라이언트 연결 옵션으로 전달한다.
 
+## Primary와 replica
+
+ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽는 애플리케이션은 서버마다 연결을 하나씩 연다. primary에 하나, replica마다 하나를 열고, 문이 쓸 연결을 `connect`로 모델이나 행에 전달한다.
+
+| 언어 | 연결 | replica로 읽기 | primary로 쓰기 |
+|---|---|---|---|
+| PHP | `$master = Orm::connect($primaryDsn, $config);` `$slave1 = Orm::connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
+| Go | `master, err := model.Connect(primaryDSN, schemaPath, cfg)` `slave1, err := model.Connect(replicaDSN, schemaPath, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
+| Rust | `let master = Db::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = Db::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
+| TypeScript | `const master = await Db.connect(primaryDsn, schemaPath, options);` `const slave1 = await Db.connect(replicaDsn, schemaPath, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
+
+- 모델이나 읽어 온 행은 자신이 연결된 연결만 사용한다. `master`의 트랜잭션 안에서 `slave1`에 연결한 모델은 트랜잭션 밖에서 `slave1`로 실행되고, `connect`가 없는 모델은 트랜잭션 안에서 실행된다.
+- 연결마다 풀, prepared statement, 세션 설정이 따로 있다.
+- replica는 primary가 commit한 변경을 그 뒤에 적용한다. 같은 요청의 쓰기를 읽어야 하는 읽기는 primary 연결을 사용하며, 애플리케이션이 그 연결을 선택한다.
+- replica는 쓰기를 거부한다. PostgreSQL은 SQLSTATE 25006을, `super_read_only`인 MySQL replica는 오류 1290을 반환한다. 클라이언트는 이 드라이버 오류를 ORM 오류 코드 없이 반환한다.
+- 스키마 도구와 `utils().schema().install`은 primary에서 실행하고, replica는 복제로 스키마를 적용한다.
+- SQLite는 단일 노드 전용이다. SQLite 데이터베이스는 절대 경로로 지정한 로컬 파일이며, ORM은 SQLite replica를 지원하지 않는다.
+
+`make test-servers`는 MySQL primary의 replica와 PostgreSQL primary의 standby를 시작하고, 네 클라이언트의 데이터베이스 테스트는 두 데이터베이스에서 이 규칙을 검사한다.
+
 ## 연결 pooler
 
 연결 pooler는 애플리케이션과 데이터베이스 서버 하나 사이에서 적은 수의 서버 연결을 많은 클라이언트 연결이 나누어 쓰게 한다. 클라이언트는 PostgreSQL에서 transaction 모드의 PgBouncer, MySQL에서 ProxySQL을 통해 동작하며, 둘은 pooler로만 쓴다. 애플리케이션은 그 서버의 DSN으로 pooler에 연결하고, pooler는 어떤 문도 다른 서버로 보내지 않는다. `make client-pooler-check`는 네 클라이언트의 데이터베이스 테스트를 두 pooler를 통해 실행한다.
