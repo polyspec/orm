@@ -258,12 +258,18 @@ pub struct DbStats {
     pub idle: u32,
 }
 
+/// The maximum of open connections when `Db::connect` receives a pool size of
+/// zero; the Go and TypeScript clients use the same value.
+const DEFAULT_POOL_SIZE: u32 = 10;
+
 impl Db {
-    /// Connects to the database selected by the DSN URI.
+    /// Connects to the database selected by the DSN URI with at most
+    /// `pool_size` open connections; zero uses 10.
     pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db> {
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
             return Err(Error::Config("cache sizes must be positive".into()));
         }
+        let pool_size = if pool_size == 0 { DEFAULT_POOL_SIZE } else { pool_size };
         let parsed = parse_dsn(dsn)?;
         let dialect = Dialect::parse(parsed.driver()).expect("known driver");
         let cache = cfg.statement_cache_size;
