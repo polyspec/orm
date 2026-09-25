@@ -58,7 +58,9 @@ func databases(t *testing.T) map[string]*orm.DB {
 	return out
 }
 
-func dropTables(t *testing.T, driver, dsn string) {
+// openNative opens the database of a client DSN through the native
+// database/sql driver.
+func openNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
 	native := dsn
 	sqlDriver := "pgx"
@@ -82,6 +84,12 @@ func dropTables(t *testing.T, driver, dsn string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return raw
+}
+
+func dropTables(t *testing.T, driver, dsn string) {
+	t.Helper()
+	raw := openNative(t, driver, dsn)
 	defer raw.Close()
 	raw.SetMaxOpenConns(1)
 	if driver == "mysql" {

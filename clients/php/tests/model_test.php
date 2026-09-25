@@ -664,6 +664,82 @@ foreach ($targets as $driver => $dsn) {
         echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
     }
 }
+/**
+ * Returns after the replica has applied every change the primary committed
+ * before the call. On PostgreSQL a transaction with
+ * synchronous_commit=remote_apply that writes WAL, here a transactional
+ * logical message, commits after the standby has applied it; a transaction
+ * that writes no WAL besides its commit record does not wait. On MySQL
+ * SOURCE_POS_WAIT on the replica waits for the binary log position of the
+ * primary.
+ */
+function awaitReplica(string $driver, string $primary, string $replica): void
+{
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($primary);
+    $source = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    if ($driver === 'postgres') {
+        $source->beginTransaction();
+        $source->exec('SET LOCAL synchronous_commit = remote_apply');
+        $mode = $source->query("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')")->fetchColumn();
+        if ($mode !== 'remote_apply') {
+            throw new RuntimeException("synchronous_commit of the barrier transaction is $mode");
+        }
+        $source->commit();
+        return;
+    }
+    $status = $source->query('SHOW BINARY LOG STATUS')->fetch(PDO::FETCH_NUM);
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($replica);
+    $target = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 10)');
+    $st->execute([$status[0], (int) $status[1]]);
+    $waited = $st->fetchColumn();
+    if ($waited === null || (int) $waited < 0) {
+        throw new RuntimeException("the replica did not reach {$status[0]}:{$status[1]}");
+    }
+}
+
+// A connection to the primary and one to its replica work side by side. A
+// model uses the connection it is connected to and no other, and a model
+// without a connection inside a transaction uses the transaction.
+foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
+    $current = "primary and replica/$driver";
+    try {
+        $replica = getenv("ORM_TEST_{$env}_REPLICA_DSN");
+        if ($replica === false || $replica === '') {
+            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip");
+        }
+        $master = database($driver, $targets[$driver]);
+        $name = 'replica-' . hrtime(true);
+        (new User)($master)->setName($name)->create();
+        awaitReplica($driver, $targets[$driver], $replica);
+        $slave1 = Orm::connect($replica, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
+        $rejected = false;
+        try {
+            (new User)($slave1)->setName("$name-replica")->create();
+        } catch (Throwable) {
+            $rejected = true;
+        }
+        check($rejected, 'a write through the replica connection is rejected');
+        check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
+        // A row read through the replica is written through the primary.
+        (new User)($slave1)->name($name)->get()->connect($master)->setName("$name-renamed")->update();
+        $master->transaction(function () use ($master, $slave1, $name): void {
+            (new User)->setName("$name-tx")->create();
+            check((new User)($master)->name("$name-tx")->getCount() === 1, 'the primary connection inside its transaction');
+            check((new User)($slave1)->name("$name-tx")->getCount() === 0, 'the replica connection reads no uncommitted row');
+        });
+        awaitReplica($driver, $targets[$driver], $replica);
+        check((new User)($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2, 'the replica reads the committed rows');
+        $slave1->close();
+        $master->close();
+    } catch (Throwable $e) {
+        $failures++;
+        fwrite(STDERR, "FAIL $current: $e\n");
+    }
+    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+}
+
 if ($failures > 0) {
     fwrite(STDERR, "php model test: $failures failures\n");
     exit(1);
