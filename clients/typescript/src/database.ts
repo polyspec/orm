@@ -20,7 +20,7 @@ export interface ConnectOptions {
   onQuery?: (event: QueryEvent) => void;
   planCacheSize?: number;
   statementCacheSize?: number;
-  /** maximum open connections; zero uses the driver default */
+  /** maximum open connections; zero uses 10 */
   poolSize?: number;
   /** bound of every statement of the connection in milliseconds; zero keeps the server default */
   statementTimeoutMs?: number;
@@ -252,7 +252,8 @@ export class Db {
     }
     if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
     if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError('CONFIG', 'statement timeout must not be negative');
-    const pool = openDriver(dsn, parsed, options.poolSize ?? 10, statementCacheSize, options.statementTimeoutMs ?? 0);
+    // Zero or unset takes the default of every client, 10 connections.
+    const pool = openDriver(dsn, parsed, options.poolSize || 10, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, engine, options);
     try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
     return db;

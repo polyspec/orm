@@ -28,7 +28,7 @@ type Config struct {
 	BlindIndexKey      string           // secret for encrypted equality indexes
 	AESVersion         int32            // version written with AES payloads; zero selects 1
 	AESKeys            map[int32]string // every declared version, used to decode mixed-version rows
-	PoolSize           int              // maximum open connections; zero uses the driver default
+	PoolSize           int              // maximum open and idle connections; zero uses 10
 	StatementTimeoutMs int              // bound of every statement of the connection; zero keeps the server default
 	PlanCacheSize      int              // maximum compiled plans; zero uses the default
 	StatementCacheSize int              // maximum prepared statements; zero uses the default
@@ -180,6 +180,10 @@ type DBStats struct {
 
 const defaultCacheSize = 256
 
+// defaultPoolSize is the maximum of open connections when Config.PoolSize is
+// zero; the TypeScript and Rust clients use the same value.
+const defaultPoolSize = 10
+
 // Open connects to the database selected by the DSN URI scheme. The schema
 // engine plans every statement in this process.
 func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
@@ -225,10 +229,11 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 		s.Close()
 		return nil, configErr("pool size must not be negative")
 	}
-	if cfg.PoolSize > 0 {
-		s.SetMaxOpenConns(cfg.PoolSize)
-		s.SetMaxIdleConns(cfg.PoolSize)
+	if cfg.PoolSize == 0 {
+		cfg.PoolSize = defaultPoolSize
 	}
+	s.SetMaxOpenConns(cfg.PoolSize)
+	s.SetMaxIdleConns(cfg.PoolSize)
 	if err := s.PingContext(ctx); err != nil {
 		s.Close()
 		return nil, mapDriverErr(err)

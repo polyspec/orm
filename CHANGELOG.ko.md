@@ -2,6 +2,8 @@
 
 ## 미발행 — MySQL CHECK constraint namespace
 
+Go·TypeScript·Rust 클라이언트에서 pool size가 0이거나 지정하지 않으면 최대 10개의 연결을 연다. Go 클라이언트는 연결 수에 제한이 없었고, TypeScript `{ poolSize: 0 }`은 MySQL에서 제한 없이 연결을 열었으며, Rust `Db::connect(dsn, 0, config)`는 panic했다. 테스트는 크기 2인 풀에서 트랜잭션 여섯 개를 동시에 실행하고, 동시에 실행되는 트랜잭션과 열린 연결이 각각 최대 두 개인지 검사한다.
+
 `docs/config.md`에 애플리케이션이 primary와 replica를 쓰는 방법을 기술한다. 서버마다 연결을 하나씩 열고 모델이나 행마다 `connect`로 선택하며, ORM은 문을 분배하지 않고, SQLite는 단일 노드 전용이다. 네 클라이언트의 데이터베이스 테스트는 MySQL과 PostgreSQL에서 primary 연결과 replica 연결을 함께 열고, replica가 commit된 행을 읽고 쓰기를 거부하며, primary에 연결한 모델이나 primary 트랜잭션 안의 모델이 replica를 쓰지 않는지 검사한다.
 
 네 클라이언트가 transaction 모드의 PgBouncer를 통해 동작한다. PHP와 Rust 클라이언트는 `statementTimeoutMs`의 PostgreSQL `statement_timeout`을 Go·TypeScript처럼 startup 매개변수로 전달한다. 이전의 `SET SESSION statement_timeout`은 pool의 서버 연결에 남아 다른 클라이언트 연결의 문까지 제한했다. Rust 클라이언트는 PgBouncer가 거부하던 startup 매개변수 `extra_float_digits`를 더 이상 보내지 않으며, float8 값은 그대로 정확하다. TypeScript 클라이언트는 PostgreSQL 문을 `pg_cancel_backend` 대신 프로토콜 취소 요청(process id와 secret key)으로 취소한다. pooler 뒤에서는 그 process id가 서버 프로세스가 아니기 때문이다. `make check`에 포함된 `make client-pooler-check`는 클라이언트 데이터베이스 테스트를 PgBouncer와 ProxySQL을 통해 실행하고, `docs/config.md`는 pooler 설정과 스키마 도구가 primary에 직접 연결한다는 점을 기술한다.
