@@ -1,4 +1,4 @@
-.PHONY: check ts-min-check client-unit-check client-db-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -14,8 +14,13 @@ TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 WITH_TEST_ENV = test -f $(TEST_ENV) || { echo "$(TEST_ENV) is missing; run make test-servers" >&2; exit 1; }; . ./$(TEST_ENV) &&
 
-check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check conformance-check db-test perf-check package-check
+check: feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check conformance-check db-test perf-check package-check
 	$(WITH_TEST_ENV) go test ./...
+
+# client-pooler-check runs the client database tests through the PgBouncer
+# pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
+client-pooler-check:
+	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" ./scripts/client-db-test.sh
 
 test-servers:
 	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)

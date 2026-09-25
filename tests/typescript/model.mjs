@@ -689,6 +689,29 @@ try {
     }
     console.log(`${current} done`);
   }
+  {
+    // A pooler in transaction mode hands one server session to every client
+    // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
+    // server connection, so the statement timeout of one connection must
+    // bound only the statements of that connection.
+    current = 'postgres/statementTimeoutThroughAPooler';
+    const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+    if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+    const postgres = targets.find(([dialect]) => dialect === 'postgres')[1];
+    await install('postgres', postgres);
+    const setup = await connect(postgres);
+    try { await seed(setup); } finally { await setup.close(); }
+    // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
+    const slow = 'pg_sleep(0.1) IS NOT NULL';
+    const bounded = await Db.connect(single, schemaPath, { statementTimeoutMs: 200 });
+    const plain = await Db.connect(single, schemaPath, {});
+    try {
+      check(await code(new Battle().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
+      check(await new Battle().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
+      check(await code(new Battle().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
+    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); await plain.close(); }
+    console.log(`${current} done`);
+  }
   for (const [dialect, dsn] of targets) {
     current = `${dialect}/cancellation`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });

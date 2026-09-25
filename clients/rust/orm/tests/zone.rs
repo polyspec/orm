@@ -222,6 +222,55 @@ async fn statement_timeout() {
     }
 }
 
+/// A pooler in transaction mode hands one server session to every client in
+/// turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
+/// connection, so the statement timeout of one connection bounds only the
+/// statements of that connection.
+#[tokio::test]
+async fn statement_timeout_through_a_pooler() {
+    let _serial = SERIAL.lock().await;
+    let setup = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
+    drop_table(&setup).await;
+    setup.utils().schema().install(SCHEMA.json()).await.unwrap();
+    // Three rows sleep 0.1 s each, so the statement runs past 200 ms.
+    for _ in 0..3 {
+        let mut row = event(&setup);
+        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        orm::model::create(&mut row).await.unwrap();
+    }
+    let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
+    let slow = "pg_sleep(0.1) IS NOT NULL";
+    let bounded = Db::connect(&single, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
+    let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection through the pooler");
+    assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
+    let plain = Db::connect(&single, 1, orm::Config::default()).await.unwrap();
+    let count = orm::model::get_count(&slow_count(&plain, slow)).await;
+    assert_eq!(count.map_err(|e| e.to_string()), Ok(3), "a connection without a timeout after the bounded one");
+    let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection after the plain one");
+    assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
+    bounded.close().await;
+    plain.close().await;
+    drop_table(&setup).await;
+    setup.close().await;
+}
+
+/// A PostgreSQL connection reads float8 values exactly in the text format
+/// of the simple protocol and in the binary format of prepared statements.
+#[tokio::test]
+async fn postgres_float_round_trip() {
+    let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
+    let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
+    let values = [0.1 + 0.2, 1.0 / 3.0, f64::MIN_POSITIVE, 5e-324, f64::MAX, -123456.789e-7];
+    for v in values {
+        let literal = format!("SELECT {v:e}::float8");
+        let text: f64 = sqlx::Row::get(&sqlx::raw_sql(sqlx::AssertSqlSafe(literal.clone())).fetch_one(pool).await.unwrap(), 0);
+        assert_eq!(text.to_bits(), v.to_bits(), "text format of {v:e}: {text:e}");
+        let binary: f64 = sqlx::query_scalar("SELECT $1::float8").bind(v).fetch_one(pool).await.unwrap();
+        assert_eq!(binary.to_bits(), v.to_bits(), "binary format of {v:e}: {binary:e}");
+    }
+    db.close().await;
+}
+
 /// Dropping the future of a statement cancels the statement, and the
 /// connection it ran on stays usable.
 #[tokio::test]

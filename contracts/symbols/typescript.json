@@ -456,7 +456,7 @@
   "clients/typescript/src/driver.ts::offsetText": "export function offsetText(minutes: number): string",
   "clients/typescript/src/driver.ts::openDriver": "export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, statementCacheSize: number, statementTimeoutMs = 0): DriverPool",
   "clients/typescript/src/driver.ts::parseDsn": "export function parseDsn(dsn: string): ParsedDsn",
-  "clients/typescript/src/driver.ts::pgCancel": "async function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise\u003cvoid\u003e",
+  "clients/typescript/src/driver.ts::pgCancel": "function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise\u003cvoid\u003e",
   "clients/typescript/src/driver.ts::pgExecute": "async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number): Promise\u003cDriverResult\u003e",
   "clients/typescript/src/driver.ts::postgresZone": "export function postgresZone(zone: string): string",
   "clients/typescript/src/driver.ts::sessionError": "function sessionError(setup: SessionSetup): OrmError | undefined",

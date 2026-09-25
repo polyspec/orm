@@ -577,6 +577,34 @@ foreach ($targets as $driver => $dsn) {
     echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
 
+// A pooler in transaction mode hands one server session to every client in
+// turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
+// connection, so the statement timeout of one connection must bound only the
+// statements of that connection.
+$current = 'statement timeout through a pooler/postgres';
+try {
+    $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
+    if ($single === false || $single === '') {
+        throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+    }
+    $db = database('postgres', $targets['postgres']);
+    seed($db);
+    $db->close();
+    // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
+    $slow = 'pg_sleep(0.1) IS NOT NULL';
+    $bounded = Orm::connect($single, new Config(schemaPath: $schema, statementTimeoutMs: 200));
+    check(code(fn() => (new Battle)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
+    $plain = Orm::connect($single, new Config(schemaPath: $schema));
+    check((new Battle)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
+    check(code(fn() => (new Battle)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
+    $bounded->close();
+    $plain->close();
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+
 foreach ($targets as $driver => $dsn) {
     $current = "audit triggers/$driver";
     try {

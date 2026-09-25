@@ -25,6 +25,12 @@ final class Orm
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
         }
+        if ($driver === 'postgres' && $config->statementTimeoutMs > 0) {
+            // A startup parameter belongs to the client session, so a pooler
+            // in transaction mode sets it on every server connection it
+            // assigns to this connection and on no other.
+            $pdoDsn .= ";options='-c statement_timeout=" . $config->statementTimeoutMs . "'";
+        }
         try {
             $options = $driver === 'mysql' ? [\Pdo\Mysql::ATTR_FOUND_ROWS => true] : [];
             $pdo = new \PDO($pdoDsn, $user, $password, $options);
@@ -49,9 +55,6 @@ final class Orm
                 case 'postgres':
                     // Bound times carry no offset, so the session always uses the connection zone.
                     $pdo->exec('SET TIME ZONE ' . $pdo->quote(self::postgresZone($zoneName ?? $zone->getName())));
-                    if ($config->statementTimeoutMs > 0) {
-                        $pdo->exec('SET SESSION statement_timeout = ' . $config->statementTimeoutMs);
-                    }
                     break;
                 default:
                     $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();
