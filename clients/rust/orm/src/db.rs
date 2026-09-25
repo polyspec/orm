@@ -147,6 +147,9 @@ fn postgres_zone(zone: &str) -> String {
     zone.to_owned()
 }
 
+/// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
+const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
+
 /// Parses a DSN URI.
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
@@ -161,9 +164,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             "timezone" => zone_text = Some(v.into_owned()),
             "_pragma" if url.scheme() == "sqlite" => pragmas.push(v.into_owned()),
             "_txlock" if url.scheme() == "sqlite" => {
-                if v != "deferred" {
-                    return Err(bad("sqlite DSN _txlock must be deferred".into()));
-                }
+                return Err(bad("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE".into()));
             }
             _ => pairs.push((k.into_owned(), v.into_owned())),
         }
@@ -202,7 +203,11 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if !path.starts_with('/') || path.len() < 2 {
                 return Err(bad("sqlite DSN must include an absolute database path".into()));
             }
-            let mut o = SqliteConnectOptions::new().filename(path).create_if_missing(true).foreign_keys(true).busy_timeout(std::time::Duration::from_secs(5));
+            let mut o = SqliteConnectOptions::new()
+                .filename(path)
+                .create_if_missing(true)
+                .foreign_keys(true)
+                .busy_timeout(std::time::Duration::from_millis(SQLITE_BUSY_TIMEOUT_MS));
             for p in pragmas {
                 let (name, value) =
                     p.strip_suffix(')').and_then(|x| x.split_once('(')).ok_or_else(|| bad(format!("sqlite DSN _pragma {p:?} must be name(value)")))?;

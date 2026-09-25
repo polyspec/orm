@@ -27,7 +27,7 @@
 - `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 timezone 파라미터가 연결 시간대를 정하며, client는 자기 process에서 statement를 계획한다.
 - `model_queries`: 생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.
 - `model_writes`: 생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다.
-- `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다.
+- `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다.
 - `model_generation`: 언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.
 - `schema_definition`: Mermaid 다이어그램에서 schema.json을 만들고, dialect별 DDL을 렌더링하며, 데이터베이스를 다이어그램으로 가져오고, 두 manifest를 비교해 forward와 rollback migration을 만든다.
 - `schema_install`: 연결로 manifest를 설치한다. 모든 client가 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록한다.

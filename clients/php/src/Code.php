@@ -55,13 +55,13 @@ final class Code
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const CONFIG = 'CONFIG';
-    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs) */
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout) */
     public const CANCELED = 'CANCELED';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: a NOWAIT lock could not be acquired immediately */
     public const LOCK_NOT_AVAILABLE = 'LOCK_NOT_AVAILABLE';
-    /** driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions */
+    /** driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions */
     public const DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 / SQLSTATE 23000 */
     public const DUPLICATE_KEY = 'DUPLICATE_KEY';

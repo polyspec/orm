@@ -265,7 +265,9 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         }
         Pool::Sqlite(p) => {
             ensure_sqlite_lock_table(db).await?;
-            let mut t = p.begin().await?;
+            // A write transaction holds the write lock from its start and waits
+            // for it up to busy_timeout; a read-only one begins deferred.
+            let mut t = p.begin_with(if read_only { "BEGIN" } else { "BEGIN IMMEDIATE" }).await?;
             let uncommitted = isolation == Some(Isolation::ReadUncommitted);
             if uncommitted {
                 sqlx::raw_sql("PRAGMA read_uncommitted = 1").execute(&mut *t).await?;

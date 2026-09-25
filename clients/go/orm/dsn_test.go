@@ -11,7 +11,9 @@ func TestParseDSN(t *testing.T) {
 		{"postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=Asia/Seoul", "postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=Asia/Seoul", "Asia/Seoul"},
 		{"postgres offset", "postgres:///orm_example?host=/tmp&timezone=%2B09:00", "postgres", "postgres:///orm_example?host=%2Ftmp&timezone=%3C%2B09%3A00%3E-09%3A00", "+09:00"},
 		{"postgres socket", "postgres:///orm_example?host=/tmp", "postgres", "postgres:///orm_example?host=/tmp", "Local"},
-		{"sqlite", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(5000)&timezone=UTC", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=deferred", "UTC"},
+		{"sqlite", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(5000)&timezone=UTC", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=immediate", "UTC"},
+		{"sqlite lock wait", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%28250%29&_pragma=foreign_keys%281%29&_txlock=immediate", "Local"},
+		{"sqlite default lock wait", "sqlite:///tmp/orm_example.sqlite", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=immediate", "Local"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,6 +31,7 @@ func TestParseDSNRejectsInvalidInput(t *testing.T) {
 		"postgres://root@localhost",
 		"sqlite://relative.sqlite",
 		"sqlite:///tmp/orm_example.sqlite?_txlock=immediate",
+		"sqlite:///tmp/orm_example.sqlite?_txlock=deferred",
 		"mysql://root@localhost/orm_example?timezone=Nowhere/City",
 		"oracle://root@localhost/orm_example",
 		"root@tcp(localhost)/orm_example",

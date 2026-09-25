@@ -462,8 +462,9 @@ pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str)
         let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut **tx).await;
     }
     result.map_err(|error| {
+        let busy = crate::sqlite_busy(&error);
         let mapped = Error::from(error);
-        if nowait && mapped.is_deadlock() {
+        if nowait && busy {
             Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
         } else {
             mapped

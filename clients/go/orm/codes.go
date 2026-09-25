@@ -28,10 +28,10 @@ const (
 	CodeCodecEncode           = "CODEC_ENCODE"           // executor
 	CodeCodecUnsupported      = "CODEC_UNSUPPORTED"      // executor: PHP objects/references in serialize, unknown style
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
-	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs)
+	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
 	CodeInternal              = "INTERNAL"               // executor
 	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
-	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001; retries require TransactionOptions
+	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 	CodeDuplicateKey          = "DUPLICATE_KEY"          // driver: MySQL 1062 / SQLSTATE 23000
 	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
 	CodeConstraint            = "CONSTRAINT"             // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
