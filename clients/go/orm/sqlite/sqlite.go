@@ -19,16 +19,19 @@ import (
 
 func init() { orm.RegisterDriver("sqlite", "sqlite", mapErr) }
 
-// mapErr names the two conditions docs/errors.yaml maps; everything else keeps
-// the driver's own error. SQLite serialises writers, so BUSY/LOCKED is the
-// shape a deadlock takes here and the transaction is re-run.
+// mapErr names the conditions docs/errors.yaml maps; everything else keeps
+// the driver's own error. SQLITE_BUSY reports a lock that another connection
+// still held when the busy_timeout wait ended, so it is CANCELED.
 func mapErr(err error) error {
 	var se *sqlite.Error
 	if !errors.As(err, &se) {
 		return err
 	}
+	if se.Code()&0xff == 5 { // SQLITE_BUSY and its extended forms
+		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
+	}
 	switch se.Code() {
-	case 5, 6, 261, 262: // SQLITE_BUSY / SQLITE_LOCKED and their extended forms
+	case 6, 262: // SQLITE_LOCKED / SQLITE_LOCKED_SHAREDCACHE
 		return &ir.Error{Code: orm.CodeDeadlock, Msg: se.Error()}
 	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}

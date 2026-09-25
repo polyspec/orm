@@ -48,7 +48,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 
 ## Errors
 
-`orm::codes` is generated from `docs/errors.yaml` (`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
+`orm::codes` is generated from `docs/errors.yaml` (`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
 
 ## The statement hook
 

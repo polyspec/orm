@@ -24,10 +24,12 @@ expect($zone->getName() === 'Asia/Seoul' && $zoneName === 'Asia/Seoul', 'timezon
 expect($pdo === 'mysql:unix_socket=/tmp/mysql.sock;dbname=orm_example;charset=utf8mb4', "mysql socket: $pdo");
 [$driver, $pdo, , , $zone] = Orm::parseDsn('postgres:///orm_example?host=/tmp&timezone=%2B00:00');
 expect($driver === 'postgres' && $pdo === 'pgsql:host=/tmp;port=5432;dbname=orm_example' && $zone->getName() === '+00:00', "postgres: $pdo");
-[$driver, $pdo] = Orm::parseDsn('sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(5000)');
+[$driver, $pdo, , , , , $pragmas] = Orm::parseDsn('sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)&_pragma=journal_mode(WAL)');
 expect($driver === 'sqlite' && $pdo === 'sqlite:/tmp/orm_example.sqlite', "sqlite: $pdo");
+expect($pragmas === [['busy_timeout', '250'], ['journal_mode', 'WAL']], 'sqlite pragmas: ' . json_encode($pragmas));
 
-foreach (['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relative.sqlite', 'mysql://localhost/', 'postgres://localhost/orm_example?timezone=Nowhere'] as $dsn) {
+foreach (['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relative.sqlite', 'mysql://localhost/', 'postgres://localhost/orm_example?timezone=Nowhere',
+    'sqlite:///tmp/orm_example.sqlite?_txlock=immediate', 'sqlite:///tmp/orm_example.sqlite?_txlock=deferred', 'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn) {
     try {
         Orm::parseDsn($dsn);
         throw new RuntimeException("invalid DSN accepted: $dsn");

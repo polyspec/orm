@@ -344,9 +344,11 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	}
 	txo := &sql.TxOptions{Isolation: level, ReadOnly: o.readOnly}
 	if d.driver == "sqlite" {
-		// The SQLite driver rejects these flags; the ORM applies them on the
-		// transaction connection.
-		txo = &sql.TxOptions{}
+		// The ORM applies the isolation and read-only modes on the
+		// transaction connection. The read-only flag selects a deferred
+		// BEGIN; every other transaction begins with the DSN's
+		// _txlock=immediate and holds the write lock from its start.
+		txo = &sql.TxOptions{ReadOnly: o.readOnly}
 		if err := ensureSQLiteRowLock(d.ctx, d); err != nil {
 			return nil, err
 		}
