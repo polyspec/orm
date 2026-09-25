@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
+import { connect as netConnect } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
 import { OrmError } from './runtime_error.js';
@@ -242,15 +243,27 @@ async function pgExecute(client: pg.PoolClient, sql: string, params: readonly Dr
 }
 
 /**
- * Asks PostgreSQL to stop the statement of a backend. The request runs on a
- * connection of its own so a busy pool cannot hold it up.
+ * Sends the protocol cancel request for the statement of a client: the
+ * process id and secret key the server sent the client at startup, on a
+ * socket of its own so a busy pool cannot hold it up. A pooler maps the pair
+ * to the server connection that runs the statement.
  */
-async function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
-  const pid = (client as unknown as { processID: number | null }).processID;
-  if (pid === null || pid === undefined) return;
-  const canceller = new pg.Client(config as pg.ClientConfig);
-  await canceller.connect();
-  try { await canceller.query('SELECT pg_cancel_backend($1)', [pid]); } finally { await canceller.end(); }
+function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
+  const key = client as unknown as { processID: number | null; secretKey: number | null };
+  if (key.processID === null || key.secretKey === null) return Promise.resolve();
+  const target = new pg.Client(config as pg.ClientConfig) as unknown as { host: string; port: number };
+  const request = Buffer.alloc(16);
+  request.writeInt32BE(16, 0);
+  request.writeInt32BE(80877102, 4);
+  request.writeInt32BE(key.processID, 8);
+  request.writeInt32BE(key.secretKey, 12);
+  return new Promise((resolve, reject) => {
+    const socket = target.host.startsWith('/') ? netConnect(`${target.host}/.s.PGSQL.${target.port}`) : netConnect(target.port, target.host);
+    socket.once('error', reject);
+    socket.once('connect', () => socket.end(request));
+    // The server closes the socket after it has handled the request.
+    socket.once('close', () => resolve());
+  });
 }
 
 class PostgresPoolDriver implements DriverPool {

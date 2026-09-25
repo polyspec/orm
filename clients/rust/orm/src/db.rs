@@ -188,7 +188,10 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if host.is_empty() || url.path().trim_matches('/').is_empty() {
                 return Err(bad("postgres DSN must include host and database".into()));
             }
-            let mut o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?;
+            // The server default extra_float_digits of PostgreSQL 12 and later
+            // prints float8 values exactly, and a pooler rejects a startup
+            // parameter it does not track, so the connection sends none.
+            let mut o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None);
             if let Some(z) = &zone_text {
                 o = o.options([("timezone", postgres_zone(z).as_str())]);
             }
@@ -282,20 +285,14 @@ impl Db {
                     .connect_with(o.statement_cache_capacity(cache))
                     .await?,
             ),
-            ConnectOptions::Postgres(o) => Pool::Postgres(
-                PgPoolOptions::new()
-                    .max_connections(pool_size)
-                    .after_connect(move |conn, _| {
-                        Box::pin(async move {
-                            if timeout > 0 {
-                                sqlx::query(sqlx::AssertSqlSafe(format!("SET SESSION statement_timeout = {timeout}"))).execute(&mut *conn).await?;
-                            }
-                            Ok(())
-                        })
-                    })
-                    .connect_with(o.statement_cache_capacity(cache))
-                    .await?,
-            ),
+            // PostgreSQL bounds every statement with statement_timeout, sent
+            // as a startup parameter: it belongs to the client session, so a
+            // pooler in transaction mode sets it on every server connection it
+            // assigns to this connection and on no other.
+            ConnectOptions::Postgres(o) => {
+                let o = if timeout > 0 { o.options([("statement_timeout", timeout.to_string())]) } else { o };
+                Pool::Postgres(PgPoolOptions::new().max_connections(pool_size).connect_with(o.statement_cache_capacity(cache)).await?)
+            }
             ConnectOptions::Sqlite(o) => {
                 let pool = SqlitePoolOptions::new().max_connections(pool_size).connect_with(o.statement_cache_capacity(cache)).await?;
                 let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;

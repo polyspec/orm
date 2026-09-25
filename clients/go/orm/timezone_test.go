@@ -294,3 +294,75 @@ func TestStatementTimeout(t *testing.T) {
 		})
 	}
 }
+
+// TestStatementTimeoutThroughAPooler checks that the statement timeout of one
+// connection bounds only the statements of that connection when a pooler in
+// transaction mode hands one server session to every client in turn: through
+// ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
+func TestStatementTimeoutThroughAPooler(t *testing.T) {
+	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
+	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
+	d, err := schema.Parse(zoneSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eng, err := engine.New(m, "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dropTable(t, "postgres", base, "zone_event")
+	defer dropTable(t, "postgres", base, "zone_event")
+	setup, err := orm.Open(base, eng, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer setup.Close()
+	if err := setup.Utils().Schema().Install(manifest); err != nil {
+		t.Fatal(err)
+	}
+	ent := zoneEntity(m.SchemaHash)
+	// Three rows sleep 0.1 s each, so the statement runs past 200 ms.
+	for i := 0; i < 3; i++ {
+		row := orm.NewCore(ent)
+		ent.New(row)
+		row.Connect(setup)
+		row.Set("start_dt", time.Now())
+		if _, err := row.Create(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	slowCount := func(db *orm.DB) (int64, error) {
+		c := orm.NewCore(ent)
+		ent.New(c)
+		c.Connect(db)
+		c.Raw("", "pg_sleep(0.1) IS NOT NULL", nil)
+		return c.GetCount()
+	}
+	bounded, err := orm.Open(single, eng, orm.Config{StatementTimeoutMs: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bounded.Close()
+	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
+		t.Fatalf("the bounded connection through the pooler: %v", err)
+	}
+	plain, err := orm.Open(single, eng, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plain.Close()
+	if n, err := slowCount(plain); err != nil || n != 3 {
+		t.Fatalf("a connection without a timeout after the bounded one: %d, %v", n, err)
+	}
+	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
+		t.Fatalf("the bounded connection after the plain one: %v", err)
+	}
+}
