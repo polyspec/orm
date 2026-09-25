@@ -131,7 +131,7 @@
       "source": "git history",
       "checker": "git-check",
       "failure": "a new commit subject does not use type: concise English description",
-      "baseline": "7e51de95528d8e7ae848ed889124c0bd2fc25b61",
+      "baseline": "1f73a409722c19c46e825381a1cea40698a04996",
       "types": [
         "feat",
         "fix",
