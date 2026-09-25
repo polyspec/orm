@@ -280,14 +280,18 @@ function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
 
 class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
-  public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly config: pg.PoolConfig) {}
+  public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {}
+  /** Returns client to the pool, or closes it when the pool already keeps idleSize idle connections. */
+  private release(client: pg.PoolClient): void {
+    client.release(this.pool.idleCount >= this.idleSize);
+  }
   public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     try {
       const work = pgExecute(client, sql, params, this.cacheSize);
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
-    } finally { client.release(); }
+    } finally { this.release(client); }
   }
   public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
     let client: pg.PoolClient;
@@ -301,10 +305,10 @@ class PostgresPoolDriver implements DriverPool {
       if ((options.timeoutMs ?? 0) > 0) await client.query(`SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs!)}`);
     } catch (error) {
       if (began) await client.query('ROLLBACK').catch(() => undefined);
-      client.release();
+      this.release(client);
       throw driverError(this.name, error);
     }
-    return new PostgresTx(client, this.cacheSize, this.config);
+    return new PostgresTx(client, this.cacheSize, this.config, () => this.release(client));
   }
   public stats(): PoolStats {
     return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };
@@ -314,7 +318,7 @@ class PostgresPoolDriver implements DriverPool {
 
 class PostgresTx implements DriverTransaction {
   public readonly name = 'postgres' as const;
-  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig) {}
+  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly release: () => void) {}
   public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     const work = pgExecute(this.client, sql, params, this.cacheSize);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
@@ -326,10 +330,10 @@ class PostgresTx implements DriverTransaction {
     } catch (error) { throw driverError(this.name, error); }
   }
   public async commit(): Promise<void> {
-    try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.client.release(); }
+    try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   public async rollback(): Promise<void> {
-    try { await this.client.query('ROLLBACK'); } finally { this.client.release(); }
+    try { await this.client.query('ROLLBACK'); } finally { this.release(); }
   }
   public async rowLock(): Promise<void> {}
 }
@@ -505,7 +509,55 @@ export function offsetText(minutes: number): string {
   return `${minutes < 0 ? '-' : '+'}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
 }
 
-export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
+/**
+ * Bounds of a connection pool: at most size open connections, at most
+ * idleSize idle connections, and a connection lifetime of lifetimeMs
+ * milliseconds when it is not zero.
+ */
+export interface PoolBounds { size: number; idleSize: number; lifetimeMs: number; }
+
+/** The callback pool of mysql2 under its promise wrapper. */
+interface MySqlCorePool {
+  _closed: boolean;
+  _freeConnections: { length: number; get(index: number): unknown };
+  on(event: 'connection' | 'release', listener: (connection: MySqlCoreConnection) => void): void;
+}
+
+interface MySqlCoreConnection {
+  query(sql: string, done: (error: unknown) => void): void;
+  destroy(): void;
+}
+
+function mysqlIdle(pool: MySqlCorePool, connection: MySqlCoreConnection): boolean {
+  for (let i = 0; i < pool._freeConnections.length; i++) if (pool._freeConnections.get(i) === connection) return true;
+  return false;
+}
+
+/**
+ * Applies the idle size and lifetime of bounds to a mysql2 pool: a released
+ * connection is closed when the pool already keeps idleSize idle connections
+ * or when its lifetime has passed, and an idle connection is closed when its
+ * lifetime passes.
+ */
+function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
+  const expired = new WeakSet<MySqlCoreConnection>();
+  if (bounds.lifetimeMs > 0) {
+    pool.on('connection', connection => {
+      setTimeout(() => {
+        expired.add(connection);
+        if (!pool._closed && mysqlIdle(pool, connection)) connection.destroy();
+      }, bounds.lifetimeMs).unref();
+    });
+  }
+  if (bounds.lifetimeMs > 0 || bounds.idleSize < bounds.size) {
+    // mysql2 emits release after the connection joined the idle connections.
+    pool.on('release', connection => {
+      if (expired.has(connection) || pool._freeConnections.length > bounds.idleSize) connection.destroy();
+    });
+  }
+}
+
+export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
   const url = new URL(dsn);
   url.searchParams.delete('timezone');
   switch (parsed.driver) {
@@ -516,7 +568,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, stateme
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
         database: decodeURIComponent(url.pathname.slice(1)),
-        connectionLimit: pool,
+        connectionLimit: bounds.size,
         namedPlaceholders: false,
         dateStrings: true,
         decimalNumbers: true,
@@ -526,20 +578,23 @@ export function openDriver(dsn: string, parsed: ParsedDsn, pool: number, stateme
       // Without a timezone parameter the session uses the offset of the process time zone.
       const zone = () => `'${(parsed.zone !== '' ? parsed.zone : offsetText(zoneOffset('', new Date()))).replaceAll("'", "''")}'`;
       const setup: SessionSetup = {};
-      (created as unknown as { pool: { on(event: 'connection', listener: (connection: { query(sql: string, done: (error: unknown) => void): void }) => void): void } }).pool
-        .on('connection', connection => {
-          // MySQL bounds SELECT statements with max_execution_time.
-          const session = statementTimeoutMs > 0 ? `SET time_zone = ${zone()}, SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = ${zone()}`;
-          connection.query(session, error => { if (error) setup.error = error; });
-        });
-      return new MySqlPoolDriver(created, setup, pool);
+      const core = (created as unknown as { pool: MySqlCorePool }).pool;
+      core.on('connection', connection => {
+        // MySQL bounds SELECT statements with max_execution_time.
+        const session = statementTimeoutMs > 0 ? `SET time_zone = ${zone()}, SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = ${zone()}`;
+        connection.query(session, error => { if (error) setup.error = error; });
+      });
+      boundMySqlPool(core, bounds);
+      return new MySqlPoolDriver(created, setup, bounds.size);
     }
     case 'postgres': {
-      const config: pg.PoolConfig = { connectionString: url.toString(), max: pool };
+      const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
+      // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
+      if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
       // Without a timezone parameter the session uses the process time zone.
       config.options = `-c TimeZone=${parsed.zone !== '' ? postgresZone(parsed.zone) : Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
-      return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, pool, config);
+      return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
     }
     case 'sqlite': {
       const pragmas = url.searchParams.getAll('_pragma').map(pragma => {

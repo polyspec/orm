@@ -756,6 +756,33 @@ try {
           })));
           check(peak === 2 && opened <= 2, `pool of 2: ${peak} concurrent transactions, ${opened} open connections`);
         } finally { await bounded.close(); }
+        // Three transactions hold three connections at once; after they end
+        // the pool keeps one idle connection and closes the others.
+        const idle = await Db.connect(dsn, schemaPath, { poolSize: 3, poolIdleSize: 1 });
+        try {
+          let release;
+          let arrived;
+          const held = new Promise(resolve => { release = resolve; });
+          const allStarted = new Promise(resolve => { arrived = resolve; });
+          let started = 0;
+          const all = Promise.all(Array.from({ length: 3 }, () => idle.transaction(async () => { if (++started === 3) arrived(); await held; })));
+          await allStarted;
+          check(idle.utils().stats().openConnections === 3, `three transactions hold ${idle.utils().stats().openConnections} connections`);
+          release();
+          await all;
+          const stats = idle.utils().stats();
+          check(stats.idle === 1 && stats.openConnections === 1, `pool idle size 1 keeps ${stats.idle} idle of ${stats.openConnections} open connections`);
+        } finally { await idle.close(); }
+        // A connection is closed when its lifetime passes, idle or at its release.
+        const aged = await Db.connect(dsn, schemaPath, { poolLifetimeMs: 100 });
+        try {
+          check(aged.utils().stats().openConnections === 1, 'the connection opened by connect');
+          await new Promise(resolve => setTimeout(resolve, 400));
+          check(aged.utils().stats().openConnections === 0, `pool lifetime 100 ms keeps ${aged.utils().stats().openConnections} connections open after 400 ms`);
+        } finally { await aged.close(); }
+      }
+      for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolLifetimeMs: -1 }]) {
+        check(await code(Db.connect(dsn, schemaPath, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
     console.log(`${current} done`);

@@ -263,6 +263,110 @@ func TestPoolSize(t *testing.T) {
 	}
 }
 
+// TestPoolIdleSizeAndLifetime keeps at most PoolIdleSize idle connections,
+// closes a connection PoolLifetimeMs after it was opened, and rejects a
+// negative value or an idle size above the pool size with CONFIG.
+func TestPoolIdleSizeAndLifetime(t *testing.T) {
+	targets := map[string]string{
+		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-idle.sqlite"),
+		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
+		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
+	}
+	d, err := schema.Parse(zoneSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for driver, dsn := range targets {
+		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
+			eng, err := engine.New(m, driver)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, cfg := range []orm.Config{{PoolIdleSize: -1}, {PoolSize: 3, PoolIdleSize: 4}, {PoolIdleSize: 11}, {PoolLifetimeMs: -1}} {
+				if _, err := orm.Open(dsn, eng, cfg); orm.ErrorCode(err) != orm.CodeConfig {
+					t.Fatalf("pool idle size %d, lifetime %d: %v, want CONFIG", cfg.PoolIdleSize, cfg.PoolLifetimeMs, err)
+				}
+			}
+			// Three read-only transactions hold three connections at once,
+			// and SQLite begins them without the write lock; after they end
+			// the pool keeps one idle connection and closes the others.
+			idle, err := orm.Open(dsn, eng, orm.Config{PoolSize: 3, PoolIdleSize: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer idle.Close()
+			var started, release sync.WaitGroup
+			started.Add(3)
+			release.Add(1)
+			var wg sync.WaitGroup
+			for i := 0; i < 3; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := idle.Transaction(func() error {
+						started.Done()
+						release.Wait()
+						return nil
+					}, orm.ReadOnly())
+					if err != nil {
+						t.Error(err)
+					}
+				}()
+			}
+			started.Wait()
+			if open := idle.Stats().OpenConnections; open != 3 {
+				t.Errorf("three transactions hold %d connections", open)
+			}
+			release.Done()
+			wg.Wait()
+			if st := idle.Stats(); st.Idle != 1 || st.OpenConnections != 1 {
+				t.Fatalf("pool idle size 1 keeps %d idle of %d open connections", st.Idle, st.OpenConnections)
+			}
+			unset, err := orm.Open(dsn, eng, orm.Config{PoolSize: 3})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer unset.Close()
+			started.Add(3)
+			release.Add(1)
+			for i := 0; i < 3; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					if err := unset.Transaction(func() error { started.Done(); release.Wait(); return nil }, orm.ReadOnly()); err != nil {
+						t.Error(err)
+					}
+				}()
+			}
+			started.Wait()
+			release.Done()
+			wg.Wait()
+			if st := unset.Stats(); st.Idle != 3 {
+				t.Fatalf("pool idle size unset keeps %d idle connections, want the pool size 3", st.Idle)
+			}
+			// The pool closes an idle connection whose lifetime has passed
+			// on its next cleanup, which runs at least once a second.
+			aged, err := orm.Open(dsn, eng, orm.Config{PoolLifetimeMs: 100})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer aged.Close()
+			if err := aged.Transaction(func() error { return nil }); err != nil {
+				t.Fatal(err)
+			}
+			time.Sleep(2 * time.Second)
+			if open := aged.Stats().OpenConnections; open != 0 {
+				t.Fatalf("pool lifetime 100 ms keeps %d connections open after 2 s", open)
+			}
+		})
+	}
+}
+
 // TestStatementTimeout bounds every statement of the connection. MySQL bounds
 // SELECT statements, PostgreSQL bounds every statement, and SQLite has no
 // session timeout.

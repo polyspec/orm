@@ -28,7 +28,9 @@ type Config struct {
 	BlindIndexKey      string           // secret for encrypted equality indexes
 	AESVersion         int32            // version written with AES payloads; zero selects 1
 	AESKeys            map[int32]string // every declared version, used to decode mixed-version rows
-	PoolSize           int              // maximum open and idle connections; zero uses 10
+	PoolSize           int              // maximum open connections; zero uses 10
+	PoolIdleSize       int              // maximum idle connections; zero keeps up to PoolSize
+	PoolLifetimeMs     int              // lifetime of a connection in milliseconds; zero keeps connections without a bound
 	StatementTimeoutMs int              // bound of every statement of the connection; zero keeps the server default
 	PlanCacheSize      int              // maximum compiled plans; zero uses the default
 	StatementCacheSize int              // maximum prepared statements; zero uses the default
@@ -232,8 +234,20 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 	if cfg.PoolSize == 0 {
 		cfg.PoolSize = defaultPoolSize
 	}
+	if cfg.PoolIdleSize < 0 || cfg.PoolIdleSize > cfg.PoolSize {
+		s.Close()
+		return nil, configErr("pool idle size must be between 0 and the pool size %d", cfg.PoolSize)
+	}
+	if cfg.PoolIdleSize == 0 {
+		cfg.PoolIdleSize = cfg.PoolSize
+	}
+	if cfg.PoolLifetimeMs < 0 {
+		s.Close()
+		return nil, configErr("pool lifetime must not be negative")
+	}
 	s.SetMaxOpenConns(cfg.PoolSize)
-	s.SetMaxIdleConns(cfg.PoolSize)
+	s.SetMaxIdleConns(cfg.PoolIdleSize)
+	s.SetConnMaxLifetime(time.Duration(cfg.PoolLifetimeMs) * time.Millisecond)
 	if err := s.PingContext(ctx); err != nil {
 		s.Close()
 		return nil, mapDriverErr(err)
