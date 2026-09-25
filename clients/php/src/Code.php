@@ -69,4 +69,6 @@ final class Code
     public const FOREIGN_KEY = 'FOREIGN_KEY';
     /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
     public const CONSTRAINT = 'CONSTRAINT';
+    /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
+    public const READ_ONLY = 'READ_ONLY';
 }

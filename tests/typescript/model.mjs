@@ -5,7 +5,7 @@
 // The test drops and recreates the schema tables in those databases.
 //
 // Usage: node tests/typescript/model.mjs (after npm run typescript:build)
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -92,7 +92,7 @@ async function primaryAndReplica(dialect, primary, replica) {
     await awaitReplica(dialect, primary, replica);
     slave1 = await connect(replica);
     check(await new User().connect(slave1).name(name).getCount() === 1, 'the replica reads the row written through the primary');
-    check(await code(new User().connect(slave1).setName(`${name}-replica`).create()) !== null, 'a write through the replica connection is rejected');
+    check(await code(new User().connect(slave1).setName(`${name}-replica`).create()) === 'READ_ONLY', 'a write through the replica connection is rejected');
     check(await new User().connect(master).name(`${name}-replica`).getCount() === 0, 'a write through the replica connection does not reach the primary');
     // A row read through the replica is written through the primary.
     await (await new User().connect(slave1).name(name).get()).connect(master).setName(`${name}-renamed`).update();
@@ -860,6 +860,25 @@ try {
       try { await connectionTimeZone(db, offset); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
       console.log(`${current} done`);
     }
+  }
+  {
+    // A connection to a SQLite database file that the process may only read:
+    // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
+    current = 'sqlite/readOnly';
+    const path = join(work, 'read-only.sqlite');
+    const dsn = `sqlite://${path}`;
+    try {
+      await install('sqlite', dsn);
+      const writable = await connect(dsn);
+      try { await new User().connect(writable).setName('read-only').create(); } finally { await writable.close(); }
+      await chmod(path, 0o444);
+      const readOnly = await connect(dsn);
+      try {
+        check(await new User().connect(readOnly).name('read-only').getCount() === 1, 'the read-only database reads the row');
+        check(await code(new User().connect(readOnly).setName('rejected').create()) === 'READ_ONLY', 'a write to the read-only database');
+      } finally { await readOnly.close(); }
+    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    console.log(`${current} done`);
   }
   for (const [dialect, primary] of targets) {
     if (dialect === 'sqlite') continue;

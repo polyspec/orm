@@ -35,4 +35,5 @@ const (
 	CodeDuplicateKey          = "DUPLICATE_KEY"          // driver: MySQL 1062 / SQLSTATE 23000
 	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
 	CodeConstraint            = "CONSTRAINT"             // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
+	CodeReadOnly              = "READ_ONLY"              // driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
 )

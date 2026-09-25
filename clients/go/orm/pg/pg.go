@@ -36,6 +36,8 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: pe.Error()}
 	case "23514": // check_violation
 		return &ir.Error{Code: orm.CodeConstraint, Msg: pe.Error()}
+	case "25006": // read_only_sql_transaction, including a write on a standby
+		return &ir.Error{Code: orm.CodeReadOnly, Msg: pe.Error()}
 	case "57014": // query_canceled, including statement_timeout
 		return &ir.Error{Code: orm.CodeCanceled, Msg: pe.Error()}
 	}

@@ -42,5 +42,8 @@ func mapErr(err error) error {
 	case 9: // SQLITE_INTERRUPT: the statement was cancelled
 		return &ir.Error{Code: orm.CodeCanceled, Msg: se.Error()}
 	}
+	if se.Code()&0xff == 8 { // SQLITE_READONLY and its extended forms
+		return &ir.Error{Code: orm.CodeReadOnly, Msg: se.Error()}
+	}
 	return err
 }

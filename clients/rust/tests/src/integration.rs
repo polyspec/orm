@@ -432,7 +432,11 @@ async fn primary_and_replica(t: &Target, replica_dsn: &str) {
     User::new().connect(master).set_name(&name).create().await.unwrap();
     await_replica(master, &slave1).await;
     assert_eq!(User::new().connect(&slave1).name(name.as_str()).get_count().await.unwrap(), 1, "the replica reads the row written through the primary");
-    assert!(User::new().connect(&slave1).set_name(format!("{name}-replica")).create().await.is_err(), "a write through the replica connection is rejected");
+    assert_eq!(
+        code(User::new().connect(&slave1).set_name(format!("{name}-replica")).create().await),
+        orm::codes::READ_ONLY,
+        "a write through the replica connection is rejected"
+    );
     assert_eq!(
         User::new().connect(master).name(format!("{name}-replica").as_str()).get_count().await.unwrap(),
         0,
@@ -455,6 +459,20 @@ async fn primary_and_replica(t: &Target, replica_dsn: &str) {
     let committed = vec![format!("{name}-renamed"), tx_name.clone()];
     assert_eq!(User::new().connect(&slave1).name(committed).get_count().await.unwrap(), 2, "the replica reads the committed rows");
     slave1.close().await;
+}
+
+/// Writes through a connection to a SQLite database file the process may
+/// only read: SQLite opens it read-only, reads succeed, and a write returns
+/// READ_ONLY.
+async fn read_only_sqlite(t: &Target, path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+    User::new().connect(&t.db).set_name("read-only").create().await.unwrap();
+    t.db.close().await;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
+    let db = Db::connect(&t.dsn, 2, config()).await.unwrap();
+    assert_eq!(User::new().connect(&db).name("read-only").get_count().await.unwrap(), 1, "the read-only database reads the row");
+    assert_eq!(code(User::new().connect(&db).set_name("rejected").create().await), orm::codes::READ_ONLY, "a write to the read-only database");
+    db.close().await;
 }
 
 /// Checks schema().empty() on a database without the test tables, with an
@@ -591,7 +609,8 @@ async fn main() {
     }
     for t in env.databases("primary_and_replica").await {
         if t.driver == "sqlite" {
-            t.db.close().await;
+            read_only_sqlite(&t, &tmp.join("primary_and_replica.sqlite")).await;
+            println!("ok read_only_sqlite");
             continue;
         }
         let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());

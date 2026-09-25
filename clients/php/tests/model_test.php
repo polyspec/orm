@@ -714,13 +714,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         awaitReplica($driver, $targets[$driver], $replica);
         $slave1 = Orm::connect($replica, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
         check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
-        $rejected = false;
-        try {
-            (new User)($slave1)->setName("$name-replica")->create();
-        } catch (Throwable) {
-            $rejected = true;
-        }
-        check($rejected, 'a write through the replica connection is rejected');
+        check(code(fn() => (new User)($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
         check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
         // A row read through the replica is written through the primary.
         (new User)($slave1)->name($name)->get()->connect($master)->setName("$name-renamed")->update();
@@ -739,6 +733,25 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
     }
     echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
+
+// A connection to a SQLite database file that the process may only read:
+// SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
+$current = 'read-only/sqlite';
+try {
+    $path = "$work/read-only.sqlite";
+    $writable = database('sqlite', "sqlite://$path");
+    (new User)($writable)->setName('read-only')->create();
+    $writable->close();
+    chmod($path, 0o444);
+    $readOnly = Orm::connect("sqlite://$path", new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    check((new User)($readOnly)->name('read-only')->getCount() === 1, 'the read-only database reads the row');
+    check(code(fn() => (new User)($readOnly)->setName('rejected')->create()) === Code::READ_ONLY, 'a write to the read-only database');
+    $readOnly->close();
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 
 if ($failures > 0) {
     fwrite(STDERR, "php model test: $failures failures\n");
