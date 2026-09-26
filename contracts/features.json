@@ -160,7 +160,8 @@
         "engine/engine_test.go",
         "clients/go/orm/jsontext_order_test.go",
         "clients/rust/orm/tests/model_output.rs",
-        "clients/rust/orm/tests/value_decode.rs"
+        "clients/rust/orm/tests/value_decode.rs",
+        "tests/conformance/runner_go/main_test.go"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1285,6 +1286,7 @@
       "tests": [
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
+        "tests/conformance/runner_go/main_test.go",
         "tests/conformance/runner.php",
         "tests/conformance/runner_typescript.mjs",
         "clients/rust/tests/src/conformance.rs"
@@ -1297,6 +1299,10 @@
         {
           "id": "conformance-build",
           "command": "go vet ./tests/conformance/check ./tests/conformance/runner_go"
+        },
+        {
+          "id": "conformance-runner-go",
+          "command": "go test ./tests/conformance/runner_go -count=1 -timeout 45s"
         }
       ],
       "vector_contract": {
