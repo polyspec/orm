@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -19,7 +20,7 @@ type SoftRecordModel struct {
 }
 
 var softRecordEntity = &orm.Entity{Name: "soft_record", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &SoftRecordModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*SoftRecordModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*SoftRecordModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*SoftRecordModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*SoftRecordModel](keys, items, fetched)
@@ -39,23 +40,40 @@ func (x *SoftRecordModel) MarshalJSON() ([]byte, error) { return x.m.MarshalJSON
 // ToArray returns the row values.
 func (x *SoftRecordModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *SoftRecordModel) assign(name string, v any) bool {
+func (x *SoftRecordModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "seq":
-		x.fSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column seq: %w", err)
+		}
+		x.fSeq = t
 	case "name":
-		x.fName = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column name: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column name: %w", err)
+		}
+		x.fName = t
 	case "deleted_at":
 		if v == nil {
 			x.fDeletedAt = nil
-		} else {
-			t := orm.AsTime(v)
-			x.fDeletedAt = &t
+			break
 		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column deleted_at: %w", err)
+		}
+		x.fDeletedAt = &t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *SoftRecordModel) value(name string) (any, bool) {

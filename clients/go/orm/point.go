@@ -42,7 +42,11 @@ func ParsePoint(v any) (Point, error) {
 		}
 		return p, nil
 	}
-	s := strings.TrimSpace(AsString(v))
+	s, err := AsString(v)
+	if err != nil {
+		return Point{}, err
+	}
+	s = strings.TrimSpace(s)
 	if strings.HasPrefix(strings.ToUpper(s), "POINT(") && strings.HasSuffix(s, ")") {
 		s = strings.TrimSpace(s[6 : len(s)-1])
 	} else if strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
@@ -51,7 +55,7 @@ func ParsePoint(v any) (Point, error) {
 	s = strings.ReplaceAll(s, ",", " ")
 	parts := strings.Fields(s)
 	if len(parts) != 2 {
-		return Point{}, &ir.Error{Code: CodeCodecDecode, Msg: fmt.Sprintf("point requires two coordinates: %q", AsString(v))}
+		return Point{}, &ir.Error{Code: CodeCodecDecode, Msg: fmt.Sprintf("point requires two coordinates: %q", s)}
 	}
 	var p Point
 	for i := range p {
@@ -65,4 +69,4 @@ func ParsePoint(v any) (Point, error) {
 }
 
 // AsPoint converts a database result. Dialects return a validated point text.
-func AsPoint(v any) Point { p, _ := ParsePoint(v); return p }
+func AsPoint(v any) (Point, error) { return ParsePoint(v) }

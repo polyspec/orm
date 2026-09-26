@@ -59,6 +59,23 @@ func TestBlindIndexIsStableAndKeyed(t *testing.T) {
 	}
 }
 
+func TestHostEncodingRejectsUnsupportedInput(t *testing.T) {
+	for _, input := range []any{int64(7), true, struct{ Text string }{Text: "seven"}} {
+		if _, err := HostEncode(input, []string{"aes"}, "key"); ErrorCode(err) != CodeCodecEncode {
+			t.Errorf("HostEncode(%T) error = %v", input, err)
+		}
+		if _, err := BlindIndex(input, "key"); ErrorCode(err) != CodeCodecEncode {
+			t.Errorf("BlindIndex(%T) error = %v", input, err)
+		}
+	}
+	if _, err := HostEncode("value", nil, "key"); ErrorCode(err) != CodeCodecEncode {
+		t.Errorf("empty host style list: %v", err)
+	}
+	if _, err := HostEncode(nil, []string{"unknown"}, "key"); ErrorCode(err) != CodeCodecUnsupported {
+		t.Errorf("unknown host stage for null: %v", err)
+	}
+}
+
 func TestHostAESDecodesByStoredVersion(t *testing.T) {
 	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
 	if err != nil {

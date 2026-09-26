@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -18,7 +19,7 @@ type AccountProjectModel struct {
 }
 
 var accountProjectEntity = &orm.Entity{Name: "account_project", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &AccountProjectModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*AccountProjectModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*AccountProjectModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*AccountProjectModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*AccountProjectModel](keys, items, fetched)
@@ -38,16 +39,30 @@ func (x *AccountProjectModel) MarshalJSON() ([]byte, error) { return x.m.Marshal
 // ToArray returns the row values.
 func (x *AccountProjectModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *AccountProjectModel) assign(name string, v any) bool {
+func (x *AccountProjectModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "account_seq":
-		x.fAccountSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column account_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column account_seq: %w", err)
+		}
+		x.fAccountSeq = t
 	case "project_seq":
-		x.fProjectSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column project_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column project_seq: %w", err)
+		}
+		x.fProjectSeq = t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *AccountProjectModel) value(name string) (any, bool) {

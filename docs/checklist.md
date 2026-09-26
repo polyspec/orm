@@ -60,8 +60,11 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] N5.1.1.2 Reject duplicate keys in nested JSON evidence and expectations, and fail when a database expectation file is missing.
 - [o] N5.1.1.3 Redact database connection strings in runner command logs for both `-dsn` and `--dsn` flags.
 - [~] N5.1.2 Make all four conformance runners propagate unexpected errors, clean write state on failure, and enforce the common aggregate scalar rule on all three databases.
+- [o] N5.1.2.1 Make Go value conversion, host encoding, and generated model assignment report malformed, null, overflowing, and unsupported values. Verify valid values with executable tests; propagate assignment failures through row assembly and validate insert fields before writing.
 - [o] N5.1.2.2 Reject invalid and nonfinite PHP and TypeScript aggregate scalars and verify nearest binary64 conversion with the shared nine-case fixture.
+- [ ] N5.1.2.3 Preserve exact decimal column values in generated models in all four clients. A generated decimal field must not accept `48.0450` as an approximated binary64 value; add equivalent RED cases and GREEN database evidence for MySQL, PostgreSQL, and SQLite. Scalar aggregate results follow their separate finite binary64 conversion rule.
 - [o] N5.1.2.4 Require an `auto` column to be a non-null signed `i64` primary key in the Go, PHP, Rust, and TypeScript schema builders. Each language executes the same accepted and rejected Mermaid cases and reports the source line for a rejected declaration.
+- [ ] N5.1.2.5 Replace Go scalar and collection key string fallback with an exact typed key representation. Verify that unsupported values fail, distinct values cannot collide, and relation, split-query, and collection callers propagate errors.
 - [~] N5.1.2.6 Distinguish SQL NULL, an encoded null value, and an unselected styled value column in the four clients on all three databases. Verify storage text, getters, row arrays, model JSON output, and errors with one shared fixture.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
