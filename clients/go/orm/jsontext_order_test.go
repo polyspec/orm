@@ -33,14 +33,14 @@ func jsonTextEntity(hash string) *orm.Entity {
 			c.Bind(r)
 			return r
 		},
-		Assign: func(m orm.Model, name string, v any) bool {
+		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range jsonTextColumns {
 				if c == name {
 					m.(*jsonTextRow).vals[name] = v
-					return true
+					return true, nil
 				}
 			}
-			return false
+			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
 			v, ok := m.(*jsonTextRow).vals[name]
@@ -139,7 +139,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 					// Read back the value
 					q := model()
 					q.AddAllColumns()
-					q.Where("", []orm.ChainKey{{Column: "seq"}}, orm.AsInt64(seq))
+					q.Where("", []orm.ChainKey{{Column: "seq"}}, mustInt64(seq))
 					rows, err := orm.Gets[*jsonTextRow](q)
 					if err != nil {
 						t.Fatalf("read: %v", err)

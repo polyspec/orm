@@ -88,6 +88,9 @@ func BlindIndex(v any, key string) (string, error) {
 	if v == nil {
 		return "", nil
 	}
+	if b, ok := v.([]byte); ok && b == nil {
+		return "", nil
+	}
 	if key == "" {
 		return "", codecErr(CodeConfig, "secret blind_index not configured")
 	}
@@ -96,9 +99,12 @@ func BlindIndex(v any, key string) (string, error) {
 	case string:
 		plain = []byte(x)
 	case []byte:
+		if x == nil {
+			return "", nil
+		}
 		plain = x
 	default:
-		plain = []byte(fmt.Sprint(x))
+		return "", codecErr(CodeCodecEncode, "blind index input must be text or bytes, got %T", v)
 	}
 	h := hmac.New(sha256.New, []byte(key))
 	_, _ = h.Write(plain)
@@ -129,6 +135,16 @@ func unpackIP(b []byte) (string, error) {
 // HostEncode applies the executor-side stages of a bound value in write order
 // (also used by bench/seedaes to fill AES columns in database fixtures).
 func HostEncode(v any, styles []string, aesKey string) (any, error) {
+	if len(styles) == 0 {
+		return nil, codecErr(CodeCodecEncode, "host style list is empty")
+	}
+	for _, st := range styles {
+		switch st {
+		case "aes", "hex", "ip":
+		default:
+			return nil, codecErr(CodeCodecUnsupported, "host style %s", st)
+		}
+	}
 	if v == nil {
 		return nil, nil
 	}
@@ -137,9 +153,12 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	case string:
 		cur = []byte(x)
 	case []byte:
+		if x == nil {
+			return nil, nil
+		}
 		cur = x
 	default:
-		cur = []byte(fmt.Sprint(x))
+		return nil, codecErr(CodeCodecEncode, "host input must be text or bytes, got %T", v)
 	}
 	for _, st := range styles {
 		var err error

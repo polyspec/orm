@@ -280,7 +280,11 @@ func main() {
 		}
 		out := []any{}
 		for _, r := range rows.Slice() {
-			out = append(out, []any{r.GetSeq(), orm.AsInt64(r.GetDoubled())})
+			doubled, err := orm.AsInt64(r.GetDoubled())
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, []any{r.GetSeq(), doubled})
 		}
 		return map[string]any{"count": count, "rows": out}, nil
 	})
@@ -365,7 +369,11 @@ func main() {
 		}
 		out := []any{}
 		for _, u := range users.Slice() {
-			out = append(out, []any{u.GetSeq(), orm.AsInt64(u.GetReadTotal())})
+			readTotal, err := orm.AsInt64(u.GetReadTotal())
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, []any{u.GetSeq(), readTotal})
 		}
 		return out, nil
 	})
@@ -414,7 +422,11 @@ func main() {
 		}
 		months := []any{}
 		for _, r := range rows.Slice() {
-			months = append(months, orm.AsInt64(r.GetStartMonth()))
+			month, err := orm.AsInt64(r.GetStartMonth())
+			if err != nil {
+				return nil, err
+			}
+			months = append(months, month)
 		}
 		return map[string]any{"counts": counts, "months": months}, nil
 	})
