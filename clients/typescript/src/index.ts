@@ -13,6 +13,7 @@ export type { Isolation, PoolStats } from './driver.js';
 export { Utils, SchemaUtils, PrivilegeUtils, AesUtils } from './utils.js';
 export type { AesRotationStatus, TablePrivileges } from './utils.js';
 export { Model, Collection } from './model.js';
+export { GroupRow, GroupRows } from './group_rows.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
 export type { EntityDef } from './core.js';
