@@ -127,7 +127,7 @@ func TestAuditLargeUnicodeValueStaysWithinBudget(t *testing.T) {
 				step("insert", func() error {
 					c := model(docs)
 					c.Set("service_ref", "s1")
-					c.Set("body", decoded(older))
+					c.Set("body", orm.Value(decoded(older)))
 					created, err := c.Create()
 					if err == nil {
 						id = created.(*keywordRow).vals["seq"]
@@ -137,13 +137,13 @@ func TestAuditLargeUnicodeValueStaysWithinBudget(t *testing.T) {
 				step("update", func() error {
 					u := model(docs)
 					u.Set("seq", id)
-					u.Set("body", decoded(newer))
+					u.Set("body", orm.Value(decoded(newer)))
 					return u.Update(nil)
 				})
 				step("unchanged update", func() error {
 					u := model(docs)
 					u.Set("seq", id)
-					u.Set("body", decoded(newer))
+					u.Set("body", orm.Value(decoded(newer)))
 					return u.Update(nil)
 				})
 				return nil
@@ -241,7 +241,7 @@ func TestAuditLargeTextChangeStaysWithinBudget(t *testing.T) {
 				step("insert", func() error {
 					c := model(docs)
 					c.Set("service_ref", "s1")
-					c.Set("body", jsontext.Value(older))
+					c.Set("body", orm.Value(jsontext.Value(older)))
 					created, err := c.Create()
 					if err == nil {
 						id = created.(*keywordRow).vals["seq"]
@@ -251,7 +251,7 @@ func TestAuditLargeTextChangeStaysWithinBudget(t *testing.T) {
 				step("change only the string", func() error {
 					u := model(docs)
 					u.Set("seq", id)
-					u.Set("body", jsontext.Value(newer))
+					u.Set("body", orm.Value(jsontext.Value(newer)))
 					return u.Update(nil)
 				})
 				q := model(changes)

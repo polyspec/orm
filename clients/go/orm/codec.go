@@ -24,78 +24,101 @@ func codecErr(code, format string, a ...any) error {
 	return &ir.Error{Code: code, Msg: fmt.Sprintf(format, a...)}
 }
 
-// Decode turns a stored cell (string/[]byte/nil) into the declared value model.
-// JSON and JSONS return *orderedjson.Value so object order and node kinds remain explicit.
-func Decode(styles []string, raw any) (any, error) {
+func checkCodecStyles(styles []string) error {
+	for _, style := range styles {
+		switch style {
+		case "gz", "base64", "serialize", "yaml", "json", "jsons":
+		default:
+			return codecErr(CodeCodecUnsupported, "style %s", style)
+		}
+	}
+	return nil
+}
+
+// Decode turns a stored cell (string/[]byte/nil) into a styled value.
+// JSON and JSONS value variants contain *orderedjson.Value.
+func Decode(styles []string, raw any) (StyledValue, error) {
+	if err := checkCodecStyles(styles); err != nil {
+		return StyledValue{}, err
+	}
 	var b []byte
 	switch x := raw.(type) {
 	case nil:
-		return nil, nil
+		return SqlNull(), nil
 	case string:
 		b = []byte(x)
 	case []byte:
 		b = x
 	default:
-		return nil, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
+		return StyledValue{}, codecErr(CodeCodecDecode, "cell is %T, not bytes", raw)
 	}
 	if len(b) == 0 {
-		return nil, nil
+		return StyledValue{}, codecErr(CodeCodecDecode, "styled cell is empty")
 	}
 	var v any = b
 	for i := len(styles) - 1; i >= 0; i-- {
 		cur, ok := v.([]byte)
 		if !ok {
-			return nil, codecErr(CodeCodecDecode, "style %s after a decoded value", styles[i])
+			return StyledValue{}, codecErr(CodeCodecDecode, "style %s after a decoded value", styles[i])
 		}
 		var err error
 		switch styles[i] {
 		case "gz":
 			r, e := zlib.NewReader(bytes.NewReader(cur))
 			if e != nil {
-				return nil, codecErr(CodeCodecDecode, "gz: %v", e)
+				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", e)
 			}
 			v, err = io.ReadAll(r)
-			r.Close()
+			closeErr := r.Close()
 			if err != nil {
-				return nil, codecErr(CodeCodecDecode, "gz: %v", err)
+				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", err)
+			}
+			if closeErr != nil {
+				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", closeErr)
 			}
 		case "base64":
 			v, err = base64.StdEncoding.DecodeString(strings.TrimSpace(string(cur)))
 			if err != nil {
-				return nil, codecErr(CodeCodecDecode, "base64: %v", err)
+				return StyledValue{}, codecErr(CodeCodecDecode, "base64: %v", err)
 			}
 		case "serialize":
 			v, err = phpUnserialize(cur)
 			if err != nil {
-				return nil, err
+				return StyledValue{}, err
 			}
 		case "yaml":
 			v, err = yamlDecode(cur)
 			if err != nil {
-				return nil, err
+				return StyledValue{}, err
 			}
 		case "json", "jsons":
 			v, err = orderedjson.ParseBytes(cur)
 			if err != nil {
-				return nil, codecErr(CodeCodecDecode, "json: %v", err)
+				return StyledValue{}, codecErr(CodeCodecDecode, "json: %v", err)
 			}
 		default:
-			return nil, codecErr(CodeCodecUnsupported, "style %s", styles[i])
+			return StyledValue{}, codecErr(CodeCodecUnsupported, "style %s", styles[i])
 		}
 	}
 	if raw, ok := v.([]byte); ok { // e.g. styles = [] — never happens for styled columns
-		return string(raw), nil
+		return Value(string(raw)), nil
 	}
-	return v, nil
+	return Value(v), nil
 }
 
 // Encode turns a value into the stored representation (string, or []byte for gz).
-func Encode(styles []string, v any) (any, error) {
-	if v == nil {
+func Encode(styles []string, v StyledValue) (any, error) {
+	if err := checkCodecStyles(styles); err != nil {
+		return nil, err
+	}
+	if v.kind == 1 {
 		return nil, nil
 	}
+	if v.kind != 2 {
+		return nil, codecErr(CodeCodecEncode, "styled value is unset")
+	}
 	var cur []byte
-	value := v
+	value := v.value
 	for i, st := range styles {
 		switch st {
 		case "serialize":
@@ -136,15 +159,35 @@ func Encode(styles []string, v any) (any, error) {
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
 		case "gz":
 			var buf bytes.Buffer
-			w, _ := zlib.NewWriterLevel(&buf, zlib.BestCompression)
-			w.Write(cur)
-			w.Close()
+			w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+			if err != nil {
+				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+			}
+			if _, err := w.Write(cur); err != nil {
+				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+			}
+			if err := w.Close(); err != nil {
+				return nil, codecErr(CodeCodecEncode, "gz: %v", err)
+			}
 			return buf.Bytes(), nil
 		default:
 			return nil, codecErr(CodeCodecUnsupported, "style %s", st)
 		}
 	}
 	return string(cur), nil
+}
+
+// NormalizeStyled validates a generated setter input and returns its decoded
+// value model so an in-memory model matches a row read from storage.
+func NormalizeStyled(styles []string, nullable bool, v StyledValue) (StyledValue, error) {
+	if v.kind == 1 && !nullable {
+		return StyledValue{}, codecErr(CodeCodecEncode, "SQL NULL is not allowed for this column")
+	}
+	stored, err := Encode(styles, v)
+	if err != nil {
+		return StyledValue{}, err
+	}
+	return Decode(styles, stored)
 }
 
 func yamlDecode(b []byte) (any, error) {
