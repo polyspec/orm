@@ -41,6 +41,17 @@ use model::{Account, Author, CompositeAccount, CompositeMembership, Service, Ser
 use orm::db::Pool;
 use orm::{AesKeyring, Collection, Db, Isolation, Null};
 
+#[tokio::test]
+async fn coverage_generated_model_connection() {
+    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
+    assert!(!dsn.is_empty());
+    let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap();
+    Author::new().connect(&db).get_count().await.unwrap();
+    db.close().await;
+}
+
 const TABLES: &[&str] = &[
     "account_project",
     "composite_membership",
