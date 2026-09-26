@@ -424,30 +424,72 @@ func equalJSON(a, b []byte) (bool, error) {
 // load reads the vector list (names and chains) from vectors.json — the single
 // place a vector is declared — and, for another database, overlays the
 // expectations recorded for that dialect (vectors.<driver>.json).
-func load(root string) file {
-	b, err := os.ReadFile(filepath.Join(root, "tests/conformance/vectors.json"))
-	must(err)
-	_, err = decodeExact(b)
-	must(err)
-	var f file
-	must(json.Unmarshal(b, &f))
-	if driver == "mysql" {
-		return f
+func load(root string) (file, error) {
+	basePath := filepath.Join(root, "tests/conformance/vectors.json")
+	b, err := os.ReadFile(basePath)
+	if err != nil {
+		return file{}, err
 	}
-	recorded := map[string]json.RawMessage{}
-	b, err = os.ReadFile(filepath.Join(root, vectorsPath()))
-	must(err)
-	_, err = decodeExact(b)
-	must(err)
+	if _, err := decodeExact(b); err != nil {
+		return file{}, fmt.Errorf("%s: %w", basePath, err)
+	}
+	var f file
+	if err := json.Unmarshal(b, &f); err != nil {
+		return file{}, fmt.Errorf("%s: %w", basePath, err)
+	}
+	declared, err := vectorNames(f.Vectors, basePath)
+	if err != nil {
+		return file{}, err
+	}
+	if driver == "mysql" {
+		return f, nil
+	}
+	dialectPath := filepath.Join(root, vectorsPath())
+	b, err = os.ReadFile(dialectPath)
+	if err != nil {
+		return file{}, err
+	}
+	if _, err := decodeExact(b); err != nil {
+		return file{}, fmt.Errorf("%s: %w", dialectPath, err)
+	}
 	var d file
-	must(json.Unmarshal(b, &d))
-	for _, v := range d.Vectors {
-		recorded[v.Name] = v.Expect
+	if err := json.Unmarshal(b, &d); err != nil {
+		return file{}, fmt.Errorf("%s: %w", dialectPath, err)
+	}
+	recorded, err := vectorNames(d.Vectors, dialectPath)
+	if err != nil {
+		return file{}, err
+	}
+	for name := range recorded {
+		if _, ok := declared[name]; !ok {
+			return file{}, fmt.Errorf("%s: undeclared vector %s", dialectPath, name)
+		}
 	}
 	for i := range f.Vectors {
-		f.Vectors[i].Expect = recorded[f.Vectors[i].Name]
+		v, ok := recorded[f.Vectors[i].Name]
+		if !ok {
+			return file{}, fmt.Errorf("%s: missing vector %s", dialectPath, f.Vectors[i].Name)
+		}
+		f.Vectors[i].Expect = v.Expect
 	}
-	return f
+	return f, nil
+}
+
+func vectorNames(vectors []vec, path string) (map[string]vec, error) {
+	if len(vectors) == 0 {
+		return nil, fmt.Errorf("%s: no vectors", path)
+	}
+	names := make(map[string]vec, len(vectors))
+	for _, v := range vectors {
+		if v.Name == "" {
+			return nil, fmt.Errorf("%s: empty vector name", path)
+		}
+		if _, exists := names[v.Name]; exists {
+			return nil, fmt.Errorf("%s: duplicate vector %s", path, v.Name)
+		}
+		names[v.Name] = v
+	}
+	return names, nil
 }
 
 // canon re-encodes JSON with sorted keys and without changing number precision.
@@ -464,7 +506,11 @@ func compare(root string, outputs []string) int {
 		fmt.Fprintln(os.Stderr, "check:", err)
 		return 1
 	}
-	f := load(root)
+	f, err := load(root)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "check:", err)
+		return 1
+	}
 	type got map[string]json.RawMessage
 	langs := []string{}
 	results := map[string]got{}
@@ -534,7 +580,10 @@ func recordVerified(root string, outputs []string) error {
 	if err := validateOutputFiles(outputs); err != nil {
 		return err
 	}
-	f := load(root)
+	f, err := load(root)
+	if err != nil {
+		return err
+	}
 	results := make(map[string]map[string]json.RawMessage, len(outputs))
 	for _, output := range outputs {
 		b, err := os.ReadFile(output)

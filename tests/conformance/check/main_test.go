@@ -81,6 +81,78 @@ func assertFileEquals(t *testing.T, path string, want []byte) {
 	}
 }
 
+func TestCompareRejectsUndeclaredDialectExpectation(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "tests", "conformance")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	base := []byte(`{"vectors":[{"name":"one","chain":"one","expect":{"result":1}}]}`)
+	if err := os.WriteFile(filepath.Join(directory, "vectors.json"), base, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var outputs []string
+	for _, language := range requiredLanguages {
+		output := filepath.Join(root, language+".json")
+		if err := os.WriteFile(output, []byte(`{"one":{"result":1}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		outputs = append(outputs, output)
+	}
+	previousDriver := driver
+	t.Cleanup(func() { driver = previousDriver })
+	for _, database := range []string{"postgres", "sqlite"} {
+		driver = database
+		dialect := []byte(`{"vectors":[{"name":"one","expect":{"result":1}},{"name":"extra","expect":{"result":2}}]}`)
+		if err := os.WriteFile(filepath.Join(directory, "vectors."+database+".json"), dialect, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if compare(root, outputs) == 0 {
+			t.Errorf("%s comparison accepted an undeclared expectation", database)
+		}
+		if err := recordVerified(root, outputs); err == nil {
+			t.Errorf("%s recording accepted an undeclared expectation", database)
+		}
+		assertFileEquals(t, filepath.Join(directory, "vectors."+database+".json"), dialect)
+	}
+}
+
+func TestLoadRejectsIncompleteOrDuplicateVectorSets(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "tests", "conformance")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	basePath := filepath.Join(directory, "vectors.json")
+	dialectPath := filepath.Join(directory, "vectors.postgres.json")
+	base := []byte(`{"vectors":[{"name":"one","chain":"one","expect":{"result":1}}]}`)
+	dialect := []byte(`{"vectors":[{"name":"one","expect":{"result":1}}]}`)
+	previousDriver := driver
+	t.Cleanup(func() { driver = previousDriver })
+	for _, test := range []struct {
+		name, database string
+		base, dialect  []byte
+	}{
+		{"empty base", "mysql", []byte(`{"vectors":[]}`), dialect},
+		{"duplicate base", "mysql", []byte(`{"vectors":[{"name":"one"},{"name":"one"}]}`), dialect},
+		{"missing dialect", "postgres", base, []byte(`{"vectors":[]}`)},
+		{"duplicate dialect", "postgres", base, []byte(`{"vectors":[{"name":"one"},{"name":"one"}]}`)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			driver = test.database
+			if err := os.WriteFile(basePath, test.base, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(dialectPath, test.dialect, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := load(root); err == nil {
+				t.Fatal("comparison accepted an incomplete or duplicate vector set")
+			}
+		})
+	}
+}
+
 func TestCompleteLanguageEvidence(t *testing.T) {
 	dir := t.TempDir()
 	all := []string{}
