@@ -420,6 +420,18 @@ fn build_entity(e: &DEntity) -> Result<Entity, BuildError> {
             }
         }
         if c.auto {
+            if c.typ != "i64" {
+                return Err(berr(dc.line, format!("auto column {}.{} requires i64 type", e.name, c.name)));
+            }
+            if c.nullable {
+                return Err(berr(dc.line, format!("auto column {}.{} must not be nullable", e.name, c.name)));
+            }
+            if c.unsigned {
+                return Err(berr(dc.line, format!("auto column {}.{} must be signed", e.name, c.name)));
+            }
+            if !c.pk {
+                return Err(berr(dc.line, format!("auto column {}.{} must be a primary key", e.name, c.name)));
+            }
             if !ent.auto.is_empty() {
                 return Err(berr(dc.line, format!("two auto columns in {}", e.name)));
             }

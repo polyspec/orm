@@ -66,7 +66,7 @@ A required column is NOT NULL, has no default, is not `auto`, and is not the `ae
 | `?` | nullable |
 | `=value` | default, such as `=0`, `='ko'`, `=now`, or `=null` |
 | `onupdate` | updated to the current time on every update |
-| `auto` | automatic key |
+| `auto` | automatic key; the column must be a non-null signed primary key whose type normalizes to `i64`, otherwise schema build fails at the column's source line |
 | `unsigned` | unsigned integer (written by import; optional by hand) |
 | `bool` | expose a `tinyint` column as a boolean |
 | `lazy` | excluded from the default column set; select it with `addColumn<Col>()`. Text and blob columns are lazy by default |
