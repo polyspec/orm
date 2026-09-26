@@ -1,3 +1,5 @@
+[Korean](README.ko.md)
+
 # orm — Rust client
 
 | Crate | Contents |
@@ -85,6 +87,15 @@ Generated model fields are private. A `get_<column>` call returns `Result` and r
 appear as SQL NULL or a default. Explicit projection changes the SQL selection and row output.
 `gets_count` returns `GroupRows` with selected grouping values and a checked `row_count`, so a
 group result does not contain partially populated model fields.
+
+Generated setters for `json`, `jsons`, `serialize`, and `yaml` columns take
+`StyledValue<T>` and return `Result<Self>`. `StyledValue::SqlNull` writes SQL NULL;
+`StyledValue::Value(v)` stores the encoded value, including a JSON or other encoded null.
+A non-null column rejects `SqlNull` with `CODEC_ENCODE` at the setter. Getters return
+`Result<StyledValue<T>>` and report `COLUMN_UNSELECTED` before a column is read or
+assigned. Row arrays and model JSON use `{"kind":"sql-null"}` or
+`{"kind":"value","value":...}` for each styled column. Invalid stored text
+returns `CODEC_DECODE` with the entity and column name.
 
 `Val` numeric, boolean, date, time, text, byte, JSON and point conversions return `Result`.
 An incompatible kind, invalid text, integer overflow, non-finite float, invalid UTF-8 or

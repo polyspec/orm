@@ -604,15 +604,13 @@ impl Core {
 
     /// Records a stored value of a column with codec styles.
     pub fn set_json(&mut self, column: &str, value: serde_json::Value) {
-        let v = if value.is_null() { SetValue::Null } else { SetValue::Json(value) };
-        self.put_set(column, v);
+        self.put_set(column, SetValue::Json(value));
     }
 
     /// Records the ordered-json value of a column with the `json` or `jsons`
-    /// stage; the JSON null stores NULL.
+    /// stage, including a JSON literal null.
     pub fn set_ordered(&mut self, column: &str, value: ordered_json::Value) {
-        let v = if value.kind() == ordered_json::Kind::Null { SetValue::Null } else { SetValue::Ordered(value) };
-        self.put_set(column, v);
+        self.put_set(column, SetValue::Ordered(value));
     }
 
     pub fn set_raw(&mut self, column: &str, sql: &str, binds: Vec<Param>) {

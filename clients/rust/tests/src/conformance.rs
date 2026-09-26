@@ -446,16 +446,13 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
                 .set_end_dt(start)
                 .set_price(12.5)
                 .set_ip("10.0.0.1")
-                .set_aes_hex_email("cycle@example.com")
-                .set_json_setting(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal"))
-                .set_serialize_data(json!({"k": "v"}))
-                .new_label("created")
-                .create()
-                .await
-                .map_err(|error| {
-                    eprintln!("write_cycle create: {error}");
-                    error
-                })?;
+                .set_aes_hex_email("cycle@example.com");
+            let created = created.set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal")))?;
+            let created = created.set_serialize_data(orm::StyledValue::Value(json!({"k": "v"})))?;
+            let created = created.new_label("created").create().await.map_err(|error| {
+                eprintln!("write_cycle create: {error}");
+                error
+            })?;
             let seq = created.get_seq().unwrap();
             mask(shared, &[seq], &[]);
             let mut created_array = created.to_array().map_err(|error| {
