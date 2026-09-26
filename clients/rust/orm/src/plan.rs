@@ -53,6 +53,8 @@ pub struct BindSlot {
     /// PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.
     pub host_styles: Vec<String>,
     pub col_type: String,
+    pub precision: i64,
+    pub scale: i64,
 }
 
 #[derive(Debug, Clone, Default)]

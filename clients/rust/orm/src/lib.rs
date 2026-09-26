@@ -8,6 +8,7 @@ pub mod codes;
 pub mod collection;
 pub mod core;
 pub mod db;
+pub mod decimal;
 mod driver;
 pub mod engine;
 pub mod ir;

@@ -544,13 +544,17 @@ func main() {
 	})
 	run("write_cycle", func() (any, error) {
 		start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
-		price := 12.5
+		price := "12.500"
 		ip := "10.0.0.1"
 		email := "cycle@example.com"
-		row := battle().
+		row, err := battle().
 			SetName("cycle").SetUserSeq(1).SetServiceSeq(999).SetServiceModuleSeq(1).SetServiceMemberSeq(1).
-			SetStartDt(start).SetEndDt(start).SetPrice(&price).SetIp(&ip).SetAesHexEmail(&email)
-		row, err := row.SetJsonSetting(orm.Value(map[string]any{"a": 1}))
+			SetStartDt(start).SetEndDt(start).SetPrice(&price)
+		if err != nil {
+			return nil, err
+		}
+		row = row.SetIp(&ip).SetAesHexEmail(&email)
+		row, err = row.SetJsonSetting(orm.Value(map[string]any{"a": 1}))
 		if err != nil {
 			return nil, err
 		}

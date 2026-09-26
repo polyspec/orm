@@ -27,7 +27,7 @@ export async function valid(db: Db): Promise<void> {
   const member = new ServiceMember();
   await new Battle().connect(db).joinServiceMemberSeqWithSeq(member).andSuccessCountLtSeq(member).getCount();
   await new User().connect(db).seq(new Battle().addColumnUserSeq().serviceSeq(7)).gets();
-  await new Battle().connect(db).setName('n').setPrice(1.5).setStartDt('2026-01-01 00:00:00').create();
+  await new Battle().connect(db).setName('n').setPrice('1.5000').setStartDt('2026-01-01 00:00:00').create();
   await db.transaction(async () => { await new User().name('x').forUpdate().gets(); }, { isolation: 'read_committed', retry: 0 });
 }
 

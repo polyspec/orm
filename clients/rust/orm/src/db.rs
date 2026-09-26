@@ -515,6 +515,23 @@ impl Db {
                     if sqlite && (b.col_type == "datetime" || b.col_type == "date") {
                         v = self.sqlite_time_value(v, &b.col_type)?;
                     }
+                    if b.col_type == "decimal" {
+                        let precision = u8::try_from(b.precision)
+                            .map_err(|_| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("invalid decimal precision {}", b.precision) })?;
+                        let scale = u8::try_from(b.scale)
+                            .map_err(|_| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("invalid decimal scale {}", b.scale) })?;
+                        v = match v {
+                            Param::Null => Param::Null,
+                            Param::Str(text) if sqlite => Param::I64(crate::decimal::scaled(&text, precision, scale)?),
+                            Param::Str(text) => Param::Str(crate::decimal::normalize(&text, precision, scale)?),
+                            other => {
+                                return Err(Error::Engine {
+                                    code: codes::CODEC_ENCODE.into(),
+                                    msg: format!("decimal bind requires exact text, received {other:?}"),
+                                })
+                            }
+                        };
+                    }
                     if b.col_type == "point" {
                         v = match v {
                             Param::Null => Param::Null,

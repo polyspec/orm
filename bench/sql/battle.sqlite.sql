@@ -81,7 +81,7 @@ CREATE TABLE "battle" (
   "email_blind_index" TEXT,
   "aes_hex_phone" TEXT,
   "phone_blind_index" TEXT,
-  "price" REAL,
+  "price" DECIMALINT(13,3),
   "ip" BLOB,
   "gz_extend" BLOB,
   "json_setting" TEXT,

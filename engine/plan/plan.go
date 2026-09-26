@@ -64,6 +64,8 @@ type BindSlot struct {
 	// language has no datetime type normalise exactly these, never a bare string
 	// that merely looks like a timestamp.
 	ColType string `json:"col_type,omitempty"`
+	Precision int `json:"precision,omitempty"`
+	Scale int `json:"scale,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.

@@ -1,4 +1,4 @@
-.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check decimal-bench-sqlite decimal-db-setup decimal-physical-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -73,6 +73,16 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver postgres -dsn "$$BENCH_POSTGRES_DSN"
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+
+decimal-bench-sqlite:
+	./scripts/decimal-bench-sqlite.sh
+
+decimal-db-setup:
+	$(WITH_TEST_ENV) php scripts/decimal-db-setup.php
+
+decimal-physical-check:
+	test -f .runtime/decimal-env || { echo '.runtime/decimal-env is missing; run make decimal-db-setup' >&2; exit 1; }
+	. .runtime/decimal-env && node scripts/decimal-physical-check.mjs
 
 interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test

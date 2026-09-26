@@ -497,8 +497,10 @@ func ddlType(c *schema.Col, dialect string) (string, error) {
 		switch c.Type {
 		case "i32", "i64", "bool":
 			return "INTEGER", nil
-		case "f64", "decimal":
+		case "f64":
 			return "REAL", nil
+		case "decimal":
+			return fmt.Sprintf("DECIMALINT(%d,%d)", c.Precision, c.Scale), nil
 		case "bytes", "inet":
 			return "BLOB", nil
 		case "point":

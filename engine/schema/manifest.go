@@ -105,6 +105,19 @@ type Col struct {
 	Line        int    `json:"-"`
 }
 
+// MarshalJSON records a decimal scale of zero explicitly. Other column types
+// omit unused precision and scale metadata.
+func (c *Col) MarshalJSON() ([]byte, error) {
+	type plain Col
+	if c.Type == "decimal" {
+		return json.Marshal(struct {
+			*plain
+			Scale int `json:"scale"`
+		}{plain: (*plain)(c), Scale: c.Scale})
+	}
+	return json.Marshal((*plain)(c))
+}
+
 type Ref struct {
 	Entity string `json:"entity"`
 	Column string `json:"column"`
@@ -461,6 +474,9 @@ func buildColumn(dc *DColumn) (*Col, error) {
 					return nil, fmt.Errorf("column %s: decimal scale %q", dc.Name, arg)
 				}
 			}
+		}
+		if c.Precision < 1 || c.Precision > 18 || c.Scale < 0 || c.Scale > c.Precision {
+			return nil, fmt.Errorf("column %s: decimal precision must be 1..18 and scale 0..precision", dc.Name)
 		}
 	case "varchar", "char":
 		c.Type = "string"
