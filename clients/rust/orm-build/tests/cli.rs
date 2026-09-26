@@ -329,6 +329,30 @@ async fn sources_and_import_round_trip() {
     }
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn sqlite_automatic_rowid_imports_as_i64() {
+    let _serial = SERIAL.lock().await;
+    let dir = std::env::temp_dir().join(format!("orm-gen-cli-{}-auto-import", std::process::id()));
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("entry.sqlite");
+    std::fs::File::create(&db).unwrap();
+    let t = Target { driver: "sqlite", dsn: format!("sqlite://{}", db.display()), dir: dir.clone() };
+    t.sql(&[include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/schema/sqlite_auto.sql"))]).await;
+    t.ok(&["import", "--dsn", "@DSN@", "--out", "entry.mmd"]);
+    let source = std::fs::read_to_string(dir.join("entry.mmd")).unwrap();
+    assert!(source.contains("bigint") && source.contains("int"), "{source}");
+    t.ok(&["build", "entry.mmd", "--out", "entry.json"]);
+    let manifest = orm_build::schema::Manifest::load(&std::fs::read_to_string(dir.join("entry.json")).unwrap()).unwrap();
+    let entry = &manifest.entities["entry"];
+    assert_eq!(entry.auto, "id");
+    assert_eq!(entry.column("id").unwrap().typ, "i64");
+    assert_eq!(entry.column("count").unwrap().typ, "i32");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 const LIVE_BASE: &str = r#"erDiagram
   live_article {
     bigint       seq         PK "auto"

@@ -158,9 +158,26 @@ $tests['SQLite import filters tables and reads keys and clock defaults'] = funct
     $tables = SchemaImport::readTables($db, 'sqlite', ['kept' => true]);
     check(count($tables) === 1 && $tables[0]['name'] === 'kept', 'filtered');
     check($tables[0]['columns'][0]['extra'] === 'auto_increment', 'auto key');
+    check($tables[0]['columns'][0]['type'] === 'bigint', 'automatic rowid uses bigint');
     check($tables[0]['columns'][2]['default'] === 'CURRENT_TIMESTAMP', 'clock default: ' . var_export($tables[0]['columns'][2]['default'], true));
     $other = SchemaImport::readTables($db, 'sqlite');
     check($other[1]['columns'][0]['extra'] === '', 'integer key without AUTOINCREMENT');
+    check($other[1]['columns'][0]['type'] === 'INTEGER', 'ordinary integer keeps SQLite type');
+    $built = manifest(SchemaImport::renderMermaid($tables, null));
+    check($built['entities']['kept']['columns'][0]['type'] === 'i64', 'automatic rowid builds as i64');
+};
+
+$tests['SQLite automatic rowid imports as i64'] = function () use ($work, $root): void {
+    $db = sqlite("$work/auto-rowid.sqlite");
+    $db->exec((string) file_get_contents("$root/tests/schema/sqlite_auto.sql"));
+    $tables = SchemaImport::readTables($db, 'sqlite');
+    check(count($tables) === 1, 'one imported table');
+    check($tables[0]['columns'][0]['type'] === 'bigint', 'automatic rowid physical type');
+    check($tables[0]['columns'][1]['type'] === 'INTEGER', 'ordinary integer physical type');
+    $entry = manifest(SchemaImport::renderMermaid($tables, null))['entities']['entry'];
+    check($entry['auto'] === 'id', 'automatic key name');
+    check($entry['columns'][0]['type'] === 'i64', 'automatic key normalized type');
+    check($entry['columns'][1]['type'] === 'i32', 'ordinary integer normalized type');
 };
 
 $tests['schema sources keep the manifest'] = function () use ($work): void {

@@ -374,7 +374,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             let auto = pk > 0 && live::sqlite_auto_increment(&create_sql, &column_name);
             t.columns.push(Column {
                 name: column_name,
-                typ: c[2].text(),
+                typ: if auto { "bigint".into() } else { c[2].text() },
                 nullable: c[3].int() == 0 && pk == 0,
                 default,
                 extra: if auto { "auto_increment".into() } else { String::new() },
