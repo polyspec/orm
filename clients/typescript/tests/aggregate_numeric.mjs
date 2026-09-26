@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { aggregateNumber } from '../../clients/typescript/dist/model.js';
-import { OrmError } from '../../clients/typescript/dist/index.js';
+import { aggregateNumber } from '../dist/model.js';
+import { OrmError } from '../dist/index.js';
 
-const fixture = JSON.parse(await readFile(new URL('../../contracts/fixtures/aggregate_numeric.json', import.meta.url), 'utf8'));
+const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/aggregate_numeric.json', import.meta.url), 'utf8'));
 
 for (const testCase of fixture.cases) {
   const input = {
