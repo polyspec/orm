@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
+require __DIR__ . '/result_php_helpers.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
@@ -18,6 +19,7 @@ use Orm\Config;
 use Orm\Model;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\StyledValue;
 
 $schema = $argv[1] ?? throw new RuntimeException('schema.json required');
 $dsn = null;
@@ -44,7 +46,16 @@ function norm(mixed $v): mixed
         if (isset($maskTs[$v])) {
             return '$TS';
         }
-        if (str_starts_with($v, 'ORM-AES2') || str_starts_with(strtolower($v), '4f524d2d41455332')) {
+        if (str_starts_with($v, "ORM-AES2\0")) {
+            if (strlen($v) < 9 + 12 + 16) throw new RuntimeException('invalid AES ciphertext bind');
+            return '$AES';
+        }
+        if (str_starts_with($v, 'ORM-AES2')) throw new RuntimeException('invalid AES ciphertext bind');
+        if (str_starts_with(strtolower($v), '4f524d2d41455332')) {
+            $decoded = hex2bin($v);
+            if ($decoded === false || !str_starts_with($decoded, "ORM-AES2\0") || strlen($decoded) < 9 + 12 + 16) {
+                throw new RuntimeException('invalid hex AES ciphertext bind');
+            }
             return '$AES';
         }
     }
@@ -92,7 +103,10 @@ function pick(?Model $m, string ...$names): ?array
     $all = $m->toArray();
     $out = [];
     foreach ($names as $n) {
-        $out[$n] = $all[$n] ?? null;
+        if (!array_key_exists($n, $all)) {
+            throw new RuntimeException("missing selected field: $n");
+        }
+        $out[$n] = $all[$n];
     }
     return $out;
 }
@@ -112,26 +126,15 @@ $db = Orm::connect($dsn, new Config(
 ));
 
 $out = [];
-/** A result with every ordered-json value decoded; objects are stdClass, so {} stays apart from []. */
-function plain(mixed $v): mixed
-{
-    if ($v instanceof OrderedJson\Value) {
-        return json_decode(OrderedJson\stringify($v), false, 512, JSON_THROW_ON_ERROR);
-    }
-    return is_array($v) ? array_map('plain', $v) : $v;
-}
+$writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive'], true);
 
 function run(string $name, callable $fn): void
 {
-    global $out, $log, $maskSeqs, $maskTs;
+    global $out, $log, $maskSeqs, $maskTs, $db, $writeVectors;
     $log = [];
     $maskSeqs = [];
     $maskTs = [];
-    try {
-        $res = plain($fn());
-    } catch (Throwable $e) {
-        $res = ['error' => code($e)];
-    }
+    $res = executeVector($name, $fn, isset($writeVectors[$name]) ? static fn(callable $task): mixed => $db->transaction($task, retry: 0) : null);
     $out[$name] = ['statements' => $log, 'result' => $res];
 }
 
@@ -185,7 +188,7 @@ run('raw_forms', function () use ($author): array {
     $rows = $author()->raw('{seq} IN (?, ?)', [42, 43])
         ->removeAllColumns()->addRawColumnDoubled('({read_count} * ?)', [2])
         ->orderByRaw('{seq} DESC')->gets();
-    return ['count' => $count, 'rows' => array_map(static fn(Author $r): array => [$r->getSeq(), (int) $r->getDoubled()], $rows->all())];
+    return ['count' => $count, 'rows' => array_map(static fn(Author $r): array => [$r->getSeq(), derivedInteger($r->getDoubled())], $rows->all())];
 });
 
 run('columns', function () use ($db, $author): array {
@@ -221,7 +224,7 @@ run('relations', fn() => $author()
 run('relation_empty', fn() => count($author()->relations((new ServiceMember)->matchUserSeqWithUserSeq())->getsBySeq(-1)));
 
 run('subqueries', fn() => array_map(
-    static fn(User $u): array => [$u->getSeq(), (int) $u->getReadTotal()],
+    static fn(User $u): array => [$u->getSeq(), derivedInteger($u->getReadTotal())],
     (new User)($db)
         ->addColumnReadTotal(fn(User $u) => (new Author)->sumReadCount()->userSeqEqSeq($u)->andServiceSeq(7))
         ->seq((new Author)->addColumnUserSeq()->serviceSeq(7)->andGeReadCount(906))
@@ -231,6 +234,9 @@ run('subqueries', fn() => array_map(
 run('aggregates', function () use ($author): array {
     $sum = $author()->serviceSeq(7)->sumReadCount()->getSum();
     $avg = $author()->serviceSeq(7)->avgLikeCount()->getAvg();
+    if (bin2hex(pack('E', $avg)) !== '404805c28f5c28f6') {
+        throw new RuntimeException("aggregate average has unexpected binary64 value: {$avg}");
+    }
     $groups = $author()->serviceSeq(7)->groupByIsClose()->orderByIsCloseAsc()->getsCount();
     $page = $author()->serviceSeq(7)->removeAllColumns()->orderBySeqAsc()->getsPage(3, 4);
     return [
@@ -250,7 +256,7 @@ run('functions', function () use ($author): array {
     ]);
     $rows = $author()->removeAllColumns()->addColumnStartDtAliasStartMonth(Orm::month())
         ->orderByStartDtAsc(Orm::year())->orderBySeqAsc()->getsBySeq([42, 43]);
-    return ['counts' => $counts, 'months' => array_map(static fn(Author $r): int => (int) $r->getStartMonth(), $rows->all())];
+    return ['counts' => $counts, 'months' => array_map(static fn(Author $r): int => derivedInteger($r->getStartMonth()), $rows->all())];
 });
 
 run('errors', fn() => [
@@ -280,7 +286,7 @@ run('write_cycle', function () use ($author): array {
     $created = $author()
         ->setName('cycle')->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
         ->setStartDt($start)->setEndDt($start)->setPrice(12.5)->setIp('10.0.0.1')->setAesHexEmail('cycle@example.com')
-        ->setJsonSetting(['a' => 1])->setSerializeData(['k' => 'v'])
+        ->setJsonSetting(StyledValue::value(['a' => 1]))->setSerializeData(StyledValue::value(['k' => 'v']))
         ->newLabel('created')
         ->create();
     $seq = $created->getSeq();
@@ -402,4 +408,4 @@ run('aes_status', function () use ($db): array {
     return ['current' => $status->current, 'pending' => $status->pending, 'versions' => implode(',', $versions)];
 });
 
-echo json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR), "\n";
+echo Model::jsonText($out), "\n";
