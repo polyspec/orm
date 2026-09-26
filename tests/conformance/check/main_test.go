@@ -51,6 +51,34 @@ func TestRepeatedEvidenceRejectsChangedOutput(t *testing.T) {
 	if err := compareRepeatedEvidence(first, second); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(first, []byte(`{"one":{"result":9007199254740992}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte(`{"one":{"result":9007199254740993}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := compareRepeatedEvidence(first, second); err == nil {
+		t.Fatal("distinct large integers accepted as repeatable")
+	}
+}
+
+func TestExactNumericConformance(t *testing.T) {
+	for _, test := range []struct {
+		left, right string
+		equal       bool
+	}{
+		{`{"value":9007199254740992}`, `{"value":9007199254740993}`, false},
+		{`{"value":48000}`, `{"value":48000.0}`, true},
+		{`{"value":9.007199254740993e15}`, `{"value":9007199254740993}`, true},
+	} {
+		got, err := equalJSON([]byte(test.left), []byte(test.right))
+		if err != nil || got != test.equal {
+			t.Fatalf("compare %s and %s: equal=%t, error=%v", test.left, test.right, got, err)
+		}
+	}
+	if got := canon([]byte(`{"value":9007199254740993}`)); got != "{\n  \"value\": 9007199254740993\n}" {
+		t.Fatalf("recording rounded a large integer: %s", got)
+	}
 }
 
 func TestRunRemovesStaleVerifiedOutputs(t *testing.T) {

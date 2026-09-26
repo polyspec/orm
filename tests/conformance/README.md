@@ -8,10 +8,12 @@ PHP, Rust, and TypeScript; each runner executes it against the seeded bench data
 {"<vector>": {"statements": [{"sql": "...", "binds": [...]}], "result": ...}}
 ```
 
-`check` canonicalizes the JSON (sorted keys, shortest numbers) and compares
-every language against `vectors.json`, byte for byte: same SQL, same binds in
+`check` compares JSON numbers as exact rational values and records their original
+decimal representation. It sorts object keys for readable output and compares
+every language against `vectors.json`: same SQL, same binds in
 the same order, same typed results (ints as numbers, bools as booleans,
-datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null).
+datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null). Distinct integers
+beyond 2^53 remain distinct; equivalent decimal forms compare equal.
 
 | file | role |
 |---|---|
