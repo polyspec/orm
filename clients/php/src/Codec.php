@@ -80,13 +80,16 @@ final class Codec
         return str_ends_with($text, '.0') ? substr($text, 0, -2) : $text;
     }
     /** @param list<string> $styles */
-    public static function decode(array $styles, mixed $raw): mixed
+    public static function decode(array $styles, mixed $raw): StyledValue
     {
         if (is_resource($raw)) {
             $raw = stream_get_contents($raw); // pdo_pgsql hands bytea columns over as streams
         }
-        if ($raw === null || $raw === '') {
-            return null;
+        if ($raw === null) {
+            return StyledValue::sqlNull();
+        }
+        if ($raw === '') {
+            throw new OrmException(Code::CODEC_DECODE, 'styled cell is empty');
         }
         if (!is_string($raw)) {
             throw new OrmException(Code::CODEC_DECODE, 'cell is not a string');
@@ -138,7 +141,7 @@ final class Codec
                     throw new OrmException(Code::CODEC_UNSUPPORTED, "style {$styles[$i]}");
             }
         }
-        return $v;
+        return StyledValue::value($v);
     }
 
     /**
@@ -146,13 +149,13 @@ final class Codec
      * so the executor binds it as a blob (bytea on PostgreSQL rejects it as text); everything else is text.
      * @param list<string> $styles
      */
-    public static function encode(array $styles, mixed $v): string|Bytes|null
+    public static function encode(array $styles, StyledValue $v): string|Bytes|null
     {
-        if ($v === null) {
+        if ($v->kind === 'sql-null') {
             return null;
         }
         $cur = null;
-        $value = $v;
+        $value = $v->payload();
         foreach ($styles as $i => $st) {
             switch ($st) {
                 case 'serialize':

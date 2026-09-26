@@ -45,11 +45,13 @@ final class Code
     public const LIMIT_IN_RELATION = 'LIMIT_IN_RELATION';
     /** executor: strict one-row query matched no row */
     public const NO_ROWS = 'NO_ROWS';
+    /** executor: a requested column was not included in the loaded row */
+    public const COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';
-    /** executor */
+    /** executor: a styled input cannot be encoded, including SQL NULL for a non-null column */
     public const CODEC_ENCODE = 'CODEC_ENCODE';
     /** executor: PHP objects/references in serialize, unknown style */
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';

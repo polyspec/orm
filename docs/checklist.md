@@ -67,6 +67,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] N5.1.2.4.1 Read a live SQLite `INTEGER PRIMARY KEY AUTOINCREMENT` column as a signed `i64` automatic key in each schema tool, while preserving a non-automatic `INTEGER` column as `i32`. Verify physical SQLite import and schema build in the clients.
 - [ ] N5.1.2.5 Replace Go scalar and collection key string fallback with an exact typed key representation. Verify that unsupported values fail, distinct values cannot collide, and relation, split-query, and collection callers propagate errors.
 - [~] N5.1.2.6 Distinguish SQL NULL, an encoded null value, and an unselected styled value column in the four clients on all three databases. Verify storage text, getters, row arrays, model JSON output, and errors with one shared fixture.
+- [o] N5.1.2.6.1 Use `StyledValue` in PHP styled-column setters, getters, codecs, and model output. Verify the shared state cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
