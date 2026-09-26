@@ -4,54 +4,188 @@
       "id": "sql_null",
       "style": "json",
       "stored_text": null,
-      "output": {"kind": "sql-null"}
+      "output": {
+        "kind": "sql-null"
+      },
+      "input": {
+        "kind": "sql-null"
+      },
+      "getter": {
+        "kind": "sql-null"
+      },
+      "write_text": null,
+      "nullable": true
     },
     {
       "id": "json_null",
       "style": "json",
       "stored_text": "null",
-      "output": {"kind": "value", "value": null}
+      "output": {
+        "kind": "value",
+        "value": null
+      },
+      "input": {
+        "kind": "value",
+        "value": null
+      },
+      "getter": {
+        "kind": "value",
+        "value": null
+      },
+      "write_text": "null",
+      "nullable": true
     },
     {
       "id": "json_object_with_kind",
       "style": "json",
       "stored_text": "{\"kind\":\"sql-null\"}",
-      "output": {"kind": "value", "value": {"kind": "sql-null"}}
+      "output": {
+        "kind": "value",
+        "value": {
+          "kind": "sql-null"
+        }
+      },
+      "input": {
+        "kind": "value",
+        "value": {
+          "kind": "sql-null"
+        }
+      },
+      "getter": {
+        "kind": "value",
+        "value": {
+          "kind": "sql-null"
+        }
+      },
+      "write_text": "{\"kind\":\"sql-null\"}",
+      "nullable": true
     },
     {
       "id": "empty_text",
       "style": "json",
       "stored_text": "",
-      "error": "CODEC_DECODE"
+      "error": "CODEC_DECODE",
+      "nullable": true
     },
     {
       "id": "serialize_sql_null",
       "style": "serialize",
       "stored_text": null,
-      "output": {"kind": "sql-null"}
+      "output": {
+        "kind": "sql-null"
+      },
+      "input": {
+        "kind": "sql-null"
+      },
+      "getter": {
+        "kind": "sql-null"
+      },
+      "write_text": null,
+      "nullable": true
     },
     {
       "id": "serialize_value_null",
       "style": "serialize",
       "stored_text": "N;",
-      "output": {"kind": "value", "value": null}
+      "output": {
+        "kind": "value",
+        "value": null
+      },
+      "input": {
+        "kind": "value",
+        "value": null
+      },
+      "getter": {
+        "kind": "value",
+        "value": null
+      },
+      "write_text": "N;",
+      "nullable": true
     },
     {
       "id": "yaml_sql_null",
       "style": "yaml",
       "stored_text": null,
-      "output": {"kind": "sql-null"}
+      "output": {
+        "kind": "sql-null"
+      },
+      "input": {
+        "kind": "sql-null"
+      },
+      "getter": {
+        "kind": "sql-null"
+      },
+      "nullable": true
     },
     {
       "id": "yaml_value_null",
       "style": "yaml",
       "stored_text": "null\n",
-      "output": {"kind": "value", "value": null}
+      "output": {
+        "kind": "value",
+        "value": null
+      },
+      "input": {
+        "kind": "value",
+        "value": null
+      },
+      "getter": {
+        "kind": "value",
+        "value": null
+      },
+      "nullable": true
     },
     {
       "id": "unselected",
       "style": "json",
-      "error": "COLUMN_UNSELECTED"
+      "error": "COLUMN_UNSELECTED",
+      "getter_error": "COLUMN_UNSELECTED",
+      "output_error": "COLUMN_UNSELECTED",
+      "nullable": true
+    },
+    {
+      "id": "nonnull_sql_null",
+      "style": "json",
+      "nullable": false,
+      "input": {
+        "kind": "sql-null"
+      },
+      "error": "CODEC_ENCODE"
+    },
+    {
+      "id": "jsons_sql_null",
+      "style": "jsons",
+      "nullable": true,
+      "stored_text": null,
+      "input": {
+        "kind": "sql-null"
+      },
+      "getter": {
+        "kind": "sql-null"
+      },
+      "output": {
+        "kind": "sql-null"
+      },
+      "write_text": null
+    },
+    {
+      "id": "jsons_value_null",
+      "style": "jsons",
+      "nullable": true,
+      "stored_text": "null",
+      "input": {
+        "kind": "value",
+        "value": null
+      },
+      "getter": {
+        "kind": "value",
+        "value": null
+      },
+      "output": {
+        "kind": "value",
+        "value": null
+      },
+      "write_text": "null"
     }
   ]
 }

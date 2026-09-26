@@ -52,7 +52,7 @@ codes:
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)
     origin: executor
-  - code: CODEC_ENCODE
+  - code: CODEC_ENCODE           # a styled input cannot be encoded, including SQL NULL for a non-null column
     origin: executor
   - code: CODEC_UNSUPPORTED       # PHP objects/references in serialize, unknown style
     origin: executor
