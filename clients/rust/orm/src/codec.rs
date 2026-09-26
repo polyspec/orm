@@ -18,16 +18,14 @@ fn err(code: &str, msg: impl Into<String>) -> Error {
     Error::Engine { code: code.into(), msg: msg.into() }
 }
 
-/// Stored cell → decoded value, or `Val::Null` for NULL/empty. The `json` and
+/// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `json` and
 /// `jsons` stages return `Val::Ordered`; the other stages return `Val::Json`.
 pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
         // a driver-parsed JSON cell: only a bare json style applies
         Val::Json(v) if styles.len() == 1 && (styles[0] == "json" || styles[0] == "jsons") => v.to_string().into_bytes(),
-        Val::Str(s) if s.is_empty() => return Ok(Val::Null),
         Val::Str(s) => s.as_bytes().to_vec(),
-        Val::Bytes(b) if b.is_empty() => return Ok(Val::Null),
         Val::Bytes(b) => b.clone(),
         other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
     };
@@ -43,7 +41,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 cur = out;
             }
             "base64" => {
-                let text = String::from_utf8_lossy(&cur);
+                let text = std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "base64 input is not UTF-8"))?;
                 cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
@@ -55,7 +53,13 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(value.unwrap_or_else(|| Val::Str(String::from_utf8_lossy(&cur).into_owned())))
+    Ok(match value {
+        Some(value) => value,
+        None => match String::from_utf8(cur) {
+            Ok(text) => Val::Str(text),
+            Err(error) => Val::Bytes(error.into_bytes()),
+        },
+    })
 }
 
 /// An ordered-json value → stored representation. The first stage is `json`
@@ -350,7 +354,11 @@ impl<'a> Parser<'a> {
                 self.expect(b':')?;
                 let s = self.until(b';')?;
                 match t {
-                    b'b' => Ok(Value::Bool(s == "1")),
+                    b'b' => match s {
+                        "0" => Ok(Value::Bool(false)),
+                        "1" => Ok(Value::Bool(true)),
+                        _ => Err(self.fail("bad boolean")),
+                    },
                     b'i' => s.parse::<i64>().map(Value::from).map_err(|_| self.fail("bad int")),
                     _ => {
                         let f = match s {
@@ -359,7 +367,7 @@ impl<'a> Parser<'a> {
                             "NAN" => f64::NAN,
                             _ => s.parse::<f64>().map_err(|_| self.fail("bad float"))?,
                         };
-                        Ok(serde_json::Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null))
+                        serde_json::Number::from_f64(f).map(Value::Number).ok_or_else(|| self.fail("non-finite float"))
                     }
                 }
             }
@@ -601,7 +609,7 @@ pub fn host_decode(raw: &Val, styles: &[String], aes_key: &str) -> Result<Val> {
     };
     for st in styles.iter().rev() {
         cur = match st.as_str() {
-            "hex" => hex_decode(&String::from_utf8_lossy(&cur))?,
+            "hex" => hex_decode(std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "hex input is not UTF-8"))?)?,
             "aes" => {
                 if aes_key.is_empty() {
                     return Err(Error::Config("secret aes not configured".into()));
@@ -764,6 +772,13 @@ mod tests {
         assert_eq!(encode(&["serialize", "yaml"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
         let yaml = vec!["yaml".to_string()];
         assert_eq!(decode(&yaml, &Val::Str("1: value\n".into())).unwrap(), Val::Json(serde_json::json!({"1": "value"})));
+        assert_eq!(decode(&["base64".into()], &Val::Bytes(vec![0xff])).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(host_decode(&Val::Bytes(vec![0xff]), &["hex".into()], "").unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(decode(&["serialize".into()], &Val::Str("b:2;".into())).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(decode(&["serialize".into()], &Val::Str("d:NAN;".into())).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(decode(&[], &Val::Bytes(vec![0xff])).unwrap(), Val::Bytes(vec![0xff]));
+        assert_eq!(decode(&[], &Val::Str(String::new())).unwrap(), Val::Str(String::new()));
+        assert_eq!(decode(&["json".into()], &Val::Str(String::new())).unwrap_err().code(), CODEC_DECODE);
     }
 
     /// The json stage returns the ordered-json value with its member order,

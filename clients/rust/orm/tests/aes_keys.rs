@@ -34,12 +34,12 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         if !COLUMNS.contains(&name) {
-            return false;
+            return Ok(false);
         }
         self.values.insert(name.to_owned(), v);
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         self.values.get(name).cloned()
@@ -75,7 +75,7 @@ async fn aes_write_uses_key_of_current_version() {
         Val::Ordered(v) => assert_eq!(v.compact(), r#"{"b":1,"a":[]}"#),
         other => panic!("config is {other:?}"),
     }
-    assert_eq!(rows[0].values["aes_key_version"].as_i64(), 2, "stored version");
+    assert_eq!(rows[0].values["aes_key_version"].as_i64().unwrap(), 2, "stored version");
     let conflict = orm::Config { aes_key: "other-key".into(), aes_version: 1, aes_keys: keys(&[(1, "config-key-one")]), ..Default::default() };
     match Db::connect(&dsn, 2, conflict).await {
         Err(e) => assert!(e.code() == "CONFIG" && e.to_string().contains("aes_key"), "error {e}"),

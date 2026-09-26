@@ -47,12 +47,12 @@ macro_rules! row_model {
             fn into_core(self) -> Core {
                 self.core
             }
-            fn assign(&mut self, name: &str, v: Val) -> bool {
+            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
                 if !$columns.contains(&name) {
-                    return false;
+                    return Ok(false);
                 }
                 self.values.insert(name.to_owned(), v);
-                true
+                Ok(true)
             }
             fn value(&self, name: &str) -> Option<Val> {
                 self.values.get(name).cloned()
@@ -151,7 +151,7 @@ async fn audit_triggers() {
                     row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     let created = orm::model::create(&mut row).await?;
-                    let seq = created.value("seq").unwrap_or_default().as_i64();
+                    let seq = created.value("seq").expect("generated seq").as_i64()?;
                     let mut changed: PlainItem = model();
                     changed.core_mut().set("seq", Param::I64(seq));
                     changed.core_mut().set("title", Param::from("b"));
@@ -166,7 +166,7 @@ async fn audit_triggers() {
                     row.core_mut().set("service_ref", Param::from("s1"));
                     row.core_mut().set("title", Param::from("a"));
                     let created = orm::model::create(&mut row).await?;
-                    let seq = created.value("seq").unwrap_or_default().as_i64();
+                    let seq = created.value("seq").expect("generated seq").as_i64()?;
                     let mut changed: Item = model();
                     changed.core_mut().set("seq", Param::I64(seq));
                     changed.core_mut().set("title", Param::from("b"));
@@ -188,12 +188,12 @@ async fn audit_triggers() {
             q.core_mut().order_by("seq", false, None);
             orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
         };
-        let text = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].as_string();
+        let text = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].as_string().unwrap();
         let json = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].to_json().unwrap().to_string();
         assert_eq!(rows.len(), 2, "{driver}: change rows");
         assert_eq!(rows.iter().map(|r| text(r, "change_kind")).collect::<Vec<_>>(), ["INSERT", "UPDATE"], "{driver}: change kinds");
         for row in &rows {
-            assert_eq!(row["operation_seq"].as_i64(), 1, "{driver}: operation");
+            assert_eq!(row["operation_seq"].as_i64().unwrap(), 1, "{driver}: operation");
             assert_eq!(text(row, "service_ref"), "s1", "{driver}: site");
             assert_eq!(text(row, "table_label"), table_label, "{driver}: table");
             assert_eq!(json(row, "entity_ref"), format!("{{\"seq\":{seq}}}"), "{driver}: entity key");

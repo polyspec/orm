@@ -49,14 +49,14 @@ impl Model for ZoneEvent {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         match name {
-            "seq" => self.seq = v.as_i64(),
-            "start_dt" => self.start_dt = v.as_datetime(),
-            "created_ts" => self.created_ts = v.as_datetime(),
-            _ => return false,
+            "seq" => self.seq = v.as_i64()?,
+            "start_dt" => self.start_dt = v.as_datetime()?,
+            "created_ts" => self.created_ts = v.as_datetime()?,
+            _ => return Ok(false),
         }
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         Some(match name {
