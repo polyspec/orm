@@ -17,6 +17,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - [ ] I3 Rewrite the implementation matrix for the model syntax and the in-process planners.
 - [o] I4 Verify connections, transactions, relations, writes, and time zones on physical databases in all four clients.
 - [o] I4.1 Compare all 20 PHP request record declarations with the shared field and nested-type definitions. Source mutations must fail the checker, and the PHP-only declaration check must pass.
+- [o] I4.2 Check every interface error label and each recorded error result against `docs/errors.yaml`. Unknown or repeated labels and malformed error results must fail.
 
 ## Online documentation
 

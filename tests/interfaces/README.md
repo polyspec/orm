@@ -10,6 +10,7 @@ The checker verifies these requirements:
 - Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, and TypeScript. PHP record declarations come from `Validator::RECORDS`.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
 - Sequence rules compare the results and statement counts of conformance vectors.
+- Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
 - Source mutations verify that the checker rejects missing methods, additional parameters, changed return types, changed field types, changed receivers, and undeclared state.
 
@@ -43,3 +44,4 @@ go run ./tests/interfaces/check --generate --record --self-test
 `--language` limits declaration and record checks to one client. It does not replace the four-client check or conformance runs. PHP arrays are checked against the declared request shape; function bodies and the behavior of each error or state transition require executable cases.
 
 Static checks do not prove equivalent function bodies for every input. Conformance statement traces and state checks verify runtime behavior. Driver internals, physical memory layout, and formal verification are outside this check.
+The error-label check verifies declared names. It does not prove that every method emits each listed error; executable cases are required for that behavior.
