@@ -128,9 +128,10 @@ final class Generator
         $b .= "\n            'indexes' => " . self::list($indexes) . ",\n        ];\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
-            $t = self::type($c);
+            $styled = array_intersect($c['styles'] ?? [], ['json', 'jsons', 'serialize', 'yaml']) !== [];
+            $t = $styled ? '\\Orm\\StyledValue' : self::type($c);
             $nullable = !empty($c['nullable']);
-            $nt = $nullable && $t !== 'mixed' ? "?$t" : $t;
+            $nt = !$styled && $nullable && $t !== 'mixed' ? "?$t" : $t;
             $b .= "\n    public function get$p(): $nt\n    {\n        return \$this->readColumn(" . self::str($c['name']) . ");\n    }\n";
             $param = $nt;
             $value = '$v';
