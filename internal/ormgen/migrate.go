@@ -234,6 +234,7 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 				cols.Close()
 				return nil, err
 			}
+			c.Type = sqliteLogicalType(c.Type)
 			c.Nullable = notnull == 0 && pk == 0
 			switch {
 			case !def.Valid:
@@ -359,6 +360,17 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 		return nil, fmt.Errorf("sqlite schema comments: %w", err)
 	}
 	return out, nil
+}
+
+func sqliteLogicalType(typ string) string {
+	trimmed := strings.TrimSpace(typ)
+	lower := strings.ToLower(trimmed)
+	if !strings.HasPrefix(lower, "decimalint(") || !strings.HasSuffix(lower, ")") {
+		return typ
+	}
+	inner := strings.TrimSuffix(strings.TrimPrefix(lower, "decimalint("), ")")
+	inner = strings.ReplaceAll(inner, ",", "_")
+	return "decimal(" + inner + ")"
 }
 
 // sqliteClockDefault reports the column default the DDL writes for =now.

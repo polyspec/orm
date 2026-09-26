@@ -71,7 +71,7 @@
 ## 3단계 — 언어별 스키마 도구
 
 - [o] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다. 근거: `make schema-cross-language-check`가 같은 Mermaid 원본을 Go·PHP·Rust·TypeScript로 빌드하고 전체 JSON 매니페스트를 비교해 12개 엔티티와 schema hash `16198b563e2e3cae`가 네 출력에서 같음을 보고했다.
-- [ ] L2 모든 언어에서 마이그레이션과 import 도구를 제공한다.
+- [o] L2 모든 언어에서 마이그레이션과 import 도구를 제공한다. 증거: Go SQLite 가져오기 테스트가 `DECIMALINT(13,4)`와 `DECIMALINT(16,0)`을 논리 decimal 타입으로 정규화하고 manifest를 빌드한다. PHP schema 도구가 SQLite·MySQL·PostgreSQL에서 마이그레이션과 가져오기를 통과한다. Rust CLI 가져오기와 TypeScript SQLite 가져오기 테스트가 decimal 정밀도와 scale을 보존한다. 네 SQLite 가져오기 경로가 같은 논리 매핑을 사용하며 입력을 조용히 버리지 않는다.
 
 ## 스키마와 마이그레이션 도구
 
