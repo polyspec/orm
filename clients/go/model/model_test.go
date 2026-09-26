@@ -376,6 +376,24 @@ func TestColumnsAndSubqueries(t *testing.T) {
 		if grouped.Len() != 2 {
 			t.Fatalf("getsCount: %d", grouped.Len())
 		}
+		counts := map[bool]int64{}
+		for row := range grouped.All() {
+			value, ok := row.Value("is_close")
+			if !ok {
+				t.Fatal("grouped row has no selected boolean")
+			}
+			closed, ok := value.(bool)
+			if !ok {
+				t.Fatalf("grouped boolean has type %T", value)
+			}
+			if _, ok := row.Value("name"); ok {
+				t.Fatal("grouped row exposes an unselected model column")
+			}
+			counts[closed] = row.Count()
+		}
+		if counts[false] != 2 || counts[true] != 2 {
+			t.Fatalf("grouped counts: %#v", counts)
+		}
 		page := must(model.Author().Connect(db).OrderBySeqAsc().GetsPage(2, 3))
 		if page.TotalCount != 4 || page.TotalPages != 2 || page.Items.Len() != 1 || page.Items.First().GetName() != "delta" {
 			t.Fatalf("page: %+v", page)

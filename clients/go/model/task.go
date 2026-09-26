@@ -150,9 +150,7 @@ func (x *TaskModel) Gets() (*orm.Collection[*TaskModel], error) { return orm.Get
 func (x *TaskModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *TaskModel) GetsCount() (*orm.Collection[*TaskModel], error) {
-	return orm.GetsCount[*TaskModel](x.m)
-}
+func (x *TaskModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *TaskModel) GetSum() (float64, error) { return x.m.GetSum() }

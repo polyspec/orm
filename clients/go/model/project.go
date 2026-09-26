@@ -146,9 +146,7 @@ func (x *ProjectModel) Gets() (*orm.Collection[*ProjectModel], error) {
 func (x *ProjectModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *ProjectModel) GetsCount() (*orm.Collection[*ProjectModel], error) {
-	return orm.GetsCount[*ProjectModel](x.m)
-}
+func (x *ProjectModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *ProjectModel) GetSum() (float64, error) { return x.m.GetSum() }

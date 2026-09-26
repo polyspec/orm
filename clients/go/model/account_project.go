@@ -157,9 +157,7 @@ func (x *AccountProjectModel) Gets() (*orm.Collection[*AccountProjectModel], err
 func (x *AccountProjectModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *AccountProjectModel) GetsCount() (*orm.Collection[*AccountProjectModel], error) {
-	return orm.GetsCount[*AccountProjectModel](x.m)
-}
+func (x *AccountProjectModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *AccountProjectModel) GetSum() (float64, error) { return x.m.GetSum() }
