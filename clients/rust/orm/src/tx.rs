@@ -115,12 +115,68 @@ pub struct Transaction<'a, F> {
     set: bool,
 }
 
+/// Failure of a callback transaction that runs exactly once.
+#[derive(Debug)]
+pub enum TransactionOnceError<E> {
+    /// The database could not start, commit, or complete the transaction.
+    Orm(Error),
+    /// The callback failed and its transaction rolled back.
+    Callback(E),
+    /// Both the callback and rollback failed.
+    Rollback { callback: E, rollback: Error },
+}
+
+impl<E: std::fmt::Display> std::fmt::Display for TransactionOnceError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Orm(error) => write!(f, "transaction failed: {error}"),
+            Self::Callback(error) => write!(f, "transaction callback failed: {error}"),
+            Self::Rollback { callback, rollback } => {
+                write!(f, "transaction callback failed ({callback}) and rollback failed ({rollback})")
+            }
+        }
+    }
+}
+
+impl<E: std::error::Error + Send + Sync + 'static> std::error::Error for TransactionOnceError<E> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Orm(error) => Some(error),
+            Self::Callback(error) | Self::Rollback { callback: error, .. } => Some(error),
+        }
+    }
+}
+
 impl Db {
     /// Runs `f` in one transaction when awaited. An error rolls back; otherwise
     /// the transaction commits. Models without a connection inside `f` use this
     /// transaction. Deadlocks run `f` again, three times by default.
     pub fn transaction<F>(&self, f: F) -> Transaction<'_, F> {
         Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, set: false }
+    }
+
+    /// Runs a callback once in a transaction and preserves its own error.
+    /// A nested call uses a savepoint. This call does not retry the callback.
+    pub async fn transaction_once<F, T, E>(&self, f: F) -> std::result::Result<T, TransactionOnceError<E>>
+    where
+        F: AsyncFnOnce() -> std::result::Result<T, E>,
+    {
+        if let Some(outer) = active_for(self) {
+            return savepoint_once(outer, f).await;
+        }
+        let tx = Arc::new(begin(self, None, false).await.map_err(TransactionOnceError::Orm)?);
+        let mut stack = frames();
+        stack.push(tx.clone());
+        match FLOW.scope(stack, f()).await {
+            Ok(value) => {
+                commit(&tx).await.map_err(TransactionOnceError::Orm)?;
+                Ok(value)
+            }
+            Err(callback) => match rollback(&tx).await {
+                Ok(()) => Err(TransactionOnceError::Callback(callback)),
+                Err(rollback) => Err(TransactionOnceError::Rollback { callback, rollback }),
+            },
+        }
     }
 }
 
@@ -233,6 +289,40 @@ where
                 tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
                 let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
                 Err(e)
+            }
+        }
+    }
+    .await;
+    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+    result
+}
+
+async fn savepoint_once<F, T, E>(tx: Arc<TxShared>, f: F) -> std::result::Result<T, TransactionOnceError<E>>
+where
+    F: AsyncFnOnce() -> std::result::Result<T, E>,
+{
+    let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
+    let name = format!("orm_sp_{n}");
+    let result = async {
+        tx.raw(&format!("SAVEPOINT {name}")).await.map_err(TransactionOnceError::Orm)?;
+        let mut stack = frames();
+        stack.push(tx.clone());
+        match FLOW.scope(stack, f()).await {
+            Ok(value) => {
+                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await.map_err(TransactionOnceError::Orm)?;
+                Ok(value)
+            }
+            Err(callback) => {
+                let rolled_back = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await;
+                let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                match (rolled_back, released) {
+                    (Ok(()), Ok(())) => Err(TransactionOnceError::Callback(callback)),
+                    (Err(rollback), Ok(())) | (Ok(()), Err(rollback)) => Err(TransactionOnceError::Rollback { callback, rollback }),
+                    (Err(rollback), Err(release)) => Err(TransactionOnceError::Rollback {
+                        callback,
+                        rollback: Error::Config(format!("savepoint rollback failed ({rollback}) and release failed ({release})")),
+                    }),
+                }
             }
         }
     }
@@ -389,6 +479,85 @@ pub fn transaction_conflict(message: impl Into<String>) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(Debug, PartialEq, Eq)]
+    enum DomainFailure {
+        Rejected,
+    }
+
+    impl std::fmt::Display for DomainFailure {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("request rejected")
+        }
+    }
+
+    impl std::error::Error for DomainFailure {}
+
+    #[test]
+    fn one_shot_transaction_reports_callback_and_rollback_errors() {
+        let error = TransactionOnceError::Rollback { callback: DomainFailure::Rejected, rollback: Error::Config("rollback rejected".into()) };
+        assert!(error.to_string().contains("request rejected"));
+        assert!(error.to_string().contains("rollback rejected"));
+        assert_eq!(std::error::Error::source(&error).unwrap().to_string(), "request rejected");
+    }
+
+    #[tokio::test]
+    async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
+        let tmp = std::env::temp_dir().join(format!("orm-once-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let targets = [
+            ("sqlite", format!("sqlite://{}", tmp.join("once.sqlite").display())),
+            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
+            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
+        ];
+        for (driver, dsn) in targets {
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            execute(&db, "DROP TABLE IF EXISTS orm_once_probe").await;
+            execute(&db, "CREATE TABLE orm_once_probe (id INTEGER PRIMARY KEY)").await;
+            let result = db
+                .transaction_once(async || {
+                    active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (1)").await.unwrap();
+                    Err::<(), _>(DomainFailure::Rejected)
+                })
+                .await;
+            assert!(matches!(result, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {result:?}");
+            let count = match db.pool() {
+                Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+            };
+            assert_eq!(count, 0, "{driver}: rollback");
+            db.transaction_once(async || {
+                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (2)").await.unwrap();
+                Ok::<_, DomainFailure>(())
+            })
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: commit: {e:?}"));
+            db.transaction(async || {
+                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (3)").await?;
+                let nested = db
+                    .transaction_once(async || {
+                        active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (4)").await.unwrap();
+                        Err::<(), _>(DomainFailure::Rejected)
+                    })
+                    .await;
+                assert!(matches!(nested, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {nested:?}");
+                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (5)").await
+            })
+            .retry(0)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: nested transaction: {e}"));
+            let count = match db.pool() {
+                Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+            };
+            assert_eq!(count, 3, "{driver}: committed rows");
+            execute(&db, "DROP TABLE orm_once_probe").await;
+            db.close().await;
+        }
+        std::fs::remove_dir_all(tmp).unwrap();
+    }
 
     fn required_dsn(name: &str) -> String {
         std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| panic!("{name} is required; database tests never skip"))

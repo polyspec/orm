@@ -1,5 +1,10 @@
 # Changelog
 
+
+Add Rust `Db::transaction_once` for a callback that runs once and returns its own error type.
+It uses a savepoint inside an active transaction and reports both the callback and rollback
+failures when both fail. Database errors remain distinct from callback errors.
+
 ## Unreleased — MySQL CHECK constraint namespace
 
 Keep persistent development rules in `AGENTS.md` and concrete work in the project checklist. The checklist checker now rejects unnumbered policy and status prose, so dated progress claims cannot replace item states and executable evidence. The waiting generated-interface check must verify the `multi_statement` exclusion in each public client API.

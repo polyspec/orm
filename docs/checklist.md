@@ -53,6 +53,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
+- [o] N9 Preserve the callback's error type in a Rust transaction executed once. Verify rollback, commit, nested savepoint behavior, and distinct callback and rollback failures on MySQL, PostgreSQL, and SQLite.
 
 ## Stage 3 — Schema tools per language
 
