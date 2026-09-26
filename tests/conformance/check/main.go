@@ -295,18 +295,76 @@ func compareRepeatedEvidence(first, second string) error {
 func decodeExact(raw []byte) (any, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
+	value, err := readJSONValue(decoder)
+	if err != nil {
 		return nil, err
 	}
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
+	if _, err := decoder.Token(); err != io.EOF {
 		if err == nil {
 			return nil, fmt.Errorf("multiple JSON values")
 		}
 		return nil, err
 	}
 	return value, nil
+}
+
+func readJSONValue(decoder *json.Decoder) (any, error) {
+	token, err := decoder.Token()
+	if err != nil {
+		return nil, err
+	}
+	delimiter, isDelimiter := token.(json.Delim)
+	if !isDelimiter {
+		return token, nil
+	}
+	switch delimiter {
+	case '{':
+		object := map[string]any{}
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return nil, err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return nil, fmt.Errorf("JSON object key is not text")
+			}
+			if _, exists := object[key]; exists {
+				return nil, fmt.Errorf("duplicate JSON object key %q", key)
+			}
+			object[key], err = readJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if end != json.Delim('}') {
+			return nil, fmt.Errorf("JSON object ended with %v", end)
+		}
+		return object, nil
+	case '[':
+		array := []any{}
+		for decoder.More() {
+			item, err := readJSONValue(decoder)
+			if err != nil {
+				return nil, err
+			}
+			array = append(array, item)
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if end != json.Delim(']') {
+			return nil, fmt.Errorf("JSON array ended with %v", end)
+		}
+		return array, nil
+	default:
+		return nil, fmt.Errorf("unexpected JSON delimiter %q", delimiter)
+	}
 }
 
 type exactNumber struct{ value string }
@@ -370,18 +428,22 @@ func equalJSON(a, b []byte) (bool, error) {
 func load(root string) file {
 	b, err := os.ReadFile(filepath.Join(root, "tests/conformance/vectors.json"))
 	must(err)
+	_, err = decodeExact(b)
+	must(err)
 	var f file
 	must(json.Unmarshal(b, &f))
 	if driver == "mysql" {
 		return f
 	}
 	recorded := map[string]json.RawMessage{}
-	if b, err := os.ReadFile(filepath.Join(root, vectorsPath())); err == nil {
-		var d file
-		must(json.Unmarshal(b, &d))
-		for _, v := range d.Vectors {
-			recorded[v.Name] = v.Expect
-		}
+	b, err = os.ReadFile(filepath.Join(root, vectorsPath()))
+	must(err)
+	_, err = decodeExact(b)
+	must(err)
+	var d file
+	must(json.Unmarshal(b, &d))
+	for _, v := range d.Vectors {
+		recorded[v.Name] = v.Expect
 	}
 	for i := range f.Vectors {
 		f.Vectors[i].Expect = recorded[f.Vectors[i].Name]
@@ -410,6 +472,8 @@ func compare(root string, outputs []string) int {
 	for _, p := range outputs {
 		lang := strings.TrimSuffix(filepath.Base(p), ".json")
 		b, err := os.ReadFile(p)
+		must(err)
+		_, err = decodeExact(b)
 		must(err)
 		var g got
 		must(json.Unmarshal(b, &g))
@@ -470,6 +534,8 @@ func compare(root string, outputs []string) int {
 func record(root, output string) {
 	f := load(root)
 	b, err := os.ReadFile(output)
+	must(err)
+	_, err = decodeExact(b)
 	must(err)
 	var g map[string]json.RawMessage
 	must(json.Unmarshal(b, &g))

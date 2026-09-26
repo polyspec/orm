@@ -57,6 +57,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [~] N5.1 Run all four clients on MySQL, PostgreSQL, and SQLite, compare every vector with recorded expectations, and confirm repeated execution leaves the observed database state unchanged.
 - [o] N5.1.1 Require all four outputs, reject stale and changed repeated results, bound runner execution, verify all table rows and declared counters, restore only declared test counters, and test counter observation and cleanup on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.1.1 Compare and record JSON numbers without float64 rounding; distinguish integers beyond 2^53 while treating equivalent decimal forms as equal.
+- [o] N5.1.1.2 Reject duplicate keys in nested JSON evidence and expectations, and fail when a database expectation file is missing.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
