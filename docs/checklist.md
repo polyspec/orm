@@ -5,7 +5,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 ## Common interface verification
 
 - [o] I1 Define common structure, ownership, and state transitions in `interfaces.md` and Mermaid diagrams.
-- [ ] I2 Regenerate `contracts/interfaces.json`, the generated component page, and the symbol checks for the model syntax.
+- [o] I2 Regenerate `contracts/interfaces.json`, the generated component page, and the symbol checks for the model syntax. Evidence: `go run ./tests/interfaces/check --generate --record --self-test` and `make interface-check` regenerated and compared the manifest, both component pages, four symbol snapshots, and source mutations; the generated outputs were current and all four languages passed.
 - [ ] I3 Rewrite the implementation matrix for the model syntax and the in-process planners.
 - [o] I4 Verify connections, transactions, relations, writes, and time zones on physical databases in all four clients.
 - [o] I4.1 Compare all 20 PHP request record declarations with the shared field and nested-type definitions. Source mutations must fail the checker, and the PHP-only declaration check must pass.
