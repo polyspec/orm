@@ -1,6 +1,6 @@
 // Conformance checker: runs the client runners (or reads their outputs) and
 // compares each vector's statements and result against tests/conformance/vectors.json
-// after canonicalizing the JSON (sorted keys, shortest numbers).
+// with exact JSON number comparison and sorted object keys in diagnostics.
 //
 //	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
@@ -21,9 +21,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -279,25 +282,86 @@ func compareRepeatedEvidence(first, second string) error {
 	if err != nil {
 		return err
 	}
-	var av, bv any
-	if err := json.Unmarshal(a, &av); err != nil {
-		return err
-	}
-	if err := json.Unmarshal(b, &bv); err != nil {
-		return err
-	}
-	ac, err := json.Marshal(av)
+	equal, err := equalJSON(a, b)
 	if err != nil {
 		return err
 	}
-	bc, err := json.Marshal(bv)
-	if err != nil {
-		return err
-	}
-	if !bytes.Equal(ac, bc) {
+	if !equal {
 		return fmt.Errorf("conformance output changed between runs: %s", first)
 	}
 	return nil
+}
+
+func decodeExact(raw []byte) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("multiple JSON values")
+		}
+		return nil, err
+	}
+	return value, nil
+}
+
+type exactNumber struct{ value string }
+
+func normalizeExact(value any) (any, error) {
+	switch typed := value.(type) {
+	case json.Number:
+		rational, ok := new(big.Rat).SetString(string(typed))
+		if !ok {
+			return nil, fmt.Errorf("invalid JSON number %q", typed)
+		}
+		return exactNumber{rational.RatString()}, nil
+	case []any:
+		result := make([]any, len(typed))
+		for i, item := range typed {
+			var err error
+			result[i], err = normalizeExact(item)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return result, nil
+	case map[string]any:
+		result := make(map[string]any, len(typed))
+		for key, item := range typed {
+			var err error
+			result[key], err = normalizeExact(item)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return result, nil
+	default:
+		return value, nil
+	}
+}
+
+func equalJSON(a, b []byte) (bool, error) {
+	left, err := decodeExact(a)
+	if err != nil {
+		return false, err
+	}
+	right, err := decodeExact(b)
+	if err != nil {
+		return false, err
+	}
+	left, err = normalizeExact(left)
+	if err != nil {
+		return false, err
+	}
+	right, err = normalizeExact(right)
+	if err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(left, right), nil
 }
 
 // load reads the vector list (names and chains) from vectors.json — the single
@@ -325,11 +389,10 @@ func load(root string) file {
 	return f
 }
 
-// canon re-encodes JSON with sorted keys and Go's shortest number form, so
-// 48000 == 48000.0 and key order never matters.
+// canon re-encodes JSON with sorted keys and without changing number precision.
 func canon(raw json.RawMessage) string {
-	var v any
-	must(json.Unmarshal(raw, &v))
+	v, err := decodeExact(raw)
+	must(err)
 	b, err := json.MarshalIndent(v, "", "  ")
 	must(err)
 	return string(b)
@@ -372,7 +435,10 @@ func compare(root string, outputs []string) int {
 				failed++
 				continue
 			}
-			if got := canon(g); got != want {
+			equal, err := equalJSON(g, v.Expect)
+			must(err)
+			if !equal {
+				got := canon(g)
 				line += fmt.Sprintf(" %s:DIFF", lang)
 				failed++
 				diffs = append(diffs, fmt.Sprintf("--- %s expected\n%s\n--- %s got\n%s\n", v.Name, want, lang, got))
