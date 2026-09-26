@@ -11,7 +11,7 @@ use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as Yaml
 use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
 
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
-use crate::value::{Param, Val};
+use crate::value::{Param, StyledValue, Val};
 use crate::{Error, Result};
 
 fn err(code: &str, msg: impl Into<String>) -> Error {
@@ -63,11 +63,9 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
 }
 
 /// An ordered-json value → stored representation. The first stage is `json`
-/// or `jsons` and writes the compact text of the value; a JSON null is NULL.
-pub fn encode_ordered(styles: &[&str], v: &strict_json::Value) -> Result<Param> {
-    if v.kind() == strict_json::Kind::Null {
-        return Ok(Param::Null);
-    }
+/// or `jsons` and writes the compact text of the value, including JSON null.
+pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> Result<Param> {
+    let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     match styles.first() {
         Some(&"json") | Some(&"jsons") => finish(&styles[1..], v.compact().into_bytes()),
         _ => Err(err(CODEC_UNSUPPORTED, format!("an ordered-json value needs the first style json, not {styles:?}"))),
@@ -92,11 +90,8 @@ fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
 }
 
 /// Value → stored representation as a bind parameter (`Str`, or `Bytes` for gz).
-pub fn encode(styles: &[&str], v: Option<&Value>) -> Result<Param> {
-    let Some(v) = v else { return Ok(Param::Null) };
-    if v.is_null() {
-        return Ok(Param::Null);
-    }
+pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
+    let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     let mut cur: Vec<u8> = Vec::new();
     let value = v.clone();
     for (i, st) in styles.iter().enumerate() {
@@ -668,6 +663,10 @@ mod tests {
                 Some(b) => Val::Bytes(base64::engine::general_purpose::STANDARD.decode(b).unwrap()),
             };
             let decoded = decode(&v.styles, &raw);
+            if matches!(raw, Val::Null) != matches!(decoded, Ok(Val::Null)) {
+                fails += 1;
+                eprintln!("{}: SQL NULL state changed during decode", v.name);
+            }
             let got = match &decoded {
                 Ok(Val::Json(j)) => j.clone(),
                 Ok(Val::Ordered(o)) => crate::value::ordered_to_json(o).unwrap(),
@@ -684,8 +683,9 @@ mod tests {
             }
             let styles: Vec<&str> = v.styles.iter().map(String::as_str).collect();
             let enc = match &decoded {
-                Ok(Val::Ordered(o)) => encode_ordered(&styles, o).unwrap(),
-                _ => encode(&styles, Some(&got)).unwrap(),
+                Ok(Val::Null) => encode(&styles, StyledValue::SqlNull).unwrap(),
+                Ok(Val::Ordered(o)) => encode_ordered(&styles, StyledValue::Value(o)).unwrap(),
+                _ => encode(&styles, StyledValue::Value(&got)).unwrap(),
             };
             let enc_b64 = match &enc {
                 Param::Null => None,
@@ -764,12 +764,12 @@ mod tests {
             }
         }
         let v: Value = serde_json::json!({"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25});
-        match encode(&["serialize"], Some(&v)).unwrap() {
+        match encode(&["serialize"], StyledValue::Value(&v)).unwrap() {
             Param::Str(s) => assert_eq!(s, "a:5:{i:-3;i:2;s:2:\"07\";i:1;i:10;i:3;s:1:\"x\";d:4;s:1:\"y\";d:1.0E+25;}"),
             other => panic!("{other:?}"),
         }
-        assert_eq!(encode(&["filepart"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
-        assert_eq!(encode(&["serialize", "yaml"], Some(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(encode(&["filepart"], StyledValue::Value(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(encode(&["serialize", "yaml"], StyledValue::Value(&serde_json::json!({}))).unwrap_err().code(), CODEC_UNSUPPORTED);
         let yaml = vec!["yaml".to_string()];
         assert_eq!(decode(&yaml, &Val::Str("1: value\n".into())).unwrap(), Val::Json(serde_json::json!({"1": "value"})));
         assert_eq!(decode(&["base64".into()], &Val::Bytes(vec![0xff])).unwrap_err().code(), CODEC_DECODE);
@@ -788,7 +788,7 @@ mod tests {
         let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
         for styles in [vec!["json"], vec!["jsons"], vec!["json", "gz"], vec!["json", "base64"]] {
             let value = strict_json::parse(text).unwrap();
-            let stored = encode_ordered(&styles, &value).unwrap();
+            let stored = encode_ordered(&styles, StyledValue::Value(&value)).unwrap();
             let raw = match stored {
                 Param::Str(s) => Val::Str(s),
                 Param::Bytes(b) => Val::Bytes(b),
@@ -803,8 +803,91 @@ mod tests {
                 other => panic!("{styles:?}: read {other:?}"),
             }
         }
-        assert_eq!(encode_ordered(&["json"], &strict_json::Value::null()).unwrap(), Param::Null);
-        assert_eq!(encode_ordered(&["serialize"], &strict_json::parse("{}").unwrap()).unwrap_err().code(), CODEC_UNSUPPORTED);
+        assert_eq!(encode_ordered(&["json"], StyledValue::Value(&strict_json::Value::null())).unwrap(), Param::Str("null".into()));
+        assert_eq!(encode_ordered(&["serialize"], StyledValue::Value(&strict_json::parse("{}").unwrap())).unwrap_err().code(), CODEC_UNSUPPORTED);
         assert_eq!(decode(&["json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
+    }
+
+    #[test]
+    fn json_literal_null_is_distinct_from_sql_null() {
+        let literal = strict_json::Value::null();
+        let stored = encode_ordered(&["json"], StyledValue::Value(&literal)).unwrap();
+        assert_eq!(stored, Param::Str("null".into()));
+        assert_eq!(decode(&["json".into()], &Val::Str("null".into())).unwrap(), Val::Ordered(literal));
+        assert_eq!(decode(&["json".into()], &Val::Null).unwrap(), Val::Null);
+        assert_eq!(encode(&["json"], StyledValue::Value(&Value::Null)).unwrap(), Param::Str("null".into()));
+        assert_eq!(encode(&["json"], StyledValue::SqlNull).unwrap(), Param::Null);
+        for style in ["serialize", "yaml"] {
+            let stored = encode(&[style], StyledValue::Value(&Value::Null)).unwrap();
+            let Param::Str(text) = stored else { panic!("{style}: expected stored text") };
+            assert!(!text.is_empty(), "{style}: a value cannot become SQL NULL or empty text");
+            assert_eq!(decode(&[style.into()], &Val::Str(text)).unwrap(), Val::Json(Value::Null), "{style}: literal null round trip");
+            assert_eq!(encode(&[style], StyledValue::SqlNull).unwrap(), Param::Null, "{style}: SQL NULL write");
+            assert_eq!(decode(&[style.into()], &Val::Null).unwrap(), Val::Null, "{style}: SQL NULL read");
+        }
+    }
+
+    #[test]
+    fn styled_column_state_fixture_preserves_stored_values() {
+        let fixture: Value =
+            serde_json::from_str(include_str!("../../../../contracts/fixtures/styled_column_states.json")).expect("styled column state fixture");
+        let cases = fixture["cases"].as_array().expect("cases array");
+        assert_eq!(cases.len(), 13, "every shared styled-column case remains present");
+        for case in cases {
+            let id = case["id"].as_str().expect("case ID");
+            let style = case["style"].as_str().expect("style");
+            if id == "unselected" {
+                assert_eq!(case["getter_error"].as_str(), Some("COLUMN_UNSELECTED"), "{id}: getter contract");
+                assert_eq!(case["requested_output_error"].as_str(), Some("COLUMN_UNSELECTED"), "{id}: output contract");
+                continue;
+            }
+            if id == "nonnull_sql_null" {
+                assert_eq!(case["error"].as_str(), Some("CODEC_ENCODE"), "{id}: setter contract");
+                continue;
+            }
+            let raw = match case["stored_text"].as_str() {
+                Some(text) => Val::Str(text.into()),
+                None => Val::Null,
+            };
+            let decoded = decode(&[style.into()], &raw);
+            if id == "empty_text" {
+                assert_eq!(decoded.unwrap_err().code(), CODEC_DECODE, "{id}");
+                continue;
+            }
+            let decoded = decoded.unwrap_or_else(|error| panic!("{id}: {error}"));
+            let expected = &case["output"];
+            let output = match &decoded {
+                Val::Null => serde_json::json!({"kind": "sql-null"}),
+                Val::Ordered(value) => serde_json::json!({"kind": "value", "value": crate::value::ordered_to_json(value).unwrap()}),
+                Val::Json(value) => serde_json::json!({"kind": "value", "value": value}),
+                other => panic!("{id}: unexpected decoded value {other:?}"),
+            };
+            assert_eq!(&output, expected, "{id}: decoded state");
+            if !case["input"].is_object() {
+                continue;
+            }
+            let written = match &decoded {
+                Val::Null => encode(&[style], StyledValue::SqlNull).unwrap(),
+                Val::Ordered(value) => encode_ordered(&[style], StyledValue::Value(value)).unwrap(),
+                Val::Json(value) => encode(&[style], StyledValue::Value(value)).unwrap(),
+                _ => unreachable!(),
+            };
+            if let Some(expected) = case.get("write_text") {
+                let expected_write = match expected.as_str() {
+                    Some(text) => Param::Str(text.into()),
+                    None if expected.is_null() => Param::Null,
+                    _ => panic!("{id}: invalid fixture write_text"),
+                };
+                assert_eq!(written, expected_write, "{id}: stored value");
+            } else {
+                assert_eq!(style, "yaml", "{id}: only YAML may omit exact write text");
+                let encoded = match written {
+                    Param::Null => Val::Null,
+                    Param::Str(text) => Val::Str(text),
+                    other => panic!("{id}: YAML write is not text or SQL NULL: {other:?}"),
+                };
+                assert_eq!(decode(&[style.into()], &encoded).unwrap(), decoded, "{id}: decoded write");
+            }
+        }
     }
 }

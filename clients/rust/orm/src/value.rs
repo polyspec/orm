@@ -93,12 +93,16 @@ mod checked_value_tests {
         assert_eq!(wrong, Val::I64(7));
         assert_eq!(wrong.take_ordered().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(wrong, Val::I64(7));
+        assert_eq!(Val::Null.take_ordered().unwrap_err().code(), crate::codes::CODEC_DECODE);
         let mut text = Val::Str(String::new());
         assert_eq!(text.take_string().unwrap(), "");
         assert_eq!(text, Val::Null);
         let mut json = Val::Json(serde_json::json!({}));
         assert_eq!(json.take_json().unwrap(), Some(serde_json::json!({})));
         assert_eq!(json, Val::Null);
+        let literal_null = ordered_json::Value::null();
+        assert_eq!(Val::ordered(literal_null.clone()), Val::Ordered(literal_null));
+        assert_ne!(Val::ordered(ordered_json::Value::null()), Val::Null);
         assert_eq!(Param::try_from(u64::MAX).unwrap_err().code(), crate::codes::CODEC_ENCODE);
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
@@ -190,6 +194,13 @@ impl<T: Into<Param>> From<Option<T>> for Param {
     }
 }
 
+/// A selected styled column, with SQL NULL separate from the decoded value.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StyledValue<T> {
+    SqlNull,
+    Value(T),
+}
+
 /// A value read from a row, positionally. `Ordered` is a column after the `json`
 /// or `jsons` stage; `Json` is a column after another style stage (docs/codec.md).
 #[derive(Debug, Clone, Default)]
@@ -233,16 +244,12 @@ impl PartialEq for Val {
 }
 
 impl Val {
-    /// An ordered-json value; the JSON null is `Val::Null`.
+    /// An ordered-json value, including a JSON literal null.
     pub fn ordered(v: ordered_json::Value) -> Val {
-        if v.kind() == ordered_json::Kind::Null {
-            Val::Null
-        } else {
-            Val::Ordered(v)
-        }
+        Val::Ordered(v)
     }
 
-    /// Moves an ordered-json value out (leaves Null); NULL is the JSON null.
+    /// Moves an ordered-json value out (leaves Null); SQL NULL is not ordered JSON.
     pub fn take_ordered(&mut self) -> crate::Result<ordered_json::Value> {
         match self {
             Val::Ordered(_) => {

@@ -36,7 +36,7 @@ pub use serde;
 pub use serde_json;
 pub use tx::{transaction_conflict, Isolation, Transaction, TransactionOnceError};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
-pub use value::{parse_point, point_text, Param, Point, Val};
+pub use value::{parse_point, point_text, Param, Point, StyledValue, Val};
 
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]

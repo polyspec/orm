@@ -9,6 +9,34 @@ use std::path::PathBuf;
 
 orm::models!();
 
+#[cfg(test)]
+#[allow(dead_code, unused_imports, clippy::all)]
+mod nonnull_model {
+    include!(concat!(env!("OUT_DIR"), "/nonnull/orm_model.rs"));
+}
+
+#[test]
+fn generated_nonnull_styled_setter_rejects_sql_null() {
+    let err = match nonnull_model::AuditChange::new().set_entity_ref(orm::StyledValue::SqlNull) {
+        Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
+        Err(err) => err,
+    };
+    assert_eq!(err.code(), orm::codes::CODEC_ENCODE);
+    let value = orm::ordered_json::Value::null();
+    let row = match nonnull_model::AuditChange::new().set_entity_ref(orm::StyledValue::Value(value.clone())) {
+        Ok(row) => row,
+        Err(err) => panic!("JSON null must be an encoded value: {err}"),
+    };
+    let got = match row.get_entity_ref() {
+        Ok(value) => value,
+        Err(err) => panic!("assigned value must be readable: {err}"),
+    };
+    match got {
+        orm::StyledValue::Value(got) => assert_eq!(got.compact(), value.compact()),
+        orm::StyledValue::SqlNull => panic!("encoded JSON null became SQL NULL"),
+    }
+}
+
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
 use orm::db::Pool;
 use orm::{AesKeyring, Collection, Db, Isolation, Null};
@@ -558,22 +586,38 @@ async fn aes_rotation(t: &Target) {
 }
 
 /// A jsontext column reads back the ordered-json value of a write with its
-/// member order, number text, and `{}` apart from `[]`; the JSON null stores NULL.
+/// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
+/// from a JSON literal null.
 async fn json_values(t: &Target) {
+    fn expect_ordered(value: orm::StyledValue<orm::ordered_json::Value>, text: &str) {
+        match value {
+            orm::StyledValue::Value(value) => assert_eq!(value.compact(), text),
+            orm::StyledValue::SqlNull => panic!("expected an encoded JSON value"),
+        }
+    }
     let db = &t.db;
+    assert_eq!(Author::new().get_jsons_tags().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED, "unselected JSON column");
     let f = seed(db).await;
     let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
     let tags = r#"["z",{"y":[]},-0.0]"#;
     let seq = f.authors[0].get_seq().unwrap();
     let b = Author::new().connect(db).get_by_seq(seq).await.unwrap();
-    let mut b = b.set_json_setting(orm::ordered_json::parse(text).unwrap()).set_jsons_tags(orm::ordered_json::parse(tags).unwrap());
+    let mut b = b
+        .set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse(text).unwrap()))
+        .unwrap()
+        .set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::parse(tags).unwrap()))
+        .unwrap();
     b.update(false).await.unwrap();
     let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
-    assert_eq!(got.get_json_setting().unwrap().compact(), text, "jsontext json read");
-    assert_eq!(got.get_jsons_tags().unwrap().compact(), tags, "jsontext jsons read");
-    assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
+    expect_ordered(got.get_json_setting().unwrap(), text);
+    expect_ordered(got.get_jsons_tags().unwrap(), tags);
+    assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"kind":"value","value":{"a": [], "b": 1, "c": {}, "n": 1.5}}), "array form");
     let out = got.to_json().unwrap();
-    assert!(out.contains(&format!(r#""json_setting":{text}"#)) && out.contains(&format!(r#""jsons_tags":{tags}"#)), "JSON output: {out}");
+    assert!(
+        out.contains(&format!(r#""json_setting":{{"kind":"value","value":{text}}}"#))
+            && out.contains(&format!(r#""jsons_tags":{{"kind":"value","value":{tags}}}"#)),
+        "JSON output: {out}"
+    );
     assert_eq!(serde_json::to_string(&got).unwrap(), out, "serde output");
     let rows = Author::new().connect(db).add_all_columns().seq(seq).gets().await.unwrap();
     assert_eq!(serde_json::to_string(&rows).unwrap(), format!("[{out}]"), "collection serde output");
@@ -586,16 +630,35 @@ async fn json_values(t: &Target) {
         .set_service_region_seq(f.authors[0].get_service_region_seq().unwrap())
         .set_service_member_seq(f.member.get_seq().unwrap())
         .set_start_dt(start())
-        .set_end_dt(start())
-        .set_json_setting(orm::ordered_json::parse("[]").unwrap())
-        .set_jsons_tags(orm::ordered_json::Value::null())
-        .create()
-        .await
-        .unwrap();
-    assert_eq!(created.get_json_setting().unwrap().compact(), "[]", "created value");
+        .set_end_dt(start());
+    let created = match created.set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse("[]").unwrap())) {
+        Ok(row) => row,
+        Err(error) => panic!("set json_setting: {error}"),
+    };
+    let mut created = match created.set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())) {
+        Ok(row) => row,
+        Err(error) => panic!("set jsons_tags: {error}"),
+    };
+    let created = created.create().await.unwrap();
+    expect_ordered(created.get_json_setting().unwrap(), "[]");
     let got = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
-    assert_eq!(got.get_json_setting().unwrap().compact(), "[]", "empty array read");
-    assert_eq!(got.get_jsons_tags().unwrap().kind(), orm::ordered_json::Kind::Null, "NULL reads as the JSON null");
+    expect_ordered(got.get_json_setting().unwrap(), "[]");
+    expect_ordered(got.get_jsons_tags().unwrap(), "null");
+    assert_eq!(got.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"value","value":null}), "JSON literal null output");
+    let mut got = got.set_jsons_tags(orm::StyledValue::SqlNull).unwrap();
+    got.update(false).await.unwrap();
+    let sql_null = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    assert!(matches!(sql_null.get_jsons_tags().unwrap(), orm::StyledValue::SqlNull), "SQL NULL remains explicit");
+    assert_eq!(sql_null.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
+    assert!(sql_null.to_json().unwrap().contains(r#""jsons_tags":{"kind":"sql-null"}"#), "SQL NULL model JSON output");
+    let mut object = sql_null.set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
+    object.update(false).await.unwrap();
+    let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    assert_eq!(
+        object.to_array().unwrap()["jsons_tags"],
+        serde_json::json!({"kind":"value","value":{"kind":"sql-null"}}),
+        "document members cannot collide with the column tag"
+    );
 }
 
 #[tokio::main]
