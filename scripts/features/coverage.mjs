@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
@@ -7,11 +7,75 @@ import { isDeepStrictEqual } from 'node:util';
 export const languages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
 
+const validPart = part => typeof part === 'string' && part !== '' &&
+  part.split('/').every(segment => segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment));
+const validTests = (part, tests) => Array.isArray(tests) && tests.length > 0 &&
+  new Set(tests).size === tests.length && tests.every(file =>
+    typeof file === 'string' && file.startsWith(part + '/') &&
+    file.slice(part.length + 1).split('/').every(segment =>
+      segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
+
+function requirements(feature, errors) {
+  const coverage = feature.coverage;
+  const required = coverage.kind === 'database' ? databases : ['none'];
+  const items = [];
+  if (!coverage.owners || typeof coverage.owners !== 'object' || Array.isArray(coverage.owners))
+    errors.push(`${feature.id}: missing owners`);
+  for (const language of Object.keys(coverage.owners ?? {})) {
+    if (!languages.includes(language) || !['pass', 'partial'].includes(feature.clients?.[language]))
+      errors.push(`${feature.id}/owner/${language}: undeclared owning client`);
+  }
+  if (!Array.isArray(coverage.dependents)) errors.push(`${feature.id}: missing dependents declaration`);
+  for (const language of languages) {
+    if (!['pass', 'partial'].includes(feature.clients?.[language])) continue;
+    const owner = coverage.owners?.[language];
+    if (!owner || !validPart(owner.part) || !owner.part.startsWith(`clients/${language}/`) && owner.part !== `clients/${language}`) {
+      errors.push(`${feature.id}/owner/${language}: missing owning client part`);
+      continue;
+    }
+    if (!validTests(owner.part, owner.tests) || owner.tests.some(file =>
+      (Array.isArray(coverage.dependents) ? coverage.dependents : []).some(dependent =>
+        dependent?.language === language && typeof dependent.part === 'string' &&
+        file.startsWith(dependent.part + '/')))) {
+      errors.push(`${feature.id}/owner/${language}: tests must reside in owning part`);
+      continue;
+    }
+    for (const database of required) items.push({ key: `${feature.id}/owner/${language}/${database}`,
+      role: 'owner', language, database, part: owner.part, tests: owner.tests, cases: coverage.cases,
+      command: owner.commands?.[database] });
+  }
+  const dependentIds = new Set();
+  for (const dependent of Array.isArray(coverage.dependents) ? coverage.dependents : []) {
+    if (!dependent || typeof dependent.id !== 'string' || !dependent.id || dependentIds.has(dependent.id)) {
+      errors.push(`${feature.id}: duplicate or missing dependent id`);
+      continue;
+    }
+    dependentIds.add(dependent.id);
+    if (!languages.includes(dependent.language) || !['pass', 'partial'].includes(feature.clients?.[dependent.language]) ||
+        !validPart(dependent.part) || dependent.part === 'tests/conformance' ||
+        dependent.part.startsWith('tests/conformance/') ||
+        dependent.part === coverage.owners?.[dependent.language]?.part ||
+        !Array.isArray(dependent.cases) || dependent.cases.length === 0 ||
+        new Set(dependent.cases).size !== dependent.cases.length ||
+        dependent.cases.some(id => typeof id !== 'string' || !id) ||
+        !validTests(dependent.part, dependent.tests) ||
+        dependent.tests.some(file => coverage.owners?.[dependent.language]?.tests?.includes(file))) {
+      errors.push(`${feature.id}/dependent/${dependent.id}: invalid dependent part, tests, or cases`);
+      continue;
+    }
+    for (const database of required) items.push({ key: `${feature.id}/dependent/${dependent.id}/${dependent.language}/${database}`,
+      role: 'dependent', dependent: dependent.id, language: dependent.language, database,
+      part: dependent.part, tests: dependent.tests, cases: dependent.cases, command: dependent.commands?.[database] });
+  }
+  return items;
+}
+
 // A successful command must report the cases it actually executed. A declared
 // test path or an old output file is not execution evidence.
 export function checkCoverage(manifest, reports) {
   const errors = [];
   const ids = new Set();
+  const expected = new Set();
   for (const feature of manifest.features ?? []) {
     if (ids.has(feature.id)) errors.push(`duplicate feature ${feature.id}`);
     ids.add(feature.id);
@@ -26,12 +90,9 @@ export function checkCoverage(manifest, reports) {
       errors.push(`${feature.id}: coverage cases must be distinct nonempty IDs`);
       continue;
     }
-    const expectedDatabases = coverage.kind === 'database' ? databases : ['none'];
-    for (const language of languages) {
-      const status = feature.clients?.[language];
-      if (status !== 'pass' && status !== 'partial') continue;
-      for (const database of expectedDatabases) {
-        const key = `${feature.id}/${language}/${database}`;
+    for (const item of requirements(feature, errors)) {
+        const { key, language, database } = item;
+        expected.add(key);
         const executions = reports[key];
         if (!executions) { errors.push(`${key}: no executed report`); continue; }
         if (!Array.isArray(executions) || executions.length !== 2) {
@@ -39,15 +100,21 @@ export function checkCoverage(manifest, reports) {
           continue;
         }
         for (const report of executions) {
-          if (!report || report.feature !== feature.id || report.language !== language || report.database !== database)
+          if (!report || report.feature !== feature.id || report.language !== language || report.database !== database ||
+              report.role !== item.role || report.part !== item.part ||
+              (item.role === 'dependent' && report.dependent !== item.dependent))
             errors.push(`${key}: report identity differs`);
+          if (!Array.isArray(report?.tests) || report.tests.length !== item.tests.length ||
+              new Set(report.tests).size !== report.tests.length ||
+              item.tests.some(file => !report.tests.includes(file)))
+            errors.push(`${key}: executed test paths differ from owning or dependent part`);
           if (report?.success !== true) errors.push(`${key}: execution failed`);
           const seen = report?.cases;
           const values = report?.results;
           if (!Array.isArray(seen) || new Set(seen).size !== seen.length ||
-              seen.length !== coverage.cases.length ||
-              coverage.cases.some(id => !seen.includes(id)) ||
-              !Array.isArray(values) || values.length !== coverage.cases.length ||
+              seen.length !== item.cases.length ||
+              item.cases.some(id => !seen.includes(id)) ||
+              !Array.isArray(values) || values.length !== item.cases.length ||
               new Set(values.map(value => value.id)).size !== values.length ||
               values.some(value => !seen.includes(value.id) || typeof value.value_json !== 'string' ||
                 !value.value_json || !validJSON(value.value_json)))
@@ -61,18 +128,12 @@ export function checkCoverage(manifest, reports) {
           errors.push(`${key}: results changed on repeated execution`);
         if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
           errors.push(`${key}: database state changed between executions`);
-      }
     }
     if (feature.status === 'implemented' && languages.some(language => feature.clients?.[language] !== 'pass'))
       errors.push(`${feature.id}: implemented feature lacks a passing client`);
   }
   for (const key of Object.keys(reports)) {
-    const [feature, language, database, extra] = key.split('/');
-    const contract = manifest.features?.find(item => item.id === feature);
-    const expectedDatabases = contract?.coverage?.kind === 'database' ? databases : ['none'];
-    if (extra || !contract || !languages.includes(language) || !expectedDatabases.includes(database) ||
-        !['pass', 'partial'].includes(contract.clients?.[language]))
-      errors.push(`${key}: undeclared execution report`);
+    if (!expected.has(key)) errors.push(`${key}: undeclared execution report`);
   }
   return errors;
 }
@@ -114,23 +175,33 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
   for (const feature of manifest.features ?? []) {
     const coverage = feature.coverage;
     if (!coverage || !['database', 'independent'].includes(coverage.kind)) continue;
-    const required = coverage.kind === 'database' ? databases : ['none'];
-    for (const language of languages) {
-      if (!['pass', 'partial'].includes(feature.clients?.[language])) continue;
-      for (const database of required) {
-        const key = `${feature.id}/${language}/${database}`;
-        const command = coverage.commands?.[language]?.[database];
+    for (const item of requirements(feature, errors)) {
+        const { key, command } = item;
         if (typeof command !== 'string' || !command.trim()) {
           errors.push(`${key}: no executable command`);
           continue;
         }
+        const cwd = resolve(root, item.part);
+        if (!cwd.startsWith(resolve(root) + '/')) {
+          errors.push(`${key}: invalid part directory`);
+          continue;
+        }
+        try {
+          if (await realpath(cwd) !== cwd) throw new Error('symbolic path');
+          for (const file of item.tests) {
+            const target = resolve(root, file);
+            if (await realpath(target) !== target) throw new Error(`symbolic test path ${file}`);
+          }
+        } catch (error) {
+          errors.push(`${key}: unavailable part directory: ${error.message}`);
+          continue;
+        }
         reports[key] = [];
         for (let attempt = 1; attempt <= 2; attempt++) {
-          const result = await run(command, root, timeoutMs);
+          const result = await run(command, cwd, timeoutMs);
           if (result.error) { errors.push(`${key} run ${attempt}: ${result.error}`); break; }
           reports[key].push(result.value);
         }
-      }
     }
   }
   return [...errors, ...checkCoverage(manifest, reports)];

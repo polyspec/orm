@@ -22,3 +22,12 @@ test('requires a cause and retry condition for a bypass in both languages', () =
   assert.match(checkChecklistPair(english.replace('Retry: server responds.', ''), korean).join('\n'), /retry condition/);
   assert.match(checkChecklistPair(english, korean.replace('원인: 서버 사용 불가.', '')).join('\n'), /cause/);
 });
+
+test('rejects unnumbered policy and status prose in the task tracker', () => {
+  const withPolicy = `${english}\nRules: use a timer for every request.\n`;
+  assert.match(checkChecklistPair(withPolicy, korean).join('\n'), /unnumbered content/);
+  const withStatus = `${english}\n## Current status\n- Every client is complete.\n`;
+  assert.match(checkChecklistPair(withStatus, korean).join('\n'), /unnumbered content/);
+  const withLane = `${english}\n## Work lanes\n| Lane | Completion |\n`;
+  assert.match(checkChecklistPair(withLane, korean).join('\n'), /unnumbered content/);
+});

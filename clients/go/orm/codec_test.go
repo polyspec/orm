@@ -31,6 +31,15 @@ func canon(t *testing.T, v any) string {
 	return string(b)
 }
 
+func canonStyled(t *testing.T, v StyledValue) string {
+	t.Helper()
+	data, present := v.Data()
+	if !present {
+		return "null"
+	}
+	return canon(t, data)
+}
+
 // TestCodecVectors: every PHP-produced vector decodes to the same value, and
 // deterministic styles re-encode to the same bytes. Go's encodings are written
 // to tests/codec/out/go.json for the PHP cross-check.
@@ -59,7 +68,11 @@ func TestCodecVectors(t *testing.T) {
 			t.Errorf("%s: decode: %v", v.Name, err)
 			continue
 		}
-		if g := canon(t, got); g != want {
+		value, present := got.Data()
+		if !present {
+			value = nil
+		}
+		if g := canon(t, value); g != want {
 			t.Errorf("%s: decoded %s want %s", v.Name, g, want)
 		}
 		enc, err := Encode(v.Styles, got)
@@ -82,8 +95,9 @@ func TestCodecVectors(t *testing.T) {
 		}
 		// round trip through our own decoder
 		back, err := Decode(v.Styles, enc)
-		if err != nil || canon(t, back) != want {
-			t.Errorf("%s: round trip %s (%v)", v.Name, canon(t, back), err)
+		backValue, _ := back.Data()
+		if err != nil || canon(t, backValue) != want {
+			t.Errorf("%s: round trip %s (%v)", v.Name, canon(t, backValue), err)
 		}
 	}
 	os.MkdirAll("../../../tests/codec/out", 0o755)
@@ -131,10 +145,10 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
-	if encoded, err := Encode([]string{"json"}, jsontext.Value(`{"object":{},"array":[]}`)); err != nil || encoded != `{"object":{},"array":[]}` {
+	if encoded, err := Encode([]string{"json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
 	}
-	if _, err := Encode([]string{"json"}, []byte(`{"value":1}`)); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
+	if _, err := Encode([]string{"json"}, Value([]byte(`{"value":1}`))); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
 		t.Fatalf("json []byte input must be rejected as a non-portable value: %v", err)
 	}
 	for _, c := range []struct {
@@ -158,15 +172,15 @@ func TestCodecErrors(t *testing.T) {
 			t.Errorf("%v %q: %v", c.styles, c.raw, err)
 		}
 	}
-	if s, _ := Encode([]string{"serialize"}, map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25}); s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
+	if s, _ := Encode([]string{"serialize"}, Value(map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25})); s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
 		t.Errorf("php keys/floats: %s", s)
 	}
-	if got, err := Decode([]string{"yaml"}, "1: value\n"); err != nil || canon(t, got) != `{"1":"value"}` {
+	if got, err := Decode([]string{"yaml"}, "1: value\n"); err != nil || canonStyled(t, got) != `{"1":"value"}` {
 		t.Errorf("yaml integer key: %v (%v)", got, err)
 	}
 	for name, operation := range map[string]func() error{
 		"invalid yaml order": func() error {
-			_, err := Encode([]string{"serialize", "yaml"}, map[string]any{})
+			_, err := Encode([]string{"serialize", "yaml"}, Value(map[string]any{}))
 			return err
 		},
 	} {
@@ -182,7 +196,8 @@ func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, ok := decoded.(*orderedjson.Value)
+	decodedValue, _ := decoded.Data()
+	value, ok := decodedValue.(*orderedjson.Value)
 	if !ok {
 		t.Fatalf("decoded JSON type = %T, want *orderedjson.Value", decoded)
 	}
@@ -209,7 +224,7 @@ func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 	if value.Get("z").Kind() != orderedjson.ObjectKind || value.Get("a").Kind() != orderedjson.ArrayKind {
 		t.Fatal("empty object and array kinds were not preserved")
 	}
-	encoded, err := Encode([]string{"json"}, value)
+	encoded, err := Encode([]string{"json"}, Value(value))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,12 +241,12 @@ func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
 		Raw     jsontext.Value `json:"raw"`
 		Ignored string         `json:"-"`
 	}
-	encoded, err := Encode([]string{"json"}, value{
+	encoded, err := Encode([]string{"json"}, Value(value{
 		ID:      "module.example",
 		Items:   []int{1, 2},
 		Raw:     jsontext.Value(`{"enabled":true}`),
 		Ignored: "must not be stored",
-	})
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +260,7 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 	type value struct {
 		Config json.RawMessage `json:"config"`
 	}
-	encoded, err := Encode([]string{"json"}, value{Config: json.RawMessage(`{"enabled":true,"items":[]}`)})
+	encoded, err := Encode([]string{"json"}, Value(value{Config: json.RawMessage(`{"enabled":true,"items":[]}`)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +273,7 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	type value struct {
 		Body customJSONValue `json:"body"`
 	}
-	encoded, err := Encode([]string{"json"}, value{Body: customJSONValue{body: []byte(`{"number":900719925474099312345678901234567890}`)}})
+	encoded, err := Encode([]string{"json"}, Value(value{Body: customJSONValue{body: []byte(`{"number":900719925474099312345678901234567890}`)}}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +288,7 @@ func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
 		Body    string     `json:"body"`
 		Revoked *time.Time `json:"revokedAt"`
 	}
-	encoded, err := Encode([]string{"json"}, value{Body: "kept"})
+	encoded, err := Encode([]string{"json"}, Value(value{Body: "kept"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +306,7 @@ func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
 		Details
 		Name string `json:"name"`
 	}
-	encoded, err := Encode([]string{"json"}, value{Details: Details{ID: "1"}, Name: "test"})
+	encoded, err := Encode([]string{"json"}, Value(value{Details: Details{ID: "1"}, Name: "test"}))
 	if err != nil {
 		t.Fatal(err)
 	}

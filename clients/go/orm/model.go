@@ -638,7 +638,14 @@ func encodeValue(ent *schema.Entity, column string, v any) (any, error) {
 	if len(codec) == 0 {
 		return v, nil
 	}
-	return Encode(codec, v)
+	styled, ok := v.(StyledValue)
+	if !ok {
+		return nil, codecErr(CodeCodecEncode, "column %s requires StyledValue, got %T", column, v)
+	}
+	if _, err := NormalizeStyled(codec, col.Nullable, styled); err != nil {
+		return nil, err
+	}
+	return Encode(codec, styled)
 }
 
 func (c *Core) writeRequest(kind string, d *DB) (*request, *schema.Entity, error) {
@@ -694,8 +701,8 @@ func (c *Core) Create() (Model, error) {
 	st := &rowState{}
 	m.row = st
 	for _, s := range c.sets {
-		st.addName(s.column)
 		if !s.plus && !s.minus && s.raw == nil {
+			st.addName(s.column)
 			v := s.value
 			if s.null {
 				v = nil

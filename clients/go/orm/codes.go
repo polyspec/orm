@@ -23,9 +23,10 @@ const (
 	CodeEntityNotJoined       = "ENTITY_NOT_JOINED"      // engine: joined placement or column reference to a join missing from this statement
 	CodeLimitInRelation       = "LIMIT_IN_RELATION"      // engine: limit() on a relation child (use limitPerParent)
 	CodeNoRows                = "NO_ROWS"                // executor: strict one-row query matched no row
+	CodeColumnUnselected      = "COLUMN_UNSELECTED"      // executor: a requested column was not included in the loaded row
 	CodeOptimisticLock        = "OPTIMISTIC_LOCK"        // executor: updateOptimistic matched no row (updated_ts changed)
 	CodeCodecDecode           = "CODEC_DECODE"           // executor: styled column bytes could not be decoded (docs/codec.md)
-	CodeCodecEncode           = "CODEC_ENCODE"           // executor
+	CodeCodecEncode           = "CODEC_ENCODE"           // executor: a styled input cannot be encoded, including SQL NULL for a non-null column
 	CodeCodecUnsupported      = "CODEC_UNSUPPORTED"      // executor: PHP objects/references in serialize, unknown style
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
