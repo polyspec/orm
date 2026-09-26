@@ -451,6 +451,9 @@ final class SchemaBuilder
                         $c['scale'] = $scale;
                     }
                 }
+                if (($c['precision'] ?? 0) < 1 || $c['precision'] > 18 || ($c['scale'] ?? 0) < 0 || ($c['scale'] ?? 0) > $c['precision']) {
+                    throw new \InvalidArgumentException("column $name: decimal precision must be 1..18 and scale 0..precision");
+                }
                 break;
             case 'varchar':
             case 'char':

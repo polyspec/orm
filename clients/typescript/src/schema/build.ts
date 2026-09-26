@@ -545,6 +545,9 @@ function buildColumn(dc: DColumn): SchemaColumn {
           c.scale = scale;
         }
       }
+      if ((c.precision ?? 0) < 1 || (c.precision ?? 0) > 18 || (c.scale ?? 0) < 0 || (c.scale ?? 0) > (c.precision ?? 0)) {
+        throw new Error(`column ${dc.name}: decimal precision must be 1..18 and scale 0..precision`);
+      }
       break;
     }
     case 'varchar': case 'char': {

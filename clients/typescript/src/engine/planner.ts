@@ -154,7 +154,7 @@ function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly strin
 /** Normalized bind type for executors without a date type. */
 function bindType(col: Column | undefined): string {
   switch (col?.type) {
-    case 'date': case 'time': case 'datetime': case 'point': return col.type;
+    case 'date': case 'time': case 'datetime': case 'point': case 'decimal': return col.type;
   }
   return '';
 }
@@ -612,6 +612,10 @@ export class Planner {
       const ph = b.param(i);
       b.last().host_styles = host;
       b.last().col_type = bindType(col);
+      if (col.type === 'decimal') {
+        b.last().precision = col.precision;
+        b.last().scale = col.scale;
+      }
       return ph;
     };
     if (sqlStyles.length === 0 && col.type !== 'point') return bind();

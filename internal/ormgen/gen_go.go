@@ -214,7 +214,7 @@ func goType(c *schema.Col) string {
 		return "int32"
 	case "i64":
 		return "int64"
-	case "f64", "decimal":
+	case "f64":
 		return "float64"
 	case "bool":
 		return "bool"
@@ -317,7 +317,7 @@ func writeFormatted(path string, src []byte) error {
 var scalarTerms = map[string][]string{
 	"int":     {"~int", "~int8", "~int16", "~int32", "~int64", "~uint", "~uint8", "~uint16", "~uint32", "~uint64"},
 	"float":   {"~int", "~int8", "~int16", "~int32", "~int64", "~uint", "~uint8", "~uint16", "~uint32", "~uint64", "~float32", "~float64"},
-	"decimal": {"~int", "~int8", "~int16", "~int32", "~int64", "~uint", "~uint8", "~uint16", "~uint32", "~uint64", "~float32", "~float64", "~string"},
+	"decimal": {"~string"},
 	"string":  {"~string"},
 	"bool":    {"~bool"},
 	"time":    {"time.Time", "~string"},
@@ -487,7 +487,11 @@ func (g *goGen) writeModel(gm *goModel) error {
 		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n\t\tx.%s = t\n", c.Nullable, c.Name, field(c))
 		} else {
-			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", convert(gt), c.Name)
+			conversion := convert(gt)
+			if c.Type == "decimal" {
+				conversion = fmt.Sprintf("x.m.DecodeDecimal(v, %d, %d)", c.Precision, c.Scale)
+			}
+			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", conversion, c.Name)
 			if fieldType(c) != gt {
 				fmt.Fprintf(&b, "\t\tx.%s = &t\n", field(c))
 			} else {
@@ -678,6 +682,15 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (orm.StyledValue, error) {\n\tif !x.m.Selected(%q) { return orm.StyledValue{}, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, c.Name, c.Name, f)
 			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Nullable, f, c.Name)
+		} else if c.Type == "decimal" {
+			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
+			fmt.Fprintf(&b, "// Set%s sets %s after exact decimal validation.\nfunc (x *%s) Set%s(v %s) (*%s, error) {\n", p, c.Name, t, p, ft, t)
+			if ft != gt {
+				fmt.Fprintf(&b, "\tif v == nil {\n\t\tx.%s = nil\n\t\tx.m.SetNull(%q)\n\t\treturn x, nil\n\t}\n", f, c.Name)
+				fmt.Fprintf(&b, "\tvalue, err := orm.NormalizeDecimal(*v, %d, %d)\n\tif err != nil { return nil, err }\n\tx.%s = &value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", c.Precision, c.Scale, f, c.Name)
+			} else {
+				fmt.Fprintf(&b, "\tvalue, err := orm.NormalizeDecimal(v, %d, %d)\n\tif err != nil { return nil, err }\n\tx.%s = value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", c.Precision, c.Scale, f, c.Name)
+			}
 		} else {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
 			if ft != gt {

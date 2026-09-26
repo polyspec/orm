@@ -10,7 +10,7 @@ pg.types.setTypeParser(20, value => {
   if (!Number.isSafeInteger(parsed)) throw new OrmError('CODEC_DECODE', `postgres int8 is outside the TypeScript safe integer range: ${value}`);
   return parsed;
 });
-pg.types.setTypeParser(1700, value => Number(value));
+pg.types.setTypeParser(1700, value => value);
 pg.types.setTypeParser(1082, value => value);
 pg.types.setTypeParser(1114, value => value);
 pg.types.setTypeParser(1184, value => value);
@@ -346,6 +346,7 @@ class SqliteState {
     const existing = this.statements.get(sql);
     if (existing !== undefined) return existing;
     const statement = this.db.prepare(sql);
+    statement.setReadBigInts(true);
     this.statements.set(sql, statement);
     if (this.statements.size > this.cacheSize) this.statements.delete(this.statements.keys().next().value as string);
     return statement;
@@ -571,7 +572,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
         connectionLimit: bounds.size,
         namedPlaceholders: false,
         dateStrings: true,
-        decimalNumbers: true,
+        decimalNumbers: false,
         jsonStrings: true,
         maxPreparedStatements: statementCacheSize,
       });

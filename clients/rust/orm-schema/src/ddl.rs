@@ -283,7 +283,8 @@ pub(crate) fn ddl_type(c: &Col, dialect: &str) -> Result<String, String> {
         },
         "sqlite" => match c.typ.as_str() {
             "i32" | "i64" | "bool" => "INTEGER".into(),
-            "f64" | "decimal" => "REAL".into(),
+            "f64" => "REAL".into(),
+            "decimal" => format!("DECIMALINT({},{})", c.precision, c.scale),
             "bytes" | "inet" => "BLOB".into(),
             _ => "TEXT".into(),
         },
@@ -1252,4 +1253,14 @@ pub fn manifest_from_ddl(path: &str, text: &str) -> Result<Manifest, String> {
         return Manifest::load(&json).map_err(|e| format!("MIGRATION_SOURCE: {path}: invalid embedded manifest: {e}"));
     }
     Err(format!("MIGRATION_SOURCE_LOSS: {path} has no orm-schema-v1 metadata; SQL cannot represent codec styles or relation options"))
+}
+#[cfg(test)]
+mod decimal_ddl_tests {
+    use super::*;
+
+    #[test]
+    fn sqlite_decimal_uses_exact_scaled_storage() {
+        let column = Col { typ: "decimal".into(), precision: 13, scale: 4, ..Col::default() };
+        assert_eq!(ddl_type(&column, "sqlite").unwrap(), "DECIMALINT(13,4)");
+    }
 }

@@ -285,7 +285,7 @@ run('write_cycle', function () use ($author): array {
     $start = new DateTimeImmutable('2026-06-01 00:00:00', new DateTimeZone('UTC'));
     $created = $author()
         ->setName('cycle')->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
-        ->setStartDt($start)->setEndDt($start)->setPrice(12.5)->setIp('10.0.0.1')->setAesHexEmail('cycle@example.com')
+        ->setStartDt($start)->setEndDt($start)->setPrice('12.500')->setIp('10.0.0.1')->setAesHexEmail('cycle@example.com')
         ->setJsonSetting(StyledValue::value(['a' => 1]))->setSerializeData(StyledValue::value(['k' => 'v']))
         ->newLabel('created')
         ->create();

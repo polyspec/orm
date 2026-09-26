@@ -534,6 +534,9 @@ fn build_column(dc: &DColumn) -> Result<Col, String> {
                     c.scale = atoi(s).ok_or_else(|| format!("column {}: decimal scale {}", dc.name, go_quote(arg)))?;
                 }
             }
+            if !(1..=18).contains(&c.precision) || c.scale < 0 || c.scale > c.precision {
+                return Err(format!("column {}: decimal precision must be 1..18 and scale 0..precision", dc.name));
+            }
         }
         "varchar" | "char" => {
             c.typ = "string".into();
@@ -1053,11 +1056,9 @@ fn col_json(c: &Col) -> J {
         .bool_omit("unsigned", c.unsigned)
         .bool_omit("lazy", c.lazy)
         .int_omit("len", c.len)
-        .int_omit("precision", c.precision)
-        .int_omit("scale", c.scale)
-        .strs_omit("enum", &c.r#enum)
-        .strs_omit("styles", &c.styles)
-        .str_omit("blind_index", &c.blind_index);
+        .int_omit("precision", c.precision);
+    o = if c.typ == "decimal" { o.put("scale", J::Int(c.scale)) } else { o.int_omit("scale", c.scale) };
+    o = o.strs_omit("enum", &c.r#enum).strs_omit("styles", &c.styles).str_omit("blind_index", &c.blind_index);
     if let Some(r) = &c.reference {
         o = o.put("ref", Obj::new().str("entity", &r.entity).str("column", &r.column).done());
     }

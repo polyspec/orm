@@ -105,13 +105,24 @@ fn base(c: &Column) -> &'static str {
     match c.typ.as_str() {
         "i32" => "i32",
         "i64" => "i64",
-        "f64" | "decimal" => "f64",
+        "f64" => "f64",
         "bool" => "bool",
         "datetime" => "orm::chrono::NaiveDateTime",
         "date" => "orm::chrono::NaiveDate",
         "bytes" => "Vec<u8>",
         "point" => "orm::Point",
         _ => "String",
+    }
+}
+
+#[cfg(test)]
+mod decimal_field_tests {
+    use super::*;
+
+    #[test]
+    fn generated_decimal_field_uses_exact_text() {
+        let column = Column { name: "price".into(), typ: "decimal".into(), nullable: true, styles: Vec::new(), precision: 13, scale: 3 };
+        assert_eq!(base(&column), "String");
     }
 }
 
@@ -813,10 +824,11 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("    #[allow(unused_mut)]\n    fn assign(&mut self, name: &str, mut v: orm::Val) -> orm::Result<bool> {\n        match name {\n");
     for c in &e.columns {
         let (bt, id) = (base(c), ident(&c.name));
+        let conversion = if c.typ == "decimal" { format!("orm::decimal::decode(v, {}, {})?", c.precision, c.scale) } else { convert(bt).to_owned() };
         if field(c) != bt {
-            let _ = writeln!(b, "            {:?} => self.{id} = if v.is_null() {{ None }} else {{ Some({}) }},", c.name, convert(bt));
+            let _ = writeln!(b, "            {:?} => self.{id} = if v.is_null() {{ None }} else {{ Some({conversion}) }},", c.name);
         } else {
-            let _ = writeln!(b, "            {:?} => self.{id} = {},", c.name, convert(bt));
+            let _ = writeln!(b, "            {:?} => self.{id} = {conversion},", c.name);
         }
     }
     b.push_str("            _ => return Ok(false),\n        }\n        self.__orm.mark_field_ready(name);\n        Ok(true)\n    }\n\n");
@@ -888,6 +900,14 @@ fn model_source(gm: &Model<'_>) -> String {
                 b,
                 "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: orm::StyledValue<{bt}>) -> orm::Result<Self> {{\n        match v {{\n            orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
             );
+        } else if c.typ == "decimal" {
+            let precision = c.precision;
+            let scale = c.scale;
+            if c.nullable {
+                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<String>) -> orm::Result<Self> {{\n        let value = v.into_nullable();\n        let value = match value {{ Some(text) => Some(orm::decimal::normalize(&text, {precision}, {scale})?), None => None }};\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+            } else {
+                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> orm::Result<Self> {{\n        let value = orm::decimal::normalize(&v.into(), {precision}, {scale})?;\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+            }
         } else if fd != bt {
             let _ = write!(
                 b,

@@ -1016,6 +1016,7 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 		ph := b.param(i)
 		b.binds[len(b.binds)-1].HostStyles = host
 		b.binds[len(b.binds)-1].ColType = bindType(col)
+		if col.Type == "decimal" { b.binds[len(b.binds)-1].Precision, b.binds[len(b.binds)-1].Scale = col.Precision, col.Scale }
 		return ph, nil
 	}
 	first := true
@@ -1025,6 +1026,7 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 			ph := b.param(i)
 			b.binds[len(b.binds)-1].HostStyles = host
 			b.binds[len(b.binds)-1].ColType = bindType(col)
+			if col.Type == "decimal" { b.binds[len(b.binds)-1].Precision, b.binds[len(b.binds)-1].Scale = col.Precision, col.Scale }
 			return ph
 		}
 		return b.secret("aes")
@@ -1047,7 +1049,7 @@ func bindType(col *schema.Col) string {
 		return ""
 	}
 	switch col.Type {
-	case "date", "time", "datetime", "point":
+	case "date", "time", "datetime", "point", "decimal":
 		return col.Type
 	}
 	return ""

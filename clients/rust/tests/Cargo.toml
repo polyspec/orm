@@ -18,6 +18,10 @@ name = "conformance"
 path = "src/conformance.rs"
 
 [[bin]]
+name = "decimal_physical"
+path = "src/decimal_physical.rs"
+
+[[bin]]
 name = "complex"
 path = "../../../examples/complex/rust/main.rs"
 

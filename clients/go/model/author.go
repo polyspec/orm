@@ -44,7 +44,7 @@ type AuthorModel struct {
 	fEmailBlindIndex       *string
 	fAesHexPhone           *string
 	fPhoneBlindIndex       *string
-	fPrice                 *float64
+	fPrice                 *string
 	fIp                    *string
 	fGzExtend              orm.StyledValue
 	fJsonSetting           orm.StyledValue
@@ -349,7 +349,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 			x.fPrice = nil
 			break
 		}
-		t, err := orm.AsFloat64(v)
+		t, err := x.m.DecodeDecimal(v, 13, 3)
 		if err != nil {
 			return true, fmt.Errorf("column price: %w", err)
 		}
@@ -1691,17 +1691,22 @@ func (x *AuthorModel) OrderByPhoneBlindIndexDesc(fn ...orm.Func) *AuthorModel {
 }
 
 // GetPrice returns price.
-func (x *AuthorModel) GetPrice() *float64 { return x.fPrice }
+func (x *AuthorModel) GetPrice() *string { return x.fPrice }
 
-// SetPrice sets price; nil stores NULL.
-func (x *AuthorModel) SetPrice(v *float64) *AuthorModel {
-	x.fPrice = v
+// SetPrice sets price after exact decimal validation.
+func (x *AuthorModel) SetPrice(v *string) (*AuthorModel, error) {
 	if v == nil {
+		x.fPrice = nil
 		x.m.SetNull("price")
-	} else {
-		x.m.Set("price", *v)
+		return x, nil
 	}
-	return x
+	value, err := orm.NormalizeDecimal(*v, 13, 3)
+	if err != nil {
+		return nil, err
+	}
+	x.fPrice = &value
+	x.m.Set("price", value)
+	return x, nil
 }
 
 func (x *AuthorModel) SetRawPrice(sql string, binds ...any) *AuthorModel {
@@ -1720,10 +1725,10 @@ func (x *AuthorModel) OrderByPriceDesc(fn ...orm.Func) *AuthorModel {
 	x.m.OrderBy("price", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusPrice(n float64) *AuthorModel  { x.m.Plus("price", n); return x }
-func (x *AuthorModel) MinusPrice(n float64) *AuthorModel { x.m.Minus("price", n); return x }
-func (x *AuthorModel) SumPrice() *AuthorModel            { x.m.Aggregate("sum", "price"); return x }
-func (x *AuthorModel) AvgPrice() *AuthorModel            { x.m.Aggregate("avg", "price"); return x }
+func (x *AuthorModel) PlusPrice(n string) *AuthorModel  { x.m.Plus("price", n); return x }
+func (x *AuthorModel) MinusPrice(n string) *AuthorModel { x.m.Minus("price", n); return x }
+func (x *AuthorModel) SumPrice() *AuthorModel           { x.m.Aggregate("sum", "price"); return x }
+func (x *AuthorModel) AvgPrice() *AuthorModel           { x.m.Aggregate("avg", "price"); return x }
 
 // GetIp returns ip.
 func (x *AuthorModel) GetIp() *string { return x.fIp }

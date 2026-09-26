@@ -5,6 +5,8 @@ import { OrmError } from './runtime_error.js';
 
 export interface ColumnSchema {
   readonly type: string;
+  readonly precision?: number;
+  readonly scale?: number;
   readonly nullable?: boolean;
   readonly styles?: readonly string[];
 }

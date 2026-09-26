@@ -32,6 +32,10 @@ pub struct Column {
     pub nullable: bool,
     #[serde(default)]
     pub styles: Vec<String>,
+    #[serde(default)]
+    pub precision: u8,
+    #[serde(default)]
+    pub scale: u8,
 }
 
 impl Manifest {
@@ -40,6 +44,13 @@ impl Manifest {
         let hash = content_hash(text).ok_or("schema manifest must start with schema_hash")?;
         if hash != m.schema_hash {
             return Err(format!("schema.json was edited by hand: hash {} does not match content {hash}", m.schema_hash));
+        }
+        for entity in m.entities.values() {
+            for column in &entity.columns {
+                if column.typ == "decimal" && (!(1..=18).contains(&column.precision) || column.scale > column.precision) {
+                    return Err(format!("{}.{}: decimal precision must be 1..18 and scale 0..precision", entity.name, column.name));
+                }
+            }
         }
         for name in &m.order {
             if !m.entities.contains_key(name) {

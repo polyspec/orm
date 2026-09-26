@@ -120,7 +120,11 @@ final class Generator
             . '            \'aes_version\' => ' . self::str($e['aes_version'] ?? '') . ",\n";
         $b .= "            'columns' => [\n";
         foreach ($e['columns'] as $c) {
-            $b .= '                ' . self::str($c['name']) . ' => [\'type\' => ' . self::str($c['type']) . ', \'nullable\' => ' . (!empty($c['nullable']) ? 'true' : 'false') . ', \'styles\' => ' . self::list($c['styles'] ?? []) . "],\n";
+            $b .= '                ' . self::str($c['name']) . ' => [\'type\' => ' . self::str($c['type']) . ', \'nullable\' => ' . (!empty($c['nullable']) ? 'true' : 'false') . ', \'styles\' => ' . self::list($c['styles'] ?? []);
+            if ($c['type'] === 'decimal') {
+                $b .= ', \'precision\' => ' . (int) ($c['precision'] ?? 0) . ', \'scale\' => ' . (int) ($c['scale'] ?? 0);
+            }
+            $b .= "],\n";
         }
         $b .= "            ],\n            'fulltext' => [" . implode(', ', array_map(self::list(...), $e['fulltext'] ?? [])) . '],';
         $indexes = array_map('strval', array_keys($e['indexes'] ?? []));
@@ -184,7 +188,7 @@ final class Generator
         }
         return match ($c['type']) {
             'i32', 'i64' => 'int',
-            'f64', 'decimal' => 'float',
+            'f64' => 'float',
             'bool' => 'bool',
             'date', 'datetime' => '\\DateTimeImmutable',
             'point' => 'array',

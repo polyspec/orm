@@ -512,7 +512,8 @@ final class SchemaDdl
         } elseif ($dialect === 'sqlite') {
             return match ($c['type']) {
                 'i32', 'i64', 'bool' => 'INTEGER',
-                'f64', 'decimal' => 'REAL',
+                'f64' => 'REAL',
+                'decimal' => "DECIMALINT({$c['precision']},{$c['scale']})",
                 'bytes', 'inet' => 'BLOB',
                 default => 'TEXT',
             };

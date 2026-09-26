@@ -34,7 +34,7 @@ const schema: SchemaSet = { hash: SCHEMA_HASH, entities: new Map<string, EntityS
     email_blind_index: { type: 'string', nullable: true },
     aes_hex_phone: { type: 'string', nullable: true, styles: ['aes', 'hex'] },
     phone_blind_index: { type: 'string', nullable: true },
-    price: { type: 'decimal', nullable: true },
+    price: { type: 'decimal', precision: 13, scale: 3, nullable: true },
     ip: { type: 'inet', nullable: true, styles: ['ip'] },
     gz_extend: { type: 'bytes', nullable: true, styles: ['serialize', 'gz'] },
     json_setting: { type: 'jsontext', nullable: true, styles: ['json'] },
@@ -403,8 +403,8 @@ export class Author extends Model {
   public keyNamePhoneBlindIndex(): this { this[CORE].keyName = 'phone_blind_index'; return this; }
   public orderByPhoneBlindIndexAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('phone_blind_index', false, fn); return this; }
   public orderByPhoneBlindIndexDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('phone_blind_index', true, fn); return this; }
-  public getPrice(): number | null { return this[CORE].column('price') as number | null; }
-  public setPrice(value: number | string | null): this { this[CORE].setValue('price', value); return this; }
+  public getPrice(): string | null { return this[CORE].column('price') as string | null; }
+  public setPrice(value: string | null): this { this[CORE].setValue('price', value); return this; }
   public setRawPrice(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'price', raw: { sql, binds } }); return this; }
   public addColumnPrice(): this { this[CORE].addColumn('price'); return this; }
   public removeColumnPrice(): this { this[CORE].removeColumn('price'); return this; }

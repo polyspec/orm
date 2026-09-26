@@ -612,7 +612,7 @@ final class Planner
     {
         $styles = $this->sqlStyles($col);
         $host = array_values(array_filter($col['styles'] ?? [], fn(string $st): bool => in_array($st, ['aes', 'hex', 'ip'], true) && !$this->d->handlesStyle($st)));
-        $ph = $b->param($i, '', $host, self::bindType($col));
+        $ph = $b->param($i, '', $host, self::bindType($col), $col['type'] === 'decimal' ? $col : null);
         if ($styles === [] && $col['type'] !== 'point') {
             return $ph;
         }
@@ -622,7 +622,7 @@ final class Planner
     /** Types executors normalize before binding. */
     private static function bindType(?array $col): string
     {
-        return in_array($col['type'] ?? '', ['date', 'time', 'datetime', 'point'], true) ? $col['type'] : '';
+        return in_array($col['type'] ?? '', ['date', 'time', 'datetime', 'point', 'decimal'], true) ? $col['type'] : '';
     }
 
     private function resolvePath(PlanScope $s, string $path): PlanScope
@@ -1062,7 +1062,7 @@ final class PlanBinds
     }
 
     /** @param list<string> $hostStyles */
-    public function param(int $i, string $transform = '', array $hostStyles = [], string $colType = ''): string
+    public function param(int $i, string $transform = '', array $hostStyles = [], string $colType = '', ?array $decimal = null): string
     {
         $slot = ['from' => 'param', 'param' => $i];
         if ($transform !== '') {
@@ -1073,6 +1073,10 @@ final class PlanBinds
         }
         if ($colType !== '') {
             $slot['col_type'] = $colType;
+        }
+        if ($decimal !== null) {
+            $slot['precision'] = $decimal['precision'];
+            $slot['scale'] = $decimal['scale'];
         }
         return $this->add($slot);
     }
