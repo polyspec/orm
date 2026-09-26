@@ -81,6 +81,8 @@ The PHP and TypeScript runners execute write vectors in transactions and return
 unexpected vector errors to the checker. They reject invalid derived integers,
 missing selected result fields, invalid query binds, and result values that
 cannot be represented exactly. Ordered JSON numbers remain exact in the output.
+The TypeScript result case checks the `CODEC_ENCODE` code when a styled value
+contains an undefined member; diagnostic wording is not part of the contract.
 `make conformance-result-check` runs their result cases. The Go runner applies
 the same error, integer, bind, field, and transaction checks. `make
 conformance-result-physical-check` runs Go, PHP, Rust, and TypeScript twice on each

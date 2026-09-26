@@ -20,7 +20,7 @@ test('a member key that JavaScript reorders reports an error', { timeout: 1000 }
 test('a result never drops an undefined field or writes a non-finite number as null', { timeout: 1000 }, () => {
   assert.throws(() => resultValue({ missing: undefined }), /undefined conformance result/);
   assert.throws(() => resultValue([Number.NaN]), /non-finite conformance result/);
-  assert.throws(() => resultValue(StyledValue.value({ missing: undefined })), /undefined conformance result/);
+  assert.throws(() => resultValue(StyledValue.value({ missing: undefined })), { code: 'CODEC_ENCODE' });
   assert.throws(() => resultValue([, 1]), /sparse conformance result/);
   assert.throws(() => resultValue({ [Symbol('hidden')]: 1 }), /symbol-keyed conformance result/);
   const hidden = Object.defineProperty({}, 'hidden', { value: 1 });
