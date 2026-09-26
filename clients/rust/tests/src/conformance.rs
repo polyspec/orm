@@ -130,8 +130,7 @@ fn int(v: Option<Value>) -> i64 {
     match v {
         Some(Value::Number(n)) => n.as_i64().unwrap_or_else(|| {
             let f = n.as_f64().expect("JSON number");
-            assert!(f.is_finite() && f.fract() == 0.0 && f >= i64::MIN as f64 && f < 9_223_372_036_854_775_808.0,
-                "non-integral or out-of-range number: {n}");
+            assert!(f.is_finite() && f.fract() == 0.0 && f >= i64::MIN as f64 && f < 9_223_372_036_854_775_808.0, "non-integral or out-of-range number: {n}");
             f as i64
         }),
         Some(Value::String(s)) => s.parse().unwrap_or_else(|_| panic!("invalid integer text: {s}")),
@@ -184,10 +183,7 @@ async fn main() {
         blind_index_key: "bench-blind-index".into(),
         on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
             let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = binds
-                .iter()
-                .map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log))
-                .collect();
+            let binds: Vec<Value> = binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
             log.statements.push(json!({"sql": sql, "binds": binds}));
         })),
         ..Default::default()
@@ -278,7 +274,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .order_by_raw("{seq} DESC")
             .gets()
             .await?;
-        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq(), int(r.get_doubled().expect("doubled"))])).collect();
+        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq().unwrap(), int(r.get_doubled().expect("doubled"))])).collect();
         Ok::<Value, orm::Error>(json!({"count": count, "rows": rows}))
     });
     run!("columns", async {
@@ -345,7 +341,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .order_by_seq_asc()
             .gets()
             .await?;
-        let out: Vec<Value> = users.models().map(|u| json!([u.get_seq(), int(u.get_read_total().expect("read_total"))])).collect();
+        let out: Vec<Value> = users.models().map(|u| json!([u.get_seq().unwrap(), int(u.get_read_total().expect("read_total"))])).collect();
         Ok::<Value, orm::Error>(Value::Array(out))
     });
     run!("aggregates", async {
@@ -397,10 +393,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     run!("get_query", async {
         let st = battle().service_seq(7).and_lk_name("x").and_aes_hex_email("user7@example.com").order_by_seq_desc().limit(0, 5).get_query().await?;
         let log = Log::default();
-        let binds: Vec<Value> = st.binds
-            .iter()
-            .map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log))
-            .collect();
+        let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
         Ok::<Value, orm::Error>(json!({"sql": st.sql, "binds": binds}))
     });
     run!("aes_values", async {
@@ -426,12 +419,12 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .new_label("created")
             .create()
             .await?;
-        let seq = created.get_seq();
+        let seq = created.get_seq().unwrap();
         mask(shared, &[seq], &[]);
         let mut created_array = created.to_array()?;
         created_array["seq"] = json!("$SEQ");
         let loaded = battle().add_all_columns().get_by_seq(seq).await?;
-        mask(shared, &[], &[loaded.get_updated_ts()]);
+        mask(shared, &[], &[loaded.get_updated_ts().unwrap()]);
         let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
         loaded.update(true).await?;
         let mut loaded = loaded.set_name("stale");
@@ -455,10 +448,10 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             .set_end_dt(start)
             .create()
             .await?;
-        let seq = created.get_seq();
+        let seq = created.get_seq().unwrap();
         mask(shared, &[seq], &[]);
         let loaded = battle().get_by_seq(seq).await?;
-        let (created_ts, updated_ts) = (loaded.get_created_ts(), loaded.get_updated_ts());
+        let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
         // The runner connects in +00:00, so the wall-clock value is UTC.
         let near = (created_ts - before).num_seconds().abs() < 60;
         loaded.delete(false).await?;
@@ -468,7 +461,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let missing_state = failure(Task::new().connect(db).set_title("draft").create().await);
         let missing_title = failure(Task::new().connect(db).set_state("open").create().await);
         let created = Task::new().connect(db).set_title("draft").set_state("open").create().await?;
-        mask(shared, &[created.get_seq()], &[]);
+        mask(shared, &[created.get_seq().unwrap()], &[]);
         created.delete(false).await?;
         Ok::<Value, orm::Error>(json!({"missing_state": missing_state, "missing_title": missing_title}))
     });
@@ -496,11 +489,11 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     });
     run!("delete_recursive", async {
         let service = Service::new().connect(db).set_name("recursive").create().await?;
-        let seq = service.get_seq();
+        let seq = service.get_seq().unwrap();
         let mut seqs = vec![seq];
         for i in 0..2 {
             let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
-            seqs.push(member.get_seq());
+            seqs.push(member.get_seq().unwrap());
         }
         let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
         let members = loaded.get_service_member_models().expect("selected service members").len();

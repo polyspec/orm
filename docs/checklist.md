@@ -51,6 +51,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N5.1.2.6.3 Use `StyledValue` in TypeScript styled-column setters, getters, codecs, and model output. Verify the shared state and codec cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.2.6.4 Pass explicit styled values to the Go conformance write runner and return each setter error before writing. Verify model generation, runner compilation, and Go model and runtime tests on MySQL, PostgreSQL, and SQLite.
 - [ ] N5.1.2.6.6 Reject an undefined nested member in TypeScript styled-value JSON output instead of omitting the member. Add a RED case for `StyledValue.value({missing: undefined}).toJSON()`, correct the owning codec, and verify model output on MySQL, PostgreSQL, and SQLite.
+- [o] N5.1.2.7 Keep generated Rust model fields private and reject access to a field that was neither selected nor assigned with `COLUMN_UNSELECTED`. Preserve SQL projection and return grouping values with checked row counts through `GroupRows` instead of partial models. Evidence: generated model and grouping cases execute on MySQL, PostgreSQL and SQLite, malformed group counts fail, and Rust consumers compile against the result types.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.

@@ -194,6 +194,8 @@ pub struct Core {
     pub(crate) duplication: Option<Box<Core>>,
 
     pub(crate) row: Option<RowState>,
+    ready_fields: std::collections::HashSet<String>,
+    invalidated_fields: std::collections::HashSet<String>,
 }
 
 pub(crate) fn config(msg: impl Into<String>) -> Error {
@@ -237,12 +239,34 @@ impl Core {
             news: IndexMap::new(),
             duplication: None,
             row: None,
+            ready_fields: std::collections::HashSet::new(),
+            invalidated_fields: std::collections::HashSet::new(),
         }
     }
 
     /// The model descriptor.
     pub fn entity(&self) -> &'static Entity {
         self.ent
+    }
+
+    /// Marks a generated field assigned from a checked value.
+    pub fn mark_field_ready(&mut self, name: &str) {
+        self.invalidated_fields.remove(name);
+        self.ready_fields.insert(name.to_owned());
+    }
+
+    /// Reports whether a generated field contains a read or explicitly assigned value.
+    pub fn field_ready(&self, name: &str) -> bool {
+        !self.invalidated_fields.contains(name)
+            && (self.ready_fields.contains(name) || self.row.as_ref().is_some_and(|row| row.names.iter().any(|selected| selected == name)))
+    }
+
+    pub fn require_field(&self, name: &str) -> crate::Result<()> {
+        if self.field_ready(name) {
+            Ok(())
+        } else {
+            Err(Error::Engine { code: crate::codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{name} was not loaded or assigned", self.ent.name) })
+        }
     }
 
     /// The first recorded builder error.
@@ -564,6 +588,7 @@ impl Core {
             self.fail("set is not allowed inside a group callback");
             return;
         }
+        self.invalidated_fields.insert(column.to_owned());
         if let Some(s) = self.sets.iter_mut().find(|s| s.column == column) {
             s.value = value;
             return;

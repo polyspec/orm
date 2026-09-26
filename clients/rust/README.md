@@ -80,6 +80,12 @@ both the callback and rollback failures. This call has no callback deadline opti
 
 ## Row values
 
+Generated model fields are private. A `get_<column>` call returns `Result` and reports
+`COLUMN_UNSELECTED` when its column was neither selected nor assigned; a missing value cannot
+appear as SQL NULL or a default. Explicit projection changes the SQL selection and row output.
+`gets_count` returns `GroupRows` with selected grouping values and a checked `row_count`, so a
+group result does not contain partially populated model fields.
+
 `Val` numeric, boolean, date, time, text, byte, JSON and point conversions return `Result`.
 An incompatible kind, invalid text, integer overflow, non-finite float, invalid UTF-8 or
 precision-losing decimal conversion returns `CODEC_DECODE`. A non-finite float also fails JSON

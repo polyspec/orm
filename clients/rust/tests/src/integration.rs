@@ -3,7 +3,7 @@
 //! test drops its tables there and installs the schema); the test fails when
 //! either is unset.
 //!
-//! Usage: integration <schema.json>
+//! Usage: integration <schema.json> [--case <case>]
 use std::cell::Cell;
 use std::path::PathBuf;
 
@@ -48,6 +48,14 @@ fn code<T>(r: orm::Result<T>) -> String {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
     }
+}
+
+#[test]
+fn generated_fields_require_selection_or_assignment() {
+    let model = Battle::new();
+    assert_eq!(model.get_name().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED);
+    assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
+    assert_eq!(model.set_name("checked").get_name().unwrap(), "checked");
 }
 
 impl Env {
@@ -116,18 +124,18 @@ async fn seed(db: &Db) -> Fixture {
     for name in ["kim", "lee", "park"] {
         users.push(User::new().connect(db).set_name(name).create().await.unwrap());
     }
-    let module = ServiceModule::new().connect(db).set_service_seq(service.get_seq()).set_name("module").create().await.unwrap();
-    let member = ServiceMember::new().connect(db).set_service_seq(service.get_seq()).set_user_seq(users[0].get_seq()).create().await.unwrap();
+    let module = ServiceModule::new().connect(db).set_service_seq(service.get_seq().unwrap()).set_name("module").create().await.unwrap();
+    let member = ServiceMember::new().connect(db).set_service_seq(service.get_seq().unwrap()).set_user_seq(users[0].get_seq().unwrap()).create().await.unwrap();
     let mut battles = Vec::new();
     for (i, name) in ["alpha", "beta", "gamma", "delta"].into_iter().enumerate() {
         let i = i as i64;
         let mut b = Battle::new()
             .connect(db)
             .set_name(name)
-            .set_user_seq(users[(i % 2) as usize].get_seq())
-            .set_service_seq(service.get_seq())
-            .set_service_module_seq(module.get_seq())
-            .set_service_member_seq(member.get_seq())
+            .set_user_seq(users[(i % 2) as usize].get_seq().unwrap())
+            .set_service_seq(service.get_seq().unwrap())
+            .set_service_module_seq(module.get_seq().unwrap())
+            .set_service_member_seq(member.get_seq().unwrap())
             .set_start_dt(start() + chrono::Duration::hours(i))
             .set_end_dt(start() + chrono::Duration::hours(48))
             .set_read_count(i * 10)
@@ -141,13 +149,13 @@ async fn seed(db: &Db) -> Fixture {
 }
 
 fn names(c: &Collection<Battle>) -> String {
-    c.models().map(|b| b.get_name().to_owned()).collect::<Vec<_>>().join(",")
+    c.models().map(|b| b.get_name().unwrap().to_owned()).collect::<Vec<_>>().join(",")
 }
 
 async fn conditions(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let svc = f.service.get_seq();
+    let svc = f.service.get_seq().unwrap();
     let rows = Battle::new().connect(db).service_seq(svc).and_is_close(false).or(()).is_close(true).order_by_seq_asc().gets().await.unwrap();
     assert_eq!(names(&rows), "alpha,beta,gamma,delta", "connectors");
     let rows = Battle::new()
@@ -159,14 +167,14 @@ async fn conditions(t: &Target) {
         .await
         .unwrap();
     assert_eq!(names(&rows), "gamma,beta,alpha", "group");
-    let rows = Battle::new().connect(db).gets_by_seq_and_ne_name(vec![f.battles[0].get_seq(), f.battles[1].get_seq()], "beta").await.unwrap();
+    let rows = Battle::new().connect(db).gets_by_seq_and_ne_name(vec![f.battles[0].get_seq().unwrap(), f.battles[1].get_seq().unwrap()], "beta").await.unwrap();
     assert_eq!(names(&rows), "alpha", "gets_by list");
     assert_eq!(Battle::new().connect(db).cover_url(Null).get_count().await.unwrap(), 2, "null");
     assert_eq!(Battle::new().connect(db).ne_cover_url(Null).and_lk_name("lph").get_count().await.unwrap(), 1, "not null and like");
     assert_eq!(Battle::new().connect(db).between_read_count([10, 20]).get_count().await.unwrap(), 2, "between");
     assert_eq!(Battle::new().connect(db).gt_start_dt(start() + chrono::Duration::minutes(90)).get_count().await.unwrap(), 2, "time compare");
     let one = Battle::new().connect(db).get_by_name("gamma").await.unwrap();
-    assert_eq!(one.get_read_count(), 20, "get_by");
+    assert_eq!(one.get_read_count().unwrap(), 20, "get_by");
     assert_eq!(code(Battle::new().connect(db).get_by_name("missing").await), "NO_ROWS", "get without a row");
     let q = Battle::new().connect(db).service_seq(svc);
     let first = q.get_count_by_is_close(true).await.unwrap();
@@ -188,14 +196,14 @@ async fn joins_and_relations(t: &Target) {
     let rows = Battle::new()
         .connect(db)
         .left_join_user_seq_with_seq(author.clone())
-        .service_seq(f.service.get_seq())
+        .service_seq(f.service.get_seq().unwrap())
         .and(|q: Battle| q.name("delta").or(&author))
         .order_by_seq_asc()
         .gets()
         .await
         .unwrap();
     assert_eq!(names(&rows), "alpha,gamma,delta", "placed join conditions");
-    assert_eq!(rows.first().and_then(|b| b.get_user_model()).map(|u| u.get_name().to_owned()).as_deref(), Some("kim"), "join result");
+    assert_eq!(rows.first().and_then(|b| b.get_user_model()).map(|u| u.get_name().unwrap().to_owned()).as_deref(), Some("kim"), "join result");
     let member = ServiceMember::new();
     let cmp = Battle::new().connect(db).join_service_member_seq_with_seq(member.clone()).read_count_gt_seq(&member).get_count().await.unwrap();
     assert_eq!(cmp, 3, "column comparison with a joined model");
@@ -211,9 +219,9 @@ async fn joins_and_relations(t: &Target) {
         .await
         .unwrap();
     let b = loaded.first().unwrap();
-    assert_eq!(b.get_writer().map(|u| u.get_name()), Some("kim"), "relation alias");
+    assert_eq!(b.get_writer().map(|u| u.get_name().unwrap()), Some("kim"), "relation alias");
     assert_eq!(b.get_members().map(|c| c.len()), Some(1), "relations");
-    assert_eq!(b.get_service_module_model().map(|m| m.get_name()), Some("module"), "relation");
+    assert_eq!(b.get_service_module_model().map(|m| m.get_name().unwrap()), Some("module"), "relation");
     let limited =
         User::new().connect(db).relations(Battle::new().match_seq_with_user_seq().order_by_seq_desc().group_limit(1)).order_by_seq_asc().gets().await.unwrap();
     let got = limited.first().and_then(|u| u.get_battle_models()).expect("battle models");
@@ -221,7 +229,7 @@ async fn joins_and_relations(t: &Target) {
 
     let other = Db::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
     let external = Battle::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
-    assert_eq!(external.get_owner().map(|u| u.get_name()), Some("lee"), "relation on another connection");
+    assert_eq!(external.get_owner().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Battle::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
     assert_eq!(code(Battle::new().connect(db).name("a").or(&User::new()).gets().await), "CONFIG", "unjoined model placement");
@@ -245,25 +253,45 @@ async fn columns_and_subqueries(t: &Target) {
         .unwrap();
     assert_eq!(users.len(), 1, "subquery IN");
     let u = users.first().unwrap();
-    let int =
-        |v: Option<serde_json::Value>| v.and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)).or_else(|| v.as_str().and_then(|s| s.parse().ok())));
-    assert_eq!(int(u.get_read_total().unwrap()), Some(20), "subquery column");
-    assert_eq!(int(u.get_doubled().unwrap()), Some(2 * u.get_seq()), "raw column");
+    let int = |v: Option<serde_json::Value>| -> Result<i64, String> {
+        let value = v.ok_or_else(|| "computed integer is absent".to_owned())?;
+        match value {
+            serde_json::Value::Number(number) if number.is_i64() => number.as_i64().ok_or_else(|| "signed integer is out of range".to_owned()),
+            serde_json::Value::Number(number) if number.is_u64() => {
+                i64::try_from(number.as_u64().ok_or_else(|| "unsigned integer is invalid".to_owned())?).map_err(|error| error.to_string())
+            }
+            serde_json::Value::Number(number) => {
+                let float = number.as_f64().ok_or_else(|| "numeric value is invalid".to_owned())?;
+                if !float.is_finite() || float.fract() != 0.0 || !(-9_007_199_254_740_992.0..=9_007_199_254_740_992.0).contains(&float) {
+                    return Err(format!("numeric value is not an i64: {number}"));
+                }
+                Ok(float as i64)
+            }
+            serde_json::Value::String(text) => text.parse::<i64>().map_err(|error| error.to_string()),
+            other => Err(format!("computed integer has an invalid type: {other}")),
+        }
+    };
+    assert_eq!(int(u.get_read_total().unwrap()).expect("subquery integer"), 20, "subquery column");
+    assert_eq!(int(u.get_doubled().unwrap()).expect("raw integer"), 2 * u.get_seq().unwrap(), "raw column");
     assert_eq!(u.get_upper_name().unwrap(), Some(serde_json::json!("KIM")), "format column");
-    let sum = Battle::new().connect(db).service_seq(f.service.get_seq()).sum_read_count().get_sum().await.unwrap();
-    let avg = Battle::new().connect(db).service_seq(f.service.get_seq()).avg_read_count().get_avg().await.unwrap();
+    let sum = Battle::new().connect(db).service_seq(f.service.get_seq().unwrap()).sum_read_count().get_sum().await.unwrap();
+    let avg = Battle::new().connect(db).service_seq(f.service.get_seq().unwrap()).avg_read_count().get_avg().await.unwrap();
     assert_eq!((sum, avg), (60.0, 15.0), "aggregates");
+    let projected = Battle::new().connect(db).remove_all_columns().add_column_name().get_by_seq(f.battles[0].get_seq().unwrap()).await.unwrap();
+    assert_eq!(projected.get_name().unwrap(), "alpha", "selected field");
+    assert_eq!(projected.get_description().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED, "unselected field");
     let grouped = Battle::new().connect(db).group_by_is_close().gets_count().await.unwrap();
     assert_eq!(grouped.len(), 2, "gets_count");
+    assert!(grouped.iter().all(|row| row.count() > 0 && row.value("is_close").is_some() && row.value("name").is_none()));
     let page = Battle::new().connect(db).order_by_seq_asc().gets_page(2, 3).await.unwrap();
     assert_eq!((page.total_count, page.total_pages, page.items.len()), (4, 2, 1), "page");
-    assert_eq!(page.items.first().map(|b| b.get_name()), Some("delta"), "page item");
+    assert_eq!(page.items.first().map(|b| b.get_name().unwrap()), Some("delta"), "page item");
     let keyed = Battle::new().connect(db).key_name_name().gets().await.unwrap();
     assert!(keyed.get("beta").is_some(), "key_name");
     let fetched = Battle::new()
         .connect(db)
-        .fetch_key(|b: &Battle| b.get_read_count())
-        .fetch_value(|b: &Battle| serde_json::json!(b.get_name().len()))
+        .fetch_key(|b: &Battle| b.get_read_count().unwrap())
+        .fetch_value(|b: &Battle| serde_json::json!(b.get_name().unwrap().len()))
         .gets()
         .await
         .unwrap();
@@ -286,11 +314,11 @@ async fn columns_and_subqueries(t: &Target) {
 async fn writes(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap();
+    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq().unwrap()).await.unwrap();
     let mut b = b.set_name("renamed").plus_read_count(5);
     b.update(true).await.unwrap();
-    let again = Battle::new().connect(db).get_by_seq(b.get_seq()).await.unwrap();
-    assert_eq!((again.get_name(), again.get_read_count()), ("renamed", 5), "update");
+    let again = Battle::new().connect(db).get_by_seq(b.get_seq().unwrap()).await.unwrap();
+    assert_eq!((again.get_name().unwrap(), again.get_read_count().unwrap()), ("renamed", 5), "update");
     let mut b = b.set_name("stale");
     assert_eq!(code(b.update(true).await), "CONFIG", "optimistic update without a fresh version");
     let mut again = again.set_name("again");
@@ -300,11 +328,11 @@ async fn writes(t: &Target) {
     let item = Account::new().connect(db).set_name("acc").new_label("shown").create().await.unwrap();
     assert_eq!(item.get_label().unwrap(), Some(serde_json::json!("shown")), "new value");
     assert_eq!(item.to_array().unwrap()["label"], "shown", "new value output");
-    let saved = Account::new().connect(db).set_seq(item.get_seq()).set_name("saved").save().await.unwrap();
-    assert_eq!(saved.get_name(), "saved", "save result");
-    let stored = Account::new().connect(db).get_by_seq(item.get_seq()).await.unwrap();
-    assert_eq!(stored.get_name(), "saved", "save as update");
-    Battle::new().connect(db).get_by_seq(f.battles[3].get_seq()).await.unwrap().delete(false).await.unwrap();
+    let saved = Account::new().connect(db).set_seq(item.get_seq().unwrap()).set_name("saved").save().await.unwrap();
+    assert_eq!(saved.get_name().unwrap(), "saved", "save result");
+    let stored = Account::new().connect(db).get_by_seq(item.get_seq().unwrap()).await.unwrap();
+    assert_eq!(stored.get_name().unwrap(), "saved", "save as update");
+    Battle::new().connect(db).get_by_seq(f.battles[3].get_seq().unwrap()).await.unwrap().delete(false).await.unwrap();
     assert_eq!(Battle::new().connect(db).get_count().await.unwrap(), 3, "delete");
     let rows = Battle::new().connect(db).is_close(true).gets().await.unwrap();
     rows.delete(false).await.unwrap();
@@ -320,13 +348,13 @@ async fn writes(t: &Target) {
         .await
         .unwrap();
     let got = CompositeAccount::new().connect(db).get_by_tenant_id_and_account_id(9, 9).await.unwrap();
-    assert_eq!(got.get_name(), "second", "duplication");
+    assert_eq!(got.get_name().unwrap(), "second", "duplication");
     let service = Service::new().connect(db).set_name("tree").create().await.unwrap();
-    ServiceMember::new().connect(db).set_service_seq(service.get_seq()).set_user_seq(f.users[1].get_seq()).create().await.unwrap();
-    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq()).await.unwrap();
+    ServiceMember::new().connect(db).set_service_seq(service.get_seq().unwrap()).set_user_seq(f.users[1].get_seq().unwrap()).create().await.unwrap();
+    let tree = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(service.get_seq().unwrap()).await.unwrap();
     tree.delete(true).await.unwrap();
-    assert_eq!(ServiceMember::new().connect(db).get_count_by_service_seq(service.get_seq()).await.unwrap(), 0, "recursive delete");
-    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq()).await.unwrap();
+    assert_eq!(ServiceMember::new().connect(db).get_count_by_service_seq(service.get_seq().unwrap()).await.unwrap(), 0, "recursive delete");
+    let copy = Service::new().connect(db).get_by_seq(f.service.get_seq().unwrap()).await.unwrap();
     let json = serde_json::to_value(&copy).unwrap();
     assert_eq!(json["name"], "service", "serialize");
 }
@@ -516,7 +544,7 @@ async fn bind_limit_splitting(t: &Target) {
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
-    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq()).await.unwrap();
+    let b = Battle::new().connect(db).get_by_seq(f.battles[0].get_seq().unwrap()).await.unwrap();
     let mut b = b.set_aes_hex_email("person@example.com");
     b.update(false).await.unwrap();
     let found = Battle::new().connect(db).aes_hex_email("person@example.com").get_count().await.unwrap();
@@ -536,13 +564,13 @@ async fn json_values(t: &Target) {
     let f = seed(db).await;
     let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
     let tags = r#"["z",{"y":[]},-0.0]"#;
-    let seq = f.battles[0].get_seq();
+    let seq = f.battles[0].get_seq().unwrap();
     let b = Battle::new().connect(db).get_by_seq(seq).await.unwrap();
     let mut b = b.set_json_setting(orm::ordered_json::parse(text).unwrap()).set_jsons_tags(orm::ordered_json::parse(tags).unwrap());
     b.update(false).await.unwrap();
     let got = Battle::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
-    assert_eq!(got.get_json_setting().compact(), text, "jsontext json read");
-    assert_eq!(got.get_jsons_tags().compact(), tags, "jsontext jsons read");
+    assert_eq!(got.get_json_setting().unwrap().compact(), text, "jsontext json read");
+    assert_eq!(got.get_jsons_tags().unwrap().compact(), tags, "jsontext jsons read");
     assert_eq!(got.to_array().unwrap()["json_setting"], serde_json::json!({"a": [], "b": 1, "c": {}, "n": 1.5}), "array form");
     let out = got.to_json().unwrap();
     assert!(out.contains(&format!(r#""json_setting":{text}"#)) && out.contains(&format!(r#""jsons_tags":{tags}"#)), "JSON output: {out}");
@@ -553,10 +581,10 @@ async fn json_values(t: &Target) {
     let created = Battle::new()
         .connect(db)
         .set_name("json")
-        .set_user_seq(f.users[0].get_seq())
-        .set_service_seq(f.service.get_seq())
-        .set_service_module_seq(f.battles[0].get_service_module_seq())
-        .set_service_member_seq(f.member.get_seq())
+        .set_user_seq(f.users[0].get_seq().unwrap())
+        .set_service_seq(f.service.get_seq().unwrap())
+        .set_service_module_seq(f.battles[0].get_service_module_seq().unwrap())
+        .set_service_member_seq(f.member.get_seq().unwrap())
         .set_start_dt(start())
         .set_end_dt(start())
         .set_json_setting(orm::ordered_json::parse("[]").unwrap())
@@ -564,31 +592,52 @@ async fn json_values(t: &Target) {
         .create()
         .await
         .unwrap();
-    assert_eq!(created.get_json_setting().compact(), "[]", "created value");
-    let got = Battle::new().connect(db).add_all_columns().get_by_seq(created.get_seq()).await.unwrap();
-    assert_eq!(got.get_json_setting().compact(), "[]", "empty array read");
-    assert_eq!(got.get_jsons_tags().kind(), orm::ordered_json::Kind::Null, "NULL reads as the JSON null");
+    assert_eq!(created.get_json_setting().unwrap().compact(), "[]", "created value");
+    let got = Battle::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
+    assert_eq!(got.get_json_setting().unwrap().compact(), "[]", "empty array read");
+    assert_eq!(got.get_jsons_tags().unwrap().kind(), orm::ordered_json::Kind::Null, "NULL reads as the JSON null");
 }
 
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
-        eprintln!("usage: integration <schema.json>");
-        std::process::exit(2);
-    }
+    const CASES: &[&str] = &[
+        "schema_empty",
+        "conditions",
+        "joins_and_relations",
+        "columns_and_subqueries",
+        "writes",
+        "transactions",
+        "aes_rotation",
+        "json_values",
+        "bind_limit_splitting",
+        "primary_and_replica",
+    ];
+    let selected = match args.as_slice() {
+        [_, _] => None,
+        [_, _, flag, case] if flag == "--case" && CASES.contains(&case.as_str()) => Some(case.as_str()),
+        _ => {
+            eprintln!("usage: integration <schema.json> [--case <case>]; supported cases: {}", CASES.join(", "));
+            std::process::exit(2);
+        }
+    };
     let tmp = std::env::temp_dir().join(format!("orm-rust-integration-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let schema = std::fs::read(&args[1]).expect("schema.json");
     assert_eq!(orm::Manifest::load(&schema).expect("schema manifest").schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
     let env = Env { schema, tmp: tmp.clone() };
-    for t in env.without_tables("schema_empty").await {
-        schema_empty(&t, &env.schema).await;
-        t.db.close().await;
-        println!("ok schema_empty ({})", t.driver);
+    if selected.is_none_or(|case| case == "schema_empty") {
+        for t in env.without_tables("schema_empty").await {
+            schema_empty(&t, &env.schema).await;
+            t.db.close().await;
+            println!("ok schema_empty ({})", t.driver);
+        }
     }
     for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"]
     {
+        if selected.is_some_and(|case| case != name) {
+            continue;
+        }
         for t in env.databases(name).await {
             match name {
                 "conditions" => conditions(&t).await,
@@ -604,17 +653,19 @@ async fn main() {
             println!("ok {name} ({})", t.driver);
         }
     }
-    for t in env.databases("primary_and_replica").await {
-        if t.driver == "sqlite" {
-            read_only_sqlite(&t, &tmp.join("primary_and_replica.sqlite")).await;
-            println!("ok read_only_sqlite");
-            continue;
+    if selected.is_none_or(|case| case == "primary_and_replica") {
+        for t in env.databases("primary_and_replica").await {
+            if t.driver == "sqlite" {
+                read_only_sqlite(&t, &tmp.join("primary_and_replica.sqlite")).await;
+                println!("ok read_only_sqlite");
+                continue;
+            }
+            let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());
+            let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
+            primary_and_replica(&t, &replica).await;
+            t.db.close().await;
+            println!("ok primary_and_replica ({})", t.driver);
         }
-        let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());
-        let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
-        primary_and_replica(&t, &replica).await;
-        t.db.close().await;
-        println!("ok primary_and_replica ({})", t.driver);
     }
     let _ = std::fs::remove_dir_all(&tmp);
 }

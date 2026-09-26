@@ -326,6 +326,7 @@ const rows = await new Battle().connect(slave1)
 - Conditions: the first condition has no prefix, following conditions use `and<Chain>`, `or<Chain>`, or `and()` and `or()`, and groups use `and(fn)` and `or(fn)`. Operator prefixes, value shapes, and chain rules are in [dsl.md](dsl.md).
 - Finders: `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` accept any column chain, such as `getsByServiceSeqAndIsClose(7, false)`.
 - Columns: `addColumn<Col>()`, `removeColumn<Col>()`, `removeAllColumns()`, and `addAllColumns()`. `text`, `blob`, and styled columns are excluded from the default SELECT and added with `addColumn<Col>()`.
+- Rust generated model fields are private. Reading a column that was neither selected nor assigned returns `COLUMN_UNSELECTED`; an omitted value is never presented as SQL NULL or a default.
 - Terminals: `get` returns one row and `NO_ROWS` when no row matches. `gets` returns a collection, which is empty when no row matches. `getCount` returns a count.
 - A collection is an ordered map keyed by PK or `keyName<Col>()`: `first()`, `count()`, and `toArray()` are available, and iteration yields `key => row`.
 - `toArray()` returns the rows as a list of maps in collection order: Go `rows.ToArray()`, Rust `rows.to_array()`, PHP `$rows->toArray()`, and TypeScript `rows.toArray()`. Iteration keeps the keys and their types.
@@ -338,6 +339,7 @@ const rows = await new Battle().connect(slave1)
 (new Battle)->connect($slave1)->serviceSeq(7)->avgPrice()->getAvg();           // average price
 ```
 Raw condition, order, group, and column forms, subquery columns, and ORM function values are specified in [dsl.md](dsl.md).
+Rust `gets_count()` returns `GroupRows` with only selected grouping values and a checked `row_count`, instead of a partially populated model.
 
 ---
 
