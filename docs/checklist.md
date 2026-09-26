@@ -39,6 +39,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N5.1.1.2 Reject duplicate keys in nested JSON evidence and expectations, and fail when a database expectation file is missing.
 - [o] N5.1.1.3 Redact database connection strings in runner command logs for both `-dsn` and `--dsn` flags.
 - [o] N5.1.1.4 Read SQLite state when no table uses `AUTOINCREMENT` and `sqlite_sequence` does not exist. Treat the verified absence as zero counters, still detect row changes and sequence changes when the table exists, and reject other query errors.
+- [o] N5.1.1.4.1 State the SQLite counter rule in both checklist languages: zero counters require a verified missing `sqlite_sequence` table, and other query errors fail. Verify the documentation wording rule and matching item IDs and states.
 - [~] N5.1.2 Make all four conformance runners propagate unexpected errors, clean write state on failure, and enforce the common aggregate scalar rule on all three databases.
 - [o] N5.1.2.1 Make Go value conversion, host encoding, and generated model assignment report malformed, null, overflowing, and unsupported values. Verify valid values with executable tests; propagate assignment failures through row assembly and validate insert fields before writing.
 - [o] N5.1.2.2 Reject invalid and nonfinite PHP and TypeScript aggregate scalars and verify nearest binary64 conversion with the shared nine-case fixture.
