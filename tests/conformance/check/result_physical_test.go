@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestPhysicalPHPTypeScriptResultRunners(t *testing.T) {
+func TestPhysicalResultRunners(t *testing.T) {
 	if err := os.Mkdir(lockDir, 0o755); err != nil {
 		t.Fatalf("conformance database lock: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestPhysicalPHPTypeScriptResultRunners(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			for _, language := range []string{"php", "typescript"} {
+			for _, language := range []string{"go", "php", "typescript"} {
 				t.Run(language, func(t *testing.T) {
 					first := filepath.Join(t.TempDir(), "first.json")
 					repeated := filepath.Join(t.TempDir(), "repeated.json")

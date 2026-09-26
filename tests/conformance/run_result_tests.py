@@ -13,6 +13,7 @@ COMMANDS = [
     (["npm", "--prefix", "clients/typescript", "run", "build"], 120),
     (["php", "tests/conformance/result_php.php"], 10),
     (["node", "--test", "tests/conformance/result_typescript.test.mjs"], 10),
+    (["go", "test", "./tests/conformance/runner_go", "-count=1", "-timeout", "3m"], 180),
 ]
 
 

@@ -64,7 +64,7 @@ conformance-result-check:
 	python3 tests/conformance/run_result_tests.py
 
 conformance-result-physical-check:
-	$(WITH_TEST_ENV) go test -v -tags physical ./tests/conformance/check -run '^TestPhysicalPHPTypeScriptResultRunners$$' -count=1 -timeout 3m
+	$(WITH_TEST_ENV) go test -v -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1 -timeout 3m
 
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
