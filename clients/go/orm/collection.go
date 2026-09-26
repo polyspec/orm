@@ -3,7 +3,6 @@ package orm
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -15,103 +14,166 @@ import (
 
 // Key is a collection key. The integer 7 and the text "7" are different keys.
 type Key struct {
-	i     int64
-	s     string
-	isStr bool
+	tag  byte
+	data string
+	i    int64
+	bits uint64
+	time time.Time
 }
 
 // KeyOf converts a column value to a key.
-func KeyOf(v any) Key {
+func KeyOf(v any) (Key, error) {
 	switch x := v.(type) {
 	case Key:
-		return x
+		if x.tag != 0 {
+			return x, nil
+		}
 	case int64:
-		return Key{i: x}
+		return integerKey(x), nil
 	case int:
-		return Key{i: int64(x)}
+		return integerKey(int64(x)), nil
 	case int32:
-		return Key{i: int64(x)}
+		return integerKey(int64(x)), nil
+	case int16:
+		return integerKey(int64(x)), nil
+	case int8:
+		return integerKey(int64(x)), nil
 	case uint64:
-		return Key{i: int64(x)}
+		if x <= math.MaxInt64 {
+			return integerKey(int64(x)), nil
+		}
 	case uint32:
-		return Key{i: int64(x)}
+		return integerKey(int64(x)), nil
+	case uint16:
+		return integerKey(int64(x)), nil
+	case uint8:
+		return integerKey(int64(x)), nil
+	case uint:
+		if uint64(x) <= math.MaxInt64 {
+			return integerKey(int64(x)), nil
+		}
 	case string:
-		return Key{s: x, isStr: true}
+		return Key{tag: 's', data: x}, nil
 	case []byte:
-		return Key{s: string(x), isStr: true}
+		if x == nil {
+			break
+		}
+		return Key{tag: 'b', data: string(x)}, nil
 	case bool:
 		if x {
-			return Key{i: 1}
+			return Key{tag: 't', data: "1"}, nil
 		}
-		return Key{i: 0}
+		return Key{tag: 't', data: "0"}, nil
+	case float64:
+		if !math.IsNaN(x) && !math.IsInf(x, 0) {
+			if x == 0 {
+				x = 0
+			}
+			bits := math.Float64bits(x)
+			return Key{tag: 'f', data: strconv.FormatUint(bits, 16), bits: bits}, nil
+		}
+	case float32:
+		if !math.IsNaN(float64(x)) && !math.IsInf(float64(x), 0) {
+			if x == 0 {
+				x = 0
+			}
+			bits := math.Float64bits(float64(x))
+			return Key{tag: 'f', data: strconv.FormatUint(bits, 16), bits: bits}, nil
+		}
+	case time.Time:
+		value := x.UTC()
+		return Key{tag: 'd', data: value.Format(time.RFC3339Nano), time: value}, nil
 	}
-	return Key{s: scalarKey(v), isStr: true}
+	return Key{}, codecErr(CodeCodecDecode, "unsupported key value %T", v)
+}
+
+func integerKey(value int64) Key {
+	return Key{tag: 'i', data: strconv.FormatInt(value, 10), i: value}
 }
 
 // keyFromRow builds a key from ordered result columns; false when a
 // component is null. Composite keys encode each component with its length.
-func keyFromRow(row []any, refs []plan.KeyRef) (Key, bool) {
+func keyFromRow(row []any, refs []plan.KeyRef) (Key, bool, error) {
+	if len(refs) == 0 {
+		return Key{}, false, codecErr(CodeInternal, "row identity has no components")
+	}
 	values := make([]any, len(refs))
 	for i, ref := range refs {
+		if ref.Index < 0 || ref.Index >= len(row) {
+			return Key{}, false, codecErr(CodeInternal, "row identity index %d is out of bounds", ref.Index)
+		}
 		values[i] = row[ref.Index]
 		if values[i] == nil {
-			return Key{}, false
+			return Key{}, false, nil
 		}
 	}
-	return keyFromValues(values), true
+	key, err := keyFromValues(values)
+	return key, err == nil, err
 }
 
-func keyFromValues(values []any) Key {
+func keyFromValues(values []any) (Key, error) {
+	if len(values) == 0 {
+		return Key{}, codecErr(CodeInternal, "composite key has no components")
+	}
 	if len(values) == 1 {
 		return KeyOf(values[0])
 	}
 	var b strings.Builder
 	for _, value := range values {
-		part := scalarKey(value)
-		b.WriteString(strconv.Itoa(len(part)))
+		part, err := KeyOf(value)
+		if err != nil {
+			return Key{}, err
+		}
+		b.WriteByte(part.tag)
+		b.WriteString(strconv.Itoa(len(part.data)))
 		b.WriteByte(':')
-		b.WriteString(part)
+		b.WriteString(part.data)
 	}
-	return Key{s: b.String(), isStr: true}
+	return Key{tag: 'c', data: b.String()}, nil
 }
 
 // String renders the key.
 func (k Key) String() string {
-	if k.isStr {
-		return k.s
-	}
-	return strconv.FormatInt(k.i, 10)
+	return k.data
 }
 
-// Value returns the key as int64 or string.
-func (k Key) Value() any {
-	if k.isStr {
-		return k.s
+// Value returns the key's scalar value or encoded composite identity.
+func (k Key) Value() (any, error) {
+	switch k.tag {
+	case 'i':
+		return k.i, nil
+	case 't':
+		return k.data == "1", nil
+	case 'b':
+		return []byte(k.data), nil
+	case 'f':
+		return math.Float64frombits(k.bits), nil
+	case 'd':
+		return k.time, nil
+	case 's', 'c':
+		return k.data, nil
 	}
-	return k.i
+	return nil, codecErr(CodeCodecDecode, "invalid collection key")
 }
 
-// SameScalar compares a row value with a parameter regardless of the numeric
-// or boolean representation.
-func SameScalar(a, b any) bool { return scalarKey(a) == scalarKey(b) }
-
-func scalarKey(v any) string {
-	switch x := v.(type) {
-	case nil:
-		return "\x00"
-	case bool:
-		if x {
-			return "1"
+// SameScalar compares supported scalar values without dropping their types.
+func SameScalar(a, b any) (bool, error) {
+	var left, right Key
+	if a != nil {
+		var err error
+		left, err = KeyOf(a)
+		if err != nil {
+			return false, err
 		}
-		return "0"
-	case []byte:
-		return string(x)
-	case string:
-		return x
-	case time.Time:
-		return x.Format("2006-01-02 15:04:05.000000")
 	}
-	return fmt.Sprint(v)
+	if b != nil {
+		var err error
+		right, err = KeyOf(b)
+		if err != nil {
+			return false, err
+		}
+	}
+	return a == nil && b == nil || a != nil && b != nil && left == right, nil
 }
 
 // Collection is an ordered set of models keyed by primary key, key column, or
@@ -139,12 +201,23 @@ func (c *Collection[T]) put(k Key, v T) {
 func (c *Collection[T]) Len() int { return len(c.keys) }
 
 // Get returns the model with the key, or the zero value.
-func (c *Collection[T]) Get(key any) T { return c.items[KeyOf(key)] }
+func (c *Collection[T]) Get(key any) (T, error) {
+	k, err := KeyOf(key)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return c.items[k], nil
+}
 
 // Has reports whether the key exists.
-func (c *Collection[T]) Has(key any) bool {
-	_, ok := c.items[KeyOf(key)]
-	return ok
+func (c *Collection[T]) Has(key any) (bool, error) {
+	k, err := KeyOf(key)
+	if err != nil {
+		return false, err
+	}
+	_, ok := c.items[k]
+	return ok, nil
 }
 
 // First returns the first model, or the zero value.
@@ -180,7 +253,13 @@ func (c *Collection[T]) Slice() []T {
 }
 
 // FetchedValue returns the fetchValue callback result of the key.
-func (c *Collection[T]) FetchedValue(key any) any { return c.fetched[KeyOf(key)] }
+func (c *Collection[T]) FetchedValue(key any) (any, error) {
+	k, err := KeyOf(key)
+	if err != nil {
+		return nil, err
+	}
+	return c.fetched[k], nil
+}
 
 // FetchedValues returns the fetchValue callback results in order.
 func (c *Collection[T]) FetchedValues() []any {

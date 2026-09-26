@@ -202,6 +202,8 @@ A relation result is either one row or a collection according to the schema. Col
 
 The integer key `7` and text key `"7"` are different keys. Composite keys encode each typed component with its length, so `("1", "23")` and `("12", "3")` cannot collide. The plan records the ordered collection identity in `Assemble.key`. Regular rows use every primary-key component; grouped count rows use their group columns and expression aliases. A collection preserves database order unless an explicit order or key policy changes it. A page preserves the root result order and relation attachment order.
 
+Go key conversion preserves the logical types of signed integers, booleans, text, bytes, finite floating-point values, and times. An unstyled byte column remains bytes after database scanning, including a joined column. Unsigned integers must fit a signed 64-bit value. A null or unsupported value returns an error; a null database identity component is absent. Composite keys retain component type, order, and length. `KeyOf`, `Key.Value`, and collection `Get`, `Has`, and `FetchedValue` report invalid keys with an error. Collection lookups, relation matching, and split-query deduplication propagate conversion errors instead of converting values to text.
+
 ## 10. Configuration, errors, codecs, and events — IF-28 to IF-31
 
 Configuration selects the dialect, DSN, schema file, executor, AES key version map, and query event hook. It does not select another database or silently change the request path.
