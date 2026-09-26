@@ -1,11 +1,11 @@
 // Engine test: manifest loading, request validation, plans, and SQL splitting.
-// Usage: node tests/typescript/engine.mjs (after npm run typescript:build)
+// Usage: node clients/typescript/tests/engine.mjs (after npm run typescript:build)
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Db, Engine, SCHEMA_HASH, loadManifest, splitSQL } from '../../clients/typescript/dist/index.js';
+import { Db, Engine, SCHEMA_HASH, loadManifest, splitSQL } from '../dist/index.js';
 
-const schemaPath = new URL('../../schema/schema.json', import.meta.url).pathname;
+const schemaPath = new URL('../../../schema/schema.json', import.meta.url).pathname;
 const text = await readFile(schemaPath, 'utf8');
 let failures = 0;
 function check(cond, message) {

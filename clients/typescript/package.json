@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && npm run models && tsc -p tsconfig.build.json",
-    "models": "node dist/bin/orm-gen.js gen --schema ../../schema/schema.json --out src/models --scan ../../tests/conformance/runner_typescript.mjs --scan tests --scan ../../tests/typescript"
+    "models": "node dist/bin/orm-gen.js gen --schema ../../schema/schema.json --out src/models --scan ../../tests/conformance/runner_typescript.mjs --scan tests"
   },
   "dependencies": {
     "mysql2": "^3.24.4",

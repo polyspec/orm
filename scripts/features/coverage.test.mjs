@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { checkCoverage, databases, executeCoverage, languages } from './coverage.mjs';
 
 const ownerTests = {
@@ -16,6 +16,15 @@ test('aggregate numeric TypeScript cases are owned by the client', { timeout: 10
   assert.ok(feature.tests.includes('clients/typescript/tests/aggregate_numeric.mjs'));
   assert.ok(!feature.tests.includes('tests/typescript/aggregate_numeric.mjs'));
   assert.ok((await stat(new URL('clients/typescript/tests/aggregate_numeric.mjs', root))).isFile());
+});
+
+test('TypeScript behavior tests stay in their client directory', { timeout: 1000 }, async () => {
+  const root = new URL('../..', import.meta.url);
+  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model',
+    'schema-cases', 'schema-tools', 'sqlite-auto-import', 'sqlite-concurrency'];
+  const entries = await readdir(new URL('clients/typescript/tests/', root));
+  for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
+  await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });
 });
 
 function contract(kind = 'database') {

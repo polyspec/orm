@@ -2,17 +2,17 @@
 // have the digests recorded in tests/schema/cases.json
 // (go run ./tests/schema/record).
 //
-// Usage: node tests/typescript/schema-cases.mjs (after npm run typescript:build)
+// Usage: node clients/typescript/tests/schema-cases.mjs (after npm run typescript:build)
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { renderDDL, ddlErrorText } from '../../clients/typescript/dist/engine/ddl.js';
-import { buildManifest, manifestText } from '../../clients/typescript/dist/schema/build.js';
-import { parseDiagram } from '../../clients/typescript/dist/schema/mermaid.js';
-import { loadedOf, renderDiff } from '../../clients/typescript/dist/tools/diff.js';
-import { buildMigrationPlan } from '../../clients/typescript/dist/tools/plan.js';
+import { renderDDL, ddlErrorText } from '../dist/engine/ddl.js';
+import { buildManifest, manifestText } from '../dist/schema/build.js';
+import { parseDiagram } from '../dist/schema/mermaid.js';
+import { loadedOf, renderDiff } from '../dist/tools/diff.js';
+import { buildMigrationPlan } from '../dist/tools/plan.js';
 
-const file = JSON.parse(await readFile(new URL('../schema/cases.json', import.meta.url), 'utf8'));
-const autoCases = JSON.parse(await readFile(new URL('../schema/auto_columns.json', import.meta.url), 'utf8'));
+const file = JSON.parse(await readFile(new URL('../../../tests/schema/cases.json', import.meta.url), 'utf8'));
+const autoCases = JSON.parse(await readFile(new URL('../../../tests/schema/auto_columns.json', import.meta.url), 'utf8'));
 
 let failures = 0;
 let checks = 0;

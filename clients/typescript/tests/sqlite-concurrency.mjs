@@ -3,16 +3,16 @@
 // write transaction is open, and a write that waits longer than busy_timeout
 // returns CANCELED.
 //
-// Usage: node tests/typescript/sqlite-concurrency.mjs (after npm run typescript:build)
+// Usage: node clients/typescript/tests/sqlite-concurrency.mjs (after npm run typescript:build)
 // The test starts itself as a writer process: sqlite-concurrency.mjs writer <dsn> <name> <count>
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Db, OrmError, Service } from '../../clients/typescript/dist/index.js';
+import { Db, OrmError, Service } from '../dist/index.js';
 
-const schemaPath = fileURLToPath(new URL('../../schema/schema.json', import.meta.url));
+const schemaPath = fileURLToPath(new URL('../../../schema/schema.json', import.meta.url));
 
 /** Runs count transactions that read the service count and then insert one service. */
 async function writeServices(db, name, count) {

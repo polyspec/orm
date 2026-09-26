@@ -8,24 +8,24 @@
 //   ORM_TOOLS_MYSQL_DSN='mysql://root@localhost/orm_ts_tools?socket=/tmp/mysql.sock'
 //   ORM_TOOLS_POSTGRES_DSN='postgres:///orm_ts_tools?host=/tmp'
 //
-// Usage: node tests/typescript/schema-tools.mjs (after npm run typescript:build; needs go)
+// Usage: node clients/typescript/tests/schema-tools.mjs (after npm run typescript:build; needs go)
 import { execFile, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { renderCreateDDL } from '../../clients/typescript/dist/engine/ddl.js';
-import { parseDiagram } from '../../clients/typescript/dist/schema/mermaid.js';
-import { buildManifest, loadSchemaManifest } from '../../clients/typescript/dist/schema/build.js';
-import { alignLiveChecks } from '../../clients/typescript/dist/tools/checks.js';
-import { openToolDb } from '../../clients/typescript/dist/tools/db.js';
-import { loadedOf, renderDiff } from '../../clients/typescript/dist/tools/diff.js';
-import { liveManifest } from '../../clients/typescript/dist/tools/introspect.js';
-import { executeMigration, schemaMatches } from '../../clients/typescript/dist/tools/migrate.js';
+import { renderCreateDDL } from '../dist/engine/ddl.js';
+import { parseDiagram } from '../dist/schema/mermaid.js';
+import { buildManifest, loadSchemaManifest } from '../dist/schema/build.js';
+import { alignLiveChecks } from '../dist/tools/checks.js';
+import { openToolDb } from '../dist/tools/db.js';
+import { loadedOf, renderDiff } from '../dist/tools/diff.js';
+import { liveManifest } from '../dist/tools/introspect.js';
+import { executeMigration, schemaMatches } from '../dist/tools/migrate.js';
 
-const require = createRequire(new URL('../../clients/typescript/package.json', import.meta.url));
-const root = new URL('../..', import.meta.url).pathname;
+const require = createRequire(new URL('../package.json', import.meta.url));
+const root = new URL('../../..', import.meta.url).pathname;
 const tsBin = join(root, 'clients/typescript/dist/bin/orm-gen.js');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-tools-'));
 const goBin = join(work, 'ormgen');

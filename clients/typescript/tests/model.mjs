@@ -4,7 +4,7 @@
 //   ORM_TEST_POSTGRES_DSN='postgres:///orm_ts_test?host=/tmp'
 // The test drops and recreates the schema tables in those databases.
 //
-// Usage: node tests/typescript/model.mjs (after npm run typescript:build)
+// Usage: node clients/typescript/tests/model.mjs (after npm run typescript:build)
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -12,13 +12,13 @@ import { join } from 'node:path';
 import {
   AesKeyring, Account, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, StyledValue,
   Service, ServiceMember, ServiceRegion, User, loadManifest, registerSchema, renderDDL,
-} from '../../clients/typescript/dist/index.js';
-import { buildManifest, encodeManifest } from '../../clients/typescript/dist/schema/build.js';
-import { parseDiagram } from '../../clients/typescript/dist/schema/mermaid.js';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
+} from '../dist/index.js';
+import { buildManifest, encodeManifest } from '../dist/schema/build.js';
+import { parseDiagram } from '../dist/schema/mermaid.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
-const require = createRequire(new URL('../../clients/typescript/package.json', import.meta.url));
-const root = new URL('../..', import.meta.url).pathname;
+const require = createRequire(new URL('../package.json', import.meta.url));
+const root = new URL('../../..', import.meta.url).pathname;
 const schemaPath = join(root, 'schema/schema.json');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 

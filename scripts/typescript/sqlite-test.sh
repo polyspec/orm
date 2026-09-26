@@ -7,5 +7,5 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$ROOT"
 npm run typescript:build >/dev/null
-node tests/typescript/model.mjs
-node tests/typescript/sqlite-concurrency.mjs
+node clients/typescript/tests/model.mjs
+node clients/typescript/tests/sqlite-concurrency.mjs

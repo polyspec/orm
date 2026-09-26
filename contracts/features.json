@@ -64,7 +64,7 @@
         "clients/go/orm/timezone_test.go",
         "clients/go/model/replica_test.go",
         "clients/php/tests/dsn.php",
-        "tests/typescript/dsn.mjs",
+        "clients/typescript/tests/dsn.mjs",
         "clients/rust/orm/tests/zone.rs"
       ],
       "docs": [
@@ -82,7 +82,7 @@
         },
         {
           "id": "dsn-typescript",
-          "command": "npm run typescript:build && node tests/typescript/dsn.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/dsn.mjs"
         },
         {
           "id": "dsn-rust",
@@ -153,8 +153,9 @@
         "clients/go/orm/conversion_error_test.go",
         "clients/php/tests/model_test.php",
         "clients/php/tests/aggregate_numeric.php",
-        "tests/typescript/model.mjs",
+        "clients/typescript/tests/model.mjs",
         "clients/typescript/tests/aggregate_numeric.mjs",
+        "clients/typescript/tests/styled-value.mjs",
         "clients/rust/tests/src/integration.rs",
         "engine/engine_test.go",
         "clients/go/orm/jsontext_order_test.go",
@@ -189,11 +190,15 @@
         },
         {
           "id": "queries-typescript",
-          "command": "npm run typescript:build && node tests/typescript/model.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/model.mjs"
         },
         {
           "id": "aggregate-typescript",
           "command": "npm run typescript:build && node clients/typescript/tests/aggregate_numeric.mjs"
+        },
+        {
+          "id": "styled-query-typescript",
+          "command": "npm run typescript:build && node clients/typescript/tests/styled-value.mjs"
         }
       ]
     },
@@ -253,7 +258,8 @@
         "clients/go/model/model_test.go",
         "clients/go/model/assignment_test.go",
         "clients/php/tests/model_test.php",
-        "tests/typescript/model.mjs",
+        "clients/typescript/tests/model.mjs",
+        "clients/typescript/tests/styled-value.mjs",
         "clients/rust/tests/src/integration.rs"
       ],
       "docs": [
@@ -264,6 +270,10 @@
         {
           "id": "writes-go",
           "command": "go test ./clients/go/model -run 'Writes' -count=1"
+        },
+        {
+          "id": "styled-write-typescript",
+          "command": "npm run typescript:build && node clients/typescript/tests/styled-value.mjs"
         }
       ]
     },
@@ -327,13 +337,13 @@
         "clients/go/model/model_test.go",
         "clients/go/orm/cancel_test.go",
         "clients/php/tests/model_test.php",
-        "tests/typescript/model.mjs",
+        "clients/typescript/tests/model.mjs",
         "clients/rust/orm/tests/zone.rs",
         "clients/rust/tests/src/integration.rs",
         "clients/go/orm/goexit_test.go",
         "clients/go/model/sqlite_concurrency_test.go",
         "clients/php/tests/sqlite_concurrency_test.php",
-        "tests/typescript/sqlite-concurrency.mjs",
+        "clients/typescript/tests/sqlite-concurrency.mjs",
         "clients/rust/orm/tests/sqlite_concurrency.rs"
       ],
       "docs": [
@@ -410,7 +420,7 @@
         "internal/ormgen/gen_go_output_test.go",
         "internal/ormgen/gen_go_check_test.go",
         "clients/php/tests/engine_test.php",
-        "tests/typescript/generate.mjs",
+        "clients/typescript/tests/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
         "internal/ormgen/fuzz_test.go"
       ],
@@ -425,7 +435,7 @@
         },
         {
           "id": "generation-typescript",
-          "command": "npm run typescript:build && node tests/typescript/generate.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/generate.mjs"
         },
         {
           "id": "generation-rust",
@@ -499,8 +509,9 @@
         "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm-build/tests/tools.rs",
         "clients/rust/orm-build/tests/cli.rs",
-        "tests/typescript/schema-cases.mjs",
-        "tests/typescript/schema-tools.mjs",
+        "clients/typescript/tests/schema-cases.mjs",
+        "clients/typescript/tests/sqlite-auto-import.mjs",
+        "clients/typescript/tests/schema-tools.mjs",
         "engine/schema/fuzz_test.go",
         "engine/schema/manifest_property_test.go",
         "internal/ormgen/ddl_uuid_test.go",
@@ -528,7 +539,7 @@
         },
         {
           "id": "schema-typescript",
-          "command": "npm run typescript:build && node tests/typescript/schema-cases.mjs && node tests/typescript/schema-tools.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/schema-cases.mjs && node clients/typescript/tests/sqlite-auto-import.mjs && node clients/typescript/tests/schema-tools.mjs"
         }
       ]
     },
@@ -575,7 +586,7 @@
         "clients/go/orm/keyword_test.go",
         "clients/go/orm/timezone_test.go",
         "clients/php/tests/model_test.php",
-        "tests/typescript/model.mjs",
+        "clients/typescript/tests/model.mjs",
         "clients/rust/orm/tests/zone.rs",
         "clients/go/orm/install_test.go",
         "internal/ormgen/live_diff_test.go",
@@ -657,7 +668,7 @@
         "engine/query_forms_test.go",
         "engine/planner/soft_delete_test.go",
         "clients/php/tests/engine_test.php",
-        "tests/typescript/engine.mjs",
+        "clients/typescript/tests/engine.mjs",
         "engine/functions_physical_test.go",
         "engine/interface_test.go",
         "engine/plan/plan_test.go",
@@ -681,7 +692,7 @@
         },
         {
           "id": "planner-typescript",
-          "command": "npm run typescript:build && node tests/typescript/engine.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/engine.mjs"
         }
       ]
     },
@@ -732,7 +743,7 @@
         "clients/go/model/model_test.go",
         "clients/php/tests/model_test.php",
         "clients/rust/tests/src/integration.rs",
-        "tests/typescript/model.mjs"
+        "clients/typescript/tests/model.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -802,9 +813,9 @@
         "clients/php/tests/aes_json_test.php",
         "clients/rust/orm/tests/aes_json.rs",
         "clients/rust/orm/tests/aes_keys.rs",
-        "tests/typescript/model.mjs",
+        "clients/typescript/tests/model.mjs",
         "clients/php/tests/hostcodec.php",
-        "tests/typescript/codec-vector.mjs",
+        "clients/typescript/tests/codec-vector.mjs",
         "clients/go/orm/fuzz_test.go",
         "clients/rust/tests/src/integration.rs"
       ],
@@ -823,7 +834,7 @@
         },
         {
           "id": "encryption-typescript",
-          "command": "npm run typescript:build && node tests/typescript/codec-vector.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/codec-vector.mjs"
         },
         {
           "id": "encryption-rust",
@@ -880,7 +891,7 @@
         "clients/rust/tests/src/integration.rs",
         "clients/php/tests/relation_keys.php",
         "clients/php/tests/model_test.php",
-        "tests/typescript/model.mjs"
+        "clients/typescript/tests/model.mjs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -905,7 +916,7 @@
         },
         {
           "id": "chunking-typescript",
-          "command": "npm run typescript:build >/dev/null && node tests/typescript/model.mjs"
+          "command": "npm run typescript:build >/dev/null && node clients/typescript/tests/model.mjs"
         }
       ]
     },
@@ -967,7 +978,7 @@
         "clients/php/tests/schema_test.php",
         "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm/tests/soft_delete.rs",
-        "tests/typescript/schema-cases.mjs"
+        "clients/typescript/tests/schema-cases.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1036,8 +1047,8 @@
         "clients/php/tests/schema_db_test.php",
         "clients/rust/orm/tests/audit.rs",
         "clients/rust/orm-build/tests/schema_cases.rs",
-        "tests/typescript/model.mjs",
-        "tests/typescript/schema-cases.mjs"
+        "clients/typescript/tests/model.mjs",
+        "clients/typescript/tests/schema-cases.mjs"
       ],
       "docs": [
         "docs/schema.md"
@@ -1094,7 +1105,7 @@
         "clients/go/orm/point_test.go",
         "clients/php/tests/schema_test.php",
         "clients/rust/orm-build/tests/schema_cases.rs",
-        "tests/typescript/schema-cases.mjs"
+        "clients/typescript/tests/schema-cases.mjs"
       ],
       "docs": [
         "docs/dialects.md"
