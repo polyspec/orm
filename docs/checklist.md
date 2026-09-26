@@ -16,7 +16,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] D1 Build the Markdown pages with VitePress and provide implementation status and local search.
 - [o] D2 Render Mermaid diagrams to SVG and verify the no-JavaScript page content.
 - [o] D3 Check `/orm/` links, anchors, direct HTML paths, search, mobile navigation, and repeated builds.
-- [ ] D4 Deploy the current pages to https://polyspec.github.io/orm/ and verify them.
+- [!] D4 Deploy the current pages to https://polyspec.github.io/orm/ and verify them. Cause: the static site builds successfully twice and local static checks pass, and the existing Pages URL responds with HTTP 200, but this repository is local-only and the development rules prohibit pushing or publishing the current commit. Retry: after an authorized push or a GitHub Actions deployment run for the current `main` commit, then verify the deployed content hash and routes.
 
 ## Stage 1 — Model syntax
 
