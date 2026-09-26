@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -14,6 +16,8 @@ func parserMutations(toolRoot, lang, rust string) error {
 	fixtures := map[string]struct {
 		ext, source string
 		changes     [][2]string
+		prohibited  [2]string
+		call        string
 	}{
 		"go": {"go", `package fixture
 type Binding struct{}
@@ -28,7 +32,7 @@ func (q *Query) Gets() ([]Row, error) { return nil, nil }
 			{"binding Binding", "binding *Row"},
 			{"type Query struct", "type Other struct"},
 			{"binding Binding", "binding Binding; controller string"},
-		}},
+		}, [2]string{"Gets()", "MultiStatement(value bool)"}, "func attempted(q *Query) { q.MultiStatement(true) }"},
 		"php": {"php", `<?php
 class Binding {}
 class Row {}
@@ -44,7 +48,7 @@ class Query {
 			{"public function gets", "private function gets"},
 			{"class Query", "class Other"},
 			{"private Binding $binding;", "private Binding $binding; private string $controller;"},
-		}},
+		}, [2]string{"function gets()", "function multi_statement(bool $value)"}, "$query->multi_statement(true);"},
 		"rust": {"rs", `pub struct Binding;
 pub struct Row;
 pub struct Query { binding: Binding }
@@ -57,7 +61,7 @@ impl Query { pub async fn gets(&mut self) -> Result<Vec<Row>, Error> { todo!() }
 			{"binding: Binding", "binding: Row"},
 			{"gets(&mut self)", "gets(self)"},
 			{"binding: Binding", "binding: Binding, controller: String"},
-		}},
+		}, [2]string{"fn gets(&mut self)", "fn multi_statement(&mut self, value: bool)"}, "fn attempted(q: &mut Query) { q.multi_statement(true); }"},
 		"typescript": {"ts", `class Binding {}
 class Row {}
 class Query {
@@ -72,7 +76,7 @@ class Query {
 			{"public async gets", "private async gets"},
 			{"class Query", "class Other"},
 			{"private binding: Binding;", "private binding: Binding; private controller: string;"},
-		}},
+		}, [2]string{"gets()", "multiStatement(value: boolean)"}, "function attempted(q: Query) { q.multiStatement(true); }"},
 	}
 	f := fixtures[lang]
 	dir, err := os.MkdirTemp("", "orm-interface-mutation-")
@@ -120,6 +124,77 @@ class Query {
 			}
 		}
 	}
-	fmt.Printf("%s: %d source mutations rejected\n", lang, len(f.changes))
+	if err := os.WriteFile(path, []byte(strings.Replace(f.source, f.prohibited[0], f.prohibited[1], 1)), 0600); err != nil {
+		return err
+	}
+	withProhibitedMethod, err := extract(dir, lang, []string{"."}, rust, toolRoot)
+	if err != nil {
+		return err
+	}
+	if failures := checkProhibitedSymbols(lang, withProhibitedMethod, []string{"multi_statement"}); len(failures) != 1 {
+		return fmt.Errorf("%s public multi_statement mutation passed the interface check: %v", lang, failures)
+	}
+	if err := os.WriteFile(path, []byte(f.source+"\n"+f.call+"\n"), 0600); err != nil {
+		return err
+	}
+	callSource, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if failures := checkProhibitedCalls(lang, string(callSource)); len(failures) != 1 {
+		return fmt.Errorf("%s multi_statement call passed interface validation: %v", lang, failures)
+	}
+	if failures := checkProhibitedCalls(lang, f.source); len(failures) != 0 {
+		return fmt.Errorf("%s unmodified fixture contains a prohibited call: %v", lang, failures)
+	}
+	fmt.Printf("%s: %d source mutations, public multi_statement and attempted call rejected\n", lang, len(f.changes))
 	return nil
+}
+
+var prohibitedCallPatterns = map[string]*regexp.Regexp{
+	"go":         regexp.MustCompile(`\.\s*MultiStatement\s*\(`),
+	"php":        regexp.MustCompile(`(?:->|::)\s*multi_statement\s*\(`),
+	"rust":       regexp.MustCompile(`(?:\.|::)\s*multi_statement\s*\(`),
+	"typescript": regexp.MustCompile(`\.\s*multiStatement\s*\(`),
+}
+
+func checkProhibitedCalls(lang, source string) []string {
+	pattern := prohibitedCallPatterns[lang]
+	if pattern == nil {
+		return []string{"unsupported language " + lang}
+	}
+	if pattern.MatchString(source) {
+		return []string{lang + ": prohibited multi_statement call"}
+	}
+	return nil
+}
+
+func checkCallsInRoots(root, lang string, roots []string) ([]string, error) {
+	ext := map[string]string{"go": ".go", "php": ".php", "rust": ".rs", "typescript": ".ts"}[lang]
+	if ext == "" {
+		return nil, fmt.Errorf("unsupported language %s", lang)
+	}
+	var failures []string
+	for _, sourceRoot := range roots {
+		err := filepath.WalkDir(filepath.Join(root, sourceRoot), func(path string, entry fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() || filepath.Ext(path) != ext || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if len(checkProhibitedCalls(lang, string(content))) != 0 {
+				failures = append(failures, path+": prohibited multi_statement call")
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return failures, nil
 }
