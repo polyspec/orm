@@ -295,24 +295,33 @@ type stepRows struct {
 }
 
 // related returns the rows of relation ch for one parent row.
-func (res *result) related(ch *plan.Child, parent []any) [][]any {
+func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 	sr := res.steps[ch.Step]
 	if sr == nil {
-		return nil
+		return nil, nil
 	}
-	if ifp := sr.step.Parent.IfParent; ifp != nil && !SameScalar(parent[ifp.Index], res.params[ifp.Param]) {
-		return nil
+	if ifp := sr.step.Parent.IfParent; ifp != nil {
+		match, err := SameScalar(parent[ifp.Index], res.params[ifp.Param])
+		if err != nil {
+			return nil, err
+		}
+		if !match {
+			return nil, nil
+		}
 	}
-	key, ok := keyFromRow(parent, ch.ParentKeys)
+	key, ok, err := keyFromRow(parent, ch.ParentKeys)
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	idxs := sr.byKey[key]
 	out := make([][]any, len(idxs))
 	for i, j := range idxs {
 		out[i] = sr.data[j]
 	}
-	return out
+	return out, nil
 }
 
 func checkLock(ex executor, r *request) error {
@@ -357,7 +366,13 @@ func query(ex executor, r *request) (*result, error) {
 				return nil, err
 			}
 			for _, row := range rows {
-				key, _ := keyFromRow(row, pc.plan.Steps[0].Assemble.Key)
+				key, present, err := keyFromRow(row, pc.plan.Steps[0].Assemble.Key)
+				if err != nil {
+					return nil, err
+				}
+				if !present {
+					return nil, codecErr(CodeCodecDecode, "split query row identity contains SQL NULL")
+				}
 				if !seen[key] {
 					seen[key] = true
 					main = append(main, row)
@@ -384,7 +399,10 @@ func runRelations(ctx context.Context, ex executor, c *cached, r *request, main 
 			parents = out.steps[st.Parent.Step].data
 		}
 		sr := &stepRows{step: st, byKey: map[Key][]int{}}
-		vals := parentValues(st.Parent, parents, r.params)
+		vals, err := parentValues(st.Parent, parents, r.params)
+		if err != nil {
+			return nil, err
+		}
 		if len(vals) > 0 {
 			chunks, err := relationChunks(st, vals, d.driver)
 			if err != nil {
@@ -399,7 +417,11 @@ func runRelations(ctx context.Context, ex executor, c *cached, r *request, main 
 			}
 			keys := childKeys(p, st)
 			for j, row := range sr.data {
-				if key, ok := keyFromRow(row, keys); ok {
+				key, ok, err := keyFromRow(row, keys)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
 					sr.byKey[key] = append(sr.byKey[key], j)
 				}
 			}
@@ -466,14 +488,23 @@ func childKeys(p *plan.Plan, st *plan.Step) []plan.KeyRef {
 	panic("orm: relation step without a child")
 }
 
-func parentValues(pr *plan.ParentRef, parents [][]any, params []any) []any {
+func parentValues(pr *plan.ParentRef, parents [][]any, params []any) ([]any, error) {
 	seen := map[Key]bool{}
 	var out []any
 	for _, row := range parents {
-		if pr.IfParent != nil && !SameScalar(row[pr.IfParent.Index], params[pr.IfParent.Param]) {
-			continue
+		if pr.IfParent != nil {
+			match, err := SameScalar(row[pr.IfParent.Index], params[pr.IfParent.Param])
+			if err != nil {
+				return nil, err
+			}
+			if !match {
+				continue
+			}
 		}
-		key, ok := keyFromRow(row, pr.Keys)
+		key, ok, err := keyFromRow(row, pr.Keys)
+		if err != nil {
+			return nil, err
+		}
 		if !ok || seen[key] {
 			continue
 		}
@@ -482,7 +513,7 @@ func parentValues(pr *plan.ParentRef, parents [][]any, params []any) []any {
 			out = append(out, row[ref.Index])
 		}
 	}
-	return out
+	return out, nil
 }
 
 // expandIn rewrites the single parent placeholder into a padded list.
@@ -666,6 +697,36 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			}
 		}
 		vals[sc.index] = v
+	}
+	return restoreByteColumns(vals, st.Assemble)
+}
+
+func restoreByteColumns(vals []any, asm *plan.Assemble) error {
+	for _, col := range asm.Columns {
+		if col.Type != "bytes" || len(col.Styles) != 0 {
+			continue
+		}
+		if col.Index < 0 || col.Index >= len(vals) {
+			return codecErr(CodeInternal, "byte column %q index %d is out of bounds", col.Name, col.Index)
+		}
+		if vals[col.Index] == nil {
+			continue
+		}
+		switch value := vals[col.Index].(type) {
+		case string:
+			vals[col.Index] = []byte(value)
+		case []byte:
+			// The column is already represented as bytes.
+		default:
+			return codecErr(CodeCodecDecode, "byte column %q has invalid value %T", col.Name, value)
+		}
+	}
+	for _, child := range asm.Children {
+		if child.Kind == "join" && child.Assemble != nil {
+			if err := restoreByteColumns(vals, child.Assemble); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

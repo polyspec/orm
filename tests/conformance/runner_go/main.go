@@ -153,12 +153,16 @@ func picks[T orm.Model](c *orm.Collection[T], names ...string) []any {
 	return out
 }
 
-func keysOf[T orm.Model](c *orm.Collection[T]) []any {
+func keysOf[T orm.Model](c *orm.Collection[T]) ([]any, error) {
 	out := []any{}
 	for _, k := range c.Keys() {
-		out = append(out, k.Value())
+		value, err := k.Value()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, value)
 	}
-	return out
+	return out, nil
 }
 
 func executeVector(name string, fn func() (any, error), transaction func(func() error) error) (any, error) {
@@ -454,11 +458,15 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
+		pageKeys, err := keysOf(page.Items)
+		if err != nil {
+			return nil, err
+		}
 		return map[string]any{
 			"sum":    sum,
 			"avg":    fmt.Sprintf("%.4f", avg),
 			"groups": groups.ToArray(),
-			"page":   map[string]any{"keys": keysOf(page.Items), "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage},
+			"page":   map[string]any{"keys": pageKeys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage},
 		}, nil
 	})
 	run("functions", func() (any, error) {

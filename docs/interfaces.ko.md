@@ -202,6 +202,8 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. collection 
 
 정수 key `7`과 문자열 key `"7"`은 다른 key다. 복합 key는 각 타입 구성요소의 길이를 함께 인코딩하므로 `("1", "23")`과 `("12", "3")`이 충돌하지 않는다. plan은 순서가 있는 collection 식별자를 `Assemble.key`에 기록한다. 일반 행은 모든 primary key 구성요소를 사용하고 grouped count 행은 group 컬럼과 expression 별칭을 사용한다. 명시적인 order나 key 정책이 없으면 collection은 DB 순서를 보존한다. page는 root 결과 순서와 relation 부착 순서를 보존한다.
 
+Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 부동소수점 값, 시각의 논리 타입을 보존한다. 스타일이 없는 바이트 컬럼은 join된 컬럼을 포함하여 DB 스캔 뒤에도 바이트로 유지한다. 부호 없는 정수는 부호 있는 64비트 범위에 들어야 한다. NULL이나 지원하지 않는 값은 오류를 반환하고, DB 식별자의 NULL 구성요소는 식별자가 없음을 뜻한다. 복합 key는 구성요소의 타입, 순서, 길이를 보존한다. `KeyOf`, `Key.Value`, collection의 `Get`, `Has`, `FetchedValue`는 잘못된 key를 오류로 보고한다. collection 조회, relation 대응, 분할 질의의 중복 제거는 값을 문자열로 바꾸지 않고 변환 오류를 전파한다.
+
 ## 10. 설정·오류·코덱·이벤트 — IF-28 ~ IF-31
 
 설정은 DSN, schema 파일, executor, AES key version map, query event hook을 선택한다. 다른 database를 선택하거나 request 경로를 변경하지 않는다.

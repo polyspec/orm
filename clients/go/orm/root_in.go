@@ -45,10 +45,13 @@ func rootINParts(r *request, st *plan.Step, driver string) ([]*request, error) {
 	for chunk*2 <= available {
 		chunk *= 2
 	}
-	seen := map[string]bool{}
+	seen := map[Key]bool{}
 	unique := make([]int, 0, len(ps))
 	for _, idx := range ps {
-		key := scalarKey(r.params[idx])
+		key, err := KeyOf(r.params[idx])
+		if err != nil {
+			return nil, err
+		}
 		if !seen[key] {
 			seen[key] = true
 			unique = append(unique, idx)

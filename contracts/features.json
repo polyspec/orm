@@ -151,6 +151,7 @@
         "clients/go/model/model_test.go",
         "clients/go/orm/assignment_propagation_test.go",
         "clients/go/orm/conversion_error_test.go",
+        "clients/go/orm/collection_key_test.go",
         "clients/php/tests/model_test.php",
         "clients/php/tests/aggregate_numeric.php",
         "clients/typescript/tests/model.mjs",

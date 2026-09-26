@@ -223,7 +223,10 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 			st.setRelated(ch.Rel, v, false, false)
 		default:
 			child, many := b.relationChild(ch.Rel)
-			rows := a.res.related(ch, row)
+			rows, err := a.res.related(ch, row)
+			if err != nil {
+				return nil, err
+			}
 			childAsm := a.res.steps[ch.Step].step.Assemble
 			if many {
 				coll := &collection{}
@@ -232,7 +235,11 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 					if err != nil {
 						return nil, err
 					}
-					coll.put(child.collectionKey(cm, childAsm, cr), cm)
+					key, err := child.collectionKey(cm, childAsm, cr)
+					if err != nil {
+						return nil, err
+					}
+					coll.put(key, cm)
 				}
 				st.setRelated(ch.Rel, child.ent.collection(coll), ch.Cascade, false)
 			} else {
@@ -274,7 +281,7 @@ func (c *Core) relationChild(name string) (*Core, bool) {
 
 // collectionKey is the key of a loaded model: fetchKey, keyName, or the
 // plan's row identity.
-func (c *Core) collectionKey(m *Core, asm *plan.Assemble, row []any) Key {
+func (c *Core) collectionKey(m *Core, asm *plan.Assemble, row []any) (Key, error) {
 	switch {
 	case c.fetchKey != nil:
 		return KeyOf(c.fetchKey(m.self))
@@ -282,10 +289,20 @@ func (c *Core) collectionKey(m *Core, asm *plan.Assemble, row []any) Key {
 		if v, ok := c.ent.Value(m.self, c.keyName); ok {
 			return KeyOf(v)
 		}
-		return KeyOf(m.row.extra[c.keyName])
+		v, ok := m.row.extra[c.keyName]
+		if !ok {
+			return Key{}, codecErr(CodeInternal, "collection key column %q is absent", c.keyName)
+		}
+		return KeyOf(v)
 	}
-	key, _ := keyFromRow(row, asm.Key)
-	return key
+	key, present, err := keyFromRow(row, asm.Key)
+	if err != nil {
+		return Key{}, err
+	}
+	if !present {
+		return Key{}, codecErr(CodeCodecDecode, "collection row identity contains SQL NULL")
+	}
+	return key, nil
 }
 
 // collection is an untyped collection; generated code converts it.
@@ -357,7 +374,11 @@ func (c *Core) assemble(ex executor, r *request, res *result, asm *plan.Assemble
 		if err != nil {
 			return nil, err
 		}
-		out.put(c.collectionKey(m, asm, row), m)
+		key, err := c.collectionKey(m, asm, row)
+		if err != nil {
+			return nil, err
+		}
+		out.put(key, m)
 	}
 	if err := a.external(r); err != nil {
 		return nil, err
@@ -390,23 +411,36 @@ func (a *assembler) external(r *request) error {
 func attachExternal(parents []*Core, rel relSpec) error {
 	ch := rel.child
 	var values []any
-	seen := map[string]bool{}
+	seen := map[Key]bool{}
 	for _, p := range parents {
-		if ch.possible != nil && !SameScalar(p.value(ch.possible.column), ch.possible.value) {
-			continue
+		if ch.possible != nil {
+			match, err := SameScalar(p.value(ch.possible.column), ch.possible.value)
+			if err != nil {
+				return err
+			}
+			if !match {
+				continue
+			}
 		}
 		v := p.value(ch.matchLeft)
-		if v == nil || seen[scalarKey(v)] {
+		if v == nil {
 			continue
 		}
-		seen[scalarKey(v)] = true
+		key, err := KeyOf(v)
+		if err != nil {
+			return err
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		values = append(values, v)
 	}
 	type entry struct {
 		key Key
 		m   *Core
 	}
-	byKey := map[string][]entry{}
+	byKey := map[Key][]entry{}
 	if len(values) > 0 {
 		q := ch.Clone()
 		q.matchLeft, q.alias = "", ""
@@ -422,7 +456,10 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		}
 		for _, k := range rows.keys {
 			m := rows.items[k]
-			key := scalarKey(m.value(ch.matchRight))
+			key, err := KeyOf(m.value(ch.matchRight))
+			if err != nil {
+				return err
+			}
 			if ch.groupLimit > 0 && len(byKey[key]) >= ch.groupLimit {
 				continue
 			}
@@ -434,9 +471,22 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		if _, dup := p.row.related[name]; dup {
 			return configErr("relation result name %s is used twice", name)
 		}
-		matched := byKey[scalarKey(p.value(ch.matchLeft))]
-		if ch.possible != nil && !SameScalar(p.value(ch.possible.column), ch.possible.value) {
-			matched = nil
+		var matched []entry
+		if value := p.value(ch.matchLeft); value != nil {
+			key, err := KeyOf(value)
+			if err != nil {
+				return err
+			}
+			matched = byKey[key]
+		}
+		if ch.possible != nil {
+			match, err := SameScalar(p.value(ch.possible.column), ch.possible.value)
+			if err != nil {
+				return err
+			}
+			if !match {
+				matched = nil
+			}
 		}
 		if rel.many {
 			coll := &collection{}

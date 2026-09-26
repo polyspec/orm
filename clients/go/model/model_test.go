@@ -381,7 +381,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 			t.Fatalf("page: %+v", page)
 		}
 		keyed := must(model.Author().Connect(db).KeyNameName().Gets())
-		if keyed.Get("beta") == nil {
+		if got, err := keyed.Get("beta"); err != nil || got == nil {
 			t.Fatal("keyName")
 		}
 		memberships := []*model.CompositeMembershipModel{
