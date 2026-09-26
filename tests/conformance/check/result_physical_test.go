@@ -5,11 +5,16 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
-	"time"
 )
 
+var resultRunnerLanguages = []string{"go", "php", "rust", "typescript"}
+
 func TestPhysicalResultRunners(t *testing.T) {
+	if !slices.Equal(resultRunnerLanguages, requiredLanguages) {
+		t.Fatalf("physical result runners %v differ from required languages %v", resultRunnerLanguages, requiredLanguages)
+	}
 	if err := os.Mkdir(lockDir, 0o755); err != nil {
 		t.Fatalf("conformance database lock: %v", err)
 	}
@@ -22,7 +27,7 @@ func TestPhysicalResultRunners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runCommand(root, "", 2*time.Minute, "npm", "--prefix", "clients/typescript", "run", "build"); err != nil {
+	if err := buildRunners(root); err != nil {
 		t.Fatal(err)
 	}
 	for _, database := range []struct{ name, env string }{
@@ -44,7 +49,7 @@ func TestPhysicalResultRunners(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			for _, language := range []string{"go", "php", "typescript"} {
+			for _, language := range resultRunnerLanguages {
 				t.Run(language, func(t *testing.T) {
 					first := filepath.Join(t.TempDir(), "first.json")
 					repeated := filepath.Join(t.TempDir(), "repeated.json")

@@ -83,7 +83,7 @@ missing selected result fields, invalid query binds, and result values that
 cannot be represented exactly. Ordered JSON numbers remain exact in the output.
 `make conformance-result-check` runs their result cases. The Go runner applies
 the same error, integer, bind, field, and transaction checks. `make
-conformance-result-physical-check` runs Go, PHP, and TypeScript twice on each
+conformance-result-physical-check` runs Go, PHP, Rust, and TypeScript twice on each
 database and checks identical output and unchanged rows and counters.
 
 The Rust runner rejects malformed bind values and derived integers, compares
