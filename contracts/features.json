@@ -153,7 +153,8 @@
         "clients/rust/tests/src/integration.rs",
         "engine/engine_test.go",
         "clients/go/orm/jsontext_order_test.go",
-        "clients/rust/orm/tests/model_output.rs"
+        "clients/rust/orm/tests/model_output.rs",
+        "clients/rust/orm/tests/value_decode.rs"
       ],
       "docs": [
         "docs/dsl.md",

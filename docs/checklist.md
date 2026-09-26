@@ -96,5 +96,6 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 
 - [ ] G0 Measure client overhead of the in-process clients and record it in `perf.md`.
 - [ ] G1 Compare the conformance output of the four clients with the recorded vectors on the three databases.
+- [o] G1.1.1 Register the Rust row-value decode test under `model_queries` so feature verification includes it; N5.1.2.2 depends on this registration.
 - [ ] G4 Run generated symbol, schema, and CI checks.
 - [ ] G5 Verify the GitHub Actions build.
