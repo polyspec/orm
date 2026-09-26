@@ -71,7 +71,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 ## Stage 3 — Schema tools per language
 
 - [o] L1 Build `schema.json` from `.mmd` files in every language. Evidence: `make schema-cross-language-check` builds the same Mermaid source with Go, PHP, Rust, and TypeScript, compares the complete JSON manifests, and reports four equal outputs with 12 entities and schema hash `16198b563e2e3cae`.
-- [ ] L2 Provide migration and import tools in every language.
+- [o] L2 Provide migration and import tools in every language. Evidence: Go SQLite import tests normalize `DECIMALINT(13,4)` and `DECIMALINT(16,0)` to logical decimal types and build the manifest; PHP schema tools pass migration and import on SQLite, MySQL and PostgreSQL; Rust CLI import and TypeScript SQLite import tests preserve decimal precision and scale. The four SQLite import paths use the same logical mapping and reject no input silently.
 
 ## Schema and migration tools
 

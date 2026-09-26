@@ -341,6 +341,7 @@ async fn sqlite_automatic_rowid_imports_as_i64() {
     std::fs::File::create(&db).unwrap();
     let t = Target { driver: "sqlite", dsn: format!("sqlite://{}", db.display()), dir: dir.clone() };
     t.sql(&[include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/schema/sqlite_auto.sql"))]).await;
+    t.sql(&["CREATE TABLE decimal_case (seq INTEGER PRIMARY KEY, amount DECIMALINT(13,4) NOT NULL, whole DECIMALINT(16,0))"]).await;
     t.ok(&["import", "--dsn", "@DSN@", "--out", "entry.mmd"]);
     let source = std::fs::read_to_string(dir.join("entry.mmd")).unwrap();
     assert!(source.contains("bigint") && source.contains("int"), "{source}");
@@ -350,6 +351,12 @@ async fn sqlite_automatic_rowid_imports_as_i64() {
     assert_eq!(entry.auto, "id");
     assert_eq!(entry.column("id").unwrap().typ, "i64");
     assert_eq!(entry.column("count").unwrap().typ, "i32");
+    let decimal = &manifest.entities["decimal_case"];
+    assert_eq!(decimal.column("amount").unwrap().typ, "decimal");
+    assert_eq!(decimal.column("amount").unwrap().precision, 13);
+    assert_eq!(decimal.column("amount").unwrap().scale, 4);
+    assert_eq!(decimal.column("whole").unwrap().precision, 16);
+    assert_eq!(decimal.column("whole").unwrap().scale, 0);
     std::fs::remove_dir_all(dir).unwrap();
 }
 

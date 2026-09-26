@@ -260,7 +260,7 @@ export async function readTablesSQLite(db: ToolDb): Promise<ImpTable[]> {
       const def = col[4] === null ? noDefault : sqliteClockDefault(s(col[4])) ? 'CURRENT_TIMESTAMP' : s(col[4]);
       const auto = pk > 0 && sqliteAutoIncrement(createSQL, s(col[1]));
       t.columns.push({
-        name: s(col[1]), type: auto ? 'bigint' : s(col[2]), nullable: n(col[3]) === 0 && pk === 0, default: def,
+        name: s(col[1]), type: auto ? 'bigint' : sqliteLogicalType(s(col[2])), nullable: n(col[3]) === 0 && pk === 0, default: def,
         key: pk > 0 ? 'PRI' : '', extra: auto ? 'auto_increment' : '', comment: '',
       });
     }
@@ -299,6 +299,11 @@ export async function readTablesSQLite(db: ToolDb): Promise<ImpTable[]> {
     else for (const c of t.columns) if (c.name === column) c.comment = s(row[2]);
   }
   return out;
+}
+
+function sqliteLogicalType(type: string): string {
+  const match = /^decimalint\((\d+)[,_](\d+)\)$/i.exec(type.trim());
+  return match ? `decimal(${match[1]}_${match[2]})` : type;
 }
 
 function isIdentChar(c: string | undefined): boolean {
