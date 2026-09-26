@@ -84,14 +84,14 @@ func rowEntity(name, hash string, columns ...string) *orm.Entity {
 			c.Bind(r)
 			return r
 		},
-		Assign: func(m orm.Model, name string, v any) bool {
+		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range columns {
 				if c == name {
 					m.(*keywordRow).vals[name] = v
-					return true
+					return true, nil
 				}
 			}
-			return false
+			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
 			v, ok := m.(*keywordRow).vals[name]
@@ -211,11 +211,11 @@ func TestAuditTriggers(t *testing.T) {
 			for _, row := range rows.All() {
 				all = append(all, row)
 				v := row.vals
-				if orm.AsInt64(v["operation_seq"]) != 1 || v["service_ref"] != "s1" || v["table_label"] != tables[0] {
+				if mustInt64(v["operation_seq"]) != 1 || v["service_ref"] != "s1" || v["table_label"] != tables[0] {
 					t.Fatalf("change row: %v", v)
 				}
 				key := jsonText(t, v["entity_ref"])
-				if !reflect.DeepEqual(key, map[string]any{"seq": float64(orm.AsInt64(item))}) {
+				if !reflect.DeepEqual(key, map[string]any{"seq": float64(mustInt64(item))}) {
 					t.Fatalf("entity key: %v", key)
 				}
 				got = append(got, v["change_kind"].(string))

@@ -1,5 +1,7 @@
 # Codecs — reading and writing column styles (S2)
 
+Go database value conversion returns `CODEC_DECODE` for malformed, null, overflowing, non-finite, or unsupported values. Host encoding returns `CODEC_ENCODE` for a missing stage or a value other than text or bytes. Generated model assignment reports a conversion error with the column name. Row assembly returns the error to the caller, and insert validates assigned fields before writing. An empty byte slice remains distinct from SQL NULL. Scalar aggregate conversion accepts a valid decimal as its nearest finite binary64 value; exact decimal model fields are tracked separately in the checklist.
+
 Column styles are stored in the manifest `styles: [...]` in **write order** (`gz_*` → `['serialize','gz']`: serialize, then compress). Reading applies the reverse order. `aes`, `hex`, and `ip` are host stages; the remaining stages are executor codecs. Go, PHP, Rust, and TypeScript use the same authenticated AES v2 format and produce the same normalized values. Deterministic encodings are byte-identical except for a PHP serialized integral float in TypeScript: JavaScript represents both `2` and `2.0` as the same `number`, so TypeScript re-encodes it as an integer.
 
 ### Blind index

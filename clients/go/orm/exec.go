@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -739,7 +740,14 @@ func scalar(ex executor, r *request) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			total += AsInt64(v)
+			n, err := AsInt64(v)
+			if err != nil {
+				return nil, err
+			}
+			if (n > 0 && total > math.MaxInt64-n) || (n < 0 && total < math.MinInt64-n) {
+				return nil, codecErr(CodeCodecDecode, "split count overflows int64")
+			}
+			total += n
 		}
 		return total, nil
 	}
@@ -799,7 +807,11 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 	for i := range c.plan.Steps {
 		if st := &c.plan.Steps[i]; st.Role == "count" {
 			v, err := scanOne(ctx, ex, c, st, r)
-			return res, AsInt64(v), err
+			if err != nil {
+				return nil, 0, err
+			}
+			n, err := AsInt64(v)
+			return res, n, err
 		}
 	}
 	return nil, 0, &ir.Error{Code: CodeInternal, Msg: "paginate plan has no count step"}

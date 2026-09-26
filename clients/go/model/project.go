@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -18,7 +19,7 @@ type ProjectModel struct {
 }
 
 var projectEntity = &orm.Entity{Name: "project", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &ProjectModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*ProjectModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*ProjectModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*ProjectModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*ProjectModel](keys, items, fetched)
@@ -36,16 +37,30 @@ func (x *ProjectModel) MarshalJSON() ([]byte, error) { return x.m.MarshalJSON() 
 // ToArray returns the row values.
 func (x *ProjectModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *ProjectModel) assign(name string, v any) bool {
+func (x *ProjectModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "seq":
-		x.fSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column seq: %w", err)
+		}
+		x.fSeq = t
 	case "name":
-		x.fName = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column name: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column name: %w", err)
+		}
+		x.fName = t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *ProjectModel) value(name string) (any, bool) {

@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -19,8 +20,10 @@ type CompositeMembershipModel struct {
 }
 
 var compositeMembershipEntity = &orm.Entity{Name: "composite_membership", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &CompositeMembershipModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*CompositeMembershipModel).assign(name, v) },
-	Value:  func(m orm.Model, name string) (any, bool) { return m.(*CompositeMembershipModel).value(name) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) {
+		return m.(*CompositeMembershipModel).assign(name, v)
+	},
+	Value: func(m orm.Model, name string) (any, bool) { return m.(*CompositeMembershipModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*CompositeMembershipModel](keys, items, fetched)
 	},
@@ -39,18 +42,39 @@ func (x *CompositeMembershipModel) MarshalJSON() ([]byte, error) { return x.m.Ma
 // ToArray returns the row values.
 func (x *CompositeMembershipModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *CompositeMembershipModel) assign(name string, v any) bool {
+func (x *CompositeMembershipModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "tenant_id":
-		x.fTenantId = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column tenant_id: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column tenant_id: %w", err)
+		}
+		x.fTenantId = t
 	case "account_id":
-		x.fAccountId = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column account_id: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column account_id: %w", err)
+		}
+		x.fAccountId = t
 	case "role":
-		x.fRole = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column role: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column role: %w", err)
+		}
+		x.fRole = t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *CompositeMembershipModel) value(name string) (any, bool) {

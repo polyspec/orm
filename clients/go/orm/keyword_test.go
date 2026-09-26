@@ -2,6 +2,7 @@ package orm_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,14 +34,14 @@ func keywordEntity(hash string) *orm.Entity {
 			c.Bind(r)
 			return r
 		},
-		Assign: func(m orm.Model, name string, v any) bool {
+		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range keywordColumns {
 				if c == name {
 					m.(*keywordRow).vals[name] = v
-					return true
+					return true, nil
 				}
 			}
-			return false
+			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
 			v, ok := m.(*keywordRow).vals[name]
@@ -111,9 +112,40 @@ func TestSQLKeywordNames(t *testing.T) {
 				c.Set("key", key)
 				c.Set("group", i)
 				c.Set("select", 1)
-				if _, err := c.Create(); err != nil {
+				created, err := c.Create()
+				if err != nil {
 					t.Fatal(err)
 				}
+				if id, ok := created.(*keywordRow).vals["seq"].(int64); !ok || id <= 0 {
+					t.Fatalf("insert did not assign generated ID: %#v", created.(*keywordRow).vals["seq"])
+				} else {
+					read := model()
+					read.Where("", []orm.ChainKey{{Column: "seq"}}, id)
+					stored, err := orm.Gets[*keywordRow](read)
+					if err != nil || stored.Len() != 1 || stored.First().vals["seq"] != id {
+						t.Fatalf("generated ID differs from stored row: %d, %v", id, err)
+					}
+				}
+			}
+			assignmentError := errors.New("invalid key value")
+			baseAssign := ent.Assign
+			ent.Assign = func(m orm.Model, name string, value any) (bool, error) {
+				if name == "key" && value == "reject" {
+					return true, assignmentError
+				}
+				return baseAssign(m, name, value)
+			}
+			rejected := model()
+			rejected.Set("key", "reject")
+			rejected.Set("group", 0)
+			rejected.Set("select", 1)
+			_, err = rejected.Create()
+			ent.Assign = baseAssign
+			if !errors.Is(err, assignmentError) {
+				t.Fatalf("assignment failure: %v", err)
+			}
+			if count, err := model().GetCount(); err != nil || count != 3 {
+				t.Fatalf("rejected assignment wrote a row: count %d, error %v", count, err)
 			}
 			q := model()
 			q.Where("", []orm.ChainKey{{Column: "key"}}, "a")
@@ -122,7 +154,7 @@ func TestSQLKeywordNames(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if rows.Len() != 2 || orm.AsInt64(rows.First().vals["group"]) != 2 {
+			if rows.Len() != 2 || mustInt64(rows.First().vals["group"]) != 2 {
 				t.Fatalf("rows: %d %v", rows.Len(), rows.First().vals)
 			}
 			grouped := model()
