@@ -32,7 +32,7 @@
 - [o] N2 언어마다 생성기 하나를 제공한다: `ormgen gen --lang go`, `vendor/bin/orm-gen`, `orm-gen` npm bin, `orm-build` crate.
 - [o] N3 네 클라이언트에서 MySQL, PostgreSQL, SQLite의 `utils().schema().install()`을 구현한다.
 - [o] N4 세 데이터베이스에 연결 시간대를 적용한다: PostgreSQL 오프셋 시간대, 시각 읽기, SQLite 시계 기본값, MySQL 명칭 시간대 오류.
-- [ ] N5 프로세스 내 러너로 conformance 검사기를 실행하고 벡터를 다시 기록한다.
+- [o] N5 프로세스 내 러너로 conformance 검사기를 실행하고 벡터를 다시 기록한다. 네 출력이 일치할 때만 기대값을 기록하고 거부 시 파일을 보존하며 TypeScript의 SQLite 정수 결과를 정확히 유지한다. 세 데이터베이스 기대값 파일의 `write_cycle.price`를 고정 소수부 텍스트로 기록했다. 증거: 출력 누락·불일치 및 벡터 누락·추가 사례는 실패하고 기록·TypeScript 정수 사례는 통과한다. `make conformance-check`는 MySQL, PostgreSQL, SQLite 각각 25개 벡터 × 네 클라이언트와 클라이언트별 동일한 두 실제 실행 및 행·카운터 상태 불변을 검증하며 통과한다.
 - [o] N5.1 MySQL, PostgreSQL, SQLite에서 네 클라이언트를 모두 실행하고 모든 벡터를 기록된 기대값과 비교하며, 반복 실행이 관찰 대상 데이터베이스 상태를 바꾸지 않는지 확인한다. 증거: `make conformance-check`가 통과한다. 각 데이터베이스에서 25개 벡터를 네 클라이언트와 비교하고 실제 결과 테스트가 각 클라이언트를 두 번 실행해 출력이 같고 행과 카운터가 바뀌지 않음을 확인한다.
 - [o] N5.1.1 네 출력을 모두 요구하고 오래된 출력과 달라진 반복 결과를 거부하며 실행 시간을 제한한다. 모든 테이블 행과 선언된 counter를 검사하고 선언된 테스트 counter만 복원하며 MySQL, PostgreSQL, SQLite에서 counter 관찰과 정리를 테스트한다.
 - [o] N5.1.1.1 JSON 숫자를 float64 반올림 없이 비교하고 기록한다. 2^53을 넘는 서로 다른 정수를 구분하고 동등한 십진 표현은 같은 값으로 처리한다.

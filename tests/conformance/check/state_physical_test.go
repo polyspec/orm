@@ -61,7 +61,16 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 				counterName = `"public"."task_seq_seq"`
 			}
 			if _, ok := counters[counterName]; !ok {
-				t.Fatalf("task counter %s is not observable", counterName)
+				if test.driver != "sqlite" {
+					t.Fatalf("task counter %s is not observable", counterName)
+				}
+				var definition string
+				if err := db.QueryRow("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'task'").Scan(&definition); err != nil {
+					t.Fatalf("read task table definition: %v", err)
+				}
+				if !strings.Contains(strings.ToUpper(definition), "AUTOINCREMENT") {
+					t.Fatal("task has no observable SQLite auto-increment counter")
+				}
 			}
 			var id int64
 			if test.driver == "postgres" {
