@@ -4,7 +4,7 @@
 //
 //	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
-//	go run ./tests/conformance/check record [-driver …] out/go.json                             # fill expectations from one output
+//	go run ./tests/conformance/check record [-driver …] out/{go,php,rust,typescript}.json       # record agreed expectations
 //
 // Expectations live in tests/conformance/vectors.json (MySQL) and
 // tests/conformance/vectors.<driver>.json for the other databases: statements
@@ -124,10 +124,7 @@ func main() {
 	case "compare":
 		os.Exit(compare(root, fs.Args()))
 	case "record":
-		if len(fs.Args()) != 1 {
-			usage()
-		}
-		record(root, fs.Args()[0])
+		must(recordVerified(root, fs.Args()))
 	default:
 		usage()
 	}
@@ -162,7 +159,7 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check state|run -dsn x [-driver mysql|postgres|sqlite] | check compare [-driver d] <go.json> <php.json> <rust.json> <typescript.json> | check record [-driver d] <out.json>")
+	fmt.Fprintln(os.Stderr, "usage: check state|run -dsn x [-driver mysql|postgres|sqlite] | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
 	os.Exit(2)
 }
 
@@ -533,32 +530,81 @@ func compare(root string, outputs []string) int {
 	return 1
 }
 
-func record(root, output string) {
+func recordVerified(root string, outputs []string) error {
+	if err := validateOutputFiles(outputs); err != nil {
+		return err
+	}
 	f := load(root)
-	b, err := os.ReadFile(output)
-	must(err)
-	_, err = decodeExact(b)
-	must(err)
-	var g map[string]json.RawMessage
-	must(json.Unmarshal(b, &g))
+	results := make(map[string]map[string]json.RawMessage, len(outputs))
+	for _, output := range outputs {
+		b, err := os.ReadFile(output)
+		if err != nil {
+			return err
+		}
+		if _, err := decodeExact(b); err != nil {
+			return fmt.Errorf("%s: %w", output, err)
+		}
+		var values map[string]json.RawMessage
+		if err := json.Unmarshal(b, &values); err != nil {
+			return fmt.Errorf("%s: %w", output, err)
+		}
+		results[strings.TrimSuffix(filepath.Base(output), ".json")] = values
+	}
+	goResults := results["go"]
+	declared := make(map[string]bool, len(f.Vectors))
 	for i := range f.Vectors {
-		r, ok := g[f.Vectors[i].Name]
+		name := f.Vectors[i].Name
+		declared[name] = true
+		r, ok := goResults[name]
 		if !ok {
-			must(fmt.Errorf("vector %s not in %s", f.Vectors[i].Name, output))
+			return fmt.Errorf("vector %s missing from go output", name)
+		}
+		for _, language := range requiredLanguages[1:] {
+			other, ok := results[language][name]
+			if !ok {
+				return fmt.Errorf("vector %s missing from %s output", name, language)
+			}
+			equal, err := equalJSON(r, other)
+			if err != nil {
+				return fmt.Errorf("vector %s in %s output: %w", name, language, err)
+			}
+			if !equal {
+				return fmt.Errorf("vector %s differs between go and %s outputs", name, language)
+			}
 		}
 		f.Vectors[i].Expect = json.RawMessage(canon(r))
 	}
-	for name := range g {
-		found := false
-		for _, v := range f.Vectors {
-			found = found || v.Name == name
-		}
-		if !found {
-			must(fmt.Errorf("output has vector %q that vectors.json does not declare", name))
+	for _, language := range requiredLanguages {
+		for name := range results[language] {
+			if !declared[name] {
+				return fmt.Errorf("%s output has undeclared vector %q", language, name)
+			}
 		}
 	}
 	out, err := json.MarshalIndent(f, "", "  ")
-	must(err)
-	must(os.WriteFile(filepath.Join(root, vectorsPath()), append(out, '\n'), 0o644))
-	fmt.Printf("recorded %d vectors from %s into %s\n", len(f.Vectors), output, vectorsPath())
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(root, vectorsPath())
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".vectors-")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temporary.Name())
+	if err := temporary.Chmod(0o644); err != nil {
+		temporary.Close()
+		return err
+	}
+	if _, err := temporary.Write(append(out, '\n')); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(temporary.Name(), path); err != nil {
+		return err
+	}
+	fmt.Printf("recorded %d agreed vectors into %s\n", len(f.Vectors), vectorsPath())
+	return nil
 }

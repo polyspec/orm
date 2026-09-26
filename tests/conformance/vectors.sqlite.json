@@ -896,7 +896,7 @@
             },
             "label": "created",
             "name": "cycle",
-            "price": 12.5,
+            "price": "12.500",
             "seq": "$SEQ",
             "serialize_data": {
               "kind": "value",
@@ -922,7 +922,7 @@
               }
             },
             "name": "cycle-2",
-            "price": 12.5,
+            "price": "12.500",
             "read_count": 3,
             "serialize_data": {
               "kind": "value",
@@ -943,7 +943,7 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-06-01 00:00:00.000000",
-              12.5,
+              12500,
               "\n\u0000\u0000\u0001",
               "$AES",
               "{\"a\":1}",

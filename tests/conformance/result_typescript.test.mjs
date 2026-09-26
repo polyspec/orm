@@ -7,10 +7,11 @@ import { derivedInteger, executeVector, resultValue } from './result_typescript.
 test('ordered-json numbers and styled states remain exact in result output', { timeout: 1000 }, () => {
   const result = resultValue({
     exact: parse('9007199254740993'),
+    exactBigInt: 9007199254740993n,
     styled: StyledValue.value(parse('{"n":9007199254740993}')),
     sqlNull: StyledValue.sqlNull(),
   });
-  assert.equal(JSON.stringify(result), '{"exact":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},"sqlNull":{"kind":"sql-null"}}');
+  assert.equal(JSON.stringify(result), '{"exact":9007199254740993,"exactBigInt":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},"sqlNull":{"kind":"sql-null"}}');
 });
 
 test('a member key that JavaScript reorders reports an error', { timeout: 1000 }, () => {
@@ -31,8 +32,10 @@ test('a result never drops an undefined field or writes a non-finite number as n
 test('derived integer conversion preserves the exact numeric value', { timeout: 1000 }, () => {
   assert.equal(derivedInteger(2), 2);
   assert.equal(derivedInteger('2'), 2);
+  assert.equal(derivedInteger(2n), 2);
+  assert.equal(derivedInteger(9007199254740992n), 9007199254740992);
   assert.equal(derivedInteger('9007199254740992'), 9007199254740992);
-  for (const value of [null, true, '', 'bad', '2.0', '2.5', 2.5, Number.NaN, Number.POSITIVE_INFINITY, '9007199254740993']) {
+  for (const value of [null, true, '', 'bad', '2.0', '2.5', 2.5, Number.NaN, Number.POSITIVE_INFINITY, '9007199254740993', 9007199254740993n, 1n << 63n]) {
     assert.throws(() => derivedInteger(value), /invalid derived integer/);
   }
 });

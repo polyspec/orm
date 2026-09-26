@@ -3,9 +3,83 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestRecordRequiresFourEqualOutputs(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "tests", "conformance")
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	vectors := filepath.Join(directory, "vectors.json")
+	before := []byte(`{"vectors":[{"name":"one","chain":"one","expect":{"result":0}}]}`)
+	if err := os.WriteFile(vectors, before, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var outputs []string
+	for _, language := range requiredLanguages {
+		output := filepath.Join(root, language+".json")
+		if err := os.WriteFile(output, []byte(`{"one":{"result":1}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		outputs = append(outputs, output)
+	}
+	previousDriver := driver
+	driver = "mysql"
+	t.Cleanup(func() { driver = previousDriver })
+	for _, incomplete := range [][]string{outputs[:3], outputs[1:]} {
+		if err := recordVerified(root, incomplete); err == nil {
+			t.Fatal("record accepted incomplete client evidence")
+		}
+		assertFileEquals(t, vectors, before)
+	}
+	if err := os.WriteFile(outputs[1], []byte(`{"one":{"result":2}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordVerified(root, outputs); err == nil {
+		t.Fatal("record accepted conflicting client results")
+	}
+	assertFileEquals(t, vectors, before)
+	for _, invalid := range []string{
+		`{}`,
+		`{"one":{"result":1},"extra":{"result":1}}`,
+	} {
+		if err := os.WriteFile(outputs[1], []byte(invalid), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := recordVerified(root, outputs); err == nil {
+			t.Fatalf("record accepted an incomplete or undeclared vector: %s", invalid)
+		}
+		assertFileEquals(t, vectors, before)
+	}
+	if err := os.WriteFile(outputs[1], []byte(`{"one":{"result":1}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := recordVerified(root, outputs); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(vectors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `"result": 1`) {
+		t.Fatalf("record did not save the agreed result: %s", got)
+	}
+}
+
+func assertFileEquals(t *testing.T, path string, want []byte) {
+	t.Helper()
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("record changed expectations after rejecting evidence: %s", got)
+	}
+}
 
 func TestCompleteLanguageEvidence(t *testing.T) {
 	dir := t.TempDir()

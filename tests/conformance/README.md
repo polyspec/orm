@@ -53,6 +53,9 @@ rows and reports any other query error. Only counters of the four tables that th
 insert into may be restored. Each restoration is reported; a missing table,
 unreadable sequence, undeclared counter change, cleanup failure, or remaining
 state change fails. The bench database must have no external writer during the run.
+An empty SQLite `AUTOINCREMENT` table may have no `sqlite_sequence` entry yet;
+the counter test verifies its table definition, observes the first inserted
+counter, and restores the original absence.
 
 `check compare` compares recorded files and does not establish that a runner
 executed now. It requires exactly one output from each of the four clients.
@@ -60,8 +63,9 @@ executed now. It requires exactly one output from each of the four clients.
 four output files only after the repeated executions, state checks, and
 expectation comparison pass. On failure it retains the current diagnostic files
 under an `.run-*` directory without treating them as verified outputs.
-`check record -driver <db> out/<db>/go.json` refreshes that database's
-expectations after a deliberate change.
+`check record -driver <db> out/<db>/{go,php,rust,typescript}.json` refreshes
+that database's expectations only when all four outputs contain the declared
+vectors and agree. Rejected evidence leaves the expectation file unchanged.
 
 Every client plans its statements in its own process. `check run` holds the
 directory lock `/tmp/orm-conformance.lock` while the runners use the bench
@@ -71,8 +75,11 @@ database; a second run fails instead of waiting.
 
 1. Declare `{"name", "chain", "expect": null}` in `vectors.json`.
 2. Implement the same chain in all four runners (keep the statement order).
-3. `go run ./tests/conformance/check record -driver <db> tests/conformance/out/<db>/go.json` for each database (MySQL output is `out/go.json`),
-   review the recorded SQL/binds/result, commit.
+3. Run `check record -driver <db>` with the four output files for each database
+   (MySQL files are directly under `out/`). Review the recorded SQL, binds, and
+   results, then commit. When an old expectation makes `check run` fail, use
+   its four diagnostic files under `.run-*` after checking that all runners
+   completed and the database state was restored.
 
 Write vectors remove their rows; the checker restores their declared sequence
 counters and verifies the original state after every execution. Keys and update times in the output are masked
@@ -83,6 +90,9 @@ The PHP and TypeScript runners execute write vectors in transactions and return
 unexpected vector errors to the checker. They reject invalid derived integers,
 missing selected result fields, invalid query binds, and result values that
 cannot be represented exactly. Ordered JSON numbers remain exact in the output.
+The TypeScript derived-integer conversion accepts a signed 64-bit SQLite
+`bigint` only when its numeric result is exact. Result serialization retains
+other `bigint` values as exact ordered JSON numbers.
 The TypeScript result case checks the `CODEC_ENCODE` code when a styled value
 contains an undefined member; diagnostic wording is not part of the contract.
 `make conformance-result-check` runs their result cases. The Go runner applies
