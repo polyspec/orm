@@ -34,7 +34,7 @@ go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 ```
 
-`check run`은 `-dsn`이 필요하며 네 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, SQLite `sqlite_sequence` 테이블을 읽는다. 쓰기 벡터가 삽입하는 네 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
+`check run`은 `-dsn`이 필요하며 네 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, 존재할 때 SQLite `sqlite_sequence` 테이블을 읽는다. `AUTOINCREMENT` 테이블이 없는 SQLite 데이터베이스에는 sequence counter가 없으며 검사기는 모든 행을 계속 읽고 다른 질의 오류를 보고한다. 쓰기 벡터가 삽입하는 네 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
 
 `check compare`는 저장된 파일을 비교하며 실행기가 현재 실행됐다는 증거가 아니다. 네 클라이언트의 출력이 정확히 하나씩 필요하다. `check run`은 시작할 때 이전 생성 출력을 제거하고 반복 실행, 상태 검사, 기대값 비교가 모두 통과한 뒤에만 네 출력 파일을 게시한다. 실패하면 현재 진단 파일을 `.run-*` 디렉터리에 남기되 검증된 출력으로 다루지 않는다. `check record -driver <db> out/<db>/go.json`은 검토 후 기대값을 갱신할 때 사용한다.
 

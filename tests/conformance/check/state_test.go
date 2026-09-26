@@ -42,6 +42,51 @@ func TestSnapshotIncludesRowsAndSequenceState(t *testing.T) {
 	}
 }
 
+func TestSQLiteStateWithoutAutoIncrement(t *testing.T) {
+	db, err := sql.Open("sqlite", t.TempDir()+"/plain.sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE state (value INTEGER NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	var sequenceTables int
+	if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence'").Scan(&sequenceTables); err != nil {
+		t.Fatal(err)
+	}
+	if sequenceTables != 0 {
+		t.Fatal("fixture unexpectedly created sqlite_sequence")
+	}
+	counters, err := readCounters(db, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(counters) != 0 {
+		t.Fatalf("ordinary SQLite table has counters: %v", counters)
+	}
+	before, err := snapshotDatabase(db, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO state (value) VALUES (7)"); err != nil {
+		t.Fatal(err)
+	}
+	after, err := snapshotDatabase(db, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before == after {
+		t.Fatal("row change disappeared when sqlite_sequence was absent")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readCounters(db, "sqlite"); err == nil {
+		t.Fatal("an unrelated counter query error was accepted as an absent sequence")
+	}
+}
+
 func TestRestoreDeclaredSequenceAfterWrite(t *testing.T) {
 	db, err := sql.Open("sqlite", t.TempDir()+"/restore.sqlite")
 	if err != nil {
