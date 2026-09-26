@@ -97,7 +97,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] T7.D7 Check paired document structure in CI.
 - [o] T7.D8 Check configured writing-style rules in CI.
 - [o] T7.D8.1 Keep persistent rules in `AGENTS.md` and task deliverables in this checklist. Remove unnumbered procedure, work-lane, and dated status prose; reject its return with the checklist checker while preserving existing item IDs and states. Evidence: a failing checker case before the cleanup, a passing `make checklist-check` and paired document checks, and one local commit containing both language versions and the record.
-- [ ] T7.D11 Regenerate the feature pages from the updated feature manifest.
+- [o] T7.D11 Regenerate the feature pages from the updated feature manifest. Evidence: `make feature-docs` generated all 17 feature rows and left the English and Korean feature pages current; the paired-document and static documentation checks pass.
 
 ## Verification checks
 
