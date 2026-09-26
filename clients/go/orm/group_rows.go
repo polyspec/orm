@@ -69,14 +69,14 @@ func newGroupRow(values []groupValue) (GroupRow, error) {
 
 func (r GroupRow) Count() int64 { return r.count }
 
-// Value returns a selected group value; a missing name differs from SQL NULL.
-func (r GroupRow) Value(name string) (any, bool) {
+// Value returns a selected group value. A missing name fails; SQL NULL returns nil.
+func (r GroupRow) Value(name string) (any, error) {
 	for _, item := range r.values {
 		if item.name == name {
-			return item.value, true
+			return item.value, nil
 		}
 	}
-	return nil, false
+	return nil, ColumnUnselected(name)
 }
 
 func (r GroupRow) ToArray() map[string]any {

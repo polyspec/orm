@@ -168,16 +168,16 @@ func TestSQLKeywordNames(t *testing.T) {
 			}
 			counts := map[string]int64{}
 			for row := range groups.All() {
-				key, ok := row.Value("key")
-				if !ok {
-					t.Fatal("grouped key is missing")
+				key, err := row.Value("key")
+				if err != nil {
+					t.Fatal(err)
 				}
 				name, ok := key.(string)
 				if !ok {
 					t.Fatalf("grouped key has type %T", key)
 				}
-				if _, ok := row.Value("seq"); ok {
-					t.Fatal("grouped row exposes a model key")
+				if _, err := row.Value("seq"); orm.ErrorCode(err) != orm.CodeColumnUnselected {
+					t.Fatalf("unselected grouped model key error = %v", err)
 				}
 				counts[name] = row.Count()
 			}
