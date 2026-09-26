@@ -48,6 +48,7 @@
 - [~] N5.1.2.6 네 클라이언트와 세 데이터베이스에서 SQL NULL, 인코딩된 null 값, 조회하지 않은 값 스타일 컬럼을 구분한다. 공통 사례로 저장 텍스트, getter, 행 배열, 모델 JSON 출력, 오류를 검증한다.
 - [o] N5.1.2.6.1 Go codec과 생성 모델 setter·getter에서 값 스타일 상태를 명시적으로 구분한다. MySQL, PostgreSQL, SQLite에서 공통 상태, 행 배열, 모델 JSON, 오류를 검증한다.
 - [o] N5.1.2.6.2 PHP 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태 사례와 실제 모델 동작을 검증한다.
+- [o] N5.1.2.6.3 TypeScript 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태·codec 사례와 실제 모델 동작을 검증한다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
 - [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.

@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import { isIP } from 'node:net';
 import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from 'ordered-json';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
+import { StyledValue } from './styled_value.js';
 
 export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
@@ -165,8 +166,9 @@ function decodeBase64(value: Uint8Array): Uint8Array {
  * json and jsons stages return the ordered-json value, which keeps the member
  * order, the number text, and an empty object apart from an empty array.
  */
-export function decode(styles: readonly string[], raw: string | Uint8Array | null): CodecValue | JsonValue {
-  if (raw === null || raw.length === 0) return null;
+export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue<CodecValue | JsonValue | string> {
+  if (raw === null) return StyledValue.sqlNull();
+  if (raw.length === 0) throw new CodecError('CODEC_DECODE', 'styled cell is empty');
   let current = bytes(raw);
   let value: CodecValue | JsonValue | undefined;
   for (let index = styles.length - 1; index >= 0; index--) {
@@ -201,7 +203,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
         throw new CodecError('CODEC_UNSUPPORTED', `style ${style}`);
     }
   }
-  return value ?? string(current, 'decode');
+  return StyledValue.value(value !== undefined ? value : string(current, 'decode'));
 }
 
 /**
@@ -209,10 +211,10 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
  * stages accept an ordered-json value, written as its compact text, or the
  * common value model, which may contain ordered-json values.
  */
-export function encode(styles: readonly string[], value: CodecValue | JsonValue): EncodedValue {
-  if (value === null) return null;
+export function encode(styles: readonly string[], state: StyledValue<CodecValue | JsonValue>): EncodedValue {
+  if (state.kind === 'sql-null') return null;
   let current = new Uint8Array();
-  const transformed = value;
+  const transformed = state.payload();
   for (let index = 0; index < styles.length; index++) {
     const style = styles[index]!;
     switch (style) {
