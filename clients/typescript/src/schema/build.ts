@@ -475,6 +475,10 @@ function buildEntity(e: DEntity): SchemaEntity {
       else if (k === 'UK') { c.uk = true; (ent.unique ??= []).push([c.name]); }
     }
     if (c.auto) {
+      if (c.type !== 'i64') throw new SchemaBuildError(dc.line, `auto column ${e.name}.${c.name} requires i64 type`);
+      if (c.nullable) throw new SchemaBuildError(dc.line, `auto column ${e.name}.${c.name} must not be nullable`);
+      if (c.unsigned) throw new SchemaBuildError(dc.line, `auto column ${e.name}.${c.name} must be signed`);
+      if (!c.pk) throw new SchemaBuildError(dc.line, `auto column ${e.name}.${c.name} must be a primary key`);
       if ((ent.auto ?? '') !== '') throw new SchemaBuildError(dc.line, 'two auto columns in ' + e.name);
       ent.auto = c.name;
     }
@@ -842,4 +846,3 @@ function backtickNames(frag: string): string[] {
     frag = frag.slice(j + 1);
   }
 }
-

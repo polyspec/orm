@@ -1,9 +1,46 @@
 package schema
 
 import (
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestAutoColumnTypes(t *testing.T) {
+	data, err := os.ReadFile("../../tests/schema/auto_columns.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct{ Name, MMD, Type, Error string }
+	if err := json.Unmarshal(data, &cases); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != 7 {
+		t.Fatalf("want 7 shared auto column cases, got %d", len(cases))
+	}
+	for _, c := range cases {
+		t.Run(c.Name, func(t *testing.T) {
+			d, err := Parse(c.MMD)
+			if err != nil {
+				t.Fatal(err)
+			}
+			m, err := Build(d)
+			if c.Error != "" {
+				if err == nil || err.Error() != c.Error {
+					t.Fatalf("want %q, got %v", c.Error, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := m.Entities["entry"].Column("id").Type; got != c.Type {
+				t.Fatalf("want %q, got %q", c.Type, got)
+			}
+		})
+	}
+}
 
 func mustBuild(t *testing.T, src string) *Manifest {
 	t.Helper()

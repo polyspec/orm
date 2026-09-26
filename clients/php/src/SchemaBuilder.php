@@ -331,6 +331,18 @@ final class SchemaBuilder
                 }
             }
             if ($c['auto']) {
+                if ($c['type'] !== 'i64') {
+                    throw new SchemaError($dc['line'], 'auto column ' . $e['name'] . '.' . $c['name'] . ' requires i64 type');
+                }
+                if ($c['nullable']) {
+                    throw new SchemaError($dc['line'], 'auto column ' . $e['name'] . '.' . $c['name'] . ' must not be nullable');
+                }
+                if ($c['unsigned']) {
+                    throw new SchemaError($dc['line'], 'auto column ' . $e['name'] . '.' . $c['name'] . ' must be signed');
+                }
+                if (!$c['pk']) {
+                    throw new SchemaError($dc['line'], 'auto column ' . $e['name'] . '.' . $c['name'] . ' must be a primary key');
+                }
                 if ($ent['auto'] !== '') {
                     throw new SchemaError($dc['line'], 'two auto columns in ' . $e['name']);
                 }
