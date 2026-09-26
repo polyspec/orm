@@ -34,7 +34,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:bba5e4aab31a3e0bedf45658434ab37e6920209ec97d7724ac4d37151c52187f",
-    "php": "sha256:f16738aad4bc74f052f2bd3abb4c53116765d648b44c6c6ade66fc75f40ff438",
+    "php": "sha256:d158f710ce3b1f766d33ec4613be26b86b0d281a75b92475a0058dbe0b8f5f3c",
     "rust": "sha256:0c082e5d57101c4084ac7e51e5c0e05c60b5bdedbed5fd09a57ea51da713b651",
     "typescript": "sha256:6be07fff6ea104cd5d24d13ec4ce2b1638c12f9143ddd171f0a05c4452a2ef00"
   },
@@ -1541,6 +1541,7 @@
       "id": "IRRequest",
       "native": {
         "go": "engine/ir/ir.go::Request",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Request",
         "rust": "clients/rust/orm/src/ir.rs::Request",
         "typescript": "clients/typescript/src/ir.ts::Request"
       },
@@ -1568,6 +1569,7 @@
       "id": "IRQuery",
       "native": {
         "go": "engine/ir/ir.go::Query",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Query",
         "rust": "clients/rust/orm/src/ir.rs::Query",
         "typescript": "clients/typescript/src/ir.ts::RequestQuery"
       },
@@ -1613,6 +1615,7 @@
       "id": "IRColumns",
       "native": {
         "go": "engine/ir/ir.go::Columns",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Columns",
         "rust": "clients/rust/orm/src/ir.rs::Columns",
         "typescript": "clients/typescript/src/ir.ts::Projection"
       },
@@ -1637,6 +1640,7 @@
       "id": "IRJoin",
       "native": {
         "go": "engine/ir/ir.go::Join",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Join",
         "rust": "clients/rust/orm/src/ir.rs::Join",
         "typescript": "clients/typescript/src/ir.ts::Join"
       },
@@ -1656,6 +1660,7 @@
       "id": "IRRelation",
       "native": {
         "go": "engine/ir/ir.go::Relation",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Relation",
         "rust": "clients/rust/orm/src/ir.rs::Relation",
         "typescript": "clients/typescript/src/ir.ts::Relation"
       },
@@ -1675,6 +1680,7 @@
       "id": "IRGroup",
       "native": {
         "go": "engine/ir/ir.go::Group",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Group",
         "rust": "clients/rust/orm/src/ir.rs::Group",
         "typescript": "clients/typescript/src/ir.ts::Group"
       },
@@ -1690,6 +1696,7 @@
       "id": "IRItem",
       "native": {
         "go": "engine/ir/ir.go::Item",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Item",
         "rust": "clients/rust/orm/src/ir.rs::Item",
         "typescript": "clients/typescript/src/ir.ts::Item"
       },
@@ -1709,6 +1716,7 @@
       "id": "IRPred",
       "native": {
         "go": "engine/ir/ir.go::Pred",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Pred",
         "rust": "clients/rust/orm/src/ir.rs::Pred",
         "typescript": "clients/typescript/src/ir.ts::Predicate"
       },
@@ -1745,6 +1753,7 @@
       "id": "IRColRef",
       "native": {
         "go": "engine/ir/ir.go::ColRef",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::ColRef",
         "rust": "clients/rust/orm/src/ir.rs::ColRef",
         "typescript": "clients/typescript/src/ir.ts::ColumnReferenceIR"
       },
@@ -1760,6 +1769,7 @@
       "id": "IRExpr",
       "native": {
         "go": "engine/ir/ir.go::Expr",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Expr",
         "rust": "clients/rust/orm/src/ir.rs::Expr",
         "typescript": "clients/typescript/src/ir.ts::Expression"
       },
@@ -1775,6 +1785,7 @@
       "id": "IRFunc",
       "native": {
         "go": "engine/ir/ir.go::Func",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Func",
         "rust": "clients/rust/orm/src/ir.rs::Func",
         "typescript": "clients/typescript/src/ir.ts::OrmFunction"
       },
@@ -1790,6 +1801,7 @@
       "id": "IRColFunc",
       "native": {
         "go": "engine/ir/ir.go::ColFunc",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::ColFunc",
         "rust": "clients/rust/orm/src/ir.rs::ColFunc",
         "typescript": "clients/typescript/src/ir.ts::ColumnFunction"
       },
@@ -1803,6 +1815,7 @@
       "id": "IRSub",
       "native": {
         "go": "engine/ir/ir.go::Sub",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Sub",
         "rust": "clients/rust/orm/src/ir.rs::Sub",
         "typescript": "clients/typescript/src/ir.ts::Subquery"
       },
@@ -1819,6 +1832,7 @@
       "id": "IRJoinedRef",
       "native": {
         "go": "engine/ir/ir.go::JoinedRef",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::JoinedRef",
         "rust": "clients/rust/orm/src/ir.rs::JoinedRef",
         "typescript": "clients/typescript/src/ir.ts::JoinedReference"
       },
@@ -1834,6 +1848,7 @@
       "id": "IROrder",
       "native": {
         "go": "engine/ir/ir.go::Order",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Order",
         "rust": "clients/rust/orm/src/ir.rs::Order",
         "typescript": "clients/typescript/src/ir.ts::Order"
       },
@@ -1856,6 +1871,7 @@
       "id": "IRGroupExpr",
       "native": {
         "go": "engine/ir/ir.go::GroupExpr",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::GroupExpr",
         "rust": "clients/rust/orm/src/ir.rs::GroupExpr",
         "typescript": "clients/typescript/src/ir.ts::GroupExpression"
       },
@@ -1869,6 +1885,7 @@
       "id": "IRLimit",
       "native": {
         "go": "engine/ir/ir.go::Limit",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Limit",
         "rust": "clients/rust/orm/src/ir.rs::Limit",
         "typescript": "clients/typescript/src/ir.ts::Limit"
       },
@@ -1882,6 +1899,7 @@
       "id": "IRIfParent",
       "native": {
         "go": "engine/ir/ir.go::IfParent",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::IfParent",
         "rust": "clients/rust/orm/src/ir.rs::IfParent",
         "typescript": "clients/typescript/src/ir.ts::IfParent"
       },
@@ -1895,6 +1913,7 @@
       "id": "IRAssign",
       "native": {
         "go": "engine/ir/ir.go::Assign",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Assign",
         "rust": "clients/rust/orm/src/ir.rs::Assign",
         "typescript": "clients/typescript/src/ir.ts::Assignment"
       },
@@ -1920,6 +1939,7 @@
       "id": "IROptimist",
       "native": {
         "go": "engine/ir/ir.go::Optimist",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::Optimist",
         "rust": "clients/rust/orm/src/ir.rs::Optimist",
         "typescript": "clients/typescript/src/ir.ts::Optimistic"
       },
