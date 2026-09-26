@@ -97,3 +97,6 @@ ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ..
 ```
 
 `integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. The tests drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.
+The Rust conformance output fails when a bind cannot be represented without loss, a requested
+selected field or relation is absent, or a derived integer is invalid or out of range. It never
+substitutes null, zero, replacement text, or an empty point for those errors.
