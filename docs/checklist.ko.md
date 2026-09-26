@@ -64,6 +64,7 @@
 - [o] N5.1.2.2 PHP와 TypeScript의 잘못되거나 유한하지 않은 집계 스칼라를 거부하고 공통 9개 사례로 가장 가까운 binary64 변환을 검증한다.
 - [ ] N5.1.2.3 네 클라이언트의 생성 모델에서 decimal 컬럼 값을 정확히 보존한다. 생성된 decimal 필드는 `48.0450`을 근사 binary64 값으로 받아들이면 안 된다. MySQL, PostgreSQL, SQLite에서 동등한 RED 사례와 GREEN 실행 증거를 추가한다. scalar 집계 결과에는 별도의 유한 binary64 변환 기준을 적용한다.
 - [o] N5.1.2.4 Go, PHP, Rust, TypeScript 스키마 빌더의 `auto` 컬럼이 NULL을 허용하지 않는 부호 있는 `i64` 기본 키이도록 강제한다. 각 언어는 동일한 허용·거부 Mermaid 사례를 실행하고 거부된 선언의 원천 행을 보고한다.
+- [o] N5.1.2.4.1 실제 SQLite `INTEGER PRIMARY KEY AUTOINCREMENT` 컬럼을 각 스키마 도구에서 부호 있는 `i64` 자동 키로 읽고, 자동 키가 아닌 `INTEGER` 컬럼은 `i32`로 유지한다. 클라이언트에서 실제 SQLite 가져오기와 스키마 빌드를 검증한다.
 - [ ] N5.1.2.5 Go scalar·collection 키의 문자열 대체 경로를 정확한 타입별 키 표현으로 바꾼다. 지원하지 않는 값은 오류를 반환하고 서로 다른 값은 충돌하지 않으며 relation, 분할 질의, collection 호출자가 오류를 전파하는지 검증한다.
 - [~] N5.1.2.6 네 클라이언트와 세 데이터베이스에서 SQL NULL, 인코딩된 null 값, 조회하지 않은 값 스타일 컬럼을 구분한다. 공통 사례로 저장 텍스트, getter, 행 배열, 모델 JSON 출력, 오류를 검증한다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.

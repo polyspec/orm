@@ -258,9 +258,10 @@ export async function readTablesSQLite(db: ToolDb): Promise<ImpTable[]> {
     for (const col of await db.query(`PRAGMA table_info('${qname}')`)) {
       const pk = n(col[5]);
       const def = col[4] === null ? noDefault : sqliteClockDefault(s(col[4])) ? 'CURRENT_TIMESTAMP' : s(col[4]);
+      const auto = pk > 0 && sqliteAutoIncrement(createSQL, s(col[1]));
       t.columns.push({
-        name: s(col[1]), type: s(col[2]), nullable: n(col[3]) === 0 && pk === 0, default: def,
-        key: pk > 0 ? 'PRI' : '', extra: pk > 0 && sqliteAutoIncrement(createSQL, s(col[1])) ? 'auto_increment' : '', comment: '',
+        name: s(col[1]), type: auto ? 'bigint' : s(col[2]), nullable: n(col[3]) === 0 && pk === 0, default: def,
+        key: pk > 0 ? 'PRI' : '', extra: auto ? 'auto_increment' : '', comment: '',
       });
     }
     for (const idx of await db.query(`PRAGMA index_list('${qname}')`)) {

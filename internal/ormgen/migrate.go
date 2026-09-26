@@ -247,6 +247,7 @@ func readTablesSQLite(db *sql.DB) ([]impTable, error) {
 				c.Key = "PRI"
 				if sqliteAutoIncrement(createSQL, c.Name) {
 					c.Extra = "auto_increment"
+					c.Type = "bigint"
 				}
 			}
 			t.Columns = append(t.Columns, c)
