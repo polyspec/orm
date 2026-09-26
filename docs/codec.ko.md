@@ -39,9 +39,11 @@ erDiagram
 ## 값 모델 {#value-model}
 `json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
 
-스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
+스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 JSON 컬럼의 바깥 표현 안에 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
 
 Go JSON codec의 `Decode`는 `*orderedjson.Value`를 반환하고 `Encode`는 이 값을 입력으로 받는다. 사용자 값에는 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값, named scalar type, `json` field tag가 있는 Go 구조체는 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`와 `json.RawMessage`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다. 지원하지 않는 Go kind, 문자열이 아닌 map key, `[]byte`, 유한하지 않은 수는 `CODEC_ENCODE`를 반환한다.
+
+`json` 또는 `jsons` 컬럼의 SQL NULL에는 JSON 문서가 없다. 저장된 텍스트 `null`은 값이 null인 JSON 문서다. 언어의 null 값은 SQL NULL을 설정하고, 명시적인 ordered-json null 값은 네 바이트 `null`을 저장한다. getter는 SQL NULL에 대해 부재한 nullable 값을, JSON 문서에 대해 ordered-json null 값을 반환한다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 저장 텍스트는 유효한 JSON이 아니므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 JSON 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, JSON 문서는 `{"kind":"json","value":<JSON 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` 문서는 `{"kind":"json","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/json_column_states.json`이 네 클라이언트와 세 데이터베이스의 사례를 정의한다.
 
 `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
@@ -49,8 +51,8 @@ Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE
 |---|---|---|---|---|
 | `json`·`jsons` 단계의 읽기 값 | `*orderedjson.Value` | `orm::ordered_json::Value` | `OrderedJson\Value` | `ordered-json`의 `Value` |
 | 쓰기 값 | `*orderedjson.Value`, 또는 portable 값이나 tag가 있는 Go 값 | `orm::ordered_json::Value` | `OrderedJson\Value`, 또는 배열, 스칼라, `stdClass`, `JsonSerializable` | `Value`, 또는 공통 값 모델 |
-| 모델 JSON 출력 | `json.Marshal(model)`: 값의 텍스트 | `to_json()`과 serde 직렬화: 값의 텍스트 | `toJson()`: 값의 텍스트, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값의 텍스트 |
-| 배열 출력 | `ToArray()`는 값을 유지 | `to_array()`는 텍스트의 serde_json 값을 반환하며 `1e400`처럼 serde_json이 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값을 유지 | `toArray()`는 값을 유지 |
+| 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 JSON 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 JSON 컬럼의 바깥 표현 | `toJson()`: JSON 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: JSON 컬럼의 바깥 표현 |
+| 배열 출력 | `ToArray()`는 JSON 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 JSON 컬럼의 바깥 표현을 반환 | `toArray()`는 JSON 컬럼의 바깥 표현을 반환 |
 
 PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하다:
 - **읽기**: 키가 정확히 `0..n-1`인 배열 → 리스트, 그 외 → 맵(정수 키는 십진 문자열로).
@@ -63,7 +65,8 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 
 ## 사례
 - ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
-- NULL, 빈 문자열 → `null`.
+- SQL NULL과 JSON 리터럴 null은 서로 다르며, 빈 JSON 저장 텍스트는 `CODEC_DECODE`다.
+- SQL NULL, JSON 리터럴 null, 조회하지 않은 JSON 컬럼은 저장값, getter, 행 배열, 모델 JSON 출력에서 구분한다. 조회하지 않은 컬럼을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
 - `json`/`jsons`: **`[]`·`{}`·`0`·`""`는 그 값 그대로** 유지한다. 파싱 실패 → 에러 `CODEC_DECODE`.
 - `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED`.
 - YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`다.
