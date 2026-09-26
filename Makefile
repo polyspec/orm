@@ -35,7 +35,8 @@ test-servers-stop:
 feature-check:
 	node scripts/features/build.mjs --check
 	node --test scripts/features/coverage.test.mjs
-	node scripts/features/coverage.mjs
+	npm run typescript:build
+	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
 
 feature-docs:

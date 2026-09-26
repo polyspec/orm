@@ -144,9 +144,9 @@ function validJSON(value) {
   catch { return false; }
 }
 
-function run(program, args, cwd, timeoutMs) {
+function run(program, args, cwd, timeoutMs, env = process.env) {
   return new Promise((finish) => {
-    const child = spawn(program, args, { cwd, env: process.env, detached: true });
+    const child = spawn(program, args, { cwd, env, detached: true });
     let output = '';
     let settled = false;
     const stop = () => {
@@ -180,6 +180,15 @@ function run(program, args, cwd, timeoutMs) {
 }
 
 async function nativeTest(item, command, root) {
+  const nativeRunner = command?.runner === 'go' || command?.runner === 'cargo';
+  const symbols = command?.symbols;
+  const validSymbols = nativeRunner ? Array.isArray(command.cases) &&
+    symbols && typeof symbols === 'object' && !Array.isArray(symbols) &&
+    Object.keys(symbols).length === command.cases?.length &&
+    command.cases?.every(id => Object.hasOwn(symbols, id)) &&
+    Object.values(symbols).every(symbol => typeof symbol === 'string' &&
+      /^(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*$/.test(symbol)) &&
+    new Set(Object.values(symbols)).size === Object.values(symbols).length : symbols === undefined;
   if (!command || typeof command !== 'object' || Array.isArray(command) ||
       !item.tests.includes(command.test) || !Array.isArray(command.cases) ||
       command.cases.length === 0 || new Set(command.cases).size !== command.cases.length ||
@@ -190,8 +199,10 @@ async function nativeTest(item, command, root) {
       (item.language === 'go' && command.runner !== 'go') ||
       (item.language === 'rust' && command.runner !== 'cargo') ||
       (item.database !== 'none' && (typeof command.dsn_env !== 'string' ||
-        !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env))) ||
-      Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env'].includes(key)))
+        !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env) ||
+        ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN'].includes(command.dsn_env))) ||
+      !validSymbols ||
+      Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env', 'symbols'].includes(key)))
     throw new Error('invalid native test command');
   const testPath = resolve(root, command.test);
   if (await realpath(testPath) !== testPath) throw new Error('symbolic test path');
@@ -204,15 +215,16 @@ async function nativeTest(item, command, root) {
   if (command.runner === 'node' || command.runner === 'php')
     return { program: command.runner, args: [testPath, ...command.cases], format: 'case' };
   const source = await readFile(testPath, 'utf8');
-  for (const id of command.cases) {
-    const short = id.split('::').at(-1);
+  const nativeSymbols = command.cases.map(id => symbols[id]);
+  for (const symbol of nativeSymbols) {
+    const short = symbol.split('::').at(-1);
     const pattern = command.runner === 'go' ? `\\bfunc\\s+${short}\\s*\\(` : `\\bfn\\s+${short}\\s*\\(`;
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(short) || !new RegExp(pattern).test(source))
-      throw new Error(`case ${id} is absent from declared test file`);
+      throw new Error(`test symbol ${symbol} is absent from declared test file`);
   }
   if (command.runner === 'go')
-    return { program: 'go', args: ['test', '-json', '-run', `^(${command.cases.join('|')})$`, '.'],
-      cwd: dirname(testPath), format: 'go' };
+    return { program: 'go', args: ['test', '-json', '-run', `^(${nativeSymbols.join('|')})$`, '.'],
+      cwd: dirname(testPath), format: 'go', symbols: nativeSymbols };
   let crate = dirname(testPath);
   while (crate.startsWith(resolve(root, item.part))) {
     try { await realpath(resolve(crate, 'Cargo.toml')); break; }
@@ -220,10 +232,10 @@ async function nativeTest(item, command, root) {
   }
   if (!crate.startsWith(resolve(root, item.part))) throw new Error('Rust test has no owning Cargo manifest');
   return { program: 'cargo', args: ['test', '--manifest-path', resolve(crate, 'Cargo.toml')],
-    cwd: crate, format: 'cargo' };
+    cwd: crate, format: 'cargo', symbols: nativeSymbols };
 }
 
-function observedCases(format, output, requested) {
+function observedCases(format, output, requested, nativeSymbols = requested) {
   const seen = new Set();
   const add = id => {
     if (seen.has(id)) throw new Error(`duplicate observed case ${id}`);
@@ -250,8 +262,8 @@ function observedCases(format, output, requested) {
       if (match) add(match[1]);
     }
   }
-  if (seen.size !== requested.length || requested.some(id => !seen.has(id)))
-    throw new Error(`observed cases ${[...seen].join(',')} differ from ${requested.join(',')}`);
+  if (seen.size !== nativeSymbols.length || nativeSymbols.some(symbol => !seen.has(symbol)))
+    throw new Error(`observed cases ${[...seen].join(',')} differ from ${nativeSymbols.join(',')}`);
   return requested.map(id => ({ id, value_json: 'true' }));
 }
 
@@ -311,6 +323,13 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
           continue;
         }
         reports[key] = [];
+        const testEnv = { ...process.env };
+        delete testEnv.ORM_FEATURE_DATABASE;
+        delete testEnv.ORM_FEATURE_DSN;
+        if (dsn) {
+          testEnv.ORM_FEATURE_DATABASE = item.database;
+          testEnv.ORM_FEATURE_DSN = dsn;
+        }
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
             const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
@@ -319,13 +338,13 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
               const spec = native[index];
               const entry = command[index];
               let output = '';
-              for (const id of spec.format === 'cargo' ? entry.cases : [null]) {
-                const args = spec.format === 'cargo' ? [...spec.args, id, '--', '--exact'] : spec.args;
-                const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs);
+              for (const symbol of spec.format === 'cargo' ? spec.symbols : [null]) {
+                const args = spec.format === 'cargo' ? [...spec.args, symbol, '--', '--exact'] : spec.args;
+                const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs, testEnv);
                 if (result.error) throw new Error(result.error);
                 output += result.value + '\n';
               }
-              results.push(...observedCases(spec.format, output, entry.cases));
+              results.push(...observedCases(spec.format, output, entry.cases, spec.symbols));
             }
             const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
             reports[key].push({ feature: feature.id, role: item.role, language: item.language,
@@ -343,11 +362,22 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
   return [...errors, ...checkCoverage(manifest, reports)];
 }
 
+export function selectFeatures(manifest, featureId) {
+  if (featureId === undefined) return manifest;
+  const feature = manifest.features?.find(item => item.id === featureId);
+  if (!feature) throw new Error(`unknown feature ${featureId}`);
+  return { ...manifest, features: [feature] };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const args = process.argv.slice(2);
+  if (args.length && (args.length !== 2 || args[0] !== '--feature'))
+    throw new Error('usage: coverage.mjs [--feature <id>]');
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const manifest = JSON.parse(await readFile(resolve(root, 'contracts/features.json'), 'utf8'));
-  const errors = await executeCoverage(manifest, root);
+  const selected = selectFeatures(manifest, args[1]);
+  const errors = await executeCoverage(selected, root);
   for (const error of errors) console.error(`feature coverage: ${error}`);
   if (errors.length) process.exitCode = 1;
-  else console.log(`feature coverage: ${manifest.features.length} contracts executed`);
+  else console.log(`feature coverage: ${selected.features.length} contracts executed`);
 }

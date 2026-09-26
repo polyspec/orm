@@ -4,13 +4,20 @@ import { mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { checkCoverage, databases, executeCoverage, languages } from './coverage.mjs';
+import { checkCoverage, databases, executeCoverage, languages, selectFeatures } from './coverage.mjs';
 
 const ownerTests = {
   go: 'clients/go/orm/dsn_test.go', php: 'clients/php/tests/dsn.php',
   rust: 'clients/rust/orm/tests/zone.rs', typescript: 'clients/typescript/tests/typecheck.ts',
 };
 const dependentTest = 'clients/go/model/model_test.go';
+
+test('one feature can run without declaring unrelated coverage complete', { timeout: 1000 }, () => {
+  const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
+  assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
+  assert.equal(selectFeatures(manifest).features.length, 2);
+  assert.throws(() => selectFeatures(manifest, 'missing'), /unknown feature missing/);
+});
 
 test('aggregate numeric TypeScript cases are owned by the client', { timeout: 1000 }, async () => {
   const root = new URL('../..', import.meta.url);
@@ -156,7 +163,7 @@ test('checker reads physical database state around each native test run', { time
     const db = new DatabaseSync(databasePath);
     db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
     db.close();
-    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); console.log('CASE first PASS');\n");
+    await writeFile(join(root, owner), "if (process.argv[2] !== 'first' || process.env.ORM_FEATURE_DATABASE !== 'sqlite' || process.env.ORM_FEATURE_DSN !== process.env.ORM_COVERAGE_TEST_SQLITE_DSN) process.exit(2); console.log('CASE first PASS');\n");
     // Exercise only the SQLite slot; the other database declarations are checked separately.
     const feature = manifest.features[0];
     feature.coverage.kind = 'database';
@@ -179,9 +186,9 @@ test('checker reads physical database state around each native test run', { time
 test('Go, PHP, and Rust native cases execute through their owning files', { timeout: 120000 }, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases = [
-    { language: 'go', part: 'clients/go/orm', file: 'clients/go/orm/owner_test.go', runner: 'go', id: 'TestFirst' },
+    { language: 'go', part: 'clients/go/orm', file: 'clients/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
     { language: 'php', part: 'clients/php/tests', file: 'clients/php/tests/owner.php', runner: 'php', id: 'first' },
-    { language: 'rust', part: 'clients/rust/orm', file: 'clients/rust/orm/src/lib.rs', runner: 'cargo', id: 'tests::first' },
+    { language: 'rust', part: 'clients/rust/orm', file: 'clients/rust/orm/src/lib.rs', runner: 'cargo', symbol: 'tests::first' },
   ];
   try {
     for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
@@ -192,12 +199,34 @@ test('Go, PHP, and Rust native cases execute through their owning files', { time
     await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
     for (const item of cases) {
       const manifest = { features: [{ id: 'sample', status: 'partial', clients: { [item.language]: 'partial' },
-        coverage: { kind: 'independent', cases: [item.id], dependents: [], owners: {
+        coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
           [item.language]: { part: item.part, tests: [item.file], commands: {
-            none: [{ runner: item.runner, test: item.file, cases: [item.id] }],
+            none: [{ runner: item.runner, test: item.file, cases: ['first'],
+              ...(item.symbol ? { symbols: { first: item.symbol } } : {}) }],
           } },
         } } }] };
       assert.deepEqual(await executeCoverage(manifest, root, 30000), [], item.language);
+      if (item.symbol) {
+        const command = manifest.features[0].coverage.owners[item.language].commands.none[0];
+        for (const symbols of [{}, { first: item.symbol, extra: 'Unused' }, { first: 'MissingNativeTest' }]) {
+          command.symbols = symbols;
+          const errors = await executeCoverage(manifest, root, 30000);
+          assert.match(errors.join('\n'), symbols.first === 'MissingNativeTest' ?
+            /test symbol MissingNativeTest is absent/ : /invalid native test command/, item.language);
+        }
+        command.cases = ['first', 'second'];
+        command.symbols = { first: item.symbol, second: item.symbol };
+        manifest.features[0].coverage.cases = ['first', 'second'];
+        assert.match((await executeCoverage(manifest, root, 30000)).join('\n'), /invalid native test command/);
+      }
     }
+    const go = cases[0];
+    await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
+    const skipped = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
+      coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+        go: { part: go.part, tests: [go.file], commands: { none: [{ runner: 'go', test: go.file,
+          cases: ['first'], symbols: { first: go.symbol } }] } },
+      } } }] };
+    assert.match((await executeCoverage(skipped, root, 30000)).join('\n'), /observed cases .* differ from TestFirst/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
