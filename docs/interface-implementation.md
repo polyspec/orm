@@ -6,7 +6,7 @@ Local verification: **25 conformance vectors × Go, PHP, Rust, and TypeScript ×
 
 | Interface | Implementation and verification |
 |---|---|
-| IF-01, IF-18, IF-32 | Each client plans requests in its own process with a port of the same planner and checks the schema hash of its models. The conformance vectors compare the planned SQL and binds of the four clients. `tests/interfaces/check` compares the 20 request records of Go, Rust, and TypeScript field by field |
+| IF-01, IF-18, IF-32 | Each client plans requests in its own process with a port of the same planner and checks the schema hash of its models. The conformance vectors compare the planned SQL and binds of the four clients. `tests/interfaces/check` compares the 20 request records of Go, PHP, Rust, and TypeScript field by field |
 | IF-02 | Column values keep their logical type. `TestConnectionTimeZone` and the equal tests of PHP, TypeScript, and Rust check date and time values in four time zones on three databases |
 | IF-03 ~ IF-08 | Generated models store the chain state in one core object. The `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, and `errors` vectors check connectors, groups, value shapes, join placement, and invalid chains |
 | IF-09 ~ IF-12 | 22 model methods are fixed per language: the generated Go models, the PHP and TypeScript base classes, and the Rust `orm-build` template. `terminal_by` and `terminal_reuse` check terminals and the reuse of one model |

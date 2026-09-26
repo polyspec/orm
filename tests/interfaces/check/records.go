@@ -46,11 +46,6 @@ func goWireType(t ast.Expr) string {
 }
 
 func checkRecords(lang string, symbols Symbols, records []Record) []string {
-	// PHP's array records are checked at the compiler boundary by generated
-	// Wire definitions. Reflection still checks Req.ir/Rows.plan ownership.
-	if lang == "php" {
-		return nil
-	}
 	byID, byNative := map[string]Record{}, map[string]Record{}
 	for _, r := range records {
 		byID[r.ID] = r
@@ -114,6 +109,37 @@ func checkRecords(lang string, symbols Symbols, records []Record) []string {
 		return out, nil
 	}
 	var failures []string
+	for _, r := range records {
+		if r.Native[lang] == "" {
+			failures = append(failures, lang+"/"+r.ID+": missing record mapping")
+		}
+	}
+	if len(failures) != 0 {
+		return failures
+	}
+	if lang == "php" && len(records) > 0 {
+		prefix := records[0].Native[lang]
+		if strings.LastIndex(prefix, "::") < 0 {
+			return []string{"php records: missing validator mapping"}
+		}
+		prefix = prefix[:strings.LastIndex(prefix, "::")+2]
+		expected, actual := Symbols{}, Symbols{}
+		for _, r := range records {
+			key := r.Native[lang] + "#wire"
+			if !strings.HasPrefix(key, prefix) {
+				failures = append(failures, "php/"+r.ID+": record is outside the validator")
+			}
+			expected[key] = "record"
+		}
+		for key := range symbols {
+			if strings.HasPrefix(key, prefix) && strings.HasSuffix(key, "#wire") {
+				actual[key] = "record"
+			}
+		}
+		for _, mismatch := range differences(expected, actual) {
+			failures = append(failures, "php records: "+mismatch)
+		}
+	}
 	for _, r := range records {
 		actual, err := readNative(r)
 		if err != nil {

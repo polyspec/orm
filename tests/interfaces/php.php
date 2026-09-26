@@ -68,6 +68,25 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
         if ($m->getDeclaringClass()->getName() !== $name) { continue; }
         $out[$key . '::' . $m->getName()] = implode(' ', Reflection::getModifierNames($m->getModifiers())) . ' function ' . $m->getName() . $signature($m);
     }
+    if ($r->hasConstant('RECORDS') && $r->getReflectionConstant('RECORDS')->getDeclaringClass()->getName() === $name) {
+        $records = $r->getReflectionConstant('RECORDS')->getValue();
+        if (!is_array($records)) { throw new UnexpectedValueException("$key RECORDS must be an array"); }
+        $wireType = static function (string $native) use (&$wireType): string {
+            if (preg_match('/^(list|map)<(.+)>$/', $native, $matches) === 1) {
+                return $matches[1] . '<' . $wireType($matches[2]) . '>';
+            }
+            return match ($native) { 'int' => 'integer', 'string' => 'text', default => $native };
+        };
+        foreach ($records as $record => $fields) {
+            if (!is_string($record) || !is_array($fields)) { throw new UnexpectedValueException("$key RECORDS entry is invalid"); }
+            $wire = [];
+            foreach ($fields as $field => $nativeType) {
+                if (!is_string($field) || !is_string($nativeType)) { throw new UnexpectedValueException("$key RECORDS field is invalid"); }
+                $wire[$field] = $wireType($nativeType);
+            }
+            $out[$key . '::' . $record . '#wire'] = json_encode($wire, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        }
+    }
 }
 foreach (get_defined_functions()['user'] as $name) {
     $f = new ReflectionFunction($name);

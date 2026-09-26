@@ -16,6 +16,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - [ ] I2 Regenerate `contracts/interfaces.json`, the generated component page, and the symbol checks for the model syntax.
 - [ ] I3 Rewrite the implementation matrix for the model syntax and the in-process planners.
 - [o] I4 Verify connections, transactions, relations, writes, and time zones on physical databases in all four clients.
+- [o] I4.1 Compare all 20 PHP request record declarations with the shared field and nested-type definitions. Source mutations must fail the checker, and the PHP-only declaration check must pass.
 
 ## Online documentation
 
