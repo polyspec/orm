@@ -27,7 +27,7 @@ pub trait Model: Clone + Send + Sync + 'static {
     fn from_core(core: Core) -> Self;
     fn into_core(self) -> Core;
     /// Stores a decoded column value; false when name is not a column.
-    fn assign(&mut self, name: &str, value: Val) -> bool;
+    fn assign(&mut self, name: &str, value: Val) -> Result<bool>;
     /// Reads a column value; None when name is not a column.
     fn value(&self, name: &str) -> Option<Val>;
 }
@@ -36,7 +36,7 @@ pub trait Model: Clone + Send + Sync + 'static {
 pub trait AnyModel: Any + Send + Sync {
     fn core_dyn(&self) -> &Core;
     fn core_dyn_mut(&mut self) -> &mut Core;
-    fn assign_dyn(&mut self, name: &str, value: Val) -> bool;
+    fn assign_dyn(&mut self, name: &str, value: Val) -> Result<bool>;
     fn value_dyn(&self, name: &str) -> Option<Val>;
     fn as_any(&self) -> &dyn Any;
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
@@ -49,7 +49,7 @@ impl<M: Model> AnyModel for M {
     fn core_dyn_mut(&mut self) -> &mut Core {
         self.core_mut()
     }
-    fn assign_dyn(&mut self, name: &str, value: Val) -> bool {
+    fn assign_dyn(&mut self, name: &str, value: Val) -> Result<bool> {
         self.assign(name, value)
     }
     fn value_dyn(&self, name: &str) -> Option<Val> {
@@ -152,6 +152,7 @@ pub(crate) fn val_param(v: &Val) -> Param {
         Val::DateTime(t) => Param::DateTime(*t),
         Val::Date(d) => Param::Date(*d),
         Val::Bool(b) => Param::Bool(*b),
+        Val::Point(point) => Param::Point(*point),
         Val::Json(j) => Param::Str(j.to_string()),
         Val::Ordered(j) => Param::Str(j.compact()),
     }
@@ -167,7 +168,7 @@ pub(crate) fn param_val(p: &Param) -> Val {
         Param::Bytes(b) => Val::Bytes(b.clone()),
         Param::DateTime(t) => Val::DateTime(*t),
         Param::Date(d) => Val::Date(*d),
-        Param::Point(p) => Val::Str(crate::value::point_text(*p).unwrap_or_default()),
+        Param::Point(p) => Val::Point(*p),
     }
 }
 
@@ -186,19 +187,19 @@ struct QueryResult {
 }
 
 impl QueryResult {
-    fn related(&self, ch: &crate::plan::Child, parent: &[Val]) -> Vec<&[Val]> {
-        let Some(sr) = self.steps.get(&ch.step) else { return Vec::new() };
+    fn related(&self, ch: &crate::plan::Child, parent: &[Val]) -> Result<Vec<&[Val]>> {
+        let Some(sr) = self.steps.get(&ch.step) else { return Ok(Vec::new()) };
         let st = &self.plan.steps[ch.step as usize];
         if let Some(ifp) = st.parent.as_ref().and_then(|p| p.if_parent.as_ref()) {
-            if !same_scalar(&parent[ifp.index], &self.params[ifp.param]) {
-                return Vec::new();
+            if !same_scalar(&parent[ifp.index], &self.params[ifp.param])? {
+                return Ok(Vec::new());
             }
         }
-        let Some(key) = Key::of_row(parent, &ch.parent_keys) else { return Vec::new() };
-        match sr.by_key.get(&key) {
+        let Some(key) = Key::of_row(parent, &ch.parent_keys)? else { return Ok(Vec::new()) };
+        Ok(match sr.by_key.get(&key) {
             Some(idxs) => idxs.iter().map(|&i| sr.data[i].as_slice()).collect(),
             None => Vec::new(),
-        }
+        })
     }
 }
 
@@ -305,7 +306,7 @@ async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
             let pasm = pst.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
             let raw = ex.query(pst, &part.params, Vec::new()).await?;
             for row in positional(&raw, &pasm, aes_keys, db.inner.zone)? {
-                if seen.insert(Key::of_row(&row, &pasm.key)) {
+                if seen.insert(Key::of_row(&row, &pasm.key)?) {
                     main.push(row);
                 }
             }
@@ -318,9 +319,9 @@ async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
         }
         let pr = st.parent.as_ref().expect("relation step has a parent");
         let vals = if pr.step == 0 {
-            parent_values(pr, out.main.iter().map(Vec::as_slice), &req.params)
+            parent_values(pr, out.main.iter().map(Vec::as_slice), &req.params)?
         } else {
-            parent_values(pr, out.steps[&pr.step].data.iter().map(Vec::as_slice), &req.params)
+            parent_values(pr, out.steps[&pr.step].data.iter().map(Vec::as_slice), &req.params)?
         };
         let mut sr = StepRows { data: Vec::new(), by_key: HashMap::new() };
         if !vals.is_empty() {
@@ -331,7 +332,7 @@ async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
             }
             let keys = child_keys(&plan, st.id);
             for (j, row) in sr.data.iter().enumerate() {
-                if let Some(key) = Key::of_row(row, &keys) {
+                if let Some(key) = Key::of_row(row, &keys)? {
                     sr.by_key.entry(key).or_default().push(j);
                 }
             }
@@ -368,24 +369,24 @@ impl<'a> Assembler<'a> {
                 st.hidden.insert(col.name.clone());
             }
             st.add_name(&col.name);
-            if !col.column.is_empty() && col.column == col.name && m.assign_dyn(&col.name, v.clone()) {
+            if !col.column.is_empty() && col.column == col.name && m.assign_dyn(&col.name, v.clone())? {
                 continue;
             }
             st.extra.insert(col.name.clone(), v);
         }
         for key in &asm.key {
-            let name = asm.columns.iter().find(|c| c.index == key.index).map(|c| c.name.clone()).unwrap_or_default();
-            if let Some(v) = m.value_dyn(&name) {
-                st.original.insert(name, val_param(&v));
-            }
+            let name = asm.columns.iter().find(|c| c.index == key.index).ok_or_else(|| Error::internal("key column index is missing"))?.name.clone();
+            let value = m.value_dyn(&name).or_else(|| st.extra.get(&name).cloned()).ok_or_else(|| Error::internal(format!("key column {name} is missing")))?;
+            st.original.insert(name, val_param(&value));
         }
-        if let Ok(ent) = b.ent.entity_schema() {
-            let updated = ent.updated_column();
-            if !updated.is_empty() && st.names.iter().any(|n| n == updated) {
-                if let Some(v) = m.value_dyn(updated) {
-                    st.original.insert(updated.to_owned(), val_param(&v));
-                }
-            }
+        let ent = b.ent.entity_schema()?;
+        let updated = ent.updated_column();
+        if !updated.is_empty() && st.names.iter().any(|n| n == updated) {
+            let value = m
+                .value_dyn(updated)
+                .or_else(|| st.extra.get(updated).cloned())
+                .ok_or_else(|| Error::internal(format!("updated column {updated} is missing")))?;
+            st.original.insert(updated.to_owned(), val_param(&value));
         }
         for (name, value) in &b.news {
             m.core_dyn_mut().news.insert(name.clone(), value.clone());
@@ -415,13 +416,13 @@ impl<'a> Assembler<'a> {
                 .find(|r| result_name(&r.child, r.many) == ch.rel)
                 .map(|r| (r.child.as_ref(), r.many))
                 .ok_or_else(|| Error::internal(format!("relation result {} without a model", ch.rel)))?;
-            let rows: Vec<Vec<Val>> = self.res.related(ch, row).into_iter().map(|r| r.to_vec()).collect();
+            let rows: Vec<Vec<Val>> = self.res.related(ch, row)?.into_iter().map(|r| r.to_vec()).collect();
             let casm = self.res.plan.steps[ch.step as usize].assemble.clone().expect("relation step has an assemble");
             if many {
                 let mut items = Vec::new();
                 for cr in &rows {
                     let built = self.model(child, &casm, cr)?;
-                    let key = collection_key(child, built.model.as_ref(), &casm, cr);
+                    let key = collection_key(child, built.model.as_ref(), &casm, cr)?;
                     items.push((key, built.model));
                 }
                 let coll = (child.ent.collect)(items, HashMap::new());
@@ -439,9 +440,9 @@ impl<'a> Assembler<'a> {
     }
 }
 
-fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Key {
+fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Result<Key> {
     if let Some(f) = &c.fetch_key {
-        return f(m);
+        return Ok(f(m));
     }
     if !c.key_name.is_empty() {
         if let Some(v) = m.value_dyn(&c.key_name) {
@@ -451,7 +452,7 @@ fn collection_key(c: &Core, m: &dyn AnyModel, asm: &Assemble, row: &[Val]) -> Ke
             return Key::of(v);
         }
     }
-    Key::of_row(row, &asm.key).unwrap_or(Key::S(String::new()))
+    Key::of_row(row, &asm.key)?.ok_or_else(|| Error::internal("selected row has no collection key"))
 }
 
 struct Loaded {
@@ -482,7 +483,7 @@ async fn assemble(c: &Core, req: &Req, res: &QueryResult) -> Result<Loaded> {
     let mut items = Vec::new();
     for row in &res.main {
         let built = a.model(c, &asm, row)?;
-        let key = collection_key(c, built.model.as_ref(), &asm, row);
+        let key = collection_key(c, built.model.as_ref(), &asm, row)?;
         items.push((key, built.model, built.builder));
     }
     let mut out: Vec<(Key, Box<dyn AnyModel>)> = Vec::new();
@@ -503,12 +504,12 @@ async fn assemble(c: &Core, req: &Req, res: &QueryResult) -> Result<Loaded> {
     Ok(Loaded { items: out, fetched })
 }
 
-fn value_key(v: &Option<Val>) -> String {
-    match v {
+fn value_key(v: &Option<Val>) -> Result<String> {
+    Ok(match v {
         None | Some(Val::Null) => "\0".into(),
         Some(Val::Bool(b)) => (*b as i64).to_string(),
-        Some(v) => v.as_string(),
-    }
+        Some(v) => v.as_string()?,
+    })
 }
 
 /// Runs a relation whose child has its own connection and attaches the rows.
@@ -516,16 +517,21 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
     let ch = &rel.child;
     let mut values = Vec::new();
     let mut seen = HashSet::new();
-    let allowed = |p: &dyn AnyModel| match &ch.possible {
-        Some((column, value)) => p.value_dyn(column).map(|v| same_scalar(&v, value)).unwrap_or(false),
-        None => true,
+    let allowed = |p: &dyn AnyModel| -> Result<bool> {
+        match &ch.possible {
+            Some((column, value)) => match p.value_dyn(column) {
+                Some(v) => same_scalar(&v, value),
+                None => Ok(false),
+            },
+            None => Ok(true),
+        }
     };
     for p in parents.iter() {
-        if !allowed(p.as_ref()) {
+        if !allowed(p.as_ref())? {
             continue;
         }
         let v = p.value_dyn(&ch.match_left);
-        if matches!(v, None | Some(Val::Null)) || !seen.insert(value_key(&v)) {
+        if matches!(v, None | Some(Val::Null)) || !seen.insert(value_key(&v)?) {
             continue;
         }
         values.push(val_param(v.as_ref().unwrap()));
@@ -544,7 +550,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         }
         let rows = Box::pin(load(&q, "all")).await?;
         for (k, m) in rows.items {
-            let key = value_key(&m.value_dyn(&ch.match_right));
+            let key = value_key(&m.value_dyn(&ch.match_right))?;
             let list = by_key.entry(key).or_default();
             if ch.group_limit > 0 && list.len() >= ch.group_limit as usize {
                 continue;
@@ -555,13 +561,14 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
     let shared: HashMap<String, Shared> = by_key.into_iter().map(|(k, v)| (k, v.into_iter().map(|(key, m)| (key, Arc::from(m))).collect())).collect();
     let name = result_name(ch, rel.many);
     for p in parents.iter_mut() {
-        let matched: Shared = if allowed(p.as_ref()) { shared.get(&value_key(&p.value_dyn(&ch.match_left))).cloned().unwrap_or_default() } else { Vec::new() };
+        let matched: Shared =
+            if allowed(p.as_ref())? { shared.get(&value_key(&p.value_dyn(&ch.match_left))?).cloned().unwrap_or_default() } else { Vec::new() };
         let st = p.core_dyn_mut().row.get_or_insert_with(RowState::default);
         if st.related.contains_key(&name) {
             return Err(config(format!("relation result name {name} is used twice")));
         }
         let value = if rel.many {
-            let items: Vec<(Key, Box<dyn AnyModel>)> = matched.iter().map(|(k, m)| (k.clone(), clone_model(ch, m.as_ref()))).collect();
+            let items: Vec<(Key, Box<dyn AnyModel>)> = matched.iter().map(|(k, m)| Ok((k.clone(), clone_model(ch, m.as_ref())?))).collect::<Result<_>>()?;
             RelatedValue::Many((ch.ent.collect)(items, HashMap::new()))
         } else {
             RelatedValue::One(matched.first().map(|(_, m)| m.clone()))
@@ -572,17 +579,26 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
 }
 
 /// A copy of a loaded model with its field values.
-fn clone_model(template: &Core, m: &dyn AnyModel) -> Box<dyn AnyModel> {
+fn clone_model(template: &Core, m: &dyn AnyModel) -> Result<Box<dyn AnyModel>> {
     let core = m.core_dyn().clone();
     let mut out = (template.ent.new)(core.clone());
     if let Some(row) = &core.row {
         for name in &row.names {
             if let Some(v) = m.value_dyn(name) {
-                out.assign_dyn(name, v);
+                // Selected expressions live in the cloned Core row, not a model field.
+                out.assign_dyn(name, v)?;
             }
         }
     }
-    out
+    Ok(out)
+}
+
+fn assign_model<M: Model>(model: &mut M, name: &str, value: Val) -> Result<()> {
+    if model.assign(name, value)? {
+        Ok(())
+    } else {
+        Err(Error::internal(format!("model has no column {name}")))
+    }
 }
 
 fn typed<M: Model>(m: Box<dyn AnyModel>) -> M {
@@ -625,19 +641,23 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     }
     let ex = terminal(c)?;
     let mut q = c.clone();
-    q.limit = Some(((page - 1) * per_page, per_page));
+    let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
+    q.limit = Some((offset, per_page));
     let mut req = build(&q, "paginate");
     let db = ex.db().clone();
     let res = select(&ex, &mut req).await?;
     let count = res.plan.steps.iter().find(|s| s.role == "count").ok_or_else(|| Error::internal("paginate plan has no count step"))?.clone();
     let rows = ex.query(&count, &req.params, Vec::new()).await?;
-    let total = first_cell(&rows, ex.db().inner.zone)?.as_i64();
+    let total = first_cell(&rows, ex.db().inner.zone)?.as_i64()?;
+    if total < 0 {
+        return Err(Error::internal("negative row count"));
+    }
     let loaded = assemble(&q, &req, &res).await?;
     let _ = db;
     Ok(Page {
         items: Collection::from_boxes(loaded.items, loaded.fetched),
         total_count: total,
-        total_pages: (total + per_page as i64 - 1) / per_page as i64,
+        total_pages: total / per_page as i64 + i64::from(total % per_page as i64 != 0),
         page,
         per_page,
     })
@@ -657,11 +677,11 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
         if kind != "count" {
             return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "a split IN list can be merged only for a count".into() });
         }
-        let mut total = 0;
+        let mut total: i64 = 0;
         for mut part in parts {
             let pp = db.plan(&mut part).await?;
             let rows = ex.query(&pp.steps[0], &part.params, Vec::new()).await?;
-            total += first_cell(&rows, ex.db().inner.zone)?.as_i64();
+            total = total.checked_add(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).ok_or_else(|| Error::internal("row count exceeds i64 range"))?;
         }
         return Ok(Val::I64(total));
     }
@@ -671,7 +691,11 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
 
 /// The number of matching rows.
 pub async fn get_count(c: &Core) -> Result<i64> {
-    Ok(scalar(c, "count").await?.as_i64())
+    let count = scalar(c, "count").await?.as_i64()?;
+    if count < 0 {
+        return Err(Error::internal("negative row count"));
+    }
+    Ok(count)
 }
 
 /// The sum of the column selected with sum_<col>().
@@ -679,7 +703,7 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
     if c.agg_fn != "sum" {
         return Err(config("get_sum requires sum_<col>()"));
     }
-    Ok(scalar(c, "sum").await?.as_f64())
+    scalar(c, "sum").await?.as_f64()
 }
 
 /// The average of the column selected with avg_<col>().
@@ -687,7 +711,7 @@ pub async fn get_avg(c: &Core) -> Result<f64> {
     if c.agg_fn != "avg" {
         return Err(config("get_avg requires avg_<col>()"));
     }
-    Ok(scalar(c, "avg").await?.as_f64())
+    scalar(c, "avg").await?.as_f64()
 }
 
 /// The statement of gets() without executing it.
@@ -752,7 +776,7 @@ async fn write(ex: &Executor, req: &mut Req) -> Result<(u64, u64)> {
     let st = &plan.steps[0];
     if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
         let rows = ex.query(st, &req.params, Vec::new()).await?;
-        return Ok((first_cell(&rows, ex.db().inner.zone)?.as_i64() as u64, 1));
+        return Ok((u64::try_from(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).map_err(|_| Error::internal("negative row count"))?, 1));
     }
     let (id, affected) = ex.execute(st, &req.params).await?;
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
@@ -791,23 +815,24 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
         st.add_name(&s.column);
         match &s.value {
             SetValue::Value(v) => {
-                out.assign(&s.column, param_val(v));
+                assign_model(&mut out, &s.column, param_val(v))?;
             }
             SetValue::Json(v) => {
-                out.assign(&s.column, Val::Json(v.clone()));
+                assign_model(&mut out, &s.column, Val::Json(v.clone()))?;
             }
             SetValue::Ordered(v) => {
-                out.assign(&s.column, Val::Ordered(v.clone()));
+                assign_model(&mut out, &s.column, Val::Ordered(v.clone()))?;
             }
             SetValue::Null => {
-                out.assign(&s.column, Val::Null);
+                assign_model(&mut out, &s.column, Val::Null)?;
             }
             _ => {}
         }
     }
     if !ent.auto.is_empty() {
         st.add_name(&ent.auto);
-        out.assign(&ent.auto, Val::I64(id as i64));
+        let id = i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?;
+        assign_model(&mut out, &ent.auto, Val::I64(id))?;
     }
     st.loaded = true;
     for pk in &ent.pk {
@@ -948,7 +973,7 @@ fn with_aes_columns<M: Model>(m: &M, ent: &EntitySchema) -> Result<Vec<SetSpec>>
         if !loaded {
             return Err(config(format!("changing an AES column of {} requires a row loaded with {}", ent.name, col.name)));
         }
-        let v = m.value(&col.name).unwrap_or(Val::Null);
+        let v = m.value(&col.name).ok_or_else(|| Error::internal(format!("model has no column {}", col.name)))?;
         let value = match v {
             Val::Null => SetValue::Null,
             Val::Ordered(o) => SetValue::Ordered(o),
@@ -1086,7 +1111,7 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
         }
         let v = match m.value_dyn(name) {
             Some(v) => v,
-            None => st.extra.get(name).cloned().unwrap_or(Val::Null),
+            None => st.extra.get(name).cloned().ok_or_else(|| Error::internal(format!("model output column {name} is missing")))?,
         };
         out.insert(name.clone(), v.to_json()?);
     }
@@ -1150,7 +1175,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         }
         let v = match m.value_dyn(name) {
             Some(v) => v,
-            None => st.extra.get(name).cloned().unwrap_or(Val::Null),
+            None => st.extra.get(name).cloned().ok_or_else(|| Error::internal(format!("model output column {name} is missing")))?,
         };
         let text = match &v {
             Val::Ordered(o) => o.compact(),

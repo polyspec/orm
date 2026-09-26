@@ -25,45 +25,39 @@ pub const NOW_MASK: &str = "$NOW";
 
 /// Compares a row value with a bound parameter regardless of representation
 /// (bool vs int, driver width): both are reduced to the same canonical text.
-pub(crate) fn same_scalar(v: &Val, p: &Param) -> bool {
-    let a = match v {
-        Val::Null => return matches!(p, Param::Null),
-        Val::Bool(b) => (*b as i64).to_string(),
-        Val::I64(x) => x.to_string(),
-        Val::F64(x) => x.to_string(),
-        Val::Str(s) => s.clone(),
-        Val::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
-        Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
-        Val::Date(d) => d.to_string(),
-        Val::Json(j) => j.to_string(),
-        Val::Ordered(j) => j.compact(),
-    };
+pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
+    if matches!(v, Val::Null) {
+        return Ok(matches!(p, Param::Null));
+    }
+    let a = v.as_string()?;
     let b = match p {
-        Param::Null => return false,
+        Param::Null => return Ok(false),
         Param::Bool(b) => (*b as i64).to_string(),
         Param::I64(x) => x.to_string(),
         Param::F64(x) => x.to_string(),
         Param::Str(s) => s.clone(),
-        Param::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+        Param::Bytes(b) => std::str::from_utf8(b)
+            .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "relation key bytes are not UTF-8".into() })?
+            .to_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
-        Param::Point(p) => format!("{},{}", p.0, p.1),
+        Param::Point(p) => crate::point_text(*p)?,
     };
-    a == b
+    Ok(a == b)
 }
 
 /// Distinct non-null values a relation step binds, first-seen order, from the
 /// parent rows that pass `if_parent`.
-pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, params: &[Param]) -> Vec<Param> {
+pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'a [Val]>, params: &[Param]) -> crate::Result<Vec<Param>> {
     let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for row in parents {
         if let Some(ifp) = &pr.if_parent {
-            if !same_scalar(&row[ifp.index], &params[ifp.param]) {
+            if !same_scalar(&row[ifp.index], &params[ifp.param])? {
                 continue;
             }
         }
-        let Some(key) = Key::of_row(row, &pr.keys) else {
+        let Some(key) = Key::of_row(row, &pr.keys)? else {
             continue;
         };
         if seen.insert(key) {
@@ -77,6 +71,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
                     Val::F64(x) => Param::F64(*x),
                     Val::DateTime(t) => Param::DateTime(*t),
                     Val::Date(d) => Param::Date(*d),
+                    Val::Point(p) => Param::Point(*p),
                     Val::Json(j) => Param::Str(j.to_string()),
                     Val::Ordered(j) => Param::Str(j.compact()),
                     Val::Null => Param::Null,
@@ -84,7 +79,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
             }
         }
     }
-    out
+    Ok(out)
 }
 
 /// Rewrites the step's single `parent` placeholder into n placeholders. n is
@@ -174,7 +169,7 @@ pub(crate) fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     let Param::Str(s) = v else {
         return Err(Error::Config(format!("transform {} needs a string", b.transform)));
     };
-    Ok(Param::Str(transform(&b.transform, s)))
+    Ok(Param::Str(transform(&b.transform, s)?))
 }
 
 /// The hook's view of the binds: `secret` slots masked, everything else as bound.

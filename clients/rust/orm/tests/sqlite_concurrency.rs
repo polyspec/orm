@@ -40,13 +40,13 @@ impl Model for Service {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         match name {
-            "seq" => self.seq = v.as_i64(),
-            "name" => self.name = v.as_string(),
-            _ => return false,
+            "seq" => self.seq = v.as_i64()?,
+            "name" => self.name = v.as_string()?,
+            _ => return Ok(false),
         }
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         Some(match name {

@@ -37,14 +37,14 @@ impl Model for SoftRecord {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         match name {
-            "seq" => self.seq = v.as_i64(),
-            "name" => self.name = v.as_string(),
-            "deleted_at" => self.deleted_at = if v.is_null() { None } else { Some(v.as_datetime()) },
-            _ => return false,
+            "seq" => self.seq = v.as_i64()?,
+            "name" => self.name = v.as_string()?,
+            "deleted_at" => self.deleted_at = if v.is_null() { None } else { Some(v.as_datetime()?) },
+            _ => return Ok(false),
         }
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         Some(match name {
