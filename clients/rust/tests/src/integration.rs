@@ -382,10 +382,7 @@ async fn transactions(t: &Target) {
         .await;
     assert!(r.is_ok() && attempts.get() == 3, "retry: {} {r:?}", attempts.get());
     let r: orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
-    match t.driver {
-        "postgres" => r.unwrap(),
-        _ => assert_eq!(code(r), "CAPABILITY_UNSUPPORTED", "timeout_ms"),
-    }
+    r.unwrap();
     assert!(!db.utils().schema().empty().await.unwrap(), "schema().empty() on an installed schema");
     db.utils().schema().installed("public", "user").await.unwrap();
     assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
