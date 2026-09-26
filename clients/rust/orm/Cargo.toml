@@ -11,8 +11,8 @@ keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
 [dependencies]
-orm-schema = { path = "../orm-schema" }
-ordered-json = { git = "https://github.com/polyspec/ordered-json.git" }
+orm-schema = { version = "=0.0.1", path = "../orm-schema" }
+ordered-json = { version = "=0.0.1", git = "https://github.com/polyspec/ordered-json.git" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "rust_decimal", "json", "ipnet"] }
 rust_decimal = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
