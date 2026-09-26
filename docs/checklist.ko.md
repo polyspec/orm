@@ -16,7 +16,7 @@
 - [o] D1 VitePress로 Markdown 페이지를 빌드하고 구현 상태와 로컬 검색을 제공한다.
 - [o] D2 Mermaid 다이어그램을 SVG로 렌더링하고 JavaScript 없는 페이지 내용을 검증한다.
 - [o] D3 `/orm/` 링크, 앵커, 직접 HTML 경로, 검색, 모바일 탐색, 반복 빌드를 검사한다.
-- [ ] D4 현재 페이지를 https://polyspec.github.io/orm/ 에 배포하고 검증한다.
+- [!] D4 현재 페이지를 https://polyspec.github.io/orm/ 에 배포하고 검증한다. 원인: 정적 사이트를 두 번 빌드해 동일한 결과를 확인했고 로컬 정적 검사를 통과했으며 현재 Pages URL도 HTTP 200을 반환하지만, 이 저장소는 로컬 전용이고 개발 규칙이 현재 커밋의 push·게시를 금지한다. 재시도: 현재 `main` 커밋을 승인된 방식으로 push하거나 GitHub Actions 배포를 실행한 뒤 배포된 콘텐츠 hash와 경로를 검증한다.
 
 ## 1단계 — 모델 문법
 
