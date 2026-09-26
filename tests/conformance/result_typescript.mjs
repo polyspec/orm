@@ -1,10 +1,10 @@
 import { StyledValue } from '../../clients/typescript/dist/index.js';
-import { Value as JsonValue } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
+import { Value as JsonValue, parse } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 export function derivedInteger(value) {
   if (typeof value === 'number') {
     if (Number.isFinite(value) && Number.isInteger(value) && value >= -(2 ** 63) && value < 2 ** 63) return value;
-  } else if (typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)$/.test(value)) {
+  } else if (typeof value === 'bigint' || (typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)$/.test(value))) {
     const integer = BigInt(value);
     if (integer >= -(1n << 63n) && integer < 1n << 63n) {
       const number = Number(integer);
@@ -27,6 +27,7 @@ export async function executeVector(name, fn, transaction = null) {
 export function resultValue(value) {
   if (value === undefined) throw new Error('undefined conformance result');
   if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('non-finite conformance result');
+  if (typeof value === 'bigint') return resultValue(parse(value.toString()));
   if (typeof value === 'function' || typeof value === 'symbol') throw new Error('non-JSON conformance result');
   if (value instanceof StyledValue) {
     if (value.kind === 'value') resultValue(value.payload());
