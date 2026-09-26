@@ -254,3 +254,111 @@ pub struct Page<M> {
     pub page: u32,
     pub per_page: u32,
 }
+
+/// One grouped result with exactly the selected grouping values and its count.
+#[derive(Clone)]
+pub struct GroupRow {
+    values: Vec<(String, Val)>,
+    count: i64,
+}
+
+impl GroupRow {
+    pub(crate) fn new(values: Vec<(String, Val)>) -> Result<Self> {
+        let mut names = std::collections::HashSet::new();
+        for (name, _) in &values {
+            if !names.insert(name) {
+                return Err(crate::Error::Config(format!("group result repeats column {name}")));
+            }
+        }
+        let count = values.iter().find(|(name, _)| name == "row_count").ok_or_else(|| crate::Error::internal("group result has no row_count"))?.1.as_i64()?;
+        if count < 0 {
+            return Err(crate::Error::internal("group result has a negative row_count"));
+        }
+        Ok(Self { values, count })
+    }
+
+    pub fn count(&self) -> i64 {
+        self.count
+    }
+
+    pub fn value(&self, name: &str) -> Option<&Val> {
+        self.values.iter().find(|(key, _)| key == name).map(|(_, value)| value)
+    }
+
+    pub fn to_array(&self) -> Result<serde_json::Value> {
+        let mut values = serde_json::Map::new();
+        for (name, value) in &self.values {
+            values.insert(name.clone(), value.to_json()?);
+        }
+        Ok(serde_json::Value::Object(values))
+    }
+
+    pub fn to_json(&self) -> Result<String> {
+        let mut parts = Vec::with_capacity(self.values.len());
+        for (name, value) in &self.values {
+            let text = match value {
+                Val::Ordered(value) => value.compact(),
+                other => other.to_json()?.to_string(),
+            };
+            parts.push(format!("{}:{text}", serde_json::Value::String(name.clone())));
+        }
+        Ok(format!("{{{}}}", parts.join(",")))
+    }
+}
+
+/// Grouped results contain grouping values and row counts, never partial models.
+#[derive(Clone, Default)]
+pub struct GroupRows {
+    rows: Vec<GroupRow>,
+}
+
+impl GroupRows {
+    pub(crate) fn new(rows: Vec<GroupRow>) -> Self {
+        Self { rows }
+    }
+
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &GroupRow> {
+        self.rows.iter()
+    }
+
+    pub fn to_array(&self) -> Result<serde_json::Value> {
+        Ok(serde_json::Value::Array(self.rows.iter().map(GroupRow::to_array).collect::<Result<Vec<_>>>()?))
+    }
+
+    pub fn to_json(&self) -> Result<String> {
+        Ok(format!("[{}]", self.rows.iter().map(GroupRow::to_json).collect::<Result<Vec<_>>>()?.join(",")))
+    }
+}
+
+impl serde::Serialize for GroupRows {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        crate::model::raw_json(self.to_json()).map_err(serde::ser::Error::custom)?.serialize(serializer)
+    }
+}
+
+#[cfg(test)]
+mod group_tests {
+    use super::{GroupRow, GroupRows, Val};
+
+    #[test]
+    fn grouped_rows_contain_only_group_values_and_checked_counts() {
+        let row = GroupRow::new(vec![("is_close".into(), Val::Bool(false)), ("row_count".into(), Val::I64(3))]).unwrap();
+        assert_eq!(row.count(), 3);
+        assert_eq!(row.value("is_close"), Some(&Val::Bool(false)));
+        assert_eq!(row.value("name"), None);
+        let groups = GroupRows::new(vec![row]);
+        assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3}]"#);
+        assert_eq!(groups.to_array().unwrap(), serde_json::json!([{"is_close": false, "row_count": 3}]));
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "INTERNAL");
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");
+        assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
+    }
+}

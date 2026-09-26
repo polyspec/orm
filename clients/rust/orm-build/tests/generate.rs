@@ -50,6 +50,14 @@ fn generates_called_methods() {
 }
 
 #[test]
+fn generated_rows_reject_unselected_fields_and_separate_group_results() {
+    let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
+    assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
+    assert!(text.contains("pub fn get_start_dt(&self) -> orm::Result<orm::chrono::NaiveDateTime>"), "getter must report missing selection");
+    assert!(text.contains("pub async fn gets_count(&self) -> orm::Result<orm::GroupRows>"), "group rows must not be partial models");
+}
+
+#[test]
 fn column_function_order_takes_the_function() {
     let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(orm::year()); }").unwrap();
     assert!(text.contains("pub fn order_by_start_dt_asc(mut self, f: orm::Func) -> Self"));

@@ -77,7 +77,7 @@ async fn main() -> orm::Result<()> {
     };
 
     let rows = query().gets().await?;
-    let out: Vec<_> = rows.models().map(|r| json!({"seq": r.get_seq(), "name": r.get_name(), "is_display": r.get_is_display(), "like_count": r.get_like_count()})).collect();
+    let out: Vec<_> = rows.models().map(|r| Ok::<_, orm::Error>(json!({"seq": r.get_seq()?, "name": r.get_name()?, "is_display": r.get_is_display()?, "like_count": r.get_like_count()?}))).collect::<orm::Result<_>>()?;
     println!("{}", serde_json::to_string(&out).unwrap());
 
     let mut s = Vec::with_capacity(ITERATIONS);
