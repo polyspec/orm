@@ -35,7 +35,19 @@ fn norm(v: &Value, log: &Log) -> Value {
         Value::String(s) => {
             if log.times.contains(s) {
                 json!("$TS")
-            } else if s.starts_with("ORM-AES2") || s.to_lowercase().starts_with("4f524d2d41455332") {
+            } else if s.starts_with("ORM-AES2\0") {
+                assert!(s.len() >= 9 + 12 + 16, "invalid AES ciphertext bind");
+                json!("$AES")
+            } else if s.starts_with("ORM-AES2") {
+                panic!("invalid AES ciphertext bind")
+            } else if s.to_ascii_lowercase().starts_with("4f524d2d41455332") {
+                assert!(
+                    s.to_ascii_lowercase().starts_with("4f524d2d4145533200")
+                        && s.len() >= 2 * (9 + 12 + 16)
+                        && s.len() % 2 == 0
+                        && s.bytes().all(|b| b.is_ascii_hexdigit()),
+                    "invalid hex AES ciphertext bind"
+                );
                 json!("$AES")
             } else {
                 v.clone()
@@ -57,7 +69,16 @@ fn param_json(p: &Param) -> Result<Value, String> {
             json!(x)
         }
         Param::Str(s) => json!(s),
-        Param::Bytes(b) => json!(String::from_utf8(b.clone()).map_err(|e| e.to_string())?),
+        Param::Bytes(b) => {
+            if b.starts_with(b"ORM-AES2\0") {
+                if b.len() < 9 + 12 + 16 {
+                    return Err("invalid AES ciphertext bind".into());
+                }
+                json!("$AES")
+            } else {
+                json!(String::from_utf8(b.clone()).map_err(|e| e.to_string())?)
+            }
+        }
         Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
         Param::Point(p) => json!(orm::point_text(*p).map_err(|e| e.to_string())?),
@@ -67,9 +88,17 @@ fn param_json(p: &Param) -> Result<Value, String> {
 #[test]
 fn invalid_binds_cannot_be_rendered_as_valid_values() {
     assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
+    assert!(param_json(&Param::Bytes(b"ORM-AES2\0".to_vec())).is_err());
+    let mut encrypted = b"ORM-AES2\0".to_vec();
+    encrypted.extend([0xff; 12 + 16]);
+    assert_eq!(param_json(&Param::Bytes(encrypted)).unwrap(), json!("$AES"));
     assert!(param_json(&Param::Point((f64::NAN, 1.0))).is_err());
     assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
     assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
+    let log = Log::default();
+    assert!(std::panic::catch_unwind(|| norm(&json!("ORM-AES2broken"), &log)).is_err());
+    assert!(std::panic::catch_unwind(|| norm(&json!("4f524d2d4145533200bad"), &log)).is_err());
+    assert!(std::panic::catch_unwind(|| norm(&json!(format!("4f524d2d41455332ff{}", "00".repeat(28))), &log)).is_err());
 }
 
 /// Hides the identity of rows a vector created: their keys and update times
@@ -202,7 +231,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             let res: orm::Result<Value> = $body.await;
             let result = match res {
                 Ok(v) => v,
-                Err(e) => json!({"error": code(&e)}),
+                Err(e) => panic!("conformance vector {} failed: {e}", $name),
             };
             let statements = std::mem::take(&mut shared.lock().unwrap().statements);
             out.insert($name.to_owned(), json!({"statements": statements, "result": result}));
@@ -347,6 +376,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     run!("aggregates", async {
         let sum = author().service_seq(7).sum_read_count().get_sum().await?;
         let avg = author().service_seq(7).avg_like_count().get_avg().await?;
+        assert_eq!(avg.to_bits(), 0x404805c28f5c28f6, "aggregate average has an unexpected binary64 value");
         let groups = author().service_seq(7).group_by_is_close().order_by_is_close_asc().gets_count().await?;
         let page = author().service_seq(7).remove_all_columns().order_by_seq_asc().gets_page(3, 4).await?;
         Ok::<Value, orm::Error>(json!({
@@ -401,108 +431,140 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         let found = author().aes_hex_email("user42@example.com").get_count().await?;
         Ok::<Value, orm::Error>(json!({"row": row.to_array()?, "found": found}))
     });
-    run!("write_cycle", async {
-        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
-        let created = author()
-            .set_name("cycle")
-            .set_user_seq(1)
-            .set_service_seq(999)
-            .set_service_region_seq(1)
-            .set_service_member_seq(1)
-            .set_start_dt(start)
-            .set_end_dt(start)
-            .set_price(12.5)
-            .set_ip("10.0.0.1")
-            .set_aes_hex_email("cycle@example.com")
-            .set_json_setting(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal"))
-            .set_serialize_data(json!({"k": "v"}))
-            .new_label("created")
-            .create()
-            .await?;
-        let seq = created.get_seq().unwrap();
-        mask(shared, &[seq], &[]);
-        let mut created_array = created.to_array()?;
-        created_array["seq"] = json!("$SEQ");
-        let loaded = author().add_all_columns().get_by_seq(seq).await?;
-        mask(shared, &[], &[loaded.get_updated_ts().unwrap()]);
-        let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
-        loaded.update(true).await?;
-        let mut loaded = loaded.set_name("stale");
-        let stale = loaded.update(true).await;
-        let again = author().add_all_columns().get_by_seq(seq).await?;
-        let updated = pick(Some(&again), &["name", "read_count", "price", "ip", "aes_hex_email", "json_setting", "serialize_data", "start_dt"]);
-        again.delete(false).await?;
-        let gone = author().get_by_seq(seq).await;
-        Ok::<Value, orm::Error>(json!({"created": created_array, "updated": updated, "stale": code_of(stale), "deleted": code_of(gone)}))
-    });
-    run!("now_defaults", async {
-        let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
-        let before = chrono::Utc::now().naive_utc();
-        let created = author()
-            .set_name("clock")
-            .set_user_seq(1)
-            .set_service_seq(999)
-            .set_service_region_seq(1)
-            .set_service_member_seq(1)
-            .set_start_dt(start)
-            .set_end_dt(start)
-            .create()
-            .await?;
-        let seq = created.get_seq().unwrap();
-        mask(shared, &[seq], &[]);
-        let loaded = author().get_by_seq(seq).await?;
-        let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
-        // The runner connects in +00:00, so the wall-clock value is UTC.
-        let near = (created_ts - before).num_seconds().abs() < 60;
-        loaded.delete(false).await?;
-        Ok::<Value, orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
-    });
-    run!("required_columns", async {
-        let missing_state = failure(Task::new().connect(db).set_title("draft").create().await);
-        let missing_title = failure(Task::new().connect(db).set_state("open").create().await);
-        let created = Task::new().connect(db).set_title("draft").set_state("open").create().await?;
-        mask(shared, &[created.get_seq().unwrap()], &[]);
-        created.delete(false).await?;
-        Ok::<Value, orm::Error>(json!({"missing_state": missing_state, "missing_title": missing_title}))
-    });
-    run!("creates_and_save", async {
-        let rows = vec![
-            CompositeAccount::new().set_tenant_id(900).set_account_id(1).set_name("a"),
-            CompositeAccount::new().set_tenant_id(900).set_account_id(2).set_name("b"),
-            CompositeAccount::new().set_tenant_id(901).set_account_id(1).set_name("c"),
-        ];
-        let inserted = CompositeAccount::new().connect(db).creates(rows).await?;
-        CompositeAccount::new()
-            .connect(db)
-            .set_tenant_id(900)
-            .set_account_id(1)
-            .set_name("dup")
-            .duplication(CompositeAccount::new().set_name("updated"))
-            .create()
-            .await?;
-        CompositeAccount::new().connect(db).set_tenant_id(900).set_account_id(2).set_name("saved").save().await?;
-        let pairs = CompositeAccount::new().connect(db).tuple_tenant_id_with_account_id(vec![(900, 1), (900, 2)]).order_by_account_id_asc().gets().await?;
-        let all = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).order_by_tenant_id_asc().order_by_account_id_asc().gets().await?;
-        all.delete(false).await?;
-        let left = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).get_count().await?;
-        Ok::<Value, orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array()?, "left": left}))
-    });
-    run!("delete_recursive", async {
-        let service = Service::new().connect(db).set_name("recursive").create().await?;
-        let seq = service.get_seq().unwrap();
-        let mut seqs = vec![seq];
-        for i in 0..2 {
-            let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
-            seqs.push(member.get_seq().unwrap());
-        }
-        let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
-        let members = loaded.get_service_member_models().expect("selected service members").len();
-        mask(shared, &seqs, &[]);
-        loaded.delete(true).await?;
-        let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
-        let service2 = Service::new().connect(db).get_by_seq(seq).await;
-        Ok::<Value, orm::Error>(json!({"members": members, "members_left": left, "service_left": code_of(service2)}))
-    });
+
+    run!(
+        "write_cycle",
+        db.transaction(async || {
+            let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+            let created = author()
+                .set_name("cycle")
+                .set_user_seq(1)
+                .set_service_seq(999)
+                .set_service_region_seq(1)
+                .set_service_member_seq(1)
+                .set_start_dt(start)
+                .set_end_dt(start)
+                .set_price(12.5)
+                .set_ip("10.0.0.1")
+                .set_aes_hex_email("cycle@example.com")
+                .set_json_setting(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal"))
+                .set_serialize_data(json!({"k": "v"}))
+                .new_label("created")
+                .create()
+                .await
+                .map_err(|error| {
+                    eprintln!("write_cycle create: {error}");
+                    error
+                })?;
+            let seq = created.get_seq().unwrap();
+            mask(shared, &[seq], &[]);
+            let mut created_array = created.to_array().map_err(|error| {
+                eprintln!("write_cycle created row conversion: {error}");
+                error
+            })?;
+            created_array["seq"] = json!("$SEQ");
+            let loaded = author().add_all_columns().get_by_seq(seq).await.map_err(|error| {
+                eprintln!("write_cycle selected row: {error}");
+                error
+            })?;
+            mask(shared, &[], &[loaded.get_updated_ts().unwrap()]);
+            let mut loaded = loaded.set_name("cycle-2").plus_read_count(3);
+            loaded.update(true).await?;
+            let mut loaded = loaded.set_name("stale");
+            let stale = loaded.update(true).await;
+            let again = author().add_all_columns().get_by_seq(seq).await?;
+            let updated = pick(Some(&again), &["name", "read_count", "price", "ip", "aes_hex_email", "json_setting", "serialize_data", "start_dt"]);
+            again.delete(false).await?;
+            let gone = author().get_by_seq(seq).await;
+            Ok::<Value, orm::Error>(json!({"created": created_array, "updated": updated, "stale": code_of(stale), "deleted": code_of(gone)}))
+        })
+        .retry(0)
+    );
+    run!(
+        "now_defaults",
+        db.transaction(async || {
+            let start = chrono::NaiveDate::from_ymd_opt(2026, 6, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+            let before = chrono::Utc::now().naive_utc();
+            let created = author()
+                .set_name("clock")
+                .set_user_seq(1)
+                .set_service_seq(999)
+                .set_service_region_seq(1)
+                .set_service_member_seq(1)
+                .set_start_dt(start)
+                .set_end_dt(start)
+                .create()
+                .await?;
+            let seq = created.get_seq().unwrap();
+            mask(shared, &[seq], &[]);
+            let loaded = author().get_by_seq(seq).await?;
+            let (created_ts, updated_ts) = (loaded.get_created_ts().unwrap(), loaded.get_updated_ts().unwrap());
+            // The runner connects in +00:00, so the wall-clock value is UTC.
+            let near = (created_ts - before).num_seconds().abs() < 60;
+            loaded.delete(false).await?;
+            Ok::<Value, orm::Error>(json!({"created_near_clock": near, "created_equals_updated": created_ts == updated_ts}))
+        })
+        .retry(0)
+    );
+    run!(
+        "required_columns",
+        db.transaction(async || {
+            let missing_state = failure(Task::new().connect(db).set_title("draft").create().await);
+            let missing_title = failure(Task::new().connect(db).set_state("open").create().await);
+            let created = Task::new().connect(db).set_title("draft").set_state("open").create().await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            created.delete(false).await?;
+            Ok::<Value, orm::Error>(json!({"missing_state": missing_state, "missing_title": missing_title}))
+        })
+        .retry(0)
+    );
+    run!(
+        "creates_and_save",
+        db.transaction(async || {
+            let rows = vec![
+                CompositeAccount::new().set_tenant_id(900).set_account_id(1).set_name("a"),
+                CompositeAccount::new().set_tenant_id(900).set_account_id(2).set_name("b"),
+                CompositeAccount::new().set_tenant_id(901).set_account_id(1).set_name("c"),
+            ];
+            let inserted = CompositeAccount::new().connect(db).creates(rows).await?;
+            CompositeAccount::new()
+                .connect(db)
+                .set_tenant_id(900)
+                .set_account_id(1)
+                .set_name("dup")
+                .duplication(CompositeAccount::new().set_name("updated"))
+                .create()
+                .await?;
+            CompositeAccount::new().connect(db).set_tenant_id(900).set_account_id(2).set_name("saved").save().await?;
+            let pairs = CompositeAccount::new().connect(db).tuple_tenant_id_with_account_id(vec![(900, 1), (900, 2)]).order_by_account_id_asc().gets().await?;
+            let all = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).order_by_tenant_id_asc().order_by_account_id_asc().gets().await?;
+            all.delete(false).await?;
+            let left = CompositeAccount::new().connect(db).tenant_id(vec![900, 901]).get_count().await?;
+            Ok::<Value, orm::Error>(json!({"inserted": inserted, "pairs": pairs.to_array()?, "left": left}))
+        })
+        .retry(0)
+    );
+    run!(
+        "delete_recursive",
+        db.transaction(async || {
+            let service = Service::new().connect(db).set_name("recursive").create().await?;
+            let seq = service.get_seq().unwrap();
+            let mut seqs = vec![seq];
+            for i in 0..2 {
+                let member = ServiceMember::new().connect(db).set_service_seq(seq).set_user_seq(i + 1).create().await?;
+                seqs.push(member.get_seq().unwrap());
+            }
+            let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
+            let members = loaded.get_service_member_models().expect("selected service members").len();
+            mask(shared, &seqs, &[]);
+            loaded.delete(true).await?;
+            let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
+            let service2 = Service::new().connect(db).get_by_seq(seq).await;
+            Ok::<Value, orm::Error>(json!({"members": members, "members_left": left, "service_left": code_of(service2)}))
+        })
+        .retry(0)
+    );
+
     run!("transactions", async {
         let events = Mutex::new(Vec::new());
         let result: orm::Result<()> = db
