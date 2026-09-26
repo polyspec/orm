@@ -350,6 +350,7 @@ export class Core {
     if (styled) {
       if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
       if (!schema.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);
+      if (value.kind === 'value') value.payload();
     }
     this.values.set(column, value);
     this.putSet(value === null || (value instanceof StyledValue && value.kind === 'sql-null')
