@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 
-use crate::collection::{AnyCollection, Collection, Key, Page};
+use crate::collection::{AnyCollection, Collection, GroupRow, GroupRows, Key, Page};
 use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
 use crate::db::{Db, Executor, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
@@ -625,9 +625,23 @@ pub async fn gets_core<M: Model>(c: &Core, kind: &str) -> Result<Collection<M>> 
     Ok(Collection::from_boxes(rows.items, rows.fetched))
 }
 
-/// Runs a grouped count; each model carries row_count.
-pub async fn gets_count<M: Model>(m: &M) -> Result<Collection<M>> {
-    gets_core(m.core(), "group_count").await
+/// Runs a grouped count and returns only grouping values and row counts.
+pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
+    let ex = terminal(m.core())?;
+    let mut request = build(m.core(), "group_count");
+    let result = select(&ex, &mut request).await?;
+    let columns = &result.plan.steps[0].assemble.as_ref().ok_or_else(|| Error::internal("group count has no assemble"))?.columns;
+    let mut groups = Vec::with_capacity(result.main.len());
+    for row in &result.main {
+        let mut values = Vec::with_capacity(columns.len());
+        for column in columns {
+            if !column.hidden {
+                values.push((column.name.clone(), row.get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?));
+            }
+        }
+        groups.push(GroupRow::new(values)?);
+    }
+    Ok(GroupRows::new(groups))
 }
 
 /// Returns one page and the total count.

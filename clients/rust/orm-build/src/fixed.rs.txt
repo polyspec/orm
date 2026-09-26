@@ -77,8 +77,8 @@ impl T {
         orm::model::get_count(&self.__orm).await
     }
 
-    /// Returns grouped rows with row_count.
-    pub async fn gets_count(&self) -> orm::Result<orm::Collection<Self>> {
+    /// Returns grouping values and row counts without partial model fields.
+    pub async fn gets_count(&self) -> orm::Result<orm::GroupRows> {
         orm::model::gets_count(self).await
     }
 

@@ -785,7 +785,7 @@ fn model_source(gm: &Model<'_>) -> String {
     let mut b = String::new();
     let _ = write!(b, "/// A {} model or row.\n#[derive(Clone)]\npub struct {t} {{\n    __orm: orm::Core,\n", e.name);
     for c in &e.columns {
-        let _ = writeln!(b, "    pub {}: {},", ident(&c.name), field(c));
+        let _ = writeln!(b, "    {}: {},", ident(&c.name), field(c));
     }
     b.push_str("}\n\n");
     let _ = write!(
@@ -813,8 +813,8 @@ fn model_source(gm: &Model<'_>) -> String {
             let _ = writeln!(b, "            {:?} => self.{id} = {},", c.name, convert(bt));
         }
     }
-    b.push_str("            _ => return Ok(false),\n        }\n        Ok(true)\n    }\n\n");
-    b.push_str("    fn value(&self, name: &str) -> Option<orm::Val> {\n        Some(match name {\n");
+    b.push_str("            _ => return Ok(false),\n        }\n        self.__orm.mark_field_ready(name);\n        Ok(true)\n    }\n\n");
+    b.push_str("    fn value(&self, name: &str) -> Option<orm::Val> {\n        if !self.__orm.field_ready(name) { return None; }\n        Some(match name {\n");
     for c in &e.columns {
         let (bt, id) = (base(c), ident(&c.name));
         if field(c) != bt {
@@ -843,38 +843,38 @@ fn model_source(gm: &Model<'_>) -> String {
         let (bt, fd, id, col) = (base(c), field(c), ident(&c.name), c.name.as_str());
         b.push('\n');
         if fd != bt && copy_type(bt) {
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> {fd} {{\n        self.{id}\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{fd}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if fd != bt {
             let r = if bt == "Vec<u8>" { "&[u8]" } else { "&str" };
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> Option<{r}> {{\n        self.{id}.as_deref()\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<Option<{r}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id}.as_deref())\n    }}\n\n");
         } else if copy_type(bt) {
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> {bt} {{\n        self.{id}\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if bt == "String" {
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> &str {{\n        &self.{id}\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&str> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         } else if bt == "Vec<u8>" {
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> &[u8] {{\n        &self.{id}\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&[u8]> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         } else {
-            let _ = write!(b, "    /// Returns {col}.\n    pub fn get_{col}(&self) -> &{bt} {{\n        &self.{id}\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         }
         if bt == ORDERED {
             let _ = write!(
                 b,
-                "    /// Sets {col}; the JSON null stores NULL.\n    pub fn set_{col}(mut self, v: orm::ordered_json::Value) -> Self {{\n        self.{id} = v.clone();\n        self.__orm.set_ordered({col:?}, v);\n        self\n    }}\n\n"
+                "    /// Sets {col}; the JSON null stores NULL.\n    pub fn set_{col}(mut self, v: orm::ordered_json::Value) -> Self {{\n        self.{id} = v.clone();\n        self.__orm.set_ordered({col:?}, v);\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         } else if is_json(c) {
             let _ = write!(
                 b,
-                "    /// Sets {col}; a JSON null stores NULL.\n    pub fn set_{col}(mut self, v: impl Into<orm::serde_json::Value>) -> Self {{\n        let v = v.into();\n        self.{id} = v.clone();\n        self.__orm.set_json({col:?}, v);\n        self\n    }}\n\n"
+                "    /// Sets {col}; a JSON null stores NULL.\n    pub fn set_{col}(mut self, v: impl Into<orm::serde_json::Value>) -> Self {{\n        let v = v.into();\n        self.{id} = v.clone();\n        self.__orm.set_json({col:?}, v);\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         } else if fd != bt {
             let _ = write!(
                 b,
-                "    /// Sets {col}; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<{bt}>) -> Self {{\n        let v = v.into_nullable();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self\n    }}\n\n"
+                "    /// Sets {col}; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<{bt}>) -> Self {{\n        let v = v.into_nullable();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         } else {
             let _ = write!(
                 b,
-                "    /// Sets {col}.\n    pub fn set_{col}(mut self, v: impl Into<{bt}>) -> Self {{\n        let v: {bt} = v.into();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self\n    }}\n\n"
+                "    /// Sets {col}.\n    pub fn set_{col}(mut self, v: impl Into<{bt}>) -> Self {{\n        let v: {bt} = v.into();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         }
         let _ = write!(

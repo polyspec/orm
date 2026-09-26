@@ -25,7 +25,7 @@ pub use args::{
     point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
 };
 pub use chrono;
-pub use collection::{Collection, Key, Page};
+pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
 pub use core::Core;
 pub use db::{Config, Db, DbStats, OnQuery, Statement};
 pub use engine::Dialect;
