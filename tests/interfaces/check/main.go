@@ -88,6 +88,15 @@ func main() {
 	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 		fatal("invalid interface manifest")
 	}
+	codes, err := readErrorCatalog(abs)
+	must(err)
+	rules := append(append([]Rule{}, m.Rules...), m.Storage...)
+	if failures := checkErrorLabels(codes, rules, m.Sequences); len(failures) != 0 {
+		for _, failure := range failures {
+			fmt.Fprintln(os.Stderr, failure)
+		}
+		os.Exit(1)
+	}
 	diagram, err := contracts.Diagram()
 	must(err)
 	diagramPath := filepath.Join(abs, "docs/interfaces-model.md")
