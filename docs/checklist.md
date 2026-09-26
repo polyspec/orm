@@ -33,7 +33,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N3 Implement `utils().schema().install()` on MySQL, PostgreSQL, and SQLite in the four clients.
 - [o] N4 Apply connection time zones on the three databases: PostgreSQL offset zones, instant reads, SQLite clock defaults, and the MySQL named-zone error.
 - [ ] N5 Run the conformance checker against the in-process runners and record the vectors again.
-- [~] N5.1 Run all four clients on MySQL, PostgreSQL, and SQLite, compare every vector with recorded expectations, and confirm repeated execution leaves the observed database state unchanged.
+- [o] N5.1 Run all four clients on MySQL, PostgreSQL, and SQLite, compare every vector with recorded expectations, and confirm repeated execution leaves the observed database state unchanged. Evidence: `make conformance-check` passes; each database compares 25 vectors across four clients, and the physical result test executes each client twice with equal output and unchanged rows and counters.
 - [o] N5.1.1 Require all four outputs, reject stale and changed repeated results, bound runner execution, verify all table rows and declared counters, restore only declared test counters, and test counter observation and cleanup on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.1.1 Compare and record JSON numbers without float64 rounding; distinguish integers beyond 2^53 while treating equivalent decimal forms as equal.
 - [o] N5.1.1.2 Reject duplicate keys in nested JSON evidence and expectations, and fail when a database expectation file is missing.

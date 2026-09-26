@@ -887,14 +887,20 @@
             "end_dt": "2026-06-01 00:00:00.000000",
             "ip": "10.0.0.1",
             "json_setting": {
-              "a": 1
+              "kind": "value",
+              "value": {
+                "a": 1
+              }
             },
             "label": "created",
             "name": "cycle",
             "price": 12.5,
             "seq": "$SEQ",
             "serialize_data": {
-              "k": "v"
+              "kind": "value",
+              "value": {
+                "k": "v"
+              }
             },
             "service_member_seq": 1,
             "service_region_seq": 1,
@@ -908,13 +914,19 @@
             "aes_hex_email": "cycle@example.com",
             "ip": "10.0.0.1",
             "json_setting": {
-              "a": 1
+              "kind": "value",
+              "value": {
+                "a": 1
+              }
             },
             "name": "cycle-2",
             "price": 12.5,
             "read_count": 3,
             "serialize_data": {
-              "k": "v"
+              "kind": "value",
+              "value": {
+                "k": "v"
+              }
             },
             "start_dt": "2026-06-01 00:00:00.000000"
           }
