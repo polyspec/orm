@@ -45,18 +45,31 @@ fn norm(v: &Value, log: &Log) -> Value {
     }
 }
 
-fn param_json(p: &Param) -> Value {
-    match p {
+fn param_json(p: &Param) -> Result<Value, String> {
+    Ok(match p {
         Param::Null => Value::Null,
         Param::Bool(b) => json!(b),
         Param::I64(x) => json!(x),
-        Param::F64(x) => json!(x),
+        Param::F64(x) => {
+            if !x.is_finite() {
+                return Err("non-finite float bind".into());
+            }
+            json!(x)
+        }
         Param::Str(s) => json!(s),
-        Param::Bytes(b) => json!(String::from_utf8_lossy(b)),
+        Param::Bytes(b) => json!(String::from_utf8(b.clone()).map_err(|e| e.to_string())?),
         Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
-        Param::Point(p) => json!(orm::point_text(*p).unwrap_or_default()),
-    }
+        Param::Point(p) => json!(orm::point_text(*p).map_err(|e| e.to_string())?),
+    })
+}
+
+#[test]
+fn invalid_binds_cannot_be_rendered_as_valid_values() {
+    assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
+    assert!(param_json(&Param::Point((f64::NAN, 1.0))).is_err());
+    assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
+    assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
 }
 
 /// Hides the identity of rows a vector created: their keys and update times
@@ -100,7 +113,7 @@ fn pick<M: Model>(m: Option<&M>, names: &[&str]) -> Value {
     let all = orm::model::to_array(m).expect("array form");
     let mut out = Map::new();
     for n in names {
-        out.insert((*n).to_owned(), all.get(*n).cloned().unwrap_or(Value::Null));
+        out.insert((*n).to_owned(), all.get(*n).unwrap_or_else(|| panic!("missing selected field: {n}")).clone());
     }
     Value::Object(out)
 }
@@ -115,10 +128,24 @@ fn keys_of<M: Model>(c: &Collection<M>) -> Value {
 
 fn int(v: Option<Value>) -> i64 {
     match v {
-        Some(Value::Number(n)) => n.as_i64().or_else(|| n.as_f64().map(|f| f as i64)).unwrap_or(0),
-        Some(Value::String(s)) => s.parse().unwrap_or(0),
-        _ => 0,
+        Some(Value::Number(n)) => n.as_i64().unwrap_or_else(|| {
+            let f = n.as_f64().expect("JSON number");
+            assert!(f.is_finite() && f.fract() == 0.0 && f >= i64::MIN as f64 && f < 9_223_372_036_854_775_808.0,
+                "non-integral or out-of-range number: {n}");
+            f as i64
+        }),
+        Some(Value::String(s)) => s.parse().unwrap_or_else(|_| panic!("invalid integer text: {s}")),
+        other => panic!("missing or invalid integer value: {other:?}"),
     }
+}
+
+#[test]
+fn invalid_derived_integers_cannot_be_reported_as_zero() {
+    for value in [None, Some(json!("bad")), Some(json!(1.5)), Some(json!(9_223_372_036_854_775_808.0))] {
+        assert!(std::panic::catch_unwind(|| int(value)).is_err());
+    }
+    assert_eq!(int(Some(json!(0))), 0);
+    assert_eq!(int(Some(json!(2.0))), 2);
 }
 
 struct Args {
@@ -157,7 +184,10 @@ async fn main() {
         blind_index_key: "bench-blind-index".into(),
         on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
             let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = binds.iter().map(|b| norm(&param_json(b), &log)).collect();
+            let binds: Vec<Value> = binds
+                .iter()
+                .map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log))
+                .collect();
             log.statements.push(json!({"sql": sql, "binds": binds}));
         })),
         ..Default::default()
@@ -367,7 +397,10 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
     run!("get_query", async {
         let st = author().service_seq(7).and_lk_name("x").and_aes_hex_email("user7@example.com").order_by_seq_desc().limit(0, 5).get_query().await?;
         let log = Log::default();
-        let binds: Vec<Value> = st.binds.iter().map(|b| norm(&param_json(b), &log)).collect();
+        let binds: Vec<Value> = st.binds
+            .iter()
+            .map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log))
+            .collect();
         Ok::<Value, orm::Error>(json!({"sql": st.sql, "binds": binds}))
     });
     run!("aes_values", async {
@@ -470,7 +503,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
             seqs.push(member.get_seq());
         }
         let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
-        let members = loaded.get_service_member_models().map(|c| c.len()).unwrap_or(0);
+        let members = loaded.get_service_member_models().expect("selected service members").len();
         mask(shared, &seqs, &[]);
         loaded.delete(true).await?;
         let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;
