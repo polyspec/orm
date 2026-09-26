@@ -3,6 +3,7 @@ import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit
 import type { ChainKey, EntitySchema, SchemaSet } from './names.js';
 import { OrmError } from './runtime_error.js';
 import { ColumnFunction, ValueFunction } from './values.js';
+import { StyledValue } from './styled_value.js';
 
 export const CORE: unique symbol = Symbol('orm.core');
 
@@ -335,11 +336,24 @@ export class Core {
   }
   public aggregate(fn: string, column: string): void { this.aggFn = fn; this.agg = column; }
 
-  public column(name: string): unknown { return this.values.get(name) ?? null; }
+  public column(name: string): unknown {
+    if (this.values.has(name)) return this.values.get(name);
+    const styled = this.ent.schema.columns[name]?.styles?.some(style => ['json', 'jsons', 'serialize', 'yaml'].includes(style));
+    if (styled) throw new OrmError('COLUMN_UNSELECTED', `${name} was not selected`);
+    return null;
+  }
   /** Stores a column value and records it for the next write; null stores NULL. */
   public setValue(column: string, value: unknown): void {
+    const schema = this.ent.schema.columns[column];
+    if (schema === undefined) throw new OrmError('COLUMN_UNKNOWN', column);
+    const styled = schema.styles?.some(style => ['json', 'jsons', 'serialize', 'yaml'].includes(style));
+    if (styled) {
+      if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
+      if (!schema.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);
+    }
     this.values.set(column, value);
-    this.putSet(value === null ? { column, null: true } : { column, value });
+    this.putSet(value === null || (value instanceof StyledValue && value.kind === 'sql-null')
+      ? { column, null: true } : { column, value });
   }
 
   public putSet(spec: SetSpec): void {

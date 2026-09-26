@@ -16,7 +16,7 @@
     "schema:check": "node scripts/schema/check.mjs",
     "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit",
     "typescript:build": "npm --prefix clients/typescript run build",
-    "typescript:test": "npm run typescript:build && node tests/typescript/dsn.mjs && node tests/typescript/engine.mjs && node tests/typescript/generate.mjs && node tests/typescript/schema-cases.mjs && node tests/typescript/sqlite-auto-import.mjs && node tests/typescript/schema-tools.mjs && node tests/typescript/codec-vector.mjs && ./scripts/typescript/sqlite-test.sh"
+    "typescript:test": "npm run typescript:build && node tests/typescript/dsn.mjs && node tests/typescript/engine.mjs && node tests/typescript/generate.mjs && node tests/typescript/schema-cases.mjs && node tests/typescript/sqlite-auto-import.mjs && node tests/typescript/schema-tools.mjs && node tests/typescript/codec-vector.mjs && node clients/typescript/tests/styled-value.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
     "@types/node": "22.20.2",

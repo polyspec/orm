@@ -1,5 +1,6 @@
 export { CodecError, blindIndex, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
 export type { CodecValue, EncodedValue, JsonValue, Point } from './codec.js';
+export { StyledValue } from './styled_value.js';
 export { AesKeyring } from './aes.js';
 export type { AesRotationColumn, AesRowCodec } from './aes.js';
 export type * from './ir.js';
