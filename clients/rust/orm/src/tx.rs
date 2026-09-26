@@ -139,7 +139,9 @@ impl<'a, F> Transaction<'a, F> {
         self
     }
 
-    /// Sets the statement timeout in milliseconds (PostgreSQL only).
+    /// Bounds execution of the transaction callback in milliseconds. On
+    /// expiry, the callback is cancelled and its transaction is rolled back.
+    /// Zero disables the bound.
     pub fn timeout_ms(mut self, ms: u64) -> Self {
         self.timeout_ms = ms;
         self.set = true;
@@ -179,17 +181,27 @@ impl<'a, F> Transaction<'a, F> {
         }
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let result = FLOW.scope(stack, (self.f)()).await;
+            let callback = FLOW.scope(stack, (self.f)());
+            let result = if self.timeout_ms == 0 {
+                callback.await
+            } else {
+                match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
+                    Ok(result) => result,
+                    Err(_) => Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() }),
+                }
+            };
             match result {
                 Ok(v) => {
                     commit(&tx).await?;
                     return Ok(v);
                 }
                 Err(e) => {
-                    rollback(&tx).await;
+                    if let Err(rollback_error) = rollback(&tx).await {
+                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                    }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
                     }
@@ -229,12 +241,9 @@ where
     result
 }
 
-async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: u64) -> Result<TxShared> {
+async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
     if db.inner.closed.load(Ordering::Acquire) {
         return Err(Error::Config("database is closed".into()));
-    }
-    if timeout_ms > 0 && db.driver() != "postgres" {
-        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeout_ms is supported only by postgres".into() });
     }
     let level = isolation.map(Isolation::sql);
     let mut sqlite_mode = None;
@@ -257,10 +266,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             if read_only {
                 statement.push_str(" READ ONLY");
             }
-            let mut t = p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?;
-            if timeout_ms > 0 {
-                sqlx::raw_sql(sqlx::AssertSqlSafe(format!("SET LOCAL statement_timeout = {timeout_ms}")).into_sql_str()).execute(&mut *t).await?;
-            }
+            let t = p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?;
             TxInner::Postgres(t)
         }
         Pool::Sqlite(p) => {
@@ -355,20 +361,108 @@ async fn commit(tx: &TxShared) -> Result<()> {
     Ok(())
 }
 
-async fn rollback(tx: &TxShared) {
+async fn rollback(tx: &TxShared) -> Result<()> {
     tx.finished.store(true, Ordering::Release);
     let mut guard = tx.inner.lock().await;
-    if let Some(mut inner) = guard.take() {
-        let _ = finish(tx, &mut inner).await;
-        let _ = match inner {
-            TxInner::MySql(t) => t.rollback().await,
-            TxInner::Postgres(t) => t.rollback().await,
-            TxInner::Sqlite(t) => t.rollback().await,
-        };
+    let Some(mut inner) = guard.take() else {
+        return Err(Error::Config("transaction already finished".into()));
+    };
+    let cleanup = finish(tx, &mut inner).await;
+    let rolled_back = match inner {
+        TxInner::MySql(t) => t.rollback().await,
+        TxInner::Postgres(t) => t.rollback().await,
+        TxInner::Sqlite(t) => t.rollback().await,
+    };
+    match (cleanup, rolled_back) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(e), Ok(())) => Err(e),
+        (Ok(()), Err(e)) => Err(e.into()),
+        (Err(cleanup), Err(rollback)) => Err(Error::Config(format!("transaction cleanup failed ({cleanup}) and rollback failed ({rollback})"))),
     }
 }
 
 /// The retryable DEADLOCK error.
 pub fn transaction_conflict(message: impl Into<String>) -> Error {
     Error::Engine { code: codes::DEADLOCK.into(), msg: message.into() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn required_dsn(name: &str) -> String {
+        std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| panic!("{name} is required; database tests never skip"))
+    }
+
+    async fn execute(db: &Db, statement: &str) {
+        match db.pool() {
+            Pool::MySql(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
+            Pool::Postgres(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
+            Pool::Sqlite(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
+        }
+        .unwrap();
+    }
+
+    async fn count(db: &Db) -> i64 {
+        match db.pool() {
+            Pool::MySql(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
+            Pool::Postgres(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
+            Pool::Sqlite(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
+        }
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn callback_timeout_cancels_a_statement_and_rolls_back() {
+        let tmp = std::env::temp_dir().join(format!("orm-timeout-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let targets = [
+            ("sqlite", format!("sqlite://{}", tmp.join("timeout.sqlite").display())),
+            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
+            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
+        ];
+        for (driver, dsn) in targets {
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            execute(&db, "DROP TABLE IF EXISTS orm_timeout_probe").await;
+            execute(&db, "CREATE TABLE orm_timeout_probe (id INTEGER PRIMARY KEY)").await;
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                db.transaction(async || {
+                    let tx = active_for(&db).expect("transaction is active");
+                    tx.raw("INSERT INTO orm_timeout_probe (id) VALUES (1)").await?;
+                    match driver {
+                        "mysql" => tx.raw("SELECT SLEEP(0.2)").await?,
+                        "postgres" => tx.raw("SELECT pg_sleep(0.2)").await?,
+                        "sqlite" => tokio::time::sleep(std::time::Duration::from_millis(200)).await,
+                        _ => unreachable!(),
+                    }
+                    Ok(())
+                })
+                .timeout_ms(20)
+                .retry(0),
+            )
+            .await
+            .expect("transaction test timed out");
+            assert_eq!(result.unwrap_err().code(), codes::CANCELED, "{driver}: timeout code");
+            assert_eq!(count(&db).await, 0, "{driver}: transaction rolled back");
+            db.transaction(async || active_for(&db).expect("transaction is active").raw("INSERT INTO orm_timeout_probe (id) VALUES (2)").await)
+                .retry(0)
+                .await
+                .unwrap_or_else(|e| panic!("{driver}: next transaction: {e}"));
+            assert_eq!(count(&db).await, 1, "{driver}: next transaction committed");
+            db.transaction(async || {
+                active_for(&db).expect("transaction is active").raw("INSERT INTO orm_timeout_probe (id) VALUES (3)").await?;
+                tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+                Ok(())
+            })
+            .timeout_ms(0)
+            .retry(0)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: zero deadline: {e}"));
+            assert_eq!(count(&db).await, 2, "{driver}: zero disables the deadline");
+            execute(&db, "DROP TABLE orm_timeout_probe").await;
+            db.close().await;
+        }
+        std::fs::remove_dir_all(tmp).unwrap();
+    }
 }

@@ -42,9 +42,29 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 
 ## Connection
 
-`Db::connect(dsn, pool_size, config)` takes a DSN URI; the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Credentials and AES keys come from the environment or a secret manager.
+`Db::connect(dsn, pool_size, config)` takes a DSN URI; the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
 `db.utils().schema().install(schema_json)` creates the tables and indexes of a manifest in one transaction and keeps existing ones.
+
+## Required calls
+
+| Operation | Rust API |
+|---|---|
+| Validate a generated schema hash | `Schema::manifest()` validates the embedded manifest and its generated hash; `Manifest::load(bytes)` validates another manifest |
+| Select an engine and expose models | `Db::connect` selects the dialect from the DSN; each generated model embeds its schema and registers its entity descriptor in its generated module, so no global registration call is required |
+| Install schema objects | `db.utils().schema().install(model::SCHEMA.json())` |
+| Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
+| Bound a transaction callback | `db.transaction(callback).timeout_ms(milliseconds).await` |
+| Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
+| Cancel a statement or transaction callback | Drop its future; `timeout_ms` cancels the callback on expiry and awaits rollback |
+| Encrypt model columns | Declare `aes` and `aes_key_version` in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
+| Record audited writes | Declare `audit_log` and `audit` in the schema, install the audit tables, then set the named context with `db.utils().set_local` inside the transaction |
+
+`timeout_ms(0)` disables the callback deadline. A positive deadline covers callback execution,
+including statements it starts. Expiry returns `CANCELED` only after rollback succeeds; if
+rollback fails, the returned error reports both the timeout and rollback failure. Commit runs
+after a successful callback and is not subject to this deadline. Each transaction retains its
+own connection; a later transaction can use the connection after a cancelled statement.
 
 ## Errors
 
