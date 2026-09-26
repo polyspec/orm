@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "id": "sql_null",
+      "stored_text": null,
+      "output": {"kind": "sql-null"}
+    },
+    {
+      "id": "json_null",
+      "stored_text": "null",
+      "output": {"kind": "json", "value": null}
+    },
+    {
+      "id": "json_object_with_kind",
+      "stored_text": "{\"kind\":\"sql-null\"}",
+      "output": {"kind": "json", "value": {"kind": "sql-null"}}
+    },
+    {
+      "id": "empty_text",
+      "stored_text": "",
+      "error": "CODEC_DECODE"
+    },
+    {
+      "id": "unselected",
+      "error": "COLUMN_UNSELECTED"
+    }
+  ]
+}

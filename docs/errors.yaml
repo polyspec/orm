@@ -46,6 +46,8 @@ codes:
   # ---- executor ----
   - code: NO_ROWS                # strict one-row query matched no row
     origin: executor
+  - code: COLUMN_UNSELECTED      # a requested column was not included in the loaded row
+    origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)
