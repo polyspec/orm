@@ -8,6 +8,7 @@ import { OrmError } from './runtime_error.js';
 import { StyledValue, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
 import { decimalFromScaled } from './decimal.js';
+import { GroupRow, GroupRows } from './group_rows.js';
 
 export { CORE } from './core.js';
 
@@ -89,8 +90,8 @@ export abstract class Model implements ModelLike {
   }
   /** Returns the matching rows. */
   public async gets(): Promise<Collection<this>> { return load(this[CORE], 'all') as Promise<Collection<this>>; }
-  /** Returns grouped rows with row_count. */
-  public async getsCount(): Promise<Collection<this>> { return load(this[CORE], 'group_count') as Promise<Collection<this>>; }
+  /** Returns grouped values and checked row counts without partial models. */
+  public async getsCount(): Promise<GroupRows> { return grouped(this[CORE]); }
   public async getCount(): Promise<number> { return Number(await scalarOf(this[CORE], 'count')); }
   public async getSum(): Promise<number> { return aggregate(this[CORE], 'sum'); }
   public async getAvg(): Promise<number> { return aggregate(this[CORE], 'avg'); }
@@ -297,12 +298,98 @@ function collectionKey(c: Core, m: Core, asm: Assemble, row: readonly unknown[])
   return rowKey(row, asm.key) ?? '';
 }
 
-async function load(c: Core, kind: 'one' | 'all' | 'group_count'): Promise<Collection> {
+async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {
   const ex = terminal(c);
   const r = c.build(kind);
   if (r.error) throw r.error;
   const result = await query(ex, r.finish(), r.params);
   return assemble(c, ex, r.external, result);
+}
+
+function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: EntitySchema): unknown {
+  const declared = column.column === column.name ? schema.columns[column.name] : undefined;
+  if (raw === undefined) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
+  if (column.name === 'row_count') return raw;
+  if (raw === null) {
+    if (declared && declared.nullable !== true) throw new OrmError('CODEC_DECODE', `group column ${column.name} is SQL NULL`);
+    return null;
+  }
+  const type = declared ? columnType(declared) : column.type;
+  if (type === 'styled') {
+    if (!(raw instanceof StyledValue)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not StyledValue`);
+    return raw;
+  }
+  if (type === 'bool') {
+    if ([true, 1, 1n, '1', 't', 'true'].includes(raw as never)) return true;
+    if ([false, 0, 0n, '0', 'f', 'false'].includes(raw as never)) return false;
+    throw new OrmError('CODEC_DECODE', `group column ${column.name} is not boolean`);
+  }
+  if (type === 'i32' || type === 'i64') {
+    let value: number;
+    if (typeof raw === 'string' && /^-?(0|[1-9][0-9]*)$/.test(raw)) value = Number(raw);
+    else if (typeof raw === 'bigint') value = Number(raw);
+    else if (typeof raw === 'number') value = raw;
+    else throw new OrmError('CODEC_DECODE', `group column ${column.name} is not an exact integer`);
+    if (!Number.isSafeInteger(value) || (type === 'i32' && (value < -2147483648 || value > 2147483647))) {
+      throw new OrmError('CODEC_DECODE', `group column ${column.name} is outside its exact integer range`);
+    }
+    return value;
+  }
+  if (type === 'f64') {
+    if (typeof raw !== 'number' && !(typeof raw === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(raw))) {
+      throw new OrmError('CODEC_DECODE', `group column ${column.name} is not numeric`);
+    }
+    const value = Number(raw);
+    if (!Number.isFinite(value)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not finite`);
+    return value;
+  }
+  if (type === 'decimal') return convert(type, raw, db.zone, declared);
+  if (type === 'date' || type === 'datetime') {
+    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a date`);
+    return convert(type, raw, db.zone, declared);
+  }
+  if (type === 'bytes') {
+    if (!(raw instanceof Uint8Array)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not bytes`);
+    return raw;
+  }
+  if (type === 'point') {
+    if (typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a point`);
+    return convert(type, raw, db.zone, declared);
+  }
+  if (['string', 'text', 'enum', 'inet', 'time', 'uuid', 'json', 'jsontext'].includes(type)) {
+    if (typeof raw === 'string') return raw;
+    if (raw instanceof Uint8Array) return new TextDecoder('utf-8', { fatal: true }).decode(raw);
+    throw new OrmError('CODEC_DECODE', `group column ${column.name} is not text`);
+  }
+  throw new OrmError('INTERNAL', `group column ${column.name} has unsupported type ${type}`);
+}
+
+async function grouped(c: Core): Promise<GroupRows> {
+  const ex = terminal(c);
+  const r = c.build('group_count');
+  if (r.error) throw r.error;
+  if (r.external.size !== 0) throw configError('group count cannot return relations');
+  const result = await query(ex, r.finish(), r.params);
+  const columns = result.plan.steps[0]?.assemble?.columns;
+  if (!columns) throw new OrmError('INTERNAL', 'group count has no result declaration');
+  const names = new Set<string>();
+  for (const column of columns) {
+    if (column.hidden) continue;
+    if (!column.name || names.has(column.name)) throw configError(`group result repeats or omits column ${column.name}`);
+    names.add(column.name);
+  }
+  if (!names.has('row_count')) throw new OrmError('INTERNAL', 'group result has no row_count');
+  const rows: GroupRow[] = [];
+  for (const raw of result.main) {
+    const entries: Array<[string, unknown]> = [];
+    for (const column of columns) {
+      if (column.hidden) continue;
+      if (column.index < 0 || column.index >= raw.length) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
+      entries.push([column.name, groupValue(ex.db, column, raw[column.index], c.ent.schema)]);
+    }
+    rows.push(new GroupRow(entries));
+  }
+  return new GroupRows(rows);
 }
 
 async function assemble(c: Core, ex: Executor, external: Map<Core, Array<{ many: boolean; child: Core }>>, result: Result): Promise<Collection> {

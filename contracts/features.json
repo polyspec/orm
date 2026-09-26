@@ -445,8 +445,13 @@
         "clients/go/orm/conversion_error_test.go",
         "clients/go/orm/collection_key_test.go",
         "clients/php/tests/model_test.php",
+        "clients/php/tests/group_rows.php",
+        "clients/php/tests/group_rows_db.php",
         "clients/php/tests/aggregate_numeric.php",
         "clients/typescript/tests/model.mjs",
+        "clients/typescript/tests/group_rows.mjs",
+        "clients/typescript/tests/group_rows_db.mjs",
+        "clients/typescript/tests/group_rows.test.ts",
         "clients/typescript/tests/aggregate_numeric.mjs",
         "clients/typescript/tests/styled-value.mjs",
         "clients/rust/tests/src/integration.rs",
@@ -482,6 +487,10 @@
           "command": "php clients/php/tests/model_test.php"
         },
         {
+          "id": "group-rows-php-unit",
+          "command": "php clients/php/tests/group_rows.php"
+        },
+        {
           "id": "aggregate-php",
           "command": "php clients/php/tests/aggregate_numeric.php"
         },
@@ -492,6 +501,14 @@
         {
           "id": "queries-typescript",
           "command": "npm run typescript:build && node clients/typescript/tests/model.mjs"
+        },
+        {
+          "id": "group-rows-typescript-unit",
+          "command": "npm run typescript:build && node clients/typescript/tests/group_rows.mjs"
+        },
+        {
+          "id": "group-rows-physical",
+          "command": "make group-rows-physical-check"
         },
         {
           "id": "aggregate-typescript",
