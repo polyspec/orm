@@ -48,4 +48,4 @@ go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 
 쓰기 벡터는 생성한 행을 제거한다. 검사기는 선언된 sequence counter를 복원하고 매번 원래 상태를 확인한다. 출력에서 생성한 행의 키와 갱신 시각은 `$SEQ`, `$TS`로, 무작위 nonce를 갖는 AES 암호문은 `$AES`로 정규화한다. 정규화는 데이터베이스 상태 변경을 허용하지 않는다.
 
-PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. `make conformance-result-check`는 결과 사례를 실행한다. `make conformance-result-physical-check`는 각 데이터베이스에서 두 실행기를 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.
+PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. `make conformance-result-check`는 결과 사례를 실행한다. Go 실행기에도 같은 오류, 정수, 바인딩, 필드, 트랜잭션 검사를 적용한다. `make conformance-result-physical-check`는 각 데이터베이스에서 Go, PHP, TypeScript를 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.

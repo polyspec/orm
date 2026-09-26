@@ -6,13 +6,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
@@ -71,15 +75,39 @@ func norm(v any) any {
 	case time.Time:
 		return norm(x.Format(timeLayout))
 	case string:
+		if strings.HasPrefix(x, "ORM-AES2\x00") {
+			if len(x) < 9+12+16 {
+				panic("invalid AES ciphertext bind")
+			}
+			return "$AES"
+		}
+		if !utf8.ValidString(x) {
+			panic("invalid UTF-8 query bind")
+		}
 		if maskTs[x] {
 			return "$TS"
 		}
-		// AES ciphertexts carry a random nonce: raw or hex-encoded.
-		if strings.HasPrefix(x, "ORM-AES2") || strings.HasPrefix(strings.ToLower(x), "4f524d2d41455332") {
+		if strings.HasPrefix(x, "ORM-AES2") {
+			panic("invalid AES ciphertext bind")
+		}
+		if strings.HasPrefix(strings.ToLower(x), "4f524d2d41455332") {
+			decoded, err := hex.DecodeString(x)
+			if err != nil || !bytes.HasPrefix(decoded, []byte("ORM-AES2\x00")) || len(decoded) < 9+12+16 {
+				panic("invalid hex AES ciphertext bind")
+			}
 			return "$AES"
 		}
 		return x
 	case []byte:
+		if bytes.HasPrefix(x, []byte("ORM-AES2\x00")) {
+			if len(x) < 9+12+16 {
+				panic("invalid AES ciphertext bind")
+			}
+			return "$AES"
+		}
+		if !utf8.Valid(x) {
+			panic("invalid UTF-8 query bind")
+		}
 		return norm(string(x))
 	}
 	return v
@@ -108,7 +136,11 @@ func pick(m orm.Model, names ...string) map[string]any {
 	all := m.Orm_().ToArray()
 	out := map[string]any{}
 	for _, n := range names {
-		out[n] = all[n]
+		value, ok := all[n]
+		if !ok {
+			panic("missing selected field: " + n)
+		}
+		out[n] = value
 	}
 	return out
 }
@@ -127,6 +159,23 @@ func keysOf[T orm.Model](c *orm.Collection[T]) []any {
 		out = append(out, k.Value())
 	}
 	return out
+}
+
+func executeVector(name string, fn func() (any, error), transaction func(func() error) error) (any, error) {
+	var result any
+	var err error
+	if transaction == nil {
+		result, err = fn()
+	} else {
+		err = transaction(func() error {
+			result, err = fn()
+			return err
+		})
+	}
+	if err != nil {
+		return nil, fmt.Errorf("conformance vector %s failed: %w", name, err)
+	}
+	return result, nil
 }
 
 func main() {
@@ -170,11 +219,19 @@ func main() {
 	defer db.Close()
 
 	out := map[string]vector{}
+	writeVectors := map[string]bool{
+		"write_cycle": true, "now_defaults": true, "required_columns": true,
+		"creates_and_save": true, "delete_recursive": true,
+	}
 	run := func(name string, fn func() (any, error)) {
 		log, maskSeqs, maskTs = nil, map[int64]bool{}, map[string]bool{}
-		res, err := fn()
+		var transaction func(func() error) error
+		if writeVectors[name] {
+			transaction = func(task func() error) error { return db.Transaction(task, orm.Retry(0)) }
+		}
+		res, err := executeVector(name, fn, transaction)
 		if err != nil {
-			res = map[string]any{"error": code(err)}
+			panic(err)
 		}
 		out[name] = vector{Statements: append([]stmt{}, log...), Result: res}
 	}
@@ -385,6 +442,9 @@ func main() {
 		avg, err := author().ServiceSeq(7).AvgLikeCount().GetAvg()
 		if err != nil {
 			return nil, err
+		}
+		if math.Float64bits(avg) != 0x404805c28f5c28f6 {
+			return nil, fmt.Errorf("aggregate average has unexpected binary64 value: %.17g", avg)
 		}
 		groups, err := author().ServiceSeq(7).GroupByIsClose().OrderByIsCloseAsc().GetsCount()
 		if err != nil {
