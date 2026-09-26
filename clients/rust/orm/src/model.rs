@@ -703,7 +703,7 @@ pub async fn get_sum(c: &Core) -> Result<f64> {
     if c.agg_fn != "sum" {
         return Err(config("get_sum requires sum_<col>()"));
     }
-    scalar(c, "sum").await?.as_f64()
+    scalar(c, "sum").await?.as_aggregate_f64()
 }
 
 /// The average of the column selected with avg_<col>().
@@ -711,7 +711,7 @@ pub async fn get_avg(c: &Core) -> Result<f64> {
     if c.agg_fn != "avg" {
         return Err(config("get_avg requires avg_<col>()"));
     }
-    scalar(c, "avg").await?.as_f64()
+    scalar(c, "avg").await?.as_aggregate_f64()
 }
 
 /// The statement of gets() without executing it.

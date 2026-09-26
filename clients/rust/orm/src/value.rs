@@ -102,6 +102,42 @@ mod checked_value_tests {
         assert_eq!(Param::try_from(u64::MAX).unwrap_err().code(), crate::codes::CODEC_ENCODE);
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
+
+    #[test]
+    fn aggregate_numbers_follow_shared_binary64_cases_without_changing_checked_values() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
+        assert_eq!(fixture["feature"], "model_queries");
+        let cases = fixture["cases"].as_array().expect("aggregate cases");
+        assert_eq!(cases.len(), 9);
+        assert_eq!(Val::Str("48.0450".into()).as_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        for case in cases {
+            let id = case["id"].as_str().expect("case id");
+            assert_eq!(case["operation"], "aggregate_numeric", "{id}");
+            let value = match case["input_type"].as_str().expect("input type") {
+                "decimal_text" | "integer_text" => Val::Str(case["input"].as_str().expect("numeric text").into()),
+                "null" => {
+                    assert!(case["input"].is_null(), "{id}");
+                    Val::Null
+                }
+                other => panic!("{id}: unsupported input type {other}"),
+            };
+            match (case["expected"]["bits"].as_str(), case["expected"]["error"].as_str()) {
+                (Some(bits), None) => {
+                    let expected = u64::from_str_radix(bits, 16).expect("binary64 bits");
+                    let number = value.as_aggregate_f64().unwrap_or_else(|error| panic!("{id}: {error}"));
+                    assert!(number.is_finite(), "{id}");
+                    assert_eq!(number.to_bits(), expected, "{id}");
+                }
+                (None, Some("CODEC_DECODE")) => assert_eq!(value.as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{id}"),
+                other => panic!("{id}: invalid expected result {other:?}"),
+            }
+        }
+        assert_eq!(Val::I64((1i64 << 53) + 1).as_aggregate_f64().unwrap().to_bits(), 0x4340_0000_0000_0000);
+        assert_eq!(Val::F64(f64::INFINITY).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::Bool(true).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::Bytes(b"48.0450".to_vec()).as_aggregate_f64().unwrap_err().code(), crate::codes::CODEC_DECODE);
+    }
 }
 
 /// A bound parameter. Generated code converts typed arguments into this.
@@ -261,6 +297,19 @@ impl Val {
                 Ok(value)
             }
             other => Err(decode_value(format!("expected finite f64, received {other:?}"))),
+        }
+    }
+
+    /// Convert a numeric database aggregate to finite binary64. Aggregate terminals return
+    /// an approximate floating result; ordinary value conversion remains lossless.
+    pub(crate) fn as_aggregate_f64(&self) -> crate::Result<f64> {
+        match self {
+            Val::F64(value) if value.is_finite() => Ok(*value),
+            Val::I64(value) => Ok(*value as f64),
+            Val::Str(text) => {
+                text.parse::<f64>().ok().filter(|value| value.is_finite()).ok_or_else(|| decode_value(format!("invalid finite aggregate number: {text:?}")))
+            }
+            other => Err(decode_value(format!("expected a finite aggregate number, received {other:?}"))),
         }
     }
 
