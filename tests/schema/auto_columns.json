@@ -1,0 +1,37 @@
+[
+  {
+    "name": "i64 key",
+    "mmd": "erDiagram\n  entry {\n    bigint id PK \"auto\"\n  }\n",
+    "type": "i64"
+  },
+  {
+    "name": "i32 key",
+    "mmd": "erDiagram\n  entry {\n    int id PK \"auto\"\n  }\n",
+    "error": "line 3: auto column entry.id requires i64 type"
+  },
+  {
+    "name": "boolean key",
+    "mmd": "erDiagram\n  entry {\n    tinyint id PK \"bool auto\"\n  }\n",
+    "error": "line 3: auto column entry.id requires i64 type"
+  },
+  {
+    "name": "string key",
+    "mmd": "erDiagram\n  entry {\n    varchar(12) id PK \"auto\"\n  }\n",
+    "error": "line 3: auto column entry.id requires i64 type"
+  },
+  {
+    "name": "nullable key",
+    "mmd": "erDiagram\n  entry {\n    bigint id PK \"? auto\"\n  }\n",
+    "error": "line 3: auto column entry.id must not be nullable"
+  },
+  {
+    "name": "non-primary automatic column",
+    "mmd": "erDiagram\n  entry {\n    bigint id \"auto\"\n    bigint other_id PK\n  }\n",
+    "error": "line 3: auto column entry.id must be a primary key"
+  },
+  {
+    "name": "unsigned key",
+    "mmd": "erDiagram\n  entry {\n    bigint id PK \"unsigned auto\"\n  }\n",
+    "error": "line 3: auto column entry.id must be signed"
+  }
+]

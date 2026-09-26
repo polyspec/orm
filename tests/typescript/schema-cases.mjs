@@ -12,6 +12,7 @@ import { loadedOf, renderDiff } from '../../clients/typescript/dist/tools/diff.j
 import { buildMigrationPlan } from '../../clients/typescript/dist/tools/plan.js';
 
 const file = JSON.parse(await readFile(new URL('../schema/cases.json', import.meta.url), 'utf8'));
+const autoCases = JSON.parse(await readFile(new URL('../schema/auto_columns.json', import.meta.url), 'utf8'));
 
 let failures = 0;
 let checks = 0;
@@ -29,6 +30,24 @@ function same(label, want, got) {
   if ((want.sha256 ?? '') === (got.sha256 ?? '') && (want.error ?? '') === (got.error ?? '')) return;
   failures++;
   console.error(`FAIL: ${label}\n  want: ${JSON.stringify(want)}\n  got:  ${JSON.stringify(got)}`);
+}
+
+if (autoCases.length !== 7) throw new Error(`expected seven shared auto column cases, got ${autoCases.length}`);
+for (const c of autoCases) {
+  checks++;
+  try {
+    const built = buildManifest([parseDiagram(c.mmd)]);
+    const got = built.entities.entry.columns[0].type;
+    if (c.error || got !== c.type) {
+      failures++;
+      console.error(`FAIL: auto ${c.name}: want ${c.error ?? c.type}, got ${got}`);
+    }
+  } catch (error) {
+    if (!c.error || error.message !== c.error) {
+      failures++;
+      console.error(`FAIL: auto ${c.name}: unexpected error ${error.message}`);
+    }
+  }
 }
 
 const manifests = new Map();

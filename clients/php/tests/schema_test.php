@@ -97,6 +97,27 @@ foreach ($recorded['plans'] as $p) {
     expect("plan {$p['from']} -> {$p['to']} {$p['dialect']}", array_diff_key($p, array_flip(['from', 'to', 'dialect'])), $got);
 }
 
+$autoCases = json_decode((string) file_get_contents("$root/tests/schema/auto_columns.json"), true, 512, JSON_THROW_ON_ERROR);
+if (count($autoCases) !== 7) {
+    throw new RuntimeException('expected seven shared auto column cases');
+}
+foreach ($autoCases as $case) {
+    $cases++;
+    try {
+        $manifest = SchemaBuilder::build([SchemaParser::parse($case['mmd'])]);
+        $got = $manifest['entities']['entry']['columns'][0]['type'];
+        if (isset($case['error']) || $got !== $case['type']) {
+            $failures++;
+            fwrite(STDERR, "FAIL {$case['name']}: expected " . ($case['error'] ?? $case['type']) . ", got $got\n");
+        }
+    } catch (SchemaError $e) {
+        if (!isset($case['error']) || $e->getMessage() !== $case['error']) {
+            $failures++;
+            fwrite(STDERR, "FAIL {$case['name']}: unexpected error {$e->getMessage()}\n");
+        }
+    }
+}
+
 if ($failures > 0) {
     fwrite(STDERR, "php schema test: $failures of $cases cases failed\n");
     exit(1);

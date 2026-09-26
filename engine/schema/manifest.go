@@ -359,6 +359,18 @@ func buildEntity(e *DEntity) (*Entity, error) {
 			}
 		}
 		if c.Auto {
+			if c.Type != "i64" {
+				return nil, &BuildError{dc.Line, "auto column " + e.Name + "." + c.Name + " requires i64 type"}
+			}
+			if c.Nullable {
+				return nil, &BuildError{dc.Line, "auto column " + e.Name + "." + c.Name + " must not be nullable"}
+			}
+			if c.Unsigned {
+				return nil, &BuildError{dc.Line, "auto column " + e.Name + "." + c.Name + " must be signed"}
+			}
+			if !c.PK {
+				return nil, &BuildError{dc.Line, "auto column " + e.Name + "." + c.Name + " must be a primary key"}
+			}
 			if ent.Auto != "" {
 				return nil, &BuildError{dc.Line, "two auto columns in " + e.Name}
 			}

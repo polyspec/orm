@@ -55,6 +55,33 @@ struct Cases {
     plans: Vec<Plan>,
 }
 
+#[derive(Deserialize)]
+struct AutoCase {
+    name: String,
+    mmd: String,
+    #[serde(default)]
+    r#type: String,
+    #[serde(default)]
+    error: String,
+}
+
+#[test]
+fn auto_column_types() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/schema/auto_columns.json");
+    let cases: Vec<AutoCase> = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert_eq!(cases.len(), 7, "shared auto column cases");
+    for case in cases {
+        let result = schema::parse(&case.mmd).map_err(|e| e.to_string()).and_then(|d| schema::build(&[d]).map_err(|e| e.to_string()));
+        if !case.error.is_empty() {
+            assert_eq!(result.unwrap_err(), case.error, "{}", case.name);
+        } else {
+            let manifest = result.unwrap();
+            let got = &manifest.entities["entry"].column("id").unwrap().typ;
+            assert_eq!(got, &case.r#type, "{}", case.name);
+        }
+    }
+}
+
 fn outcome(result: Result<String, String>) -> (String, String) {
     match result {
         Ok(text) => (Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect(), String::new()),
