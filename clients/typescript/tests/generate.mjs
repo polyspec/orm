@@ -29,6 +29,16 @@ try {
   check(text.includes('andNeUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;'), 'nullable condition declaration');
   check(text.includes('joinServiceSeqWithSeq(child: '), 'join declaration');
   check(text.includes("from '@polyspec/orm-typescript'"), 'generated output outside the repository imports the package');
+  const nested = await mkdtemp(join(root, 'clients/typescript/src/models/decimal-test-'));
+  try {
+    const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.json'), '--out', nested, '--scan', usage);
+    check(nestedResult.status === 0, `nested generated model exit ${nestedResult.status}: ${nestedResult.stderr}`);
+    const nestedText = await readFile(join(nested, 'models.ts'), 'utf8');
+    check(nestedText.includes("from '../../index.js'"), 'nested model imports its client runtime');
+    check(nestedText.includes("amount: { type: 'decimal', precision: 13, scale: 4 }"), 'nested model keeps decimal metadata');
+  } finally {
+    await rm(nested, { recursive: true, force: true });
+  }
   check(run('gen', '--out', out).status === 2, 'missing --schema is a usage error');
   check(run('--schema', join(root, 'schema/schema.json'), '--out', out).status === 2, 'a missing command is a usage error');
   check(run('gen', '--schema', join(work, 'missing.json'), '--out', out).status === 1, 'missing schema fails');

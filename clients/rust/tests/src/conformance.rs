@@ -444,7 +444,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
                 .set_service_member_seq(1)
                 .set_start_dt(start)
                 .set_end_dt(start)
-                .set_price(12.5)
+                .set_price("12.500")?
                 .set_ip("10.0.0.1")
                 .set_aes_hex_email("cycle@example.com");
             let created = created.set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse(r#"{"a":1}"#).expect("json literal")))?;

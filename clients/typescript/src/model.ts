@@ -6,6 +6,8 @@ import type { Assemble, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey, type ColumnSchema, type EntitySchema, type SchemaSet } from './names.js';
 import { OrmError } from './runtime_error.js';
 import { StyledValue, orderedJsonOutput } from './styled_value.js';
+import { normalizeDecimal } from './decimal.js';
+import { decimalFromScaled } from './decimal.js';
 
 export { CORE } from './core.js';
 
@@ -162,11 +164,26 @@ function terminal(c: Core): Executor {
   return resolve(c.conn);
 }
 
-function convert(type: string, value: unknown, zone: string): unknown {
+function convert(type: string, value: unknown, zone: string, declared?: ColumnSchema): unknown {
   if (value === null || value === undefined) return null;
   switch (type) {
-    case 'i32': case 'i64': case 'f64': case 'decimal':
+    case 'i32': case 'i64':
+      if (typeof value === 'bigint') {
+        const converted = Number(value);
+        if (!Number.isSafeInteger(converted)) throw new OrmError('CODEC_DECODE', `${type} cell exceeds safe integer range`);
+        return converted;
+      }
+      if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new OrmError('CODEC_DECODE', `${type} cell is not an exact integer`);
+      return value;
+    case 'f64':
       return typeof value === 'number' ? value : Number(value);
+    case 'decimal': {
+      if (declared === undefined) throw new OrmError('CODEC_DECODE', 'decimal column metadata is missing');
+      if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision ?? 0, declared.scale ?? 0);
+      if (typeof value !== 'string') throw new OrmError('CODEC_DECODE', `decimal cell has type ${typeof value}`);
+      try { return normalizeDecimal(value, declared.precision ?? 0, declared.scale ?? 0); }
+      catch (cause) { throw new OrmError('CODEC_DECODE', `invalid decimal cell: ${String(cause)}`); }
+    }
     case 'bool':
       return value === true || value === 1 || value === 1n || value === '1' || value === 't' || value === 'true';
     case 'date': case 'datetime':
@@ -206,7 +223,7 @@ class Assembler {
       if (col.hidden) st.hidden.add(col.name);
       st.addName(col.name);
       const declared = col.column !== '' && col.column === col.name ? schema.columns[col.name] : undefined;
-      if (declared) m.values.set(col.name, convert(columnType(declared), row[col.index], this.db.zone));
+      if (declared) m.values.set(col.name, convert(columnType(declared), row[col.index], this.db.zone, declared));
       else st.extra.set(col.name, col.type === 'date' || col.type === 'datetime' ? convert(col.type, row[col.index], this.db.zone) : row[col.index]);
     }
     for (const key of asm.key) {
@@ -457,7 +474,7 @@ async function create(c: Core): Promise<Model> {
     const type = columnType(schema.columns[s.column]!);
     m.values.set(s.column, s.null
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
-      : convert(type, s.value, ex.db.zone));
+      : convert(type, s.value, ex.db.zone, schema.columns[s.column]));
   }
   if (schema.auto) {
     st.addName(schema.auto);

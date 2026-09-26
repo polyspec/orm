@@ -247,7 +247,7 @@ fn conflict_target(ent: &EntitySchema, set: &[ir::Assign]) -> Vec<String> {
 /// The types executors normalize before binding.
 fn bind_type(col: &ColumnSchema) -> String {
     match col.typ.as_str() {
-        "date" | "time" | "datetime" | "point" => col.typ.clone(),
+        "date" | "time" | "datetime" | "point" | "decimal" => col.typ.clone(),
         _ => String::new(),
     }
 }
@@ -898,7 +898,15 @@ impl<'m> Planner<'m> {
     fn render_value(&self, b: &mut Builder, col: &ColumnSchema, i: usize) -> String {
         let styles = self.sql_styles(&col.styles);
         let host: Vec<String> = col.styles.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
-        let ph = b.slot(BindSlot { from: "param".into(), param: i, host_styles: host, col_type: bind_type(col), ..Default::default() });
+        let ph = b.slot(BindSlot {
+            from: "param".into(),
+            param: i,
+            host_styles: host,
+            col_type: bind_type(col),
+            precision: col.precision,
+            scale: col.scale,
+            ..Default::default()
+        });
         if styles.is_empty() && col.typ != "point" {
             return ph;
         }

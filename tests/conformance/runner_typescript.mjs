@@ -274,7 +274,7 @@ async function main() {
     const start = new Date(Date.UTC(2026, 5, 1));
     const created = await author()
       .setName('cycle').setUserSeq(1).setServiceSeq(999).setServiceRegionSeq(1).setServiceMemberSeq(1)
-      .setStartDt(start).setEndDt(start).setPrice(12.5).setIp('10.0.0.1').setAesHexEmail('cycle@example.com')
+      .setStartDt(start).setEndDt(start).setPrice('12.500').setIp('10.0.0.1').setAesHexEmail('cycle@example.com')
       .setJsonSetting(StyledValue.value({ a: 1 })).setSerializeData(StyledValue.value({ k: 'v' }))
       .newLabel('created')
       .create();

@@ -8,6 +8,7 @@ import { OrmError } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
+import { decimalScaled, normalizeDecimal } from './decimal.js';
 
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
 
@@ -419,6 +420,12 @@ export class Db {
           let value = params[slot.param];
           if (this.driver === 'sqlite' && (slot.col_type === 'datetime' || slot.col_type === 'date') && value !== null) {
             value = sqliteTimeValue(value, slot.col_type, this.zone);
+          }
+          if (slot.col_type === 'decimal' && value !== null) {
+            if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', 'decimal bind requires exact text');
+            value = this.driver === 'sqlite'
+              ? decimalScaled(value, slot.precision ?? 0, slot.scale ?? 0)
+              : normalizeDecimal(value, slot.precision ?? 0, slot.scale ?? 0);
           }
           if (slot.transform) {
             if (typeof value !== 'string') throw new OrmError('CONFIG', `${slot.transform} requires a string value`);

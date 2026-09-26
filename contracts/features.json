@@ -145,7 +145,9 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "clients/php/tests/autoload.php",
-        "contracts/fixtures/aggregate_numeric.json"
+        "contracts/fixtures/aggregate_numeric.json",
+        "contracts/fixtures/decimal_model.json",
+        "contracts/fixtures/decimal_schema.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -162,7 +164,14 @@
         "clients/go/orm/jsontext_order_test.go",
         "clients/rust/orm/tests/model_output.rs",
         "clients/rust/orm/tests/value_decode.rs",
-        "tests/conformance/runner_go/main_test.go"
+        "tests/conformance/runner_go/main_test.go",
+        "clients/go/decimalmodel/decimal_physical_test.go",
+        "clients/php/tests/decimal_model.php",
+        "clients/php/tests/decimal_model_db.php",
+        "clients/rust/tests/src/decimal_physical.rs",
+        "clients/typescript/tests/decimal_model.mjs",
+        "clients/typescript/tests/decimal_model.test.ts",
+        "clients/typescript/tests/decimal_model_db.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -201,6 +210,50 @@
         {
           "id": "styled-query-typescript",
           "command": "npm run typescript:build && node clients/typescript/tests/styled-value.mjs"
+        },
+        {
+          "id": "decimal-go-physical",
+          "command": ". .runtime/decimal-env && go test ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1 -timeout 90s"
+        },
+        {
+          "id": "decimal-php-unit",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model.php"
+        },
+        {
+          "id": "decimal-php-mysql",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect mysql"
+        },
+        {
+          "id": "decimal-php-postgres",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect postgres"
+        },
+        {
+          "id": "decimal-php-sqlite",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect sqlite"
+        },
+        {
+          "id": "decimal-rust-physical",
+          "command": ". .runtime/decimal-env && cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin decimal_physical"
+        },
+        {
+          "id": "decimal-typescript-unit",
+          "command": "npm run typescript:build && node clients/typescript/tests/decimal_model.mjs"
+        },
+        {
+          "id": "decimal-typescript-types",
+          "command": "clients/typescript/node_modules/.bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+        },
+        {
+          "id": "decimal-typescript-mysql",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect mysql"
+        },
+        {
+          "id": "decimal-typescript-postgres",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect postgres"
+        },
+        {
+          "id": "decimal-typescript-sqlite",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite"
         }
       ]
     },
@@ -254,7 +307,9 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "tests/conformance/vectors.json"
+        "tests/conformance/vectors.json",
+        "contracts/fixtures/decimal_model.json",
+        "contracts/fixtures/decimal_schema.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -262,7 +317,14 @@
         "clients/php/tests/model_test.php",
         "clients/typescript/tests/model.mjs",
         "clients/typescript/tests/styled-value.mjs",
-        "clients/rust/tests/src/integration.rs"
+        "clients/rust/tests/src/integration.rs",
+        "clients/go/decimalmodel/decimal_physical_test.go",
+        "clients/php/tests/decimal_model.php",
+        "clients/php/tests/decimal_model_db.php",
+        "clients/rust/tests/src/decimal_physical.rs",
+        "clients/typescript/tests/decimal_model.mjs",
+        "clients/typescript/tests/decimal_model.test.ts",
+        "clients/typescript/tests/decimal_model_db.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -276,6 +338,50 @@
         {
           "id": "styled-write-typescript",
           "command": "npm run typescript:build && node clients/typescript/tests/styled-value.mjs"
+        },
+        {
+          "id": "decimal-go-physical",
+          "command": ". .runtime/decimal-env && go test ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1 -timeout 90s"
+        },
+        {
+          "id": "decimal-php-unit",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model.php"
+        },
+        {
+          "id": "decimal-php-mysql",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect mysql"
+        },
+        {
+          "id": "decimal-php-postgres",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect postgres"
+        },
+        {
+          "id": "decimal-php-sqlite",
+          "command": ". .runtime/decimal-env && php clients/php/tests/decimal_model_db.php --dialect sqlite"
+        },
+        {
+          "id": "decimal-rust-physical",
+          "command": ". .runtime/decimal-env && cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin decimal_physical"
+        },
+        {
+          "id": "decimal-typescript-unit",
+          "command": "npm run typescript:build && node clients/typescript/tests/decimal_model.mjs"
+        },
+        {
+          "id": "decimal-typescript-types",
+          "command": "clients/typescript/node_modules/.bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+        },
+        {
+          "id": "decimal-typescript-mysql",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect mysql"
+        },
+        {
+          "id": "decimal-typescript-postgres",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect postgres"
+        },
+        {
+          "id": "decimal-typescript-sqlite",
+          "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite"
         }
       ]
     },

@@ -379,7 +379,7 @@ abstract class Model implements \JsonSerializable
         }
         return match ($col['type']) {
             'i32', 'i64' => 0,
-            'f64', 'decimal' => 0.0,
+            'f64' => 0.0,
             'bool' => false,
             'date', 'datetime' => new \DateTimeImmutable('0001-01-01 00:00:00'),
             'point' => [0.0, 0.0],
@@ -395,6 +395,12 @@ abstract class Model implements \JsonSerializable
             return $this;
         }
         $col = static::meta()['columns'][$column];
+        if ($col['type'] === 'decimal' && $value !== null) {
+            if (!is_string($value)) {
+                throw new OrmException(Code::CODEC_ENCODE, "$column requires exact decimal text");
+            }
+            $value = Decimal::normalize($value, $col['precision'], $col['scale']);
+        }
         if (self::isStyledValueColumn($col)) {
             if (!$value instanceof StyledValue) {
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires StyledValue");
@@ -457,7 +463,8 @@ abstract class Model implements \JsonSerializable
         }
         return match ($col['type']) {
             'i32', 'i64' => (int) $v,
-            'f64', 'decimal' => (float) $v,
+            'f64' => (float) $v,
+            'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale']) : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
             'bool' => (bool) $v,
             'date', 'datetime' => self::timeValue($v, $zone),
             'point' => Codec::point($v),
@@ -1174,7 +1181,7 @@ abstract class Model implements \JsonSerializable
             $shapes = [];
         }
         $meta = static::meta();
-        $shape = ['int' => [], 'float' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => [], 'extra' => [],
+        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => [], 'extra' => [],
             'names' => [], 'hidden' => [], 'original' => [], 'key' => null];
         foreach ($asm['columns'] as $col) {
             $name = $col['name'];
@@ -1187,7 +1194,8 @@ abstract class Model implements \JsonSerializable
                 $kind = Chain::clientStyled($mc) ? 'json' : $mc['type'];
                 $group = match ($kind) {
                     'i32', 'i64' => 'int',
-                    'f64', 'decimal' => 'float',
+                    'f64' => 'float',
+                    'decimal' => 'decimal',
                     'bool' => 'bool',
                     'date', 'datetime' => 'date',
                     'point', 'json', 'jsontext' => 'other',
@@ -1230,6 +1238,13 @@ abstract class Model implements \JsonSerializable
         foreach ($shape['float'] as [$index, $name]) {
             $v = $vals[$index];
             $values[$name] = $v === null ? null : (float) $v;
+        }
+        foreach ($shape['decimal'] as [$index, $name]) {
+            $v = $vals[$index];
+            $col = static::meta()['columns'][$name];
+            $values[$name] = $v === null ? null : ($a->db->driver() === 'sqlite'
+                ? Decimal::fromScaled($v, $col['precision'], $col['scale'])
+                : Decimal::decode($v, $col['precision'], $col['scale']));
         }
         foreach ($shape['bool'] as [$index, $name]) {
             $v = $vals[$index];

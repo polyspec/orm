@@ -428,7 +428,9 @@ final class Db
                 $affected = 1;
             } else {
                 $affected = $st->rowCount();
-                $id = $insert && !isset($r->ir['rows']) ? $this->pdo->lastInsertId() : null;
+                $entity = $this->engine->manifest->entity($r->ir['entity']);
+                $id = $insert && !isset($r->ir['rows']) && ($entity['auto'] ?? '') !== ''
+                    ? $this->pdo->lastInsertId() : null;
             }
         } catch (\PDOException $e) {
             $e = $this->failed($st, $e);
@@ -535,6 +537,14 @@ final class Db
                     $colType = $b['col_type'] ?? '';
                     if ($this->driver === 'sqlite' && ($colType === 'datetime' || $colType === 'date') && $v !== null) {
                         $v = $this->sqliteTimeValue($v, $colType);
+                    }
+                    if ($colType === 'decimal' && $v !== null) {
+                        if (!is_string($v)) {
+                            throw new OrmException(Code::CODEC_ENCODE, 'decimal bind requires exact text');
+                        }
+                        $v = $this->driver === 'sqlite'
+                            ? Decimal::scaled($v, $b['precision'], $b['scale'])
+                            : Decimal::normalize($v, $b['precision'], $b['scale']);
                     }
                     if ($v instanceof \DateTimeInterface) {
                         $v = \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d H:i:s.u');

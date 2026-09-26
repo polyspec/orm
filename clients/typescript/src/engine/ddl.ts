@@ -134,7 +134,8 @@ export function ddlType(c: Column, dialect: string): string {
   if (dialect === 'sqlite') {
     switch (c.type) {
       case 'i32': case 'i64': case 'bool': return 'INTEGER';
-      case 'f64': case 'decimal': return 'REAL';
+      case 'f64': return 'REAL';
+      case 'decimal': return `DECIMALINT(${c.precision ?? 0},${c.scale ?? 0})`;
       case 'bytes': case 'inet': return 'BLOB';
       default: return 'TEXT';
     }

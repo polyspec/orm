@@ -19,7 +19,7 @@ function byteOrder(a: string, b: string): number { return a < b ? -1 : a > b ? 1
 function tsScalar(c: Column): string {
   switch (category(c)) {
     case 'int': case 'float': return 'number';
-    case 'decimal': return 'number | string';
+    case 'decimal': return 'string';
     case 'bool': return 'boolean';
     case 'time': return 'string | Date';
     case 'bytes': return 'Uint8Array';
@@ -53,7 +53,7 @@ function tsField(c: Column): string {
   let t: string;
   switch (category(c)) {
     case 'time': t = 'string'; break;
-    case 'decimal': t = 'number'; break;
+    case 'decimal': t = 'string'; break;
     case 'none': return 'unknown';
     default: t = tsScalar(c);
   }
@@ -184,6 +184,7 @@ class Generator {
       b += `, fulltext: [${(e.fulltext ?? []).map(index => `[${index.map(tsString).join(', ')}]`).join(', ')}], columns: {\n`;
       for (const c of e.columns) {
         b += `    ${c.name}: { type: ${tsString(c.type)}`;
+        if (c.type === 'decimal') b += `, precision: ${c.precision ?? 0}, scale: ${c.scale ?? 0}`;
         if (c.nullable) b += ', nullable: true';
         if ((c.styles ?? []).length > 0) b += `, styles: [${c.styles!.map(tsString).join(', ')}]`;
         b += ' },\n';
@@ -236,7 +237,15 @@ class Generator {
 
 /** The module the generated file imports the runtime from. */
 function runtimeImport(outDir: string): string {
-  return resolve(outDir).replaceAll('\\', '/').endsWith('clients/typescript/src/models') ? '../index.js' : '@polyspec/orm-typescript';
+  const path = resolve(outDir).replaceAll('\\', '/');
+  const marker = '/clients/typescript/src/models';
+  if (path.endsWith(marker)) return '../index.js';
+  const nested = path.indexOf(marker + '/');
+  if (nested >= 0) {
+    const segments = path.slice(nested + marker.length + 1).split('/');
+    return '../'.repeat(segments.length + 1) + 'index.js';
+  }
+  return '@polyspec/orm-typescript';
 }
 
 /** Returns models.ts for a manifest; scan lists files or directories whose model calls are typed. */

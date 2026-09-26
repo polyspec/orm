@@ -42,6 +42,8 @@ fn step(sql: String, binds: usize, lock: &str) -> Step {
                 column: String::new(),
                 host_styles: vec![],
                 col_type: String::new(),
+                precision: 0,
+                scale: 0,
             })
             .collect(),
         assemble: None,

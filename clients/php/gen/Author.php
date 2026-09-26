@@ -49,7 +49,7 @@ final class Author extends Model
                 'email_blind_index' => ['type' => 'string', 'nullable' => true, 'styles' => []],
                 'aes_hex_phone' => ['type' => 'string', 'nullable' => true, 'styles' => ['aes', 'hex']],
                 'phone_blind_index' => ['type' => 'string', 'nullable' => true, 'styles' => []],
-                'price' => ['type' => 'decimal', 'nullable' => true, 'styles' => []],
+                'price' => ['type' => 'decimal', 'nullable' => true, 'styles' => [], 'precision' => 13, 'scale' => 3],
                 'ip' => ['type' => 'inet', 'nullable' => true, 'styles' => ['ip']],
                 'gz_extend' => ['type' => 'bytes', 'nullable' => true, 'styles' => ['serialize', 'gz']],
                 'json_setting' => ['type' => 'jsontext', 'nullable' => true, 'styles' => ['json']],
@@ -352,12 +352,12 @@ final class Author extends Model
         return $this->writeColumn('phone_blind_index', $v);
     }
 
-    public function getPrice(): ?float
+    public function getPrice(): ?string
     {
         return $this->readColumn('price');
     }
 
-    public function setPrice(?float $v): static
+    public function setPrice(?string $v): static
     {
         return $this->writeColumn('price', $v);
     }

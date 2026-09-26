@@ -39,3 +39,16 @@ pub fn build_files(paths: &[std::path::PathBuf]) -> Result<Manifest, String> {
     }
     build(&diagrams).map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod decimal_manifest_tests {
+    #[test]
+    fn integral_decimal_scale_is_explicit_in_shared_manifest() {
+        let source = include_str!("../../../../../contracts/fixtures/decimal_schema.mmd");
+        let expected = include_str!("../../../../../contracts/fixtures/decimal_schema.json");
+        let diagram = super::parse(source).unwrap();
+        let manifest = super::build(&[diagram]).unwrap();
+        assert_eq!(manifest.marshal_indent() + "\n", expected);
+        assert!(expected.contains("\"scale\": 0"));
+    }
+}

@@ -2,6 +2,7 @@ import type { Db } from './database.js';
 import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import type { ChainKey, EntitySchema, SchemaSet } from './names.js';
 import { OrmError } from './runtime_error.js';
+import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
 import { StyledValue } from './styled_value.js';
 
@@ -347,6 +348,10 @@ export class Core {
     const schema = this.ent.schema.columns[column];
     if (schema === undefined) throw new OrmError('COLUMN_UNKNOWN', column);
     const styled = schema.styles?.some(style => ['json', 'jsons', 'serialize', 'yaml'].includes(style));
+    if (schema.type === 'decimal' && value !== null) {
+      if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${column} requires exact decimal text`);
+      value = normalizeDecimal(value, schema.precision ?? 0, schema.scale ?? 0);
+    }
     if (styled) {
       if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
       if (!schema.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);

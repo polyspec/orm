@@ -152,6 +152,16 @@ impl Manifest {
         if hash != manifest.schema_hash {
             return Err(invalid(format!("schema.json was edited by hand: hash {} does not match content {hash}", manifest.schema_hash)));
         }
+        for entity in manifest.entities.values() {
+            for column in &entity.columns {
+                if column.typ == "decimal" && !(1..=18).contains(&column.precision) {
+                    return Err(invalid(format!("{}.{}: decimal precision must be 1..18", entity.name, column.name)));
+                }
+                if column.typ == "decimal" && (column.scale < 0 || column.scale > column.precision) {
+                    return Err(invalid(format!("{}.{}: decimal scale must be 0..precision", entity.name, column.name)));
+                }
+            }
+        }
         Ok(manifest)
     }
 
