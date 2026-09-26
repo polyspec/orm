@@ -67,6 +67,9 @@
 - [o] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다. 근거: Go `TestConnectionTimeZone`, PHP 모델 모음, TypeScript 모델 모음이 SQLite에서 소수부가 없거나 0인 문자열과 분수부 문자열을 비교하고 날짜만 있는 datetime을 거부하며 생성된 값을 6자리 형식으로 읽는다. 문자열 datetime 입력을 지원하는 MySQL·PostgreSQL에서도 같은 사례가 통과한다.
 - [o] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다. 근거: `make rust-150-check`가 150개 엔티티를 생성하고 모든 생성 모델의 getter, setter, chain을 호출하는 Rust crate를 컴파일했다.
 - [o] N9 한 번 실행하는 Rust 트랜잭션에서 콜백의 오류 타입을 보존한다. MySQL, PostgreSQL, SQLite에서 rollback, commit, 중첩 savepoint 동작과 서로 다른 콜백·rollback 오류를 검증한다.
+- [o] N9.1 `statement_timeout_ms`를 `busy_timeout`으로 적용해 SQLite 잠금 대기를 제한한다. 양수인 연결
+  timeout은 선언한 한도에서 `CANCELED`를 반환하고 이후 작업을 위해 연결을 유지해야 한다. 증거: 200 ms
+  한도를 사용하는 SQLite 소유 사례와 생성 model 사용자 사례가 통과하고 Rust format·Clippy가 통과한다.
 
 ## 3단계 — 언어별 스키마 도구
 
