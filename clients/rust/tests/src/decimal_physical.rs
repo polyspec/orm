@@ -19,7 +19,7 @@ async fn decimal_physical(env: &str) {
             assert_eq!(row.get_amount()?, "48.0450");
             let loaded = DecimalCase::new().get_by_seq(1).await?;
             assert_eq!(loaded.get_amount()?, "48.0450");
-            assert_eq!(loaded.get_large_value()?.as_deref(), Some("9007199254740993"));
+            assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
             Err(orm::Error::Config("decimal fixture rollback".into()))
         })
         .await;
