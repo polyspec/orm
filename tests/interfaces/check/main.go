@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -70,7 +71,16 @@ func main() {
 	selfTest := flag.Bool("self-test", false, "also verify native parsers reject source mutations")
 	generate := flag.Bool("generate", false, "regenerate the component diagram from the manifest")
 	results := flag.String("results", "", "also check state traces in this conformance output directory")
+	language := flag.String("language", "", "check one language; empty checks all four")
 	flag.Parse()
+	languages := []string{"go", "php", "rust", "typescript"}
+	if *language != "" {
+		if !slices.Contains(languages, *language) {
+			fatal("unsupported language " + *language)
+		}
+		languages = []string{*language}
+		fmt.Printf("diagnostic scope: %s only; the full interface check requires all four languages\n", *language)
+	}
 	abs, err := filepath.Abs(*root)
 	must(err)
 	var m Manifest
@@ -103,9 +113,12 @@ func main() {
 	must(err)
 	s, err := schema.Load(js)
 	must(err)
-	rust := buildRust(abs)
+	rust := ""
+	if slices.Contains(languages, "rust") {
+		rust = buildRust(abs)
+	}
 	failed := false
-	for _, lang := range []string{"go", "php", "rust", "typescript"} {
+	for _, lang := range languages {
 		config := m.Languages[lang]
 		actual, err := extract(abs, lang, config.Roots, rust, abs)
 		must(err)
@@ -147,7 +160,7 @@ func main() {
 		fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
 	}
 	if *results != "" {
-		for _, lang := range []string{"go", "php", "rust", "typescript"} {
+		for _, lang := range languages {
 			var output map[string]struct {
 				Result     any               `json:"result"`
 				Statements []json.RawMessage `json:"statements"`

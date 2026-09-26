@@ -69,3 +69,74 @@ class Row extends Base {
 		}
 	}
 }
+
+func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
+	if _, err := exec.LookPath("php"); err != nil {
+		t.Fatalf("php CLI is required: %v", err)
+	}
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fixture.php")
+	read := func(kindType, itemsType string, extra bool) Symbols {
+		t.Helper()
+		records := "'Request' => ['kind' => '" + kindType + "', 'items' => '" + itemsType + "']"
+		if extra {
+			records += ", 'Extra' => ['kind' => 'string']"
+		}
+		source := "<?php\nnamespace Orm;\nfinal class Validator { private const RECORDS = [" + records + "]; }\n"
+		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+		got, err := extract(dir, "php", []string{"."}, "", root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	key := `fixture.php::Orm\Validator::Request#wire`
+	before := read("string", "list<int>", false)
+	if before[key] != `{"kind":"text","items":"list<integer>"}` {
+		t.Fatalf("PHP record declaration was not extracted: %q", before[key])
+	}
+	contract := []Record{{ID: "IRRequest", Native: map[string]string{"php": `fixture.php::Orm\Validator::Request`}, Fields: map[string]string{"kind": "text", "items": "list<integer>"}}}
+	if failures := checkRecords("php", before, contract); len(failures) != 0 {
+		t.Fatalf("unaltered PHP record failed: %v", failures)
+	}
+	after := read("int", "list<int>", false)
+	if after[key] != `{"kind":"integer","items":"list<integer>"}` || len(differences(before, after)) == 0 {
+		t.Fatalf("PHP record type mutation was not detected: %q", after[key])
+	}
+	if failures := checkRecords("php", after, contract); len(failures) == 0 {
+		t.Fatal("PHP record type mutation passed the common record contract")
+	}
+	nested := read("string", "list<string>", false)
+	if failures := checkRecords("php", nested, contract); len(failures) == 0 {
+		t.Fatal("PHP nested record type mutation passed the common record contract")
+	}
+	additional := read("string", "list<int>", true)
+	if failures := checkRecords("php", additional, contract); len(failures) == 0 {
+		t.Fatal("undeclared PHP record passed the common record contract")
+	}
+}
+
+func TestPHPRecordsMatchCommonContract(t *testing.T) {
+	if _, err := exec.LookPath("php"); err != nil {
+		t.Fatalf("php CLI is required: %v", err)
+	}
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	readJSON(filepath.Join(root, "contracts/interfaces.json"), &manifest)
+	got, err := extract(root, "php", manifest.Languages["php"].Roots, "", root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failures := checkRecords("php", got, manifest.Records); len(failures) != 0 {
+		t.Fatalf("PHP record contract differs: %v", failures)
+	}
+}
