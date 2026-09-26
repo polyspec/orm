@@ -52,6 +52,7 @@
 - [o] N5.1.2.6.4 Go conformance 쓰기 실행기에 명시적인 값 스타일 값을 전달하고 쓰기 전에 각 setter 오류를 반환한다. MySQL, PostgreSQL, SQLite에서 모델 생성, 실행기 컴파일, Go 모델·런타임 테스트를 검증한다.
 - [ ] N5.1.2.6.6 TypeScript 값 스타일 JSON 출력에서 중첩된 undefined 멤버를 조용히 생략하지 않고 거부한다. `StyledValue.value({missing: undefined}).toJSON()`의 RED 사례를 추가하고 소유 codec을 수정하며 MySQL, PostgreSQL, SQLite에서 모델 출력을 검증한다.
 - [o] N5.1.2.7 생성 Rust 모델 필드를 비공개로 두고 조회하거나 대입하지 않은 필드 접근을 `COLUMN_UNSELECTED`로 거부한다. SQL 열 선택을 유지하고 일부 필드만 채운 모델 대신 `GroupRows`로 그룹 값과 검증한 행 개수를 반환한다. 증거: MySQL·PostgreSQL·SQLite에서 생성 모델과 그룹 사례를 실행하고 잘못된 그룹 개수를 거부하며 Rust code가 결과 타입으로 컴파일된다.
+- [o] N5.1.2.8 실패한 실행을 포함하여 모든 conformance 실행 뒤 모든 테이블 행과 선언된 카운터를 확인한다. 실행기 오류와 남은 데이터베이스 상태 변경을 함께 보고한다. SQLite 오류 사례와 MySQL·PostgreSQL·SQLite 실제 데이터베이스 사례로 실패 보고와 정리를 검증한다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
 - [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.

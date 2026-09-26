@@ -58,7 +58,7 @@ client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
 
 conformance-counter-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/conformance/check -run '^TestPhysicalCounterCleanup$$' -count=1 -timeout 3m
+	$(WITH_TEST_ENV) go test -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck)$$' -count=1 -timeout 3m
 
 conformance-check: conformance-counter-check
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
