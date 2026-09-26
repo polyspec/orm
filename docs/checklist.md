@@ -54,6 +54,8 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] N3 Implement `utils().schema().install()` on MySQL, PostgreSQL, and SQLite in the four clients.
 - [o] N4 Apply connection time zones on the three databases: PostgreSQL offset zones, instant reads, SQLite clock defaults, and the MySQL named-zone error.
 - [ ] N5 Run the conformance checker against the in-process runners and record the vectors again.
+- [~] N5.1 Run all four clients on MySQL, PostgreSQL, and SQLite, compare every vector with recorded expectations, and confirm repeated execution leaves the observed database state unchanged.
+- [o] N5.1.1 Require all four outputs, reject stale and changed repeated results, bound runner execution, verify all table rows and declared counters, restore only declared test counters, and test counter observation and cleanup on MySQL, PostgreSQL, and SQLite.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.

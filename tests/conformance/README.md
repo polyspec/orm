@@ -37,9 +37,23 @@ go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
 go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 ```
-`check run` requires `-dsn` and passes the same DSN URI to every runner; each
-DSN selects the time zone `+00:00`. `-langs go,php` limits which runners
-execute. `check record -driver <db> out/<db>/go.json` refreshes that database's
+`check run` requires `-dsn` and passes the same DSN URI to all four runners;
+each DSN selects the time zone `+00:00`. Each runner executes twice. The
+checker requires identical JSON on both executions and an unchanged database
+state after declared sequence cleanup. It reads every table row and observes
+MySQL auto-increment values, PostgreSQL sequence values, and SQLite's
+`sqlite_sequence` table. Only counters of the four tables that the write vectors
+insert into may be restored. Each restoration is reported; a missing table,
+unreadable sequence, undeclared counter change, cleanup failure, or remaining
+state change fails. The bench database must have no external writer during the run.
+
+`check compare` compares recorded files and does not establish that a runner
+executed now. It requires exactly one output from each of the four clients.
+`check run` removes earlier generated outputs when it starts and publishes its
+four output files only after the repeated executions, state checks, and
+expectation comparison pass. On failure it retains the current diagnostic files
+under an `.run-*` directory without treating them as verified outputs.
+`check record -driver <db> out/<db>/go.json` refreshes that database's
 expectations after a deliberate change.
 
 Every client plans its statements in its own process. `check run` holds the
@@ -53,6 +67,7 @@ database; a second run fails instead of waiting.
 3. `go run ./tests/conformance/check record -driver <db> tests/conformance/out/<db>/go.json` for each database (MySQL output is `out/go.json`),
    review the recorded SQL/binds/result, commit.
 
-Write vectors leave the database as they found it. The keys and update times of
-the rows they create are masked as `$SEQ` and `$TS`, and AES ciphertexts, which
-carry a random nonce, as `$AES`, so the recording stays deterministic.
+Write vectors remove their rows; the checker restores their declared sequence
+counters and verifies the original state after every execution. Keys and update times in the output are masked
+as `$SEQ` and `$TS`, and AES ciphertexts with random nonces as `$AES`; masking
+does not exempt a database state change.

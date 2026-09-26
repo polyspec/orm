@@ -2,7 +2,7 @@
 // compares each vector's statements and result against tests/conformance/vectors.json
 // after canonicalizing the JSON (sorted keys, shortest numbers).
 //
-//	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite -langs go,php,rust]  # run runners, then compare
+//	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
 //	go run ./tests/conformance/check record [-driver …] out/go.json                             # fill expectations from one output
 //
@@ -16,13 +16,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type vec struct {
@@ -40,8 +43,9 @@ type file struct {
 var (
 	driver string
 	dsn    string
-	langs  string
 )
+
+var requiredLanguages = []string{"go", "php", "rust", "typescript"}
 
 func vectorsPath() string {
 	if driver == "" || driver == "mysql" {
@@ -57,11 +61,23 @@ func main() {
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
 	fs.StringVar(&dsn, "dsn", "", "bench database DSN URI for every runner (required by run)")
-	fs.StringVar(&langs, "langs", "go,php,rust,typescript", "runners to execute")
 	fs.Parse(os.Args[2:])
+	if driver != "mysql" && driver != "postgres" && driver != "sqlite" {
+		must(fmt.Errorf("unsupported database %q", driver))
+	}
 	root, err := os.Getwd()
 	must(err)
 	switch os.Args[1] {
+	case "state":
+		if dsn == "" {
+			usage()
+		}
+		stateDB, err := openStateDatabase(driver, dsn)
+		must(err)
+		digest, err := snapshotDatabase(stateDB, driver)
+		must(err)
+		must(stateDB.Close())
+		fmt.Printf("%s state %s\n", driver, digest)
 	case "run":
 		if dsn == "" {
 			usage()
@@ -72,14 +88,53 @@ func main() {
 			must(fmt.Errorf("another conformance run holds %s: %w", lockDir, err))
 		}
 		held = true
-		runAll(root, out)
+		must(removeVerifiedOutputs(out))
+		pending, err := os.MkdirTemp(out, ".run-")
+		must(err)
+		must(buildRunners(root))
+		stateDB, err := openStateDatabase(driver, dsn)
+		must(err)
+		for _, language := range requiredLanguages {
+			before, err := snapshotDatabase(stateDB, driver)
+			must(err)
+			counters, err := readCounters(stateDB, driver)
+			must(err)
+			first := filepath.Join(pending, language+".json")
+			repeated := filepath.Join(pending, language+".repeat.json")
+			runErr := runOne(root, first, language)
+			restoreErr := restoreCounters(stateDB, driver, counters)
+			must(errors.Join(runErr, restoreErr))
+			after, err := snapshotDatabase(stateDB, driver)
+			must(err)
+			if before != after {
+				must(fmt.Errorf("%s changed %s database state on first run", language, driver))
+			}
+			runErr = runOne(root, repeated, language)
+			restoreErr = restoreCounters(stateDB, driver, counters)
+			must(errors.Join(runErr, restoreErr))
+			afterRepeat, err := snapshotDatabase(stateDB, driver)
+			must(err)
+			if before != afterRepeat {
+				must(fmt.Errorf("%s changed %s database state on repeated run", language, driver))
+			}
+			must(compareRepeatedEvidence(first, repeated))
+			must(os.Remove(repeated))
+		}
+		must(stateDB.Close())
+		var files []string
+		for _, l := range requiredLanguages {
+			files = append(files, filepath.Join(pending, l+".json"))
+		}
+		if compare(root, files) != 0 {
+			must(fmt.Errorf("conformance comparison failed; output retained in %s", pending))
+		}
+		for _, language := range requiredLanguages {
+			must(os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")))
+		}
+		must(os.Remove(pending))
 		held = false
 		must(os.Remove(lockDir))
-		var files []string
-		for _, l := range strings.Split(langs, ",") {
-			files = append(files, filepath.Join(out, l+".json"))
-		}
-		os.Exit(compare(root, files))
+		fmt.Printf("conformance: verified outputs saved in %s\n", out)
 	case "compare":
 		os.Exit(compare(root, fs.Args()))
 	case "record":
@@ -102,7 +157,7 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check run -dsn x [-driver d -langs go,php,rust,typescript] | check compare [-driver d] <lang>.json... | check record [-driver d] <out.json>")
+	fmt.Fprintln(os.Stderr, "usage: check state|run -dsn x [-driver mysql|postgres|sqlite] | check compare [-driver d] <go.json> <php.json> <rust.json> <typescript.json> | check record [-driver d] <out.json>")
 	os.Exit(2)
 }
 
@@ -113,53 +168,136 @@ func must(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "check:", err)
 		if held {
-			_ = os.Remove(lockDir)
+			if cleanupErr := os.Remove(lockDir); cleanupErr != nil {
+				fmt.Fprintln(os.Stderr, "check: release conformance lock:", cleanupErr)
+			}
 		}
 		os.Exit(1)
 	}
 }
 
-func runAll(root, out string) {
+func buildRunners(root string) error {
+	if err := runCommand(root, "", 30*time.Minute, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+		return err
+	}
+	return runCommand(root, "", 10*time.Minute, "npm", "run", "build", "--prefix", "clients/typescript")
+}
+
+func runOne(root, output, language string) error {
 	schema := filepath.Join(root, "schema", "schema.json")
-	capture := func(path string, cmd *exec.Cmd) {
-		cmd.Dir = root
-		cmd.Stderr = os.Stderr
-		var buf bytes.Buffer
+	flags := []string{"--dsn", dsn}
+	switch language {
+	case "go":
+		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-driver", driver, "-dsn", dsn, schema)
+	case "php":
+		return runCommand(root, output, 10*time.Minute, "php", append([]string{"tests/conformance/runner.php", schema}, flags...)...)
+	case "typescript":
+		return runCommand(root, output, 10*time.Minute, "node", append(append([]string{"tests/conformance/runner_typescript.mjs"}, flags...), schema)...)
+	case "rust":
+		target := os.Getenv("CARGO_TARGET_DIR")
+		if target == "" {
+			target = filepath.Join(root, "clients", "rust", "target")
+		} else if !filepath.IsAbs(target) {
+			target = filepath.Join(root, target)
+		}
+		return runCommand(root, output, 10*time.Minute, filepath.Join(target, "release", "conformance"), append(flags, schema)...)
+	default:
+		return fmt.Errorf("unsupported language %q", language)
+	}
+}
+
+func runCommand(root, output string, timeout time.Duration, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = root
+	cmd.Stderr = os.Stderr
+	var buf bytes.Buffer
+	if output == "" {
+		cmd.Stdout = os.Stderr
+	} else {
 		cmd.Stdout = &buf
-		fmt.Fprintf(os.Stderr, "check: %s\n", strings.Join(cmd.Args, " "))
-		must(cmd.Run())
-		must(os.WriteFile(path, buf.Bytes(), 0o644))
+	}
+	fmt.Fprintf(os.Stderr, "check: %s\n", displayCommand(cmd.Args))
+	err := cmd.Run()
+	if ctx.Err() != nil {
+		return fmt.Errorf("%s: %w", name, ctx.Err())
+	}
+	if err != nil {
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	if output != "" {
+		return os.WriteFile(output, buf.Bytes(), 0o644)
+	}
+	return nil
+}
+
+func displayCommand(args []string) string {
+	visible := append([]string(nil), args...)
+	for i := 1; i < len(visible); i++ {
+		if visible[i-1] == "--dsn" {
+			visible[i] = "<redacted>"
+		}
+	}
+	return strings.Join(visible, " ")
+}
+
+func validateOutputFiles(outputs []string) error {
+	if len(outputs) != len(requiredLanguages) {
+		return fmt.Errorf("conformance requires %d language outputs, got %d", len(requiredLanguages), len(outputs))
 	}
 	want := map[string]bool{}
-	for _, l := range strings.Split(langs, ",") {
-		want[l] = true
+	for _, language := range requiredLanguages {
+		want[language] = true
 	}
-	build := func(cmd *exec.Cmd) {
-		cmd.Dir = root
-		cmd.Stdout = os.Stderr
-		cmd.Stderr = os.Stderr
-		fmt.Fprintf(os.Stderr, "check: %s\n", strings.Join(cmd.Args, " "))
-		must(cmd.Run())
+	for _, output := range outputs {
+		language := strings.TrimSuffix(filepath.Base(output), ".json")
+		if filepath.Ext(output) != ".json" || !want[language] {
+			return fmt.Errorf("duplicate or unknown language output %q", output)
+		}
+		delete(want, language)
 	}
-	if want["rust"] {
-		build(exec.Command("cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"))
+	return nil
+}
+
+func removeVerifiedOutputs(directory string) error {
+	for _, language := range requiredLanguages {
+		path := filepath.Join(directory, language+".json")
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
-	if want["typescript"] {
-		build(exec.Command("npm", "run", "build", "--prefix", "clients/typescript"))
+	return nil
+}
+
+func compareRepeatedEvidence(first, second string) error {
+	a, err := os.ReadFile(first)
+	if err != nil {
+		return err
 	}
-	flags := []string{"--dsn", dsn}
-	if want["go"] {
-		capture(filepath.Join(out, "go.json"), exec.Command("go", "run", "./tests/conformance/runner_go", "-driver", driver, "-dsn", dsn, schema))
+	b, err := os.ReadFile(second)
+	if err != nil {
+		return err
 	}
-	if want["php"] {
-		capture(filepath.Join(out, "php.json"), exec.Command("php", append([]string{"tests/conformance/runner.php", schema}, flags...)...))
+	var av, bv any
+	if err := json.Unmarshal(a, &av); err != nil {
+		return err
 	}
-	if want["typescript"] {
-		capture(filepath.Join(out, "typescript.json"), exec.Command("node", append(append([]string{"tests/conformance/runner_typescript.mjs"}, flags...), schema)...))
+	if err := json.Unmarshal(b, &bv); err != nil {
+		return err
 	}
-	if want["rust"] {
-		capture(filepath.Join(out, "rust.json"), exec.Command(filepath.Join(root, "clients", "rust", "target", "release", "conformance"), append(flags, schema)...))
+	ac, err := json.Marshal(av)
+	if err != nil {
+		return err
 	}
+	bc, err := json.Marshal(bv)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(ac, bc) {
+		return fmt.Errorf("conformance output changed between runs: %s", first)
+	}
+	return nil
 }
 
 // load reads the vector list (names and chains) from vectors.json — the single
@@ -198,6 +336,10 @@ func canon(raw json.RawMessage) string {
 }
 
 func compare(root string, outputs []string) int {
+	if err := validateOutputFiles(outputs); err != nil {
+		fmt.Fprintln(os.Stderr, "check:", err)
+		return 1
+	}
 	f := load(root)
 	type got map[string]json.RawMessage
 	langs := []string{}

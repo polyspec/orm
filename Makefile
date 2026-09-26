@@ -1,4 +1,4 @@
-.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check conformance-counter-check db-test perf-check interface-check go-model-check ts-check schema-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -12,7 +12,7 @@ TEST_POSTGRES_REPLICA_PORT = 55481
 TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
-WITH_TEST_ENV = test -f $(TEST_ENV) || { echo "$(TEST_ENV) is missing; run make test-servers" >&2; exit 1; }; . ./$(TEST_ENV) &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) &&
 
 check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check conformance-check db-test perf-check package-check
 	$(WITH_TEST_ENV) go test ./...
@@ -55,9 +55,10 @@ client-unit-check:
 client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
 
-conformance-check:
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --locked --release -p orm-tests --bin conformance
-	npm run typescript:build
+conformance-counter-check:
+	$(WITH_TEST_ENV) go test -tags physical ./tests/conformance/check -run '^TestPhysicalCounterCleanup$$' -count=1 -timeout 3m
+
+conformance-check: conformance-counter-check
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver postgres -dsn "$$BENCH_POSTGRES_DSN"
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver sqlite -dsn "$$BENCH_SQLITE_DSN"

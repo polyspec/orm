@@ -54,6 +54,8 @@
 - [o] N3 네 클라이언트에서 MySQL, PostgreSQL, SQLite의 `utils().schema().install()`을 구현한다.
 - [o] N4 세 데이터베이스에 연결 시간대를 적용한다: PostgreSQL 오프셋 시간대, 시각 읽기, SQLite 시계 기본값, MySQL 명칭 시간대 오류.
 - [ ] N5 프로세스 내 러너로 conformance 검사기를 실행하고 벡터를 다시 기록한다.
+- [~] N5.1 MySQL, PostgreSQL, SQLite에서 네 클라이언트를 모두 실행하고 모든 벡터를 기록된 기대값과 비교하며, 반복 실행이 관찰 대상 데이터베이스 상태를 바꾸지 않는지 확인한다.
+- [o] N5.1.1 네 출력을 모두 요구하고 오래된 출력과 달라진 반복 결과를 거부하며 실행 시간을 제한한다. 모든 테이블 행과 선언된 counter를 검사하고 선언된 테스트 counter만 복원하며 MySQL, PostgreSQL, SQLite에서 counter 관찰과 정리를 테스트한다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
 - [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.
