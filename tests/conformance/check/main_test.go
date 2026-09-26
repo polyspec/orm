@@ -81,6 +81,17 @@ func TestExactNumericConformance(t *testing.T) {
 	}
 }
 
+func TestDuplicateJSONKeysFail(t *testing.T) {
+	for _, raw := range []string{
+		`{"vector":{"result":1},"vector":{"result":2}}`,
+		`{"vector":{"result":{"field":1,"field":2}}}`,
+	} {
+		if _, err := decodeExact([]byte(raw)); err == nil {
+			t.Fatalf("duplicate JSON key was silently discarded: %s", raw)
+		}
+	}
+}
+
 func TestRunRemovesStaleVerifiedOutputs(t *testing.T) {
 	dir := t.TempDir()
 	for _, language := range requiredLanguages {
