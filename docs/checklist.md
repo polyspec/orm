@@ -49,6 +49,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N5.1.2.6.1 Make Go styled values explicit in codecs and generated model setters and getters; verify the shared states, row arrays, model JSON, and errors on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.2.6.2 Use `StyledValue` in PHP styled-column setters, getters, codecs, and model output. Verify the shared state cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.2.6.3 Use `StyledValue` in TypeScript styled-column setters, getters, codecs, and model output. Verify the shared state and codec cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
+- [o] N5.1.2.6.4 Pass explicit styled values to the Go conformance write runner and return each setter error before writing. Verify model generation, runner compilation, and Go model and runtime tests on MySQL, PostgreSQL, and SQLite.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
