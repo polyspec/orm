@@ -16,7 +16,7 @@ use crate::collection::Key;
 use crate::db::Pool;
 use crate::db::Zone;
 use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
-use crate::row::{decode_styled, read_cell, read_row, DriverRow};
+use crate::row::{decode_boolean_columns, decode_styled, read_cell, read_row, DriverRow};
 use crate::value::{transform, Param, Val};
 use crate::{Error, Result};
 
@@ -518,6 +518,7 @@ pub(crate) fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<
     let n = asm.total_columns();
     let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n, zone)).collect::<Result<_>>()?;
     decode_styled(asm, &mut data, aes_keys)?;
+    decode_boolean_columns(asm, &mut data)?;
     Ok(data)
 }
 

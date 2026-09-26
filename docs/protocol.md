@@ -126,6 +126,7 @@ A raw order expression carries its own direction. `minus_p` never stores a negat
 - `bind_slots.from` is `param` (a request parameter, with `transform` for full-text and contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), or `now` (the client clock in the connection time zone).
 - Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.
 - `assemble.key` is the collection identity: every primary-key component, or the group columns of a `group_count` row.
+- A `group_count` row retains the declared types of its selected group columns; a boolean group value is a JSON boolean, and an invalid database boolean fails decoding.
 - `children[].kind` is `join` for a child in the same row, and `one` or `many` for a relation step matched by `parent_keys` and `child_keys`.
 
 ### 2.1 Relation steps

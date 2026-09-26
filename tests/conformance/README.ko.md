@@ -51,3 +51,5 @@ go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. `make conformance-result-check`는 결과 사례를 실행한다. Go 실행기에도 같은 오류, 정수, 바인딩, 필드, 트랜잭션 검사를 적용한다. `make conformance-result-physical-check`는 각 데이터베이스에서 Go, PHP, Rust, TypeScript를 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.
 
 Rust 실행기는 잘못된 바인딩 값과 파생 정수를 거부하고 집계 평균의 binary64 비트를 비교하며 예상 밖 벡터 오류를 프로세스 실패로 반환한다. 쓰기 벡터는 트랜잭션을 사용하므로 실패한 쓰기가 행을 남기지 않는다. 상태 검사기는 모든 데이터베이스에서 실패 뒤 행과 카운터를 확인한다.
+
+`make conformance-rust-group-check`는 각 데이터베이스에서 Rust 실행기를 두 번 실행하고 두 실행 전후의 행과 카운터를 검사하며 `aggregates` 벡터를 기록된 기대값과 비교한다. 선택한 불리언 그룹 컬럼은 결과에서 불리언으로 유지된다.

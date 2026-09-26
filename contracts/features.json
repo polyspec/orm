@@ -1287,6 +1287,7 @@
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
+        "tests/conformance/check/rust_group_physical_test.go",
         "tests/conformance/runner.php",
         "tests/conformance/runner_typescript.mjs",
         "clients/rust/tests/src/conformance.rs"
