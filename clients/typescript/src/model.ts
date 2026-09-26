@@ -360,7 +360,17 @@ async function scalarOf(c: Core, kind: 'count' | 'sum' | 'avg', agg = ''): Promi
 async function aggregate(c: Core, fn: 'sum' | 'avg'): Promise<number> {
   if (c.aggFn !== fn) throw configError(`get${upperFirst(fn)} requires ${fn}<Col>()`);
   const value = await scalarOf(c, fn, c.agg);
-  return value === null ? 0 : Number(value);
+  return aggregateNumber(value);
+}
+
+export function aggregateNumber(value: unknown): number {
+  if (typeof value !== 'number' && typeof value !== 'bigint'
+      && !(typeof value === 'string' && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(value))) {
+    throw new OrmError('CODEC_DECODE', 'aggregate scalar is not a finite number');
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new OrmError('CODEC_DECODE', 'aggregate scalar is outside finite binary64 range');
+  return number;
 }
 
 async function pageOf(c: Core, page: number, perPage: number): Promise<Page> {

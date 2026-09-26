@@ -1463,7 +1463,20 @@ abstract class Model implements \JsonSerializable
         [$db, $frame] = $this->executor();
         $r = $this->build($fn, $db);
         $r->ir['agg'] = $this->agg;
-        return (float) $db->scalarOf($frame, $r);
+        return self::aggregateNumber($db->scalarOf($frame, $r));
+    }
+
+    private static function aggregateNumber(mixed $value): float
+    {
+        if (!is_int($value) && !is_float($value)
+            && !(is_string($value) && preg_match('/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D', $value) === 1)) {
+            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is not a finite number');
+        }
+        $number = (float) $value;
+        if (!is_finite($number)) {
+            throw new OrmException(Code::CODEC_DECODE, 'aggregate scalar is outside finite binary64 range');
+        }
+        return $number;
     }
 
     /** One page and the total count. */
