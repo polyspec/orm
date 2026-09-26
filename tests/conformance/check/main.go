@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -98,28 +99,10 @@ func main() {
 		stateDB, err := openStateDatabase(driver, dsn)
 		must(err)
 		for _, language := range requiredLanguages {
-			before, err := snapshotDatabase(stateDB, driver)
-			must(err)
-			counters, err := readCounters(stateDB, driver)
-			must(err)
 			first := filepath.Join(pending, language+".json")
 			repeated := filepath.Join(pending, language+".repeat.json")
-			runErr := runOne(root, first, language)
-			restoreErr := restoreCounters(stateDB, driver, counters)
-			must(errors.Join(runErr, restoreErr))
-			after, err := snapshotDatabase(stateDB, driver)
-			must(err)
-			if before != after {
-				must(fmt.Errorf("%s changed %s database state on first run", language, driver))
-			}
-			runErr = runOne(root, repeated, language)
-			restoreErr = restoreCounters(stateDB, driver, counters)
-			must(errors.Join(runErr, restoreErr))
-			afterRepeat, err := snapshotDatabase(stateDB, driver)
-			must(err)
-			if before != afterRepeat {
-				must(fmt.Errorf("%s changed %s database state on repeated run", language, driver))
-			}
+			must(runAndCheckState(stateDB, driver, language, "first", func() error { return runOne(root, first, language) }))
+			must(runAndCheckState(stateDB, driver, language, "repeated", func() error { return runOne(root, repeated, language) }))
 			must(compareRepeatedEvidence(first, repeated))
 			must(os.Remove(repeated))
 		}
@@ -148,6 +131,25 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+func runAndCheckState(db *sql.DB, database, language, phase string, run func() error) error {
+	before, err := snapshotDatabase(db, database)
+	if err != nil {
+		return err
+	}
+	counters, err := readCounters(db, database)
+	if err != nil {
+		return err
+	}
+	runErr := run()
+	restoreErr := restoreCounters(db, database, counters)
+	after, snapshotErr := snapshotDatabase(db, database)
+	var stateErr error
+	if snapshotErr == nil && before != after {
+		stateErr = fmt.Errorf("%s changed %s database state on %s run", language, database, phase)
+	}
+	return errors.Join(runErr, restoreErr, snapshotErr, stateErr)
 }
 
 const lockDir = "/tmp/orm-conformance.lock"

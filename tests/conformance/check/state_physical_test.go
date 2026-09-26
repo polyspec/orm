@@ -3,8 +3,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -112,6 +114,86 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 			}
 			if before != after {
 				t.Fatal("persistent rows or counters changed after cleanup")
+			}
+		})
+	}
+}
+
+func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
+	if err := os.Mkdir(lockDir, 0o755); err != nil {
+		t.Fatalf("conformance database lock: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Remove(lockDir); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, test := range []struct {
+		driver, env string
+	}{
+		{"mysql", "BENCH_MYSQL_DSN"},
+		{"postgres", "BENCH_POSTGRES_DSN"},
+		{"sqlite", "BENCH_SQLITE_DSN"},
+	} {
+		t.Run(test.driver, func(t *testing.T) {
+			raw := os.Getenv(test.env)
+			if raw == "" {
+				t.Fatalf("%s is required", test.env)
+			}
+			db, err := openStateDatabase(test.driver, raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := db.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			before, err := snapshotDatabase(db, test.driver)
+			if err != nil {
+				t.Fatal(err)
+			}
+			counters, err := readCounters(db, test.driver)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var id int64
+			defer func() {
+				if id != 0 {
+					if _, err := db.Exec(fmt.Sprintf("DELETE FROM task WHERE seq = %d", id)); err != nil {
+						t.Error(err)
+					}
+				}
+				if err := restoreCounters(db, test.driver, counters); err != nil {
+					t.Error(err)
+				}
+				after, err := snapshotDatabase(db, test.driver)
+				if err != nil {
+					t.Error(err)
+				} else if before != after {
+					t.Error("failed-run test did not restore all rows and counters")
+				}
+			}()
+			runnerErr := errors.New("runner failed")
+			err = runAndCheckState(db, test.driver, "rust", "first", func() error {
+				if test.driver == "postgres" {
+					if err := db.QueryRow("INSERT INTO task (title, state) VALUES ('failed-run-check', 'open') RETURNING seq").Scan(&id); err != nil {
+						return err
+					}
+				} else {
+					result, err := db.Exec("INSERT INTO task (title, state) VALUES ('failed-run-check', 'open')")
+					if err != nil {
+						return err
+					}
+					id, err = result.LastInsertId()
+					if err != nil {
+						return err
+					}
+				}
+				return runnerErr
+			})
+			if !errors.Is(err, runnerErr) || !strings.Contains(err.Error(), "changed "+test.driver+" database state") {
+				t.Fatalf("runner failure and remaining row must both be reported: %v", err)
 			}
 		})
 	}
