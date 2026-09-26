@@ -81,7 +81,7 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 `vectors.json`은 `php tests/codec/gen.php`로 생성한다: 스타일별로 값과 저장 바이트(base64). 각 언어 러너는
 1. 저장 바이트를 읽어 정규 JSON(키 정렬)이 `value`와 같은지,
 2. `value`를 써서 `serialize`/`base64`는 바이트가 같은지, `gz`/`json`은 자기 자신과 PHP가 다시 읽어 값이 같은지
-확인한다. TypeScript는 같은 파일을 `node tests/typescript/codec-vector.mjs`로 실행한다. DB 왕복은 적합성 벡터(`tests/conformance`, `codec_roundtrip`)가 맡는다: 각 언어가 스타일 컬럼에 쓰고 구현된 언어가 같은 값을 읽는다.
+확인한다. TypeScript는 같은 파일을 `node clients/typescript/tests/codec-vector.mjs`로 실행한다. DB 왕복은 적합성 벡터(`tests/conformance`, `codec_roundtrip`)가 맡는다: 각 언어가 스타일 컬럼에 쓰고 구현된 언어가 같은 값을 읽는다.
 
 ## 생성 코드
 - 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 셀을 디코드한다(생성 코드는 값을 그대로 받는다).
