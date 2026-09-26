@@ -31,6 +31,13 @@ func readCounters(db *sql.DB, driver string) (map[string]counterValue, error) {
 	values := map[string]counterValue{}
 	switch driver {
 	case "sqlite":
+		var exists bool
+		if err := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sqlite_sequence')").Scan(&exists); err != nil {
+			return nil, err
+		}
+		if !exists {
+			return values, nil
+		}
 		rows, err := db.QueryContext(ctx, "SELECT name, seq FROM sqlite_sequence ORDER BY name")
 		if err != nil {
 			return nil, err
