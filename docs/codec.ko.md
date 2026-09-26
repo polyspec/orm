@@ -47,6 +47,10 @@ Go JSON codec의 `Decode`는 `orm.StyledValue`를 반환하며 value 변형 안�
 
 값 스타일 컬럼(`json`, `jsons`, `serialize`, `yaml`)은 SQL NULL과 저장된 null 값을 구분한다. SQL NULL에는 인코딩된 값이 없다. JSON 리터럴 null은 `null`, PHP 직렬화 null은 `N;`, YAML null은 YAML null 문서를 저장한다. 모든 값 스타일 컬럼의 setter는 `StyledValue<T>`를 받고 getter도 `StyledValue<T>`를 반환한다. `SqlNull`은 SQL NULL을 쓰거나 반환하고, `Value(v)`는 null 값을 포함해 인코딩된 값을 쓰거나 반환한다. nullable 컬럼은 두 변형을 모두 허용하며 NULL을 허용하지 않는 컬럼은 `SqlNull`을 `CODEC_ENCODE`로 거부한다. 언어의 일반 null 값은 값 스타일 컬럼 setter의 입력이 아니다. 거부된 setter는 호출 시 실패한다. Go setter는 `(*Model, error)`를, getter는 `(orm.StyledValue, error)`를 반환한다. Rust setter는 `Result<Self>`를, getter는 `Result<StyledValue<T>>`를 반환하며 PHP와 TypeScript는 코드가 있는 오류를 던진다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 JSON 저장 텍스트는 유효하지 않으므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 값 스타일 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, 인코딩된 값은 `{"kind":"value","value":<디코딩된 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` JSON 문서는 `{"kind":"value","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/styled_column_states.json`이 네 클라이언트와 세 데이터베이스의 setter 입력, getter 결과, 저장 셀, 행 배열 출력, 모델 JSON 출력, 오류를 정의한다.
 
+TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 값을 읽을 때 값 스타일 값을 검사한다.
+정의되지 않은 멤버, 빠진 배열 위치, 유한하지 않은 수, JSON에서 생략될 객체 멤버는
+`CODEC_ENCODE`로 실패한다. 대입한 뒤 입력 객체가 바뀐 경우에도 같다.
+
 `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
