@@ -238,7 +238,7 @@ func runCommand(root, output string, timeout time.Duration, name string, args ..
 func displayCommand(args []string) string {
 	visible := append([]string(nil), args...)
 	for i := 1; i < len(visible); i++ {
-		if visible[i-1] == "--dsn" {
+		if visible[i-1] == "--dsn" || visible[i-1] == "-dsn" {
 			visible[i] = "<redacted>"
 		}
 	}
