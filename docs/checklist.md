@@ -106,6 +106,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [ ] G0 Measure client overhead of the in-process clients and record it in `perf.md`.
 - [ ] G1 Compare the conformance output of the four clients with the recorded vectors on the three databases.
 - [o] G1.1.2 Require current-run feature coverage reports for every claimed client and database, exact case IDs, and two equal result and state runs. Mutation tests reject missing implementation claims, language tests, database runs, cases, repeats, and undeclared results. The feature check remains red until every feature provides executable coverage commands.
+- [o] G1.1.2.1 Enforce the AGENTS.md owner and dependent-part test-location rule in `scripts/features/coverage.mjs`. Mutation tests must reproduce missing owner or dependent-part evidence and central or outside test paths as RED; valid owner and dependent-part execution must be GREEN. `make feature-check` depends on this checker and remains RED while feature contracts lack current execution evidence.
 - [o] G1.1.1 Register the Rust row-value decode test under `model_queries` so feature verification includes it; N5.1.2.2 depends on this registration.
 - [ ] G4 Run generated symbol, schema, and CI checks.
 - [ ] G5 Verify the GitHub Actions build.
