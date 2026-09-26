@@ -197,6 +197,24 @@
    }
   },
   {
+   "name": "clients/go/orm/styled_state_physical_test.go#1",
+   "mmd": "erDiagram\n  styled_case {\n    bigint   seq                 PK \"auto\"\n    jsontext json_payload       \"?\"\n    jsontext jsons_payload      \"?\"\n    text     serialize_payload  \"?\"\n    text     yaml_payload       \"?\"\n    jsontext json_required\n  }\n",
+   "manifest": {
+    "sha256": "c353b8bd8e402ea817a33f2daf025b79806c1cf945b44ce1f322c1010f120b38"
+   },
+   "ddl": {
+    "mysql": {
+     "sha256": "93233e317c851f31c4a58dae7c19f6c50f49bd6a9232bb499284ff9cc47ce7c8"
+    },
+    "postgres": {
+     "sha256": "94a5687d7980463f4c966b2560cfd674c664bb0d104cbf6f2533904fc84829fc"
+    },
+    "sqlite": {
+     "sha256": "6902d4983f746487dd92670a1abf53ee6a4e565ea4aa91cfb6b966f74aa9e3a7"
+    }
+   }
+  },
+  {
    "name": "clients/go/orm/timezone_test.go#1",
    "mmd": "erDiagram\n  zone_event {\n    bigint       seq     PK \"auto\"\n    datetime(6)  start_dt\n    datetime(6)  created_ts \"=now\"\n  }\n",
    "manifest": {
@@ -2094,7 +2112,7 @@
      "sha256": "162399a99af13be6cea421621aa3bb534942ff5dda3b2bfd9c4f9951cc4909fb"
     },
     "sqlite": {
-     "sha256": "50343c3e347e20e9f586876a07a6c66c7d70cf86c7e38d5dfdc26e08c569b6a0"
+     "sha256": "5f8be5f2c7edfd469c4480645c68cccc8bbe4b55d1f6ae23191f5677716d8273"
     }
    }
   }
@@ -3445,6 +3463,48 @@
    "sha256": "3b0624dde4ed645c4c1a2e67284646b5bf11c028e38f214c5b447bf8d30d56f7"
   },
   {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": true,
+   "sha256": "3f6738431b47d6fce1d976e19f2c59aa97dfd7085bd181fcf551db3c3dbc68df"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "mysql",
+   "allow_destructive": false,
+   "sha256": "3f6738431b47d6fce1d976e19f2c59aa97dfd7085bd181fcf551db3c3dbc68df"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": true,
+   "sha256": "ce6a490d00475f058b2c7b78e1c95ae7e81f2d084ca7f69cbb98af15352a1ce0"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "postgres",
+   "allow_destructive": false,
+   "sha256": "ce6a490d00475f058b2c7b78e1c95ae7e81f2d084ca7f69cbb98af15352a1ce0"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": true,
+   "sha256": "4b72f3d13af785bf382a445c34d34a0b4e566c1f73d59aa1e30c465aafcbfa26"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "sqlite",
+   "allow_destructive": false,
+   "sha256": "4b72f3d13af785bf382a445c34d34a0b4e566c1f73d59aa1e30c465aafcbfa26"
+  },
+  {
    "from": "clients/go/orm/timezone_test.go#1",
    "to": "clients/go/orm/timezone_test.go#1",
    "dialect": "mysql",
@@ -4107,7 +4167,7 @@
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "c77e5881649cd2f7ef6ae10b5aa7c148f5feed2514926aed878f5fbf32c79a72"
+   "sha256": "77dc9524f98c6bbcbc6d40d7214a974fb377a2cf64eab94b0ffe17cffa7d0e05"
   },
   {
    "from": "engine/composite_key_test.go#1",
@@ -6501,7 +6561,7 @@
    "to": "schema/bench.mmd",
    "dialect": "sqlite",
    "allow_destructive": true,
-   "sha256": "45a86623499caccac59355c11cc8273c86628cca02ca56024db95d2e7519aac7"
+   "sha256": "abef51697fec23f1ec02e6fa5126fb453488d5a5ea307aee522f955734b29f87"
   },
   {
    "from": "engine/schema/manifest_test.go#2",
@@ -23425,6 +23485,24 @@
    "to": "clients/go/orm/keyword_test.go#1",
    "dialect": "sqlite",
    "sha256": "b9b7218df60950e1bcd3b7cd149c6131396866b41431bd9d33057cd405c4a971"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "mysql",
+   "sha256": "0ebfc7021f51cdfaa3a770d76edb5349d02236f905353d7a3855553f4b193ca6"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "postgres",
+   "sha256": "1c737e5d21b05ebd92f8759f6e7b998ecda7ee87e3ed47e607efd88597c96f35"
+  },
+  {
+   "from": "clients/go/orm/styled_state_physical_test.go#1",
+   "to": "clients/go/orm/styled_state_physical_test.go#1",
+   "dialect": "sqlite",
+   "sha256": "8524dbd5e0cd21e435a162b669e08a57c1f0b9dfadeea50bb44f04597a8db67c"
   },
   {
    "from": "clients/go/orm/timezone_test.go#1",
