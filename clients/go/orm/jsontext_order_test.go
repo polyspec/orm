@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	orderedjson "github.com/polyspec/ordered-json/go"
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
@@ -129,7 +130,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 			for _, tc := range testCases {
 				t.Run(tc.name, func(t *testing.T) {
 					c := model()
-					c.Set("data", tc.input)
+					c.Set("data", orm.Value(tc.input))
 					created, err := c.Create()
 					if err != nil {
 						t.Fatalf("create: %v", err)
@@ -149,23 +150,18 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 					}
 
 					readRow := rows.First()
-					readData := readRow.vals["data"]
-					if readData == nil {
-						t.Fatal("data is nil")
+					styled, ok := readRow.vals["data"].(orm.StyledValue)
+					if !ok || styled.Kind() != "value" {
+						t.Fatalf("data state is %T (%v)", readRow.vals["data"], readRow.vals["data"])
 					}
-
-					// Convert read data to string for comparison
-					var readStr string
-					switch v := readData.(type) {
-					case string:
-						readStr = v
-					case jsontext.Value:
-						readStr = string(v)
-					case []byte:
-						readStr = string(v)
-					default:
-						b, _ := json.Marshal(v)
-						readStr = string(b)
+					data, _ := styled.Data()
+					value, ok := data.(*orderedjson.Value)
+					if !ok {
+						t.Fatalf("data is %T, want *orderedjson.Value", data)
+					}
+					readStr, err := orderedjson.Stringify(value)
+					if err != nil {
+						t.Fatal(err)
 					}
 
 					if readStr != tc.expected {

@@ -649,6 +649,9 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 	for _, sc := range si.styled {
 		v := vals[sc.index]
 		if v == nil {
+			if len(sc.codec) > 0 {
+				vals[sc.index] = SqlNull()
+			}
 			continue
 		}
 		var err error
