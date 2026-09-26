@@ -1,0 +1,57 @@
+{
+  "cases": [
+    {
+      "id": "sql_null",
+      "style": "json",
+      "stored_text": null,
+      "output": {"kind": "sql-null"}
+    },
+    {
+      "id": "json_null",
+      "style": "json",
+      "stored_text": "null",
+      "output": {"kind": "value", "value": null}
+    },
+    {
+      "id": "json_object_with_kind",
+      "style": "json",
+      "stored_text": "{\"kind\":\"sql-null\"}",
+      "output": {"kind": "value", "value": {"kind": "sql-null"}}
+    },
+    {
+      "id": "empty_text",
+      "style": "json",
+      "stored_text": "",
+      "error": "CODEC_DECODE"
+    },
+    {
+      "id": "serialize_sql_null",
+      "style": "serialize",
+      "stored_text": null,
+      "output": {"kind": "sql-null"}
+    },
+    {
+      "id": "serialize_value_null",
+      "style": "serialize",
+      "stored_text": "N;",
+      "output": {"kind": "value", "value": null}
+    },
+    {
+      "id": "yaml_sql_null",
+      "style": "yaml",
+      "stored_text": null,
+      "output": {"kind": "sql-null"}
+    },
+    {
+      "id": "yaml_value_null",
+      "style": "yaml",
+      "stored_text": "null\n",
+      "output": {"kind": "value", "value": null}
+    },
+    {
+      "id": "unselected",
+      "style": "json",
+      "error": "COLUMN_UNSELECTED"
+    }
+  ]
+}
