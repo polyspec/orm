@@ -32,11 +32,18 @@ func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
 	if row.Count() != 3 {
 		t.Fatalf("count = %d", row.Count())
 	}
-	if value, ok := row.Value("is_close"); !ok || value != false {
-		t.Fatalf("group value = %#v, selected = %v", value, ok)
+	if value, err := row.Value("is_close"); err != nil || value != false {
+		t.Fatalf("group value = %#v, error = %v", value, err)
 	}
-	if _, ok := row.Value("name"); ok {
-		t.Fatal("unselected model field appeared in grouped row")
+	if _, err := row.Value("name"); ErrorCode(err) != CodeColumnUnselected {
+		t.Fatalf("unselected group value error = %v", err)
+	}
+	nullRow, err := newGroupRow([]groupValue{{name: "nullable", value: nil}, {name: "row_count", value: int64(1)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value, err := nullRow.Value("nullable"); err != nil || value != nil {
+		t.Fatalf("selected SQL NULL = %#v, error = %v", value, err)
 	}
 	rows := &GroupRows{rows: []GroupRow{row}}
 	if want := []map[string]any{{"is_close": false, "row_count": int64(3)}}; !reflect.DeepEqual(rows.ToArray(), want) {

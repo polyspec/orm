@@ -113,4 +113,6 @@
 - [~] G4.1 네 클라이언트의 `getsCount`가 선택한 그룹 값과 검증한 `row_count`를 전용 그룹 결과로 반환하게 한다. 잘못된 개수를 거부하고 일부 필드만 채운 모델을 만들지 않는다. MySQL, PostgreSQL, SQLite에서 소유 동작을 검증한다.
 - [o] G4.1.1 Go 런타임과 생성 모델에서 전용 그룹 결과를 반환한다. 선택한 값의 타입, 잘못된 개수, 조회하지 않은 필드, MySQL, PostgreSQL, SQLite의 실제 결과를 검증한다. 근거: Go 그룹 결과 단위 사례가 누락·중복·잘못된 형식·불리언·음수 개수를 거부했고 생성 모델과 SQL 예약어 소유 사례가 MySQL, PostgreSQL, SQLite에서 선택 값과 개수를 검증하며 통과했다. Go runner 컴파일, 생성기 테스트, 체크리스트 및 문서 규칙 검사도 통과했다.
 - [o] G4.1.2 PHP와 TypeScript의 `getsCount`에서 전용 `GroupRows`를 반환한다. 각 행에는 선택한 그룹 값과 검증한 음수가 아닌 `row_count`만 담고 개수가 누락·중복되거나 불리언·손실·잘못된 값이면 실패한다. 불리언과 SQL NULL을 포함한 선택 값의 선언된 타입을 보존하고 일부 필드만 채운 모델은 만들지 않는다. 생성 모델은 결과 타입을 노출한다. 근거: 소유 사례가 먼저 그룹 결과 타입 누락으로 실패한 뒤 PHP 단위 사례와 TypeScript 빌드·단위·타입 사례가 통과했다. `make group-rows-physical-check`의 PHP·TypeScript MySQL·PostgreSQL·SQLite 사례 12/12가 통과했고 각 사례 뒤 상태 해시가 동일했다. 문서·용어·체크리스트 검사도 통과했다.
+- [~] G4.1.4 Go 또는 Rust의 `GroupRow.Value`가 그룹 결과에 없는 이름을 요청하면 `COLUMN_UNSELECTED`를 반환한다. 선택된 SQL NULL은 존재하는 값으로 구분하고 공통 `GroupRows` 결과 기준 완료 전에 소유 RED·GREEN 사례를 검증한다.
+- [o] G4.1.4.1 Go `GroupRow.Value`가 선택하지 않은 이름에 오류를 반환하고 선택된 SQL NULL을 구분한다. 근거: 소유 테스트가 반환형 변경 전 실패하고 변경 후 통과했으며 생성 모델과 SQL 예약어 소유 사례가 MySQL, PostgreSQL, SQLite에서 `COLUMN_UNSELECTED`를 확인하며 통과했다.
 - [ ] G5 GitHub Actions 빌드를 검증한다.

@@ -378,16 +378,16 @@ func TestColumnsAndSubqueries(t *testing.T) {
 		}
 		counts := map[bool]int64{}
 		for row := range grouped.All() {
-			value, ok := row.Value("is_close")
-			if !ok {
-				t.Fatal("grouped row has no selected boolean")
+			value, err := row.Value("is_close")
+			if err != nil {
+				t.Fatal(err)
 			}
 			closed, ok := value.(bool)
 			if !ok {
 				t.Fatalf("grouped boolean has type %T", value)
 			}
-			if _, ok := row.Value("name"); ok {
-				t.Fatal("grouped row exposes an unselected model column")
+			if _, err := row.Value("name"); orm.ErrorCode(err) != orm.CodeColumnUnselected {
+				t.Fatalf("unselected grouped model column error = %v", err)
 			}
 			counts[closed] = row.Count()
 		}
