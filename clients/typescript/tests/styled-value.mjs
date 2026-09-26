@@ -45,4 +45,34 @@ if (JSON.stringify(probe.column('payload')) !== JSON.stringify(cases.nonnull_val
   throw new Error('non-null column rejected JSON literal null');
 }
 
+function rejectsLostOutput(label, read) {
+  try { read(); throw new Error(`${label}: input was silently omitted`); }
+  catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
+}
+rejectsLostOutput('styled toJSON', () => orm.StyledValue.value({ missing: undefined }).toJSON());
+rejectsLostOutput('nested styled JSON.stringify', () => JSON.stringify(orm.StyledValue.value({ nested: { missing: undefined } })));
+rejectsLostOutput('styled array gap', () => orm.StyledValue.value([, 'present']).toJSON());
+const hidden = Object.defineProperty({ present: 1 }, 'missing', { value: 2 });
+rejectsLostOutput('hidden styled member', () => orm.StyledValue.value(hidden).toJSON());
+const keyed = { present: 1, [Symbol('missing')]: 2 };
+rejectsLostOutput('symbol styled member', () => orm.StyledValue.value(keyed).toJSON());
+rejectsLostOutput('map styled value', () => orm.StyledValue.value(new Map([['missing', 1]])).toJSON());
+const extra = ['present'];
+extra.missing = 2;
+rejectsLostOutput('extra styled array member', () => orm.StyledValue.value(extra).toJSON());
+const changed = { present: 1 };
+const state = orm.StyledValue.value(changed);
+changed.missing = undefined;
+rejectsLostOutput('mutated styled value', () => state.toJSON());
+const rejected = new orm.Battle();
+rejectsLostOutput('setter before assignment', () => rejected.setJsonSetting(orm.StyledValue.value({ missing: undefined })));
+try { rejected.getJsonSetting(); throw new Error('a rejected setter changed the model'); }
+catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
+const document = { present: 1 };
+const model = new orm.Battle().setJsonSetting(orm.StyledValue.value(document));
+document.missing = undefined;
+rejectsLostOutput('model array', () => model.toArray());
+rejectsLostOutput('model JSON value', () => model.toJSON());
+rejectsLostOutput('model JSON text', () => model.toJSONText());
+
 console.log(`styled value fixture: ${tested} codec cases and 3 model states passed`);

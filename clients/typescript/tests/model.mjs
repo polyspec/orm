@@ -20,6 +20,11 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
 const schemaPath = join(root, 'schema/schema.json');
+const args = process.argv.slice(2);
+if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
+  throw new Error('usage: model.mjs [--case styledStates --dialect sqlite|mysql|postgres]');
+}
+const selectedCase = args.length === 0 ? undefined : args[1];
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
@@ -760,16 +765,19 @@ if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN i
 targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
+if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
 
 try {
+  if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
     current = `${dialect}/schemaEmpty`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     try { await schemaEmpty(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
   }
+  }
   for (const [dialect, dsn] of targets) {
-    for (const [name, fn] of Object.entries(cases)) {
+    for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined || name === selectedCase)) {
       current = `${dialect}/${name}`;
       if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
       await install(dialect, dsn);
@@ -778,6 +786,7 @@ try {
       console.log(`${current} done`);
     }
   }
+  if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
     current = `${dialect}/poolSize`;
     const sized = await Db.connect(dsn, schemaPath, { poolSize: 3 });
@@ -968,6 +977,7 @@ try {
     if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
     try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
+  }
   }
 } finally {
   await rm(work, { recursive: true, force: true });

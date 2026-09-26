@@ -47,13 +47,13 @@
 - [o] N5.1.2.4 Go, PHP, Rust, TypeScript 스키마 빌더의 `auto` 컬럼이 NULL을 허용하지 않는 부호 있는 `i64` 기본 키이도록 강제한다. 각 언어는 동일한 허용·거부 Mermaid 사례를 실행하고 거부된 선언의 원천 행을 보고한다.
 - [o] N5.1.2.4.1 실제 SQLite `INTEGER PRIMARY KEY AUTOINCREMENT` 컬럼을 각 스키마 도구에서 부호 있는 `i64` 자동 키로 읽고, 자동 키가 아닌 `INTEGER` 컬럼은 `i32`로 유지한다. 클라이언트에서 실제 SQLite 가져오기와 스키마 빌드를 검증한다.
 - [ ] N5.1.2.5 Go scalar·collection 키의 문자열 대체 경로를 정확한 타입별 키 표현으로 바꾼다. 지원하지 않는 값은 오류를 반환하고 서로 다른 값은 충돌하지 않으며 relation, 분할 질의, collection 호출자가 오류를 전파하는지 검증한다.
-- [~] N5.1.2.6 네 클라이언트와 세 데이터베이스에서 SQL NULL, 인코딩된 null 값, 조회하지 않은 값 스타일 컬럼을 구분한다. 공통 사례로 저장 텍스트, getter, 행 배열, 모델 JSON 출력, 오류를 검증한다.
+- [o] N5.1.2.6 네 클라이언트와 세 데이터베이스에서 SQL NULL, 인코딩된 null 값, 조회하지 않은 값 스타일 컬럼을 구분한다. 완료된 Go·PHP·TypeScript·Rust 소유 사례는 공통 13개 사례와 MySQL·PostgreSQL·SQLite 실제 데이터베이스 사례로 저장 텍스트, getter, 행 배열, 모델 JSON 출력, 오류를 검증한다. TypeScript 출력 검증 사례도 각 데이터베이스에서 두 번 통과한다.
 - [o] N5.1.2.6.1 Go codec과 생성 모델 setter·getter에서 값 스타일 상태를 명시적으로 구분한다. MySQL, PostgreSQL, SQLite에서 공통 상태, 행 배열, 모델 JSON, 오류를 검증한다.
 - [o] N5.1.2.6.2 PHP 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태 사례와 실제 모델 동작을 검증한다.
 - [o] N5.1.2.6.3 TypeScript 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태·codec 사례와 실제 모델 동작을 검증한다.
 - [o] N5.1.2.6.4 Go conformance 쓰기 실행기에 명시적인 값 스타일 값을 전달하고 쓰기 전에 각 setter 오류를 반환한다. MySQL, PostgreSQL, SQLite에서 모델 생성, 실행기 컴파일, Go 모델·런타임 테스트를 검증한다.
 - [o] N5.1.2.6.5 Rust 값 스타일 컬럼 codec과 생성 setter·getter에 `StyledValue`를 사용한다. null 불허 컬럼의 `SqlNull`을 setter에서 거부하고 미조회 필드를 보고하며 SQL NULL과 인코딩된 null을 저장, 행 배열, 모델 JSON에서 보존한다. 증거: 공통 13개 사례와 Rust 라이브러리·생성기 테스트 23/23 통과, 생성된 null 불허 스타일 setter가 `SqlNull`을 거부하고 인코딩된 JSON null을 수용하는 사례 1/1 통과, `orm-tests integration --case json_values`가 MySQL·PostgreSQL·SQLite에서 각각 두 번 및 setter 사례 추가 후 한 번 더 통과, 작업공간 Clippy·서식·영한 문서·체크리스트 검사 통과.
-- [ ] N5.1.2.6.6 TypeScript 값 스타일 JSON 출력에서 중첩된 undefined 멤버를 조용히 생략하지 않고 거부한다. `StyledValue.value({missing: undefined}).toJSON()`의 RED 사례를 추가하고 소유 codec을 수정하며 MySQL, PostgreSQL, SQLite에서 모델 출력을 검증한다.
+- [o] N5.1.2.6.6 TypeScript 값 스타일 JSON 출력에서 정의되지 않았거나 생략되는 멤버를 모델 변경 전과 인코딩·대입 값 읽기 시 거부한다. 소유 RED 사례는 `StyledValue.value({missing: undefined}).toJSON()`, 중첩 객체, 빠진 배열 위치, 숨은 멤버와 심볼 멤버, 지원하지 않는 객체, 대입 후 변경을 검증한다. 소유 사례와 TypeScript 빌드가 통과하고 `model.mjs --case styledStates --dialect`가 MySQL·PostgreSQL·SQLite에서 각 두 번 통과하며 영한 문서·체크리스트 검사도 통과한다.
 - [o] N5.1.2.7 생성 Rust 모델 필드를 비공개로 두고 조회하거나 대입하지 않은 필드 접근을 `COLUMN_UNSELECTED`로 거부한다. SQL 열 선택을 유지하고 일부 필드만 채운 모델 대신 `GroupRows`로 그룹 값과 검증한 행 개수를 반환한다. 증거: MySQL·PostgreSQL·SQLite에서 생성 모델과 그룹 사례를 실행하고 잘못된 그룹 개수를 거부하며 Rust 소비자가 결과 타입으로 컴파일된다.
 - [o] N5.1.2.8 실패한 실행을 포함하여 모든 conformance 실행 뒤 모든 테이블 행과 선언된 카운터를 확인한다. 실행기 오류와 남은 데이터베이스 상태 변경을 함께 보고한다. SQLite 오류 사례와 MySQL·PostgreSQL·SQLite 실제 데이터베이스 사례로 실패 보고와 정리를 검증한다.
 - [o] N5.1.2.9 PHP와 TypeScript conformance 실행기가 잘못된 파생 정수와 결과 값을 거부하고 ordered JSON 숫자를 정확히 보존하며 예상 밖 벡터 오류를 전파하고 쓰기 벡터를 트랜잭션에서 실행한다. 결과 사례와 MySQL, PostgreSQL, SQLite에서 행·카운터를 바꾸지 않는 동일한 두 실행을 검증한다.
