@@ -584,9 +584,7 @@ func (x *BattleModel) Gets() (*orm.Collection[*BattleModel], error) {
 func (x *BattleModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *BattleModel) GetsCount() (*orm.Collection[*BattleModel], error) {
-	return orm.GetsCount[*BattleModel](x.m)
-}
+func (x *BattleModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *BattleModel) GetSum() (float64, error) { return x.m.GetSum() }

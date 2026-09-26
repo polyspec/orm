@@ -3,6 +3,7 @@ package orm
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"time"
 
@@ -537,14 +538,53 @@ func Gets[T Model](c *Core) (*Collection[T], error) {
 	return c.ent.collection(rows).(*Collection[T]), nil
 }
 
-// GetsCount runs a grouped count; each model carries row_count.
-func GetsCount[T Model](c *Core) (*Collection[T], error) {
+// GetsCount runs a grouped count without constructing partial models.
+func GetsCount(c *Core) (*GroupRows, error) {
 	c.ensureStatement()
-	rows, err := c.load("group_count")
+	ex, err := c.terminal()
 	if err != nil {
 		return nil, err
 	}
-	return c.ent.collection(rows).(*Collection[T]), nil
+	r := c.build("group_count")
+	res, err := query(ex, r)
+	if err != nil {
+		return nil, err
+	}
+	if len(res.plan.Steps) == 0 || res.plan.Steps[0].Assemble == nil {
+		return nil, codecErr(CodeInternal, "group count has no result declaration")
+	}
+	columns := res.plan.Steps[0].Assemble.Columns
+	if err := validateGroupColumns(columns); err != nil {
+		return nil, err
+	}
+	entity := c.entitySchema(ex.base())
+	rows := &GroupRows{rows: make([]GroupRow, 0, len(res.main))}
+	for _, rawRow := range res.main {
+		values := make([]groupValue, 0, len(columns))
+		for _, column := range columns {
+			if column.Hidden {
+				continue
+			}
+			if column.Index < 0 || column.Index >= len(rawRow) {
+				return nil, codecErr(CodeInternal, "group result column %s is missing", column.Name)
+			}
+			var declared *schema.Col
+			if column.Column != "" {
+				declared = entity.Column(column.Column)
+			}
+			value, err := groupColumnValue(c, ex.base(), column, declared, rawRow[column.Index])
+			if err != nil {
+				return nil, fmt.Errorf("group column %s: %w", column.Name, err)
+			}
+			values = append(values, groupValue{name: column.Name, value: value})
+		}
+		row, err := newGroupRow(values)
+		if err != nil {
+			return nil, err
+		}
+		rows.rows = append(rows.rows, row)
+	}
+	return rows, nil
 }
 
 // GetsPage returns one page and the total count.

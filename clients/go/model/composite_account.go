@@ -175,9 +175,7 @@ func (x *CompositeAccountModel) Gets() (*orm.Collection[*CompositeAccountModel],
 func (x *CompositeAccountModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *CompositeAccountModel) GetsCount() (*orm.Collection[*CompositeAccountModel], error) {
-	return orm.GetsCount[*CompositeAccountModel](x.m)
-}
+func (x *CompositeAccountModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *CompositeAccountModel) GetSum() (float64, error) { return x.m.GetSum() }

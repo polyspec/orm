@@ -180,9 +180,7 @@ func (x *CompositeMembershipModel) Gets() (*orm.Collection[*CompositeMembershipM
 func (x *CompositeMembershipModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *CompositeMembershipModel) GetsCount() (*orm.Collection[*CompositeMembershipModel], error) {
-	return orm.GetsCount[*CompositeMembershipModel](x.m)
-}
+func (x *CompositeMembershipModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *CompositeMembershipModel) GetSum() (float64, error) { return x.m.GetSum() }

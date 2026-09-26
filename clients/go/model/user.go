@@ -139,9 +139,7 @@ func (x *UserModel) Gets() (*orm.Collection[*UserModel], error) { return orm.Get
 func (x *UserModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *UserModel) GetsCount() (*orm.Collection[*UserModel], error) {
-	return orm.GetsCount[*UserModel](x.m)
-}
+func (x *UserModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *UserModel) GetSum() (float64, error) { return x.m.GetSum() }

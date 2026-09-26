@@ -340,6 +340,7 @@ const rows = await new Battle().connect(slave1)
 ```
 원시 조건·정렬·그룹·컬럼 형태, 서브쿼리 컬럼, ORM 함수 값은 [dsl.md](dsl.md)에서 정의한다.
 Rust `gets_count()`는 일부 필드만 채운 모델 대신 선택한 그룹 값과 검증한 `row_count`만 담은 `GroupRows`를 반환한다.
+Go `GetsCount()`는 `*orm.GroupRows`를 반환한다. 각 `GroupRow`는 `Value(name)`으로 선택한 값, `Count()`로 검증한 개수를 제공한다. 조회하지 않은 모델 필드는 이 결과에 없다.
 
 ---
 
