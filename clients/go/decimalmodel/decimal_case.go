@@ -173,9 +173,7 @@ func (x *DecimalCaseModel) Gets() (*orm.Collection[*DecimalCaseModel], error) {
 func (x *DecimalCaseModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *DecimalCaseModel) GetsCount() (*orm.Collection[*DecimalCaseModel], error) {
-	return orm.GetsCount[*DecimalCaseModel](x.m)
-}
+func (x *DecimalCaseModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *DecimalCaseModel) GetSum() (float64, error) { return x.m.GetSum() }

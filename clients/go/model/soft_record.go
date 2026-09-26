@@ -173,9 +173,7 @@ func (x *SoftRecordModel) Gets() (*orm.Collection[*SoftRecordModel], error) {
 func (x *SoftRecordModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *SoftRecordModel) GetsCount() (*orm.Collection[*SoftRecordModel], error) {
-	return orm.GetsCount[*SoftRecordModel](x.m)
-}
+func (x *SoftRecordModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *SoftRecordModel) GetSum() (float64, error) { return x.m.GetSum() }

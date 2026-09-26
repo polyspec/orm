@@ -576,7 +576,7 @@ func (x *T) Gets() (*orm.Collection[*T], error) { return orm.Gets[*T](x.m) }
 func (x *T) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *T) GetsCount() (*orm.Collection[*T], error) { return orm.GetsCount[*T](x.m) }
+func (x *T) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *T) GetSum() (float64, error) { return x.m.GetSum() }

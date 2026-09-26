@@ -584,9 +584,7 @@ func (x *AuthorModel) Gets() (*orm.Collection[*AuthorModel], error) {
 func (x *AuthorModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *AuthorModel) GetsCount() (*orm.Collection[*AuthorModel], error) {
-	return orm.GetsCount[*AuthorModel](x.m)
-}
+func (x *AuthorModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *AuthorModel) GetSum() (float64, error) { return x.m.GetSum() }

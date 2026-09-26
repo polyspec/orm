@@ -169,9 +169,7 @@ func (x *ServiceMemberModel) Gets() (*orm.Collection[*ServiceMemberModel], error
 func (x *ServiceMemberModel) GetCount() (int64, error) { return x.m.GetCount() }
 
 // GetsCount returns grouped rows with row_count.
-func (x *ServiceMemberModel) GetsCount() (*orm.Collection[*ServiceMemberModel], error) {
-	return orm.GetsCount[*ServiceMemberModel](x.m)
-}
+func (x *ServiceMemberModel) GetsCount() (*orm.GroupRows, error) { return orm.GetsCount(x.m) }
 
 // GetSum returns the sum of the column selected with Sum<Col>.
 func (x *ServiceMemberModel) GetSum() (float64, error) { return x.m.GetSum() }

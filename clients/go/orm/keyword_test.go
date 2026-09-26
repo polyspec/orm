@@ -159,12 +159,30 @@ func TestSQLKeywordNames(t *testing.T) {
 			}
 			grouped := model()
 			grouped.GroupBy("key")
-			groups, err := orm.GetsCount[*keywordRow](grouped)
+			groups, err := orm.GetsCount(grouped)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if groups.Len() != 2 {
 				t.Fatalf("groups: %d", groups.Len())
+			}
+			counts := map[string]int64{}
+			for row := range groups.All() {
+				key, ok := row.Value("key")
+				if !ok {
+					t.Fatal("grouped key is missing")
+				}
+				name, ok := key.(string)
+				if !ok {
+					t.Fatalf("grouped key has type %T", key)
+				}
+				if _, ok := row.Value("seq"); ok {
+					t.Fatal("grouped row exposes a model key")
+				}
+				counts[name] = row.Count()
+			}
+			if counts["a"] != 2 || counts["b"] != 1 {
+				t.Fatalf("grouped keyword counts: %#v", counts)
 			}
 			first := rows.First().Orm_()
 			first.Set("select", 5)
