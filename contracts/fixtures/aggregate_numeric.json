@@ -1,0 +1,14 @@
+{
+  "feature": "model_queries",
+  "cases": [
+    {"id": "decimal_average", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "48.0450", "expected": {"bits": "404805c28f5c28f6"}},
+    {"id": "integer_tie_even", "operation": "aggregate_numeric", "input_type": "integer_text", "input": "9007199254740993", "expected": {"bits": "4340000000000000"}},
+    {"id": "integer_next", "operation": "aggregate_numeric", "input_type": "integer_text", "input": "9007199254740994", "expected": {"bits": "4340000000000001"}},
+    {"id": "largest_finite", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "1.7976931348623157e308", "expected": {"bits": "7fefffffffffffff"}},
+    {"id": "overflow", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "1.7976931348623159e308", "expected": {"error": "CODEC_DECODE"}},
+    {"id": "invalid_text", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "12x", "expected": {"error": "CODEC_DECODE"}},
+    {"id": "not_a_number", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "NaN", "expected": {"error": "CODEC_DECODE"}},
+    {"id": "infinity", "operation": "aggregate_numeric", "input_type": "decimal_text", "input": "Infinity", "expected": {"error": "CODEC_DECODE"}},
+    {"id": "null", "operation": "aggregate_numeric", "input_type": "null", "input": null, "expected": {"error": "CODEC_DECODE"}}
+  ]
+}

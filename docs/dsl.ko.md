@@ -129,6 +129,7 @@ Key   = [Operator] Column
 | `getsPage(page, perPage)` | `items`, `totalCount`, `totalPages`, `page`, `perPage`를 포함한 한 페이지 |
 | `getQuery()` | 실행하지 않은 `gets()`의 SQL 문장과 바인드 값 |
 
+- `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. NULL, 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
 - `getsPage`는 같은 조건과 조인으로 행 개수를 계산한다. 그룹 모델은 서로 다른 그룹 키 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다.
 - 방언이 SQL 문장을 정하므로 `getQuery`는 연결한 모델이나 활성 트랜잭션에서만 사용할 수 있으며 아니면 `CONFIG`를 반환한다. 비밀 값은 `$SECRET`로 표시한다.
 - 종단 작업은 체인 값 외의 인자를 받지 않는다. 종단 작업은 모델을 바꾸지 않으므로 두 번째 종단 작업도 같은 SQL 문장을 만든다.
