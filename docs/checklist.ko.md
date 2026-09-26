@@ -115,4 +115,5 @@
 - [o] G4.1.2 PHP와 TypeScript의 `getsCount`에서 전용 `GroupRows`를 반환한다. 각 행에는 선택한 그룹 값과 검증한 음수가 아닌 `row_count`만 담고 개수가 누락·중복되거나 불리언·손실·잘못된 값이면 실패한다. 불리언과 SQL NULL을 포함한 선택 값의 선언된 타입을 보존하고 일부 필드만 채운 모델은 만들지 않는다. 생성 모델은 결과 타입을 노출한다. 근거: 소유 사례가 먼저 그룹 결과 타입 누락으로 실패한 뒤 PHP 단위 사례와 TypeScript 빌드·단위·타입 사례가 통과했다. `make group-rows-physical-check`의 PHP·TypeScript MySQL·PostgreSQL·SQLite 사례 12/12가 통과했고 각 사례 뒤 상태 해시가 동일했다. 문서·용어·체크리스트 검사도 통과했다.
 - [~] G4.1.4 Go 또는 Rust의 `GroupRow.Value`가 그룹 결과에 없는 이름을 요청하면 `COLUMN_UNSELECTED`를 반환한다. 선택된 SQL NULL은 존재하는 값으로 구분하고 공통 `GroupRows` 결과 기준 완료 전에 소유 RED·GREEN 사례를 검증한다.
 - [o] G4.1.4.1 Go `GroupRow.Value`가 선택하지 않은 이름에 오류를 반환하고 선택된 SQL NULL을 구분한다. 근거: 소유 테스트가 반환형 변경 전 실패하고 변경 후 통과했으며 생성 모델과 SQL 예약어 소유 사례가 MySQL, PostgreSQL, SQLite에서 `COLUMN_UNSELECTED`를 확인하며 통과했다.
+- [o] G4.1.4.2 Rust `GroupRow::value(name)`에 요청한 이름이 없으면 `COLUMN_UNSELECTED`를 반환한다. SQL NULL을 포함한 선택 값은 유지한다. 근거: 소유 테스트는 기존 `Option` API에서 컴파일 실패하고 `Result<&Val>` 변경 뒤 1/1 통과했으며 생성 모델 `columns_and_subqueries`가 SQLite·MySQL·PostgreSQL에서 각 두 번 통과했다. 라이브러리와 integration 표적 Clippy, Rust 서식, 영한 문서 규칙, 체크리스트 검사도 통과했다.
 - [ ] G5 GitHub Actions 빌드를 검증한다.

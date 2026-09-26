@@ -321,7 +321,11 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!(projected.get_description().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED, "unselected field");
     let grouped = Author::new().connect(db).group_by_is_close().gets_count().await.unwrap();
     assert_eq!(grouped.len(), 2, "gets_count");
-    assert!(grouped.iter().all(|row| row.count() > 0 && row.value("is_close").is_some() && row.value("name").is_none()));
+    for row in grouped.iter() {
+        assert!(row.count() > 0);
+        assert!(matches!(row.value("is_close").unwrap(), orm::Val::Bool(_)));
+        assert_eq!(row.value("name").unwrap_err().code(), orm::codes::COLUMN_UNSELECTED);
+    }
     let page = Author::new().connect(db).order_by_seq_asc().gets_page(2, 3).await.unwrap();
     assert_eq!((page.total_count, page.total_pages, page.items.len()), (4, 2, 1), "page");
     assert_eq!(page.items.first().map(|b| b.get_name().unwrap()), Some("delta"), "page item");

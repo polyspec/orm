@@ -281,8 +281,12 @@ impl GroupRow {
         self.count
     }
 
-    pub fn value(&self, name: &str) -> Option<&Val> {
-        self.values.iter().find(|(key, _)| key == name).map(|(_, value)| value)
+    pub fn value(&self, name: &str) -> Result<&Val> {
+        self.values
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value)
+            .ok_or_else(|| crate::Error::Engine { code: crate::codes::COLUMN_UNSELECTED.into(), msg: format!("group result has no selected column {name}") })
     }
 
     pub fn to_array(&self) -> Result<serde_json::Value> {
@@ -352,8 +356,10 @@ mod group_tests {
     fn grouped_rows_contain_only_group_values_and_checked_counts() {
         let row = GroupRow::new(vec![("is_close".into(), Val::Bool(false)), ("row_count".into(), Val::I64(3))]).unwrap();
         assert_eq!(row.count(), 3);
-        assert_eq!(row.value("is_close"), Some(&Val::Bool(false)));
-        assert_eq!(row.value("name"), None);
+        assert_eq!(row.value("is_close").unwrap(), &Val::Bool(false));
+        assert_eq!(row.value("name").unwrap_err().code(), crate::codes::COLUMN_UNSELECTED);
+        let nullable = GroupRow::new(vec![("name".into(), Val::Null), ("row_count".into(), Val::I64(0))]).unwrap();
+        assert_eq!(nullable.value("name").unwrap(), &Val::Null);
         let groups = GroupRows::new(vec![row]);
         assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3}]"#);
         assert_eq!(groups.to_array().unwrap(), serde_json::json!([{"is_close": false, "row_count": 3}]));
