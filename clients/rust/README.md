@@ -54,6 +54,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Select an engine and expose models | `Db::connect` selects the dialect from the DSN; each generated model embeds its schema and registers its entity descriptor in its generated module, so no global registration call is required |
 | Install schema objects | `db.utils().schema().install(model::SCHEMA.json())` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
+| Preserve a one-time callback's own error | `db.transaction_once(callback).await`; returns `TransactionOnceError::Callback(error)` after rollback |
 | Bound a transaction callback | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
 | Cancel a statement or transaction callback | Drop its future; `timeout_ms` cancels the callback on expiry and awaits rollback |
@@ -71,6 +72,11 @@ including statements it starts. Expiry returns `CANCELED` only after rollback su
 rollback fails, the returned error reports both the timeout and rollback failure. Commit runs
 after a successful callback and is not subject to this deadline. Each transaction retains its
 own connection; a later transaction can use the connection after a cancelled statement.
+
+`transaction_once` accepts a callback that may run only once and does not retry it. A nested call
+uses a savepoint. Database setup and commit failures return `TransactionOnceError::Orm`; a failed
+callback returns its original error after rollback. If rollback also fails, the error contains
+both the callback and rollback failures. This call has no callback deadline option.
 
 ## Row values
 
