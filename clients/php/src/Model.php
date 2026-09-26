@@ -370,22 +370,7 @@ abstract class Model implements \JsonSerializable
         if (array_key_exists($column, $this->values)) {
             return $this->value($column);
         }
-        $col = static::meta()['columns'][$column];
-        if (self::isStyledValueColumn($col)) {
-            throw new OrmException(Code::COLUMN_UNSELECTED, "$column was not selected");
-        }
-        if ($col['nullable']) {
-            return null;
-        }
-        return match ($col['type']) {
-            'i32', 'i64' => 0,
-            'f64' => 0.0,
-            'bool' => false,
-            'date', 'datetime' => new \DateTimeImmutable('0001-01-01 00:00:00'),
-            'point' => [0.0, 0.0],
-            'jsontext' => null,
-            default => '',
-        };
+        throw new OrmException(Code::COLUMN_UNSELECTED, "$column was not selected");
     }
 
     protected function writeColumn(string $column, mixed $value): static
