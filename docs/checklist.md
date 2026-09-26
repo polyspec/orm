@@ -1,14 +1,6 @@
 # Project checklist (0.0.1 completion)
 
-Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypassed. Every item has a completion condition. Use `[!]` only when an unfinished item prevents progress to the next item; record `Cause:` and `Retry:` in that item. A bypass is not completion. Resume it when its retry condition is met. Complete work in progress before increasing the number of unfinished items without completed results.
-Rules: no polling or timers, no symlinks, one execution path, Mermaid is the source for diagrams, generated artifacts are stored separately, version 0.0.1 is fixed, public clients receive one DSN URI without a driver argument, and adopting the ORM needs only the client library.
-
-## Current status (2026-09-17)
-
-- The model syntax of the [DSL](dsl.md) is implemented in Go, PHP, Rust, and TypeScript.
-- Every client validates and plans statements in the calling process and ships its own model generator. No compiler service, daemon, WASM module, or extension is used.
-- The four clients produce the same statements, binds, and results for **25 conformance vectors on MySQL, PostgreSQL, and SQLite**. Codec coverage is 80 vectors across the four clients.
-- Open work: the conformance checker and recorded vectors, removal of the old compiler service sources, contracts, per-language schema tools, performance remeasurement, and the final CI and Pages runs.
+Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypassed.
 
 ## Common interface verification
 
@@ -26,20 +18,7 @@ Rules: no polling or timers, no symlinks, one execution path, Mermaid is the sou
 - [o] D3 Check `/orm/` links, anchors, direct HTML paths, search, mobile navigation, and repeated builds.
 - [ ] D4 Deploy the current pages to https://polyspec.github.io/orm/ and verify them.
 
-## Work lanes
-
-| Lane | Scope | Completion condition |
-|---|---|---|
-| **E Engine** | `engine/*`, `cmd/ormgen`, protocol documents | The Go reference planner, dialects, schema build, and error rules are defined before client work. |
-| **G Go** | `clients/go/*` | Go uses the shared schema and executor rules. |
-| **P PHP** | `clients/php/*` | PHP plans in process and uses the shared executor rules. |
-| **R Rust** | `clients/rust/*` | Rust plans in process and uses the shared executor rules. |
-| **T TypeScript** | `clients/typescript/*` | TypeScript plans in process and uses the same request, result, and state rules. |
-| **V Verification** | `tests/*`, `schema/*`, `scripts/*` | All supported clients produce the same checked results. |
-
-Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete until the same logical feature exists in every supported client.
-
-## Stage 1 — Model syntax [complete]
+## Stage 1 — Model syntax
 
 - [o] M1 Implement model creation and `connect`, chains, connectors, groups, operators, value shapes, column comparisons, tuples, and subqueries in the four clients.
 - [o] M2 Implement relations, joins, column selection, order, group, limit, finders, aggregates, and pages.
@@ -47,7 +26,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] M4 Implement flow-scoped transactions, savepoints, retry, options, row locks, and `connection.utils()`.
 - [o] M5 Reject reserved column names and names that collide with generated methods.
 
-## Stage 2 — In-process planning and generators [in progress]
+## Stage 2 — In-process planning and generators
 
 - [o] N1 Port validation, planning, dialects, and DDL to PHP, Rust, and TypeScript; the Go client calls the engine packages directly.
 - [o] N2 Provide one generator per language: `ormgen gen --lang go`, `vendor/bin/orm-gen`, the `orm-gen` npm bin, and the `orm-build` crate.
@@ -71,17 +50,17 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
 
-## Stage 3 — Schema tools per language [not started]
+## Stage 3 — Schema tools per language
 
 - [ ] L1 Build `schema.json` from `.mmd` files in every language.
 - [ ] L2 Provide migration and import tools in every language.
 
-## Schema and migration tools (Go) [complete]
+## Schema and migration tools
 
 - [o] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [o] T7.5 Implement YAML 1.2 and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
 - [o] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
-- [o] T7.10 Exclude `multi_statement` from every public API because the supported databases cannot provide the same safe parameterized execution structure.
+- [o] T7.10 Exclude `multi_statement` from every public API because the supported databases cannot provide the same safe parameterized execution structure. G4 owns the executable exclusion check for all four clients.
 - [o] T7.13 Validate AES version columns, persist the current version on writes, and provide status and transactional rotation APIs in Go, PHP, Rust, and TypeScript.
 - [o] T7.14 Include table and column comments in the manifest, schema hash, import, DDL, diff, and SQLite metadata.
 - [o] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite.
@@ -99,6 +78,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] T7.D4 Remove informal, figurative, personifying, and ambiguous manual wording.
 - [o] T7.D7 Check paired document structure in CI.
 - [o] T7.D8 Check configured writing-style rules in CI.
+- [o] T7.D8.1 Keep persistent rules in `AGENTS.md` and task deliverables in this checklist. Remove unnumbered procedure, work-lane, and dated status prose; reject its return with the checklist checker while preserving existing item IDs and states. Evidence: a failing checker case before the cleanup, a passing `make checklist-check` and paired document checks, and one local commit containing both language versions and the record.
 - [ ] T7.D11 Regenerate the feature pages from the updated feature manifest.
 
 ## Verification checks
@@ -108,5 +88,5 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [o] G1.1.2 Require current-run feature coverage reports for every claimed client and database, exact case IDs, and two equal result and state runs. Mutation tests reject missing implementation claims, language tests, database runs, cases, repeats, and undeclared results. The feature check remains red until every feature provides executable coverage commands.
 - [o] G1.1.2.1 Enforce the AGENTS.md owner and dependent-part test-location rule in `scripts/features/coverage.mjs`. Mutation tests must reproduce missing owner or dependent-part evidence and central or outside test paths as RED; valid owner and dependent-part execution must be GREEN. `make feature-check` depends on this checker and remains RED while feature contracts lack current execution evidence.
 - [o] G1.1.1 Register the Rust row-value decode test under `model_queries` so feature verification includes it; N5.1.2.2 depends on this registration.
-- [ ] G4 Run generated symbol, schema, and CI checks.
+- [ ] G4 Run generated symbol, schema, and CI checks. Verify that each exported Go, PHP, Rust, and TypeScript client API omits `multi_statement` and that an attempted call fails compilation or interface validation.
 - [ ] G5 Verify the GitHub Actions build.
