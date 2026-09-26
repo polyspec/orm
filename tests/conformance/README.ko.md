@@ -33,9 +33,9 @@ go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 ```
 
-`check run`은 `-dsn`이 필요하며 모든 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다.
-`-langs go,php`는 지정한 실행기만 실행한다.
-`check record -driver <db> out/<db>/go.json`은 검토 후 기대값을 갱신할 때 사용한다.
+`check run`은 `-dsn`이 필요하며 네 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, SQLite `sqlite_sequence` 테이블을 읽는다. 쓰기 벡터가 삽입하는 네 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
+
+`check compare`는 저장된 파일을 비교하며 실행기가 현재 실행됐다는 증거가 아니다. 네 클라이언트의 출력이 정확히 하나씩 필요하다. `check run`은 시작할 때 이전 생성 출력을 제거하고 반복 실행, 상태 검사, 기대값 비교가 모두 통과한 뒤에만 네 출력 파일을 게시한다. 실패하면 현재 진단 파일을 `.run-*` 디렉터리에 남기되 검증된 출력으로 다루지 않는다. `check record -driver <db> out/<db>/go.json`은 검토 후 기대값을 갱신할 때 사용한다.
 
 각 클라이언트는 자기 프로세스에서 SQL을 조립한다. `check run`은 실행기가 bench 데이터베이스를 쓰는 동안 디렉터리 잠금 `/tmp/orm-conformance.lock`을 잡으며, 두 번째 실행은 기다리지 않고 실패한다.
 
@@ -45,4 +45,4 @@ go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 2. 네 실행기에 같은 체인을 추가하고 statement 순서를 유지한다.
 3. 데이터베이스마다 `check record -driver <db>`로 Go 결과를 기대값으로 기록하고 SQL, bind, 결과를 검토한다.
 
-쓰기 벡터는 실행 전 상태를 복원한다. 생성한 행의 키와 갱신 시각은 `$SEQ`, `$TS`로, 무작위 nonce를 갖는 AES 암호문은 `$AES`로 정규화한다.
+쓰기 벡터는 생성한 행을 제거한다. 검사기는 선언된 sequence counter를 복원하고 매번 원래 상태를 확인한다. 출력에서 생성한 행의 키와 갱신 시각은 `$SEQ`, `$TS`로, 무작위 nonce를 갖는 AES 암호문은 `$AES`로 정규화한다. 정규화는 데이터베이스 상태 변경을 허용하지 않는다.
