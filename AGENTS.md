@@ -3,6 +3,9 @@
 [Korean](AGENTS.ko.md)
 
 - The user's instructions take precedence. Develop locally; do not add a remote or push.
+- After integrating a branch into `main`, verify its commits or equivalent changes are present,
+  its worktree is clean, and needed ignored inputs exist elsewhere; then remove the worktree and
+  local branch immediately. Preserve unintegrated or active work.
 - `docs/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make checklist-check` before changing an item state.
 - Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, and `[!]` only when an unfinished item must be bypassed to advance. An `[!]` item states `Cause:` and `Retry:`. Resume it when the retry condition is met; a bypass is not completion.
 - Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
