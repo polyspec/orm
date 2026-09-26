@@ -5,7 +5,7 @@
 ## 공통 인터페이스 검증
 
 - [o] I1 `interfaces.md`와 Mermaid 다이어그램에 공통 구조, 소유 규칙, 상태 전이를 정의한다.
-- [ ] I2 모델 문법에 맞춰 `contracts/interfaces.json`, 생성 구성 요소 페이지, 심볼 검사를 다시 생성한다.
+- [o] I2 모델 문법에 맞춰 `contracts/interfaces.json`, 생성 구성 요소 페이지, 심볼 검사를 다시 생성한다. 근거: `go run ./tests/interfaces/check --generate --record --self-test`와 `make interface-check`가 매니페스트, 두 구성 요소 페이지, 네 심볼 스냅샷, 소스 변경 반례를 다시 생성하고 대조했으며 생성물이 최신이고 네 언어가 모두 통과했다.
 - [ ] I3 모델 문법과 프로세스 내 플래너에 맞춰 구현 대조표를 다시 작성한다.
 - [o] I4 네 클라이언트에서 연결, 트랜잭션, 관계, 쓰기, 시간대를 물리 데이터베이스로 검증한다.
 - [o] I4.1 PHP request 레코드 선언 20개를 공통 필드·중첩 타입 정의와 대조한다. 소스 변경 반례는 검사에 실패하고 PHP 단독 선언 검사는 통과해야 한다.
