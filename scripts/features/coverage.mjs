@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { readFile, realpath } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -14,6 +14,7 @@ const validTests = (part, tests) => Array.isArray(tests) && tests.length > 0 &&
     typeof file === 'string' && file.startsWith(part + '/') &&
     file.slice(part.length + 1).split('/').every(segment =>
       segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
+const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
 
 function requirements(feature, errors) {
   const coverage = feature.coverage;
@@ -70,8 +71,8 @@ function requirements(feature, errors) {
   return items;
 }
 
-// A successful command must report the cases it actually executed. A declared
-// test path or an old output file is not execution evidence.
+// Reports in this function are constructed by executeCoverage from native test
+// events and the checker's database reader, never parsed from test JSON.
 export function checkCoverage(manifest, reports) {
   const errors = [];
   const ids = new Set();
@@ -143,30 +144,124 @@ function validJSON(value) {
   catch { return false; }
 }
 
-function run(command, cwd, timeoutMs) {
+function run(program, args, cwd, timeoutMs) {
   return new Promise((finish) => {
-    const child = spawn('/bin/sh', ['-c', command], { cwd, env: process.env, detached: true });
+    const child = spawn(program, args, { cwd, env: process.env, detached: true });
     let output = '';
     let settled = false;
+    const stop = () => {
+      if (!child.pid) return;
+      try { process.kill(-child.pid, 'SIGKILL'); }
+      catch (error) { if (error.code !== 'ESRCH') throw error; }
+    };
     const done = (error, value) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       finish({ error, value });
     };
-    child.stdout.on('data', chunk => { output += chunk; });
-    child.stderr.on('data', chunk => { output += chunk; });
+    const append = chunk => {
+      output += chunk;
+      if (output.length > 1_000_000) stop();
+    };
+    child.stdout.on('data', append);
+    child.stderr.on('data', append);
     child.on('error', error => done(error.message));
     child.on('close', code => {
+      if (output.length > 1_000_000) return done('test output exceeds 1000000 characters');
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
-      try { done(null, JSON.parse(output)); }
-      catch (error) { done(`invalid JSON report: ${error.message}`); }
+      done(null, output);
     });
     const timer = setTimeout(() => {
-      process.kill(-child.pid, 'SIGKILL');
+      stop();
       done(`timeout after ${timeoutMs} ms`);
     }, timeoutMs);
   });
+}
+
+async function nativeTest(item, command, root) {
+  if (!command || typeof command !== 'object' || Array.isArray(command) ||
+      !item.tests.includes(command.test) || !Array.isArray(command.cases) ||
+      command.cases.length === 0 || new Set(command.cases).size !== command.cases.length ||
+      command.cases.some(id => !item.cases.includes(id)) ||
+      !['node', 'php', 'go', 'cargo'].includes(command.runner) ||
+      (item.language === 'typescript' && command.runner !== 'node') ||
+      (item.language === 'php' && command.runner !== 'php') ||
+      (item.language === 'go' && command.runner !== 'go') ||
+      (item.language === 'rust' && command.runner !== 'cargo') ||
+      (item.database !== 'none' && (typeof command.dsn_env !== 'string' ||
+        !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env))) ||
+      Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env'].includes(key)))
+    throw new Error('invalid native test command');
+  const testPath = resolve(root, command.test);
+  if (await realpath(testPath) !== testPath) throw new Error('symbolic test path');
+  const extension = extname(testPath);
+  if ((command.runner === 'node' && extension !== '.mjs') ||
+      (command.runner === 'php' && extension !== '.php') ||
+      (command.runner === 'go' && extension !== '.go') ||
+      (command.runner === 'cargo' && extension !== '.rs'))
+    throw new Error('invalid native test file extension');
+  if (command.runner === 'node' || command.runner === 'php')
+    return { program: command.runner, args: [testPath, ...command.cases], format: 'case' };
+  const source = await readFile(testPath, 'utf8');
+  for (const id of command.cases) {
+    const short = id.split('::').at(-1);
+    const pattern = command.runner === 'go' ? `\\bfunc\\s+${short}\\s*\\(` : `\\bfn\\s+${short}\\s*\\(`;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(short) || !new RegExp(pattern).test(source))
+      throw new Error(`case ${id} is absent from declared test file`);
+  }
+  if (command.runner === 'go')
+    return { program: 'go', args: ['test', '-json', '-run', `^(${command.cases.join('|')})$`, '.'],
+      cwd: dirname(testPath), format: 'go' };
+  let crate = dirname(testPath);
+  while (crate.startsWith(resolve(root, item.part))) {
+    try { await realpath(resolve(crate, 'Cargo.toml')); break; }
+    catch { crate = dirname(crate); }
+  }
+  if (!crate.startsWith(resolve(root, item.part))) throw new Error('Rust test has no owning Cargo manifest');
+  return { program: 'cargo', args: ['test', '--manifest-path', resolve(crate, 'Cargo.toml')],
+    cwd: crate, format: 'cargo' };
+}
+
+function observedCases(format, output, requested) {
+  const seen = new Set();
+  const add = id => {
+    if (seen.has(id)) throw new Error(`duplicate observed case ${id}`);
+    seen.add(id);
+  };
+  if (format === 'case') {
+    for (const line of output.split(/\r?\n/)) {
+      if (!line) continue;
+      const match = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
+      if (!match) throw new Error(`unexpected test output: ${line}`);
+      add(match[1]);
+    }
+  } else if (format === 'go') {
+    for (const line of output.split(/\r?\n/)) {
+      if (!line) continue;
+      let event;
+      try { event = JSON.parse(line); }
+      catch { throw new Error('invalid Go test event'); }
+      if (event.Action === 'pass' && event.Test) add(event.Test);
+    }
+  } else {
+    for (const line of output.split(/\r?\n/)) {
+      const match = /^test ([A-Za-z0-9_:]+) \.\.\. ok$/.exec(line);
+      if (match) add(match[1]);
+    }
+  }
+  if (seen.size !== requested.length || requested.some(id => !seen.has(id)))
+    throw new Error(`observed cases ${[...seen].join(',')} differ from ${requested.join(',')}`);
+  return requested.map(id => ({ id, value_json: 'true' }));
+}
+
+async function state(database, dsn, timeoutMs) {
+  const result = await run('go', ['run', './tests/conformance/check', 'state', '-driver', database,
+    '-dsn', dsn], checkerRoot, timeoutMs);
+  if (result.error) throw new Error(`database state reader: ${result.error.replaceAll(dsn, '[redacted]')}`);
+  const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(result.value);
+  if (!match) throw new Error('database state reader returned an invalid digest');
+  return match[1];
 }
 
 export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
@@ -177,7 +272,7 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
     if (!coverage || !['database', 'independent'].includes(coverage.kind)) continue;
     for (const item of requirements(feature, errors)) {
         const { key, command } = item;
-        if (typeof command !== 'string' || !command.trim()) {
+        if (!command) {
           errors.push(`${key}: no executable command`);
           continue;
         }
@@ -196,11 +291,52 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
           errors.push(`${key}: unavailable part directory: ${error.message}`);
           continue;
         }
+        let native;
+        try {
+          if (!Array.isArray(command) || command.length !== item.tests.length ||
+              new Set(command.map(entry => entry?.test)).size !== item.tests.length ||
+              item.tests.some(test => !command.some(entry => entry?.test === test)) ||
+              command.flatMap(entry => entry?.cases ?? []).length !== item.cases.length ||
+              new Set(command.flatMap(entry => entry?.cases ?? [])).size !== item.cases.length ||
+              item.cases.some(id => !command.some(entry => entry?.cases?.includes(id))) ||
+              (item.database !== 'none' && new Set(command.map(entry => entry?.dsn_env)).size !== 1))
+            throw new Error('invalid native test command');
+          native = await Promise.all(command.map(entry => nativeTest(item, entry, root)));
+        }
+        catch (error) { errors.push(`${key}: ${error.message}`); continue; }
+        const dsnEnv = command[0].dsn_env;
+        const dsn = item.database === 'none' ? null : process.env[dsnEnv];
+        if (item.database !== 'none' && !dsn) {
+          errors.push(`${key}: missing database DSN in ${dsnEnv}`);
+          continue;
+        }
         reports[key] = [];
         for (let attempt = 1; attempt <= 2; attempt++) {
-          const result = await run(command, cwd, timeoutMs);
-          if (result.error) { errors.push(`${key} run ${attempt}: ${result.error}`); break; }
-          reports[key].push(result.value);
+          try {
+            const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
+            const results = [];
+            for (let index = 0; index < native.length; index++) {
+              const spec = native[index];
+              const entry = command[index];
+              let output = '';
+              for (const id of spec.format === 'cargo' ? entry.cases : [null]) {
+                const args = spec.format === 'cargo' ? [...spec.args, id, '--', '--exact'] : spec.args;
+                const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs);
+                if (result.error) throw new Error(result.error);
+                output += result.value + '\n';
+              }
+              results.push(...observedCases(spec.format, output, entry.cases));
+            }
+            const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
+            reports[key].push({ feature: feature.id, role: item.role, language: item.language,
+              database: item.database, part: item.part, tests: item.tests, success: true,
+              cases: item.cases, results, ...(item.consumer ? { consumer: item.consumer } : {}),
+              ...(dsn ? { state_before: stateBefore, state_after: stateAfter } : {}) });
+          } catch (error) {
+            const message = String(error.message);
+            errors.push(`${key} run ${attempt}: ${dsn ? message.replaceAll(dsn, '[redacted]') : message}`);
+            break;
+          }
         }
     }
   }
