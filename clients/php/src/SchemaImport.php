@@ -432,8 +432,9 @@ final class SchemaImport
                 if ($default !== null && self::sqliteClockDefault((string) $default)) {
                     $default = 'CURRENT_TIMESTAMP';
                 }
-                $t['columns'][] = ['name' => $cname, 'type' => $type, 'nullable' => (int) $notnull === 0 && (int) $pk === 0, 'default' => $default,
-                    'extra' => (int) $pk > 0 && self::sqliteAutoIncrement((string) $createSql, $cname) ? 'auto_increment' : '',
+                $auto = (int) $pk > 0 && self::sqliteAutoIncrement((string) $createSql, $cname);
+                $t['columns'][] = ['name' => $cname, 'type' => $auto ? 'bigint' : $type, 'nullable' => (int) $notnull === 0 && (int) $pk === 0, 'default' => $default,
+                    'extra' => $auto ? 'auto_increment' : '',
                     'key' => (int) $pk > 0 ? 'PRI' : '', 'comment' => ''];
             }
             foreach ($db->query("PRAGMA index_list('$qname')")->fetchAll(\PDO::FETCH_NUM) as [, $indexName, $unique, $origin]) {
