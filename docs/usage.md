@@ -341,6 +341,7 @@ const rows = await new Author().connect(slave1)
 Raw condition, order, group, and column forms, subquery columns, and ORM function values are specified in [dsl.md](dsl.md).
 Rust `gets_count()` returns `GroupRows` with only selected grouping values and a checked `row_count`, instead of a partially populated model.
 Go `GetsCount()` returns `*orm.GroupRows`. Each `GroupRow` exposes its selected values through `Value(name)` and its checked count through `Count()`. An unselected model field is absent from this result.
+PHP and TypeScript `getsCount()` also return `GroupRows` with `GroupRow` entries. Use `value(name)` for a selected grouping value and `count()` in PHP or `count` in TypeScript for the checked row count. An unselected name fails with `COLUMN_UNSELECTED`; SQL NULL remains null.
 
 ---
 
