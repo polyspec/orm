@@ -58,6 +58,12 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
 | Cancel a statement or transaction callback | Drop its future; `timeout_ms` cancels the callback on expiry and awaits rollback |
 | Encrypt model columns | Declare `aes` and `aes_key_version` in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
+
+For Rust connections, `aes_version` must be positive. Every declared key version must be positive
+and have a nonempty key. If `aes_keys` is present, it must contain the current version; an
+`aes_key` supplied alongside it must equal that version's key. `Db::connect` returns `CONFIG`
+before opening a connection for invalid key configuration. A connection without AES columns may
+leave both key fields empty.
 | Record audited writes | Declare `audit_log` and `audit` in the schema, install the audit tables, then set the named context with `db.utils().set_local` inside the transaction |
 
 `timeout_ms(0)` disables the callback deadline. A positive deadline covers callback execution,

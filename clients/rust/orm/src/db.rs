@@ -30,7 +30,8 @@ pub type OnQuery = Arc<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
-    /// Key of aes_version for aes writes; empty takes aes_keys[aes_version].
+    /// Key of aes_version for aes writes; empty takes aes_keys[aes_version]
+    /// when a key ring is configured.
     pub aes_key: String,
     pub blind_index_key: String,
     pub aes_version: i32,
@@ -316,6 +317,26 @@ impl Db {
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
             return Err(Error::Config("cache sizes must be positive".into()));
         }
+        if cfg.aes_version <= 0 {
+            return Err(Error::Config("aes_version must be positive".into()));
+        }
+        for (version, key) in &cfg.aes_keys {
+            if *version <= 0 || key.is_empty() {
+                return Err(Error::Config(format!("aes_keys[{version}] requires a positive version and nonempty key")));
+            }
+        }
+        if cfg.aes_keys.is_empty() {
+            if !cfg.aes_key.is_empty() {
+                cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
+            }
+        } else {
+            let current = cfg.aes_keys.get(&cfg.aes_version).ok_or_else(|| Error::Config(format!("aes_keys[{}] is missing", cfg.aes_version)))?;
+            if cfg.aes_key.is_empty() {
+                cfg.aes_key = current.clone();
+            } else if &cfg.aes_key != current {
+                return Err(Error::Config(format!("aes_key differs from aes_keys[{}]", cfg.aes_version)));
+            }
+        }
         let pool_size = if pool_size == 0 { DEFAULT_POOL_SIZE } else { pool_size };
         if cfg.pool_idle_size > pool_size {
             return Err(Error::Config(format!("pool idle size must be between 0 and the pool size {pool_size}")));
@@ -363,20 +384,6 @@ impl Db {
                 Pool::Sqlite(pool)
             }
         };
-        if cfg.aes_version == 0 {
-            cfg.aes_version = 1;
-        }
-        // aes_key is the key of aes_version: writes encrypt with it, and
-        // aes_keys holds it at aes_version.
-        if cfg.aes_keys.is_empty() {
-            if !cfg.aes_key.is_empty() {
-                cfg.aes_keys.insert(cfg.aes_version, cfg.aes_key.clone());
-            }
-        } else if cfg.aes_key.is_empty() {
-            cfg.aes_key = cfg.aes_keys.get(&cfg.aes_version).cloned().unwrap_or_default();
-        } else if cfg.aes_keys.get(&cfg.aes_version) != Some(&cfg.aes_key) {
-            return Err(Error::Config(format!("aes_key differs from aes_keys[{}]", cfg.aes_version)));
-        }
         let db = Db {
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
