@@ -57,6 +57,24 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 }
 
 #[tokio::test]
+async fn invalid_aes_configuration_fails_before_connection() {
+    let cases = [
+        ("zero current version", orm::Config { aes_version: 0, ..Default::default() }),
+        ("negative current version", orm::Config { aes_version: -1, ..Default::default() }),
+        ("missing current key", orm::Config { aes_version: 2, aes_keys: keys(&[(1, "old-key")]), ..Default::default() }),
+        ("empty current key", orm::Config { aes_keys: keys(&[(1, "")]), ..Default::default() }),
+        ("invalid historical version", orm::Config { aes_keys: keys(&[(0, "old-key"), (1, "current-key")]), ..Default::default() }),
+        ("empty historical key", orm::Config { aes_keys: keys(&[(1, "current-key"), (2, "")]), ..Default::default() }),
+    ];
+    for (name, cfg) in cases {
+        match Db::connect("sqlite:///a-path-that-must-not-be-opened/a.sqlite", 1, cfg).await {
+            Err(e) => assert_eq!(e.code(), "CONFIG", "{name}: {e}"),
+            Ok(_) => panic!("{name} was accepted"),
+        }
+    }
+}
+
+#[tokio::test]
 async fn aes_write_uses_key_of_current_version() {
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();

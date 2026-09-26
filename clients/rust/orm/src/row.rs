@@ -311,7 +311,8 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
                 let key = if sc.host.iter().any(|style| style == "aes") {
                     aes_keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))?
                 } else {
-                    aes_keys.values().next().map(String::as_str).unwrap_or("")
+                    // Non-AES host stages do not consume an AES key.
+                    ""
                 };
                 v = crate::codec::host_decode(&v, &sc.host, key)?;
             }
