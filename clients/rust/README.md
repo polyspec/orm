@@ -87,6 +87,8 @@ Generated model fields are private. A `get_<column>` call returns `Result` and r
 appear as SQL NULL or a default. Explicit projection changes the SQL selection and row output.
 `gets_count` returns `GroupRows` with selected grouping values and a checked `row_count`, so a
 group result does not contain partially populated model fields.
+`GroupRow::value(name)` returns `Result<&Val>` and reports `COLUMN_UNSELECTED` for a name that
+was not selected. A selected SQL NULL remains `Val::Null`.
 
 Generated setters for `json`, `jsons`, `serialize`, and `yaml` columns take
 `StyledValue<T>` and return `Result<Self>`. `StyledValue::SqlNull` writes SQL NULL;
