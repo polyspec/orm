@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildManifest } from '../../clients/typescript/dist/schema/build.js';
-import { parseDiagram } from '../../clients/typescript/dist/schema/mermaid.js';
-import { openToolDb } from '../../clients/typescript/dist/tools/db.js';
-import { readTablesSQLite, renderMermaid } from '../../clients/typescript/dist/tools/introspect.js';
+import { buildManifest } from '../dist/schema/build.js';
+import { parseDiagram } from '../dist/schema/mermaid.js';
+import { openToolDb } from '../dist/tools/db.js';
+import { readTablesSQLite, renderMermaid } from '../dist/tools/introspect.js';
 
 const dir = await mkdtemp(join(tmpdir(), 'orm-ts-auto-'));
 try {
   const { db } = await openToolDb(`sqlite://${join(dir, 'entry.sqlite')}`);
   try {
-    await db.exec(await readFile(new URL('../schema/sqlite_auto.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../../../tests/schema/sqlite_auto.sql', import.meta.url), 'utf8'));
     const tables = await readTablesSQLite(db);
     assert.equal(tables.length, 1);
     assert.equal(tables[0].columns[0].type, 'bigint');

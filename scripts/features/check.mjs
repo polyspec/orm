@@ -106,7 +106,7 @@ const languageTests = {
   go: { roots: ['clients/go', 'engine', 'internal', 'cmd', 'bench/go'], match: file => file.endsWith('_test.go') },
   php: { roots: ['clients/php/tests', 'tests/interfaces/php.php'], match: () => true },
   rust: { roots: ['clients/rust/orm/tests', 'clients/rust/orm-build/tests', 'clients/rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
-  typescript: { roots: ['clients/typescript', 'tests/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('clients/typescript/tests/') && file.endsWith('.mjs')) || (file.startsWith('tests/typescript/') && file.endsWith('.mjs')) },
+  typescript: { roots: ['clients/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('clients/typescript/tests/') && file.endsWith('.mjs')) },
 };
 const skipDirectories = new Set(['node_modules', 'target', 'dist']);
 const walk = async directory => {

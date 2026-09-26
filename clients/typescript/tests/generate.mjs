@@ -1,12 +1,12 @@
 // Generator test: the npm bin declares only valid chain names and imports the
 // published package outside this repository.
-// Usage: node tests/typescript/generate.mjs (after npm run typescript:build)
+// Usage: node clients/typescript/tests/generate.mjs (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const root = new URL('../..', import.meta.url).pathname;
+const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'clients/typescript/dist/bin/orm-gen.js');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-gen-'));
 let failures = 0;
