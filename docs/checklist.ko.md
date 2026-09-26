@@ -63,7 +63,7 @@
 - [o] N5.1.2.11 Rust conformance 실행기가 잘못된 바인딩과 파생 정수 값을 거부하고 다른 binary64 비트의 집계 평균을 거부하며 예상 밖 벡터 오류를 전파하고 실패한 쓰기 벡터를 롤백한다. 잘못된 암호문 접두를 RED·GREEN 사례로, MySQL·PostgreSQL·SQLite에서 실패한 쓰기 상태를 검증한다. N5.1.2의 네 클라이언트 성공 비교는 계속 필요하다.
 - [o] N5.1.2.12 실제 결과 테스트가 MySQL, PostgreSQL, SQLite에서 정확한 네 client 목록을 각각 두 번 실행하고 두 출력을 비교하며 모든 행과 카운터가 이전 상태로 돌아오는지 검증한다. Rust 실행기가 빠지면 실행 전에 실패해야 한다. 중앙 Go 실행기 테스트를 기능 목록에 등록하고 실행하되 client 소유 증거로 사용하지 않는다. 증거: 네 client 중 세 개만 있는 경우 실패하며 수정 후 client/데이터베이스 12개 사례와 각 반복 실행 및 중앙 Go 실행기 테스트가 통과한다.
 - [o] N5.1.2.13 선택한 Rust 불리언 그룹 컬럼을 `GroupRows` 반환 전에 선언된 타입으로 해석한다. 소유 RED 사례는 불리언 그룹 결과의 정수 `0`/`1`을 재현하고 잘못된 불리언을 거부해야 하며, 수정 후 다른 타입 컬럼을 바꾸지 않고 GREEN이 되어야 한다. 증거: Rust 라이브러리 16/16과 Clippy가 통과했고 MySQL, PostgreSQL, SQLite에서 `aggregates` 벡터가 각각 두 번 기대값과 같으며 행과 카운터가 바뀌지 않았다.
-- [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
+- [o] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [o] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다. 근거: Go `TestConnectionTimeZone`, PHP 모델 모음, TypeScript 모델 모음이 SQLite에서 소수부가 없거나 0인 문자열과 분수부 문자열을 비교하고 날짜만 있는 datetime을 거부하며 생성된 값을 6자리 형식으로 읽는다. 문자열 datetime 입력을 지원하는 MySQL·PostgreSQL에서도 같은 사례가 통과한다.
 - [o] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다. 근거: `make rust-150-check`가 150개 엔티티를 생성하고 모든 생성 모델의 getter, setter, chain을 호출하는 Rust crate를 컴파일했다.
 - [o] N9 한 번 실행하는 Rust 트랜잭션에서 콜백의 오류 타입을 보존한다. MySQL, PostgreSQL, SQLite에서 rollback, commit, 중첩 savepoint 동작과 서로 다른 콜백·rollback 오류를 검증한다.
