@@ -727,6 +727,16 @@ func (c *Core) Set(column string, value any) {
 	c.putSet(setSpec{column: column, value: value})
 }
 
+// Selected reports whether a column has a value in this model.
+func (c *Core) Selected(column string) bool {
+	for _, s := range c.sets {
+		if s.column == column {
+			return s.raw == nil && !s.null && !s.plus && !s.minus
+		}
+	}
+	return c.row != nil && !c.row.hidden[column] && slices.Contains(c.row.names, column)
+}
+
 // SetNull records a null column value.
 func (c *Core) SetNull(column string) { c.putSet(setSpec{column: column, null: true}) }
 
