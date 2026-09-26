@@ -62,7 +62,7 @@ Lane order is E → G/P/R/T → V. A client-specific feature remains incomplete 
 - [~] N5.1.2 Make all four conformance runners propagate unexpected errors, clean write state on failure, and enforce the common aggregate scalar rule on all three databases.
 - [o] N5.1.2.2 Reject invalid and nonfinite PHP and TypeScript aggregate scalars and verify nearest binary64 conversion with the shared nine-case fixture.
 - [o] N5.1.2.4 Require an `auto` column to be a non-null signed `i64` primary key in the Go, PHP, Rust, and TypeScript schema builders. Each language executes the same accepted and rejected Mermaid cases and reports the source line for a rejected declaration.
-- [~] N5.1.2.6 Distinguish SQL NULL, JSON literal null, and an unselected JSON column in the four clients on all three databases. Verify storage text, getters, row arrays, model JSON output, and errors with one shared fixture.
+- [~] N5.1.2.6 Distinguish SQL NULL, an encoded null value, and an unselected styled value column in the four clients on all three databases. Verify storage text, getters, row arrays, model JSON output, and errors with one shared fixture.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.
