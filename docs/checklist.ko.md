@@ -118,4 +118,4 @@
 - [o] G4.1.4 Go 또는 Rust의 `GroupRow.Value`가 그룹 결과에 없는 이름을 요청하면 `COLUMN_UNSELECTED`를 반환한다. 선택된 SQL NULL은 존재하는 값으로 구분한다. 근거: G4.1.4.1과 G4.1.4.2가 각각 이전 반환형을 RED로 재현하고 소유 테스트를 통과했으며 MySQL, PostgreSQL, SQLite에서 생성 모델 경로를 검증했다.
 - [o] G4.1.4.1 Go `GroupRow.Value`가 선택하지 않은 이름에 오류를 반환하고 선택된 SQL NULL을 구분한다. 근거: 소유 테스트가 반환형 변경 전 실패하고 변경 후 통과했으며 생성 모델과 SQL 예약어 소유 사례가 MySQL, PostgreSQL, SQLite에서 `COLUMN_UNSELECTED`를 확인하며 통과했다.
 - [o] G4.1.4.2 Rust `GroupRow::value(name)`에 요청한 이름이 없으면 `COLUMN_UNSELECTED`를 반환한다. SQL NULL을 포함한 선택 값은 유지한다. 근거: 소유 테스트는 기존 `Option` API에서 컴파일 실패하고 `Result<&Val>` 변경 뒤 1/1 통과했으며 생성 모델 `columns_and_subqueries`가 SQLite·MySQL·PostgreSQL에서 각 두 번 통과했다. 라이브러리와 integration 표적 Clippy, Rust 서식, 영한 문서 규칙, 체크리스트 검사도 통과했다.
-- [ ] G5 GitHub Actions 빌드를 검증한다.
+- [!] G5 GitHub Actions 빌드를 검증한다. 원인: 기록된 최신 `ci.yml` 실행 `36181030428`이 필요한 replica와 PgBouncer DSN을 workflow가 제공하지 않아 feature·documentation·package 단계에서 실패했다. 현재 로컬 전용 checkout에서는 현재 커밋을 게시하거나 새 외부 서비스 endpoint를 만들 수 없다. 재시도: 현재 `main`을 대상으로 필요한 replica와 pooler 서비스를 제공하는 GitHub Actions 실행이 성공한 뒤 재개한다. 로컬 YAML 파싱과 `make legacy-check`는 통과했으며 완료가 아니다.
