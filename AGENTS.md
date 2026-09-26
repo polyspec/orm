@@ -3,11 +3,16 @@
 [Korean](AGENTS.ko.md)
 
 - The user's instructions take precedence. Develop locally; do not add a remote or push.
-- After integrating a branch into `main`, verify its commits or equivalent changes are present,
-  its worktree is clean, and needed ignored inputs exist elsewhere; then remove the worktree and
-  local branch immediately. Preserve unintegrated or active work.
-- When a test-only branch has served its purpose, cherry-pick any useful changes into the owning
-  branch and discard the rest; then remove its worktree and local branch.
+- Name branches `{type}/{shortname}-{checklist ID}` and worktrees
+  `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
+  or equivalent changes are present and its worktree is clean. Before removal, preserve any files
+  excluded by `.gitignore` that exist only in that worktree and are still needed. Then remove the
+  worktree and local branch immediately.
+  Preserve unintegrated or active work.
+- Before committing the related feature, cherry-pick useful commits from a test-only branch that
+  cannot be integrated into `main`, discard the remaining test-only changes, and remove its worktree
+  and branch. If removal is impossible, first add a numbered sub-item to the owning checklist with
+  the cause and exact removal condition.
 - `docs/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make checklist-check` before changing an item state.
 - Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, and `[!]` only when an unfinished item must be bypassed to advance. An `[!]` item states `Cause:` and `Retry:`. Resume it when the retry condition is met; a bypass is not completion.
 - Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
