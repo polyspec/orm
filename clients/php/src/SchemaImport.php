@@ -433,7 +433,8 @@ final class SchemaImport
                     $default = 'CURRENT_TIMESTAMP';
                 }
                 $auto = (int) $pk > 0 && self::sqliteAutoIncrement((string) $createSql, $cname);
-                $t['columns'][] = ['name' => $cname, 'type' => $auto ? 'bigint' : $type, 'nullable' => (int) $notnull === 0 && (int) $pk === 0, 'default' => $default,
+                $logicalType = self::sqliteLogicalType((string) $type);
+                $t['columns'][] = ['name' => $cname, 'type' => $auto ? 'bigint' : $logicalType, 'nullable' => (int) $notnull === 0 && (int) $pk === 0, 'default' => $default,
                     'extra' => $auto ? 'auto_increment' : '',
                     'key' => (int) $pk > 0 ? 'PRI' : '', 'comment' => ''];
             }
@@ -486,6 +487,14 @@ final class SchemaImport
             }
         }
         return $out;
+    }
+
+    private static function sqliteLogicalType(string $type): string
+    {
+        if (preg_match('/^decimalint\((\d+)[,_](\d+)\)$/i', trim($type), $match) === 1) {
+            return "decimal({$match[1]}_{$match[2]})";
+        }
+        return $type;
     }
 
     /** Reports the column default the DDL writes for =now. */

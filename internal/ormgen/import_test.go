@@ -94,6 +94,39 @@ func TestSQLiteAutomaticRowidImportsAsI64(t *testing.T) {
 	}
 }
 
+func TestSQLiteImportNormalizesDecimalIntegerTypes(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "decimal.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE decimal_case (
+		seq INTEGER PRIMARY KEY,
+		amount DECIMALINT(13,4) NOT NULL,
+		whole DECIMALINT(16,0)
+	)`); err != nil {
+		t.Fatal(err)
+	}
+	tables, err := readTablesSQLite(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := tables[0].Columns[1].Type; got != "decimal(13_4)" {
+		t.Fatalf("amount type = %q", got)
+	}
+	if got := tables[0].Columns[2].Type; got != "decimal(16_0)" {
+		t.Fatalf("whole type = %q", got)
+	}
+	source := renderMermaid(tables, nil)
+	diagram, err := schema.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := schema.Build(diagram); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSQLiteChecksRejectMalformedDefinition(t *testing.T) {
 	if _, err := sqliteChecks("probe", "CREATE TABLE probe (value INTEGER CHECK (value > 0"); err == nil || !strings.Contains(err.Error(), "unbalanced") {
 		t.Fatalf("error=%v", err)

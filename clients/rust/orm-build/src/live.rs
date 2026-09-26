@@ -131,6 +131,15 @@ pub fn mermaid_type(t: &str) -> (String, bool) {
     (t, unsigned)
 }
 
+pub fn sqlite_logical_type(t: &str) -> String {
+    let trimmed = t.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if let Some(inner) = lower.strip_prefix("decimalint(").and_then(|value| value.strip_suffix(')')) {
+        return format!("decimal({})", inner.replace(',', "_"));
+    }
+    t.to_owned()
+}
+
 /// The Mermaid diagram of live tables.
 pub fn render_mermaid(ts: &[Table], prev: Option<&Diagram>) -> String {
     let tables: HashSet<&str> = ts.iter().map(|t| t.name.as_str()).collect();
@@ -504,4 +513,16 @@ pub fn sqlite_checks(table: &str, create_sql: &str) -> Result<Vec<Check>, String
         i = end + 1;
     }
     Ok(checks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sqlite_logical_type;
+
+    #[test]
+    fn sqlite_decimal_integer_is_logical_decimal() {
+        assert_eq!(sqlite_logical_type("DECIMALINT(13,4)"), "decimal(13_4)");
+        assert_eq!(sqlite_logical_type("decimalint(16_0)"), "decimal(16_0)");
+        assert_eq!(sqlite_logical_type("INTEGER"), "INTEGER");
+    }
 }
