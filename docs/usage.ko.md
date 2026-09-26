@@ -340,6 +340,7 @@ const rows = await new Battle().connect(slave1)
 ```
 원시 조건·정렬·그룹·컬럼 형태, 서브쿼리 컬럼, ORM 함수 값은 [dsl.md](dsl.md)에서 정의한다.
 Rust `gets_count()`는 일부 필드만 채운 모델 대신 선택한 그룹 값과 검증한 `row_count`만 담은 `GroupRows`를 반환한다.
+Rust `GroupRow::value(name)`은 `Result<&Val>`을 반환한다. 선택하지 않은 이름은 `COLUMN_UNSELECTED`이고 선택한 SQL NULL은 `Val::Null`로 유지한다.
 Go `GetsCount()`는 `*orm.GroupRows`를 반환한다. 각 `GroupRow`는 `Value(name)`으로 선택한 값, `Count()`로 검증한 개수를 제공한다. `Value(name)`은 선택하지 않은 이름에 `COLUMN_UNSELECTED`를 반환하고 선택된 SQL NULL에는 오류 없이 nil을 반환한다.
 PHP와 TypeScript의 `getsCount()`도 `GroupRow` 항목이 담긴 `GroupRows`를 반환한다. 선택한 그룹 값은 `value(name)`으로 읽고 검증한 행 개수는 PHP에서 `count()`, TypeScript에서 `count`로 읽는다. 선택하지 않은 이름은 `COLUMN_UNSELECTED`로 실패하며 SQL NULL은 null로 유지된다.
 

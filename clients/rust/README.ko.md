@@ -71,7 +71,7 @@ Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버
 
 ## 행 값
 
-생성 모델의 필드는 비공개다. `get_<column>`은 `Result`를 반환하고 열을 조회하거나 대입하지 않았다면 `COLUMN_UNSELECTED`를 반환한다. 빠진 값이 SQL NULL이나 기본값처럼 보이지 않는다. 명시적 투영은 SQL 선택 열과 행 출력을 바꾼다. `gets_count`는 선택한 그룹 값과 검증한 `row_count`를 가진 `GroupRows`를 반환하므로 그룹 결과를 일부 필드만 채운 모델로 표현하지 않는다.
+생성 모델의 필드는 비공개다. `get_<column>`은 `Result`를 반환하고 열을 조회하거나 대입하지 않았다면 `COLUMN_UNSELECTED`를 반환한다. 빠진 값이 SQL NULL이나 기본값처럼 보이지 않는다. 명시적 투영은 SQL 선택 열과 행 출력을 바꾼다. `gets_count`는 선택한 그룹 값과 검증한 `row_count`를 가진 `GroupRows`를 반환하므로 그룹 결과를 일부 필드만 채운 모델로 표현하지 않는다. `GroupRow::value(name)`은 `Result<&Val>`을 반환하며 선택하지 않은 이름을 `COLUMN_UNSELECTED`로 거부한다. 선택한 SQL NULL은 `Val::Null`로 유지한다.
 
 `json`, `jsons`, `serialize`, `yaml` 열의 생성 setter는 `StyledValue<T>`를 받고 `Result<Self>`를 반환한다. `StyledValue::SqlNull`은 SQL NULL을 쓰고 `StyledValue::Value(v)`는 인코딩된 null을 포함한 값을 저장한다. NULL 불허 열은 setter에서 `SqlNull`을 `CODEC_ENCODE`로 거부한다. getter는 `Result<StyledValue<T>>`를 반환하고 조회·대입 전에는 `COLUMN_UNSELECTED`를 보고한다. 행 배열과 모델 JSON은 각 값 스타일 열에 `{"kind":"sql-null"}` 또는 `{"kind":"value","value":...}`를 쓴다. 잘못 저장된 텍스트에는 entity와 열 이름을 포함한 `CODEC_DECODE`를 반환한다.
 
