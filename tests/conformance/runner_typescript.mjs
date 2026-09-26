@@ -4,9 +4,9 @@
 //
 // Usage: node runner_typescript.mjs --dsn URI <schema.json>
 import {
-  AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, Task, User, orm,
+  AesKeyring, Battle, CompositeAccount, Db, Service, ServiceMember, ServiceModule, StyledValue, Task, User, orm,
 } from '../../clients/typescript/dist/index.js';
-import { Value as JsonValue, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
+import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
 const args = process.argv.slice(2);
 let dsn = '';
@@ -39,14 +39,33 @@ function mask(seqs, ...times) {
 
 /** Renders a bound value the way every runner does. */
 function norm(v) {
-  if (typeof v === 'bigint') v = Number(v);
+  if (typeof v === 'bigint') {
+    if (v > BigInt(Number.MAX_SAFE_INTEGER) || v < BigInt(Number.MIN_SAFE_INTEGER)) {
+      throw new Error('integer query bind exceeds the exact JSON range');
+    }
+    v = Number(v);
+  }
   if (typeof v === 'number') return Number.isInteger(v) && maskSeqs.has(v) ? '$SEQ' : v;
   if (v instanceof Date) return norm(timeText(v));
-  if (v instanceof Uint8Array) return norm(Buffer.from(v).toString('utf8'));
+  if (v instanceof Uint8Array) {
+    const prefix = Buffer.from('ORM-AES2\0');
+    if (Buffer.from(v.subarray(0, prefix.length)).equals(prefix)) {
+      if (v.length < 9 + 12 + 16) throw new Error('invalid AES ciphertext bind');
+      return '$AES';
+    }
+    return norm(new TextDecoder('utf-8', { fatal: true }).decode(v));
+  }
   if (typeof v === 'string') {
     if (maskTs.has(v)) return '$TS';
-    // AES ciphertexts carry a random nonce: raw or hex-encoded.
-    if (v.startsWith('ORM-AES2') || v.toLowerCase().startsWith('4f524d2d41455332')) return '$AES';
+    if (v.startsWith('ORM-AES2')) throw new Error('invalid AES ciphertext bind');
+    if (v.toLowerCase().startsWith('4f524d2d41455332')) {
+      if (v.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(v)) throw new Error('invalid hex AES ciphertext bind');
+      const decoded = Buffer.from(v, 'hex');
+      if (!decoded.subarray(0, 9).equals(Buffer.from('ORM-AES2\0')) || decoded.length < 9 + 12 + 16) {
+        throw new Error('invalid hex AES ciphertext bind');
+      }
+      return '$AES';
+    }
   }
   return v;
 }
@@ -63,21 +82,15 @@ function code(error) {
 }
 
 /** Replaces each ordered-json value of a result with plain JSON data. */
-function plain(value) {
-  if (value instanceof JsonValue) return JSON.parse(stringifyJson(value));
-  if (Array.isArray(value)) return value.map(plain);
-  if (value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plain(v)]));
-  }
-  return value;
-}
-
 /** Keeps the named values of a row. */
 function pick(m, ...names) {
   if (m === null || m === undefined) return null;
   const all = m.toArray();
   const out = {};
-  for (const n of names) out[n] = n in all ? all[n] : null;
+  for (const n of names) {
+    if (!Object.hasOwn(all, n)) throw new Error(`missing selected field: ${n}`);
+    out[n] = all[n];
+  }
   return out;
 }
 
@@ -91,10 +104,11 @@ async function main() {
     onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },
   });
   const out = {};
+  const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive']);
   const run = async (name, fn) => {
     log = []; maskSeqs = new Set(); maskTs = new Set();
     let res;
-    try { res = plain(await fn()); } catch (error) { res = { error: code(error) }; }
+    res = resultValue(await executeVector(name, fn, writeVectors.has(name) ? task => db.transaction(task, { retry: 0 }) : null));
     out[name] = { statements: log.map(s => ({ sql: s.sql, binds: s.binds })), result: res };
   };
   const battle = () => new Battle().connect(db);
@@ -156,7 +170,7 @@ async function main() {
     const rows = await battle().raw('{seq} IN (?, ?)', 42, 43)
       .removeAllColumns().addRawColumnDoubled('({read_count} * ?)', 2)
       .orderByRaw('{seq} DESC').gets();
-    return { count, rows: rows.values().map(r => [r.getSeq(), Number(r.getDoubled())]) };
+    return { count, rows: rows.values().map(r => [r.getSeq(), derivedInteger(r.getDoubled())]) };
   });
   await run('columns', async () => {
     const none = await new Service().connect(db).removeAllColumns().getBySeq(7);
@@ -202,11 +216,16 @@ async function main() {
       .addColumnReadTotal(u => new Battle().sumReadCount().userSeqEqSeq(u).andServiceSeq(7))
       .seq(new Battle().addColumnUserSeq().serviceSeq(7).andGeReadCount(906))
       .orderBySeqAsc().gets();
-    return users.values().map(u => [u.getSeq(), Number(u.getReadTotal())]);
+    return users.values().map(u => [u.getSeq(), derivedInteger(u.getReadTotal())]);
   });
   await run('aggregates', async () => {
     const sum = await battle().serviceSeq(7).sumReadCount().getSum();
     const avg = await battle().serviceSeq(7).avgLikeCount().getAvg();
+    const avgBytes = Buffer.alloc(8);
+    avgBytes.writeDoubleBE(avg);
+    if (avgBytes.toString('hex') !== '404805c28f5c28f6') {
+      throw new Error(`aggregate average has unexpected binary64 value: ${avg}`);
+    }
     const groups = await battle().serviceSeq(7).groupByIsClose().orderByIsCloseAsc().getsCount();
     const page = await battle().serviceSeq(7).removeAllColumns().orderBySeqAsc().getsPage(3, 4);
     return {
@@ -226,7 +245,7 @@ async function main() {
     ]) counts.push(await q.getCount());
     const rows = await battle().removeAllColumns().addColumnStartDtAliasStartMonth(orm.month())
       .orderByStartDtAsc(orm.year()).orderBySeqAsc().getsBySeq([42, 43]);
-    return { counts, months: rows.values().map(r => Number(r.getStartMonth())) };
+    return { counts, months: rows.values().map(r => derivedInteger(r.getStartMonth())) };
   });
   await run('errors', async () => {
     const errs = [];
@@ -256,7 +275,7 @@ async function main() {
     const created = await battle()
       .setName('cycle').setUserSeq(1).setServiceSeq(999).setServiceModuleSeq(1).setServiceMemberSeq(1)
       .setStartDt(start).setEndDt(start).setPrice(12.5).setIp('10.0.0.1').setAesHexEmail('cycle@example.com')
-      .setJsonSetting({ a: 1 }).setSerializeData({ k: 'v' })
+      .setJsonSetting(StyledValue.value({ a: 1 })).setSerializeData(StyledValue.value({ k: 'v' }))
       .newLabel('created')
       .create();
     const seq = created.getSeq();

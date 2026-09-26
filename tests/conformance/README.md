@@ -74,3 +74,11 @@ Write vectors remove their rows; the checker restores their declared sequence
 counters and verifies the original state after every execution. Keys and update times in the output are masked
 as `$SEQ` and `$TS`, and AES ciphertexts with random nonces as `$AES`; masking
 does not exempt a database state change.
+
+The PHP and TypeScript runners execute write vectors in transactions and return
+unexpected vector errors to the checker. They reject invalid derived integers,
+missing selected result fields, invalid query binds, and result values that
+cannot be represented exactly. Ordered JSON numbers remain exact in the output.
+`make conformance-result-check` runs their result cases. `make
+conformance-result-physical-check` runs each runner twice on each database and
+checks identical output and unchanged rows and counters.
