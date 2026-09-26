@@ -56,6 +56,7 @@
 - [o] N5.1.2.8 실패한 실행을 포함하여 모든 conformance 실행 뒤 모든 테이블 행과 선언된 카운터를 확인한다. 실행기 오류와 남은 데이터베이스 상태 변경을 함께 보고한다. SQLite 오류 사례와 MySQL·PostgreSQL·SQLite 실제 데이터베이스 사례로 실패 보고와 정리를 검증한다.
 - [o] N5.1.2.9 PHP와 TypeScript conformance 실행기가 잘못된 파생 정수와 결과 값을 거부하고 ordered JSON 숫자를 정확히 보존하며 예상 밖 벡터 오류를 전파하고 쓰기 벡터를 트랜잭션에서 실행한다. 결과 사례와 MySQL, PostgreSQL, SQLite에서 행·카운터를 바꾸지 않는 동일한 두 실행을 검증한다.
 - [o] N5.1.2.10 Go conformance 실행기가 잘못된 질의 바인딩과 누락된 조회 필드를 거부하고 예상 밖 오류를 보존하며 집계 binary64 값을 검증하고 쓰기 벡터를 트랜잭션에서 실행한다. 오류 사례와 MySQL, PostgreSQL, SQLite에서 행·카운터를 바꾸지 않는 동일한 두 실행을 검증한다.
+- [o] N5.1.2.11 Rust conformance 실행기가 잘못된 바인딩과 파생 정수 값을 거부하고 다른 binary64 비트의 집계 평균을 거부하며 예상 밖 벡터 오류를 전파하고 실패한 쓰기 벡터를 롤백한다. 잘못된 암호문 접두를 RED·GREEN 사례로, MySQL·PostgreSQL·SQLite에서 실패한 쓰기 상태를 검증한다. N5.1.2의 네 클라이언트 성공 비교는 계속 필요하다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
 - [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.
