@@ -1,0 +1,109 @@
+//go:build physical
+
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func TestPhysicalRustGroupBoolean(t *testing.T) {
+	if err := os.Mkdir(lockDir, 0o755); err != nil {
+		t.Fatalf("conformance database lock: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Remove(lockDir); err != nil {
+			t.Error(err)
+		}
+	})
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runCommand(root, "", 30*time.Minute, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+		t.Fatal(err)
+	}
+	for _, database := range []struct{ name, env string }{
+		{"mysql", "BENCH_MYSQL_DSN"},
+		{"postgres", "BENCH_POSTGRES_DSN"},
+		{"sqlite", "BENCH_SQLITE_DSN"},
+	} {
+		t.Run(database.name, func(t *testing.T) {
+			driver, dsn = database.name, os.Getenv(database.env)
+			if dsn == "" {
+				t.Fatalf("%s is required", database.env)
+			}
+			stateDB, err := openStateDatabase(driver, dsn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := stateDB.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			first := filepath.Join(t.TempDir(), "first.json")
+			repeated := filepath.Join(t.TempDir(), "repeated.json")
+			if err := runAndCheckState(stateDB, driver, "rust", "first", func() error { return runOne(root, first, "rust") }); err != nil {
+				t.Fatal(err)
+			}
+			if err := runAndCheckState(stateDB, driver, "rust", "repeated", func() error { return runOne(root, repeated, "rust") }); err != nil {
+				t.Fatal(err)
+			}
+			if err := compareRepeatedEvidence(first, repeated); err != nil {
+				t.Fatal(err)
+			}
+			output, err := os.ReadFile(first)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := decodeExact(output); err != nil {
+				t.Fatal(err)
+			}
+			var got map[string]json.RawMessage
+			if err := json.Unmarshal(output, &got); err != nil {
+				t.Fatal(err)
+			}
+			if len(got["aggregates"]) == 0 {
+				t.Fatal("Rust runner omitted aggregates")
+			}
+			path := filepath.Join(root, vectorsPath())
+			expected, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := decodeExact(expected); err != nil {
+				t.Fatal(err)
+			}
+			var contract struct {
+				Vectors []struct {
+					Name   string          `json:"name"`
+					Expect json.RawMessage `json:"expect"`
+				} `json:"vectors"`
+			}
+			if err := json.Unmarshal(expected, &contract); err != nil {
+				t.Fatal(err)
+			}
+			for _, vector := range contract.Vectors {
+				if vector.Name != "aggregates" {
+					continue
+				}
+				if len(vector.Expect) == 0 || string(vector.Expect) == "null" {
+					t.Fatal("aggregates expectation is missing")
+				}
+				equal, err := equalJSON(got["aggregates"], vector.Expect)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !equal {
+					t.Fatalf("Rust aggregates differ from %s expectations", driver)
+				}
+				return
+			}
+			t.Fatal("aggregates vector is not declared")
+		})
+	}
+}

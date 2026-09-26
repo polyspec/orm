@@ -324,3 +324,48 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
     }
     Ok(())
 }
+
+/// Applies declared boolean column types to positional rows, including joined rows.
+/// Drivers may return a boolean as an integer; an invalid value is a decode error.
+pub(crate) fn decode_boolean_columns(asm: &crate::plan::Assemble, data: &mut [Vec<Val>]) -> Result<()> {
+    for column in asm.columns.iter().filter(|column| column.typ == "bool") {
+        for row in data.iter_mut() {
+            let value = row.get_mut(column.index).ok_or_else(|| Error::internal(format!("boolean column {} has no value", column.name)))?;
+            if !value.is_null() {
+                *value = Val::Bool(value.as_bool()?);
+            }
+        }
+    }
+    for child in &asm.children {
+        if let Some(assemble) = &child.assemble {
+            decode_boolean_columns(assemble, data)?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod declared_boolean_tests {
+    use super::{decode_boolean_columns, Val};
+    use crate::plan::{Assemble, Child, OutCol};
+    use std::sync::Arc;
+
+    #[test]
+    fn selected_boolean_groups_keep_their_declared_type() {
+        let child = Assemble { columns: vec![OutCol { index: 2, name: "child_flag".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
+        let assemble = Assemble {
+            columns: vec![
+                OutCol { index: 0, name: "is_close".into(), typ: "bool".into(), ..Default::default() },
+                OutCol { index: 1, name: "row_count".into(), typ: "i64".into(), ..Default::default() },
+            ],
+            children: vec![Child { assemble: Some(Arc::new(child)), ..Default::default() }],
+            ..Default::default()
+        };
+        let mut rows = vec![vec![Val::I64(0), Val::I64(3), Val::I64(1)], vec![Val::I64(1), Val::I64(4), Val::Null]];
+        decode_boolean_columns(&assemble, &mut rows).unwrap();
+        assert_eq!(rows[0], vec![Val::Bool(false), Val::I64(3), Val::Bool(true)]);
+        assert_eq!(rows[1], vec![Val::Bool(true), Val::I64(4), Val::Null]);
+        let mut invalid = vec![vec![Val::I64(2), Val::I64(3), Val::I64(1)]];
+        assert_eq!(decode_boolean_columns(&assemble, &mut invalid).unwrap_err().code(), "CODEC_DECODE");
+    }
+}
