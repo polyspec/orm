@@ -23,9 +23,9 @@ type Entity struct {
 	Schema *Schema
 	// New returns a model of this type that owns core; it calls core.Bind.
 	New func(core *Core) Model
-	// Assign stores a decoded column value in the typed field; false means
-	// name is not a column of the entity.
-	Assign func(m Model, name string, value any) bool
+	// Assign stores a decoded column value in the typed field. False means
+	// name is not a column of the entity; an invalid value returns an error.
+	Assign func(m Model, name string, value any) (bool, error)
 	// Value reads a column field; false means name is not a column.
 	Value func(m Model, name string) (any, bool)
 	// Collect builds the typed collection of the model; generated code sets

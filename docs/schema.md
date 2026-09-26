@@ -210,6 +210,7 @@ The Rust tool is the `orm-gen` binary of the `orm-build` crate, built with its `
 - Relation lines use the foreign-key constraints of the catalog; without a constraint, a column named `<role>_<table>_seq` is matched to `<table>`.
 - Indexes become `%% unique`, `%% fulltext`, and `%% index` directives, `UK` for single-column unique keys, and nothing for single foreign-key indexes, which are automatic.
 - PostgreSQL (`postgres://` DSN) reads `information_schema.columns`, `pg_index`, and `pg_constraint`, normalizes types (`character varying(191)` → `varchar(191)`, `boolean` → `tinyint`, `numeric(p,s)` → `decimal(p_s)`, `timestamp(6) with time zone` → `datetime(6)`, `inet` → `varbinary(16)`, `json` and `jsonb` → `json`), maps identity columns to `auto`, and reconstructs generated full-text indexes. SQLite reads `PRAGMA table_info`, `index_list`, and `foreign_key_list`; an `INTEGER PRIMARY KEY AUTOINCREMENT` column becomes `auto`, and the clock default of the generated DDL becomes `=now`.
+- SQLite reports an automatic rowid column as `INTEGER`, although that value is a signed 64-bit integer. Live import writes the column as `bigint PK "auto"`, which builds as a signed `i64` key; other SQLite `INTEGER` columns remain `int`.
 - When `--out` exists, the importer keeps what the database cannot express: relation name overrides, `lazy`, `bool`, `int`, and explicit styles.
 
 ## 7. Client generation API

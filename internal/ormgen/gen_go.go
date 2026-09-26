@@ -239,7 +239,7 @@ func fieldType(c *schema.Col) string {
 func convert(t string) string {
 	switch t {
 	case "int32":
-		return "int32(orm.AsInt64(v))"
+		return "orm.AsInt32(v)"
 	case "int64":
 		return "orm.AsInt64(v)"
 	case "float64":
@@ -454,7 +454,14 @@ func (g *goGen) writeModel(gm *goModel) error {
 	t, v := gm.typ, "x"
 	var b bytes.Buffer
 	b.WriteString(generatedHeader)
-	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"time\"\n\n\t\"github.com/polyspec/orm/clients/go/orm\"\n)\n\nvar _ time.Time\n\n", g.pkg)
+	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"fmt\"\n", g.pkg)
+	for _, method := range gm.methods {
+		if strings.Contains(method, "reflect.ValueOf(") {
+			b.WriteString("\t\"reflect\"\n")
+			break
+		}
+	}
+	b.WriteString("\t\"time\"\n\n\t\"github.com/polyspec/orm/clients/go/orm\"\n)\n\nvar _ time.Time\n\n")
 	ent := lowerFirst(gm.ctor) + "Entity"
 	fmt.Fprintf(&b, "// %s is a %s model or row.\ntype %s struct {\n\tm *orm.Core\n", t, e.Name, t)
 	for _, c := range e.Columns {
@@ -462,7 +469,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 	}
 	b.WriteString("}\n\n")
 	fmt.Fprintf(&b, "var %s = &orm.Entity{Name: %q, Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &%s{m: c}; c.Bind(x); return x },\n", ent, e.Name, t)
-	fmt.Fprintf(&b, "\tAssign: func(m orm.Model, name string, v any) bool { return m.(*%s).assign(name, v) },\n", t)
+	fmt.Fprintf(&b, "\tAssign: func(m orm.Model, name string, v any) (bool, error) { return m.(*%s).assign(name, v) },\n", t)
 	fmt.Fprintf(&b, "\tValue: func(m orm.Model, name string) (any, bool) { return m.(*%s).value(name) },\n", t)
 	fmt.Fprintf(&b, "\tCollect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any { return orm.CollectOf[*%s](keys, items, fetched) },\n}\n\n", t)
 	fmt.Fprintf(&b, "// %s creates a %s model.\nfunc %s() *%s { return %s.New(orm.NewCore(%s)).(*%s) }\n\n", gm.ctor, e.Name, gm.ctor, t, ent, ent, t)
@@ -470,17 +477,27 @@ func (g *goGen) writeModel(gm *goModel) error {
 	fmt.Fprintf(&b, "// MarshalJSON writes the row values in order.\nfunc (x *%s) MarshalJSON() ([]byte, error) { return x.m.MarshalJSON() }\n\n", t)
 	fmt.Fprintf(&b, "// ToArray returns the row values.\nfunc (x *%s) ToArray() map[string]any { return x.m.ToArray() }\n\n", t)
 
-	b.WriteString("func (x *" + t + ") assign(name string, v any) bool {\n\tswitch name {\n")
+	b.WriteString("func (x *" + t + ") assign(name string, v any) (bool, error) {\n\tswitch name {\n")
 	for _, c := range e.Columns {
 		gt := goType(c)
 		fmt.Fprintf(&b, "\tcase %q:\n", c.Name)
-		if fieldType(c) != gt {
-			fmt.Fprintf(&b, "\t\tif v == nil {\n\t\t\tx.%s = nil\n\t\t} else {\n\t\t\tt := %s\n\t\t\tx.%s = &t\n\t\t}\n", field(c), convert(gt), field(c))
+		if c.Nullable {
+			fmt.Fprintf(&b, "\t\tif v == nil { x.%s = nil; break }\n", field(c))
 		} else {
-			fmt.Fprintf(&b, "\t\tx.%s = %s\n", field(c), convert(gt))
+			fmt.Fprintf(&b, "\t\tif v == nil { return true, fmt.Errorf(\"column %s: %%w\", orm.ErrNullColumn) }\n", c.Name)
+		}
+		if gt == "any" {
+			fmt.Fprintf(&b, "\t\tx.%s = v\n", field(c))
+		} else {
+			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", convert(gt), c.Name)
+			if fieldType(c) != gt {
+				fmt.Fprintf(&b, "\t\tx.%s = &t\n", field(c))
+			} else {
+				fmt.Fprintf(&b, "\t\tx.%s = t\n", field(c))
+			}
 		}
 	}
-	b.WriteString("\tdefault:\n\t\treturn false\n\t}\n\treturn true\n}\n\n")
+	b.WriteString("\tdefault:\n\t\treturn false, nil\n\t}\n\treturn true, nil\n}\n\n")
 	b.WriteString("func (x *" + t + ") value(name string) (any, bool) {\n\tswitch name {\n")
 	for _, c := range e.Columns {
 		fmt.Fprintf(&b, "\tcase %q:\n", c.Name)
@@ -853,7 +870,7 @@ func (g *goGen) method(pos string, gm *goModel, name string, args []argInfo) {
 					return
 				}
 				key := snake(attr)
-				g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s[F ~string | orm.Func](format F) *%s {\n\tswitch f := any(format).(type) {\n\tcase orm.Func:\n\t\tx.m.AddColumnFunc(%q, %q, f)\n\tdefault:\n\t\tx.m.AddColumnFormat(%q, %q, orm.AsString(f))\n\t}\n\treturn x\n}\n", t, name, t, col, key, col, key))
+				g.addMethod(gm, name, fmt.Sprintf("func (x *%s) %s[F ~string | orm.Func](format F) *%s {\n\tswitch f := any(format).(type) {\n\tcase orm.Func:\n\t\tx.m.AddColumnFunc(%q, %q, f)\n\tdefault:\n\t\tx.m.AddColumnFormat(%q, %q, reflect.ValueOf(f).String())\n\t}\n\treturn x\n}\n", t, name, t, col, key, col, key))
 				g.addGetter(pos, gm, "Get"+attr, getter{result: "any", expr: fmt.Sprintf("return x.m.NewValue(%q)", key), origin: "the column added with " + name})
 				return
 			}

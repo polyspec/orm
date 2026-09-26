@@ -69,12 +69,12 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 	seq := created.(*keywordRow).vals["seq"]
 	q := model(open(orm.Config{AESKeys: map[int32]string{2: "note-key-two"}, AESVersion: 2}))
 	q.AddAllColumns()
-	q.Where("", []orm.ChainKey{{Column: "seq"}}, orm.AsInt64(seq))
+	q.Where("", []orm.ChainKey{{Column: "seq"}}, mustInt64(seq))
 	rows, err := orm.Gets[*keywordRow](q)
 	if err != nil {
 		t.Fatalf("read with the version 2 key: %v", err)
 	}
-	if rows.Len() != 1 || rows.First().vals["note"] != "private note" || orm.AsInt64(rows.First().vals["aes_key_version"]) != 2 {
+	if rows.Len() != 1 || rows.First().vals["note"] != "private note" || mustInt64(rows.First().vals["aes_key_version"]) != 2 {
 		t.Fatalf("row %#v", rows.First().vals)
 	}
 }

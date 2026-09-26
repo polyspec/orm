@@ -100,7 +100,7 @@ func TestAESJSONColumn(t *testing.T) {
 				t.Helper()
 				q := model(db)
 				q.AddAllColumns()
-				q.Where("", []orm.ChainKey{{Column: "seq"}}, orm.AsInt64(seq))
+				q.Where("", []orm.ChainKey{{Column: "seq"}}, mustInt64(seq))
 				rows, err := orm.Gets[*keywordRow](q)
 				if err != nil {
 					t.Fatalf("read: %v", err)
@@ -136,7 +136,7 @@ func TestAESJSONColumn(t *testing.T) {
 				}
 				var cell []byte
 				var version int64
-				if err := raw.QueryRow(query, orm.AsInt64(seq)).Scan(&cell, &version); err != nil {
+				if err := raw.QueryRow(query, mustInt64(seq)).Scan(&cell, &version); err != nil {
 					t.Fatal(err)
 				}
 				return cell, version
@@ -372,7 +372,7 @@ func storedCell(t *testing.T, driver, dsn, sqlitePath, table string, seq any) []
 	}
 	defer raw.Close()
 	var cell []byte
-	if err := raw.QueryRow(query, orm.AsInt64(seq)).Scan(&cell); err != nil {
+	if err := raw.QueryRow(query, mustInt64(seq)).Scan(&cell); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.HasPrefix(cell, []byte("ORM-AES2\x00")) {

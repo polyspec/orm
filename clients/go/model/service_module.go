@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -19,7 +20,7 @@ type ServiceModuleModel struct {
 }
 
 var serviceModuleEntity = &orm.Entity{Name: "service_module", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &ServiceModuleModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*ServiceModuleModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*ServiceModuleModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*ServiceModuleModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*ServiceModuleModel](keys, items, fetched)
@@ -39,18 +40,39 @@ func (x *ServiceModuleModel) MarshalJSON() ([]byte, error) { return x.m.MarshalJ
 // ToArray returns the row values.
 func (x *ServiceModuleModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *ServiceModuleModel) assign(name string, v any) bool {
+func (x *ServiceModuleModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "seq":
-		x.fSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column seq: %w", err)
+		}
+		x.fSeq = t
 	case "service_seq":
-		x.fServiceSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column service_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column service_seq: %w", err)
+		}
+		x.fServiceSeq = t
 	case "name":
-		x.fName = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column name: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column name: %w", err)
+		}
+		x.fName = t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *ServiceModuleModel) value(name string) (any, bool) {
