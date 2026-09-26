@@ -65,7 +65,7 @@
 - [o] N5.1.2.13 선택한 Rust 불리언 그룹 컬럼을 `GroupRows` 반환 전에 선언된 타입으로 해석한다. 소유 RED 사례는 불리언 그룹 결과의 정수 `0`/`1`을 재현하고 잘못된 불리언을 거부해야 하며, 수정 후 다른 타입 컬럼을 바꾸지 않고 GREEN이 되어야 한다. 증거: Rust 라이브러리 16/16과 Clippy가 통과했고 MySQL, PostgreSQL, SQLite에서 `aggregates` 벡터가 각각 두 번 기대값과 같으며 행과 카운터가 바뀌지 않았다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
-- [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.
+- [o] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다. 근거: `make rust-150-check`가 150개 엔티티를 생성하고 모든 생성 모델의 getter, setter, chain을 호출하는 Rust crate를 컴파일했다.
 - [o] N9 한 번 실행하는 Rust 트랜잭션에서 콜백의 오류 타입을 보존한다. MySQL, PostgreSQL, SQLite에서 rollback, commit, 중첩 savepoint 동작과 서로 다른 콜백·rollback 오류를 검증한다.
 
 ## 3단계 — 언어별 스키마 도구
