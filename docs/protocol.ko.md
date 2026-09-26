@@ -126,6 +126,7 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 - `bind_slots.from`은 `param`(요청 매개변수. 전문 검색과 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각) 중 하나다.
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
+- `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.
 - `children[].kind`는 같은 행의 자식이면 `join`, `parent_keys`와 `child_keys`로 연결되는 관계 단계면 `one` 또는 `many`다.
 
 ### 2.1 관계 단계
