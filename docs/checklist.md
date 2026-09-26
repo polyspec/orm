@@ -67,6 +67,10 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N7 Compare SQLite datetime text given as a string in the stored six-digit form. Evidence: the Go `TestConnectionTimeZone`, PHP model suite, and TypeScript model suite compare string datetime values with missing, zero, and fractional seconds on SQLite; each also rejects a date-only datetime, and the generated value is read in the six-digit form. The same cases pass on MySQL and PostgreSQL where the clients support string datetime input.
 - [o] N8 Run the 150-table Rust compile check with `orm-build`. Evidence: `make rust-150-check` generated 150 entities and compiled a Rust crate that called a getter, setter, and chain for every generated model.
 - [o] N9 Preserve the callback's error type in a Rust transaction executed once. Verify rollback, commit, nested savepoint behavior, and distinct callback and rollback failures on MySQL, PostgreSQL, and SQLite.
+- [o] N9.1 Apply `statement_timeout_ms` to SQLite lock waits through `busy_timeout`. A positive connection
+  timeout must return `CANCELED` at its declared bound while preserving the connection for later work.
+  Evidence: the SQLite owner case and the generated-model case both pass with a 200 ms bound;
+  Rust formatting and Clippy pass.
 
 ## Stage 3 — Schema tools per language
 

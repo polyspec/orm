@@ -209,3 +209,26 @@ async fn lock_wait_expires() {
     assert_eq!(code.as_deref(), Some(orm::codes::CANCELED), "write past the lock wait");
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms lock wait");
 }
+
+#[tokio::test]
+async fn statement_timeout_bounds_sqlite_lock_wait() {
+    let dsn = database("config-expiry").await;
+    let holder = open(&dsn, 1).await.remove(0);
+    let waiter = Db::connect(&dsn, 1, orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
+    let (code, waited) = holder
+        .transaction(async || {
+            let mut row = service(None);
+            row.core_mut().set("name", Param::Str("holder".into()));
+            orm::model::create(&mut row).await?;
+            let started = Instant::now();
+            let result = write_service(&waiter, "waiter").await;
+            Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
+        })
+        .retry(0)
+        .await
+        .unwrap();
+    assert_eq!(code.as_deref(), Some(orm::codes::CANCELED), "statement timeout cancels the lock wait");
+    assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms statement timeout");
+    waiter.close().await;
+    holder.close().await;
+}
