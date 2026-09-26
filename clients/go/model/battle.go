@@ -46,11 +46,11 @@ type BattleModel struct {
 	fPhoneBlindIndex       *string
 	fPrice                 *float64
 	fIp                    *string
-	fGzExtend              any
-	fJsonSetting           any
-	fJsonsTags             any
-	fBase64Extra           any
-	fSerializeData         any
+	fGzExtend              orm.StyledValue
+	fJsonSetting           orm.StyledValue
+	fJsonsTags             orm.StyledValue
+	fBase64Extra           orm.StyledValue
+	fSerializeData         orm.StyledValue
 }
 
 var battleEntity = &orm.Entity{Name: "battle", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &BattleModel{m: c}; c.Bind(x); return x },
@@ -365,35 +365,35 @@ func (x *BattleModel) assign(name string, v any) (bool, error) {
 		}
 		x.fIp = &t
 	case "gz_extend":
-		if v == nil {
-			x.fGzExtend = nil
-			break
+		t, err := orm.AsStyledValue(v, true)
+		if err != nil {
+			return true, fmt.Errorf("column gz_extend: %w", err)
 		}
-		x.fGzExtend = v
+		x.fGzExtend = t
 	case "json_setting":
-		if v == nil {
-			x.fJsonSetting = nil
-			break
+		t, err := orm.AsStyledValue(v, true)
+		if err != nil {
+			return true, fmt.Errorf("column json_setting: %w", err)
 		}
-		x.fJsonSetting = v
+		x.fJsonSetting = t
 	case "jsons_tags":
-		if v == nil {
-			x.fJsonsTags = nil
-			break
+		t, err := orm.AsStyledValue(v, true)
+		if err != nil {
+			return true, fmt.Errorf("column jsons_tags: %w", err)
 		}
-		x.fJsonsTags = v
+		x.fJsonsTags = t
 	case "base64_extra":
-		if v == nil {
-			x.fBase64Extra = nil
-			break
+		t, err := orm.AsStyledValue(v, true)
+		if err != nil {
+			return true, fmt.Errorf("column base64_extra: %w", err)
 		}
-		x.fBase64Extra = v
+		x.fBase64Extra = t
 	case "serialize_data":
-		if v == nil {
-			x.fSerializeData = nil
-			break
+		t, err := orm.AsStyledValue(v, true)
+		if err != nil {
+			return true, fmt.Errorf("column serialize_data: %w", err)
 		}
-		x.fSerializeData = v
+		x.fSerializeData = t
 	default:
 		return false, nil
 	}
@@ -1757,13 +1757,22 @@ func (x *BattleModel) OrderByIpDesc(fn ...orm.Func) *BattleModel {
 }
 
 // GetGzExtend returns gz_extend.
-func (x *BattleModel) GetGzExtend() any { return x.fGzExtend }
+func (x *BattleModel) GetGzExtend() (orm.StyledValue, error) {
+	if !x.m.Selected("gz_extend") {
+		return orm.StyledValue{}, orm.ColumnUnselected("gz_extend")
+	}
+	return x.fGzExtend, nil
+}
 
 // SetGzExtend sets gz_extend.
-func (x *BattleModel) SetGzExtend(v any) *BattleModel {
-	x.fGzExtend = v
-	x.m.Set("gz_extend", v)
-	return x
+func (x *BattleModel) SetGzExtend(v orm.StyledValue) (*BattleModel, error) {
+	normalized, err := orm.NormalizeStyled([]string{"serialize", "gz"}, true, v)
+	if err != nil {
+		return nil, err
+	}
+	x.fGzExtend = normalized
+	x.m.Set("gz_extend", normalized)
+	return x, nil
 }
 
 func (x *BattleModel) SetRawGzExtend(sql string, binds ...any) *BattleModel {
@@ -1784,13 +1793,22 @@ func (x *BattleModel) OrderByGzExtendDesc(fn ...orm.Func) *BattleModel {
 }
 
 // GetJsonSetting returns json_setting.
-func (x *BattleModel) GetJsonSetting() any { return x.fJsonSetting }
+func (x *BattleModel) GetJsonSetting() (orm.StyledValue, error) {
+	if !x.m.Selected("json_setting") {
+		return orm.StyledValue{}, orm.ColumnUnselected("json_setting")
+	}
+	return x.fJsonSetting, nil
+}
 
 // SetJsonSetting sets json_setting.
-func (x *BattleModel) SetJsonSetting(v any) *BattleModel {
-	x.fJsonSetting = v
-	x.m.Set("json_setting", v)
-	return x
+func (x *BattleModel) SetJsonSetting(v orm.StyledValue) (*BattleModel, error) {
+	normalized, err := orm.NormalizeStyled([]string{"json"}, true, v)
+	if err != nil {
+		return nil, err
+	}
+	x.fJsonSetting = normalized
+	x.m.Set("json_setting", normalized)
+	return x, nil
 }
 
 func (x *BattleModel) SetRawJsonSetting(sql string, binds ...any) *BattleModel {
@@ -1814,13 +1832,22 @@ func (x *BattleModel) OrderByJsonSettingDesc(fn ...orm.Func) *BattleModel {
 }
 
 // GetJsonsTags returns jsons_tags.
-func (x *BattleModel) GetJsonsTags() any { return x.fJsonsTags }
+func (x *BattleModel) GetJsonsTags() (orm.StyledValue, error) {
+	if !x.m.Selected("jsons_tags") {
+		return orm.StyledValue{}, orm.ColumnUnselected("jsons_tags")
+	}
+	return x.fJsonsTags, nil
+}
 
 // SetJsonsTags sets jsons_tags.
-func (x *BattleModel) SetJsonsTags(v any) *BattleModel {
-	x.fJsonsTags = v
-	x.m.Set("jsons_tags", v)
-	return x
+func (x *BattleModel) SetJsonsTags(v orm.StyledValue) (*BattleModel, error) {
+	normalized, err := orm.NormalizeStyled([]string{"jsons"}, true, v)
+	if err != nil {
+		return nil, err
+	}
+	x.fJsonsTags = normalized
+	x.m.Set("jsons_tags", normalized)
+	return x, nil
 }
 
 func (x *BattleModel) SetRawJsonsTags(sql string, binds ...any) *BattleModel {
@@ -1841,13 +1868,22 @@ func (x *BattleModel) OrderByJsonsTagsDesc(fn ...orm.Func) *BattleModel {
 }
 
 // GetBase64Extra returns base64_extra.
-func (x *BattleModel) GetBase64Extra() any { return x.fBase64Extra }
+func (x *BattleModel) GetBase64Extra() (orm.StyledValue, error) {
+	if !x.m.Selected("base64_extra") {
+		return orm.StyledValue{}, orm.ColumnUnselected("base64_extra")
+	}
+	return x.fBase64Extra, nil
+}
 
 // SetBase64Extra sets base64_extra.
-func (x *BattleModel) SetBase64Extra(v any) *BattleModel {
-	x.fBase64Extra = v
-	x.m.Set("base64_extra", v)
-	return x
+func (x *BattleModel) SetBase64Extra(v orm.StyledValue) (*BattleModel, error) {
+	normalized, err := orm.NormalizeStyled([]string{"serialize", "base64"}, true, v)
+	if err != nil {
+		return nil, err
+	}
+	x.fBase64Extra = normalized
+	x.m.Set("base64_extra", normalized)
+	return x, nil
 }
 
 func (x *BattleModel) SetRawBase64Extra(sql string, binds ...any) *BattleModel {
@@ -1871,13 +1907,22 @@ func (x *BattleModel) OrderByBase64ExtraDesc(fn ...orm.Func) *BattleModel {
 }
 
 // GetSerializeData returns serialize_data.
-func (x *BattleModel) GetSerializeData() any { return x.fSerializeData }
+func (x *BattleModel) GetSerializeData() (orm.StyledValue, error) {
+	if !x.m.Selected("serialize_data") {
+		return orm.StyledValue{}, orm.ColumnUnselected("serialize_data")
+	}
+	return x.fSerializeData, nil
+}
 
 // SetSerializeData sets serialize_data.
-func (x *BattleModel) SetSerializeData(v any) *BattleModel {
-	x.fSerializeData = v
-	x.m.Set("serialize_data", v)
-	return x
+func (x *BattleModel) SetSerializeData(v orm.StyledValue) (*BattleModel, error) {
+	normalized, err := orm.NormalizeStyled([]string{"serialize"}, true, v)
+	if err != nil {
+		return nil, err
+	}
+	x.fSerializeData = normalized
+	x.m.Set("serialize_data", normalized)
+	return x, nil
 }
 
 func (x *BattleModel) SetRawSerializeData(sql string, binds ...any) *BattleModel {

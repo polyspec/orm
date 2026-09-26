@@ -207,7 +207,7 @@ func (g *goGen) staticNames(gm *goModel) map[string]bool {
 // goType is the Go field type of a column.
 func goType(c *schema.Col) string {
 	if len(appStyles(c)) > 0 || c.Type == "jsontext" {
-		return "any"
+		return "orm.StyledValue"
 	}
 	switch c.Type {
 	case "i32":
@@ -230,7 +230,7 @@ func goType(c *schema.Col) string {
 
 func fieldType(c *schema.Col) string {
 	t := goType(c)
-	if c.Nullable && t != "any" && t != "[]byte" {
+	if c.Nullable && t != "orm.StyledValue" && t != "[]byte" {
 		return "*" + t
 	}
 	return t
@@ -252,8 +252,6 @@ func convert(t string) string {
 		return "orm.AsPoint(v)"
 	case "[]byte":
 		return "orm.AsBytes(v)"
-	case "any":
-		return "v"
 	}
 	return "orm.AsString(v)"
 }
@@ -481,13 +479,13 @@ func (g *goGen) writeModel(gm *goModel) error {
 	for _, c := range e.Columns {
 		gt := goType(c)
 		fmt.Fprintf(&b, "\tcase %q:\n", c.Name)
-		if c.Nullable {
+		if c.Nullable && gt != "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tif v == nil { x.%s = nil; break }\n", field(c))
-		} else {
+		} else if !c.Nullable && gt != "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tif v == nil { return true, fmt.Errorf(\"column %s: %%w\", orm.ErrNullColumn) }\n", c.Name)
 		}
-		if gt == "any" {
-			fmt.Fprintf(&b, "\t\tx.%s = v\n", field(c))
+		if gt == "orm.StyledValue" {
+			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n\t\tx.%s = t\n", c.Nullable, c.Name, field(c))
 		} else {
 			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", convert(gt), c.Name)
 			if fieldType(c) != gt {
@@ -677,11 +675,16 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 
 	for _, c := range e.Columns {
 		p, f, gt, ft := pascal(c.Name), field(c), goType(c), fieldType(c)
-		fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
-		if ft != gt {
-			fmt.Fprintf(&b, "// Set%s sets %s; nil stores NULL.\nfunc (x *%s) Set%s(v %s) *%s {\n\tx.%s = v\n\tif v == nil {\n\t\tx.m.SetNull(%q)\n\t} else {\n\t\tx.m.Set(%q, *v)\n\t}\n\treturn x\n}\n\n", p, c.Name, t, p, ft, t, f, c.Name, c.Name)
+		if gt == "orm.StyledValue" {
+			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (orm.StyledValue, error) {\n\tif !x.m.Selected(%q) { return orm.StyledValue{}, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, c.Name, c.Name, f)
+			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, appStyles(c), c.Nullable, f, c.Name)
 		} else {
-			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v %s) *%s { x.%s = v; x.m.Set(%q, v); return x }\n\n", p, c.Name, t, p, gt, t, f, c.Name)
+			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
+			if ft != gt {
+				fmt.Fprintf(&b, "// Set%s sets %s; nil stores NULL.\nfunc (x *%s) Set%s(v %s) *%s {\n\tx.%s = v\n\tif v == nil {\n\t\tx.m.SetNull(%q)\n\t} else {\n\t\tx.m.Set(%q, *v)\n\t}\n\treturn x\n}\n\n", p, c.Name, t, p, ft, t, f, c.Name, c.Name)
+			} else {
+				fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v %s) *%s { x.%s = v; x.m.Set(%q, v); return x }\n\n", p, c.Name, t, p, gt, t, f, c.Name)
+			}
 		}
 		fmt.Fprintf(&b, "func (x *%s) SetRaw%s(sql string, binds ...any) *%s { x.m.SetRaw(%q, sql, binds); return x }\n", t, p, t, c.Name)
 		fmt.Fprintf(&b, "func (x *%s) AddColumn%s() *%s { x.m.AddColumn(%q); return x }\n", t, p, t, c.Name)

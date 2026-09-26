@@ -180,7 +180,7 @@ func TestAuditTriggers(t *testing.T) {
 				c, _ := model(items)
 				c.Set("service_ref", "s1")
 				c.Set("title", "a")
-				c.Set("json_detail", map[string]any{"secret": "s3cret", "kept": "v"})
+				c.Set("json_detail", orm.Value(map[string]any{"secret": "s3cret", "kept": "v"}))
 				created, err := c.Create()
 				if err != nil {
 					return err
@@ -330,6 +330,11 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 // jsonText decodes a JSON column value read through the JSON codec.
 func jsonText(t *testing.T, v any) any {
 	t.Helper()
+	styled, ok := v.(orm.StyledValue)
+	if !ok || styled.Kind() != "value" {
+		t.Fatalf("JSON column is %T (%v), want a stored value", v, v)
+	}
+	v, _ = styled.Data()
 	b, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
