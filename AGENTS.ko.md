@@ -17,4 +17,5 @@
 - SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
 - 오류와 입력값을 보존한다. 조용한 fallback이나 호환 계층을 추가하지 않는다.
 - Go 값 변환, host 인코딩, 생성 모델 대입은 잘못된 값에 오류를 반환한다. 행을 쓰기 전에 insert 필드 대입을 검증하고 행 조립 오류를 호출자에게 전파한다.
+- 값 스타일 컬럼의 setter와 getter는 SQL NULL, 인코딩된 null 값, 조회하지 않은 컬럼을 명시적 값 타입으로 구분한다. setter는 모델을 변경하기 전에 잘못된 입력을 거부하고, 명시적으로 요청한 미조회 컬럼은 `COLUMN_UNSELECTED`를 반환한다.
 - 영문과 국문 문서를 동등하게 유지한다. 추가 작성자 표기 없이 `min-median-max <max@blue.tools>`로 로컬 커밋한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.

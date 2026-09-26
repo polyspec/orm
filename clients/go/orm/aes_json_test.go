@@ -108,7 +108,12 @@ func TestAESJSONColumn(t *testing.T) {
 				if rows.Len() != 1 {
 					t.Fatalf("rows: %d", rows.Len())
 				}
-				value, ok := rows.First().vals["config"].(*orderedjson.Value)
+				styled, ok := rows.First().vals["config"].(orm.StyledValue)
+				if !ok || styled.Kind() != "value" {
+					t.Fatalf("config state is %T (%v)", rows.First().vals["config"], rows.First().vals["config"])
+				}
+				data, _ := styled.Data()
+				value, ok := data.(*orderedjson.Value)
 				if !ok {
 					t.Fatalf("config is %T", rows.First().vals["config"])
 				}
@@ -147,7 +152,7 @@ func TestAESJSONColumn(t *testing.T) {
 				t.Fatal(err)
 			}
 			c := model(first)
-			c.Set("config", value)
+			c.Set("config", orm.Value(value))
 			created, err := c.Create()
 			if err != nil {
 				t.Fatalf("create: %v", err)
@@ -188,7 +193,7 @@ func TestAESJSONColumn(t *testing.T) {
 			}
 			u := model(first)
 			u.Set("seq", seq)
-			u.Set("config", updated)
+			u.Set("config", orm.Value(updated))
 			if err := u.Update(nil); err != nil {
 				t.Fatalf("update: %v", err)
 			}
@@ -285,7 +290,7 @@ func TestAESJSONColumnAudit(t *testing.T) {
 				c := orm.NewCore(secrets)
 				secrets.New(c)
 				c.Set("service_ref", "s1")
-				c.Set("config", first)
+				c.Set("config", orm.Value(first))
 				created, err := c.Create()
 				if err == nil {
 					seq = created.(*keywordRow).vals["seq"]
@@ -297,7 +302,7 @@ func TestAESJSONColumnAudit(t *testing.T) {
 				u := orm.NewCore(secrets)
 				secrets.New(u)
 				u.Set("seq", seq)
-				u.Set("config", second)
+				u.Set("config", orm.Value(second))
 				return u.Update(nil)
 			})
 			ciphertexts = append(ciphertexts, storedCell(t, driver, dsn, sqlitePath, tables[0], seq))
