@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { checkCoverage, databases, executeCoverage, languages } from './coverage.mjs';
 
 const ownerTests = {
@@ -97,21 +100,104 @@ test('identity, result, state, and unknown report mutations are RED', { timeout:
   assert.match(mutation((m) => { m.features[0].coverage.cases = ['first', 'first']; }), /distinct nonempty IDs/);
 });
 
-test('owner and dependent commands run twice from their own parts', { timeout: 8000 }, async () => {
+test('native owner and dependent files execute twice from their own parts', { timeout: 8000 }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
+  const owner = 'clients/typescript/tests/owner.mjs';
+  const dependent = 'clients/typescript/use/dependent.mjs';
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
+    coverage: { kind: 'independent', cases: ['first', 'second'],
+      owners: { typescript: { part: 'clients/typescript', tests: [owner],
+        commands: { none: [{ runner: 'node', test: owner, cases: ['first', 'second'] }] } } },
+      dependents: [{ id: 'use', language: 'typescript', part: 'clients/typescript/use',
+        tests: [dependent], cases: ['first'], commands: { none: [{ runner: 'node', test: dependent, cases: ['first'] }] } }] } }] };
+  try {
+    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
+    await mkdir(join(root, 'clients/typescript/use'), { recursive: true });
+    await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { if (!['first', 'second'].includes(id)) process.exit(2); console.log(`CASE ${id} PASS`); }\n");
+    await writeFile(join(root, dependent), "for (const id of process.argv.slice(2)) { if (id !== 'first') process.exit(2); console.log(`CASE ${id} PASS`); }\n");
+    assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
+    await writeFile(join(root, owner), "process.stdout.write(JSON.stringify({success:true,cases:['first','second']}));\n");
+    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /unexpected test output/);
+    await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { console.log(`CASE ${id} PASS`); console.log(`CASE ${id} PASS`); }\n");
+    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /duplicate observed case first/);
+    delete manifest.features[0].coverage.dependents[0].commands.none;
+    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /no executable command/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('invented JSON success from an arbitrary command is not execution evidence', { timeout: 8000 }, async () => {
   const manifest = contract('independent');
-  const output = (role, part, tests, language, cases, dependent) => JSON.stringify({ feature: 'sample', role, part, tests, language,
-    database: 'none', success: true, cases, results: cases.map((id, index) => ({ id, value_json: String(index + 1) })),
-    ...(dependent ? { dependent } : {}) });
+  const report = (role, part, tests, language, cases, dependent) => JSON.stringify({
+    feature: 'sample', role, part, tests, language, database: 'none', success: true, cases,
+    results: cases.map(id => ({ id, value_json: 'true' })), ...(dependent ? { dependent } : {}),
+  });
   for (const language of languages) manifest.features[0].coverage.owners[language].commands.none =
-    `node -e 'process.stdout.write(${JSON.stringify(output('owner', `clients/${language}`, [ownerTests[language]], language, ['first', 'second']))})'`;
+    `node -e 'process.stdout.write(${JSON.stringify(report('owner', `clients/${language}`, [ownerTests[language]], language, ['first', 'second']))})'`;
   manifest.features[0].coverage.dependents[0].commands.none =
-    `node -e 'process.stdout.write(${JSON.stringify(output('dependent', 'clients/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
-  const root = new URL('../..', import.meta.url).pathname;
-  assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
-  manifest.features[0].coverage.owners.php.commands.none = 'exit 4';
-  assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /sample\/owner\/php\/none run 1: exit 4/);
-  delete manifest.features[0].coverage.dependents[0].commands.none;
-  assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /sample\/dependent\/service\/go\/none: no executable command/);
-  manifest.features[0].coverage.owners.rust.tests = ['clients/rust/orm/tests/missing_test.rs'];
-  assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /sample\/owner\/rust\/none: unavailable part directory/);
+    `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'clients/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
+  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, 1000)).join('\n'),
+    /invalid native test command/);
+});
+
+test('checker reads physical database state around each native test run', { timeout: 120000 }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
+  const owner = 'clients/typescript/tests/owner.mjs';
+  const databasePath = join(root, 'state.sqlite');
+  const dsn = `sqlite://${databasePath}`;
+  const previous = process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
+  process.env.ORM_COVERAGE_TEST_SQLITE_DSN = dsn;
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
+    coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
+      typescript: { part: 'clients/typescript', tests: [owner], commands: Object.fromEntries(databases.map(database =>
+        [database, [{ runner: 'node', test: owner, cases: ['first'], dsn_env: 'ORM_COVERAGE_TEST_SQLITE_DSN' }]])) },
+    } } }] };
+  try {
+    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
+    const db = new DatabaseSync(databasePath);
+    db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
+    db.close();
+    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); console.log('CASE first PASS');\n");
+    // Exercise only the SQLite slot; the other database declarations are checked separately.
+    const feature = manifest.features[0];
+    feature.coverage.kind = 'database';
+    const original = [...databases];
+    assert.deepEqual(original, ['mysql', 'postgres', 'sqlite']);
+    const errors = await executeCoverage(manifest, root, 30000);
+    assert.ok(errors.some(error => error.includes('mysql')));
+    assert.ok(errors.some(error => error.includes('postgres')));
+    assert.ok(!errors.some(error => error.includes('/sqlite')), errors.join('\n'));
+    await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); console.log('CASE first PASS');\n");
+    const changed = await executeCoverage(manifest, root, 30000);
+    assert.match(changed.join('\n'), /sample\/owner\/typescript\/sqlite: database state changed/);
+  } finally {
+    if (previous === undefined) delete process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
+    else process.env.ORM_COVERAGE_TEST_SQLITE_DSN = previous;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('Go, PHP, and Rust native cases execute through their owning files', { timeout: 120000 }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
+  const cases = [
+    { language: 'go', part: 'clients/go/orm', file: 'clients/go/orm/owner_test.go', runner: 'go', id: 'TestFirst' },
+    { language: 'php', part: 'clients/php/tests', file: 'clients/php/tests/owner.php', runner: 'php', id: 'first' },
+    { language: 'rust', part: 'clients/rust/orm', file: 'clients/rust/orm/src/lib.rs', runner: 'cargo', id: 'tests::first' },
+  ];
+  try {
+    for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
+    await writeFile(join(root, 'clients/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
+    await writeFile(join(root, cases[0].file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) {}\n');
+    await writeFile(join(root, cases[1].file), '<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\necho "CASE first PASS\\n";\n');
+    await writeFile(join(root, 'clients/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
+    await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
+    for (const item of cases) {
+      const manifest = { features: [{ id: 'sample', status: 'partial', clients: { [item.language]: 'partial' },
+        coverage: { kind: 'independent', cases: [item.id], dependents: [], owners: {
+          [item.language]: { part: item.part, tests: [item.file], commands: {
+            none: [{ runner: item.runner, test: item.file, cases: [item.id] }],
+          } },
+        } } }] };
+      assert.deepEqual(await executeCoverage(manifest, root, 30000), [], item.language);
+    }
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
