@@ -65,7 +65,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] N5.1.2.13 Decode selected Rust boolean group columns according to their declared type before returning `GroupRows`. A RED owner case must reproduce integer `0`/`1` in a boolean group result and reject an invalid boolean, then turn GREEN without changing non-boolean columns. Evidence: Rust library 16/16 and Clippy pass; the `aggregates` vector matches expectations twice on each of MySQL, PostgreSQL, and SQLite with unchanged rows and counters.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
-- [ ] N8 Run the 150-table Rust compile check with `orm-build`.
+- [o] N8 Run the 150-table Rust compile check with `orm-build`. Evidence: `make rust-150-check` generated 150 entities and compiled a Rust crate that called a getter, setter, and chain for every generated model.
 - [o] N9 Preserve the callback's error type in a Rust transaction executed once. Verify rollback, commit, nested savepoint behavior, and distinct callback and rollback failures on MySQL, PostgreSQL, and SQLite.
 
 ## Stage 3 — Schema tools per language
