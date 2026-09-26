@@ -129,6 +129,7 @@ Key   = [Operator] Column
 | `getsPage(page, perPage)` | one page with `items`, `totalCount`, `totalPages`, `page`, and `perPage` |
 | `getQuery()` | statement text and binds of `gets()` without execution |
 
+- `getSum()` and `getAvg()` convert a numeric database scalar to the nearest finite IEEE 754 binary64 value, with ties rounded to even. A null, nonnumeric, nonfinite, or overflowing scalar returns `CODEC_DECODE`. Row column decoding retains its lossless conversion rules.
 - `getsPage` counts rows with the same conditions and joins; a grouped model counts distinct group keys. `page` and `perPage` must be positive, and a model with `limit` returns `CONFIG`. A page after the last page returns an empty collection. Rendering, request reading, and redirects belong to the application.
 - `getQuery` requires a connected model or an active transaction because the dialect decides the statement text; otherwise it returns `CONFIG`. Secret values are shown as `$SECRET`.
 - Terminals take no arguments except chain values. A terminal does not change the model, so running a second terminal produces the same statement.
