@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  AesKeyring, Account, Battle, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError,
+  AesKeyring, Account, Battle, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, StyledValue,
   Service, ServiceMember, ServiceModule, User, loadManifest, registerSchema, renderDDL,
 } from '../../clients/typescript/dist/index.js';
 import { buildManifest, encodeManifest } from '../../clients/typescript/dist/schema/build.js';
@@ -329,36 +329,90 @@ async function jsonValues(db, f) {
     .setName('json').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
     .setServiceModuleSeq(f.module.getSeq()).setServiceMemberSeq(f.member.getSeq())
     .setStartDt('2026-01-02 00:00:00').setEndDt('2026-01-03 00:00:00')
-    .setJsonSetting(parseJson(text)).setJsonsTags({ b: 1, a: [], c: {} }).create();
+    .setJsonSetting(StyledValue.value(parseJson(text))).setJsonsTags(StyledValue.value({ b: 1, a: [], c: {} })).create();
   const row = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
   const setting = row.getJsonSetting();
-  check(setting instanceof JsonValue && stringifyJson(setting) === text, `jsontext read ${setting instanceof JsonValue ? stringifyJson(setting) : String(setting)}`);
+  check(setting instanceof StyledValue && setting.kind === 'value' && setting.payload() instanceof JsonValue && stringifyJson(setting.payload()) === text, 'jsontext read');
   const tags = row.getJsonsTags();
-  check(tags instanceof JsonValue && stringifyJson(tags) === '{"b":1,"a":[],"c":{}}', `common value model read ${tags instanceof JsonValue ? stringifyJson(tags) : String(tags)}`);
-  check(row.toArray().json_setting === setting, 'toArray keeps the ordered-json value');
+  check(tags instanceof StyledValue && tags.kind === 'value' && tags.payload() instanceof JsonValue && stringifyJson(tags.payload()) === '{"b":1,"a":[],"c":{}}', 'common value model read');
+  check(row.toArray().json_setting.kind === 'value' && row.toArray().json_setting.value === setting.payload(), 'toArray keeps the tagged ordered-json value');
   // JSON output writes an ordered-json value as its stored text, in row order.
   const rowText = JSON.stringify(row);
-  check(rowText.includes(`"json_setting":${text}`), `JSON.stringify(model) ${rowText}`);
+  check(rowText.includes(`"json_setting":{"kind":"value","value":${text}}`), `JSON.stringify(model) ${rowText}`);
   check(JSON.stringify(row.toJSON()) === rowText, 'toJSON is the JSON.stringify form');
   check(Object.keys(JSON.parse(rowText)).join(',') === Object.keys(row.toArray()).join(','), 'JSON output keeps the row order');
   check(row.toJSONText() === rowText, `toJSONText ${row.toJSONText()}`);
   const indexKeyed = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
-  indexKeyed.setJsonSetting(parseJson('{"b":1,"1":2}'));
+  indexKeyed.setJsonSetting(StyledValue.value(parseJson('{"b":1,"1":2}')));
   check(await code(Promise.resolve().then(() => JSON.stringify(indexKeyed))) === 'CODEC_ENCODE', 'JSON.stringify rejects a key that JavaScript reorders');
-  check(indexKeyed.toJSONText().includes('"json_setting":{"b":1,"1":2}'), `toJSONText keeps a reordered key ${indexKeyed.toJSONText()}`);
+  check(indexKeyed.toJSONText().includes('"json_setting":{"kind":"value","value":{"b":1,"1":2}}'), `toJSONText keeps a reordered key ${indexKeyed.toJSONText()}`);
   const listed = await new Battle().connect(db).addAllColumns().seq([created.getSeq()]).gets();
   const listText = JSON.stringify(listed);
-  check(listText.startsWith('[{') && listText.includes(`"json_setting":${text}`), `JSON.stringify(collection) ${listText}`);
+  check(listText.startsWith('[{') && listText.includes(`"json_setting":{"kind":"value","value":${text}}`), `JSON.stringify(collection) ${listText}`);
   check(listed.toJSONText() === listText, 'collection toJSONText');
   const owner = await new User().connect(db).relations(new Battle().addAllColumns().matchSeqWithUserSeq().seq([created.getSeq()])).seq(f.users[0].getSeq()).get();
   const ownerText = JSON.stringify(owner);
-  check(ownerText.includes(`"json_setting":${text}`), `JSON.stringify(model with relation) ${ownerText}`);
-  const nonFinite = await code(new Battle().connect(db).setSeq(created.getSeq()).setJsonSetting({ bad: Number.NaN }).update());
+  check(ownerText.includes(`"json_setting":{"kind":"value","value":${text}}`), `JSON.stringify(model with relation) ${ownerText}`);
+  const nonFinite = await code(Promise.resolve().then(() => new Battle().connect(db).setSeq(created.getSeq()).setJsonSetting(StyledValue.value({ bad: Number.NaN })).update()));
   check(String(nonFinite).includes('CODEC_ENCODE'), `non-finite number: ${nonFinite}`);
-  await row.setJsonSetting(parseJson('[{"z":0},{}]')).update();
+  await row.setJsonSetting(StyledValue.value(parseJson('[{"z":0},{}]'))).update();
   const again = await new Battle().connect(db).addAllColumns().getBySeq(created.getSeq());
-  check(stringifyJson(again.getJsonSetting()) === '[{"z":0},{}]', `updated read ${stringifyJson(again.getJsonSetting())}`);
+  check(stringifyJson(again.getJsonSetting().payload()) === '[{"z":0},{}]', 'updated read');
   await again.delete();
+}
+
+async function battleStyledCells(dialect, dsn, seq) {
+  if (!Number.isSafeInteger(seq)) throw new Error('battle key is not a safe integer');
+  const sql = `SELECT json_setting, jsons_tags, serialize_data FROM battle WHERE seq = ${seq}`;
+  if (dialect === 'sqlite') {
+    const { DatabaseSync } = await import('node:sqlite');
+    const path = new URL(dsn).pathname;
+    const conn = new DatabaseSync(path);
+    try { return conn.prepare(sql).get(); } finally { conn.close(); }
+  }
+  if (dialect === 'mysql') {
+    const conn = await mysqlConnection(dsn);
+    try { const [rows] = await conn.query(sql); return rows[0]; } finally { await conn.end(); }
+  }
+  const conn = postgresClient(dsn);
+  await conn.connect();
+  try { const { rows } = await conn.query(sql); return rows[0]; } finally { await conn.end(); }
+}
+
+async function styledStates(db, dsn) {
+  const dialect = new URL(dsn).protocol.slice(0, -1);
+  const fixture = JSON.parse(await readFile(join(root, 'contracts/fixtures/styled_column_states.json'), 'utf8'));
+  const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
+  const f = await seed(db);
+  const seq = f.battles[0].getSeq();
+  const row = await new Battle().connect(db).addAllColumns().getBySeq(seq);
+  check(row.getJsonSetting().kind === 'sql-null', 'SQL NULL getter');
+  check(JSON.stringify(row.toArray().json_setting) === JSON.stringify(cases.sql_null.output), 'SQL NULL array output');
+  check(JSON.stringify(row.toJSON().json_setting) === JSON.stringify(cases.sql_null.output), 'SQL NULL JSON output');
+  const partial = await new Battle().connect(db).removeAllColumns().addColumnName().getBySeq(seq);
+  check(await code(Promise.resolve().then(() => partial.getJsonSetting())) === cases.unselected.getter_error, 'unselected getter');
+
+  await row.setJsonSetting(StyledValue.value(parseJson('null')))
+    .setJsonsTags(StyledValue.value(parseJson('null')))
+    .setSerializeData(StyledValue.value(null)).update();
+  const loaded = await new Battle().connect(db).addAllColumns().getBySeq(seq);
+  check(loaded.toArray().json_setting.kind === cases.json_null.output.kind
+    && stringifyJson(loaded.toArray().json_setting.value) === 'null', 'JSON null array');
+  check(loaded.toArray().jsons_tags.kind === cases.jsons_value_null.output.kind
+    && stringifyJson(loaded.toArray().jsons_tags.value) === 'null', 'JSONS null array');
+  check(JSON.stringify(loaded.toArray().serialize_data) === JSON.stringify(cases.serialize_value_null.output), 'serialize null array');
+  check(JSON.stringify(loaded.toJSON().json_setting) === JSON.stringify(cases.json_null.output), 'JSON null JSON output');
+  let cells = await battleStyledCells(dialect, dsn, seq);
+  check(cells.json_setting === 'null' && cells.jsons_tags === 'null' && cells.serialize_data === 'N;', 'encoded null storage');
+
+  await loaded.setJsonSetting(StyledValue.value(parseJson('{"kind":"sql-null"}'))).update();
+  const object = await new Battle().connect(db).addAllColumns().getBySeq(seq);
+  check(JSON.stringify(object.toJSON().json_setting) === JSON.stringify(cases.json_object_with_kind.output), 'JSON value does not collide with tag');
+  await object.setJsonSetting(StyledValue.sqlNull()).setJsonsTags(StyledValue.sqlNull()).setSerializeData(StyledValue.sqlNull()).update();
+  const nulls = await new Battle().connect(db).addAllColumns().getBySeq(seq);
+  check(JSON.stringify(nulls.toArray().json_setting) === JSON.stringify(cases.sql_null.output), 'SQL NULL restored');
+  cells = await battleStyledCells(dialect, dsn, seq);
+  check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
 async function transactions(db) {
@@ -545,7 +599,7 @@ async function auditTriggers(dialect, dsn) {
     query[CORE].orderBy('seq', false, []);
     const rows = [...(await query.gets()).values()];
     const value = (row, column) => row[CORE].column(column);
-    const plain = v => JSON.parse(stringifyJson(v));
+    const plain = v => JSON.parse(stringifyJson(v.payload()));
     check(rows.map(r => value(r, 'change_kind')).join(',') === 'INSERT,UPDATE', `change kinds ${rows.map(r => value(r, 'change_kind'))}`);
     for (const row of rows) {
       check(Number(value(row, 'operation_seq')) === 1 && value(row, 'service_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
@@ -573,8 +627,8 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
     const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
     check(rows.length === 1, `rows ${rows.length}`);
     const config = rows[0][CORE].column('config');
-    check(config instanceof JsonValue, 'the json aes column reads an ordered-json value');
-    return stringifyJson(config);
+    check(config instanceof StyledValue && config.kind === 'value' && config.payload() instanceof JsonValue, 'the json aes column reads a styled ordered-json value');
+    return stringifyJson(config.payload());
   };
   const one = new Map([[1, 'config-key-one']]);
   const both = new Map([[1, 'config-key-one'], [2, 'config-key-two']]);
@@ -583,7 +637,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   try {
     await first.utils().schema().install(json);
     const created = new SecretConfig().connect(first);
-    created[CORE].setValue('config', parseJson(text));
+    created[CORE].setValue('config', StyledValue.value(parseJson(text)));
     seq = (await created.create())[CORE].column('seq');
     check(await read(first) === text, `read back ${await read(first)}`);
     const [cell, version] = await storedCell(dialect, dsn, sqlitePath);
@@ -602,7 +656,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   try {
     const changed = new SecretConfig().connect(again);
     changed[CORE].setValue('seq', seq);
-    changed[CORE].setValue('config', JSON.parse(updatedText));
+    changed[CORE].setValue('config', StyledValue.value(JSON.parse(updatedText)));
     await changed.update();
     check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
     check(await read(again) === updatedText, `updated read ${await read(again)}`);
@@ -651,7 +705,7 @@ async function auditBigintService(dialect, dsn) {
     const value = (row, column) => row[CORE].column(column);
     const got = rows.map(r => `${String(value(r, 'table_label')).replace(/^app\./, '')}:${value(r, 'service_seq') === null ? 'null' : Number(value(r, 'service_seq'))}`);
     check(got.join(',') === 'routed:42,unowned:null', `changes ${got}`);
-    const after = JSON.parse(stringifyJson(value(rows[0], 'after_value')));
+    const after = JSON.parse(stringifyJson(value(rows[0], 'after_value').payload()));
     check(after.render === 'ssr', `render default ${JSON.stringify(after)}`);
   } finally { await db.close(); }
   await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
@@ -705,7 +759,7 @@ if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is requ
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
 targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, transactions, aesRotation, bindLimitSplitting };
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
 
 try {
   for (const [dialect, dsn] of targets) {

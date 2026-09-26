@@ -560,12 +560,12 @@ function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
   for (const column of assemble.columns) if (column.hidden && column.column === 'aes_key_version' && row[column.index] !== null) version = Number(row[column.index]);
   for (const column of assemble.columns) {
     let value = row[column.index];
-    if (value === null || value === undefined || column.styles.length === 0) continue;
+    if (value === undefined || column.styles.length === 0) continue;
     const host = column.styles.filter(style => style === 'aes' || style === 'hex' || style === 'ip');
     const app = column.styles.filter(style => style !== 'aes' && style !== 'hex' && style !== 'ip');
     const key = host.includes('aes') ? db.aesKeyring?.key(version) ?? db.aesKey : db.aesKey;
-    if (host.length > 0) value = hostDecode(value as string | Uint8Array, host, key);
-    if (app.length > 0) value = decode(app, value as string | Uint8Array);
+    if (value !== null && host.length > 0) value = hostDecode(value as string | Uint8Array, host, key);
+    if (app.length > 0) value = decode(app, value as string | Uint8Array | null);
     row[column.index] = value;
   }
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);

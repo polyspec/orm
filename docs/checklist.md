@@ -48,6 +48,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [~] N5.1.2.6 Distinguish SQL NULL, an encoded null value, and an unselected styled value column in the four clients on all three databases. Verify storage text, getters, row arrays, model JSON output, and errors with one shared fixture.
 - [o] N5.1.2.6.1 Make Go styled values explicit in codecs and generated model setters and getters; verify the shared states, row arrays, model JSON, and errors on MySQL, PostgreSQL, and SQLite.
 - [o] N5.1.2.6.2 Use `StyledValue` in PHP styled-column setters, getters, codecs, and model output. Verify the shared state cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
+- [o] N5.1.2.6.3 Use `StyledValue` in TypeScript styled-column setters, getters, codecs, and model output. Verify the shared state and codec cases and physical model behavior on MySQL, PostgreSQL, and SQLite.
 - [ ] N6 Remove the compiler service, its message definitions, the WASM and FFI entry points, and the deployment units; update the Makefile and CI.
 - [ ] N7 Compare SQLite datetime text given as a string in the stored six-digit form.
 - [ ] N8 Run the 150-table Rust compile check with `orm-build`.

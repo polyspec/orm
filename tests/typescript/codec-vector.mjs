@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { CodecError, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
+import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../../clients/typescript/dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
@@ -27,12 +27,19 @@ for (const vector of vectors) {
     continue;
   }
   const jsonStage = vector.styles.includes('json') || vector.styles.includes('jsons');
-  if (jsonStage && decoded !== null && !(decoded instanceof JsonValue)) {
+  const kind = raw === null ? 'sql-null' : 'value';
+  if (!(decoded instanceof StyledValue) || decoded.kind !== kind) {
+    console.error(`${vector.name}: decoded state ${shown(decoded)} want ${kind}`);
+    failures++;
+    continue;
+  }
+  const payload = kind === 'value' ? decoded.payload() : null;
+  if (jsonStage && kind === 'value' && !(payload instanceof JsonValue)) {
     console.error(`${vector.name}: a json stage decoded ${typeof decoded}, not an ordered-json value`);
     failures++;
   }
-  if (!same(decoded, vector.value)) {
-    console.error(`${vector.name}: decoded ${shown(decoded)} want ${JSON.stringify(vector.value)}`);
+  if (!same(payload, vector.value)) {
+    console.error(`${vector.name}: decoded ${shown(payload)} want ${JSON.stringify(vector.value)}`);
     failures++;
   }
   const encoded = encodeCodec(vector.styles, decoded);
@@ -44,7 +51,7 @@ for (const vector of vectors) {
     failures++;
   }
   const roundTrip = decodeCodec(vector.styles, encoded);
-  if (!same(roundTrip, vector.value)) {
+  if (!(roundTrip instanceof StyledValue) || roundTrip.kind !== kind || !same(kind === 'value' ? roundTrip.payload() : null, vector.value)) {
     console.error(`${vector.name}: round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
     failures++;
   }
@@ -55,8 +62,8 @@ for (const [name, operation, code] of [
   ['bad base64', () => decodeCodec(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
   ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
   ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
-  ['unknown style', () => encodeCodec(['unknown'], 'value'), 'CODEC_UNSUPPORTED'],
-  ['unknown encode style', () => encodeCodec(['curlfile', 'serialize'], {}), 'CODEC_UNSUPPORTED'],
+  ['unknown style', () => encodeCodec(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
+  ['unknown encode style', () => encodeCodec(['curlfile', 'serialize'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
   ['unknown decode style', () => decodeCodec(['curlfile'], 'a:0:{}'), 'CODEC_UNSUPPORTED'],
   ['duplicate YAML key', () => decodeCodec(['yaml'], 'a: 1\na: 2\n'), 'CODEC_DECODE'],
   ['multiple YAML documents', () => decodeCodec(['yaml'], '---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'],
@@ -64,7 +71,7 @@ for (const [name, operation, code] of [
   ['YAML custom tag', () => decodeCodec(['yaml'], 'a: !custom value\n'), 'CODEC_DECODE'],
   ['YAML non-finite number', () => decodeCodec(['yaml'], 'value: .inf\n'), 'CODEC_DECODE'],
   ['YAML boolean map key', () => decodeCodec(['yaml'], 'true: value\n'), 'CODEC_DECODE'],
-  ['invalid YAML order', () => encodeCodec(['serialize', 'yaml'], {}), 'CODEC_UNSUPPORTED'],
+  ['invalid YAML order', () => encodeCodec(['serialize', 'yaml'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
 ]) {
   try {
     operation();
@@ -102,21 +109,21 @@ for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
 
 const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
 const orderedRead = decodeCodec(['json'], orderedText);
-if (!(orderedRead instanceof JsonValue) || stringifyJson(orderedRead) !== orderedText) {
-  console.error(`json read: ${orderedRead instanceof JsonValue ? stringifyJson(orderedRead) : String(orderedRead)}`);
+if (!(orderedRead instanceof StyledValue) || orderedRead.kind !== 'value' || !(orderedRead.payload() instanceof JsonValue) || stringifyJson(orderedRead.payload()) !== orderedText) {
+  console.error(`json read: ${orderedRead instanceof StyledValue && orderedRead.kind === 'value' ? stringifyJson(orderedRead.payload()) : String(orderedRead)}`);
   failures++;
 }
 for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
-  const written = encodeCodec(['json'], value);
+  const written = encodeCodec(['json'], StyledValue.value(value));
   if (written !== orderedText) { console.error(`json write of ${name}: ${written}`); failures++; }
 }
 for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
-  try { encodeCodec(['json'], value); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
+  try { encodeCodec(['json'], StyledValue.value(value)); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
   catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
 }
-try { encodeCodec(['serialize'], parseJson('{}')); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
+try { encodeCodec(['serialize'], StyledValue.value(parseJson('{}'))); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
 catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`serialize of an ordered-json value: ${String(error)}`); failures++; } }
-if (!same(decodeCodec(['yaml'], '1: value\n'), { 1: 'value' })) {
+if (!same(decodeCodec(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
   console.error('YAML integer map key: expected string key');
   failures++;
 }

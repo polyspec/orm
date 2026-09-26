@@ -5,6 +5,7 @@ import { Db, keyOfValues, keyText, keyValue, normalizeTime, paginate, query, res
 import type { Assemble, Request } from './ir.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey, type ColumnSchema, type EntitySchema, type SchemaSet } from './names.js';
 import { OrmError } from './runtime_error.js';
+import { StyledValue, orderedJsonOutput } from './styled_value.js';
 
 export { CORE } from './core.js';
 
@@ -409,8 +410,9 @@ function encodeValue(schema: EntitySchema, column: string, value: unknown): unkn
   const col = schema.columns[column];
   if (col === undefined) throw new OrmError('COLUMN_UNKNOWN', `${schema.name}.${column}`);
   const codec = (col.styles ?? []).filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
-  if (codec.length === 0 || value === null) return value;
-  return encode(codec, value as CodecValue | JsonValue);
+  if (codec.length === 0) return value;
+  if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
+  return encode(codec, value as StyledValue<CodecValue | JsonValue>);
 }
 
 function assign(r: WriteRequest, schema: EntitySchema, s: SetSpec): NonNullable<Request['set']>[number] {
@@ -452,7 +454,10 @@ async function create(c: Core): Promise<Model> {
   for (const s of c.sets) {
     st.addName(s.column);
     if (s.plus || s.minus || s.raw) continue;
-    m.values.set(s.column, s.null ? null : convert(columnType(schema.columns[s.column]!), s.value, ex.db.zone));
+    const type = columnType(schema.columns[s.column]!);
+    m.values.set(s.column, s.null
+      ? (type === 'styled' ? StyledValue.sqlNull() : null)
+      : convert(type, s.value, ex.db.zone));
   }
   if (schema.auto) {
     st.addName(schema.auto);
@@ -590,6 +595,8 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
 }
 
 function arrayValue(value: unknown): unknown {
+  if (value instanceof StyledValue) return value.kind === 'sql-null'
+    ? { kind: 'sql-null' } : { kind: 'value', value: value.payload() };
   if (value instanceof Date) return value.toISOString();
   if (isModel(value)) return toArray(value[CORE]);
   if (value instanceof Collection) return value.toArray();
@@ -631,34 +638,10 @@ function toJson(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
 }
 
-/** JSON.rawJSON, which the ES2024 lib typings do not declare. */
-const rawJSON = (JSON as { rawJSON?: (text: string) => unknown }).rawJSON;
-
-/** An object key that JavaScript orders before the other keys. */
-const arrayIndex = /^(0|[1-9][0-9]*)$/;
-
-/**
- * The JSON.stringify form of an ordered-json value: objects and arrays are
- * rebuilt in member order and every scalar is a JSON.rawJSON of its stored
- * token. A key that JavaScript reorders (an array index) or whose stored token
- * differs from its JSON.stringify form cannot keep the stored text and fails
- * with CODEC_ENCODE; toJSONText writes such a value.
- */
-function rawValue(value: OrderedJsonValue): unknown {
-  if (rawJSON === undefined) throw new OrmError('CODEC_ENCODE', 'JSON.rawJSON is required to write an ordered-json value');
-  if (value.kind === 'array') return value.items.map(rawValue);
-  if (value.kind !== 'object') return rawJSON(orderedJsonStringify(value));
-  return Object.fromEntries(value.keys.map(key => {
-    const name = key.stringValue();
-    if ((name.length < 11 && arrayIndex.test(name) && Number(name) < 4294967295) || JSON.stringify(name) !== key.raw) {
-      throw new OrmError('CODEC_ENCODE', `JSON.stringify cannot keep the object key ${key.raw}; use toJSONText`);
-    }
-    return [name, rawValue(value.members.get(name)!)];
-  }));
-}
-
 /** The JSON text of a row value: an ordered-json value as its stored text. */
 function jsonText(value: unknown): string {
+  if (value instanceof StyledValue) return value.kind === 'sql-null'
+    ? '{"kind":"sql-null"}' : `{"kind":"value","value":${jsonText(value.payload())}}`;
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
@@ -671,7 +654,9 @@ function rowText(c: Core): string {
 }
 
 function jsonValue(value: unknown): unknown {
-  if (value instanceof OrderedJsonValue) return rawValue(value);
+  if (value instanceof StyledValue) return value.kind === 'sql-null'
+    ? { kind: 'sql-null' } : { kind: 'value', value: jsonValue(value.payload()) };
+  if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
   return arrayValue(value);
