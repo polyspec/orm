@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFile, stat } from 'node:fs/promises';
 import { checkCoverage, databases, executeCoverage, languages } from './coverage.mjs';
 
 const ownerTests = {
@@ -7,6 +8,15 @@ const ownerTests = {
   rust: 'clients/rust/orm/tests/zone.rs', typescript: 'clients/typescript/tests/typecheck.ts',
 };
 const consumerTest = 'clients/go/model/model_test.go';
+
+test('aggregate numeric TypeScript cases are owned by the client', { timeout: 1000 }, async () => {
+  const root = new URL('../..', import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL('contracts/features.json', root), 'utf8'));
+  const feature = manifest.features.find(item => item.id === 'model_queries');
+  assert.ok(feature.tests.includes('clients/typescript/tests/aggregate_numeric.mjs'));
+  assert.ok(!feature.tests.includes('tests/typescript/aggregate_numeric.mjs'));
+  assert.ok((await stat(new URL('clients/typescript/tests/aggregate_numeric.mjs', root))).isFile());
+});
 
 function contract(kind = 'database') {
   return { features: [{ id: 'sample', status: 'implemented',
@@ -54,6 +64,7 @@ test('missing owner, consumer, database, case, and repeat are RED', { timeout: 1
   assert.match(mutation((m) => { m.features[0].coverage.consumers[0].part = 'clients/go'; }), /invalid consuming part/);
   assert.match(mutation((m) => { m.features[0].coverage.consumers[0].cases = []; }), /invalid consuming part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.owners.rust.tests = ['tests/conformance/check/main_test.go']; }), /tests must reside in owning part/);
+  assert.match(mutation((m) => { m.features[0].coverage.owners.typescript.tests = ['tests/typescript/aggregate_numeric.mjs']; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { m.features[0].coverage.owners.go.tests = [consumerTest]; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { m.features[0].coverage.consumers[0].tests = [ownerTests.go]; }), /invalid consuming part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.consumers[0].tests = ['tests/conformance/check/main_test.go']; }), /invalid consuming part, tests, or cases/);
