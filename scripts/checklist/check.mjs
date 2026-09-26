@@ -7,9 +7,22 @@ const states = new Set([' ', '~', 'o', '!']);
 function parseChecklist(content, language, errors) {
   const items = [];
   const seen = new Set();
+  let itemContinuation = false;
   for (const [index, line] of content.split('\n').entries()) {
+    if (!line.trim()) continue;
+    if (line.startsWith('#')) {
+      itemContinuation = false;
+      continue;
+    }
+    if (index === 2 && line.startsWith(language === 'en' ? 'Legend:' : '표기:')) continue;
+    if (/^  +\S/.test(line) && itemContinuation) continue;
     const match = /^- \[([^\]]*)\] ([A-Za-z][A-Za-z0-9.]*)\s+(.+)$/.exec(line);
-    if (!match) continue;
+    if (!match) {
+      errors.push(`${language}:${index + 1}: unnumbered content in task tracker`);
+      itemContinuation = false;
+      continue;
+    }
+    itemContinuation = true;
     const [, state, id] = match;
     if (!states.has(state)) errors.push(`${language}:${index + 1}: invalid state [${state}] for ${id}`);
     if (seen.has(id)) errors.push(`${language}:${index + 1}: duplicate item ID ${id}`);
