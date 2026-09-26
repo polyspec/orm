@@ -371,6 +371,9 @@ abstract class Model implements \JsonSerializable
             return $this->value($column);
         }
         $col = static::meta()['columns'][$column];
+        if (self::isStyledValueColumn($col)) {
+            throw new OrmException(Code::COLUMN_UNSELECTED, "$column was not selected");
+        }
         if ($col['nullable']) {
             return null;
         }
@@ -391,9 +394,29 @@ abstract class Model implements \JsonSerializable
             $this->fail('set is not allowed inside a group callback');
             return $this;
         }
+        $col = static::meta()['columns'][$column];
+        if (self::isStyledValueColumn($col)) {
+            if (!$value instanceof StyledValue) {
+                throw new OrmException(Code::CODEC_ENCODE, "$column requires StyledValue");
+            }
+            if (!$col['nullable'] && $value->kind === 'sql-null') {
+                throw new OrmException(Code::CODEC_ENCODE, "$column does not accept SQL NULL");
+            }
+        }
         $this->values[$column] = $value;
-        $this->putSet($column, $value === null ? ['null' => true] : ['value' => $value]);
+        $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');
+        $this->putSet($column, $sqlNull ? ['null' => true] : ['value' => $value]);
         return $this;
+    }
+
+    private static function isStyledValueColumn(array $column): bool
+    {
+        foreach ($column['styles'] as $style) {
+            if (in_array($style, ['json', 'jsons', 'serialize', 'yaml'], true)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A loaded or set column value; loaded date text is converted on first read. */
@@ -1542,8 +1565,11 @@ abstract class Model implements \JsonSerializable
     private static function encodeValue(array $col, mixed $v): mixed
     {
         $codec = array_values(array_filter($col['styles'], static fn(string $s): bool => !Codec::isHostStyle($s)));
-        if ($v === null || $codec === []) {
+        if ($codec === []) {
             return $v;
+        }
+        if (!$v instanceof StyledValue) {
+            throw new OrmException(Code::CODEC_ENCODE, 'styled column requires StyledValue');
         }
         return Codec::encode($codec, $v);
     }
@@ -1861,7 +1887,8 @@ abstract class Model implements \JsonSerializable
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            $out[$name] = $v instanceof Model || $v instanceof Collection ? $v->toArray() : $v;
+            $out[$name] = $v instanceof Model || $v instanceof Collection ? $v->toArray()
+                : ($v instanceof StyledValue ? $v->jsonSerialize() : $v);
         }
         return $out;
     }
@@ -1887,6 +1914,11 @@ abstract class Model implements \JsonSerializable
     /** @internal the JSON text of one output value */
     public static function jsonText(mixed $v): string
     {
+        if ($v instanceof StyledValue) {
+            return $v->kind === 'sql-null'
+                ? '{"kind":"sql-null"}'
+                : '{"kind":"value","value":' . self::jsonText($v->payload()) . '}';
+        }
         if ($v instanceof \OrderedJson\Value) {
             return \OrderedJson\stringify($v);
         }
@@ -1929,7 +1961,9 @@ abstract class Model implements \JsonSerializable
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            if ($v instanceof \OrderedJson\Value || (is_array($v) && self::holdsOrderedJson($v))) {
+            if ($v instanceof \OrderedJson\Value
+                || ($v instanceof StyledValue && $v->kind === 'value' && $v->payload() instanceof \OrderedJson\Value)
+                || (is_array($v) && self::holdsOrderedJson($v))) {
                 throw new OrmException(Code::CODEC_ENCODE, "json_encode cannot write the ordered-json value of $name; use toJson()");
             }
             $out[$name] = $v;

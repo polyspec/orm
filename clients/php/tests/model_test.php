@@ -19,8 +19,10 @@ use Orm\Code;
 use Orm\Collection;
 use Orm\Config;
 use Orm\Db;
+use Orm\Model;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
 $schema = "$root/schema/schema.json";
@@ -280,6 +282,56 @@ $tests['writes'] = function (Db $db, string $dsn): void {
     $loaded = (new Service)($db)->relations((new ServiceMember)->matchSeqWithServiceSeq())->getBySeq($service->getSeq());
     $loaded->delete(true);
     check((new ServiceMember)($db)->getCountByServiceSeq($service->getSeq()) === 0 && code(static fn() => (new Service)($db)->getBySeq($service->getSeq())) === 'NO_ROWS', 'delete(true)');
+};
+
+$tests['styled value states'] = function (Db $db, string $dsn): void {
+    $fixture = json_decode(file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'), true, 512, JSON_THROW_ON_ERROR);
+    $cases = array_column($fixture['cases'], null, 'id');
+    $seed = seed($db);
+    $seq = $seed['battles'][0]->getSeq();
+    $pdo = $db->pdo();
+    $pdo->beginTransaction();
+    try {
+        $row = (new Battle)($db)->addAllColumns()->getBySeq($seq);
+        check($row->getJsonSetting() instanceof StyledValue && $row->getJsonSetting()->kind === 'sql-null', 'SQL NULL getter');
+        check($row->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL array output');
+        check(json_decode($row->toJson(), true, 512, JSON_THROW_ON_ERROR)['json_setting'] === $cases['sql_null']['output'], 'SQL NULL JSON output');
+        $partial = (new Battle)($db)->removeAllColumns()->addColumnName()->getBySeq($seq);
+        check(code(fn() => $partial->getJsonSetting()) === Code::COLUMN_UNSELECTED, 'unselected getter');
+
+        $row->setJsonSetting(StyledValue::value(\OrderedJson\parse('null')))
+            ->setJsonsTags(StyledValue::value(\OrderedJson\parse('null')))
+            ->setSerializeData(StyledValue::value(null))
+            ->update();
+        $loaded = (new Battle)($db)->addAllColumns()->getBySeq($seq);
+        check($loaded->getJsonSetting()->kind === 'value', 'JSON null getter');
+        check(json_decode(Model::jsonText($loaded->toArray()['json_setting']), true, 512, JSON_THROW_ON_ERROR) === $cases['json_null']['output'], 'JSON null array output');
+        check(json_decode(Model::jsonText($loaded->toArray()['jsons_tags']), true, 512, JSON_THROW_ON_ERROR) === $cases['jsons_value_null']['output'], 'JSONS null array output');
+        check($loaded->toArray()['serialize_data'] === $cases['serialize_value_null']['output'], 'serialize null array output');
+        $json = json_decode($loaded->toJson(), true, 512, JSON_THROW_ON_ERROR);
+        check($json['json_setting'] === $cases['json_null']['output'] && $json['serialize_data'] === $cases['serialize_value_null']['output'], 'encoded null JSON output');
+        $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM battle WHERE seq = ?');
+        $cell->execute([$seq]);
+        $stored = $cell->fetch(\PDO::FETCH_ASSOC);
+        check($stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored['serialize_data'] === 'N;', 'encoded null storage');
+
+        $loaded->setJsonSetting(StyledValue::value(\OrderedJson\parse('{"kind":"sql-null"}')))->update();
+        $again = (new Battle)($db)->addAllColumns()->getBySeq($seq);
+        check(json_decode(Model::jsonText($again->toArray()['json_setting']), true, 512, JSON_THROW_ON_ERROR) === $cases['json_object_with_kind']['output'], 'JSON document does not collide with state tag');
+
+        $again->setJsonSetting(StyledValue::sqlNull())->setJsonsTags(StyledValue::sqlNull())->setSerializeData(StyledValue::sqlNull())->update();
+        $nulls = (new Battle)($db)->addAllColumns()->getBySeq($seq);
+        check($nulls->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL restored');
+        $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM battle WHERE seq = ?');
+        $cell->execute([$seq]);
+        $stored = $cell->fetch(\PDO::FETCH_ASSOC);
+        check($stored['json_setting'] === null && $stored['jsons_tags'] === null && $stored['serialize_data'] === null, 'SQL NULL storage');
+
+        $pdo->prepare('UPDATE battle SET json_setting = ? WHERE seq = ?')->execute(['', $seq]);
+        check(code(fn() => (new Battle)($db)->addAllColumns()->getBySeq($seq)) === Code::CODEC_DECODE, 'empty JSON text rejected');
+    } finally {
+        $pdo->rollBack();
+    }
 };
 
 $tests['transactions'] = function (Db $db, string $dsn): void {

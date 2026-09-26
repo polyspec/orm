@@ -372,52 +372,52 @@ final class Battle extends Model
         return $this->writeColumn('ip', $v);
     }
 
-    public function getGzExtend(): mixed
+    public function getGzExtend(): \Orm\StyledValue
     {
         return $this->readColumn('gz_extend');
     }
 
-    public function setGzExtend(mixed $v): static
+    public function setGzExtend(\Orm\StyledValue $v): static
     {
         return $this->writeColumn('gz_extend', $v);
     }
 
-    public function getJsonSetting(): mixed
+    public function getJsonSetting(): \Orm\StyledValue
     {
         return $this->readColumn('json_setting');
     }
 
-    public function setJsonSetting(mixed $v): static
+    public function setJsonSetting(\Orm\StyledValue $v): static
     {
         return $this->writeColumn('json_setting', $v);
     }
 
-    public function getJsonsTags(): mixed
+    public function getJsonsTags(): \Orm\StyledValue
     {
         return $this->readColumn('jsons_tags');
     }
 
-    public function setJsonsTags(mixed $v): static
+    public function setJsonsTags(\Orm\StyledValue $v): static
     {
         return $this->writeColumn('jsons_tags', $v);
     }
 
-    public function getBase64Extra(): mixed
+    public function getBase64Extra(): \Orm\StyledValue
     {
         return $this->readColumn('base64_extra');
     }
 
-    public function setBase64Extra(mixed $v): static
+    public function setBase64Extra(\Orm\StyledValue $v): static
     {
         return $this->writeColumn('base64_extra', $v);
     }
 
-    public function getSerializeData(): mixed
+    public function getSerializeData(): \Orm\StyledValue
     {
         return $this->readColumn('serialize_data');
     }
 
-    public function setSerializeData(mixed $v): static
+    public function setSerializeData(\Orm\StyledValue $v): static
     {
         return $this->writeColumn('serialize_data', $v);
     }

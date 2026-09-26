@@ -27,6 +27,8 @@ runs beside it. PHP 8.4 or later. Version 0.0.1.
 
 ## Models
 
+Styled columns (`json`, `jsons`, `serialize`, and `yaml`) use `Orm\StyledValue` in generated setters and getters. `StyledValue::sqlNull()` represents SQL NULL; `StyledValue::value($value)` represents an encoded value, including a literal null. A non-null column rejects SQL NULL with `CODEC_ENCODE` when its setter is called. Requesting a styled column excluded from the selection returns `COLUMN_UNSELECTED`. `toArray()` and `toJson()` emit `{"kind":"sql-null"}` or `{"kind":"value","value":...}` for each selected styled column. `toJson()` preserves ordered JSON values exactly.
+
 ```sh
 vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'App\Model'
 ```
