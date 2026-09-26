@@ -58,7 +58,6 @@ impl DriverRow {
 /// What `from_row` reads its cells from. Methods take `&mut self` so the positional
 /// source can move strings and decoded values out instead of cloning them.
 pub trait Src {
-    fn is_null(&mut self, i: usize) -> bool;
     fn i64(&mut self, i: usize) -> Result<i64>;
     fn f64(&mut self, i: usize) -> Result<f64>;
     fn bool(&mut self, i: usize) -> Result<bool>;
@@ -68,11 +67,11 @@ pub trait Src {
     }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime>;
     fn date(&mut self, i: usize) -> Result<NaiveDate>;
-    /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for NULL/empty.
+    /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for SQL NULL.
     fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val>;
     /// A styled cell's decoded value; None for NULL/empty.
     fn json(&mut self, i: usize, styles: &[String]) -> Result<Option<serde_json::Value>> {
-        Ok(self.styled(i, styles)?.take_json())
+        self.styled(i, styles)?.take_json()
     }
     /// The cell as a `Val` (select_expr outputs, keys, parent values). A positional source
     /// clones: the same cell may still be read as a field afterwards.
@@ -89,46 +88,40 @@ pub enum Cells {
 }
 
 impl Src for Cells {
-    fn is_null(&mut self, i: usize) -> bool {
-        match self {
-            Cells::Raw(r) => raw_is_null(r, i),
-            Cells::Pos(v) => v[i].is_null(),
-        }
-    }
     fn i64(&mut self, i: usize) -> Result<i64> {
         match self {
             Cells::Raw(r) => raw_i64(r, i),
-            Cells::Pos(v) => Ok(v[i].as_i64()),
+            Cells::Pos(v) => v[i].as_i64(),
         }
     }
     fn f64(&mut self, i: usize) -> Result<f64> {
         match self {
             Cells::Raw(r) => raw_f64(r, i),
-            Cells::Pos(v) => Ok(v[i].as_f64()),
+            Cells::Pos(v) => v[i].as_f64(),
         }
     }
     fn bool(&mut self, i: usize) -> Result<bool> {
         match self {
             Cells::Raw(r) => raw_bool(r, i),
-            Cells::Pos(v) => Ok(v[i].as_bool()),
+            Cells::Pos(v) => v[i].as_bool(),
         }
     }
     fn string(&mut self, i: usize) -> Result<String> {
         match self {
             Cells::Raw(r) => raw_string(r, i),
-            Cells::Pos(v) => Ok(v[i].take_string()),
+            Cells::Pos(v) => v[i].take_string(),
         }
     }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime> {
         match self {
             Cells::Raw(r) => raw_datetime(r, i),
-            Cells::Pos(v) => Ok(v[i].as_datetime()),
+            Cells::Pos(v) => v[i].as_datetime(),
         }
     }
     fn date(&mut self, i: usize) -> Result<NaiveDate> {
         match self {
             Cells::Raw(r) => raw_date(r, i),
-            Cells::Pos(v) => Ok(v[i].as_date()),
+            Cells::Pos(v) => v[i].as_date(),
         }
     }
     fn styled(&mut self, i: usize, styles: &[String]) -> Result<Val> {
@@ -145,70 +138,63 @@ impl Src for Cells {
     }
 }
 
-fn raw_is_null(r: &MySqlRow, i: usize) -> bool {
-    r.try_get_raw(i).map(|v| v.is_null()).unwrap_or(true)
-}
-
 /// The cell's MySQL type name, the dispatch key of every decoder below.
 fn type_name(r: &MySqlRow, i: usize) -> &str {
     r.column(i).type_info().name()
 }
 
+fn required_cell<T>(value: Option<T>, i: usize) -> Result<T> {
+    value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required") })
+}
+
 fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
     Ok(match type_name(r, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0),
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            r.try_get::<Option<u64>, _>(i)?.unwrap_or(0) as i64
+            i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?)
+                .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range") })?
         }
-        "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false) as i64,
-        _ => read_cell_mysql(r, i)?.as_i64(),
+        "BOOLEAN" => i64::from(required_cell(r.try_get::<Option<bool>, _>(i)?, i)?),
+        _ => read_cell_mysql(r, i)?.as_i64()?,
     })
 }
 
 fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
     Ok(match type_name(r, i) {
-        "FLOAT" | "DOUBLE" => r.try_get::<Option<f64>, _>(i)?.unwrap_or(0.0),
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) as f64,
-        _ => read_cell_mysql(r, i)?.as_f64(),
+        "FLOAT" | "DOUBLE" => Val::F64(required_cell(r.try_get::<Option<f64>, _>(i)?, i)?).as_f64()?,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_f64()?,
+        _ => read_cell_mysql(r, i)?.as_f64()?,
     })
 }
 
 fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
     Ok(match type_name(r, i) {
-        "BOOLEAN" => r.try_get::<Option<bool>, _>(i)?.unwrap_or(false),
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => r.try_get::<Option<i64>, _>(i)?.unwrap_or(0) != 0,
-        _ => read_cell_mysql(r, i)?.as_bool(),
+        "BOOLEAN" => required_cell(r.try_get::<Option<bool>, _>(i)?, i)?,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_bool()?,
+        _ => read_cell_mysql(r, i)?.as_bool()?,
     })
 }
 
 fn raw_string(r: &MySqlRow, i: usize) -> Result<String> {
     Ok(match type_name(r, i) {
-        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => r.try_get::<Option<String>, _>(i)?.unwrap_or_default(),
-        _ => read_cell_mysql(r, i)?.take_string(),
+        "VARCHAR" | "CHAR" | "TEXT" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" | "ENUM" | "SET" => required_cell(r.try_get::<Option<String>, _>(i)?, i)?,
+        _ => read_cell_mysql(r, i)?.take_string()?,
     })
 }
 
 fn raw_datetime(r: &MySqlRow, i: usize) -> Result<NaiveDateTime> {
     Ok(match type_name(r, i) {
-        "DATETIME" => r.try_get::<Option<NaiveDateTime>, _>(i)?.unwrap_or_default(),
-        "TIMESTAMP" => r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| t.naive_utc()).unwrap_or_default(),
-        _ => read_cell_mysql(r, i)?.as_datetime(),
+        "DATETIME" => required_cell(r.try_get::<Option<NaiveDateTime>, _>(i)?, i)?,
+        "TIMESTAMP" => required_cell(r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?, i)?.naive_utc(),
+        _ => read_cell_mysql(r, i)?.as_datetime()?,
     })
 }
 
 fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
     Ok(match type_name(r, i) {
-        "DATE" => r.try_get::<Option<NaiveDate>, _>(i)?.unwrap_or_default(),
-        _ => read_cell_mysql(r, i)?.as_date(),
+        "DATE" => required_cell(r.try_get::<Option<NaiveDate>, _>(i)?, i)?,
+        _ => read_cell_mysql(r, i)?.as_date()?,
     })
-}
-
-/// Bytes as text when they are UTF-8, bytes otherwise.
-fn text_or_bytes(b: Vec<u8>) -> Val {
-    match String::from_utf8(b) {
-        Ok(s) => Val::Str(s),
-        Err(e) => Val::Bytes(e.into_bytes()),
-    }
 }
 
 /// Reads one MySQL cell as a `Val` by its column type name.
@@ -216,11 +202,16 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
     let v = match type_name(row, i) {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
-            row.try_get::<Option<u64>, _>(i)?.map(|x| Val::I64(x as i64))
+            return match row.try_get::<Option<u64>, _>(i)? {
+                Some(value) => i64::try_from(value)
+                    .map(Val::I64)
+                    .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range") }),
+                None => Ok(Val::Null),
+            };
         }
         "FLOAT" | "DOUBLE" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        // NEWDECIMAL is only compatible with a decimal type in sqlx; we surface it as f64 like Go/PHP.
-        "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
+        // Preserve DECIMAL text exactly; a caller that requests f64 checks precision.
+        "DECIMAL" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
         // sqlx's NaiveDateTime only accepts DATETIME; TIMESTAMP columns decode as DateTime<Utc> (session tz is UTC).
         "DATETIME" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
@@ -229,14 +220,14 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
         "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
         // Authenticated AES envelopes are BLOB values; decode them as text when possible.
-        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
+        "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB" | "VARBINARY" | "BINARY" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(Val::Bytes),
         _ => row.try_get::<Option<String>, _>(i)?.map(Val::Str),
     };
     Ok(v.unwrap_or(Val::Null))
 }
 
 /// Reads one PostgreSQL cell by its column type: integers of every width as i64, float and
-/// numeric as f64, boolean, timestamp(tz) and date, jsonb/json parsed, bytea as text-or-bytes,
+/// numeric as exact decimal text, boolean, timestamp(tz) and date, jsonb/json parsed, bytea as bytes,
 /// inet as its text (the plans select `host(col)`, so this is for raw statements).
 pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
     let v = match row.column(i).type_info().name() {
@@ -245,14 +236,14 @@ pub fn read_cell_pg(row: &PgRow, i: usize, zone: Zone) -> Result<Val> {
         "INT8" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
         "FLOAT4" => row.try_get::<Option<f32>, _>(i)?.map(|x| Val::F64(x as f64)),
         "FLOAT8" => row.try_get::<Option<f64>, _>(i)?.map(Val::F64),
-        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::F64(rust_decimal::prelude::ToPrimitive::to_f64(&d).unwrap_or(0.0))),
+        "NUMERIC" => row.try_get::<Option<rust_decimal::Decimal>, _>(i)?.map(|d| Val::Str(d.to_string())),
         "BOOL" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
         "TIMESTAMP" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         // an instant, shown as wall-clock time in the connection zone
         "TIMESTAMPTZ" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(zone.local(t))),
         "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
         "JSONB" | "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
-        "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(text_or_bytes),
+        "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(i)?.map(Val::Bytes),
         "INET" | "CIDR" => row.try_get::<Option<sqlx::types::ipnet::IpNet>, _>(i)?.map(|n| {
             // PostgreSQL's text form: no mask on a host address
             Val::Str(if n.prefix_len() == n.max_prefix_len() { n.addr().to_string() } else { n.to_string() })
@@ -275,7 +266,7 @@ pub fn read_cell_sqlite(row: &SqliteRow, i: usize) -> Result<Val> {
         "INTEGER" => Val::I64(row.try_get::<i64, _>(i)?),
         "REAL" => Val::F64(row.try_get::<f64, _>(i)?),
         "TEXT" => Val::Str(row.try_get::<String, _>(i)?),
-        "BLOB" => text_or_bytes(row.try_get::<Vec<u8>, _>(i)?),
+        "BLOB" => Val::Bytes(row.try_get::<Vec<u8>, _>(i)?),
         "BOOLEAN" => Val::Bool(row.try_get::<bool, _>(i)?),
         other => return Err(crate::Error::Config(format!("sqlite column {i} holds a {other} value"))),
     })
@@ -304,7 +295,16 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
         return Ok(());
     }
     for row in data.iter_mut() {
-        let version = asm.columns.iter().find(|c| c.hidden && c.column == "aes_key_version").map(|c| row[c.index].as_i64()).unwrap_or(1) as i32;
+        let version = if styled.iter().any(|c| c.host.iter().any(|style| style == "aes")) {
+            let column = asm
+                .columns
+                .iter()
+                .find(|c| c.hidden && c.column == "aes_key_version")
+                .ok_or_else(|| Error::Config("AES column requires aes_key_version".into()))?;
+            i32::try_from(row[column.index].as_i64()?).map_err(|_| Error::Config("AES key version is outside i32 range".into()))?
+        } else {
+            0
+        };
         for sc in &styled {
             let mut v = std::mem::take(&mut row[sc.index]);
             if !sc.host.is_empty() {

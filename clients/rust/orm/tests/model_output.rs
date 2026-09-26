@@ -35,12 +35,12 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         if !COLUMNS.contains(&name) {
-            return false;
+            return Ok(false);
         }
         self.values.insert(name.to_owned(), v);
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         self.values.get(name).cloned()
@@ -52,7 +52,7 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
     let value = orm::ordered_json::parse(r#"{"n":1e400}"#).unwrap();
     let mut row = Secret::from_core(Core::new(&SECRET));
     row.core_mut().set_ordered("config", value.clone());
-    assert!(row.assign("config", Val::Ordered(value.clone())));
+    assert!(row.assign("config", Val::Ordered(value.clone())).unwrap());
     match orm::model::to_array(&row) {
         Err(e) => assert_eq!(e.code(), "CODEC_ENCODE", "{e}"),
         Ok(v) => panic!("to_array returned {v}"),
@@ -69,7 +69,7 @@ fn json_output_keeps_the_ordered_json_text() {
         let value = orm::ordered_json::parse(text).unwrap();
         let mut row = Secret::from_core(Core::new(&SECRET));
         row.core_mut().set_ordered("config", value.clone());
-        assert!(row.assign("config", Val::Ordered(value)));
+        assert!(row.assign("config", Val::Ordered(value)).unwrap());
         assert_eq!(orm::model::to_json(&row).unwrap(), format!(r#"{{"config":{text}}}"#));
     }
 }

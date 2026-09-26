@@ -46,12 +46,12 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> bool {
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
         if !COLUMNS.contains(&name) {
-            return false;
+            return Ok(false);
         }
         self.values.insert(name.to_owned(), v);
-        true
+        Ok(true)
     }
     fn value(&self, name: &str) -> Option<Val> {
         self.values.get(name).cloned()
@@ -131,7 +131,7 @@ async fn aes_json_column() {
         first.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = connected(&first);
         row.core_mut().set_ordered("config", orm::ordered_json::parse(text).unwrap());
-        let seq = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}")).value("seq").unwrap_or_default().as_i64();
+        let seq = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}")).value("seq").expect("generated seq").as_i64().unwrap();
         assert_eq!(read(&first).await, text, "{driver}: read back");
         let (cell, version) = stored(&first).await;
         assert!(cell.starts_with(b"ORM-AES2\0") && !cell.windows(12).any(|w| w == b"s3cret-token") && version == 1, "{driver}: stored version {version}");

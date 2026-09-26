@@ -420,15 +420,11 @@ struct AesSpec {
 }
 
 fn row_version(v: &Val) -> Result<i32> {
-    let n = match v {
-        Val::I64(n) => *n,
-        Val::Str(s) => s.parse().unwrap_or(0),
-        _ => 0,
-    };
-    if !(1..=i32::MAX as i64).contains(&n) {
+    let n = v.as_i32()?;
+    if n <= 0 {
         return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: "AES row version must be a positive integer".into() });
     }
-    Ok(n as i32)
+    Ok(n)
 }
 
 /// AES key version status and rotation.
@@ -461,11 +457,14 @@ impl AesUtils<'_> {
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
         for row in self.u.query(&self.u.reader(), sql, &[]).await? {
             let stored = row_version(&row[0])?;
-            let count = row[1].as_i64();
+            let count = row[1].as_i64()?;
+            if count < 0 {
+                return Err(Error::internal("negative AES key version count"));
+            }
             status.versions.insert(stored, count);
-            status.total += count;
+            status.total = status.total.checked_add(count).ok_or_else(|| Error::internal("AES key version total exceeds i64 range"))?;
             if stored != status.current {
-                status.pending += count;
+                status.pending = status.pending.checked_add(count).ok_or_else(|| Error::internal("AES key version pending count exceeds i64 range"))?;
             }
         }
         Ok(status)

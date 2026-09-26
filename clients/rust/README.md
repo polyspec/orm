@@ -66,6 +66,17 @@ rollback fails, the returned error reports both the timeout and rollback failure
 after a successful callback and is not subject to this deadline. Each transaction retains its
 own connection; a later transaction can use the connection after a cancelled statement.
 
+## Row values
+
+`Val` numeric, boolean, date, time, text, byte, JSON and point conversions return `Result`.
+An incompatible kind, invalid text, integer overflow, non-finite float, invalid UTF-8 or
+precision-losing decimal conversion returns `CODEC_DECODE`. A non-finite float also fails JSON
+output. Generated model `assign` returns `Result<bool>`: `Ok(false)` means the column name is
+unknown, while an invalid value is an error. Unsigned values beyond `i64` fail on read and
+`Param::try_from(u64)` fails with `CODEC_ENCODE` on write. SQL NULL remains distinct from empty
+text or bytes. Database decimal values remain exact text until a caller requests a checked
+numeric conversion.
+
 ## Errors
 
 `orm::codes` is generated from `docs/errors.yaml` (`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).

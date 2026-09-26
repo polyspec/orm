@@ -60,7 +60,7 @@ PHP arrays are ordered maps. An array with exactly the keys `0..n-1` is read as 
 
 ## Cases
 - Ordered-json distinguishes an empty object from an empty list. `{}` remains an object and `[]` remains an array through parse, encode, and repeated round trips in every client.
-- NULL and an empty string are read as `null`.
+- Rust reads SQL NULL as `Val::Null` and empty text as `Val::Str("")`. Decoding empty text with a `json` or `jsons` style returns `CODEC_DECODE`.
 - `json` and `jsons` preserve `[]`, `{}`, `0`, and `""`. A parse failure returns `CODEC_DECODE`.
 - A serialize-family format failure returns `CODEC_DECODE`. `O:`, `C:`, `R:`, and `r:` return `CODEC_UNSUPPORTED`.
 - A YAML parse or value-model failure returns `CODEC_DECODE`. A YAML encode failure returns `CODEC_ENCODE`. A `yaml` stage outside the first position returns `CODEC_UNSUPPORTED`.

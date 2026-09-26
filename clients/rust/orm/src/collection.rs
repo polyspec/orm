@@ -15,27 +15,27 @@ pub enum Key {
 }
 
 impl Key {
-    pub fn of(v: &Val) -> Key {
-        match v {
+    pub fn of(v: &Val) -> Result<Key> {
+        Ok(match v {
             Val::I64(x) => Key::I(*x),
             Val::Bool(b) => Key::I(*b as i64),
-            other => Key::S(other.as_string()),
-        }
+            other => Key::S(other.as_string()?),
+        })
     }
 
-    pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Option<Key> {
+    pub fn of_row(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Option<Key>> {
         let mut values = Vec::with_capacity(refs.len());
         for r in refs {
             let v = &row[r.index];
             if v.is_null() {
-                return None;
+                return Ok(None);
             }
             values.push(v.clone());
         }
-        Some(Key::of_values(&values))
+        Key::of_values(&values).map(Some)
     }
 
-    pub fn of_values(values: &[Val]) -> Key {
+    pub fn of_values(values: &[Val]) -> Result<Key> {
         if values.len() == 1 {
             return Key::of(&values[0]);
         }
@@ -43,11 +43,11 @@ impl Key {
         for value in values {
             let part = match value {
                 Val::Bool(b) => (*b as i64).to_string(),
-                other => other.as_string(),
+                other => other.as_string()?,
             };
             out.push_str(&format!("{}:{}", part.len(), part));
         }
-        Key::S(out)
+        Ok(Key::S(out))
     }
 
     /// The key as JSON: a number or a string.

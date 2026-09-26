@@ -50,12 +50,12 @@ macro_rules! row_model {
             fn into_core(self) -> Core {
                 self.core
             }
-            fn assign(&mut self, name: &str, v: Val) -> bool {
+            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
                 if !$columns.contains(&name) {
-                    return false;
+                    return Ok(false);
                 }
                 self.values.insert(name.to_owned(), v);
-                true
+                Ok(true)
             }
             fn value(&self, name: &str) -> Option<Val> {
                 self.values.get(name).cloned()
@@ -124,9 +124,9 @@ async fn audit_bigint_service() {
             .map(|r| {
                 let service = match &r["service_seq"] {
                     Val::Null => "null".to_owned(),
-                    v => v.as_i64().to_string(),
+                    v => v.as_i64().unwrap().to_string(),
                 };
-                format!("{}:{service}", r["table_label"].as_string())
+                format!("{}:{service}", r["table_label"].as_string().unwrap())
             })
             .collect();
         assert_eq!(got, ["routed:42", "unowned:null"], "{driver}: changes");
