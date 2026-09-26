@@ -58,6 +58,45 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 	}
 }
 
+func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
+	var d document
+	if err := json.Unmarshal(source, &d); err != nil {
+		t.Fatal(err)
+	}
+	for i := range d.Rules {
+		if d.Rules[i].ID != "Model.getsCount" {
+			continue
+		}
+		r := &d.Rules[i]
+		r.Output = "Collection<Model>"
+		old := map[string]string{
+			"go":         "(*orm.Collection[*{Entity}Model], error)",
+			"php":        "Orm\\Collection",
+			"rust":       "orm::Result<orm::Collection<Self>>",
+			"typescript": "Promise<Collection<this>>",
+		}
+		current := map[string]string{
+			"go":         "(*orm.GroupRows, error)",
+			"php":        "Orm\\GroupRows",
+			"rust":       "orm::Result<orm::GroupRows>",
+			"typescript": "Promise<GroupRows>",
+		}
+		for _, lang := range languages {
+			n := r.Native[lang]
+			if !strings.Contains(n.Signature, current[lang]) {
+				t.Fatalf("%s grouped signature has changed: %s", lang, n.Signature)
+			}
+			n.Signature = strings.Replace(n.Signature, current[lang], old[lang], 1)
+			r.Native[lang] = n
+		}
+		if err := validateRules(d); err == nil {
+			t.Fatal("grouped result was accepted as a model collection")
+		}
+		return
+	}
+	t.Fatal("Model.getsCount rule is missing")
+}
+
 func TestComponentDiagramsUseRequestedLanguage(t *testing.T) {
 	english, err := Diagram()
 	if err != nil {

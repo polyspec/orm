@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:0539ac0d9e7c51c50f2c7c656c55680a74f840fbe68f7de991bafe14ee1a2adf",
-    "php": "sha256:48f621cecba68458417ff49fb1a1fdc451bb6446ba975693fa138f0c3e70ae8c",
-    "rust": "sha256:be41f021d5759815da20c76fae68bac2bbffa515e7ac629115ed5c949658b4fb",
-    "typescript": "sha256:c43edd229a63752d66c4f6e96be6df9ce2d2ade8f76b94b08db9f567e37be2d7"
+    "go": "sha256:20f93d12e8bd5497d953e313b24828808697cabdb568dd5498eba24ee8434170",
+    "php": "sha256:99e6f21aa9cdb85a4c50ec0047d97ecfca49fa3da853a6511d8c63cd652c56ed",
+    "rust": "sha256:0b383c74170a3cbd2fc3aa6a59010777d466ace2311892164dfeb31edc7bad53",
+    "typescript": "sha256:abadaabef98d170ab273f0c6b721f6bd4ace6ccab38ebb3f29a0d8add85076d1"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -645,7 +645,7 @@
       "id": "Model.getsCount",
       "for": "entity",
       "inputs": [],
-      "output": "Collection<Model>",
+      "output": "GroupRows",
       "errors": [
         "CONFIG",
         "IR_INVALID",
@@ -655,19 +655,19 @@
       "native": {
         "go": {
           "symbol": "clients/go/model/{entity}.go::{Entity}Model.GetsCount",
-          "signature": "receiver=*{Entity}Model func() (*orm.Collection[*{Entity}Model], error)"
+          "signature": "receiver=*{Entity}Model func() (*orm.GroupRows, error)"
         },
         "php": {
           "symbol": "clients/php/src/Model.php::Orm\\Model::getsCount",
-          "signature": "public function getsCount(): Orm\\Collection"
+          "signature": "public function getsCount(): Orm\\GroupRows"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_count",
-          "signature": "pub async fn gets_count(&self) -> orm::Result<orm::Collection<Self>>"
+          "signature": "pub async fn gets_count(&self) -> orm::Result<orm::GroupRows>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getsCount",
-          "signature": "public async getsCount(): Promise<Collection<this>>"
+          "signature": "public async getsCount(): Promise<GroupRows>"
         }
       }
     },

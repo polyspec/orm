@@ -24,6 +24,7 @@ var outputs = map[string]map[string]string{
 	"Chain":             {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this"},
 	"Model":             {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<Self>", "typescript": "Promise<this>"},
 	"Collection<Model>": {"go": "(*orm.Collection[*{Entity}Model],error)", "php": "Orm\\Collection", "rust": "orm::Result<orm::Collection<Self>>", "typescript": "Promise<Collection<this>>"},
+	"GroupRows":         {"go": "(*orm.GroupRows,error)", "php": "Orm\\GroupRows", "rust": "orm::Result<orm::GroupRows>", "typescript": "Promise<GroupRows>"},
 	"Count":             {"go": "(int64,error)", "php": "int", "rust": "orm::Result<i64>", "typescript": "Promise<number>"},
 	"Aggregate":         {"go": "(float64,error)", "php": "float", "rust": "orm::Result<f64>", "typescript": "Promise<number>"},
 	"Page<Model>":       {"go": "(*orm.Page[*{Entity}Model],error)", "php": "Orm\\Page", "rust": "orm::Result<orm::Page<Self>>", "typescript": "Promise<Page<this>>"},
@@ -77,6 +78,9 @@ func validateRules(d document) error {
 		seen[r.ID] = true
 		if r.For != "entity" && r.For != "once" {
 			return fmt.Errorf("%s: unsupported expansion %s", r.ID, r.For)
+		}
+		if r.ID == "Model.getsCount" && r.Output != "GroupRows" {
+			return fmt.Errorf("%s must return GroupRows", r.ID)
 		}
 		want, ok := outputs[r.Output]
 		if !ok {
