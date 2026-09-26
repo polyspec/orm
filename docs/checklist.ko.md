@@ -49,6 +49,7 @@
 - [o] N5.1.2.6.1 Go codec과 생성 모델 setter·getter에서 값 스타일 상태를 명시적으로 구분한다. MySQL, PostgreSQL, SQLite에서 공통 상태, 행 배열, 모델 JSON, 오류를 검증한다.
 - [o] N5.1.2.6.2 PHP 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태 사례와 실제 모델 동작을 검증한다.
 - [o] N5.1.2.6.3 TypeScript 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태·codec 사례와 실제 모델 동작을 검증한다.
+- [o] N5.1.2.6.4 Go conformance 쓰기 실행기에 명시적인 값 스타일 값을 전달하고 쓰기 전에 각 setter 오류를 반환한다. MySQL, PostgreSQL, SQLite에서 모델 생성, 실행기 컴파일, Go 모델·런타임 테스트를 검증한다.
 - [ ] N6 컴파일러 서비스, 메시지 정의, WASM·FFI 진입점, 배포 유닛을 제거하고 Makefile과 CI를 갱신한다.
 - [ ] N7 문자열로 받은 SQLite datetime 텍스트를 저장 형식인 소수 여섯 자리 형태로 비교한다.
 - [ ] N8 `orm-build`로 150개 테이블 Rust 컴파일 검사를 실행한다.
