@@ -70,7 +70,7 @@
 
 ## 3단계 — 언어별 스키마 도구
 
-- [ ] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다.
+- [o] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다. 근거: `make schema-cross-language-check`가 같은 Mermaid 원본을 Go·PHP·Rust·TypeScript로 빌드하고 전체 JSON 매니페스트를 비교해 12개 엔티티와 schema hash `16198b563e2e3cae`가 네 출력에서 같음을 보고했다.
 - [ ] L2 모든 언어에서 마이그레이션과 import 도구를 제공한다.
 
 ## 스키마와 마이그레이션 도구

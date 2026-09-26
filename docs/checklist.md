@@ -70,7 +70,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 ## Stage 3 — Schema tools per language
 
-- [ ] L1 Build `schema.json` from `.mmd` files in every language.
+- [o] L1 Build `schema.json` from `.mmd` files in every language. Evidence: `make schema-cross-language-check` builds the same Mermaid source with Go, PHP, Rust, and TypeScript, compares the complete JSON manifests, and reports four equal outputs with 12 entities and schema hash `16198b563e2e3cae`.
 - [ ] L2 Provide migration and import tools in every language.
 
 ## Schema and migration tools
