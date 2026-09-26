@@ -137,6 +137,7 @@ The creation spelling follows the host language. The method role, stored request
 |---|---|---|
 | `get` | one row; `NO_ROWS` when no row matches | model connection or active transaction |
 | `gets` | collection | model connection or active transaction |
+| `getsCount` | `GroupRows` with selected grouping values and checked row counts | model connection or active transaction |
 | `getsPage` | page | model connection or active transaction |
 | `getCount` | integer | model connection or active transaction |
 | `create` | row with generated key | model connection or active transaction |
@@ -145,6 +146,8 @@ The creation spelling follows the host language. The method role, stored request
 | `delete` | row or collection | row connection or active transaction |
 
 A terminal without a connection outside a transaction returns `CONFIG`. A connection must carry the schema engine used by the generated request; otherwise the terminal returns `CONFIG`.
+
+`GroupRows` contains no partial models. Each row contains only selected grouping values and one nonnegative `row_count`. A missing, duplicate, malformed, or lossy count fails. Selected values retain their declared types, including boolean and SQL NULL; requesting an unselected value returns `COLUMN_UNSELECTED`.
 
 ## 6. Connections, transactions, and utilities — IF-13 to IF-17
 
