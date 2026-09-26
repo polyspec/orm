@@ -170,7 +170,7 @@ func (a *assembler) shape(b *Core, asm *plan.Assemble) *rowShape {
 	return sh
 }
 
-func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
+func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error) {
 	sh := a.shape(b, asm)
 	core, st := a.newRow(b.ent)
 	m := b.ent.New(core).Orm_()
@@ -182,8 +182,14 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 		if sh.time[i] {
 			v = a.db.localTime(v)
 		}
-		if col.Column != "" && col.Column == col.Name && b.ent.Assign(m.self, col.Name, v) {
-			continue
+		if col.Column != "" && col.Column == col.Name {
+			assigned, err := b.ent.Assign(m.self, col.Name, v)
+			if err != nil {
+				return nil, err
+			}
+			if assigned {
+				continue
+			}
 		}
 		if st.extra == nil {
 			st.extra = map[string]any{}
@@ -208,7 +214,11 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 			child := b.joinChild(ch.Rel)
 			var v any
 			if ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil {
-				v = a.model(child, ch.Assemble, row).self
+				cm, err := a.model(child, ch.Assemble, row)
+				if err != nil {
+					return nil, err
+				}
+				v = cm.self
 			}
 			st.setRelated(ch.Rel, v, false, false)
 		default:
@@ -218,14 +228,21 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 			if many {
 				coll := &collection{}
 				for _, cr := range rows {
-					cm := a.model(child, childAsm, cr)
+					cm, err := a.model(child, childAsm, cr)
+					if err != nil {
+						return nil, err
+					}
 					coll.put(child.collectionKey(cm, childAsm, cr), cm)
 				}
 				st.setRelated(ch.Rel, child.ent.collection(coll), ch.Cascade, false)
 			} else {
 				var v any
 				if len(rows) > 0 {
-					v = a.model(child, childAsm, rows[0]).self
+					cm, err := a.model(child, childAsm, rows[0])
+					if err != nil {
+						return nil, err
+					}
+					v = cm.self
 				}
 				st.setRelated(ch.Rel, v, ch.Cascade, ch.Flatten)
 			}
@@ -234,7 +251,7 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) *Core {
 	if a.made != nil {
 		a.made[b] = append(a.made[b], m)
 	}
-	return m
+	return m, nil
 }
 
 func (c *Core) joinChild(name string) *Core {
@@ -336,7 +353,10 @@ func (c *Core) assemble(ex executor, r *request, res *result, asm *plan.Assemble
 	}
 	out := &collection{keys: make([]Key, 0, len(res.main)), items: make(map[Key]*Core, len(res.main))}
 	for _, row := range res.main {
-		m := a.model(c, asm, row)
+		m, err := a.model(c, asm, row)
+		if err != nil {
+			return nil, err
+		}
 		out.put(c.collectionKey(m, asm, row), m)
 	}
 	if err := a.external(r); err != nil {
@@ -513,7 +533,10 @@ func (c *Core) GetCount() (int64, error) {
 		return 0, err
 	}
 	v, err := scalar(ex, c.build("count"))
-	return AsInt64(v), err
+	if err != nil {
+		return 0, err
+	}
+	return AsInt64(v)
 }
 
 // GetSum returns the sum of the column selected with sum<Col>().
@@ -533,7 +556,10 @@ func (c *Core) aggregate(fn string) (float64, error) {
 	r := c.build(fn)
 	r.ir.Agg = c.agg
 	v, err := scalar(ex, r)
-	return AsFloat64(v), err
+	if err != nil {
+		return 0, err
+	}
+	return AsFloat64(v)
 }
 
 func titled(s string) string { return string(s[0]-'a'+'A') + s[1:] }
@@ -663,10 +689,6 @@ func (c *Core) Create() (Model, error) {
 		}
 	}
 	r.ir.NParams = len(r.params)
-	id, _, err := write(ex, r)
-	if err != nil {
-		return nil, err
-	}
 	m := c.ent.New(NewCore(c.ent)).Orm_()
 	m.conn = c.conn
 	st := &rowState{}
@@ -684,12 +706,31 @@ func (c *Core) Create() (Model, error) {
 			if t, ok := v.(time.Time); ok {
 				v = t.In(d.location)
 			}
-			c.ent.Assign(m.self, s.column, v)
+			assigned, err := c.ent.Assign(m.self, s.column, v)
+			if err != nil {
+				return nil, err
+			}
+			if !assigned {
+				return nil, codecErr(CodeInternal, "insert column %q is not in generated model", s.column)
+			}
 		}
+	}
+	if err := validateAutoAssignment(ent, c.ent, m.self); err != nil {
+		return nil, err
+	}
+	id, _, err := write(ex, r)
+	if err != nil {
+		return nil, err
 	}
 	if ent.Auto != "" {
 		st.addName(ent.Auto)
-		c.ent.Assign(m.self, ent.Auto, id)
+		assigned, err := c.ent.Assign(m.self, ent.Auto, id)
+		if err != nil {
+			return nil, err
+		}
+		if !assigned {
+			return nil, codecErr(CodeInternal, "auto column %q is not in generated model", ent.Auto)
+		}
 	}
 	st.loaded = true
 	if tx := ex.transaction(); tx != nil && ent.Auto != "" {
@@ -708,6 +749,30 @@ func (c *Core) Create() (Model, error) {
 	c.sets = nil
 	c.duplication = nil
 	return m.self, nil
+}
+
+func validateAutoAssignment(ent *schema.Entity, generated *Entity, m Model) error {
+	if ent.Auto == "" {
+		return nil
+	}
+	var auto *schema.Col
+	for _, col := range ent.Columns {
+		if col.Name == ent.Auto {
+			auto = col
+			break
+		}
+	}
+	if auto == nil || auto.Type != "i64" || auto.Nullable || auto.Unsigned || !auto.PK {
+		return codecErr(CodeSchemaInvalid, "automatic key %q must be a signed non-null i64 primary key", ent.Auto)
+	}
+	assigned, err := generated.Assign(m, ent.Auto, int64(0))
+	if err != nil {
+		return err
+	}
+	if !assigned {
+		return codecErr(CodeInternal, "auto column %q is not in generated model", ent.Auto)
+	}
+	return nil
 }
 
 func isZero(v any) bool {

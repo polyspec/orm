@@ -2,6 +2,7 @@ package ormgen
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -49,6 +50,47 @@ func TestSQLiteImportReadsNamedAndUnnamedChecksFromPhysicalDDL(t *testing.T) {
 	}
 	if _, err := schema.Build(diagram); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSQLiteAutomaticRowidImportsAsI64(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "rowid.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sqlText, err := os.ReadFile("../../tests/schema/sqlite_auto.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(string(sqlText)); err != nil {
+		t.Fatal(err)
+	}
+	tables, err := readTablesSQLite(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tables) != 1 || len(tables[0].Columns) != 2 {
+		t.Fatalf("columns=%#v", tables)
+	}
+	if got := tables[0].Columns[0].Type; got != "bigint" {
+		t.Fatalf("automatic rowid type = %q, want bigint", got)
+	}
+	if got := tables[0].Columns[1].Type; got != "INTEGER" {
+		t.Fatalf("ordinary integer type = %q, want INTEGER", got)
+	}
+	source := renderMermaid(tables, nil)
+	parsed, err := schema.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := schema.Build(parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := built.Entities["entry"]
+	if entry == nil || entry.Auto != "id" || entry.Column("id").Type != "i64" || entry.Column("count").Type != "i32" {
+		t.Fatalf("imported manifest: %s", source)
 	}
 }
 

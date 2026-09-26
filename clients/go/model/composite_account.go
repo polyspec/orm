@@ -3,6 +3,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -19,7 +20,7 @@ type CompositeAccountModel struct {
 }
 
 var compositeAccountEntity = &orm.Entity{Name: "composite_account", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &CompositeAccountModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*CompositeAccountModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*CompositeAccountModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*CompositeAccountModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*CompositeAccountModel](keys, items, fetched)
@@ -39,18 +40,39 @@ func (x *CompositeAccountModel) MarshalJSON() ([]byte, error) { return x.m.Marsh
 // ToArray returns the row values.
 func (x *CompositeAccountModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *CompositeAccountModel) assign(name string, v any) bool {
+func (x *CompositeAccountModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "tenant_id":
-		x.fTenantId = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column tenant_id: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column tenant_id: %w", err)
+		}
+		x.fTenantId = t
 	case "account_id":
-		x.fAccountId = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column account_id: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column account_id: %w", err)
+		}
+		x.fAccountId = t
 	case "name":
-		x.fName = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column name: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column name: %w", err)
+		}
+		x.fName = t
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *CompositeAccountModel) value(name string) (any, bool) {

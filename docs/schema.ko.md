@@ -210,6 +210,7 @@ Rust 도구는 `orm-build` crate의 `orm-gen` 바이너리이며 `cli` feature�
 - 관계선은 카탈로그의 외래 키 제약을 사용한다. 제약이 없으면 `<role>_<table>_seq` 컬럼을 `<table>`에 대응시킨다.
 - 인덱스는 `%% unique`, `%% fulltext`, `%% index` 지시문이 되고, 단일 컬럼 고유 키는 `UK`가 되며, 자동으로 만들어지는 단일 외래 키 인덱스는 기록하지 않는다.
 - PostgreSQL(`postgres://` DSN)은 `information_schema.columns`, `pg_index`, `pg_constraint`를 읽고 타입을 정규화하며(`character varying(191)` → `varchar(191)`, `boolean` → `tinyint`, `numeric(p,s)` → `decimal(p_s)`, `timestamp(6) with time zone` → `datetime(6)`, `inet` → `varbinary(16)`, `json`과 `jsonb` → `json`), identity 컬럼을 `auto`로 바꾸고 생성된 전문 검색 인덱스를 복원한다. SQLite는 `PRAGMA table_info`, `index_list`, `foreign_key_list`를 읽는다. `INTEGER PRIMARY KEY AUTOINCREMENT` 컬럼은 `auto`가 되고, 생성된 DDL의 시각 기본값은 `=now`가 된다.
+- SQLite는 자동 rowid 컬럼을 `INTEGER`로 보고하지만 그 값은 부호 있는 64비트 정수다. 실제 스키마 가져오기는 해당 컬럼을 `bigint PK "auto"`로 기록하여 부호 있는 `i64` 키로 빌드하고, 다른 SQLite `INTEGER` 컬럼은 `int`로 유지한다.
 - `--out` 파일이 있으면 데이터베이스가 표현하지 못하는 내용, 즉 관계 명칭 재정의, `lazy`, `bool`, `int`, 명시 스타일을 유지한다.
 
 ## 7. 클라이언트 생성 API

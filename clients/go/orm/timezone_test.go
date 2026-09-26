@@ -34,14 +34,14 @@ func zoneEntity(hash string) *orm.Entity {
 			c.Bind(r)
 			return r
 		},
-		Assign: func(m orm.Model, name string, v any) bool {
+		Assign: func(m orm.Model, name string, v any) (bool, error) {
 			for _, c := range zoneColumns {
 				if c == name {
 					m.(*keywordRow).vals[name] = v
-					return true
+					return true, nil
 				}
 			}
-			return false
+			return false, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
 			v, ok := m.(*keywordRow).vals[name]

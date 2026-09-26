@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/engine/plan"
 )
@@ -251,105 +253,167 @@ type Page[T Model] struct {
 	PerPage    int
 }
 
-// AsInt64 converts a database value to int64.
-func AsInt64(v any) int64 {
+// ErrNullColumn reports SQL NULL in a non-null generated model field.
+var ErrNullColumn = codecErr(CodeCodecDecode, "non-null column received SQL NULL")
+
+// AsInt64 converts a database value to int64 without discarding a fraction or overflow.
+func AsInt64(v any) (int64, error) {
 	switch x := v.(type) {
 	case int64:
-		return x
+		return x, nil
 	case int32:
-		return int64(x)
+		return int64(x), nil
 	case int:
-		return int64(x)
+		return int64(x), nil
 	case uint64:
-		return int64(x)
+		if x <= math.MaxInt64 {
+			return int64(x), nil
+		}
 	case float64:
-		return int64(x)
+		if !math.IsNaN(x) && !math.IsInf(x, 0) && math.Trunc(x) == x && x >= -0x1p63 && x < 0x1p63 {
+			return int64(x), nil
+		}
 	case bool:
 		if x {
-			return 1
+			return 1, nil
 		}
-		return 0
+		return 0, nil
 	case string:
-		n, err := strconv.ParseInt(strings.TrimSpace(x), 10, 64)
-		if err != nil {
-			f, _ := strconv.ParseFloat(strings.TrimSpace(x), 64)
-			return int64(f)
+		if n, err := strconv.ParseInt(x, 10, 64); err == nil {
+			return n, nil
 		}
-		return n
+	case []byte:
+		if n, err := strconv.ParseInt(string(x), 10, 64); err == nil {
+			return n, nil
+		}
 	}
-	return 0
+	return 0, codecErr(CodeCodecDecode, "cannot convert %T value %v to int64", v, v)
+}
+
+// AsInt32 converts a database value to int32 without overflow.
+func AsInt32(v any) (int32, error) {
+	n, err := AsInt64(v)
+	if err != nil {
+		return 0, err
+	}
+	if n < math.MinInt32 || n > math.MaxInt32 {
+		return 0, codecErr(CodeCodecDecode, "integer %d overflows int32", n)
+	}
+	return int32(n), nil
 }
 
 // AsFloat64 converts a database value to float64.
-func AsFloat64(v any) float64 {
+func AsFloat64(v any) (float64, error) {
+	var f float64
 	switch x := v.(type) {
 	case float64:
-		return x
+		f = x
 	case float32:
-		return float64(x)
+		f = float64(x)
 	case int64:
-		return float64(x)
+		f = float64(x)
 	case int32:
-		return float64(x)
+		f = float64(x)
+	case int:
+		f = float64(x)
+	case uint64:
+		f = float64(x)
 	case string:
-		f, _ := strconv.ParseFloat(strings.TrimSpace(x), 64)
-		return f
+		var err error
+		f, err = strconv.ParseFloat(x, 64)
+		if err != nil {
+			return 0, codecErr(CodeCodecDecode, "cannot convert %q to float64: %v", x, err)
+		}
+	case []byte:
+		var err error
+		f, err = strconv.ParseFloat(string(x), 64)
+		if err != nil {
+			return 0, codecErr(CodeCodecDecode, "cannot convert %q to float64: %v", x, err)
+		}
+	default:
+		return 0, codecErr(CodeCodecDecode, "cannot convert %T to float64", v)
 	}
-	return 0
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, codecErr(CodeCodecDecode, "non-finite float64 value")
+	}
+	return f, nil
 }
 
 // AsString converts a database value to string.
-func AsString(v any) string {
+func AsString(v any) (string, error) {
+	var s string
 	switch x := v.(type) {
 	case string:
-		return x
+		s = x
 	case []byte:
-		return string(x)
-	case nil:
-		return ""
-	case time.Time:
-		return x.Format("2006-01-02 15:04:05.000000")
+		if x == nil {
+			return "", codecErr(CodeCodecDecode, "cannot convert SQL NULL to string")
+		}
+		s = string(x)
+	default:
+		return "", codecErr(CodeCodecDecode, "cannot convert %T to string", v)
 	}
-	return fmt.Sprint(v)
+	if !utf8.ValidString(s) {
+		return "", codecErr(CodeCodecDecode, "text is not valid UTF-8")
+	}
+	return s, nil
 }
 
 // AsBytes converts a database value to an owned byte slice.
-func AsBytes(v any) []byte {
+func AsBytes(v any) ([]byte, error) {
 	switch x := v.(type) {
 	case []byte:
-		return append([]byte(nil), x...)
+		if x == nil {
+			return nil, codecErr(CodeCodecDecode, "cannot convert SQL NULL to bytes")
+		}
+		out := make([]byte, len(x))
+		copy(out, x)
+		return out, nil
 	case string:
-		return []byte(x)
-	case nil:
-		return nil
+		return []byte(x), nil
 	}
-	return []byte(fmt.Sprint(v))
+	return nil, codecErr(CodeCodecDecode, "cannot convert %T to bytes", v)
 }
 
 // AsBool converts a database value to bool.
-func AsBool(v any) bool {
+func AsBool(v any) (bool, error) {
 	switch x := v.(type) {
 	case bool:
-		return x
+		return x, nil
 	case int64:
-		return x != 0
+		if x == 0 || x == 1 {
+			return x == 1, nil
+		}
+	case int32:
+		if x == 0 || x == 1 {
+			return x == 1, nil
+		}
 	case string:
-		return x == "1" || x == "true" || x == "t"
+		switch x {
+		case "1", "true", "t":
+			return true, nil
+		case "0", "false", "f":
+			return false, nil
+		}
+	case []byte:
+		return AsBool(string(x))
 	}
-	return false
+	return false, codecErr(CodeCodecDecode, "cannot convert %T value %v to bool", v, v)
 }
 
 // AsTime converts a database value to time.Time.
-func AsTime(v any) time.Time {
+func AsTime(v any) (time.Time, error) {
 	switch x := v.(type) {
 	case time.Time:
-		return x
+		return x, nil
 	case string:
 		for _, layout := range []string{"2006-01-02 15:04:05.999999", "2006-01-02 15:04:05", "2006-01-02 15:04:05.999999-07:00", "2006-01-02 15:04:05-07:00", time.RFC3339Nano, "2006-01-02", "15:04:05.999999"} {
 			if t, err := time.Parse(layout, x); err == nil {
-				return t
+				return t, nil
 			}
 		}
+	case []byte:
+		return AsTime(string(x))
 	}
-	return time.Time{}
+	return time.Time{}, codecErr(CodeCodecDecode, "cannot convert %T value %v to time", v, v)
 }

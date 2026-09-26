@@ -364,7 +364,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 			t.Fatalf("subquery IN: %d", users.Len())
 		}
 		u := users.First()
-		if orm.AsInt64(u.GetReadTotal()) != 20 || orm.AsInt64(u.GetDoubled()) != 2*u.GetSeq() || u.GetUpperName() != "KIM" {
+		if must(orm.AsInt64(u.GetReadTotal())) != 20 || must(orm.AsInt64(u.GetDoubled())) != 2*u.GetSeq() || u.GetUpperName() != "KIM" {
 			t.Fatalf("added columns: %v %v %v", u.GetReadTotal(), u.GetDoubled(), u.GetUpperName())
 		}
 		sum := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).SumReadCount().GetSum())

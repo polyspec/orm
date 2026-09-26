@@ -121,7 +121,7 @@ func TestAuditBigintService(t *testing.T) {
 				service := "null"
 				if v := row.vals["service_seq"]; v != nil {
 					service = "42"
-					if orm.AsInt64(v) != 42 {
+					if mustInt64(v) != 42 {
 						t.Fatalf("service_seq %v", v)
 					}
 				}

@@ -3,6 +3,8 @@
 package model
 
 import (
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -52,7 +54,7 @@ type AuthorModel struct {
 }
 
 var authorEntity = &orm.Entity{Name: "author", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &AuthorModel{m: c}; c.Bind(x); return x },
-	Assign: func(m orm.Model, name string, v any) bool { return m.(*AuthorModel).assign(name, v) },
+	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*AuthorModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*AuthorModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
 		return orm.CollectOf[*AuthorModel](keys, items, fetched)
@@ -70,139 +72,332 @@ func (x *AuthorModel) MarshalJSON() ([]byte, error) { return x.m.MarshalJSON() }
 // ToArray returns the row values.
 func (x *AuthorModel) ToArray() map[string]any { return x.m.ToArray() }
 
-func (x *AuthorModel) assign(name string, v any) bool {
+func (x *AuthorModel) assign(name string, v any) (bool, error) {
 	switch name {
 	case "seq":
-		x.fSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column seq: %w", err)
+		}
+		x.fSeq = t
 	case "name":
-		x.fName = orm.AsString(v)
+		if v == nil {
+			return true, fmt.Errorf("column name: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column name: %w", err)
+		}
+		x.fName = t
 	case "description":
 		if v == nil {
 			x.fDescription = nil
-		} else {
-			t := orm.AsString(v)
-			x.fDescription = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column description: %w", err)
+		}
+		x.fDescription = &t
 	case "created_ts":
-		x.fCreatedTs = orm.AsTime(v)
+		if v == nil {
+			return true, fmt.Errorf("column created_ts: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column created_ts: %w", err)
+		}
+		x.fCreatedTs = t
 	case "updated_ts":
-		x.fUpdatedTs = orm.AsTime(v)
+		if v == nil {
+			return true, fmt.Errorf("column updated_ts: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column updated_ts: %w", err)
+		}
+		x.fUpdatedTs = t
 	case "is_close":
-		x.fIsClose = orm.AsBool(v)
+		if v == nil {
+			return true, fmt.Errorf("column is_close: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsBool(v)
+		if err != nil {
+			return true, fmt.Errorf("column is_close: %w", err)
+		}
+		x.fIsClose = t
 	case "is_display":
-		x.fIsDisplay = orm.AsBool(v)
+		if v == nil {
+			return true, fmt.Errorf("column is_display: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsBool(v)
+		if err != nil {
+			return true, fmt.Errorf("column is_display: %w", err)
+		}
+		x.fIsDisplay = t
 	case "display_start_dt":
 		if v == nil {
 			x.fDisplayStartDt = nil
-		} else {
-			t := orm.AsTime(v)
-			x.fDisplayStartDt = &t
+			break
 		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column display_start_dt: %w", err)
+		}
+		x.fDisplayStartDt = &t
 	case "display_end_dt":
 		if v == nil {
 			x.fDisplayEndDt = nil
-		} else {
-			t := orm.AsTime(v)
-			x.fDisplayEndDt = &t
+			break
 		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column display_end_dt: %w", err)
+		}
+		x.fDisplayEndDt = &t
 	case "is_allday":
-		x.fIsAllday = orm.AsBool(v)
+		if v == nil {
+			return true, fmt.Errorf("column is_allday: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsBool(v)
+		if err != nil {
+			return true, fmt.Errorf("column is_allday: %w", err)
+		}
+		x.fIsAllday = t
 	case "target_club_reader_count":
-		x.fTargetClubReaderCount = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column target_club_reader_count: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column target_club_reader_count: %w", err)
+		}
+		x.fTargetClubReaderCount = t
 	case "success_count":
-		x.fSuccessCount = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column success_count: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column success_count: %w", err)
+		}
+		x.fSuccessCount = t
 	case "reader_count":
-		x.fReaderCount = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column reader_count: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column reader_count: %w", err)
+		}
+		x.fReaderCount = t
 	case "read_count":
-		x.fReadCount = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column read_count: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column read_count: %w", err)
+		}
+		x.fReadCount = t
 	case "photo_url":
 		if v == nil {
 			x.fPhotoUrl = nil
-		} else {
-			t := orm.AsString(v)
-			x.fPhotoUrl = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column photo_url: %w", err)
+		}
+		x.fPhotoUrl = &t
 	case "user_seq":
-		x.fUserSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column user_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column user_seq: %w", err)
+		}
+		x.fUserSeq = t
 	case "service_seq":
-		x.fServiceSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column service_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column service_seq: %w", err)
+		}
+		x.fServiceSeq = t
 	case "service_region_seq":
-		x.fServiceRegionSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column service_region_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column service_region_seq: %w", err)
+		}
+		x.fServiceRegionSeq = t
 	case "service_member_seq":
-		x.fServiceMemberSeq = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column service_member_seq: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column service_member_seq: %w", err)
+		}
+		x.fServiceMemberSeq = t
 	case "start_dt":
-		x.fStartDt = orm.AsTime(v)
+		if v == nil {
+			return true, fmt.Errorf("column start_dt: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column start_dt: %w", err)
+		}
+		x.fStartDt = t
 	case "end_dt":
-		x.fEndDt = orm.AsTime(v)
+		if v == nil {
+			return true, fmt.Errorf("column end_dt: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return true, fmt.Errorf("column end_dt: %w", err)
+		}
+		x.fEndDt = t
 	case "uuid":
 		if v == nil {
 			x.fUuid = nil
-		} else {
-			t := orm.AsString(v)
-			x.fUuid = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column uuid: %w", err)
+		}
+		x.fUuid = &t
 	case "is_single_work":
-		x.fIsSingleWork = orm.AsBool(v)
+		if v == nil {
+			return true, fmt.Errorf("column is_single_work: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsBool(v)
+		if err != nil {
+			return true, fmt.Errorf("column is_single_work: %w", err)
+		}
+		x.fIsSingleWork = t
 	case "like_count":
-		x.fLikeCount = orm.AsInt64(v)
+		if v == nil {
+			return true, fmt.Errorf("column like_count: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt64(v)
+		if err != nil {
+			return true, fmt.Errorf("column like_count: %w", err)
+		}
+		x.fLikeCount = t
 	case "aes_key_version":
-		x.fAesKeyVersion = int32(orm.AsInt64(v))
+		if v == nil {
+			return true, fmt.Errorf("column aes_key_version: %w", orm.ErrNullColumn)
+		}
+		t, err := orm.AsInt32(v)
+		if err != nil {
+			return true, fmt.Errorf("column aes_key_version: %w", err)
+		}
+		x.fAesKeyVersion = t
 	case "aes_hex_email":
 		if v == nil {
 			x.fAesHexEmail = nil
-		} else {
-			t := orm.AsString(v)
-			x.fAesHexEmail = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column aes_hex_email: %w", err)
+		}
+		x.fAesHexEmail = &t
 	case "email_blind_index":
 		if v == nil {
 			x.fEmailBlindIndex = nil
-		} else {
-			t := orm.AsString(v)
-			x.fEmailBlindIndex = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column email_blind_index: %w", err)
+		}
+		x.fEmailBlindIndex = &t
 	case "aes_hex_phone":
 		if v == nil {
 			x.fAesHexPhone = nil
-		} else {
-			t := orm.AsString(v)
-			x.fAesHexPhone = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column aes_hex_phone: %w", err)
+		}
+		x.fAesHexPhone = &t
 	case "phone_blind_index":
 		if v == nil {
 			x.fPhoneBlindIndex = nil
-		} else {
-			t := orm.AsString(v)
-			x.fPhoneBlindIndex = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column phone_blind_index: %w", err)
+		}
+		x.fPhoneBlindIndex = &t
 	case "price":
 		if v == nil {
 			x.fPrice = nil
-		} else {
-			t := orm.AsFloat64(v)
-			x.fPrice = &t
+			break
 		}
+		t, err := orm.AsFloat64(v)
+		if err != nil {
+			return true, fmt.Errorf("column price: %w", err)
+		}
+		x.fPrice = &t
 	case "ip":
 		if v == nil {
 			x.fIp = nil
-		} else {
-			t := orm.AsString(v)
-			x.fIp = &t
+			break
 		}
+		t, err := orm.AsString(v)
+		if err != nil {
+			return true, fmt.Errorf("column ip: %w", err)
+		}
+		x.fIp = &t
 	case "gz_extend":
+		if v == nil {
+			x.fGzExtend = nil
+			break
+		}
 		x.fGzExtend = v
 	case "json_setting":
+		if v == nil {
+			x.fJsonSetting = nil
+			break
+		}
 		x.fJsonSetting = v
 	case "jsons_tags":
+		if v == nil {
+			x.fJsonsTags = nil
+			break
+		}
 		x.fJsonsTags = v
 	case "base64_extra":
+		if v == nil {
+			x.fBase64Extra = nil
+			break
+		}
 		x.fBase64Extra = v
 	case "serialize_data":
+		if v == nil {
+			x.fSerializeData = nil
+			break
+		}
 		x.fSerializeData = v
 	default:
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (x *AuthorModel) value(name string) (any, bool) {
@@ -1725,7 +1920,7 @@ func (x *AuthorModel) AddColumnReadCountAliasReadText[F ~string | orm.Func](form
 	case orm.Func:
 		x.m.AddColumnFunc("read_count", "read_text", f)
 	default:
-		x.m.AddColumnFormat("read_count", "read_text", orm.AsString(f))
+		x.m.AddColumnFormat("read_count", "read_text", reflect.ValueOf(f).String())
 	}
 	return x
 }
@@ -1735,7 +1930,7 @@ func (x *AuthorModel) AddColumnStartDtAliasStartMonth[F ~string | orm.Func](form
 	case orm.Func:
 		x.m.AddColumnFunc("start_dt", "start_month", f)
 	default:
-		x.m.AddColumnFormat("start_dt", "start_month", orm.AsString(f))
+		x.m.AddColumnFormat("start_dt", "start_month", reflect.ValueOf(f).String())
 	}
 	return x
 }

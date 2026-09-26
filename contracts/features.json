@@ -149,6 +149,8 @@
       ],
       "tests": [
         "clients/go/model/model_test.go",
+        "clients/go/orm/assignment_propagation_test.go",
+        "clients/go/orm/conversion_error_test.go",
         "clients/php/tests/model_test.php",
         "clients/php/tests/aggregate_numeric.php",
         "tests/typescript/model.mjs",
@@ -165,6 +167,10 @@
         "docs/protocol.md"
       ],
       "verification": [
+        {
+          "id": "aggregate-go",
+          "command": "go test ./clients/go/orm -run '^TestAggregateNumericFixture$' -count=1 -timeout 45s"
+        },
         {
           "id": "queries-go",
           "command": "go test ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1"
@@ -245,6 +251,7 @@
       ],
       "tests": [
         "clients/go/model/model_test.go",
+        "clients/go/model/assignment_test.go",
         "clients/php/tests/model_test.php",
         "tests/typescript/model.mjs",
         "clients/rust/tests/src/integration.rs"
