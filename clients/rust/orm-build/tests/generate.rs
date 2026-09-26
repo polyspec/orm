@@ -10,12 +10,16 @@ fn schema() -> PathBuf {
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
 fn generate(source: &str) -> Result<String, String> {
+    generate_with_schema(schema(), source)
+}
+
+fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String> {
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), source).unwrap();
-    let out = orm_build::Builder::new(schema()).scan(&src).out_dir(dir.join("out")).try_generate();
+    let out = orm_build::Builder::new(schema).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
     text
@@ -55,6 +59,26 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
     assert!(text.contains("pub fn get_start_dt(&self) -> orm::Result<orm::chrono::NaiveDateTime>"), "getter must report missing selection");
     assert!(text.contains("pub async fn gets_count(&self) -> orm::Result<orm::GroupRows>"), "group rows must not be partial models");
+}
+
+#[test]
+fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let text = generate_with_schema(
+        root,
+        "fn main() { let row = Battle::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let _ = row.get_jsons_tags(); }",
+    )
+    .unwrap();
+    assert!(text.contains("jsons_tags: Option<orm::ordered_json::Value>"), "nullable ordered JSON must represent SQL NULL separately");
+    assert!(text.contains("serialize_data: Option<orm::serde_json::Value>"), "nullable styled JSON must represent SQL NULL separately");
+    assert!(
+        text.contains("pub fn set_jsons_tags(mut self, v: orm::StyledValue<orm::ordered_json::Value>) -> orm::Result<Self>"),
+        "styled setter requires an explicit state"
+    );
+    assert!(text.contains("pub fn get_jsons_tags(&self) -> orm::Result<orm::StyledValue<orm::ordered_json::Value>>"), "styled getter reports a checked state");
+    assert!(text.contains("self.jsons_tags = Some(value);"), "setter retains a stored JSON value");
+    assert!(text.contains("self.jsons_tags = if v.is_null() { None }"), "row assignment distinguishes SQL NULL");
+    assert!(text.contains("self.__orm.require_field(\"jsons_tags\")?;"), "unselected field access must fail");
 }
 
 #[test]

@@ -52,6 +52,7 @@
 - [o] N5.1.2.6.2 PHP 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태 사례와 실제 모델 동작을 검증한다.
 - [o] N5.1.2.6.3 TypeScript 값 스타일 컬럼의 setter, getter, codec, 모델 출력에 `StyledValue`를 사용한다. MySQL, PostgreSQL, SQLite에서 공통 상태·codec 사례와 실제 모델 동작을 검증한다.
 - [o] N5.1.2.6.4 Go conformance 쓰기 실행기에 명시적인 값 스타일 값을 전달하고 쓰기 전에 각 setter 오류를 반환한다. MySQL, PostgreSQL, SQLite에서 모델 생성, 실행기 컴파일, Go 모델·런타임 테스트를 검증한다.
+- [o] N5.1.2.6.5 Rust 값 스타일 컬럼 codec과 생성 setter·getter에 `StyledValue`를 사용한다. null 불허 컬럼의 `SqlNull`을 setter에서 거부하고 미조회 필드를 보고하며 SQL NULL과 인코딩된 null을 저장, 행 배열, 모델 JSON에서 보존한다. 증거: 공통 13개 사례와 Rust 라이브러리·생성기 테스트 23/23 통과, 생성된 null 불허 스타일 setter가 `SqlNull`을 거부하고 인코딩된 JSON null을 수용하는 사례 1/1 통과, `orm-tests integration --case json_values`가 MySQL·PostgreSQL·SQLite에서 각각 두 번 및 setter 사례 추가 후 한 번 더 통과, 작업공간 Clippy·서식·영한 문서·체크리스트 검사 통과.
 - [ ] N5.1.2.6.6 TypeScript 값 스타일 JSON 출력에서 중첩된 undefined 멤버를 조용히 생략하지 않고 거부한다. `StyledValue.value({missing: undefined}).toJSON()`의 RED 사례를 추가하고 소유 codec을 수정하며 MySQL, PostgreSQL, SQLite에서 모델 출력을 검증한다.
 - [o] N5.1.2.7 생성 Rust 모델 필드를 비공개로 두고 조회하거나 대입하지 않은 필드 접근을 `COLUMN_UNSELECTED`로 거부한다. SQL 열 선택을 유지하고 일부 필드만 채운 모델 대신 `GroupRows`로 그룹 값과 검증한 행 개수를 반환한다. 증거: MySQL·PostgreSQL·SQLite에서 생성 모델과 그룹 사례를 실행하고 잘못된 그룹 개수를 거부하며 Rust 소비자가 결과 타입으로 컴파일된다.
 - [o] N5.1.2.8 실패한 실행을 포함하여 모든 conformance 실행 뒤 모든 테이블 행과 선언된 카운터를 확인한다. 실행기 오류와 남은 데이터베이스 상태 변경을 함께 보고한다. SQLite 오류 사례와 MySQL·PostgreSQL·SQLite 실제 데이터베이스 사례로 실패 보고와 정리를 검증한다.

@@ -118,13 +118,13 @@ fn base(c: &Column) -> &'static str {
 /// The type of a column with the `json` or `jsons` stage.
 const ORDERED: &str = "orm::ordered_json::Value";
 
-fn is_json(c: &Column) -> bool {
-    base(c) == "orm::serde_json::Value"
+fn is_styled_value(c: &Column) -> bool {
+    c.typ == "jsontext" || c.styles.iter().any(|style| matches!(style.as_str(), "json" | "jsons" | "serialize" | "yaml"))
 }
 
 fn field(c: &Column) -> String {
     let t = base(c);
-    if c.nullable && !is_json(c) && t != ORDERED {
+    if c.nullable {
         format!("Option<{t}>")
     } else {
         t.to_owned()
@@ -799,7 +799,13 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("    fn core_mut(&mut self) -> &mut orm::Core {\n        &mut self.__orm\n    }\n\n");
     let _ = write!(b, "    fn from_core(core: orm::Core) -> Self {{\n        {t} {{\n            __orm: core,\n");
     for c in &e.columns {
-        let init = if base(c) == ORDERED { "orm::ordered_json::Value::null()" } else { "Default::default()" };
+        let init = if c.nullable {
+            "None"
+        } else if base(c) == ORDERED {
+            "orm::ordered_json::Value::null()"
+        } else {
+            "Default::default()"
+        };
         let _ = writeln!(b, "            {}: {init},", ident(&c.name));
     }
     b.push_str("        }\n    }\n\n");
@@ -842,11 +848,25 @@ fn model_source(gm: &Model<'_>) -> String {
     for c in &e.columns {
         let (bt, fd, id, col) = (base(c), field(c), ident(&c.name), c.name.as_str());
         b.push('\n');
-        if fd != bt && copy_type(bt) {
+        if is_styled_value(c) {
+            let value = if c.nullable {
+                format!("match &self.{id} {{ None => orm::StyledValue::SqlNull, Some(value) => orm::StyledValue::Value(value.clone()) }}")
+            } else {
+                format!("orm::StyledValue::Value(self.{id}.clone())")
+            };
+            let _ = write!(b, "    /// Returns the selected or assigned styled value of {col}.\n    pub fn get_{col}(&self) -> orm::Result<orm::StyledValue<{bt}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok({value})\n    }}\n\n");
+        } else if fd != bt && copy_type(bt) {
             let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{fd}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if fd != bt {
-            let r = if bt == "Vec<u8>" { "&[u8]" } else { "&str" };
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<Option<{r}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id}.as_deref())\n    }}\n\n");
+            let r = if bt == "Vec<u8>" {
+                "&[u8]"
+            } else if bt == "String" {
+                "&str"
+            } else {
+                bt
+            };
+            let access = if bt == "Vec<u8>" || bt == "String" { "as_deref" } else { "as_ref" };
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<Option<{r}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id}.{access}())\n    }}\n\n");
         } else if copy_type(bt) {
             let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if bt == "String" {
@@ -856,15 +876,17 @@ fn model_source(gm: &Model<'_>) -> String {
         } else {
             let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         }
-        if bt == ORDERED {
+        if is_styled_value(c) {
+            let store = if bt == ORDERED { "set_ordered" } else { "set_json" };
+            let sql_null = if c.nullable {
+                format!("self.__orm.set({col:?}, orm::Param::Null);\n                self.{id} = None;")
+            } else {
+                format!("return Err(orm::Error::Engine {{ code: orm::codes::CODEC_ENCODE.into(), msg: \"{col} does not accept SQL NULL\".into() }});")
+            };
+            let field_value = if c.nullable { "Some(value)" } else { "value" };
             let _ = write!(
                 b,
-                "    /// Sets {col}; the JSON null stores NULL.\n    pub fn set_{col}(mut self, v: orm::ordered_json::Value) -> Self {{\n        self.{id} = v.clone();\n        self.__orm.set_ordered({col:?}, v);\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
-            );
-        } else if is_json(c) {
-            let _ = write!(
-                b,
-                "    /// Sets {col}; a JSON null stores NULL.\n    pub fn set_{col}(mut self, v: impl Into<orm::serde_json::Value>) -> Self {{\n        let v = v.into();\n        self.{id} = v.clone();\n        self.__orm.set_json({col:?}, v);\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
+                "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: orm::StyledValue<{bt}>) -> orm::Result<Self> {{\n        match v {{\n            orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
             );
         } else if fd != bt {
             let _ = write!(

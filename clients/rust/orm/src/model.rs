@@ -369,7 +369,10 @@ impl<'a> Assembler<'a> {
                 st.hidden.insert(col.name.clone());
             }
             st.add_name(&col.name);
-            if !col.column.is_empty() && col.column == col.name && m.assign_dyn(&col.name, v.clone())? {
+            if !col.column.is_empty()
+                && col.column == col.name
+                && m.assign_dyn(&col.name, v.clone()).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?
+            {
                 continue;
             }
             st.extra.insert(col.name.clone(), v);
@@ -437,6 +440,13 @@ impl<'a> Assembler<'a> {
         }
         m.core_dyn_mut().row = Some(st);
         Ok(Built { model: m, builder: b.id })
+    }
+}
+
+fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
+    match error {
+        Error::Engine { code, msg } if code == codes::CODEC_DECODE => Error::Engine { code, msg: format!("{entity}.{column}: {msg}") },
+        other => other,
     }
 }
 
@@ -753,12 +763,12 @@ fn write_req(c: &Core, kind: &str) -> Req {
 
 fn encode(ent: &EntitySchema, column: &str, v: &serde_json::Value) -> Result<Param> {
     let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode(&col.codec_styles(), Some(v))
+    crate::codec::encode(&col.codec_styles(), crate::StyledValue::Value(v))
 }
 
 fn encode_ordered(ent: &EntitySchema, column: &str, v: &ordered_json::Value) -> Result<Param> {
     let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode_ordered(&col.codec_styles(), v)
+    crate::codec::encode_ordered(&col.codec_styles(), crate::StyledValue::Value(v))
 }
 
 fn assign(r: &mut Req, ent: &EntitySchema, s: &SetSpec) -> Result<ir::Assign> {
@@ -1125,9 +1135,19 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
         }
         let v = match m.value_dyn(name) {
             Some(v) => v,
-            None => st.extra.get(name).cloned().ok_or_else(|| Error::internal(format!("model output column {name} is missing")))?,
+            None => st.extra.get(name).cloned().ok_or_else(|| missing_output_column(c, name))?,
         };
-        out.insert(name.clone(), v.to_json()?);
+        let value = v.to_json()?;
+        let value = if styled_column(c, name)? {
+            if matches!(v, Val::Null) {
+                serde_json::json!({"kind": "sql-null"})
+            } else {
+                serde_json::json!({"kind": "value", "value": value})
+            }
+        } else {
+            value
+        };
+        out.insert(name.clone(), value);
     }
     for (name, v) in &c.news {
         out.entry(name.clone()).or_insert_with(|| v.clone());
@@ -1189,11 +1209,20 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         }
         let v = match m.value_dyn(name) {
             Some(v) => v,
-            None => st.extra.get(name).cloned().ok_or_else(|| Error::internal(format!("model output column {name} is missing")))?,
+            None => st.extra.get(name).cloned().ok_or_else(|| missing_output_column(c, name))?,
         };
-        let text = match &v {
+        let document = match &v {
             Val::Ordered(o) => o.compact(),
             other => other.to_json()?.to_string(),
+        };
+        let text = if styled_column(c, name)? {
+            if matches!(v, Val::Null) {
+                r#"{"kind":"sql-null"}"#.to_owned()
+            } else {
+                format!(r#"{{"kind":"value","value":{document}}}"#)
+            }
+        } else {
+            document
         };
         add(&mut out, name, text);
     }
@@ -1216,4 +1245,33 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         }
     }
     Ok(out)
+}
+
+fn styled_column(c: &Core, name: &str) -> Result<bool> {
+    Ok(c.ent
+        .entity_schema()?
+        .column(name)
+        .is_some_and(|column| column.typ == "jsontext" || column.styles.iter().any(|style| matches!(style.as_str(), "json" | "jsons" | "serialize" | "yaml"))))
+}
+
+fn missing_output_column(c: &Core, name: &str) -> Error {
+    if c.row.is_none() {
+        Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name) }
+    } else {
+        Error::internal(format!("model output column {name} is missing"))
+    }
+}
+
+#[cfg(test)]
+mod column_decode_tests {
+    use super::column_decode_error;
+    use crate::{codes, Error};
+
+    #[test]
+    fn decoded_cell_failure_names_the_column() {
+        let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into() };
+        let error = column_decode_error("battle", "jsons_tags", error);
+        assert_eq!(error.code(), codes::CODEC_DECODE);
+        assert_eq!(error.to_string(), "CODEC_DECODE: battle.jsons_tags: non-null JSON column received NULL");
+    }
 }
