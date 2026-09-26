@@ -132,6 +132,41 @@ async fn audit_bigint_service() {
         assert_eq!(got, ["routed:42", "unowned:null"], "{driver}: changes");
         assert_eq!(rows[0]["after_value"].to_json().unwrap()["render"], "ssr", "{driver}: render default");
 
+        let timed = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            db.transaction(async || {
+                let mut op: Operation = model();
+                op.core_mut().set("operation_uuid", Param::from("op-timeout"));
+                orm::model::create(&mut op).await?;
+                db.utils().set_local("ormtest.operation_id", "op-timeout").await?;
+                let mut routed: Routed = model();
+                routed.core_mut().set("service_seq", Param::I64(99));
+                orm::model::create(&mut routed).await?;
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                Ok(())
+            })
+            .timeout_ms(20)
+            .retry(0),
+        )
+        .await
+        .expect("transaction test timed out");
+        assert_eq!(timed.unwrap_err().code(), orm::codes::CANCELED, "{driver}: transaction deadline");
+
+        let mut operation: Operation = model();
+        operation.core_mut().connect(&db);
+        assert_eq!(orm::model::get_count(operation.core()).await.unwrap(), 1, "{driver}: timed out operation rolled back");
+        let mut change: Change = model();
+        change.core_mut().connect(&db);
+        assert_eq!(orm::model::get_count(change.core()).await.unwrap(), 2, "{driver}: timed out change rolled back");
+        let mut routed: Routed = model();
+        routed.core_mut().connect(&db);
+        assert_eq!(orm::model::get_count(routed.core()).await.unwrap(), 1, "{driver}: timed out row rolled back");
+
+        let mut after: Operation = model();
+        after.core_mut().connect(&db);
+        after.core_mut().set("operation_uuid", Param::from("op-after-timeout"));
+        orm::model::create(&mut after).await.unwrap_or_else(|e| panic!("{driver}: connection after timeout: {e}"));
+
         drop_tables(&db).await;
         db.close().await;
     }
