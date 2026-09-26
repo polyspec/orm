@@ -374,6 +374,7 @@ impl Db {
                 )
             }
             ConnectOptions::Sqlite(o) => {
+                let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;
                 let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
