@@ -88,6 +88,7 @@ func main() {
 	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 		fatal("invalid interface manifest")
 	}
+	must(validateProhibitions(m.ProhibitedSymbols))
 	codes, err := readErrorCatalog(abs)
 	must(err)
 	rules := append(append([]Rule{}, m.Rules...), m.Storage...)
@@ -129,6 +130,8 @@ func main() {
 	failed := false
 	for _, lang := range languages {
 		config := m.Languages[lang]
+		callFailures, err := checkCallsInRoots(abs, lang, config.Roots)
+		must(err)
 		actual, err := extract(abs, lang, config.Roots, rust, abs)
 		must(err)
 		errors := checkRules(lang, actual, m.Rules, s)
@@ -136,6 +139,7 @@ func main() {
 		errors = append(errors, checkRecords(lang, actual, m.Records)...)
 		errors = append(errors, checkOwners(lang, actual, m.Owners, s)...)
 		errors = append(errors, checkProhibitedSymbols(lang, actual, m.ProhibitedSymbols)...)
+		errors = append(errors, callFailures...)
 		if len(errors) > 0 {
 			for _, e := range errors {
 				fmt.Fprintln(os.Stderr, e)
@@ -209,6 +213,20 @@ func checkProhibitedSymbols(lang string, actual Symbols, prohibited []string) []
 	}
 	sort.Strings(errors)
 	return errors
+}
+
+func validateProhibitions(prohibited []string) error {
+	seen := make(map[string]bool, len(prohibited))
+	for _, name := range prohibited {
+		if name == "" || seen[name] {
+			return fmt.Errorf("duplicate or empty prohibited symbol %q", name)
+		}
+		seen[name] = true
+	}
+	if !seen["multi_statement"] {
+		return fmt.Errorf("interface manifest must prohibit multi_statement")
+	}
+	return nil
 }
 
 func fileSHA256(path string) (string, error) {
