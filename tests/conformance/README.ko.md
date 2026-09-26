@@ -6,7 +6,7 @@
 {"<vector>": {"statements": [{"sql": "...", "binds": [...]}], "result": ...}}
 ```
 
-`check`는 JSON 키와 숫자를 정규화한 후 SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
+`check`는 JSON 숫자를 정확한 유리수 값으로 비교하고 기록할 때 원래 십진 표현을 보존한다. 객체 키는 출력에서 정렬한다. SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 2^53을 넘는 서로 다른 정수도 구분하며 동등한 십진 표현은 같은 값으로 처리한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
 
 | 파일 | 역할 |
 |---|---|
