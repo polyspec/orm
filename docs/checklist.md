@@ -6,7 +6,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 - [o] I1 Define common structure, ownership, and state transitions in `interfaces.md` and Mermaid diagrams.
 - [o] I2 Regenerate `contracts/interfaces.json`, the generated component page, and the symbol checks for the model syntax. Evidence: `go run ./tests/interfaces/check --generate --record --self-test` and `make interface-check` regenerated and compared the manifest, both component pages, four symbol snapshots, and source mutations; the generated outputs were current and all four languages passed.
-- [ ] I3 Rewrite the implementation matrix for the model syntax and the in-process planners.
+- [o] I3 Rewrite the implementation matrix for the model syntax and the in-process planners. Evidence: the English and Korean matrices now identify each language's planner and generated-model owner, owner test location, shared conformance checks, and SQLite datetime scope; `make interface-check` and the paired-document checks pass.
 - [o] I4 Verify connections, transactions, relations, writes, and time zones on physical databases in all four clients.
 - [o] I4.1 Compare all 20 PHP request record declarations with the shared field and nested-type definitions. Source mutations must fail the checker, and the PHP-only declaration check must pass.
 - [o] I4.2 Check every interface error label and each recorded error result against `docs/errors.yaml`. Unknown or repeated labels and malformed error results must fail.
