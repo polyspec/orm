@@ -15,6 +15,8 @@ the same order, same typed results (ints as numbers, bools as booleans,
 datetimes as `YYYY-MM-DD HH:MM:SS[.ffffff]`, nulls as null). Distinct integers
 beyond 2^53 remain distinct; equivalent decimal forms compare equal.
 Duplicate object keys at any depth and a missing database expectation file are errors.
+The `write_cycle` expectation uses tagged styled-column values for
+`json_setting` and `serialize_data` in both its created and updated rows.
 
 | file | role |
 |---|---|
