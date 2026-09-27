@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use sqlx::SqlSafeStr as _;
 
 use crate::db::{Db, Executor, Pool};
-use crate::driver::{MySqlOwnedTx, TxInner};
+use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::{codes, Error, Result};
 
 /// One active transaction.
@@ -339,7 +339,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result
     let mut sqlite_mode = None;
     let inner = match db.pool() {
         Pool::MySql(p) => {
-            let mut conn = p.acquire().await?;
+            let mut conn = CancellableConnection::new(p.acquire().await?);
             if let Some(level) = level {
                 sqlx::raw_sql(sqlx::AssertSqlSafe(format!("SET TRANSACTION ISOLATION LEVEL {level}")).into_sql_str()).execute(&mut *conn).await?;
             }
@@ -356,14 +356,16 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result
             if read_only {
                 statement.push_str(" READ ONLY");
             }
-            let t = p.begin_with(sqlx::AssertSqlSafe(statement).into_sql_str()).await?;
+            let mut t = CancellableConnection::new(p.acquire().await?);
+            sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut *t).await?;
             TxInner::Postgres(t)
         }
         Pool::Sqlite(p) => {
             ensure_sqlite_lock_table(db).await?;
             // A write transaction holds the write lock from its start and waits
             // for it up to busy_timeout; a read-only one begins deferred.
-            let mut t = p.begin_with(if read_only { "BEGIN" } else { "BEGIN IMMEDIATE" }).await?;
+            let mut t = CancellableConnection::new(p.acquire().await?);
+            sqlx::raw_sql(if read_only { "BEGIN" } else { "BEGIN IMMEDIATE" }).execute(&mut *t).await?;
             let uncommitted = isolation == Some(Isolation::ReadUncommitted);
             if uncommitted {
                 sqlx::raw_sql("PRAGMA read_uncommitted = 1").execute(&mut *t).await?;
@@ -445,8 +447,14 @@ async fn commit(tx: &TxShared) -> Result<()> {
     finish(tx, &mut inner).await?;
     match inner {
         TxInner::MySql(t) => t.commit().await?,
-        TxInner::Postgres(t) => t.commit().await?,
-        TxInner::Sqlite(t) => t.commit().await?,
+        TxInner::Postgres(mut t) => {
+            sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
+            t.completed();
+        }
+        TxInner::Sqlite(mut t) => {
+            sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
+            t.completed();
+        }
     }
     Ok(())
 }
@@ -460,8 +468,20 @@ async fn rollback(tx: &TxShared) -> Result<()> {
     let cleanup = finish(tx, &mut inner).await;
     let rolled_back = match inner {
         TxInner::MySql(t) => t.rollback().await,
-        TxInner::Postgres(t) => t.rollback().await,
-        TxInner::Sqlite(t) => t.rollback().await,
+        TxInner::Postgres(mut t) => {
+            let result = sqlx::raw_sql("ROLLBACK").execute(&mut *t).await.map(|_| ());
+            if result.is_ok() {
+                t.completed();
+            }
+            result
+        }
+        TxInner::Sqlite(mut t) => {
+            let result = sqlx::raw_sql("ROLLBACK").execute(&mut *t).await.map(|_| ());
+            if result.is_ok() {
+                t.completed();
+            }
+            result
+        }
     };
     match (cleanup, rolled_back) {
         (Ok(()), Ok(())) => Ok(()),
