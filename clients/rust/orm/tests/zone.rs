@@ -393,3 +393,45 @@ async fn dropping_a_query_cancels_it() {
         db.close().await;
     }
 }
+
+/// Dropping a transaction future closes its checked-out connection instead
+/// of waiting for SQLx's five-second close-on-drop path.
+#[tokio::test]
+async fn dropping_a_transaction_releases_a_single_connection() {
+    let _serial = SERIAL.lock().await;
+    let sqlite = std::env::temp_dir().join(format!("orm-drop-tx-{}.sqlite", std::process::id()));
+    let targets = [
+        ("sqlite", format!("sqlite://{}", sqlite.display())),
+        ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
+        ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
+    ];
+    for (driver, dsn) in targets {
+        let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        drop_table(&db).await;
+        db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        let tx_db = db.clone();
+        let dropped = tokio::time::timeout(
+            std::time::Duration::from_millis(300),
+            db.transaction(async || {
+                let mut row = event(&tx_db);
+                row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+                orm::model::create(&mut row).await?;
+                if driver == "sqlite" {
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                } else {
+                    orm::model::get_count(&slow_count(&tx_db, slow(driver).unwrap())).await?;
+                }
+                Ok::<(), orm::Error>(())
+            })
+            .retry(0),
+        )
+        .await;
+        assert!(dropped.is_err(), "{driver}: transaction future completed before it was dropped");
+        let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), orm::Error>(())).retry(0)).await;
+        assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
+        assert_eq!(orm::model::get_count(event(&db).core()).await.unwrap(), 0, "{driver}: dropped transaction committed");
+        drop_table(&db).await;
+        db.close().await;
+    }
+    std::fs::remove_file(sqlite).expect("remove SQLite test database");
+}

@@ -580,8 +580,8 @@ pub(crate) fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<
 /// The transaction of one pool.
 pub(crate) enum TxInner {
     MySql(MySqlOwnedTx),
-    Postgres(sqlx::Transaction<'static, Postgres>),
-    Sqlite(sqlx::Transaction<'static, Sqlite>),
+    Postgres(CancellableConnection<Postgres>),
+    Sqlite(CancellableConnection<Sqlite>),
 }
 
 /// Where a statement runs: the pool (each statement on its own) or a transaction's connection.
@@ -593,33 +593,32 @@ pub(crate) enum Target<'a> {
 /// A MySQL transaction whose pool connection is retained after the explicit
 /// `SET TRANSACTION` and `START TRANSACTION` statements.
 pub(crate) struct MySqlOwnedTx {
-    pub(crate) conn: Option<sqlx::pool::PoolConnection<MySql>>,
+    pub(crate) conn: Option<CancellableConnection<MySql>>,
 }
 
 impl MySqlOwnedTx {
     pub(crate) async fn commit(mut self) -> sqlx::Result<()> {
         let mut conn = self.conn.take().expect("active MySQL transaction connection");
         sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
+        conn.completed();
         Ok(())
     }
 
     pub(crate) async fn rollback(mut self) -> sqlx::Result<()> {
         let mut conn = self.conn.take().expect("active MySQL transaction connection");
         sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
+        conn.completed();
         Ok(())
     }
 }
 
 impl Drop for MySqlOwnedTx {
     fn drop(&mut self) {
-        let Some(mut conn) = self.conn.take() else {
-            return;
-        };
-        if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle.spawn(async move {
-                let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await;
-            });
-        }
+        // The transaction future may be dropped while a statement is still
+        // running. Sending ROLLBACK on that same protocol stream would wait
+        // behind the statement; dropping the cancellable connection closes
+        // it immediately so the server rolls the transaction back.
+        drop(self.conn.take());
     }
 }
 

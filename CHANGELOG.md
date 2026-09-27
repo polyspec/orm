@@ -1,5 +1,10 @@
 # Changelog
 
+Close the checked-out Rust connection immediately when a statement or transaction
+future is dropped. This rolls back an interrupted transaction and releases a
+single-slot pool connection without returning an active server operation to the
+pool. The Rust zone tests cover SQLite, MySQL and PostgreSQL.
+
 
 Add Rust `Db::transaction_once` for a callback that runs once and returns its own error type.
 It uses a savepoint inside an active transaction and reports both the callback and rollback
