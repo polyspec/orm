@@ -12,7 +12,8 @@ use sqlx::postgres::{PgConnectOptions, PgPool, PgTypeInfo};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
 use crate::driver::{
-    acquire_sqlite_row_lock, exec_mysql, exec_pg, exec_sqlite, fetch_mysql, fetch_pg, fetch_sqlite, masked, param_arg, pg_describe, statement, Target, TxInner,
+    acquire_sqlite_row_lock, exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg,
+    fetch_pg_pool, fetch_sqlite, fetch_sqlite_pool, masked, param_arg, pg_describe, statement, Target, TxInner,
 };
 pub use crate::driver::{NOW_MASK, SECRET_MASK};
 use crate::engine::{self, Dialect};
@@ -628,20 +629,22 @@ impl Db {
         let args = self.args(st, params, &parent_vals)?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
-            Target::Pool(Pool::MySql(p)) => fetch_mysql(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
+            Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
             Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection"))
                 .await
                 .map(|v| v.into_iter().map(DriverRow::MySql).collect())
                 .map_err(Error::from),
             Target::Pool(Pool::Postgres(p)) => match self.pg_types_pool(p, &sql).await {
-                Ok(types) => fetch_pg(&sql, &args, &types, self.inner.zone, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
+                Ok(types) => fetch_pg_pool(&sql, &args, &types, self.inner.zone, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
                 Err(e) => Err(e),
             },
             Target::Tx(TxInner::Postgres(t)) => match self.pg_types_conn(t, &sql).await {
                 Ok(types) => fetch_pg(&sql, &args, &types, self.inner.zone, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
                 Err(e) => Err(e),
             },
-            Target::Pool(Pool::Sqlite(p)) => fetch_sqlite(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from),
+            Target::Pool(Pool::Sqlite(p)) => {
+                fetch_sqlite_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
+            }
             Target::Tx(TxInner::Sqlite(t)) => {
                 fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
             }
@@ -655,19 +658,19 @@ impl Db {
         let sql = st.sql.as_str();
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
-            Target::Pool(Pool::MySql(p)) => exec_mysql(sql, &args, p).await.map_err(Error::from),
+            Target::Pool(Pool::MySql(p)) => exec_mysql_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::MySql(t)) => {
                 exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from)
             }
             Target::Pool(Pool::Postgres(p)) => match self.pg_types_pool(p, sql).await {
-                Ok(types) => exec_pg(sql, &args, &types, self.inner.zone, p).await,
+                Ok(types) => exec_pg_pool(sql, &args, &types, self.inner.zone, p).await,
                 Err(e) => Err(e),
             },
             Target::Tx(TxInner::Postgres(t)) => match self.pg_types_conn(t, sql).await {
                 Ok(types) => exec_pg(sql, &args, &types, self.inner.zone, &mut **t).await,
                 Err(e) => Err(e),
             },
-            Target::Pool(Pool::Sqlite(p)) => exec_sqlite(sql, &args, p).await.map_err(Error::from),
+            Target::Pool(Pool::Sqlite(p)) => exec_sqlite_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
         };
         self.emit(st, sql, &args, 0, start, r.as_ref().err());

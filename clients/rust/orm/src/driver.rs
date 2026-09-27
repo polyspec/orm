@@ -3,13 +3,14 @@
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 use std::sync::Arc;
 
 use chrono::{NaiveDate, NaiveDateTime};
-use sqlx::mysql::{MySql, MySqlRow};
-use sqlx::postgres::{PgRow, PgTypeInfo, Postgres};
-use sqlx::sqlite::{Sqlite, SqliteRow};
+use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
+use sqlx::postgres::{PgPool, PgRow, PgTypeInfo, Postgres};
+use sqlx::sqlite::{Sqlite, SqlitePool, SqliteRow};
 use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
 
 use crate::collection::Key;
@@ -380,6 +381,15 @@ pub(crate) async fn fetch_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str
     q.fetch_all(e).await
 }
 
+pub(crate) async fn fetch_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool) -> sqlx::Result<Vec<MySqlRow>> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = fetch_mysql(sql, args, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
+}
+
 pub(crate) async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
@@ -387,6 +397,15 @@ pub(crate) async fn exec_mysql<'e, E: Executor<'e, Database = MySql>>(sql: &str,
     }
     let r = q.execute(e).await?;
     Ok((r.last_insert_id(), r.rows_affected()))
+}
+
+pub(crate) async fn exec_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool) -> sqlx::Result<(u64, u64)> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = exec_mysql(sql, args, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
 }
 
 pub(crate) fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo], zone: Zone) -> Result<PgQuery<'q>> {
@@ -410,9 +429,27 @@ pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(
     Ok(pg_query(sql, args, types, zone)?.fetch_all(e).await?)
 }
 
+pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, pool: &PgPool) -> Result<Vec<PgRow>> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = fetch_pg(sql, args, types, zone, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
+}
+
 pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, e: E) -> Result<(u64, u64)> {
     let r = pg_query(sql, args, types, zone)?.execute(e).await?;
     Ok((0, r.rows_affected()))
+}
+
+pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, pool: &PgPool) -> Result<(u64, u64)> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = exec_pg(sql, args, types, zone, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
 }
 
 pub(crate) async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<Vec<SqliteRow>> {
@@ -423,6 +460,15 @@ pub(crate) async fn fetch_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &s
     q.fetch_all(e).await
 }
 
+pub(crate) async fn fetch_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePool) -> sqlx::Result<Vec<SqliteRow>> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = fetch_sqlite(sql, args, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
+}
+
 pub(crate) async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &str, args: &[Param], e: E) -> sqlx::Result<(u64, u64)> {
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for a in args {
@@ -430,6 +476,15 @@ pub(crate) async fn exec_sqlite<'e, E: Executor<'e, Database = Sqlite>>(sql: &st
     }
     let r = q.execute(e).await?;
     Ok((r.last_insert_rowid() as u64, r.rows_affected()))
+}
+
+pub(crate) async fn exec_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePool) -> sqlx::Result<(u64, u64)> {
+    let mut connection = CancellableConnection::new(pool.acquire().await?);
+    let result = exec_sqlite(sql, args, &mut *connection).await;
+    if result.is_ok() {
+        connection.completed();
+    }
+    result
 }
 
 pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str) -> Result<()> {
@@ -571,3 +626,50 @@ impl Drop for MySqlOwnedTx {
 pub(crate) type MySqlQuery<'q> = sqlx::query::Query<'q, MySql, sqlx::mysql::MySqlArguments>;
 pub(crate) type PgQuery<'q> = sqlx::query::Query<'q, Postgres, sqlx::postgres::PgArguments>;
 pub(crate) type SqliteQuery<'q> = sqlx::query::Query<'q, Sqlite, sqlx::sqlite::SqliteArguments>;
+
+/// A checked-out pool connection is closed when its executor future is
+/// dropped. SQLx otherwise may return a connection whose server statement is
+/// still active to the pool.
+pub(crate) struct CancellableConnection<DB: sqlx::Database> {
+    connection: Option<sqlx::pool::PoolConnection<DB>>,
+    close_on_drop: bool,
+}
+
+impl<DB: sqlx::Database> CancellableConnection<DB> {
+    pub(crate) fn new(connection: sqlx::pool::PoolConnection<DB>) -> Self {
+        Self { connection: Some(connection), close_on_drop: true }
+    }
+
+    pub(crate) fn completed(&mut self) {
+        self.close_on_drop = false;
+    }
+}
+
+impl<DB: sqlx::Database> Deref for CancellableConnection<DB> {
+    type Target = DB::Connection;
+
+    fn deref(&self) -> &Self::Target {
+        self.connection.as_ref().expect("cancellable connection is active").deref()
+    }
+}
+
+impl<DB: sqlx::Database> DerefMut for CancellableConnection<DB> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.connection.as_mut().expect("cancellable connection is active").deref_mut()
+    }
+}
+
+impl<DB: sqlx::Database> Drop for CancellableConnection<DB> {
+    fn drop(&mut self) {
+        if self.close_on_drop {
+            if let Some(connection) = self.connection.take() {
+                let raw = connection.detach();
+                if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                    handle.spawn(async move {
+                        let _ = sqlx::Connection::close_hard(raw).await;
+                    });
+                }
+            }
+        }
+    }
+}
