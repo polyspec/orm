@@ -71,6 +71,9 @@
 - [o] N9.1 `statement_timeout_ms`를 `busy_timeout`으로 적용해 SQLite 잠금 대기를 제한한다. 양수인 연결
   timeout은 선언한 한도에서 `CANCELED`를 반환하고 이후 작업을 위해 연결을 유지해야 한다. 증거: 200 ms
   한도를 사용하는 SQLite 소유 사례와 생성 model 사용자 사례가 통과하고 Rust format·Clippy가 통과한다.
+- [o] N9.2 `Send` 서비스 callback을 통과해야 하는 생성 모델 쓰기에 `Db::transaction_send`를 제공한다.
+  callback과 그 future가 `Send`임을 요구하고 트랜잭션 옵션과 재시도 동작을 보존하며 반환 future의 `Send` 계약을
+  소유자 테스트로 검증한다. 증거: ORM 컴파일과 계약 테스트가 통과한다.
 
 ## 3단계 — 언어별 스키마 도구
 

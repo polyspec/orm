@@ -3,6 +3,7 @@
 
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -747,9 +748,14 @@ pub async fn get_query(c: &Core) -> Result<Statement> {
 
 // ---- writes ----
 
-pub(crate) async fn in_transaction<T>(conn: &Option<Db>, f: impl AsyncFn() -> Result<T>) -> Result<T> {
+pub(crate) async fn in_transaction<T, F, Fut>(conn: &Option<Db>, f: F) -> Result<T>
+where
+    F: Fn() -> Fut + Send + Sync,
+    Fut: Future<Output = Result<T>> + Send,
+    T: Send,
+{
     match conn {
-        Some(db) => db.transaction(f).retry(0).await,
+        Some(db) => db.transaction_send(f).retry(0).await,
         None => {
             resolve(&None)?;
             f().await

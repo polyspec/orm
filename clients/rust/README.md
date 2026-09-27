@@ -56,6 +56,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Select an engine and expose models | `Db::connect` selects the dialect from the DSN; each generated model embeds its schema and registers its entity descriptor in its generated module, so no global registration call is required |
 | Install schema objects | `db.utils().schema().install(model::SCHEMA.json())` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
+| Run a callback with a `Send` future | `db.transaction_send(callback).await` |
 | Preserve a one-time callback's own error | `db.transaction_once(callback).await`; returns `TransactionOnceError::Callback(error)` after rollback |
 | Bound a transaction callback | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
