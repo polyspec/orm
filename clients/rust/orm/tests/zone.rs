@@ -397,7 +397,7 @@ async fn dropping_a_query_cancels_it() {
 /// Dropping a transaction future closes its checked-out connection instead
 /// of waiting for SQLx's five-second close-on-drop path.
 #[tokio::test]
-async fn dropping_a_transaction_releases_a_single_connection() {
+async fn dropping_a_transaction_frees_a_single_connection() {
     let _serial = SERIAL.lock().await;
     let sqlite = std::env::temp_dir().join(format!("orm-drop-tx-{}.sqlite", std::process::id()));
     let targets = [
