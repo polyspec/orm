@@ -72,6 +72,9 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
   timeout must return `CANCELED` at its declared bound while preserving the connection for later work.
   Evidence: the SQLite owner case and the generated-model consumer case both pass with a 200 ms bound;
   Rust formatting and Clippy pass.
+- [o] N9.2 Provide `Db::transaction_send` for generated model writes that must cross a `Send` service callback.
+  Require the callback and its future to be `Send`, preserve transaction options and retry behavior, and verify
+  the returned future's `Send` contract with an owner test. Evidence: the ORM compiles and the contract test passes.
 
 ## Stage 3 — Schema tools per language
 

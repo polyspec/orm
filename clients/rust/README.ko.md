@@ -56,6 +56,7 @@ let rows = Battle::new().connect(&db).service_seq(7).and_is_close(false).order_b
 | 엔진 선택과 모델 노출 | `Db::connect`가 DSN에서 dialect를 선택한다. 생성 모델마다 스키마를 포함하고 생성 모듈에 entity descriptor를 등록하므로 전역 등록 호출은 필요 없다. |
 | 스키마 객체 설치 | `db.utils().schema().install(model::SCHEMA.json())` |
 | 격리 수준 또는 읽기 전용 실행 | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
+| `Send` future가 필요한 callback 실행 | `db.transaction_send(callback).await` |
 | 한 번 실행하는 callback 자체 오류 보존 | `db.transaction_once(callback).await`; rollback 뒤 `TransactionOnceError::Callback(error)`를 반환한다. |
 | 트랜잭션 callback 시간 제한 | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | 0을 포함한 deadlock 재시도 횟수 | `db.transaction(callback).retry(count).await` |

@@ -115,6 +115,21 @@ pub struct Transaction<'a, F> {
     set: bool,
 }
 
+type SendOperation<'a, T> = dyn Fn() -> Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>> + Send + Sync + 'a;
+
+/// A transaction whose callback and returned future are explicitly `Send`.
+/// This is the transaction boundary used by generated model writes that may
+/// run inside a service callback.
+pub struct SendTransaction<'a, T> {
+    db: &'a Db,
+    f: Box<SendOperation<'a, T>>,
+    isolation: Option<Isolation>,
+    read_only: bool,
+    timeout_ms: u64,
+    retry: u32,
+    set: bool,
+}
+
 /// Failure of a callback transaction that runs exactly once.
 #[derive(Debug)]
 pub enum TransactionOnceError<E> {
@@ -155,6 +170,18 @@ impl Db {
         Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, set: false }
     }
 
+    /// Runs a transaction with a callback whose future is required to be
+    /// `Send`. The bound is checked at this API boundary, rather than inferred
+    /// from an async closure after the transaction has been constructed.
+    pub fn transaction_send<'a, F, Fut, T>(&'a self, f: F) -> SendTransaction<'a, T>
+    where
+        F: Fn() -> Fut + Send + Sync + 'a,
+        Fut: Future<Output = Result<T>> + Send + 'a,
+        T: Send + 'a,
+    {
+        SendTransaction { db: self, f: Box::new(move || Box::pin(f())), isolation: None, read_only: false, timeout_ms: 0, retry: 3, set: false }
+    }
+
     /// Runs a callback once in a transaction and preserves its own error.
     /// A nested call uses a savepoint. This call does not retry the callback.
     pub async fn transaction_once<F, T, E>(&self, f: F) -> std::result::Result<T, TransactionOnceError<E>>
@@ -176,6 +203,89 @@ impl Db {
                 Ok(()) => Err(TransactionOnceError::Callback(callback)),
                 Err(rollback) => Err(TransactionOnceError::Rollback { callback, rollback }),
             },
+        }
+    }
+}
+
+impl<'a, T> SendTransaction<'a, T> {
+    pub fn isolation(mut self, level: Isolation) -> Self {
+        self.isolation = Some(level);
+        self.set = true;
+        self
+    }
+
+    pub fn read_only(mut self) -> Self {
+        self.read_only = true;
+        self.set = true;
+        self
+    }
+
+    pub fn timeout_ms(mut self, ms: u64) -> Self {
+        self.timeout_ms = ms;
+        self.set = true;
+        self
+    }
+
+    pub fn retry(mut self, n: u32) -> Self {
+        self.retry = n;
+        self
+    }
+}
+
+impl<'a, T> IntoFuture for SendTransaction<'a, T>
+where
+    T: Send + 'a,
+{
+    type Output = Result<T>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async move { self.run().await })
+    }
+}
+
+impl<'a, T> SendTransaction<'a, T>
+where
+    T: Send + 'a,
+{
+    async fn run(self) -> Result<T> {
+        if let Some(outer) = active_for(self.db) {
+            if self.set {
+                return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
+            }
+            return savepoint_send(outer, &self.f).await;
+        }
+        let mut attempt = 0u32;
+        loop {
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
+            let mut stack = frames();
+            stack.push(tx.clone());
+            let callback = FLOW.scope(stack, (self.f)());
+            let result = if self.timeout_ms == 0 {
+                callback.await
+            } else {
+                match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
+                    Ok(result) => result,
+                    Err(_) => Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() }),
+                }
+            };
+            match result {
+                Ok(v) => {
+                    commit(&tx).await?;
+                    return Ok(v);
+                }
+                Err(e) => {
+                    if let Err(rollback_error) = rollback(&tx).await {
+                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                    }
+                    if !e.is_deadlock() || attempt >= self.retry {
+                        return Err(e);
+                    }
+                    let jitter = rand::random::<u64>() % 20;
+                    tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
+                    attempt += 1;
+                }
+            }
         }
     }
 }
@@ -281,6 +391,34 @@ where
         let mut stack = frames();
         stack.push(tx.clone());
         match FLOW.scope(stack, f()).await {
+            Ok(v) => {
+                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
+                Ok(v)
+            }
+            Err(e) => {
+                tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
+                let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                Err(e)
+            }
+        }
+    }
+    .await;
+    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+    result
+}
+
+async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b Box<SendOperation<'a, T>>) -> Result<T>
+where
+    'a: 'b,
+    T: Send + 'a,
+{
+    let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
+    let name = format!("orm_sp_{n}");
+    let result = async {
+        tx.raw(&format!("SAVEPOINT {name}")).await?;
+        let mut stack = frames();
+        stack.push(tx.clone());
+        match FLOW.scope(stack, (f)()).await {
             Ok(v) => {
                 tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
                 Ok(v)
@@ -499,6 +637,20 @@ pub fn transaction_conflict(message: impl Into<String>) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[allow(dead_code)]
+    fn assert_transaction_send_future<'a, F, Fut, T>(db: &'a Db, f: F)
+    where
+        F: Fn() -> Fut + Send + Sync + 'a,
+        Fut: Future<Output = Result<T>> + Send + 'a,
+        T: Send + 'a,
+    {
+        fn require_send<U: Send>(_: U) {}
+        require_send(db.transaction_send(f).into_future());
+    }
+
+    #[test]
+    fn transaction_send_future_contract_is_checked() {}
 
     #[derive(Debug, PartialEq, Eq)]
     enum DomainFailure {
