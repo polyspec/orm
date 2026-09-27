@@ -4,6 +4,22 @@
 
 로컬 검증: **conformance 벡터 25개 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 생성 인터페이스, 네이티브 심볼, 레코드 검사는 `make interface-check`에서 실행한다.
 
+### Rust 제품 ORM 대응
+
+생성된 제품 모델은 중간 질의·모델 계층 없이 다음 공개 Rust API를 직접 사용한다.
+
+| 명세 호출 | Rust API와 동작 |
+|---|---|
+| 엔진 선택과 연결 | `Db::connect(dsn, pool_size, Config)`가 DSN에서 MySQL·PostgreSQL·SQLite를 선택하고 제한된 pool을 만든다. |
+| 스키마 해시 검사 | 생성된 `Schema::new(schema_json, schema_hash)`가 내장 manifest를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
+| 스키마 설치와 검사 | `db.utils().schema().install(manifest)`가 manifest를 설치하고 `exists`, `installed`, `empty`가 선택한 데이터베이스를 검사한다. manifest의 감사 지시어는 감사 테이블·trigger와 함께 설치된다. |
+| 트랜잭션 격리 수준·읽기 전용·시간 제한·재시도 | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)`가 선언된 옵션을 적용하며 `retry(0)`은 콜백을 한 번 실행한다. `Db::transaction_once`는 콜백 오류를 보존하고 재시도하지 않는다. |
+| 취소 | 문장 또는 트랜잭션 Future를 폐기하면 확인된 연결을 닫아 서버 작업을 취소하거나 롤백한 뒤 슬롯을 재사용하며, 드라이버 취소는 `CANCELED`로 대응한다. |
+| 암호화 열 | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, `db.utils().aes()`가 생성된 암호화 열의 키 검증·암호화 쓰기·blind index·상태·회전을 제공한다. |
+
+제품의 PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는 같은 생성 모델을
+1슬롯 PgBouncer 연결에서 실행한다.
+
 | 인터페이스 | 구현과 검증 |
 |---|---|
 | IF-01, IF-18, IF-32 | 각 client는 같은 planner의 이식본으로 자기 process에서 request를 계획하고 모델의 schema hash를 확인한다. conformance 벡터가 네 client의 계획된 SQL과 bind를 비교한다. `tests/interfaces/check`는 Go, PHP, Rust, TypeScript의 request 레코드 20개를 필드 단위로 비교한다 |
