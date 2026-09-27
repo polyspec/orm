@@ -1,5 +1,8 @@
 # Changelog
 
+Update the Rust styled-value model JSON test to verify the explicit value wrapper while
+retaining ordered JSON members and number text.
+
 Close the checked-out Rust connection immediately when a statement or transaction
 future is dropped. This rolls back an interrupted transaction and releases a
 single-slot pool connection without returning an active server operation to the

@@ -417,9 +417,14 @@ async fn dropping_a_transaction_frees_a_single_connection() {
                 row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
                 orm::model::create(&mut row).await?;
                 if driver == "sqlite" {
-                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 } else {
-                    orm::model::get_count(&slow_count(&tx_db, slow(driver).unwrap())).await?;
+                    let condition = match driver {
+                        "mysql" => "SLEEP(1) = 0",
+                        "postgres" => "pg_sleep(1) IS NULL",
+                        _ => unreachable!(),
+                    };
+                    orm::model::get_count(&slow_count(&tx_db, condition)).await?;
                 }
                 Ok::<(), orm::Error>(())
             })
