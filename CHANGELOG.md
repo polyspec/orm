@@ -1,5 +1,8 @@
 # Changelog
 
+Document the Rust ORM mapping for engine selection, schema validation and
+installation, transaction options, cancellation, encrypted columns, and audit directives.
+
 Update the Rust styled-value model JSON test to verify the explicit value wrapper while
 retaining ordered JSON members and number text.
 

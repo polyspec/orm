@@ -4,6 +4,23 @@ Reference: [Common interface v1](interfaces.md), [machine specification](../cont
 
 Local verification: **25 conformance vectors × Go, PHP, Rust, and TypeScript × MySQL, PostgreSQL, and SQLite produce the same statements, binds, and results**. The generated interface, native symbol, and record checks run from `make interface-check`.
 
+### Rust ORM mapping
+
+The generated models use the following public Rust API directly; there is no
+intermediate query or model layer.
+
+| Specification call | Rust API and behavior |
+|---|---|
+| Engine selection and connection | `Db::connect(dsn, pool_size, Config)` selects MySQL, PostgreSQL, or SQLite from the DSN and creates the bounded pool. |
+| Schema hash check | A generated `Schema::new(schema_json, schema_hash)` validates the embedded manifest; the engine rejects a request whose hash differs with `SCHEMA_HASH_MISMATCH`. |
+| Schema installation and inspection | `db.utils().schema().install(manifest)` installs the manifest; `exists`, `installed`, and `empty` inspect the selected database. Audit directives in the manifest are installed with the audit tables and triggers. |
+| Transaction isolation, read-only, timeout, and retry | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)` applies the declared options; `retry(0)` runs the callback once. `Db::transaction_once` preserves the callback error and does not retry. |
+| Cancellation | Dropping a statement or transaction future closes its checked-out connection so the server operation is canceled or rolled back before that slot is reused; driver cancellation maps to `CANCELED`. |
+| Encrypted columns | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, and `db.utils().aes()` provide key validation, encrypted writes, blind indexes, status, and rotation for generated encrypted columns. |
+
+PostgreSQL, MySQL, and SQLite cases exercise these calls, and the pooler
+case uses the same generated models through a one-slot PgBouncer connection.
+
 | Interface | Implementation and verification |
 |---|---|
 | IF-01, IF-18, IF-32 | Each client plans requests in its own process with a port of the same planner and checks the schema hash of its models. The conformance vectors compare the planned SQL and binds of the four clients. `tests/interfaces/check` compares the 20 request records of Go, PHP, Rust, and TypeScript field by field |
