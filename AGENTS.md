@@ -20,6 +20,10 @@
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
 - The repository's full test suite runs once, when every checklist item is complete.
+- Write commit messages in English as `type(scope): subject (#issue)`: a subject of at most 50
+  characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
+  near 72 characters explaining what changed and why; an optional footer for references. The
+  type is one of feat, fix, docs, style, refactor, test or chore.
 - During development run only the tests of the modified area; run the full suite once, when the
   item is marked `[o]`. Every test reports its own running, completion, success or failure with
   its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
