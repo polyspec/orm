@@ -70,3 +70,7 @@ required-features = ["live-db"]
 [[test]]
 name = "grid_cells"
 required-features = ["live-db"]
+
+[[test]]
+name = "grid_numbers"
+required-features = ["live-db"]

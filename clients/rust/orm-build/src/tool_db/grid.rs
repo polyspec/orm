@@ -5,6 +5,9 @@ use super::{QueryColumn, Val};
 pub enum GridCell {
     Null,
     Integer(i64),
+    Unsigned(u64),
+    Float32(u32),
+    Float64(u64),
     Text(String),
     Boolean(bool),
     Binary(Vec<u8>),

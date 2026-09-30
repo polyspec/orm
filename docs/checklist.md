@@ -105,6 +105,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 - [o] T7.17.1.6 Add bounded Rust typed read-only grid results with byte-preserving binary cells separate from text. Cause: tool values reject arbitrary bytes or interpret valid binary UTF-8 as text; SQL grid values need faithful representation. Evidence: missing GridCell/API compile Red is Green; actual MySQL/PostgreSQL/SQLite binary/NULL/empty/text cases pass. Added post-implementation budget, mutation-policy, empty-metadata and bind regressions pass. Twelve owning integration tests, eleven CLI tests and five library tests pass; streaming/metadata budgets and enforced read-only scope/disposal share the existing implementation. Numeric/temporal types, other-client grid APIs and consumer wire/UI integration remain pending; binary support alone does not complete query types.
 
+- [o] T7.17.1.7 Preserve native Rust grid floating-point bits and unsigned integer range. Cause: strict catalog scalar decoding rejects these query values. Evidence: missing typed variants compile Red is Green; actual three-database float64, PostgreSQL float32/signed-zero/NaN and MySQL u64::MAX cases pass. Numeric NULL and byte-budget checks are added regressions. Thirteen integration, eleven CLI and five library tests pass, retaining strict catalog semantics and read-only disposal. Decimal/temporal types and consumer integration remain pending.
+
 ## Documentation tasks
 
 - [o] T7.D1 Keep each English page beside its Korean `.ko.md` page.
