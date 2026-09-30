@@ -1,5 +1,22 @@
 # Changelog
 
+Resolve physical index, key and CHECK records in graphs (T7.17.2.8).
+Require all three arrays; reject the obsolete root shape without fallback.
+Validate global IDs, table/column ownership, shared constraint names,
+single primary keys and ordered backing-index links with located errors.
+Preserve exact records and count their text against the graph byte budget.
+Four reproduced old-shape Reds are Green. physical-graph-check executes
+45 new shared cases and the existing 28 graph/five limit cases twice per
+client, plus related record regressions and detached/sparse checks.
+Go, PHP, Rust and TypeScript retain 2000 tables, 60000 columns, 10000 FKs
+and 2000 each of indices, keys and CHECKs under existing deadlines.
+PHP peaks at 72 MiB allocated under the unchanged 128M limit, not RSS.
+Rust 1.98.1 strict owner Clippy/scoped formatting, Go vet, Node 26.10.0
+TypeScript compilation, PHP syntax and paired documentation checks pass
+on macOS arm64. SQL parsing, physical import, DDL, execution and native
+platform acceptance remain unfinished requirements.
+
+
 Preserve physical primary/unique key records in four clients (T7.17.2.7).
 Keep constraint names, ordered column IDs, independent backing-index IDs,
 deferral, unique null treatment and temporal overlap metadata. Reject

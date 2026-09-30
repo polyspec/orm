@@ -1,6 +1,8 @@
 use orm_schema::physical_graph::PhysicalGraph;
 use serde_json::{json, Value};
 use std::time::{Duration, Instant};
+#[path = "common/physical_graph_records.rs"]
+mod records;
 
 #[test]
 fn physical_graph_vectors() {
@@ -73,9 +75,17 @@ fn physical_graph_vectors() {
     let mut value = fixture["base"].clone();
     value["tables"] = json!(tables);
     value["foreignKeys"] = json!(fks);
+    let records = records::scale(&records::fixture()["base"], 2000);
+    for field in ["indices", "keys", "checks"] {
+        value[field] = records[field].clone();
+    }
     let generated = Instant::now();
     let graph = PhysicalGraph::from_value(value).unwrap();
     let validated = Instant::now();
+    for field in ["indices", "keys", "checks"] {
+        assert_eq!(graph.value()[field], records[field]);
+        assert_eq!(graph.value()[field].as_array().unwrap().len(), 2000);
+    }
     assert_eq!(graph.value()["tables"].as_array().unwrap().len(), 2000);
     assert_eq!(graph.value()["tables"].as_array().unwrap().iter().map(|t| t["columns"].as_array().unwrap().len()).sum::<usize>(), 60000);
     assert_eq!(graph.value()["foreignKeys"].as_array().unwrap().len(), 10000);
@@ -85,7 +95,7 @@ fn physical_graph_vectors() {
         assert_eq!(graph.value()["foreignKeys"][i]["target"]["columns"][0], format!("c-{target}-1"));
     }
     println!(
-        "PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 generate={:?} validate={:?} elapsed={:?}",
+        "PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate={:?} validate={:?} elapsed={:?}",
         generated.duration_since(scale_started),
         validated.duration_since(generated),
         scale_started.elapsed()
