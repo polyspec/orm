@@ -26,7 +26,7 @@ echo 'PASS physical_json_retention bytes='.strlen($text).' elapsed='.((hrtime(tr
 $expectedHash=hash('sha256',$text);unset($text);$documentStarted=hrtime(true);echo "RUN physical_document_retention\n";
 $source=Orm\PhysicalDocument::emit($parsed,"# Physical design\n\n","\nAfter\n");unset($parsed);
 $document=Orm\PhysicalDocument::parse($source);
-if(hash('sha256',$document->graph->toJson())!==$expectedHash||Orm\PhysicalDocument::emit($document->graph,$document->prefix,$document->suffix,$document->newline)!==$source)throw new RuntimeException('Changed complete stress document');
+if(hash('sha256',$document->graph->toJson())!==$expectedHash||Orm\PhysicalDocument::emit($document->graph,$document->prefix(),$document->suffix(),$document->newline)!==$source)throw new RuntimeException('Changed complete stress document');
 echo 'PASS physical_document_retention bytes='.strlen($source).' elapsed='.((hrtime(true)-$documentStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
 unset($source,$document);
 if(count($fixture['limits'])!==5)throw new RuntimeException('Missing limit vectors');

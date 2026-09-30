@@ -4,12 +4,15 @@ namespace Orm;
 
 /** Experimental document grammar; not import or execution authority. */
 final readonly class PhysicalDocument {
- private function __construct(public PhysicalGraph $graph,public string $prefix,public string $suffix,public string $newline,public string $diagram){}
+ private function __construct(public PhysicalGraph $graph,private string $source,private array $ranges,public string $newline,public string $diagram){}
+ /** Retain the input through PHP copy-on-write, without duplicating prose. */
+ public function source():string{return $this->source;}
+ public function prefix():string{return substr($this->source,0,$this->ranges['start']);}
+ public function suffix():string{return substr($this->source,$this->ranges['end']);}
  public static function parse(string $source):self {
   try{$r=PhysicalEnvelope::locate($source);}catch(PhysicalEnvelopeError $e){throw new PhysicalDocumentError($e->line());}
-  $prefix=substr($source,0,$r['start']);$suffix=substr($source,$r['end']);
   $newline=substr($source,$r['body']-2,2)==="\r\n"?"\r\n":"\n";
-  $line=substr_count($prefix,"\n")+2;$position=$r['body'];
+  $line=substr_count($source,"\n",0,$r['body'])+1;$position=$r['body'];
   $next=static function()use(&$position,$source,$r):?string {
    if($position>=$r['close'])return null;
    $end=strpos($source,"\n",$position);if($end===false||$end>$r['close'])$end=$r['close'];
@@ -24,7 +27,7 @@ final readonly class PhysicalDocument {
   $position=$end+1;$line++;$expect('%% orm:physical-json-end');$diagram="erDiagram\n";
   foreach(PhysicalProjection::lines($graph)as$expected){$expect($expected);$diagram.=$expected."\n";}
   if($next()!==null)throw new PhysicalDocumentError($line);
-  return new self($graph,$prefix,$suffix,$newline,$diagram);
+  return new self($graph,$source,$r,$newline,$diagram);
  }
  public static function emit(PhysicalGraph $graph,string $prefix='',string $suffix='',string $newline="\n"):string {
   if(!in_array($newline,["\n","\r\n"],true)||$prefix!==''&&!str_ends_with($prefix,"\n"))throw new PhysicalDocumentError(0);

@@ -102,7 +102,21 @@ physical-fk-check: physical-column-check
 .PHONY: physical-envelope-check
 .PHONY: physical-document-typescript-check
 .PHONY: physical-document-check
-physical-document-check: physical-document-typescript-check
+.PHONY: physical-document-php-limits-check
+.PHONY: physical-document-limits-check
+physical-document-limits-check: physical-document-php-limits-check
+	go test ./clients/go/orm -run '^TestPhysicalDocumentLimits$$' -count=2 -v
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document_limits -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document_limits -- --nocapture
+	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
+
+physical-document-php-limits-check:
+	php clients/php/tests/physical_document_limits_test.php
+	php clients/php/tests/physical_document_limits_test.php
+
+physical-document-check: physical-document-typescript-check physical-document-limits-check
 	go test ./clients/go/orm -run '^TestPhysical(Document|GraphVectors)$$' -count=2 -v
 	php clients/php/tests/physical_document_test.php
 	php clients/php/tests/physical_document_test.php

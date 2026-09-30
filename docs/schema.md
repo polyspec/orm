@@ -194,6 +194,13 @@ are an explicitly labelled unverified view convention, never SQL evidence.
 Diagram mismatches fail rather than overwriting metadata. This draft is not
 an enabled import API; four-client and ownership verification remain required.
 
+PHP retains the original source and its byte ranges rather than duplicating
+large surrounding prose during parsing. `source()` returns the exact retained
+string through copy-on-write. `prefix()` and `suffix()` explicitly materialize
+their requested slices; callers must budget those allocations. The experimental
+document no longer has eager public prefix/suffix string fields. Retaining a
+64 MiB document is distinct from allocating a second complete edited output.
+
 #### Physical source block
 
 The owning internal scanner locates one top-level fenced block whose info is

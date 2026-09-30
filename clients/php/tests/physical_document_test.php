@@ -9,7 +9,7 @@ $fk=$v['foreignKeys'][0];$fk['id']='fk-2';$fk['name']='FK.Second';$v['foreignKey
 $g=Orm\PhysicalGraph::fromValue($v);
 $text=Orm\PhysicalDocument::emit($g,$f['prefix'],$f['suffix'],$f['newline']);
 $d=Orm\PhysicalDocument::parse($text);
-if($d->graph->value()!==$v||$d->prefix!==$f['prefix']||$d->suffix!==$f['suffix']||Orm\PhysicalDocument::emit($d->graph,$d->prefix,$d->suffix,$d->newline)!==$text)throw new RuntimeException('Changed document');
+if($d->graph->value()!==$v||$d->prefix()!==$f['prefix']||$d->suffix()!==$f['suffix']||$d->source()!==$text||Orm\PhysicalDocument::emit($d->graph,$d->prefix(),$d->suffix(),$d->newline)!==$text)throw new RuntimeException('Changed document');
 if(substr_count($d->diagram,' : ')!==2)throw new RuntimeException('Lost parallel FK');
 foreach($f['displayStrings']as$s)if(Orm\PhysicalProjection::restore(Orm\PhysicalProjection::display($s))!==$s)throw new RuntimeException('Display changed');
 if(count($f['mutations'])!==7)throw new RuntimeException('Missing document vectors');
