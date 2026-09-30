@@ -39,6 +39,31 @@ export `createPhysicalColumn`이다. `make physical-column-check`가 공통 벡�
 25개를 각 클라이언트에서 두 번 실행하고 전체/필드/옵션 제한·인코딩·입출력
 참조 분리도 검증한다. `PHYSICAL_NODE`로 TypeScript 도구 런타임을 명시한다.
 
+물리 FK는 정확히 `id`, `name`, `tableId`, `columns`, `target`, `onDelete`,
+`onUpdate`, `match`, `deferrable`, `initiallyDeferred`, `comment`, `options`를
+가진다. 안정적 ID는 컬럼 ID 규칙을 따르고 name은 이름이 없으면 null,
+있으면 정확한 물리 이름이다. target은 정확히 `{tableId,columns}`다. 양쪽
+컬럼 ID는 중복 없는 1–64개이며 길이가 같고 쌍 순서를 보존한다. 자기 참조와
+독립 FK끼리 컬럼을 공유하는 경우도 유효하다. 동작은 noAction/restrict/cascade/
+setNull/setDefault/unspecified를 구분하고 match는 simple/full/partial/unspecified다.
+지연 flag는 boolean이며 미지정은 null이다. initiallyDeferred true는 deferrable
+true를 요구한다. 코멘트/옵션/전체 문자열 제한은 물리 컬럼과 같다. 알 수 없는
+필드·잘못된 ID·컬럼 중복·서로 다른 길이·모순된 지연은 안전하게 거절한다.
+개별 객체 검증이며 그래프 소속이나 방언 지원 검증은 아니다.
+
+FK API는 Go `orm.PhysicalForeignKeyFromValue`, PHP
+`Orm\PhysicalForeignKey::fromValue`, Rust
+`orm_schema::physical_foreign_key::PhysicalForeignKey::from_value`, TypeScript
+패키지 export `createPhysicalForeignKey`다. 컬럼과 FK가 제한된 공통 객체 검증을
+사용한다. Rust는 안전한 SCHEMA_INVALID 코드의 `physical_record::RecordError`를
+반환한다. `make physical-fk-check`가 공통 FK 26개와 기존 컬럼 25개 벡터를
+각 언어에서 두 번 실행한다. 64/65컬럼 제한과 독립 FK 2000개의 생성/보관도
+측정한다. 연결 그래프 참조 해석·압축 임포트·메모리의 증거는
+아니다. PHYSICAL_RUST_TOOLCHAIN으로 Rust를 명시한다(기본 1.98.1). 사용자
+전역 도구는 바꾸지 않는다.
+
+
+
 
 
 사람이 관리하는 스키마 파일은 `schema/*.mmd`(Mermaid `erDiagram`)다. GitHub, IDE, 빌드 산출물이 이 파일을 그림으로 렌더링하며, `ormgen`은 이 파일을 파싱해 컬럼, 키, 관계, 인덱스, 스타일을 담은 생성 **매니페스트**(`schema.json`)를 만든다. 매니페스트는 편집하지 않는다.
