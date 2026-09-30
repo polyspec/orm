@@ -342,6 +342,22 @@ or writable row identity. Unknown native relation kinds still fail explicitly.
 
 ### Qualified Rust table pages
 
+Row-edit groundwork: `RowSnapshot::from_page(&TablePage, row_index)` captures
+one checked immutable row, reliable non-null declared primary-key values in
+constraint order and a value-sensitive SHA-256 revision of descriptor/typed cells.
+Bound the complete captured encoding to 8 MiB. Reject views/unreliable identities,
+bad projection/keys, malformed decimals, NULL in non-null columns and page bounds.
+`check_current(&TableMetadata,&GridQueryResult)` distinguishes changed descriptor,
+missing/changed row and ambiguous identity. Exact typed comparison includes float
+bits, decimal scale, binary and generated-column original values.
+This pure API neither reads, locks nor writes a database and does not authorize
+edits. Execution must re-read by original keys inside the owning locked writable
+transaction, compare the original descriptor/row, then perform typed writes.
+The descriptor is not a complete physical schema revision and cannot detect ABA.
+Prepared native types may be data-dependent; compare projection names and the
+native descriptor, not prepared type names as schema revisions. Rust native
+tooling scope does not establish four-client mutation conformance.
+
 `CatalogConnection::table_page(&TableRef, limit, offset)` reads one explicit
 qualified table in a fresh enforced read-only scope, selecting descriptor columns
 in physical order with dialect-quoted identifiers. Order by declared primary-key
