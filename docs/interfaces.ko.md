@@ -355,6 +355,46 @@ MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 �
 
 ### Rust 행 편집 기준
 
+PostgreSQL 조회 준비는 타입 없는 placeholder 추정이 아니라 명시적 bind codec
+타입을 사용한다. 그리드 i64 키는 DB 정수 비교로 INTEGER 컬럼을 조회하며
+i64 바이트를 추정 int4 인수로 전송하지 않는다. 함수 시그니처가 선언 bind 타입과
+다르면 SQL에 명시적 cast가 필요하며 codec을 추측하지 않는다.
+
+`RowSnapshot::validate_update`는 쓰기 전 이름별 변경의 중복·없는 컬럼·생성 컬럼·
+잘못된 NULL·과도한 값을 거부한다. 같은 잠금 안에서 쓰기 후 정확한 요청 값과
+변경하지 않은 일반 컬럼을 비교하며 생성 컬럼은 다시 계산될 수 있다. 강제 변환이나
+요청하지 않은 일반 컬럼 변경은 성공이 아니라 rollback해야 한다. 순수 검증만으로
+트랜잭션 실행이나 변경 권한을 의미하지 않는다.
+
+네이티브 update 실행기는 원본 `RowSnapshot`, 명시적 타입형 `P` 대입,
+원자적 취소 플래그와 필수 단계 이벤트 구독자를 받는다. 새 discard-on-drop
+트랜잭션에서 원본 키 행 잠금(SQLite는 `BEGIN IMMEDIATE`), descriptor/원본
+비교와 정확한 쓰기 후 검증을 commit 전에 수행한다. MySQL은 비InnoDB와
+트리거를 거부한다.
+트리거 조회 가시성을 확인할 직접 계정 grant가 필요하다. 역할 전용 grant와
+partial revoke 활성화는 가시성을 추정하지 않고 현재 거부한다.
+commit 시작 전 취소 체크포인트는 rollback하지만 시작 후 취소를
+rollback이라고 보고하지 않는다. commit은 소유 태스크에서 실행하여 호출자가
+대기를 중단해도 Committed/Indeterminate를 발행한다. commit 응답을 확인할 수 없으면 불명 상태이며
+자동 재시도하지 않는다. 명시적 PostgreSQL 제약/트랜잭션 거부는 응답 미확인과
+구분하며 rollback 확인 뒤 `ROW_COMMIT_REJECTED`와 네이티브 원인을 반환한다.
+이벤트는 영속 작업 기록이 아니며 사이드카의 영속 식별/
+복구가 갖춰질 때까지 wire 편집은 비활성화한다.
+
+`delete_row`는 동일한 명시적 기준·취소 체크포인트·단계 구독자를 사용한다.
+원본을 잠그고 비교한 뒤 정확히 한 행의 영향과 변경 없는 descriptor 및 행이 없음을
+commit 전에 확인한다. 제약 실패나 commit 전 취소는 rollback하며 누락/변경된
+원본을 성공적으로 삭제한 것처럼 보고하지 않는다. DB FK 효과는 wire/UI 권한
+승인 전에 검토해야 하며 네이티브 API 자체는 연쇄 변경을 별도로 승인하지 않는다.
+
+`insert_row`는 검증된 `TableMetadata`와 명시적 타입형 대입,
+취소 플래그 및 단계 구독자를 받는다. 처음에는 모든 기본키 값을 명시적으로
+요구하며 생략/생성되는 식별자는 추정하지 않고 미지원으로 거부한다. 키를 잠그고
+조회한 뒤 descriptor 재검증·기존 키 거부·타입형 쓰기·영향 한 행 검사·선언 키
+재조회를 수행한다. 지정한 값은 모두 정확히 비교하고 생략된 기본값과 생성 값은
+DB에서 반환한다. 없는/중복/생성 컬럼 대입을 거부한다. 자동 키 삽입의 메타데이터/
+반환 키 구현도 갖춰져야 데이터 편집이 완료되며 초기 API는 완전한 CRUD UI가 아니다.
+
 `RowSnapshot::from_page(&TablePage, row_index)`는 검증된 행·
 신뢰할 비NULL 기본키 값을 제약 순서로 불변 캡처하고 descriptor/타입형 셀의
 값별 SHA-256 revision을 만든다. 전체 인코딩은 8 MiB로 제한한다. 뷰/불안정한

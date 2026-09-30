@@ -16,6 +16,13 @@ pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub use result::{QueryColumn, QueryResult};
 
+pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
+    params::validate(values, dialect)
+}
+pub(crate) fn validate_param_refs<'a>(values:impl Iterator<Item=&'a P>,dialect:&str)->Result<(),sqlx::Error>{
+    params::validate_refs(values,dialect)
+}
+
 /// A column value as the tools read it.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum Val {
@@ -185,7 +192,7 @@ macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, 
 
 macro_rules! fetch_result {
     ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
-        let statement = (&mut **$conn).prepare($sql.into_sql_str()).await?;
+        let statement = prepare_query!($conn,$sql,$params,$bind);
         let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
         let q = binds::$bind(statement.query(),$params)?;
         let mut stream = q.fetch(&mut **$conn);
@@ -198,6 +205,15 @@ macro_rules! fetch_result {
         }
         Ok($result { columns, rows })
     }};
+}
+
+macro_rules! prepare_query {
+    ($conn:expr,$sql:expr,$params:expr,postgres)=>{{
+        let types=binds::postgres_types($params)?;
+        (&mut **$conn).prepare_with($sql.into_sql_str(),&types).await?
+    }};
+    ($conn:expr,$sql:expr,$params:expr,mysql)=>{(&mut **$conn).prepare($sql.into_sql_str()).await?};
+    ($conn:expr,$sql:expr,$params:expr,sqlite)=>{(&mut **$conn).prepare($sql.into_sql_str()).await?};
 }
 
 /// One reserved connection of a pool.

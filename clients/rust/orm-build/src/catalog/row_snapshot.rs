@@ -18,7 +18,7 @@ impl std::fmt::Debug for RowSnapshot {
 fn invalid() -> String {
     "ROW_SNAPSHOT_INVALID: invalid original row or descriptor".into()
 }
-fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
+pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
     metadata::validate_name(&value.table.namespace).map_err(|_| invalid())?;
     metadata::validate_name(&value.table.name).map_err(|_| invalid())?;
     if !matches!(value.kind, TableKind::Table | TableKind::Partitioned)
@@ -49,7 +49,7 @@ fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
     }
     Ok(indexes)
 }
-fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), String> {
+pub(super) fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), String> {
     if result.columns.len() != metadata.columns.len() {
         return Err(invalid());
     }
@@ -62,7 +62,7 @@ fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> Result<(), 
     }
     Ok(())
 }
-fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), String> {
+pub(super) fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), String> {
     if cells.len() != metadata.columns.len() {
         return Err(invalid());
     }
@@ -99,7 +99,7 @@ impl Write for RevisionWriter {
         Ok(())
     }
 }
-fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, String> {
+pub(super) fn revision(metadata: &TableMetadata, cells: &[GridCell]) -> Result<String, String> {
     let mut writer = RevisionWriter { hash: Sha256::new(), bytes: 0 };
     serde_json::to_writer(&mut writer, &("orm-row-baseline-v1", metadata, cells))
         .map_err(|_| "ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget".to_owned())?;
