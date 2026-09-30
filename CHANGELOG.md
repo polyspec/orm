@@ -1,5 +1,17 @@
 # Changelog
 
+Verify physical document input bounds through all four parsers
+(T7.17.2.10.3.4). Keep 64 MiB, 200000 lines and 4096 blocks unchanged;
+execute each upper bound and excess twice per owner with exact retention
+and safe resource diagnostics. The PHP upper-bound Red exhausts 128M
+because eager prose slices duplicate the input. Retain source and ranges
+through copy-on-write instead; remove eager prefix/suffix fields and expose
+explicit slice methods. Peak allocation is 71319552 bytes, not RSS.
+Related PHP complete-record/diagnostic and connected document round trips
+pass twice, with scoped lint/compilation and paired records. This proves
+input parsing/retention, not two complete edited copies under 128M.
+Ownership, remaining grammar/output acceptance and import activation remain.
+
 Read physical metadata and its ERD projection together in four owners
 (T7.17.2.10.3.3). Preserve complete graph records and surrounding Markdown;
 reject display contradictions and malformed metadata with safe line/path
