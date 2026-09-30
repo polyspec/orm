@@ -33,7 +33,7 @@ test('physical graph rejects sparse arrays count excess cycles and duplicate FK 
  const cyclic=structuredClone(base);cyclic.tables[0].columns[0].options=[{name:'cycle',value:cyclic}];failure(cyclic,'/tables/0/columns/0');
  const oversized=structuredClone(base);oversized.tables[0].columns=Array(4097);failure(oversized,'/tables/0/columns');
 });
-test('physical graph retains 2000 tables 60000 columns and 10000 connected FKs',{timeout:15000},()=>{
+test('physical graph retains 2000 tables 60000 columns and 10000 connected FKs',{timeout:15000},async()=>{
  const started=performance.now();const {tables:count,columnsPerTable,foreignKeys:fkCount}=fixture.scale;
  assert.equal(count,2000);assert.equal(columnsPerTable,30);assert.equal(fkCount,10000);
  const tables=Array.from({length:count},(_,i)=>({...structuredClone(fixture.base.tables[0]),id:`t-${i}`,identity:[null,'main',`Table.${i}`,null],columns:Array.from({length:columnsPerTable},(_,j)=>({...structuredClone(fixture.base.tables[0].columns[0]),id:`c-${i}-${j}`,name:`Column.${j}`}))}));
@@ -45,6 +45,11 @@ test('physical graph retains 2000 tables 60000 columns and 10000 connected FKs',
  tables[0].columns[0].name='changed';assert.equal(graph.tables[0].columns[0].name,'Column.0');
  const jsonStarted=performance.now(),text=api.emitPhysicalGraphJSON(graph),parsed=api.parsePhysicalGraphJSON(text);assert.deepEqual(parsed,graph);assert.equal(api.emitPhysicalGraphJSON(parsed),text);
  console.log(JSON.stringify({event:'physical-json-retention',bytes:new TextEncoder().encode(text).length,elapsedMs:performance.now()-jsonStarted}));
+ const documents=await import('../dist/physical_document.js');
+ const documentStarted=performance.now(),source=documents.emitPhysicalDocument(graph,'# Physical design\n\n','\nAfter\n');
+ const document=documents.parsePhysicalDocument(source);assert.deepEqual(document.graph,graph);
+ assert.equal(documents.emitPhysicalDocument(document.graph,document.prefix,document.suffix,document.newline),source);
+ console.log(JSON.stringify({event:'physical-document-retention',bytes:new TextEncoder().encode(source).length,elapsedMs:performance.now()-documentStarted}));
  console.log(JSON.stringify({event:'physical-graph-retention',tables:count,columns:60000,foreignKeys:fkCount,indices:2000,keys:2000,checks:2000,generateMs:generated-started,validateMs:validated-generated,elapsedMs:performance.now()-started}));
 });
 test('physical graph shared count and byte limits',{timeout:15000},()=>{

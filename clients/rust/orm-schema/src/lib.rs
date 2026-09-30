@@ -18,6 +18,8 @@ pub mod physical_graph;
 mod physical_graph_records;
 mod physical_json;
 pub mod physical_envelope;
+pub mod physical_document;
+mod physical_projection;
 mod physical_html;
 pub mod schema;
 pub mod sql;
