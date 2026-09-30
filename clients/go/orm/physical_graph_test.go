@@ -164,6 +164,20 @@ func TestPhysicalGraphVectors(t *testing.T) {
 	if !reflect.DeepEqual(snapshot, value) {
 		t.Fatal("lost stress graph fields")
 	}
+	jsonStarted := time.Now()
+	text, err := graph.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := PhysicalGraphFromJSON(text)
+	if err != nil || !reflect.DeepEqual(parsed.Value(), snapshot) {
+		t.Fatalf("lost text stress graph: %v", err)
+	}
+	emitted, err := parsed.JSON()
+	if err != nil || string(emitted) != string(text) {
+		t.Fatalf("non-idempotent stress JSON: %v", err)
+	}
+	t.Logf("physical-json-retention bytes=%d elapsed=%s", len(text), time.Since(jsonStarted))
 	tables[0].(map[string]any)["columns"].([]any)[0].(map[string]any)["name"] = "changed"
 	if graph.Value()["tables"].([]any)[0].(map[string]any)["columns"].([]any)[0].(map[string]any)["name"] != "Column.0" {
 		t.Fatal("aliased nested graph")

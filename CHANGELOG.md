@@ -1,5 +1,30 @@
 # Changelog
 
+Read and emit strict physical graph JSON in four clients (T7.17.2.9).
+Reject decoded duplicate members, malformed syntax/Unicode, rounding and
+byte/depth/node excess before information can disappear. Reuse physical
+graph validation; preserve every field and ordered list through repeated
+text roundtrips. Missing APIs in Go, PHP, Rust and TypeScript are Green.
+The reusable physical-json-check passes 30 shared cases, six number forms,
+six decoder limit/next-value cases, full-record/encoding checks and related
+graph/record regressions twice per client. Two added output-size cases also
+pass twice in all four clients. Each owner retains the connected 2000-table,
+60000-column, 10000-FK graph and 2000 each of indices, keys and CHECKs
+through a stable 14123977-byte emission/parsing/emission result.
+Correct reproduced PHP exhaustion with direct tree construction and bounded
+FIFO sharing (T7.17.2.9.1), not a higher memory limit or reduced fixture.
+The same stress case peaks at 93290496 allocated bytes (89 MiB) under 128M;
+this is not RSS. Controlled 256M diagnostic runs are not acceptance proof.
+Correct the TypeScript ES2022 Unicode method compile error using direct
+code-point validation (T7.17.2.9.2), without suppressions or alternatives.
+Correct new prohibited documentation terms without weakening the writing
+checker or technical criteria (T7.17.2.9.3).
+Go vet, Rust 1.98.1 strict owner Clippy/scoped formatting, Node 26.10.0
+TypeScript compilation, PHP syntax and paired documentation checks pass
+on macOS arm64. Markdown, imports, DDL, execution and native
+or other-platform acceptance remain unfinished requirements.
+
+
 Resolve physical index, key and CHECK records in graphs (T7.17.2.8).
 Require all three arrays; reject the obsolete root shape without fallback.
 Validate global IDs, table/column ownership, shared constraint names,

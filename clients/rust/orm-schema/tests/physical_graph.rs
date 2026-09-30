@@ -94,6 +94,12 @@ fn physical_graph_vectors() {
         let target = (i / 5 + i % 5) % 2000;
         assert_eq!(graph.value()["foreignKeys"][i]["target"]["columns"][0], format!("c-{target}-1"));
     }
+    let json_started = Instant::now();
+    let text = graph.to_json().unwrap();
+    let parsed = PhysicalGraph::from_json(text.as_bytes()).unwrap();
+    assert_eq!(parsed.value(), graph.value());
+    assert_eq!(parsed.to_json().unwrap(), text);
+    println!("PASS physical_json_retention bytes={} elapsed={:?}", text.len(), json_started.elapsed());
     println!(
         "PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate={:?} validate={:?} elapsed={:?}",
         generated.duration_since(scale_started),

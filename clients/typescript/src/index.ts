@@ -27,6 +27,7 @@ export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './phys
 export { createPhysicalForeignKey } from './physical_foreign_key.js';
 export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physical_foreign_key.js';
 export { createPhysicalGraph, PhysicalGraphError } from './physical_graph.js';
+export { parsePhysicalGraphJSON, emitPhysicalGraphJSON } from './physical_graph_json.js';
 export type { PhysicalGraph, PhysicalTable } from './physical_graph.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';

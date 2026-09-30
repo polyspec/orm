@@ -21,7 +21,9 @@ for($i=0;$i<10000;$i++){$source=intdiv($i,5);$target=($source+$i%5)%2000;$fk=$fi
 $value=$fixture['base'];$value['tables']=$tables;$value['foreignKeys']=$fks;$records=physicalGraphRecordScale(physicalGraphRecordFixture()['base'],2000);foreach(['indices','keys','checks'] as $field)$value[$field]=$records[$field];$generated=hrtime(true);$graph=Orm\PhysicalGraph::fromValue($value);$validated=hrtime(true);if($graph->value()!==$value)throw new RuntimeException('Lost stress graph fields');
 $value['tables'][0]['columns'][0]['name']='changed';if($graph->value()['tables'][0]['columns'][0]['name']!=='Column.0')throw new RuntimeException('Aliased nested graph');
 echo 'PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate='.(($generated-$scaleStarted)/1e6).' validate='.(($validated-$generated)/1e6).' elapsed='.((hrtime(true)-$scaleStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
-unset($value,$graph,$tables,$fks,$records);
+$jsonStarted=hrtime(true);$text=$graph->toJson();unset($value,$graph,$tables,$fks,$records);echo 'RUN physical_json_retention bytes='.strlen($text).' currentBytes='.memory_get_usage(false).' allocatedBytes='.memory_get_usage(true)."\n";$parsed=Orm\PhysicalGraph::fromJson($text);echo 'RUN physical_json_emit currentBytes='.memory_get_usage(false).' allocatedBytes='.memory_get_usage(true)."\n";if($parsed->toJson()!==$text)throw new RuntimeException('Changed complete stress JSON');
+echo 'PASS physical_json_retention bytes='.strlen($text).' elapsed='.((hrtime(true)-$jsonStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
+unset($parsed,$text);
 if(count($fixture['limits'])!==5)throw new RuntimeException('Missing limit vectors');
 foreach($fixture['limits']as$limit){
  $tables=[];$comment=str_repeat('x',$limit['commentBytes']);
