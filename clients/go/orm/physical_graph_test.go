@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/polyspec/orm/engine/schema"
 	"os"
 	"reflect"
 	"testing"
@@ -178,6 +179,20 @@ func TestPhysicalGraphVectors(t *testing.T) {
 		t.Fatalf("non-idempotent stress JSON: %v", err)
 	}
 	t.Logf("physical-json-retention bytes=%d elapsed=%s", len(text), time.Since(jsonStarted))
+	documentStarted := time.Now()
+	source, err := schema.EmitPhysicalDocument(graph, "# Physical design\n\n", "\nAfter\n", "\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := schema.ParsePhysicalDocument(source)
+	if err != nil || !reflect.DeepEqual(document.Graph.Value(), snapshot) {
+		t.Fatal("changed complete stress document", err)
+	}
+	sourceAgain, err := schema.EmitPhysicalDocument(document.Graph, document.Prefix, document.Suffix, document.Newline)
+	if err != nil || string(sourceAgain) != string(source) {
+		t.Fatal("non-idempotent stress document", err)
+	}
+	t.Logf("physical-document-retention bytes=%d elapsed=%s", len(source), time.Since(documentStarted))
 	tables[0].(map[string]any)["columns"].([]any)[0].(map[string]any)["name"] = "changed"
 	if graph.Value()["tables"].([]any)[0].(map[string]any)["columns"].([]any)[0].(map[string]any)["name"] != "Column.0" {
 		t.Fatal("aliased nested graph")

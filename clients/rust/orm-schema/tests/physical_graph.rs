@@ -100,6 +100,12 @@ fn physical_graph_vectors() {
     assert_eq!(parsed.value(), graph.value());
     assert_eq!(parsed.to_json().unwrap(), text);
     println!("PASS physical_json_retention bytes={} elapsed={:?}", text.len(), json_started.elapsed());
+    let document_started = Instant::now();
+    let source = orm_schema::physical_document::emit(&graph, "# Physical design\n\n", "\nAfter\n", "\n").unwrap();
+    let document = orm_schema::physical_document::parse(source.as_bytes()).unwrap();
+    assert_eq!(document.graph.value(), graph.value());
+    assert_eq!(orm_schema::physical_document::emit(&document.graph, &document.prefix, &document.suffix, &document.newline).unwrap(), source);
+    println!("PASS physical_document_retention bytes={} elapsed={:?}", source.len(), document_started.elapsed());
     println!(
         "PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate={:?} validate={:?} elapsed={:?}",
         generated.duration_since(scale_started),

@@ -23,7 +23,12 @@ $value['tables'][0]['columns'][0]['name']='changed';if($graph->value()['tables']
 echo 'PASS physical_graph_retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate='.(($generated-$scaleStarted)/1e6).' validate='.(($validated-$generated)/1e6).' elapsed='.((hrtime(true)-$scaleStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
 $jsonStarted=hrtime(true);$text=$graph->toJson();unset($value,$graph,$tables,$fks,$records);echo 'RUN physical_json_retention bytes='.strlen($text).' currentBytes='.memory_get_usage(false).' allocatedBytes='.memory_get_usage(true)."\n";$parsed=Orm\PhysicalGraph::fromJson($text);echo 'RUN physical_json_emit currentBytes='.memory_get_usage(false).' allocatedBytes='.memory_get_usage(true)."\n";if($parsed->toJson()!==$text)throw new RuntimeException('Changed complete stress JSON');
 echo 'PASS physical_json_retention bytes='.strlen($text).' elapsed='.((hrtime(true)-$jsonStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
-unset($parsed,$text);
+$expectedHash=hash('sha256',$text);unset($text);$documentStarted=hrtime(true);echo "RUN physical_document_retention\n";
+$source=Orm\PhysicalDocument::emit($parsed,"# Physical design\n\n","\nAfter\n");unset($parsed);
+$document=Orm\PhysicalDocument::parse($source);
+if(hash('sha256',$document->graph->toJson())!==$expectedHash||Orm\PhysicalDocument::emit($document->graph,$document->prefix,$document->suffix,$document->newline)!==$source)throw new RuntimeException('Changed complete stress document');
+echo 'PASS physical_document_retention bytes='.strlen($source).' elapsed='.((hrtime(true)-$documentStarted)/1e6).' peakBytes='.memory_get_peak_usage(true).' memoryLimit='.ini_get('memory_limit')."\n";
+unset($source,$document);
 if(count($fixture['limits'])!==5)throw new RuntimeException('Missing limit vectors');
 foreach($fixture['limits']as$limit){
  $tables=[];$comment=str_repeat('x',$limit['commentBytes']);

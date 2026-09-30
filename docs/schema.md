@@ -180,6 +180,20 @@ Define and verify one versioned document grammar before activating this path:
 
 These requirements do not enable physical documents, imports or execution.
 
+The joint parser under development uses `erDiagram`, followed by
+`%% orm:physical-json 1`, one compact physical JSON line prefixed with `%% `,
+and `%% orm:physical-json-end`. The remaining lines are a deterministic
+projection in original table, column and FK order. Stable ASCII IDs become
+hexadecimal `T_` and `C_` aliases. Display strings escape ASCII controls,
+quotes, backslashes, angle brackets, ampersands, hash marks, backticks,
+percent signs, brackets, braces and the escape marker as literal `␛XXXX`
+sequences. Mermaid entity aliases reject backslashes, so the display escape
+marker is U+241B, not an ASCII backslash. JSON retains exact physical values.
+Every FK has its own ID and ordered column-pair comment. Crow-foot endpoints
+are an explicitly labelled unverified view convention, never SQL evidence.
+Diagram mismatches fail rather than overwriting metadata. This draft is not
+an enabled import API; four-client and ownership verification remain required.
+
 #### Physical source block
 
 The owning internal scanner locates one top-level fenced block whose info is

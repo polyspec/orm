@@ -100,6 +100,24 @@ physical-fk-check: physical-column-check
 .PHONY: physical-graph-check
 .PHONY: physical-json-check
 .PHONY: physical-envelope-check
+.PHONY: physical-document-typescript-check
+.PHONY: physical-document-check
+physical-document-check: physical-document-typescript-check
+	go test ./clients/go/orm -run '^TestPhysical(Document|GraphVectors)$$' -count=2 -v
+	php clients/php/tests/physical_document_test.php
+	php clients/php/tests/physical_document_test.php
+	php clients/php/tests/physical_graph_test.php
+	php clients/php/tests/physical_graph_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document --test physical_graph -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document --test physical_graph -- --nocapture
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
+
+physical-document-typescript-check:
+	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document.mjs clients/typescript/tests/physical-document-render.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document.mjs clients/typescript/tests/physical-document-render.mjs
+
 physical-envelope-check:
 	go test ./clients/go/orm -run '^TestPhysicalEnvelope$$' -count=2 -v
 	php clients/php/tests/physical_envelope_test.php

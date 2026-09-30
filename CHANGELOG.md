@@ -1,5 +1,18 @@
 # Changelog
 
+Read physical metadata and its ERD projection together in four owners
+(T7.17.2.10.3.3). Preserve complete graph records and surrounding Markdown;
+reject display contradictions and malformed metadata with safe line/path
+diagnostics. Use reversible U+241B display escapes after actual Mermaid
+rejects the first backslash-based draft. Keep multiplicity explicitly
+unverified rather than treating view notation as SQL proof.
+Owning tests run twice, including seven shared rejection vectors and the
+connected 2000-table/60000-column/10000-FK document round trip. Chromium
+renders hostile labels and parallel FKs twice. PHP peak allocation is
+117030912 bytes with unchanged 128M, not RSS. Scoped lint/compilation and
+paired records pass. Authoritative ownership, full grammar/resource
+acceptance and native/platform proof remain pending.
+
 State the scope of the physical source scanner (T7.17.2.10.3.2).
 docs/schema.md (+ko) states that the scanner does not classify arbitrary
 HTML tags or full Markdown containers, and that the document reader
