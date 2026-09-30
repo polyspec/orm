@@ -2,12 +2,15 @@
 //! values, and statements run as written.
 
 use sqlx::pool::PoolConnection;
-use sqlx::{AssertSqlSafe, MySql, Postgres, Row, Sqlite};
+use sqlx::{AssertSqlSafe, Column, MySql, Postgres, Row, Sqlite, TypeInfo};
 
 use orm::db::Pool;
+use futures_util::TryStreamExt;
+mod limits;
+pub use limits::QueryLimits;
 
 /// A column value as the tools read it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum Val {
     Null,
     Int(i64),
@@ -88,7 +91,9 @@ macro_rules! cell {
     ($row:expr, $i:expr) => {{
         let row = $row;
         let i = $i;
-        if let Ok(v) = row.try_get::<Option<String>, _>(i) {
+        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") {
+            cell_extra!(row, i)
+        } else if let Ok(v) = row.try_get::<Option<String>, _>(i) {
             Ok(v.map_or(Val::Null, Val::Text))
         } else if let Ok(v) = row.try_get::<Option<i64>, _>(i) {
             Ok(v.map_or(Val::Null, Val::Int))
@@ -195,27 +200,37 @@ impl Conn {
 
     /// Runs a query and returns its rows.
     pub async fn query(&mut self, sql: &str, params: &[P]) -> Result<Rows, sqlx::Error> {
+        self.query_bounded(sql, params, QueryLimits::default()).await
+    }
+
+    /// Rejects oversized accumulated results; never returns truncated rows.
+    pub async fn query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<Rows, sqlx::Error> {
+        let mut budget = limits::Budget::new(limits)?;
+        if orm_schema::sql::split_sql(sql).len() != 1 {
+            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
+        }
         let sql = AssertSqlSafe(sql.to_owned());
         macro_rules! fetch {
-            ($conn:expr) => {{
-                if has_params(params) {
-                    let mut q = sqlx::query(sql);
-                    for p in params {
-                        q = match p {
-                            P::S(v) => q.bind(v.clone()),
-                            P::I(v) => q.bind(*v),
-                        };
-                    }
-                    q.fetch_all(&mut **$conn).await?
-                } else {
-                    sqlx::raw_sql(sql).fetch_all(&mut **$conn).await?
+            ($conn:expr, $cell:ident) => {{
+                let mut q = sqlx::query(sql);
+                for p in params {
+                    q = match p { P::S(v) => q.bind(v.clone()), P::I(v) => q.bind(*v) };
                 }
+                let mut stream = q.fetch(&mut **$conn);
+                let mut rows = Vec::new();
+                while let Some(row) = stream.try_next().await? {
+                    budget.check_row_count(rows.len())?;
+                    let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
+                    budget.add_row(&values, rows.len())?;
+                    rows.push(values);
+                }
+                Ok(rows)
             }};
         }
         match self {
-            Conn::MySql(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
-            Conn::Postgres(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell_pg!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
-            Conn::Sqlite(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
+            Conn::MySql(c) => fetch!(c, cell),
+            Conn::Postgres(c) => fetch!(c, cell_pg),
+            Conn::Sqlite(c) => fetch!(c, cell),
         }
     }
 }

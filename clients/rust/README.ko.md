@@ -90,6 +90,14 @@ Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버
 
 ## 빌드와 테스트
 
+Rust 도구/카탈로그 조회는 스트리밍 중 검증된 예산으로 행을 누적한다.
+기본값은 100,000행과 JSON 인코딩 값 64MiB다. 조회당 한 문장만 허용하며
+여러 결과 집합을 암묵적으로 합치지 않는다. 명시적 `QueryLimits`로
+줄일 수 있다. 한도를 넘으면 잘린 성공이나 값을 포함한 예산 오류 대신 결과를
+거부한다. 누적 출력 제한이며 DB 실행이나 드라이버 패킷 메모리 제한은 아니다.
+지원 셀은 NULL·signed 정수·텍스트·boolean이며 미지원 타입은 변환하지 않고
+실패한다. 읽기 전용 SQL 샌드박스가 아니다.
+
 ```sh
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
