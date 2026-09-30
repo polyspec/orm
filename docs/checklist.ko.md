@@ -78,6 +78,8 @@
 
 ## 3단계 — 언어별 스키마 도구
 
+- [o] T7.17.2.2 네 클라이언트에서 불변 물리 컬럼을 보존한다(T7.17.2.1 필요). 원인: 논리 컬럼이 원래 타입/기본값/생성/옵션을 손실 없이 담지 못한다. 근거: 네 언어의 API 누락 Red·TypeScript 타입 좁히기 컴파일 실패·PHP 참조 공유 런타임 Red가 Green이다. 공개 physical-column-check가 공통 정확 필드/거부 벡터 25개를 Go/PHP/Rust/TypeScript마다 두 번 실행했고 전체/필드/옵션 제한·인코딩·sparse 옵션·입출력 분리도 검증했다. 명시한 Node 26.10.0의 TypeScript 컴파일·소유 Rust Clippy·PHP 문법·영한 체크리스트·문서 규칙·diff 검사가 통과했다. 안정적 ID·원문 SQL·없음/NULL/리터럴/표현식 구분·identity/computed 생성·옵션 순서를 보존한다. 구조적 교환이며 텍스트 해석·SQL 문법 검증·물리 임포트·DB conformance·실행 권한은 아니다.
+
 - [o] T7.17.2.1 논리 정규화 없이 물리 한정 이름을 보존한다. 원인: 논리 식별자 규칙이 임의의 물리 이름을 표현하지 못한다. 근거: 네 클라이언트의 API 누락과 TypeScript sparse array 거부 Red가 Green이다. 추적되는 physical-identity-check가 공통 벡터 10개를 Go/PHP/Rust/TypeScript마다 두 번 실행해 정확한 키/거부 결과를 검증하고 불변 요소·잘못된 인코딩·UTF-8 바이트 제한도 확인한다. TypeScript 컴파일·소유 Rust Clippy·PHP 문법·영한 체크리스트·문서 규칙·diff 검사가 통과했다. 선택적 catalog/schema/column·필수 table·정확한 대소문자/UTF-8·충돌 없는 이름 키를 정규화 없이 보존한다. 물리 임포트·주석 해석·DDL·마이그레이션·DB 의존 conformance는 활성화하지 않는다.
 
 - [ ] N9.2.1 Send savepoint의 기존 borrowed-Box 경고를 제거한다. 원인: 의존성을 포함한 Clippy가 orm/src/tx.rs의 savepoint_send에서 실패한다. 기준: lint 실패를 재현하고 소유 테스트로 Send/savepoint 동작을 보존하며 경고 억제 없이 통과한다.

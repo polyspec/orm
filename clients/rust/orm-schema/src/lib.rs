@@ -8,6 +8,7 @@
 
 pub mod ddl;
 pub mod physical;
+pub mod physical_column;
 pub mod schema;
 pub mod sql;
 pub mod triggers;
