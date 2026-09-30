@@ -308,3 +308,26 @@ MySQL unsigned 전체 범위를 보존한다. 이 Rust 값은 wire 경계에서 
 끝자리 0을 보존한다. 이진 실수나 고정 정밀도 모델 codec을 통하지 않는다.
 SQLite는 네이티브 decimal 저장 클래스가 없으므로 실제 텍스트/정수/실수 태그를
 그대로 유지한다. 이번 단계에서 PostgreSQL 비유한 numeric은 명시적 미지원이다.
+
+### 한정된 네이티브 Rust 테이블 메타데이터
+
+`CatalogConnection::current_namespace()`는 선택된 namespace를 보고한다.
+`describe_table(&TableRef { namespace, name })`는 바인딩한 카탈로그 이름으로
+명시적으로 한정된 테이블을 확인하고 네이티브 컬럼 타입·선언 기본키 순서·실제
+nullable·생성 컬럼 플래그를 보존한다. 논리 스키마 컬럼 순서나 임의 조회 결과에서
+행 식별을 추정하지 않는다. SQLite는 연결된 `main` namespace를 지원하며 nullable
+레거시 기본키는 신뢰할 식별이 아니고 진짜 INTEGER rowid 별칭은 비NULL이다.
+descriptor는 편집 권한이 아니다. 변경에는 명시적 명령·스키마/행 revision 검증·
+타입 bind·낙관적 충돌 검사가 필요하다.
+
+`TableMetadata`는 한정된 `table`·네이티브 관계 `kind`·순서 있는 `columns`
+(`name`, `native_type`, `nullable`, `generated`)·제약 선언 순서의 `primary_key`·
+`reliable_row_identity`를 포함한다. 식별은 비어 있지 않고 모두 비NULL인 기본키가
+있는 일반/파티션 테이블에만 성립한다. 생성 플래그에는 PostgreSQL 항상 생성
+identity와 SQLite 숨김 컬럼도 포함하며 완전한 컬럼 쓰기 권한 모델은 아니다.
+타입 없는 SQLite 컬럼은 타입을 만들어내지 않고 빈 네이티브 타입을 유지한다.
+
+이름은 NUL 없는 UTF-8 1..1024바이트이며 카탈로그 결과마다 2048행·4 MiB로
+제한한다. 미지원 관계 종류·SQLite namespace는 명시적으로 실패한다. 이 descriptor는
+완전한 물리 스키마 임포트나 원자적 스키마 revision이 아니며 변경은 자신의
+실행 범위에서 메타데이터를 다시 검증해야 한다.

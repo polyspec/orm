@@ -1,5 +1,13 @@
 # 변경 이력
 
+바인딩한 카탈로그 이름·네이티브 타입·생성 플래그·제약 선언 순서의 기본키를
+가진 한정된 Rust 테이블 descriptor를 노출한다. 신뢰할 행 식별을 판정하기 전에
+SQLite nullable 레거시 키·DESC 키·INTEGER rowid 별칭·WITHOUT ROWID 키를
+구분한다. 공개 API 누락 컴파일 Red는 실제 MySQL·PostgreSQL·SQLite에서
+Green이다. 추가 뷰·잘못된 이름·미지원 namespace·타입 없는 컬럼 회귀와 소유
+라이브러리/카탈로그/읽기 전용/컬럼/메타데이터 테스트 12개가 통과했다. descriptor는
+변경 권한이 아니며 물리 임포트나 네 클라이언트 conformance 완료도 아니다.
+
 이진 실수나 고정 정밀도 모델 codec 대신 고정한 BigDecimal 0.4.11로 유한 Rust
 그리드 decimal을 정확한 일반 문자열로 보존한다. 공개 드라이버 바이트에서
 PostgreSQL 결과 scale을 복원하고 값이 달라지는 조정을 거부한다. decimal variant
