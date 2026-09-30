@@ -22,10 +22,11 @@ sqlx = { version = "0.9", optional = true, features = ["runtime-tokio", "mysql",
 tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
 orm = { version = "=0.0.1", path = "../orm", optional = true }
 url = { version = "2", optional = true }
+futures-util = { version = "=0.3.34", optional = true }
 
 [features]
 # The orm-gen command-line tool; its database commands need the drivers.
-live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url"]
+live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util"]
 cli = ["live-db"]
 
 [[bin]]
@@ -47,4 +48,12 @@ required-features = ["live-db"]
 
 [[test]]
 name = "tool_values"
+required-features = ["live-db"]
+
+[[test]]
+name = "tool_limits"
+required-features = ["live-db"]
+
+[[test]]
+name = "tool_statement"
 required-features = ["live-db"]

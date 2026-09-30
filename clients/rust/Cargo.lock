@@ -1038,6 +1038,7 @@ dependencies = [
 name = "orm-build"
 version = "0.0.1"
 dependencies = [
+ "futures-util",
  "orm",
  "orm-schema",
  "proc-macro2",
