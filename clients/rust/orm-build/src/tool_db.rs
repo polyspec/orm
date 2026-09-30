@@ -9,6 +9,9 @@ use futures_util::TryStreamExt;
 mod limits;
 mod result;
 mod grid;
+mod params;
+mod binds;
+pub use params::{P,ParamType};
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub use result::{QueryColumn, QueryResult};
@@ -65,12 +68,6 @@ impl Val {
             _ => Err(sqlx::Error::Decode("Invalid or NULL tool boolean".into())),
         }
     }
-}
-
-/// A bind value.
-pub enum P {
-    S(String),
-    I(i64),
 }
 
 pub fn s(v: &str) -> P {
@@ -187,13 +184,10 @@ macro_rules! grid_pg { ($row:expr, $i:expr) => {{
 macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BLOB") }; }
 
 macro_rules! fetch_result {
-    ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident) => {{
+    ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
         let statement = (&mut **$conn).prepare($sql.into_sql_str()).await?;
         let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
-        let mut q = statement.query();
-        for p in $params {
-            q = match p { P::S(v) => q.bind(v.clone()), P::I(v) => q.bind(*v) };
-        }
+        let q = binds::$bind(statement.query(),$params)?;
         let mut stream = q.fetch(&mut **$conn);
         let mut rows = Vec::new();
         while let Some(row) = stream.try_next().await? {
@@ -218,6 +212,9 @@ fn has_params(params: &[P]) -> bool {
 }
 
 impl Conn {
+    fn validate_params(&self, values: &[P]) -> Result<(), sqlx::Error> {
+        params::validate(values,match self {Self::MySql(_)=>"mysql",Self::Postgres(_)=>"postgres",Self::Sqlite(_)=>"sqlite"})
+    }
     /// Never return a scope-modified connection to the pool, including cancellation.
     pub(crate) fn discard_on_drop(&mut self) {
         match self { Self::MySql(c)=>c.close_on_drop(),Self::Postgres(c)=>c.close_on_drop(),Self::Sqlite(c)=>c.close_on_drop() }
@@ -233,17 +230,12 @@ impl Conn {
     /// Runs a statement and returns the affected rows. A statement without
     /// binds is sent as written.
     pub async fn exec(&mut self, sql: &str, params: &[P]) -> Result<u64, sqlx::Error> {
+        self.validate_params(params)?;
         let sql = AssertSqlSafe(sql.to_owned());
         macro_rules! run {
-            ($conn:expr) => {{
+            ($conn:expr,$bind:ident) => {{
                 if has_params(params) {
-                    let mut q = sqlx::query(sql);
-                    for p in params {
-                        q = match p {
-                            P::S(v) => q.bind(v.clone()),
-                            P::I(v) => q.bind(*v),
-                        };
-                    }
+                    let q = binds::$bind(sqlx::query(sql),params)?;
                     q.execute(&mut **$conn).await?.rows_affected()
                 } else {
                     sqlx::raw_sql(sql).execute(&mut **$conn).await?.rows_affected()
@@ -251,9 +243,9 @@ impl Conn {
             }};
         }
         Ok(match self {
-            Conn::MySql(c) => run!(c),
-            Conn::Postgres(c) => run!(c),
-            Conn::Sqlite(c) => run!(c),
+            Conn::MySql(c) => run!(c,mysql),
+            Conn::Postgres(c) => run!(c,postgres),
+            Conn::Sqlite(c) => run!(c,sqlite),
         })
     }
 
@@ -269,29 +261,31 @@ impl Conn {
 
     /// Ordered prepared columns and bounded checked rows, including empty results.
     pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
+        self.validate_params(params)?;
         let mut budget = limits::Budget::new(limits)?;
         if orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
         let sql = AssertSqlSafe(sql.to_owned());
         match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult),
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult,mysql),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult,postgres),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult,sqlite),
         }
     }
 
     /// Typed SQL grid rows using the same streaming and metadata budgets.
     pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
+        self.validate_params(params)?;
         let mut budget = limits::Budget::new(limits)?;
         if orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
         let sql = AssertSqlSafe(sql.to_owned());
         match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult),
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult,mysql),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult,postgres),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult,sqlite),
         }
     }
 }

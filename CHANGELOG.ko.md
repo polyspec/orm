@@ -1,5 +1,18 @@
 # 변경 이력
 
+SQLx 드라이버 codec으로 네이티브 Rust tool bind에 명시적 타입형 NULL·바이너리·
+bool·네이티브 실수 비트·정확한 decimal·MySQL unsigned를 추가한다. 제한된 조회와
+영향 행 실행이 bind 경로를 공유한다. 미지원 dialect 종류·잘못되거나 표현할 수
+없는 입력·인수 개수/값 상한을 prepare/실행 전에 거부하며 SQL에 값을 서식화하지
+않는다. API 누락 컴파일 Red가 Green이며 유효성/실제 경로 사례 3개와 관련
+네이티브/라이브러리/CLI 테스트 40개가 통과했다. 세 DB 소유 fixture에서 저장 값·
+지원 NULL 종류·영향 행·네이티브 제약 오류·거부된 쓰기의 원본 유지·rollback을
+확인했고 PostgreSQL NaN/무한대/음수 0·SQLite 무한대 bind도 통과했다. 나머지는
+추가 회귀 검사다. SQLite boolean 기대값은 codec 변경 대신 실제 INTEGER 저장
+측정으로 바로잡았고 dialect별 조기 성공 로그를 제거했다. 소유 테이블/파일을
+제거했다. bind는 컬럼/서버 강제 변환 방지가 아니며 잠긴 행 변경/쓰기 후 검증·
+4클라이언트 적합성은 미완료다.
+
 한정된 테이블 페이지에서 비NULL 기본키 식별·정확한 타입형 원본 셀·8 MiB 제한
 SHA-256 descriptor/값 revision을 검증하는 불변 Rust RowSnapshot을 캡처한다.
 descriptor 변경·누락/변경 행·중복 식별을 구분하고 Debug/오류에 값을 넣지 않는다.
