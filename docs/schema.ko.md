@@ -1,5 +1,31 @@
 # 스키마
 
+물리 기본·고유 키는 정확히 `id`, `name`, `tableId`, `kind`, `columns`,
+`indexId`, `deferrable`, `initiallyDeferred`, `nullsDistinct`,
+`withoutOverlaps`, `comment`, `options`를 가진다. ID와 nullable 이름은
+물리 레코드 규칙을 따른다. kind는 primary/unique이며 columns는 선언 순서로
+서로 다른 안정 컬럼 ID 1–64개를 가진다. indexId는 null(선언된 기반 인덱스
+없음)이거나 안정 인덱스 ID다. 제약 이름에서 추측하지 않는다. 지연 플래그는
+boolean 또는 미지정 null이며 initiallyDeferred true에는 deferrable true가
+필요하다. nullsDistinct는 고유 키에서 boolean/null이며 기본 키에서는 null만
+허용한다. 기본 키의 SQL NULL 동작은 고유 옵션이 아니다. withoutOverlaps는
+boolean 또는 미지정 null이며 마지막 키 컬럼의 시간 중첩 배제 여부를 보존한다.
+방언, 범위 타입, 기반 인덱스 의미는 후속 검증이 필요하며 구조 검증이 DB
+작업을 허용하지 않는다. 주석, 순서 있는 옵션, UTF-8, 정확한 필드 형태와
+전체 문자열 65536바이트 제한은 공통 레코드 규칙을 따른다. 잘못된 입력은
+값 없는 SCHEMA_INVALID로 거절하고 분리되거나 깊게 불변인 값을 반환한다.
+제약을 인덱스로 합치거나 빠진 상태를 추측하지 않는다. 참조 소유, 기반 인덱스
+일치, 테이블당 기본 키 하나 제한은 개별 레코드가 아닌 그래프에서 검증한다.
+
+공개 API는 Go `orm.PhysicalKeyFromValue`, PHP `Orm\PhysicalKey::fromValue`,
+Rust `orm_schema::physical_key::PhysicalKey::from_value`, TypeScript 패키지
+export `createPhysicalKey`다. `make physical-key-check`로 동일 사례를
+클라이언트마다 두 번 실행하고 관련 레코드 회귀를 검증한다. 디코딩된 구조
+레코드이며 SQL 파싱, 물리 임포트, DDL, 마이그레이션 실행은 아니다.
+키와 인덱스 구분, 지연 검사, 시간 구문은 공식
+[PostgreSQL CREATE TABLE](https://www.postgresql.org/docs/18/sql-createtable.html)에
+설명돼 있으며 DB별 동작은 별도의 소유 DB 사례에서 검증해야 한다.
+
 물리 인덱스 레코드는 정확히 `id`, `name`, `tableId`, `unique`, `methodSql`,
 `terms`, `include`, `predicateSql`, `nullsDistinct`, `visible`, `comment`,
 `options`를 가진다. ID와 nullable 이름은 기존 레코드 규칙을 따른다.
