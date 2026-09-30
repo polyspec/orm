@@ -1,5 +1,16 @@
 # Changelog
 
+Locate physical Markdown source blocks in four clients (T7.17.2.10.2).
+Return UTF-8 byte ranges without retaining body/line copies. Keep foreign
+fenced examples opaque; reject unknown/duplicate/unfinished blocks and
+encoding/byte/line/block excess with a single value-free line diagnostic.
+Missing scanner APIs and the reproduced list-example mistake are Green.
+`make physical-envelope-check` passes 21 shared cases, six limit/next-value
+cases and native encoding checks twice per owner. PHP peak allocation is
+71319552 bytes under its unchanged 128M limit, not RSS. Owner lint/compile,
+paired-document and diff checks pass on macOS arm64. HTML interpretation,
+joint graph/diagram validation and imports remain pending.
+
 Document physical Markdown projection requirements (T7.17.2.10.1).
 Separate exact JSON metadata from restricted diagram labels and unverified
 crow-foot multiplicity. Require stable IDs, joint contradiction checks,
