@@ -26,6 +26,17 @@ checklist-check:
 	node --test scripts/checklist/check.test.mjs
 	node scripts/checklist/check.mjs
 
+.PHONY: physical-identity-check
+physical-identity-check:
+	go test ./clients/go/orm -run '^TestPhysicalIdentityVectors$$' -count=2 -v
+	php clients/php/tests/physical_identity_test.php
+	php clients/php/tests/physical_identity_test.php
+	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_identity -- --nocapture
+	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_identity -- --nocapture
+	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	node --test clients/typescript/tests/physical-identity.mjs
+	node --test clients/typescript/tests/physical-identity.mjs
+
 test-servers:
 	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 

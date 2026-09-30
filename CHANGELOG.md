@@ -1,5 +1,15 @@
 # Changelog
 
+Preserve exact physical catalog/schema/table/column identities separately from
+logical model identifiers (T7.17.2.1). Immutable components and explicit UTF-8
+hex keys distinguish case and namespace composition without normalization.
+Reject empty/control/invalid/oversized components with value-free errors.
+Missing APIs in Go/PHP/Rust/TypeScript and accepted TypeScript sparse arrays
+are Red-to-Green. The reusable physical-identity-check passes ten common
+vectors twice in every client, plus byte/encoding/alias checks. Owner Clippy,
+TypeScript compilation, PHP syntax, checklist and documentation rules pass.
+This is not physical import, annotation parsing, DDL or DB conformance.
+
 Correct prohibited wording in the final Korean mutation-permit records after
 the documentation check failed and the prior commit continued. The unchanged
 rule is Green for all 21 bilingual pairs; paired checklist and fresh static

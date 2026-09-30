@@ -1,5 +1,14 @@
 # 변경 이력
 
+물리 catalog/schema/table/column 이름을 논리 모델 식별자와 분리해 정확히
+보존한다(T7.17.2.1). 불변 요소와 UTF-8 hex 키로 대소문자와 한정 구성을
+정규화 없이 구분하고 빈 값·제어문자·인코딩 오류·바이트 초과는 값 없는
+오류로 거절한다. Go/PHP/Rust/TypeScript API 누락과 TypeScript sparse array
+허용 Red가 Green이다. 반복 가능한 physical-identity-check가 공통 벡터 10개를
+각 클라이언트에서 두 번 실행하고 바이트·인코딩·별칭 공유도 검증했다.
+소유 Clippy·TypeScript 컴파일·PHP 문법·체크리스트·문서 규칙이 통과했다.
+물리 임포트·주석 해석·DDL·DB conformance 완료는 아니다.
+
 문서 검사 실패 후 앞선 커밋이 이어진 최종 한국어 변경 허가 기록의 금지 표현을
 수정했다. 같은 규칙이 영한 21쌍에서 Green이며 체크리스트와 새 정적 문서
 검사(42페이지·437대상·26도표)가 통과했다. 네이티브 코드와 인수 기준은

@@ -1,5 +1,22 @@
 # 스키마
 
+물리 이름은 논리 모델 식별자와 분리한다. 선택적 catalog/schema/column과 필수
+table을 정확히 보존하고 소문자화나 점으로 분리하지 않는다. 존재하는 각
+요소는 빈 값이 아닌 유효 UTF-8이며 최대 1024바이트이고 ASCII 제어문자
+(U+0000–001F 또는 U+007F)를 포함하지 않는다. 위반은 값 없는 메시지의
+SCHEMA_INVALID로 거절한다. 불변 이름 키는 `p1:` 뒤에 catalog/schema/table/
+column 순으로 점으로 구분한 네 토큰이다. 없으면 `-`, 있으면 소문자 UTF-8
+hex다. SQL 인용이나 정규화 없이 한정 요소를 구분한다. 이름을 식별하는 키이지
+이름 변경에도 유지되는 문서 ID는 아니다. 아직 물리 임포트·주석·DDL·
+마이그레이션 실행을 구현한 것은 아니다.
+
+공개 API는 Go `orm.NewPhysicalIdentity`, PHP `Orm\PhysicalIdentity`, Rust
+`orm_schema::physical::PhysicalIdentity::new`, TypeScript 패키지 루트의
+`createPhysicalIdentity`다. 요소는 분리된 값이나 불변 참조로 반환한다.
+`make physical-identity-check`는 공통 벡터 10개를 클라이언트마다 두 번
+실행하고 바이트 제한/잘못된 인코딩을 검증한다.
+
+
 사람이 관리하는 스키마 파일은 `schema/*.mmd`(Mermaid `erDiagram`)다. GitHub, IDE, 빌드 산출물이 이 파일을 그림으로 렌더링하며, `ormgen`은 이 파일을 파싱해 컬럼, 키, 관계, 인덱스, 스타일을 담은 생성 **매니페스트**(`schema.json`)를 만든다. 매니페스트는 편집하지 않는다.
 기존 데이터베이스가 있으면 `ormgen import --dsn … --out schema/service.mmd`가 다이어그램을 만든다. 외래 키는 관계선이 되고 인덱스는 `%%` 지시문이 된다.
 

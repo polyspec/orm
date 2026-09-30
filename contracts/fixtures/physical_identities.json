@@ -1,0 +1,12 @@
+[
+  {"id":"absent-qualifiers","parts":[null,null,"ID",null],"key":"p1:-.-.4944.-"},
+  {"id":"lowercase-distinct","parts":[null,null,"id",null],"key":"p1:-.-.6964.-"},
+  {"id":"dot-in-catalog","parts":["a.b",null,"C",null],"key":"p1:612e62.-.43.-"},
+  {"id":"separate-schema","parts":["a","b","C",null],"key":"p1:61.62.43.-"},
+  {"id":"unicode-quoted","parts":[null,"한","a b","`"],"key":"p1:-.ed959c.612062.60"},
+  {"id":"empty-table","parts":[null,null,"",null],"error":"SCHEMA_INVALID"},
+  {"id":"empty-schema","parts":[null,"","table",null],"error":"SCHEMA_INVALID"},
+  {"id":"nul-column","parts":[null,null,"table","private\u0000value"],"error":"SCHEMA_INVALID"},
+  {"id":"newline-table","parts":[null,null,"private\nvalue",null],"error":"SCHEMA_INVALID"},
+  {"id":"delete-control","parts":[null,null,"private\u007fvalue",null],"error":"SCHEMA_INVALID"}
+]

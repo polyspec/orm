@@ -79,6 +79,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 ## Stage 3 — Schema tools per language
 
+- [o] T7.17.2.1 Preserve qualified physical identities without logical normalization. Cause: logical identifier rules cannot represent arbitrary physical names. Evidence: missing API Reds in all four clients and a TypeScript sparse-array rejection Red are Green. The tracked physical-identity-check runs all ten shared vectors twice per Go/PHP/Rust/TypeScript client with identical exact keys/rejections, plus immutable component, invalid encoding and UTF-8 byte-limit checks. TypeScript compilation, owner Rust Clippy, PHP syntax, paired checklist, documentation rules and diff checks pass. Preserve optional catalog/schema/column, required table, exact case/UTF-8 and unambiguous name keys without normalization. This primitive does not enable physical import, annotation parsing, DDL, migrations or database-dependent conformance.
+
 - [ ] N9.2.1 Remove the existing send-savepoint borrowed-Box warning. Cause: dependency-inclusive Clippy rejects savepoint_send in orm/src/tx.rs. Criterion: reproduce lint failure, preserve Send/savepoint behavior with owner tests and pass without suppression.
 
 - [o] L1 Build `schema.json` from `.mmd` files in every language. Evidence: `make schema-cross-language-check` builds the same Mermaid source with Go, PHP, Rust, and TypeScript, compares the complete JSON manifests, and reports four equal outputs with 12 entities and schema hash `16198b563e2e3cae`.
