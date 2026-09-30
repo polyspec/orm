@@ -41,6 +41,13 @@ cases and native encoding checks twice per owner. PHP peak allocation is
 paired-document and diff checks pass on macOS arm64. HTML interpretation,
 joint graph/diagram validation and imports remain pending.
 
+Distinguish Rust Result transformations after fallible model setters
+(N2.1.1). Preserve model access after error mapping and checked extraction,
+and distinguish transformed success values from the original model.
+Reject unknown model calls and Result methods on infallible setters.
+Fourteen generation cases, one generated-model case, the strict Clippy
+checks of both parts and paired documentation checks pass.
+
 Document physical Markdown projection requirements (T7.17.2.10.1).
 Separate exact JSON metadata from restricted diagram labels and unverified
 crow-foot multiplicity. Require stable IDs, joint contradiction checks,

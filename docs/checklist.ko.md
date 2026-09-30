@@ -60,6 +60,7 @@
 - [o] N1 검증, 계획, 방언, DDL을 PHP, Rust, TypeScript로 이식하고, Go 클라이언트는 엔진 패키지를 직접 호출한다.
 - [o] N2 언어마다 생성기 하나를 제공한다: `ormgen gen --lang go`, `vendor/bin/orm-gen`, `orm-gen` npm bin, `orm-build` crate.
 - [o] N2.1 실패 가능한 styled setter 다음 Rust Result 처리를 모델 호출과 구분한다. 우선순위: 생성 모델 컨트롤러 컴파일에 필요하다. 수락 기준: 추적 expect/unwrap 소스 사례가 수정 전 실패하고 생성은 Result 메서드를 만들지 않으면서 후속 호출의 모델을 유지하며 알 수 없는 모델 메서드는 계속 실패한다. Rust 소스 분석은 클라이언트 전용이며 런타임과 다른 클라이언트는 바꾸지 않는다. 증거: 소유 Result 처리 사례는 잘못된 expect 열 메서드로 먼저 실패했고 생성 사례 10개와 집중 Clippy가 통과한다. 생성 컨트롤러의 styled setter expect 호출이 컴파일되고 설정 사례를 포함한 CLI 68개가 통과한다. 체크리스트 검사는 통과하며 기존 문서 규칙 문제는 남아 있다.
+- [o] N2.1.1 실패 가능한 Rust 모델 setter 뒤의 Result 변환을 구분한다. 우선순위: 컨트롤러 컴파일 전. 완료 기준: 추적 RED가 Result 메서드를 컬럼으로 읽는 오류를 재현하고 오류 변환과 추출 뒤 모델 호출을 유지하며 성공 값 변환과 원래 모델을 구분하고 알 수 없는 모델 호출과 실패하지 않는 setter의 Result 메서드를 거부한다. 소유 생성 사례와 생성 컨트롤러 사례가 통과해야 한다. 범위: Rust 소스 분석. 의존: N2.1. 근거: 생성 RED가 map_err와 map을 컬럼으로 처리하는 오류를 재현했고 생성 사례 14개와 생성 모델 사례 1개, 두 부분의 엄격한 Clippy와 문서 쌍 검사가 통과했다.
 - [o] N3 네 클라이언트에서 MySQL, PostgreSQL, SQLite의 `utils().schema().install()`을 구현한다.
 - [o] N4 세 데이터베이스에 연결 시간대를 적용한다: PostgreSQL 오프셋 시간대, 시각 읽기, SQLite 시계 기본값, MySQL 명칭 시간대 오류.
 - [o] N5 프로세스 내 러너로 conformance 검사기를 실행하고 벡터를 다시 기록한다. 네 출력이 일치할 때만 기대값을 기록하고 거부 시 파일을 보존하며 TypeScript의 SQLite 정수 결과를 정확히 유지한다. 세 데이터베이스 기대값 파일의 `write_cycle.price`를 고정 소수부 텍스트로 기록했다. 증거: 출력 누락·불일치 및 벡터 누락·추가 사례는 실패하고 기록·TypeScript 정수 사례는 통과한다. `make conformance-check`는 MySQL, PostgreSQL, SQLite 각각 25개 벡터 × 네 클라이언트와 클라이언트별 동일한 두 실제 실행 및 행·카운터 상태 불변을 검증하며 통과한다.

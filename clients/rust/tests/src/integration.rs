@@ -10,6 +10,9 @@ use std::path::PathBuf;
 orm::models!();
 
 #[cfg(test)]
+mod result_chains;
+
+#[cfg(test)]
 #[allow(dead_code, unused_imports, clippy::all)]
 mod nonnull_model {
     include!(concat!(env!("OUT_DIR"), "/nonnull/orm_model.rs"));
