@@ -1,5 +1,17 @@
 # Changelog
 
+Accumulate Rust tool/catalog query rows from driver streams with validated
+row and JSON-result budgets (100,000 rows / 64 MiB ceilings). Reject budget
+overflow without partial success or value exposure, and reject multiple
+statements instead of merging their result sets. Preserve checked unsigned
+decoding in MySQL prepared results; its existing overflow test exposed a
+regression during this change and is Green after type-directed decoding.
+Missing-budget API compile Red and multiple-statement runtime Red are Green.
+Nine owning query/catalog/accessor tests and all eleven CLI tests pass;
+budget/connection reuse and scalar checks execute on all three databases.
+These limits bound accumulated results, not driver packets or DB execution;
+arbitrary SQL types and read-only isolation remain separate work.
+
 Return checked Rust tool integer, optional-integer and boolean conversions
 instead of zero/false defaults. Preserve optional SQL NULL and reject
 invalid required values without exposing contents. Propagate failures

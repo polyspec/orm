@@ -125,6 +125,15 @@ of `Val::as_f64` for ordinary values.
 
 ## Build and test
 
+Rust tool/catalog queries accumulate streamed rows with validated budgets:
+100,000 rows and 64 MiB of JSON-encoded values by default. Each query accepts
+one statement; multiple result sets are not silently merged. Explicit
+`QueryLimits` may lower these limits. Exceeding either budget rejects the result
+without returning a truncated success or including values in the budget error.
+This bounds accumulated output, not database execution or driver packet memory.
+Supported tool cells remain NULL, signed integers, text and booleans; unsupported
+types fail rather than being converted. This is not a read-only SQL sandbox.
+
 ```sh
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
