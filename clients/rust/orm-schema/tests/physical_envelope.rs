@@ -31,6 +31,19 @@ fn physical_envelope() {
         }
     }
     let block = "```mermaid orm-physical-v1\n```\n";
+    let html: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_html.json")).unwrap();
+    assert_eq!(html["cases"].as_array().unwrap().len(), 29);
+    for c in html["cases"].as_array().unwrap() {
+        let before = c["prefix"].as_str().unwrap_or("");
+        let body = c["body"].as_str().unwrap_or("x\n");
+        let after = c["suffix"].as_str().unwrap_or("");
+        let text = format!("{before}```mermaid orm-physical-v1\n{body}```\n{after}");
+        if let Some(r) = check(c["id"].as_str().unwrap(), text.as_bytes(), c["reject"] == true, c["line"].as_u64().unwrap_or(0) as usize) {
+            assert_eq!(&text[..r.start], before);
+            assert_eq!(&text[r.body..r.close], body);
+            assert_eq!(&text[r.end..], after);
+        }
+    }
     for kind in ["bytes", "lines", "blocks"] {
         for extra in 0..=1 {
             let n = f["limits"][kind].as_u64().unwrap() as usize + extra;
@@ -41,6 +54,14 @@ fn physical_envelope() {
             };
             check(&format!("{kind}-{extra}"), text.as_bytes(), extra == 1, 0);
         }
+    }
+    for tag in ["comment", "raw"] {
+        let (open, close) = if tag == "comment" { ("<!--\n", "-->\n") } else { ("<script>\n", "</style>\n") };
+        let before = format!("{open}{}{close}", "x\n".repeat(html["stressLines"].as_u64().unwrap() as usize));
+        let text = format!("{before}```mermaid orm-physical-v1\nx\n```\n");
+        let r = check(&format!("html-stress-{tag}"), text.as_bytes(), false, 0).unwrap();
+        assert_eq!(r.start, before.len());
+        assert_eq!(r.end, text.len());
     }
     check("invalid-utf8", &[255], true, 0);
 }
