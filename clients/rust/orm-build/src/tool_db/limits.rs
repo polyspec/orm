@@ -1,4 +1,3 @@
-use super::Val;
 use std::io::Write;
 
 /// Bounds the serialized array of rows, including array separators.
@@ -34,7 +33,7 @@ impl Budget {
             Ok(())
         }
     }
-    pub(super) fn add_row(&mut self, row: &[Val], count: usize) -> Result<(), sqlx::Error> {
+    pub(super) fn add_row<T: serde::Serialize>(&mut self, row: &[T], count: usize) -> Result<(), sqlx::Error> {
         let mut writer = Counter { bytes: self.bytes + usize::from(count > 0), limit: self.limits.max_bytes };
         serde_json::to_writer(&mut writer, row).map_err(|_| error())?;
         self.bytes = writer.bytes;

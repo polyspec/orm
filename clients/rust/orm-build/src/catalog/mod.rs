@@ -44,15 +44,24 @@ impl CatalogConnection {
     }
     /// Validates read query structure and enforces a fresh database read-only scope.
     pub async fn read_only_query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {
+        let mut connection=self.read_only_connection(sql).await?;
+        let result=connection.query_result_bounded(sql,params,limits).await.map_err(|error|error.to_string());
+        finish_read_only(&mut connection,result).await
+    }
+    /// Read-only typed grid values preserve binary cells without text coercion.
+    pub async fn read_only_grid_query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::GridQueryResult, String> {
+        let mut connection=self.read_only_connection(sql).await?;
+        let result=connection.grid_query_bounded(sql,params,limits).await.map_err(|error|error.to_string());
+        finish_read_only(&mut connection,result).await
+    }
+    async fn read_only_connection(&self, sql: &str) -> Result<Conn,String> {
         read_only::validate(sql,&self.dialect)?;
         let mut connection=Conn::acquire(&self.pool).await.map_err(|error|error.to_string())?;
         connection.discard_on_drop();
         if self.dialect=="sqlite" { connection.exec("PRAGMA query_only=ON",&[]).await.map_err(|error|error.to_string())?; }
         let begin=match self.dialect.as_str(){"mysql"=>"START TRANSACTION READ ONLY","postgres"=>"BEGIN READ ONLY",_=>"BEGIN"};
         connection.exec(begin,&[]).await.map_err(|error|error.to_string())?;
-        let result=connection.query_result_bounded(sql,params,limits).await.map_err(|error|error.to_string());
-        let cleanup=connection.exec("ROLLBACK",&[]).await.map_err(|error|error.to_string());
-        match (result,cleanup) { (result,Ok(_))=>result,(Ok(_),Err(error))=>Err(format!("QUERY_READ_ONLY_CLEANUP: {error}")),(Err(error),Err(cleanup))=>Err(format!("{error}; QUERY_READ_ONLY_CLEANUP: {cleanup}")) }
+        Ok(connection)
     }
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
@@ -63,4 +72,8 @@ impl CatalogConnection {
             Pool::Sqlite(pool) => pool.close().await,
         }
     }
+}
+async fn finish_read_only<T>(connection:&mut Conn,result:Result<T,String>)->Result<T,String> {
+    let cleanup=connection.exec("ROLLBACK",&[]).await.map_err(|error|error.to_string());
+    match (result,cleanup) { (result,Ok(_))=>result,(Ok(_),Err(error))=>Err(format!("QUERY_READ_ONLY_CLEANUP: {error}")),(Err(error),Err(cleanup))=>Err(format!("{error}; QUERY_READ_ONLY_CLEANUP: {cleanup}")) }
 }
