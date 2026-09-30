@@ -1,5 +1,12 @@
 # Changelog
 
+State the scope of the physical source scanner (T7.17.2.10.3.2).
+docs/schema.md (+ko) states that the scanner does not classify arbitrary
+HTML tags or full Markdown containers, and that the document reader
+establishes its own source ownership and validates graph metadata with
+the diagram before imports are enabled. Paired records and diff checks
+pass; runtime code is unchanged.
+
 Shield named block HTML until a blank line or EOF (T7.17.2.10.3.1.2).
 Keep source opaque after a closing tag; nested HTML and fence markers do
 not alter its ending rule. Match only bounded ASCII block-tag names and
