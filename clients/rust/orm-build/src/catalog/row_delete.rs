@@ -1,14 +1,14 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
-    metadata,
-    mutation::{bind, cancelled, lookup, mysql_safety, predicate, qualified, Publisher},
-    mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
+    CatalogConnection, MutationPhase, RowSnapshot, metadata,
+    mutation::{CommitPermit, Publisher, bind, cancelled, lookup, mysql_safety, predicate, qualified},
+    mutation_finish,
 };
 use crate::tool_db::{self, Conn};
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{Arc, atomic::AtomicBool};
 
 impl CatalogConnection {
-    pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher) -> Result<u64, String> {
+    pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher, permit: CommitPermit) -> Result<u64, String> {
         cancelled(&cancellation)?;
         let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
         tool_db::validate_params(&keys, &self.dialect).map_err(|e| e.to_string())?;
@@ -57,6 +57,6 @@ impl CatalogConnection {
             Ok(affected)
         }
         .await;
-        mutation_finish::finish(connection, result, publish).await
+        mutation_finish::finish(connection, result, publish, permit).await
     }
 }

@@ -3,8 +3,8 @@ use orm_build::{
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 #[path = "row_insert_identity/expression.rs"]
@@ -52,7 +52,8 @@ async fn check() {
         let phases = Arc::new(std::sync::Mutex::new(Vec::new()));
         let captured = phases.clone();
         let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| captured.lock().unwrap().push(phase));
-        let result = catalog.insert_row(&descriptor, &[("n".into(), P::I(10))], Arc::new(AtomicBool::new(false)), publish).await;
+        let result =
+            catalog.insert_row(&descriptor, &[("n".into(), P::I(10))], Arc::new(AtomicBool::new(false)), publish, std::sync::Arc::new(|| Ok(()))).await;
         match result {
             Ok(result)
                 if result.rows.len() == 1
@@ -87,8 +88,15 @@ async fn check() {
         .expect("owned default composite-key fixture");
         let default_table = TableRef { namespace: table.namespace.clone(), name: default_name.clone() };
         let metadata = catalog.describe_table(&default_table).await.unwrap();
-        let result =
-            catalog.insert_row(&metadata, &[("tenant".into(), P::I(2)), ("n".into(), P::I(50))], Arc::new(AtomicBool::new(false)), Arc::new(|_| {})).await;
+        let result = catalog
+            .insert_row(
+                &metadata,
+                &[("tenant".into(), P::I(2)), ("n".into(), P::I(50))],
+                Arc::new(AtomicBool::new(false)),
+                Arc::new(|_| {}),
+                std::sync::Arc::new(|| Ok(())),
+            )
+            .await;
         if !matches!(result, Ok(ref value) if value.rows == vec![vec![GridCell::Integer(2),GridCell::Text("generated".into()),GridCell::Integer(50)]]) {
             failures.push(format!("{dialect}: composite default key mismatch"));
         }
@@ -113,8 +121,8 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     let left = [("n".into(), P::I(20))];
     let right = [("n".into(), P::I(30))];
     let (left, right) = tokio::join!(
-        catalog.insert_row(&descriptor, &left, Arc::new(AtomicBool::new(false)), publish.clone()),
-        catalog.insert_row(&descriptor, &right, Arc::new(AtomicBool::new(false)), publish.clone())
+        catalog.insert_row(&descriptor, &left, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))),
+        catalog.insert_row(&descriptor, &right, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
     );
     let (left, right) = (left?, right?);
     if left.rows.len() != 1
@@ -125,15 +133,23 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     {
         return Err("concurrent inserts returned unrelated rows".into());
     }
-    let default = catalog.insert_row(&descriptor, &[], Arc::new(AtomicBool::new(false)), publish.clone()).await?;
+    let default = catalog.insert_row(&descriptor, &[], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await?;
     if default.rows.len() != 1 || default.rows[0][1..] != [GridCell::Integer(7), GridCell::Integer(8)] {
         return Err("default-only insert mismatch".into());
     }
     let before = catalog.table_page(table, 10, 0).await?;
-    if catalog.insert_row(&descriptor, &[("n".into(), P::I(20))], Arc::new(AtomicBool::new(false)), publish.clone()).await.is_ok() {
+    if catalog
+        .insert_row(&descriptor, &[("n".into(), P::I(20))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
+        .await
+        .is_ok()
+    {
         return Err("unique constraint was ignored".into());
     }
-    if catalog.insert_row(&descriptor, &[("n".into(), P::S("40".into()))], Arc::new(AtomicBool::new(false)), publish.clone()).await.is_ok() {
+    if catalog
+        .insert_row(&descriptor, &[("n".into(), P::S("40".into()))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
+        .await
+        .is_ok()
+    {
         return Err("coercion was accepted".into());
     }
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -146,7 +162,7 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
             flag.store(true, Ordering::SeqCst);
         }
     });
-    let error = catalog.insert_row(&descriptor, &[("n".into(), P::I(40))], cancelled, cancel).await.unwrap_err();
+    let error = catalog.insert_row(&descriptor, &[("n".into(), P::I(40))], cancelled, cancel, std::sync::Arc::new(|| Ok(()))).await.unwrap_err();
     if !error.starts_with("JOB_CANCELLED") || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
         return Err("generated insert cancellation did not confirm rollback".into());
     }
@@ -166,7 +182,7 @@ async fn schema_lock(catalog: &CatalogConnection, seed: &mut tool_db::Conn, meta
         }
     });
     let values = [("n".into(), P::I(99))];
-    let mut pending = Box::pin(catalog.insert_row(metadata, &values, Arc::new(AtomicBool::new(false)), observe));
+    let mut pending = Box::pin(catalog.insert_row(metadata, &values, Arc::new(AtomicBool::new(false)), observe, std::sync::Arc::new(|| Ok(()))));
     tokio::select! {
         result = &mut pending => panic!("insert finished before lock probe: {}", result.is_ok()),
         ready = receiver => ready.unwrap(),

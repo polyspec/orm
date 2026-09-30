@@ -4,8 +4,8 @@ use orm_build::{
     tool_db::{self, Conn, GridCell, P},
 };
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, table: &TableRef, name: &str, dialect: &str) -> Vec<String> {
@@ -28,7 +28,7 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     let table = TableRef { namespace: table.namespace.clone(), name: expression_name.clone() };
     let metadata = catalog.describe_table(&table).await.unwrap();
     let values = [("n".into(), P::I(1)), ("label".into(), P::Null(tool_db::ParamType::Text))];
-    let result = catalog.insert_row(&metadata, &values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {})).await;
+    let result = catalog.insert_row(&metadata, &values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(()))).await;
     let stored = catalog.table_page(&table, 2, 0).await.unwrap();
     if !metadata.columns[0].expression_default
         || !matches!(result, Ok(ref value) if value.rows.len()==1
@@ -37,7 +37,7 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     {
         failures.push(format!("{dialect}: unambiguous UUID expression identity must return the exact committed owner row"));
     }
-    let repeated = catalog.insert_row(&metadata, &values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {})).await;
+    let repeated = catalog.insert_row(&metadata, &values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(()))).await;
     if !matches!(repeated,Err(ref error) if if dialect=="mysql" {error.starts_with("ROW_IDENTITY_AMBIGUOUS")} else {error.to_ascii_lowercase().contains("unique")})
     {
         failures.push(format!("{dialect}: existing expression locator must be rejected before writes"));
@@ -52,11 +52,15 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
             cancel.store(true, Ordering::SeqCst);
         }
     });
-    let cancelled = catalog.insert_row(&metadata, &[("n".into(), P::I(2))], flag, observe).await;
+    let cancelled = catalog.insert_row(&metadata, &[("n".into(), P::I(2))], flag, observe, std::sync::Arc::new(|| Ok(()))).await;
     if !matches!(cancelled,Err(ref error) if error.starts_with("JOB_CANCELLED")) || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
         failures.push(format!("{dialect}: expression identity cancellation must confirm rollback"));
     }
-    if catalog.insert_row(&metadata, &[("n".into(), P::S("3".into()))], Arc::new(AtomicBool::new(false)), Arc::new(|_| {})).await.is_ok() {
+    if catalog
+        .insert_row(&metadata, &[("n".into(), P::S("3".into()))], Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(())))
+        .await
+        .is_ok()
+    {
         failures.push(format!("{dialect}: expression locator must reject coerced stored values"));
     }
     if catalog.table_page(&table, 5, 0).await.unwrap().result.rows != stored.result.rows {
@@ -68,8 +72,8 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     let left = [("n".into(), P::I(5))];
     let right = [("n".into(), P::I(20))];
     let (left, right) = tokio::join!(
-        catalog.insert_row(&metadata, &left, Arc::new(AtomicBool::new(false)), Arc::new(|_| {})),
-        catalog.insert_row(&metadata, &right, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}))
+        catalog.insert_row(&metadata, &left, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(()))),
+        catalog.insert_row(&metadata, &right, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(())))
     );
     let committed = catalog.table_page(&table, 10, 0).await.unwrap();
     match (left, right) {

@@ -1,9 +1,9 @@
 //! Native optimistic updates. No durable operation identity or wire authority.
-use super::{metadata, page::quote, CatalogConnection, RowSnapshot, TableMetadata};
-use crate::tool_db::{self, Conn, GridCell, GridQueryResult, QueryLimits, P};
+use super::{CatalogConnection, RowSnapshot, TableMetadata, metadata, page::quote};
+use crate::tool_db::{self, Conn, GridCell, GridQueryResult, P, QueryLimits};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 #[cfg(test)]
@@ -21,12 +21,9 @@ pub enum MutationPhase {
     Indeterminate,
 }
 pub(super) type Publisher = Arc<dyn Fn(MutationPhase) + Send + Sync>;
+pub(super) type CommitPermit = Arc<dyn Fn() -> Result<(), String> + Send + Sync>;
 pub(super) fn cancelled(flag: &AtomicBool) -> Result<(), String> {
-    if flag.load(Ordering::SeqCst) {
-        Err("JOB_CANCELLED: mutation cancelled before commit".into())
-    } else {
-        Ok(())
-    }
+    if flag.load(Ordering::SeqCst) { Err("JOB_CANCELLED: mutation cancelled before commit".into()) } else { Ok(()) }
 }
 pub(super) fn cell(value: &P) -> GridCell {
     match value {
@@ -55,11 +52,7 @@ pub(super) fn bind(value: &GridCell) -> Result<P, String> {
     })
 }
 pub(super) fn placeholder(index: usize, dialect: &str) -> String {
-    if dialect == "postgres" {
-        format!("${index}")
-    } else {
-        "?".into()
-    }
+    if dialect == "postgres" { format!("${index}") } else { "?".into() }
 }
 pub(super) fn qualified(metadata: &TableMetadata, dialect: &str) -> Result<String, String> {
     Ok(format!("{}.{}", quote(&metadata.table.namespace, dialect)?, quote(&metadata.table.name, dialect)?))
@@ -142,6 +135,7 @@ impl CatalogConnection {
         changes: &[(String, P)],
         cancellation: Arc<AtomicBool>,
         publish: Publisher,
+        permit: CommitPermit,
     ) -> Result<GridQueryResult, String> {
         cancelled(&cancellation)?;
         if changes.is_empty() || changes.len() > original.metadata().columns.len() {
@@ -208,6 +202,6 @@ impl CatalogConnection {
             Ok(after)
         }
         .await;
-        super::mutation_finish::finish(connection, result, publish).await
+        super::mutation_finish::finish(connection, result, publish, permit).await
     }
 }

@@ -395,6 +395,13 @@ untouched ordinary columns; generated columns may be recomputed. A coercion or
 unrequested ordinary-column change requires rollback, never success. Pure
 verification alone is not transactional execution or mutation authorization.
 
+Native insert, update and delete require a fallible synchronous pre-commit permit.
+The permit runs after transactional write verification, before publishing
+`CommitStarted` or spawning the commit owner. A rejected permit rolls back;
+it cannot silently become commit success. Successful permission transfers
+commit ownership without an intervening cancellation await. The phase observer
+remains observational; durable authorization and recovery belong to the caller.
+
 The native update executor accepts an original `RowSnapshot`, explicit
 typed `P` assignments, an atomic cancellation flag and a required phase event
 subscriber. Use a fresh discard-on-drop transaction, original-key row locking

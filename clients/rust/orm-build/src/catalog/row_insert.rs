@@ -1,13 +1,13 @@
 //! Typed insertion with database-owned generated identities.
 use super::{
-    metadata,
-    mutation::{cancelled, cell, lookup, mysql_safety, placeholder, qualified, Publisher},
+    CatalogConnection, MutationPhase, TableMetadata, metadata,
+    mutation::{CommitPermit, Publisher, cancelled, cell, lookup, mysql_safety, placeholder, qualified},
     mutation_finish,
     page::quote,
-    row_snapshot, CatalogConnection, MutationPhase, TableMetadata,
+    row_snapshot,
 };
-use crate::tool_db::{Conn, GridQueryResult, QueryLimits, P};
-use std::sync::{atomic::AtomicBool, Arc};
+use crate::tool_db::{Conn, GridQueryResult, P, QueryLimits};
+use std::sync::{Arc, atomic::AtomicBool};
 
 impl CatalogConnection {
     /// Insert with explicit or database-returned primary-key values, never guessed.
@@ -17,6 +17,7 @@ impl CatalogConnection {
         values: &[(String, P)],
         cancellation: Arc<AtomicBool>,
         publish: Publisher,
+        permit: CommitPermit,
     ) -> Result<GridQueryResult, String> {
         cancelled(&cancellation)?;
         let keys = super::insert_values::validate(declared, values, &self.dialect)?;
@@ -131,6 +132,6 @@ impl CatalogConnection {
             Ok(after)
         }
         .await;
-        mutation_finish::finish(connection, result, publish).await
+        mutation_finish::finish(connection, result, publish, permit).await
     }
 }
