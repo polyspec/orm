@@ -1,5 +1,15 @@
 # Changelog
 
+Preserve immutable physical column records in all four clients (T7.17.2.2).
+Keep native SQL, absent/NULL/literal/expression defaults, identity/computed
+generation, exact names/comments and ordered options without coercion.
+Reject unknown fields, malformed types, invalid UTF-8 and bounded payload excess.
+Missing APIs and PHP referenced-input alias Reds are Green; TypeScript compile
+narrowing is corrected. The tracked physical-column-check passes 25 common
+vectors twice per client plus byte/count/encoding/alias guards. TypeScript
+compilation, owner Rust Clippy, PHP syntax and paired documentation checks pass.
+Structural acceptance is not SQL validation, physical import or execution.
+
 Preserve exact physical catalog/schema/table/column identities separately from
 logical model identifiers (T7.17.2.1). Immutable components and explicit UTF-8
 hex keys distinguish case and namespace composition without normalization.

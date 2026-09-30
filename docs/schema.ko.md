@@ -16,6 +16,30 @@ hex다. SQL 인용이나 정규화 없이 한정 요소를 구분한다. 이름�
 `make physical-identity-check`는 공통 벡터 10개를 클라이언트마다 두 번
 실행하고 바이트 제한/잘못된 인코딩을 검증한다.
 
+물리 컬럼은 정확히 `id`, `name`, `typeSql`, `nullable`, `default`, `generation`,
+`comment`, `options`를 가진다. ID는 `[A-Za-z0-9_-]{1,128}`, 이름은 물리 이름
+요소 규칙을 따른다. 빈 값이 아닌 typeSql은 UTF-8 4096바이트, 코멘트는
+8192바이트까지 원문을 보존한다. nullable은 boolean이다. 기본값은
+`{kind:"absent"}`, `{kind:"null"}` 또는 빈 값이 아닌 16384바이트 이하 `sql`을
+가진 literal/expression이다. 생성은 `{kind:"none"}`, `sql`을 가진 identity,
+`sql`과 storage(stored/virtual/unspecified)를 가진 computed다. 생성 SQL도
+16384바이트 제한이다. 순서 있는 옵션은 정확한 `{name,value}` 문자열 객체
+최대 64개다. name은 빈 값이 아닌 128바이트 이하, value는 4096바이트 이하다.
+모든 문자열은 NUL 없는 유효 UTF-8이며 값 문자열 총합은 65536바이트까지다.
+알 수 없는 필드나 잘못된 타입은 값 없는 SCHEMA_INVALID로 거절한다. 결과는
+분리된 값이나 깊은 불변 객체로 제공한다. API는 JSON 텍스트가 아닌 해석된
+객체를 받으며 엄격한 텍스트 해석은 입력 생산자의 책임이다. 분류와 SQL
+의미는 방언별 임포터/planner가 소유한다. 구조가 맞다고 DDL을 허용하거나
+표현식·리터럴·타입의 실행 가능성을 증명하지 않는다.
+
+컬럼 API는 Go `orm.PhysicalColumnFromValue`, PHP
+`Orm\PhysicalColumn::fromValue`, Rust
+`orm_schema::physical_column::PhysicalColumn::from_value`, TypeScript 패키지
+export `createPhysicalColumn`이다. `make physical-column-check`가 공통 벡터
+25개를 각 클라이언트에서 두 번 실행하고 전체/필드/옵션 제한·인코딩·입출력
+참조 분리도 검증한다. `PHYSICAL_NODE`로 TypeScript 도구 런타임을 명시한다.
+
+
 
 사람이 관리하는 스키마 파일은 `schema/*.mmd`(Mermaid `erDiagram`)다. GitHub, IDE, 빌드 산출물이 이 파일을 그림으로 렌더링하며, `ormgen`은 이 파일을 파싱해 컬럼, 키, 관계, 인덱스, 스타일을 담은 생성 **매니페스트**(`schema.json`)를 만든다. 매니페스트는 편집하지 않는다.
 기존 데이터베이스가 있으면 `ormgen import --dsn … --out schema/service.mmd`가 다이어그램을 만든다. 외래 키는 관계선이 되고 인덱스는 `%%` 지시문이 된다.
