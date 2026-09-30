@@ -1,5 +1,9 @@
 # Changelog
 
+Recognize Rust Result handling immediately after styled setters without
+generating column methods for `expect` or `unwrap`. Preserve subsequent
+model-call validation.
+
 Expose qualified Rust table descriptors with bound catalog names, native
 column types, generated flags and constraint-ordered primary keys. Distinguish
 SQLite nullable legacy keys, DESC keys, INTEGER rowid aliases and WITHOUT

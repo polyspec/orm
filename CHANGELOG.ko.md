@@ -1,5 +1,8 @@
 # 변경 이력
 
+styled setter 바로 다음 Rust Result 처리를 구분하고 `expect`나 `unwrap`의
+열 메서드를 생성하지 않는다. 후속 모델 호출 검증을 유지한다.
+
 바인딩한 카탈로그 이름·네이티브 타입·생성 플래그·제약 선언 순서의 기본키를
 가진 한정된 Rust 테이블 descriptor를 노출한다. 신뢰할 행 식별을 판정하기 전에
 SQLite nullable 레거시 키·DESC 키·INTEGER rowid 별칭·WITHOUT ROWID 키를

@@ -160,3 +160,6 @@ ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ..
 The Rust conformance output fails when a bind cannot be represented without loss, a requested
 selected field or relation is absent, or a derived integer is invalid or out of range. It never
 substitutes null, zero, replacement text, or an empty point for those errors.
+
+The Rust source scanner recognizes `expect` and `unwrap` immediately after a styled setter
+as Result handling. It retains the model for following calls and rejects unknown model methods.
