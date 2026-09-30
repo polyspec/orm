@@ -349,6 +349,12 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
     fn visit_expr_method_call(&mut self, m: &'ast syn::ExprMethodCall) {
         let name = m.method.unraw().to_string();
         self.visit_expr(&m.receiver);
+        if matches!(name.as_str(), "expect" | "unwrap") && matches!(&*m.receiver, Expr::MethodCall(setter) if setter.method.to_string().starts_with("set_")) {
+            for argument in &m.args {
+                self.visit_expr(argument);
+            }
+            return;
+        }
         let call = Call {
             name: name.clone(),
             args: m.args.iter().cloned().collect(),

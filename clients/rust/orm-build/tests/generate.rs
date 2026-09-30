@@ -117,3 +117,26 @@ fn rejects_edited_schema() {
     let _ = std::fs::remove_dir_all(&dir);
     assert!(err.contains("edited by hand"), "{err}");
 }
+
+#[test]
+fn styled_setter_result_handling_preserves_model_calls() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    for handler in ["expect(\"assigned config\")", "unwrap()"] {
+        let source = format!("fn main() {{ let row = Battle::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
+        let text = generate_with_schema(root.clone(), &source).expect("Result handling must not be a column call");
+        assert!(text.contains("pub fn get_jsons_tags"));
+        assert!(!text.contains("pub fn expect"));
+        assert!(!text.contains("pub fn unwrap"));
+    }
+}
+
+#[test]
+fn unknown_model_call_after_setter_result_handling_still_fails() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let error = generate_with_schema(
+        root,
+        "fn main() { let _ = Battle::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).expect(\"config\").missing_method(); }",
+    )
+    .expect_err("unknown model call must fail");
+    assert!(error.contains("missing_method"), "{error}");
+}
