@@ -43,6 +43,8 @@ test('physical graph retains 2000 tables 60000 columns and 10000 connected FKs',
  assert.equal(graph.tables.length,count);assert.equal(graph.tables.reduce((sum,t)=>sum+t.columns.length,0),60000);assert.equal(graph.foreignKeys.length,fkCount);
  for(let i=0;i<fkCount;i++){assert.equal(graph.foreignKeys[i].id,`fk-${i}`);assert.equal(graph.foreignKeys[i].target.columns[0],foreignKeys[i].target.columns[0]);}
  tables[0].columns[0].name='changed';assert.equal(graph.tables[0].columns[0].name,'Column.0');
+ const jsonStarted=performance.now(),text=api.emitPhysicalGraphJSON(graph),parsed=api.parsePhysicalGraphJSON(text);assert.deepEqual(parsed,graph);assert.equal(api.emitPhysicalGraphJSON(parsed),text);
+ console.log(JSON.stringify({event:'physical-json-retention',bytes:new TextEncoder().encode(text).length,elapsedMs:performance.now()-jsonStarted}));
  console.log(JSON.stringify({event:'physical-graph-retention',tables:count,columns:60000,foreignKeys:fkCount,indices:2000,keys:2000,checks:2000,generateMs:generated-started,validateMs:validated-generated,elapsedMs:performance.now()-started}));
 });
 test('physical graph shared count and byte limits',{timeout:15000},()=>{

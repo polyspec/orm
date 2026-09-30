@@ -16,6 +16,7 @@ pub mod physical_foreign_key;
 pub mod physical_record;
 pub mod physical_graph;
 mod physical_graph_records;
+mod physical_json;
 pub mod schema;
 pub mod sql;
 pub mod triggers;

@@ -6,6 +6,8 @@ namespace Orm;
 final readonly class PhysicalGraph
 {
     private function __construct(private array $snapshot){}
+    public static function fromJson(string $text):self{return self::fromValue(PhysicalJson::decode($text));}
+    public function toJson():string{return PhysicalJson::encode($this->snapshot);}
     private static function at(string $path,callable $run):mixed
     {
         try{return $run();}catch(\InvalidArgumentException $error){if($error instanceof PhysicalGraphError)throw $error;if($error->getMessage()!=='SCHEMA_INVALID')throw $error;throw new PhysicalGraphError($path);}
