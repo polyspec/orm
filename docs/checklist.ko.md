@@ -78,6 +78,8 @@
 
 ## 3단계 — 언어별 스키마 도구
 
+- [ ] N9.2.1 Send savepoint의 기존 borrowed-Box 경고를 제거한다. 원인: 의존성을 포함한 Clippy가 orm/src/tx.rs의 savepoint_send에서 실패한다. 기준: lint 실패를 재현하고 소유 테스트로 Send/savepoint 동작을 보존하며 경고 억제 없이 통과한다.
+
 - [o] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다. 근거: `make schema-cross-language-check`가 같은 Mermaid 원본을 Go·PHP·Rust·TypeScript로 빌드하고 전체 JSON 매니페스트를 비교해 12개 엔티티와 schema hash `16198b563e2e3cae`가 네 출력에서 같음을 보고했다.
 - [o] L2 모든 언어에서 마이그레이션과 import 도구를 제공한다. 증거: Go SQLite 가져오기 테스트가 `DECIMALINT(13,4)`와 `DECIMALINT(16,0)`을 논리 decimal 타입으로 정규화하고 manifest를 빌드한다. PHP schema 도구가 SQLite·MySQL·PostgreSQL에서 마이그레이션과 가져오기를 통과한다. Rust CLI 가져오기와 TypeScript SQLite 가져오기 테스트가 decimal 정밀도와 scale을 보존한다. 네 SQLite 가져오기 경로가 같은 논리 매핑을 사용하며 입력을 조용히 버리지 않는다.
 
@@ -117,7 +119,9 @@
   - [o] T7.17.1.12 네이티브 Rust 타입형 쓰기 bind를 텍스트/정수 이상으로 확장했다. 근거: 타입형 값/NULL API 누락 컴파일 Red가 Green이다. 새 소유 유효성/실제 경로 사례 3개와 라이브러리/네이티브/CLI 테스트 40개가 통과했으며 실제 세 DB 타입형 조회·저장 왕복·지원 NULL·영향 행·거부 복구·거부된 쓰기의 원본 유지·제약 오류·rollback을 포함한다. 추가 경로/타입/상한 검사는 회귀 검사다. SQLite BOOLEAN 기대값은 실제 INTEGER 저장으로 바로잡았고 완료 로그를 조기 성공으로 표시하지 않는다. 미지원 종류/비유한 사례/잘못된 decimal/인수 초과는 prepare/실행 전에 거부한다. 드라이버별 bind 모듈이 조회/실행을 공유하며 SQL 값 서식화는 없다. 테스트 소유 테이블/파일을 제거했으며 잠긴 낙관적 변경·wire/UI·4클라이언트 적합성은 미완료다.
   - [o] T7.17.1.13 소유 트랜잭션에서 호출자가 승인한 네이티브 Rust update/delete·명시적 키 삽입을 실행한다. 원인: 기준/bind만으로 현재 행을 잠그거나 비교하지 못했다. 근거: API/검증 누락 컴파일 Red와 실제 INTEGER 키/commit 거부 Red가 Green이며 macOS의 실제 세 DB를 포함한 소유 라이브러리/기준/페이지/bind/변경 테스트 18개가 통과했다. 원본 잠금·descriptor/값 충돌·인용 복합키·키 변경·생성/default/NULL·영향 행·FK/unique 보존·강제 변환 rollback·취소/중단 정리·대기 중단 후 commit 소유를 검증했다. PostgreSQL 제약 거부는 rollback 확인과 원래 오류를 보존하고 소유 연결 종료는 재시도 없는 Indeterminate로 구분한다. MySQL은 InnoDB·확인된 직접 트리거 가시성·트리거가 없고 partial revoke가 비활성화됐음을 요구한다. 테스트 소유 자원을 제거했다. 추가 수명주기/default/상한 사례는 Red가 아닌 회귀 검사다. 자동 식별자(T7.17.1.13.2)·사이드카 영속 권한/복구·wire/UI·4클라이언트 적합성·다른 플랫폼은 미완료다.
     - [o] T7.17.1.13.1 PostgreSQL bind 준비와 commit 오류 분류를 수정했다. 실제 INTEGER 키 22P03 및 명시적 지연 제약 거부 Red가 Green이다. 그리드/조회 메타데이터를 선언 codec 타입으로 준비하고 원래 commit 오류를 보존하며 PostgreSQL 제약/트랜잭션 거부의 rollback을 확인하고 소유 연결 종료와 구분한다. 호출자의 대기 중단 후 commit도 관측된다. 소유 테스트 18개와 부모 작업 단위 커밋에 포함한다.
-    - [ ] T7.17.1.13.2 권위 있는 메타데이터와 반환 식별자로 자동/default 기본키 삽입을 지원한다. 원인: 현재 메타데이터에 identity/default 반환 전략이 없어 명시적 키를 요구한다. 기준: 실제 MySQL/PostgreSQL/SQLite 자동/default 키·생성 컬럼·동시 삽입·취소/제약/rollback을 검증하며 키를 추정하지 않는다. 전체 데이터 편집에는 이 기능과 사이드카 영속 작업 식별/권한이 필요하다.
+    - [~] T7.17.1.13.2 정확한 식별자로 자동/default 기본키 삽입을 지원한다. 자동/고정 기본값 키는 아래에서 검증했고 MySQL 표현식 기본값 식별자는 미해결이다. 전체 삽입과 사이드카 영속 권한/wire/UI 요구를 유지한다.
+      - [o] T7.17.1.13.2.1 생성 메타데이터와 제한된 서버 반환으로 자동/고정 기본값 키를 지원한다. 자동 키·MySQL 고정 기본값 Red가 Green이며 실제 세 DB 동시성·default-only·제약/강제 변환 거부·취소 rollback을 포함한 소유 테스트 21개가 통과했다. 소유 Clippy --no-deps가 통과했다. 테스트 자원을 제거했으며 다른 플랫폼/4클라이언트/UI 완료는 주장하지 않는다.
+      - [ ] T7.17.1.13.2.2 키 추정·재평가·사용자 스키마/트리거 변경 없이 생략한 MySQL 표현식 기본값 식별자를 반환한다. 원인: statement 응답은 AUTO_INCREMENT를 반환하고 DEFAULT(column)은 고정 기본값만 지원한다. UUID 기본값 삽입은 현재 쓰기 전에 거부한다. 기준: 정확한 경로나 물리적 제한을 입증하며 거부를 완료로 취급하지 않는다.
 
 ## 문서 작업
 

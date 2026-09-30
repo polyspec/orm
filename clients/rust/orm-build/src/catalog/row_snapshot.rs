@@ -33,8 +33,9 @@ pub(super) fn descriptor(value: &TableMetadata) -> Result<Vec<usize>, String> {
     let mut bytes = 0usize;
     for column in &value.columns {
         metadata::validate_name(&column.name).map_err(|_| invalid())?;
-        bytes = bytes.checked_add(column.name.len()).and_then(|n| n.checked_add(column.native_type.len())).filter(|n| *n <= 65536).ok_or_else(invalid)?;
-        if column.native_type.contains('\0') || !names.insert(column.name.as_str()) {
+        bytes = bytes.checked_add(column.name.len()).and_then(|n| n.checked_add(column.native_type.len()))
+            .and_then(|n| n.checked_add(column.default_expression.as_ref().map_or(0, String::len))).filter(|n| *n <= 65536).ok_or_else(invalid)?;
+        if column.native_type.contains('\0') || column.default_expression.as_ref().is_some_and(|value| value.contains('\0')) || !names.insert(column.name.as_str()) {
             return Err(invalid());
         }
     }
