@@ -1,5 +1,21 @@
 # Changelog
 
+Preserve immutable physical index records in four clients (T7.17.2.6).
+Retain ordered column/expression terms, repeated columns, prefixes, sort
+and null ordering, raw collation/operator-class text, included columns,
+partial predicates, uniqueness, visibility, comments and ordered options.
+Keep unspecified values distinct; do not coerce SQL or merge indices with
+primary/unique constraints. Reject malformed shapes, encodings and bounds
+without exposing input values. Four missing-API Reds are Green.
+physical-index-check executes 46 shared vectors and 20 shared limit cases
+twice per client, plus alias/sparse/encoding/native-number checks and the
+existing CHECK/column regressions. Rust 1.98.1 strict owning Clippy and
+scoped formatting, Node 26.10.0 TypeScript compilation, PHP syntax and
+paired-record checks pass on macOS arm64. This is structural interchange,
+not graph attachment, SQL parsing, imports, DDL, execution, DB conformance
+or native rendered-frame/platform acceptance.
+
+
 Preserve immutable physical CHECK records in all four clients (T7.17.2.5).
 Keep exact names, raw expressions, independent nullable enforcement and
 validation states, comments and ordered options. Reject malformed records

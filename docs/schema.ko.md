@@ -1,5 +1,37 @@
 # 스키마
 
+물리 인덱스 레코드는 정확히 `id`, `name`, `tableId`, `unique`, `methodSql`,
+`terms`, `include`, `predicateSql`, `nullsDistinct`, `visible`, `comment`,
+`options`를 가진다. ID와 nullable 이름은 기존 레코드 규칙을 따른다.
+unique는 boolean이다. methodSql은 null(미지정)이거나 비어 있지 않은
+최대 128 UTF-8바이트 문자열이다. predicateSql은 null(없음)이거나 최대
+16384바이트 원문 SQL이다. nullsDistinct와 visible은 서로 독립적인 boolean
+또는 미지정 null이다. 주석·옵션을 보존하고 기존 전체 65536바이트 제한을
+적용한다. 구조 검증 통과는 방언의 옵션 지원을 의미하지 않는다.
+
+terms는 순서 있는 1–64개 객체이며 정확히 `source`, `order`, `nulls`,
+`collationSql`, `operatorClassSql`, `prefixLength`를 가진다. source는
+`{kind:"column",columnId}` 또는 `{kind:"expression",sql}`다. ID는 안정 ID
+규칙, 원문 식은 비어 있지 않은 최대 16384 UTF-8바이트 규칙을 따른다.
+반복되는 항목을 제거하지 않는다. order는 asc/desc/unspecified, nulls는
+first/last/unspecified다. nullable 원문 collation/operator-class 문자열은
+비어 있지 않은 최대 1024/4096바이트이며 인용 이름과 매개변수를 유지한다.
+prefixLength는 null이거나 boolean이 아닌 1–2147483647 정수 수치이며 컬럼
+source에만 쓴다. include는 서로 다른 컬럼 ID 0–64개의 순서 있는 목록이며
+고유성 항목을 바꾸지 않는다. 컬럼 소유와 방언별 필드 관계 제한은 스키마
+구성·계획에서 검증한다. 빠진/알 수 없는 필드, 잘못된 타입·인코딩·제한 초과는
+값 없는 SCHEMA_INVALID로 거절한다. 정규화 없이 값을 분리하거나 깊게 불변으로 만든다.
+
+API는 Go `orm.PhysicalIndexFromValue`, PHP `Orm\PhysicalIndex::fromValue`,
+Rust `orm_schema::physical_index::PhysicalIndex::from_value`, TypeScript 패키지
+export `createPhysicalIndex`다. `make physical-index-check`로 공통 벡터를
+클라이언트별 두 번 실행한다. 인덱스와 기본·고유 제약은 다르며 제약은 별도
+레코드와 명시적 기반 인덱스 링크가 필요하다. 그래프 연결, SQL 파싱,
+임포트, DDL, 실행은 아니다. 기능 구분은 공식
+[PostgreSQL CREATE INDEX](https://www.postgresql.org/docs/18/sql-createindex.html),
+[MySQL CREATE INDEX](https://dev.mysql.com/doc/refman/8.4/en/create-index.html),
+[SQLite CREATE INDEX](https://www.sqlite.org/lang_createindex.html) 문서를 따른다.
+
 물리 CHECK 레코드는 정확히 `id`, `name`, `tableId`, `expressionSql`,
 `enforced`, `validated`, `comment`, `options`를 가진다. ID는 물리 레코드
 규칙을 따르며 이름은 null이거나 정확한 물리 이름 규칙을 따른다. 식은
