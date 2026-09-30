@@ -19,6 +19,10 @@
 
 mod generate;
 pub mod live;
+#[cfg(feature = "live-db")]
+pub mod tool_db;
+#[cfg(feature = "live-db")]
+pub mod catalog;
 mod manifest;
 pub mod migration;
 mod names;

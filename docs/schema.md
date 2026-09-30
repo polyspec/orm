@@ -215,6 +215,14 @@ The Rust tool is the `orm-gen` binary of the `orm-build` crate, built with its `
 
 ## 7. Client generation API
 
+### Rust catalog connections
+
+The `live-db` feature exposes `orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. `dialect()`, `tables(only)` and `manifest()` reuse the CLI-owned catalog reader and logical conversion. Catalog connections preserve SQLite foreign-key settings instead of applying migration-rebuild settings.
+
+SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Four owner cases verify invalid DSNs, missing SQLite file rejection, SQLite FK/content preservation and repeatable MySQL/PostgreSQL catalog reads; this evidence does not establish lossless physical import.
+
+This extraction does not claim lossless physical import. The existing reader scopes PostgreSQL to the current schema and does not preserve every expression index or physical option. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
+
 The `github.com/polyspec/orm/generator` package exposes generation to other programs. `generator.Generate` takes a manifest, the language `Go`, and an output directory. Go generation also takes `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping, and output stay in the ORM generator.
 
 ## 8. Schema installation

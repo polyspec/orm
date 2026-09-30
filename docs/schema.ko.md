@@ -215,6 +215,14 @@ Rust 도구는 `orm-build` crate의 `orm-gen` 바이너리이며 `cli` feature�
 
 ## 7. 클라이언트 생성 API
 
+### Rust 카탈로그 연결
+
+`live-db` 기능은 `orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. `dialect()`, `tables(only)`, `manifest()`는 CLI 소유 카탈로그 읽기와 논리 변환을 재사용한다. 카탈로그 연결은 마이그레이션 재구축 설정을 적용하지 않고 SQLite 외래키 설정을 보존한다.
+
+SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 소유 사례 4개로 잘못된 DSN·없는 SQLite 파일 거부·SQLite FK/내용 보존·MySQL/PostgreSQL 반복 카탈로그 조회를 검증했으며 이는 무손실 물리 임포트의 근거가 아니다.
+
+이 추출은 무손실 물리 임포트를 주장하지 않는다. 기존 읽기는 PostgreSQL의 현재 스키마로 제한되며 모든 표현식 인덱스나 물리 옵션을 보존하지 않는다. 임의 SQL/데이터 접근을 활성화하기 전에 네이티브 디코딩 한계를 소유 코드에서 수정해야 한다.
+
 `github.com/polyspec/orm/generator` 패키지는 다른 프로그램에 생성 기능을 제공한다. `generator.Generate`는 매니페스트, 언어 `Go`, 출력 디렉터리를 받는다. Go 생성은 `PackageName`(기본값은 디렉터리 명칭)과 호출을 생성할 패키지 패턴인 `Scan`도 받는다. 명칭 규칙, 필드 대응, 출력은 ORM 생성기가 책임진다.
 
 ## 8. 스키마 설치

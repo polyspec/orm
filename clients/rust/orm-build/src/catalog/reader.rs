@@ -2,10 +2,10 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use orm_build::live::{self, Check, Column, ForeignKey, Index, Table, NO_DEFAULT};
-use orm_build::schema::Manifest;
+use crate::live::{self, Check, Column, ForeignKey, Index, Table, NO_DEFAULT};
+use crate::schema::Manifest;
 
-use crate::db::{Conn, Rows};
+use crate::tool_db::{Conn, Rows};
 
 fn err(e: sqlx::Error) -> String {
     e.to_string()
@@ -29,8 +29,8 @@ pub async fn live_manifest(conn: &mut Conn, driver: &str) -> Result<Manifest, St
 
 /// The bodies of the current schema's triggers that carry ORM markers.
 pub async fn trigger_bodies(conn: &mut Conn, driver: &str) -> Result<Vec<String>, String> {
-    let rows = conn.query(orm_build::triggers::trigger_bodies_query(driver), &[]).await.map_err(err)?;
-    Ok(rows.iter().map(|r| r[0].text()).filter(|b| b.contains(orm_build::triggers::TRIGGER_MARKER)).collect())
+    let rows = conn.query(crate::triggers::trigger_bodies_query(driver), &[]).await.map_err(err)?;
+    Ok(rows.iter().map(|r| r[0].text()).filter(|b| b.contains(crate::triggers::TRIGGER_MARKER)).collect())
 }
 
 /// The literal of an expression default such as DEFAULT ('x'), which MySQL
@@ -40,7 +40,7 @@ fn mysql_expression_literal(def: &str) -> Option<String> {
     if let Some(caps) = RE.captures(def) {
         return Some(mysql_unescape(&mysql_unescape(&caps[1])));
     }
-    orm_build::ddl::is_number(def).then(|| def.to_owned())
+    crate::ddl::is_number(def).then(|| def.to_owned())
 }
 
 fn mysql_unescape(s: &str) -> String {

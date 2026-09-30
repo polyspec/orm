@@ -1,5 +1,13 @@
 # Changelog
 
+Expose Rust DSN-only catalog connections under `live-db`; move the existing
+reader into the library and make the CLI use the same implementation. Reject
+missing SQLite database files without creating them and release connections
+before pool closure. Missing-API and SQLite-creation Red cases are Green.
+Four public API owner tests execute SQLite, MySQL and PostgreSQL; the existing
+SQLite CLI automatic-rowid import case passes. Lossless physical import and
+checked arbitrary-cell decoding remain incomplete.
+
 Document the Rust ORM mapping for engine selection, schema validation and
 installation, transaction options, cancellation, encrypted columns, and audit directives.
 

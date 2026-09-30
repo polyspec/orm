@@ -18,8 +18,7 @@
 //! or `db:<dsn>`. A DSN is a `mysql://`, `postgres://`, or `sqlite://` URI.
 
 mod args;
-mod db;
-mod introspect;
+use orm_build::{tool_db as db, catalog as introspect};
 mod migrate;
 
 use std::collections::HashSet;
