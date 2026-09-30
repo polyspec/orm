@@ -180,6 +180,36 @@ Define and verify one versioned document grammar before activating this path:
 
 These requirements do not enable physical documents, imports or execution.
 
+#### Physical source block
+
+The owning internal scanner locates one top-level fenced block whose info is
+exactly `mermaid orm-physical-v1`. It returns four UTF-8 byte offsets: opening
+line start, body start, closing line start and the byte after the closing line.
+Slicing at these offsets preserves preceding/following Markdown and body
+bytes without a split-line copy. Body parsing is not yet enabled by this step.
+
+Owned opening fences have no indentation. Foreign opening fences use 0–3
+ASCII spaces. Both use at least three backticks or tildes. Trim only ASCII
+spaces/tabs around info. Backtick info cannot contain
+a backtick. Closing fences use the same character, at least the opening run
+length and only spaces/tabs afterward. Foreign fenced contents are opaque;
+an unfinished foreign fence also fails instead of hiding an owned block.
+An active info starting `mermaid orm-physical-` with any other suffix fails.
+Indented code and blockquote/list-contained fences are not owned blocks.
+Use a top-level block for the physical document; this scanner is not a general
+Markdown AST or a diagram validator. In particular, HTML block/container
+interpretation is not implemented here and must be resolved by the complete
+document reader before activating imports.
+
+Accept valid UTF-8 without a BOM, LF or CRLF (not bare CR), at most 64 MiB,
+200000 lines (LF count plus one, including a final empty line) and 4096 opening
+fences. Exactly one owned block is required. Failures retain one value-free
+SCHEMA_INVALID diagnostic: line zero for encoding/resource/missing-block
+errors, or a 1-based line for unknown info, duplicate or unfinished blocks.
+Source/line/block limits are checked before allocating a body or line list.
+These limits do not alter JSON or sidecar payload limits. The four owning
+tests use the same fixture through `make physical-envelope-check`.
+
 For text interchange, read one UTF-8 JSON object and emit a compact JSON object
 from a validated graph. Before general decoding, reject duplicate decoded
 member names at every depth, malformed syntax, invalid Unicode (including

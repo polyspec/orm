@@ -99,6 +99,17 @@ physical-fk-check: physical-column-check
 
 .PHONY: physical-graph-check
 .PHONY: physical-json-check
+.PHONY: physical-envelope-check
+physical-envelope-check:
+	go test ./clients/go/orm -run '^TestPhysicalEnvelope$$' -count=2 -v
+	php clients/php/tests/physical_envelope_test.php
+	php clients/php/tests/physical_envelope_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_envelope -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_envelope -- --nocapture
+	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-envelope.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-envelope.mjs
+
 physical-json-check: physical-graph-check
 	go test ./engine/schema -run '^TestPhysicalJSONPreflightBounds$$' -count=2 -v
 	go test ./clients/go/orm -run '^TestPhysicalGraphJSON(Output)?$$' -count=2 -v
