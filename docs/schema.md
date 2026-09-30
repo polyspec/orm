@@ -1,5 +1,33 @@
 # Schema
 
+Physical primary/unique keys have exactly `id`, `name`, `tableId`, `kind`,
+`columns`, `indexId`, `deferrable`, `initiallyDeferred`, `nullsDistinct`,
+`withoutOverlaps`, `comment` and `options`. IDs and nullable names follow the
+physical-record rules. kind is primary/unique; columns contains 1–64 distinct
+stable column IDs in declaration order. indexId is null (no declared backing
+index) or a stable index ID, never a name inferred from the constraint.
+Deferral flags are boolean or unspecified null; initiallyDeferred true requires
+deferrable true. nullsDistinct is boolean or null for unique keys and must be
+null for primary keys, whose SQL null behavior is not a unique option.
+withoutOverlaps is boolean or unspecified null and preserves whether the last
+key column uses temporal overlap exclusion. Its dialect, range-type and
+backing-index semantics require later validation; structural acceptance does
+not authorize a database operation. Comments, ordered options, UTF-8, exact
+field shapes and the 65536-byte string budget use the common record rules.
+Reject invalid input with value-free SCHEMA_INVALID and return detached or
+deeply immutable values. Do not merge constraints into index records or infer
+missing states. Reference ownership, backing-index compatibility and one
+primary key per table are graph-level checks, not individual record checks.
+
+Public APIs are Go `orm.PhysicalKeyFromValue`, PHP `Orm\PhysicalKey::fromValue`,
+Rust `orm_schema::physical_key::PhysicalKey::from_value` and TypeScript package
+export `createPhysicalKey`. Run `make physical-key-check` for equivalent cases
+twice per client and related record regressions. These are decoded structural
+records, not SQL parsing, physical import, DDL or migration execution.
+Key and index distinctions, deferral and temporal syntax are documented in
+[PostgreSQL CREATE TABLE](https://www.postgresql.org/docs/18/sql-createtable.html);
+database-specific behavior must still be verified on owned database fixtures.
+
 Physical index records have exactly `id`, `name`, `tableId`, `unique`,
 `methodSql`, `terms`, `include`, `predicateSql`, `nullsDistinct`, `visible`,
 `comment` and `options`. IDs and nullable names use the existing record rules;

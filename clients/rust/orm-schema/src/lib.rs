@@ -11,6 +11,7 @@ pub mod physical;
 pub mod physical_column;
 pub mod physical_check;
 pub mod physical_index;
+pub mod physical_key;
 pub mod physical_foreign_key;
 pub mod physical_record;
 pub mod physical_graph;

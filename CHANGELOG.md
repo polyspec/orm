@@ -1,5 +1,21 @@
 # Changelog
 
+Preserve physical primary/unique key records in four clients (T7.17.2.7).
+Keep constraint names, ordered column IDs, independent backing-index IDs,
+deferral, unique null treatment and temporal overlap metadata. Reject
+unknown shapes, duplicates, contradictory deferral, primary-only null
+option misuse and byte/count excess without exposing input values.
+Missing APIs are Red-to-Green in Go, PHP, Rust and TypeScript.
+physical-key-check executes 35 shared vectors and 14 shared limit cases
+twice per client, plus encoding/alias/sparse checks and related column,
+CHECK, index and FK regressions. Rust 1.98.1 strict owner Clippy/scoped
+formatting, Node 26.10.0 TypeScript compilation, PHP syntax and paired
+documentation checks pass on macOS arm64. Temporal metadata preservation
+does not prove dialect/range-type or backing-index compatibility. Graph
+resolution, physical import, DDL, execution, DB conformance and native
+platform/rendered-frame acceptance remain separate requirements.
+
+
 Preserve immutable physical index records in four clients (T7.17.2.6).
 Retain ordered column/expression terms, repeated columns, prefixes, sort
 and null ordering, raw collation/operator-class text, included columns,
