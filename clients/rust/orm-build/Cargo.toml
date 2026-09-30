@@ -87,3 +87,7 @@ required-features = ["live-db"]
 [[test]]
 name = "table_page"
 required-features = ["live-db"]
+
+[[test]]
+name = "row_snapshot"
+required-features = ["live-db"]

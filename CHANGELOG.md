@@ -1,5 +1,15 @@
 # Changelog
 
+Capture immutable Rust RowSnapshot baselines from qualified table pages with
+checked non-null primary-key identity, exact typed original cells and an 8 MiB
+bounded SHA-256 descriptor/value revision. Distinguish descriptor changes,
+missing/changed rows and ambiguous identity; avoid values in Debug/errors.
+Missing API compile Red is Green. Three baseline cases and 13 focused tests
+pass; actual MySQL/PostgreSQL/SQLite owned rows detect changes and accept exact
+restoration. Validation/type/budget/live additions are regression tests.
+This is a pure comparison API, not database locking, writes or authorization.
+Typed binds, locked mutations and four-client conformance remain pending.
+
 Add explicit qualified Rust table-page reads with native typed values,
 descriptor column provenance and declared primary-key ordering. Quote native
 identifiers, enforce a fresh read-only scope, bound limit/offset and row encoding,

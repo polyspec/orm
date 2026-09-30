@@ -337,6 +337,19 @@ MySQL `SYSTEM VIEW` 카탈로그 관계는 테이블이나 쓰기 행 식별이 
 
 ### 한정된 Rust 테이블 페이지
 
+행 편집 기반: `RowSnapshot::from_page(&TablePage, row_index)`는 검증된 행·
+신뢰할 비NULL 기본키 값을 제약 순서로 불변 캡처하고 descriptor/타입형 셀의
+값별 SHA-256 revision을 만든다. 전체 인코딩은 8 MiB로 제한한다. 뷰/불안정한
+식별·잘못된 projection/키·잘못된 decimal·비NULL 컬럼의 NULL·페이지 범위를
+거부한다. `check_current(&TableMetadata,&GridQueryResult)`는 descriptor 변경·
+누락/변경 행·중복 식별을 구분한다. 정확한 타입 비교에는 실수 비트·decimal
+scale·바이너리·생성 컬럼 원본 값이 포함된다. 이 순수 API는 DB 읽기/잠금/쓰기나
+편집 권한이 아니다. 실행은 소유 쓰기 트랜잭션에서 원래 키로 잠긴 재조회를 하고
+descriptor/원본 행을 비교한 뒤 타입형 쓰기를 수행해야 한다. descriptor는 완전한
+물리 스키마 revision이 아니며 ABA를 감지하지 못한다. prepared 타입은 데이터에
+의존할 수 있으므로 스키마 revision으로 삼지 않고 projection 이름과 네이티브
+descriptor를 비교한다. Rust 네이티브 범위는 4클라이언트 변경 적합성 근거가 아니다.
+
 `CatalogConnection::table_page(&TableRef, limit, offset)`는 새 강제 읽기 전용
 범위에서 명시적 한정 테이블의 descriptor 컬럼을 물리 순서로 조회하며 dialect별
 식별자 인용을 적용한다. 기본키가 있으면 제약 선언 순서로 정렬하고 키가 없으면

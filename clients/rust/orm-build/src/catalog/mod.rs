@@ -3,6 +3,8 @@ mod reader;
 mod read_only;
 mod metadata;
 mod page;
+mod row_snapshot;
+pub use row_snapshot::RowSnapshot;
 pub use page::TablePage;
 pub use metadata::{TableRef, TableMetadata, TableColumnMetadata, TableKind};
 pub use reader::{read_tables, live_manifest, trigger_bodies, postgres_check_expr};
