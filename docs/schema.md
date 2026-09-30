@@ -41,6 +41,33 @@ export `createPhysicalColumn`. `make physical-column-check` runs the 25 shared
 vectors twice per client, plus aggregate/field/option limits, invalid encodings
 and alias checks. `PHYSICAL_NODE` explicitly selects its TypeScript tool runtime.
 
+Physical FK records have exactly `id`, `name`, `tableId`, `columns`, `target`,
+`onDelete`, `onUpdate`, `match`, `deferrable`, `initiallyDeferred`, `comment` and
+`options`. Stable IDs use the column ID rules; name is null for unnamed, otherwise
+an exact physical name. target is exactly `{tableId,columns}`. Local and target
+column ID lists each contain 1–64 distinct IDs, with equal length and preserved
+pair order. Self references and shared columns across independent FKs are valid.
+Actions distinguish noAction/restrict/cascade/setNull/setDefault/unspecified;
+match is simple/full/partial/unspecified. Deferral flags are boolean or null for
+unspecified; initiallyDeferred true requires deferrable true. Comments/options
+and whole-record string limits match physical columns. Unknown fields, invalid
+IDs, duplicate columns, unequal arity and contradictory deferral fail safely.
+This validates individual records, not graph membership or dialect support.
+
+FK APIs: Go `orm.PhysicalForeignKeyFromValue`, PHP
+`Orm\PhysicalForeignKey::fromValue`, Rust
+`orm_schema::physical_foreign_key::PhysicalForeignKey::from_value`, TypeScript
+package export `createPhysicalForeignKey`. Columns and FKs share bounded record
+validation; Rust returns `physical_record::RecordError`, whose safe code is
+SCHEMA_INVALID. `make physical-fk-check` executes all 26 shared FK vectors and
+existing 25 column vectors twice in each client. It also checks 64/65-column
+limits and measures creation/retention of 2000 independent FK records. This is
+not connected-graph resolution, archive import, memory or rendered-frame proof.
+PHYSICAL_RUST_TOOLCHAIN selects Rust explicitly (default 1.98.1); the command
+does not replace the user's global toolchain.
+
+
+
 
 
 The human-maintained schema files are `schema/*.mmd` (Mermaid `erDiagram`). GitHub, IDEs, and build artifacts render them as diagrams, and `ormgen` parses them into a generated **manifest** (`schema.json`) with columns, keys, relations, indexes, and styles. Do not edit the manifest.

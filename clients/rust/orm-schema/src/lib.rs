@@ -9,6 +9,8 @@
 pub mod ddl;
 pub mod physical;
 pub mod physical_column;
+pub mod physical_foreign_key;
+pub mod physical_record;
 pub mod schema;
 pub mod sql;
 pub mod triggers;

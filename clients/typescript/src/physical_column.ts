@@ -7,24 +7,11 @@ export interface PhysicalColumn {
   readonly options:readonly Readonly<{name:string;value:string}>[];
 }
 import {createPhysicalIdentity} from './physical.js';
-function invalid():never {throw new Error('SCHEMA_INVALID');}
-function shape(value:unknown,fields:readonly string[]):Record<string,unknown> {
-  if(value===null||typeof value!=='object'||Array.isArray(value))invalid();
-  const record=value as Record<string,unknown>;
-  if(Object.keys(record).length!==fields.length||fields.some(field=>!Object.hasOwn(record,field)))invalid();
-  return record;
-}
+import {PhysicalRecord,invalid,shape} from './physical_record.js';
 export function createPhysicalColumn(value:unknown):PhysicalColumn {
   const record=shape(value,['id','name','typeSql','nullable','default','generation','comment','options']);
-  let bytes=0;const encoder=new TextEncoder();
-  const text=(value:unknown,min:number,max:number):string=>{
-    if(typeof value!=='string'||value.length>max||value.includes('\0'))invalid();
-    for(const char of value){const point=char.codePointAt(0)!;if(point>=0xd800&&point<=0xdfff)invalid();}
-    const size=encoder.encode(value).length;
-    if(size<min||size>max||(bytes+=size)>65536)invalid();
-    return value;
-  };
-  const id=text(record.id,1,128);if(!/^[A-Za-z0-9_-]+$/.test(id))invalid();
+  const validator=new PhysicalRecord();const text=validator.text.bind(validator);
+  const id=validator.id(record.id);
   const name=text(record.name,1,1024);createPhysicalIdentity([null,null,name,null]);
   const typeSql=text(record.typeSql,1,4096),comment=text(record.comment,0,8192);
   if(typeof record.nullable!=='boolean')invalid();
@@ -48,9 +35,6 @@ export function createPhysicalColumn(value:unknown):PhysicalColumn {
     if(storage!=='stored'&&storage!=='virtual'&&storage!=='unspecified')invalid();
     generation=Object.freeze({kind:'computed',sql,storage});
   }else return invalid();
-  if(!Array.isArray(record.options)||record.options.length>64)invalid();
-  const options=Object.freeze(Array.from(record.options,option=>{
-    const entry=shape(option,['name','value']);return Object.freeze({name:text(entry.name,1,128),value:text(entry.value,0,4096)});
-  }));
+  const options=validator.options(record.options);
   return Object.freeze({id,name,typeSql,nullable:record.nullable,default:defaultValue,generation,comment,options});
 }

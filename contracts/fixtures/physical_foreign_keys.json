@@ -1,0 +1,31 @@
+{
+  "base":{"id":"fk-1","name":"FK.Mixed 名","tableId":"child","columns":["child-a","child-b"],"target":{"tableId":"parent","columns":["parent-b","parent-a"]},"onDelete":"noAction","onUpdate":"restrict","match":"simple","deferrable":false,"initiallyDeferred":false,"comment":"exact\ncomment","options":[]},
+  "cases":[
+    {"id":"ordered-composite","changes":{}},
+    {"id":"reversed-pair-order","changes":{"columns":["child-b","child-a"],"target":{"tableId":"parent","columns":["parent-a","parent-b"]}}},
+    {"id":"self-reference","changes":{"target":{"tableId":"child","columns":["child-b","child-a"]}}},
+    {"id":"unnamed","changes":{"name":null}},
+    {"id":"distinct-restrict","changes":{"onDelete":"restrict"}},
+    {"id":"cascade","changes":{"onDelete":"cascade","onUpdate":"cascade"}},
+    {"id":"set-null","changes":{"onDelete":"setNull"}},
+    {"id":"set-default","changes":{"onUpdate":"setDefault"}},
+    {"id":"unspecified","changes":{"onDelete":"unspecified","onUpdate":"unspecified","match":"unspecified","deferrable":null,"initiallyDeferred":null}},
+    {"id":"match-full","changes":{"match":"full","options":[{"name":"validation","value":"NOT VALID"},{"name":"index","value":"ix.Mixed"}]}},
+    {"id":"match-partial","changes":{"match":"partial","columns":["0","00"]}},
+    {"id":"deferred","changes":{"deferrable":true,"initiallyDeferred":true}},
+    {"id":"extra-field","changes":{"unknown":"private"},"error":"SCHEMA_INVALID"},
+    {"id":"unequal-arity","changes":{"columns":["child-a"]},"error":"SCHEMA_INVALID"},
+    {"id":"duplicate-local","changes":{"columns":["child-a","child-a"]},"error":"SCHEMA_INVALID"},
+    {"id":"duplicate-target","changes":{"target":{"tableId":"parent","columns":["parent-a","parent-a"]}},"error":"SCHEMA_INVALID"},
+    {"id":"empty-columns","changes":{"columns":[]},"error":"SCHEMA_INVALID"},
+    {"id":"invalid-id","changes":{"id":"fk/path"},"error":"SCHEMA_INVALID"},
+    {"id":"extra-target-field","changes":{"target":{"tableId":"parent","columns":["parent-b","parent-a"],"extra":true}},"error":"SCHEMA_INVALID"},
+    {"id":"unknown-action","changes":{"onUpdate":"ignore"},"error":"SCHEMA_INVALID"},
+    {"id":"wrong-deferral-type","changes":{"deferrable":0},"error":"SCHEMA_INVALID"},
+    {"id":"contradictory-deferral","changes":{"initiallyDeferred":true},"error":"SCHEMA_INVALID"},
+    {"id":"unknown-match","changes":{"match":"unknown"},"error":"SCHEMA_INVALID"},
+    {"id":"empty-name","changes":{"name":""},"error":"SCHEMA_INVALID"},
+    {"id":"nul-comment","changes":{"comment":"private\u0000value"},"error":"SCHEMA_INVALID"},
+    {"id":"null-options","changes":{"options":null},"error":"SCHEMA_INVALID"}
+  ]
+}
