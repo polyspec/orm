@@ -290,7 +290,7 @@ flowchart LR
 
 symbol 검사 통과는 선언된 표면만 증명한다. 적합성 벡터 통과는 검사한 입력과 결과만 증명한다. 모든 지원 client, 필요한 database, 테스트, 문서, Pages 검사를 통과해야 기능을 완료로 표시한다.
 
-### Rust 네이티브 그리드 조회 계약 (개발 중)
+### Rust 네이티브 그리드 조회 명세 (개발 중)
 
 `CatalogConnection::read_only_grid_query(sql, params, limits)`는 순서 있는
 컬럼 메타데이터와 타입형 그리드 셀을 반환한다. 바이너리는 바이트를 보존하며
@@ -301,7 +301,7 @@ symbol 검사 통과는 선언된 표면만 증명한다. 적합성 벡터 통�
 
 그리드 실수는 네이티브 IEEE-754 비트를 `Float32(u32)` 또는 `Float64(u64)`로
 전달하여 JSON 숫자 변환 없이 부호 있는 0·비유한 값을 보존한다. `Unsigned(u64)`는
-MySQL unsigned 전체 범위를 보존한다. 이 Rust 값은 wire 경계에서 명시적 타입
+MySQL unsigned 전체 범위를 보존한다. 이 Rust 값은 wire로 전달할 때 명시적 타입
 변환이 필요하며 스키마/카탈로그 스칼라 변환 규칙을 바꾸지 않는다.
 
 유한 그리드 decimal은 정확한 일반 10진 문자열로 DB 결과의 선언 scale과
@@ -312,7 +312,7 @@ SQLite는 네이티브 decimal 저장 클래스가 없으므로 실제 텍스트
 ### 한정된 네이티브 Rust 테이블 메타데이터
 
 `CatalogConnection::current_namespace()`는 선택된 namespace를 보고한다.
-`describe_table(&TableRef { namespace, name })`는 바인딩한 카탈로그 이름으로
+`describe_table(&TableRef { namespace, name })`는 바인딩한 카탈로그 식별자를 사용하여
 명시적으로 한정된 테이블을 확인하고 네이티브 컬럼 타입·선언 기본키 순서·실제
 nullable·생성 컬럼 플래그를 보존한다. 논리 스키마 컬럼 순서나 임의 조회 결과에서
 행 식별을 추정하지 않는다. SQLite는 연결된 `main` namespace를 지원하며 nullable
@@ -348,7 +348,7 @@ PostgreSQL 텍스트 NUL·65535개 초과 인수·총 값 16 MiB 초과를 prepa
 거부한다. 타입형 NULL은 빈 텍스트/0이 아닌 지정 네이티브 bind 종류다.
 Boolean bind는 SQLx bool을 사용하며 PostgreSQL grid는 Boolean을 유지한다.
 MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 만들어내지
-않고 정수 0/1로 읽힌다. SQLite 저장 클래스는 소유 테스트로 검증한다.
+않고 정수 0/1을 반환한다. SQLite 저장 클래스는 소유 테스트로 검증한다.
 이는 bind 의미이며 컬럼/서버 강제 변환 방지가 아니다. 변경 실행은 스키마 검증·
 엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. Rust 도구는 4클라이언트 쓰기
 근거가 아니다.

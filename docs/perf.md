@@ -1,6 +1,6 @@
 # Performance
 
-Every client plans statements in the application process and executes them through its native driver. The current client overhead gate is measured by `make perf-check` for the Go and PHP hot paths below; the command fails when the required database environment is missing.
+Every client plans statements in the application process and executes them through its native driver. The current client overhead check is measured by `make perf-check` for the Go and PHP hot paths below; the command fails when the required database environment is missing.
 
 Measurement environment for the driver results: Apple M3 Pro, macOS, MySQL 8.4.11 local Unix socket (`/tmp/mysql.sock`), `orm_bench.battle` 100,000 rows, one connection, p50. Raw data: `docs/perf-raw-go-native.txt`, `docs/perf-raw-rust-native.txt`, `docs/perf-raw-rust-native-2.txt`.
 
@@ -53,9 +53,9 @@ One release process compared sqlx 0.9 with `mysql_async` 0.37.1 using one connec
 
 Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. A driver replacement requires a measured 2x improvement. Neither workload meets it, so the Rust client keeps sqlx. `make rust-driver-check` compiles the program; latency is not a CI pass condition.
 
-## 5. Latest gate run
+## 5. Latest regression-check run
 
-On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. The Go gate measured PK 49.0µs client versus 46.0µs native (ratio 1.08) and a 100-row list 388.0µs versus 321.0µs (ratio 1.21); under CPU load it measured 40.0µs versus 37.0µs (1.07) and 363.0µs versus 298.0µs (1.21). The PHP gate measured PK 81.0µs versus 72.0µs (1.13) and 813.8µs versus 712.9µs (1.14); under CPU load it measured 65.3µs versus 56.5µs (1.15) and 1836.2µs versus 1569.8µs (1.15). Every value stayed within the bounds in §3.
+On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. The Go check measured PK 49.0µs client versus 46.0µs native (ratio 1.08) and a 100-row list 388.0µs versus 321.0µs (ratio 1.21); under CPU load it measured 40.0µs versus 37.0µs (1.07) and 363.0µs versus 298.0µs (1.21). The PHP check measured PK 81.0µs versus 72.0µs (1.13) and 813.8µs versus 712.9µs (1.14); under CPU load it measured 65.3µs versus 56.5µs (1.15) and 1836.2µs versus 1569.8µs (1.15). Every value stayed within the bounds in §3.
 
 ## 6. Decision summary
 

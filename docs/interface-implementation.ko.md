@@ -27,7 +27,7 @@
 | IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
 | IF-09 ~ IF-12 | 모델 메서드 22개를 언어별로 고정한다. Go는 생성 모델, PHP와 TypeScript는 기반 클래스, Rust는 `orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, AES 유틸리티를 언어별로 고정한다. `transactions` 벡터와 client 트랜잭션 테스트가 savepoint, 행 잠금, 이름 잠금, 지역 값을 검사한다 |
-| IF-19, IF-20 | `relations`, `relation_empty`, `subqueries` 벡터가 관계 statement와 조립을 검사한다. `TestBindLimitSplitting`이 세 데이터베이스에서 Go의 큰 IN 목록 분할을 검사하며 PHP·Rust·TypeScript는 공통 planner 계약과 각 client suite의 관계·subquery 경로를 검사한다 |
+| IF-19, IF-20 | `relations`, `relation_empty`, `subqueries` 벡터가 관계 statement와 조립을 검사한다. `TestBindLimitSplitting`이 세 데이터베이스에서 Go의 큰 IN 목록 분할을 검사하며 PHP·Rust·TypeScript는 공통 planner 명세과 각 client suite의 관계·subquery 경로를 검사한다 |
 | IF-21 ~ IF-24 | `write_cycle`, `now_defaults`, `creates_and_save`, `delete_recursive` 벡터가 변경 필드 쓰기, 시각 기본값, upsert, 낙관적 갱신, 재귀 삭제를 검사한다 |
 | IF-25 ~ IF-27 | owner 규칙이 모든 언어에서 `Page` 필드 5개와 `AESRotationStatus` 필드 4개를 고정한다. client 모델 테스트가 key 컬렉션과 페이지를 검사한다 |
 | IF-28 ~ IF-31 | 코덱 벡터 80개, AES 벡터, `aes_values`, `aes_status`, `get_query`, `errors` 벡터가 코덱, key version, 마스킹된 bind, 오류 코드를 검사한다 |
