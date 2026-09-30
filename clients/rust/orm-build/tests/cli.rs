@@ -228,6 +228,29 @@ async fn migrate_repeats_as_noop_and_detects_drift() {
     }
 }
 
+#[tokio::test]
+async fn sqlite_migration_rejects_invalid_history_operations() {
+    let started = std::time::Instant::now();
+    eprintln!("running sqlite_migration_rejects_invalid_history_operations");
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        let dir = std::env::temp_dir().join(format!("orm-gen-history-values-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("create new owned fixture directory");
+        std::fs::write(dir.join("v1.mmd"), V1).unwrap();
+        let t = Target { driver: "sqlite", dsn: format!("sqlite://{}", dir.join("db.sqlite").display()), dir: dir.clone() };
+        let args = ["migrate", "--dsn", "@DSN@", "--schema", "v1.mmd", "--migration-id", "checked-history", "--log-dir", "@DIR@/logs"];
+        assert!(t.ok(&args).contains("status=applied"));
+        t.sql(&["UPDATE orm_schema_migrations SET operations='private-invalid-operations' WHERE migration_id='checked-history'"]).await;
+        let before = t.sql(&["SELECT operations,status FROM orm_schema_migrations"]).await;
+        let output = t.run(&args);
+        assert!(!output.ok);
+        assert!(output.stderr.contains("MIGRATION_HISTORY_READ: invalid operations"), "{}", output.stderr);
+        assert!(!output.stderr.contains("private-invalid-operations"));
+        assert_eq!(t.sql(&["SELECT operations,status FROM orm_schema_migrations"]).await, before);
+        std::fs::remove_dir_all(dir).expect("remove newly created owned fixture directory");
+    }).await.expect("history accessor regression deadline");
+    eprintln!("passed sqlite_migration_rejects_invalid_history_operations {:?}", started.elapsed());
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn plan_apply_rollback_and_recover() {
     let _serial = SERIAL.lock().await;

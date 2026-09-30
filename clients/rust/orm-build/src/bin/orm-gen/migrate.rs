@@ -194,15 +194,15 @@ async fn migration_by_id(conn: &mut Conn, driver: &str, id: &str) -> Result<Opti
         placeholder(driver, 1)
     );
     let rows = conn.query(&q, &[s(id)]).await.map_err(|e| format!("MIGRATION_HISTORY_READ: migration_id={id}: {e}"))?;
-    Ok(rows.first().map(|r| Record {
+    rows.first().map(|r| Ok(Record {
         migration_id: r[0].text(),
         name: r[1].text(),
         from_hash: r[2].text(),
         to_hash: r[3].text(),
         checksum: r[4].text(),
         status: r[5].text(),
-        operations: r[6].int(),
-    }))
+        operations: r[6].int().map_err(|e| format!("MIGRATION_HISTORY_READ: invalid operations: {e}"))?,
+    })).transpose()
 }
 
 async fn insert_migration(conn: &mut Conn, driver: &str, r: &Record) -> Result<(), String> {
@@ -268,7 +268,7 @@ async fn with_migration_lock<T>(pool: &orm::db::Pool, driver: &str, body: impl A
     match driver {
         "mysql" => {
             let rows = conn.query(&format!("SELECT GET_LOCK({MYSQL_LOCK}, 0)"), &[]).await.map_err(|e| format!("MIGRATION_LOCK: mysql GET_LOCK: {e}"))?;
-            if rows.first().and_then(|r| r[0].opt_int()) != Some(1) {
+            if rows.first().map(|r| r[0].opt_int()).transpose().map_err(|e| format!("MIGRATION_LOCK: mysql GET_LOCK: {e}"))?.flatten() != Some(1) {
                 return Err("MIGRATION_LOCK_BUSY: mysql database migration lock was not acquired".into());
             }
             if let Err(e) = conn.exec("START TRANSACTION", &[]).await {
@@ -278,13 +278,14 @@ async fn with_migration_lock<T>(pool: &orm::db::Pool, driver: &str, body: impl A
         }
         "postgres" => {
             conn.exec("BEGIN", &[]).await.map_err(|e| format!("transaction begin: {e}"))?;
-            let acquired = conn.query("SELECT pg_try_advisory_xact_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))", &[]).await;
+            let acquired = conn.query("SELECT pg_try_advisory_xact_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))", &[]).await
+                .and_then(|rows| rows.first().map(|r| r[0].bool()).transpose());
             match acquired {
                 Err(e) => {
                     let _ = conn.exec("ROLLBACK", &[]).await;
                     return Err(format!("MIGRATION_LOCK: postgres advisory lock: {e}"));
                 }
-                Ok(rows) if !rows.first().is_some_and(|r| r[0].bool()) => {
+                Ok(value) if value != Some(true) => {
                     let _ = conn.exec("ROLLBACK", &[]).await;
                     return Err("MIGRATION_LOCK_BUSY: postgres database migration lock was not acquired".into());
                 }
@@ -323,7 +324,7 @@ async fn with_migration_lock<T>(pool: &orm::db::Pool, driver: &str, body: impl A
 
 async fn release_mysql(conn: &mut Conn) -> Result<(), String> {
     let rows = conn.query("SELECT RELEASE_LOCK(CONCAT('orm:', LEFT(SHA2(DATABASE(), 256), 60)))", &[]).await.map_err(|e| e.to_string())?;
-    if rows.first().and_then(|r| r[0].opt_int()) != Some(1) {
+    if rows.first().map(|r| r[0].opt_int()).transpose().map_err(|e| e.to_string())?.flatten() != Some(1) {
         return Err("mysql migration lock was not released".into());
     }
     Ok(())
@@ -335,10 +336,10 @@ fn sqlite_ident(name: &str) -> String {
 
 async fn foreign_key_violation(conn: &mut Conn, table: &str) -> Result<Option<String>, String> {
     let rows = conn.query(&format!("PRAGMA foreign_key_check(\"{}\")", sqlite_ident(table)), &[]).await.map_err(|e| e.to_string())?;
-    Ok(rows.first().map(|r| {
-        let rowid = r[1].opt_int().map_or_else(|| "{0 false}".to_owned(), |n| format!("{{{n} true}}"));
-        format!("table={} foreign_key_violation rowid={rowid} parent={} foreign_key_id={}", r[0].text(), r[2].text(), r[3].int())
-    }))
+    rows.first().map(|r| {
+        let rowid = r[1].opt_int().map_err(|e| e.to_string())?.map_or_else(|| "{0 false}".to_owned(), |n| format!("{{{n} true}}"));
+        Ok(format!("table={} foreign_key_violation rowid={rowid} parent={} foreign_key_id={}", r[0].text(), r[2].text(), r[3].int().map_err(|e| e.to_string())?))
+    }).transpose()
 }
 
 /// The triggers a migration drops before it rebuilds a table; the rebuild
@@ -355,7 +356,9 @@ async fn preflight_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), Str
             .query("SELECT count(*) FROM sqlite_master WHERE name=?", &[s(&m.temp)])
             .await
             .map_err(|e| format!("SQLITE_REBUILD_PREFLIGHT: table={} temp={}: {e}", m.table, m.temp))?;
-        if temp.first().map_or(0, |r| r[0].int()) != 0 {
+        let count = temp.first().ok_or_else(|| pre("missing object count".into(), "temporary object"))?[0]
+            .int().map_err(|e| pre(e.to_string(), "temporary object count"))?;
+        if count != 0 {
             return Err(format!("SQLITE_REBUILD_UNSAFE: table={} temporary object {} already exists", m.table, m.temp));
         }
         let deps = conn
