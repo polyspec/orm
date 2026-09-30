@@ -76,6 +76,15 @@ rollback fails, the returned error reports both the timeout and rollback failure
 after a successful callback and is not subject to this deadline. Each transaction retains its
 own connection; a later transaction can use the connection after a cancelled statement.
 
+Nested `transaction_send` calls borrow the erased callback directly when using
+a savepoint, without requiring a reference to its Box allocation. Owner tests
+must preserve Send futures and nested commit/rollback on all three databases.
+`make rust-send-savepoint-check` runs the owning lint and behavior checks using
+the declared test environment, never a user's database. The shared Make test
+environment exports ORM_SEND_SQLITE_DSN from SEND_SQLITE_DSN; direct Cargo
+invocations must explicitly provide this URI alongside the MySQL/PostgreSQL
+test DSNs. Fixtures are connection-local temporary tables, removed on close.
+
 `transaction_once` accepts a callback that may run only once and does not retry it. A nested call
 uses a savepoint. Database setup and commit failures return `TransactionOnceError::Orm`; a failed
 callback returns its original error after rollback. If rollback also fails, the error contains

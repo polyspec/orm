@@ -1,5 +1,19 @@
 # Changelog
 
+Borrow the erased Send callback directly in nested savepoints (N9.2.1),
+instead of requiring a reference to its Box allocation. Reproduce the
+strict borrowed-Box lint and a tracked callback-reference compile failure;
+both are Green without suppression. Add separate owning transaction tests
+and the reusable rust-send-savepoint-check. Rust 1.98.1 strict Clippy and
+all three MySQL/PostgreSQL/SQLite cases pass twice, preserving Send futures,
+nested and outer rollback, exact fixture rows, callback errors, frame
+restoration and connection reuse. Connection-local temporary tables avoid
+user-table writes and persisted fixture cleanup. The shared Make test
+environment declares the SQLite URI so existing test entry points inherit
+it. Owner library/tests Clippy, scoped formatting and paired documentation
+checks pass on macOS arm64. This does not change public transaction
+semantics or claim four-client database conformance.
+
 Resolve immutable physical graphs in four clients (T7.17.2.4). Preserve
 ordered tables/columns/FKs, exact identities and independent constraints;
 reject duplicate IDs/names, dangling or wrong-owner links and bounded count/

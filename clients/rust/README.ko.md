@@ -68,6 +68,15 @@ Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버
 
 `timeout_ms(0)`은 callback 기한을 끈다. 양수 기한은 callback이 시작한 문장을 포함한 실행을 덮는다. 기한 만료는 rollback에 성공한 뒤에만 `CANCELED`를 반환한다. rollback도 실패하면 반환 오류에 시간 초과와 rollback 실패를 모두 담는다. 성공한 callback 뒤의 commit은 이 기한 대상이 아니다. 각 트랜잭션은 자기 연결을 보유하며 취소된 문장 뒤에도 다음 트랜잭션이 연결을 사용할 수 있다.
 
+`transaction_send`의 중첩 호출은 savepoint에서 타입을 지운 callback을 직접 빌린다.
+callback의 Box 할당 객체를 빌릴 필요는 없다. 소유 테스트가 세 DB 엔진에서
+Send future와 중첩 commit/rollback을 보존해야 한다.
+`make rust-send-savepoint-check`는 선언한 테스트 환경에서 소유 lint와 동작을
+검사하며 사용자의 데이터베이스를 사용하지 않는다. 공통 Make 테스트 환경이
+SEND_SQLITE_DSN에서 ORM_SEND_SQLITE_DSN을 선언한다. 직접 Cargo를 실행할 때는
+MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테이블은 연결
+전용 임시 테이블이며 연결 종료 시 제거된다.
+
 `transaction_once`는 한 번만 실행할 수 있는 callback을 받고 재시도하지 않는다. 중첩 호출은 savepoint를 쓴다. DB 준비·commit 오류는 `TransactionOnceError::Orm`이다. callback 실패는 rollback 뒤 원래 오류를 반환한다. rollback도 실패하면 두 오류를 모두 담는다. 이 호출에는 callback 기한 옵션이 없다.
 
 ## 행 값
