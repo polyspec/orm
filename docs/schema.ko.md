@@ -62,6 +62,39 @@ FK API는 Go `orm.PhysicalForeignKeyFromValue`, PHP
 아니다. PHYSICAL_RUST_TOOLCHAIN으로 Rust를 명시한다(기본 1.98.1). 사용자
 전역 도구는 바꾸지 않는다.
 
+물리 그래프는 정확히 `version`(숫자 값 1이며 boolean 아님), `dialect`
+(mysql/postgres/sqlite), 빈 값이 아닌 128바이트 이하 UTF-8 `dialectVersion`,
+`tables`, `foreignKeys`를 가진다. 테이블은 정확히 `id`, `identity`(물리 이름
+네 요소이며 column은 null), 순서 있는 `columns`, `comment`, `options`다.
+메타데이터는 객체 제한을 따르고 테이블당 컬럼 1–4096개·테이블 최대 4096개·
+전체 컬럼 120000개·FK 20000개·전체 값 문자열 16MiB를 제한한다. 빈 그래프는
+유효하고 null 리스트는 아니다. 테이블/컬럼/FK ID는 전역에서 고유하다.
+정확한 한정 테이블 이름·각 테이블의 컬럼 이름·원본 테이블의 이름 있는 FK도
+고유하다. 테이블/컬럼 소유자 맵을 한 번 구성한 뒤 FK 쌍을 해석한다. 각 컬럼은
+선언한 테이블에 속해야 한다. 순서·순환·자기 참조·컬럼을 공유하는 독립 제약을
+유지한다. 오류는 SCHEMA_INVALID와 고정 필드/숫자 위치의 JSON pointer이며
+입력 이름/SQL은 노출하지 않는다. 하위 검증 오류는 해당 객체, 소속/중복 오류는
+해당 필드의 위치를 반환한다. 결과는 분리된 값 또는 깊은 불변 객체다. 물리 노드와
+FK 연결을 표현하며 인덱스/CHECK·전체 물리 스키마·방언 SQL 검증·실행 권한은
+아직 아니다. 방언 버전은 보존할 뿐 추론하거나 검증하지 않는다.
+
+공개 진입점은 Go `orm.PhysicalGraphFromValue`(디코딩된 JSON 값이며 버전은
+네이티브 int 1도 허용), PHP `Orm\PhysicalGraph::fromValue`, Rust
+`orm_schema::physical_graph::PhysicalGraph::from_value`, TypeScript
+`createPhysicalGraph`다. Go/PHP는 Value()/value()로 분리된 스냅샷을 반환하고
+Rust는 불변 Value 참조, TypeScript는 깊게 동결한 결과를 제공한다. 위치 오류는
+Go/PHP/TypeScript의 PhysicalGraphError와 Rust의 GraphError다. 최상위 형태
+오류는 빈 JSON pointer다.
+
+`make physical-graph-check PHYSICAL_NODE=/absolute/path/to/node`는 공통 그래프
+28개·생성한 개수/바이트 제한 5개·연결된 테이블 2000개/컬럼 60000개/FK 10000개·
+컬럼/FK 회귀를 각 언어에서 두 번 실행한다. 소유 테스트가 시간과 그래프 테스트
+15초 제한을 보고한다. 생성과 검증 시간을 분리하고 Rust는 debug 빌드다. PHP는
+프로세스 최대 할당 바이트와 바꾸지 않은 메모리 제한을 보고하며 상주 메모리나
+다른 런타임의 메모리 측정은 아니다. 구조적 그래프 테스트이며 SQL 방언 검증·
+DB의 증거가 아니다.
+
+
 
 
 

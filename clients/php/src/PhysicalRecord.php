@@ -32,6 +32,19 @@ final class PhysicalRecord
     }
     public static function detached(array $value):array
     {
-        $copy=[];foreach($value as $key=>$entry){$copy[$key]=is_array($entry)?self::detached($entry):$entry;}return $copy;
+        return self::detachReferences($value)[0];
+    }
+    /** Reference-free arrays are already isolated by PHP copy-on-write. */
+    private static function detachReferences(array $value):array
+    {
+        $changes=[];
+        foreach($value as $key=>$entry){
+            $changed=\ReflectionReference::fromArrayElement($value,$key)!==null;
+            if(is_array($entry)){[$entry,$nested]=self::detachReferences($entry);$changed=$changed||$nested;}
+            if($changed)$changes[$key]=$entry;
+        }
+        if($changes===[])return [$value,false];
+        $copy=[];foreach($value as $key=>$entry)$copy[$key]=array_key_exists($key,$changes)?$changes[$key]:$entry;
+        return [$copy,true];
     }
 }

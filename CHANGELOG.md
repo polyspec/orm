@@ -1,5 +1,21 @@
 # Changelog
 
+Resolve immutable physical graphs in four clients (T7.17.2.4). Preserve
+ordered tables/columns/FKs, exact identities and independent constraints;
+reject duplicate IDs/names, dangling or wrong-owner links and bounded count/
+string excess with value-free JSON-pointer errors. Missing-API Reds in all
+clients and native Go integer-version rejection are Green. PHP exhausted its
+128M limit in the established connected stress case; share reference-free
+copy-on-write arrays while explicitly detaching references instead of raising
+that limit. The same case now peaks at 62 MiB of PHP process allocation.
+The reusable physical-graph-check passes 28 graph and five limit vectors
+twice per client, plus 25 column and 26 FK regressions. Each client retains
+2000 tables, 60000 columns and 10000 connected FKs. Owner Rust 1.98.1 Clippy,
+TypeScript compilation on declared Node 26.10.0 and paired-record checks
+pass on macOS arm64. Correct the byte-limit fixture's initially miscalculated
+location using a separate string-byte sum. This does not prove rendered
+performance, complete physical schemas, imports, DDL or DB conformance.
+
 Preserve exact physical foreign keys in four clients (T7.17.2.3). Retain
 constraint names, ordered column pairs, independent actions, match and deferral;
 reject malformed/contradictory records without value exposure. Extract shared
