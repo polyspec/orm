@@ -57,3 +57,7 @@ required-features = ["live-db"]
 [[test]]
 name = "tool_statement"
 required-features = ["live-db"]
+
+[[test]]
+name = "tool_columns"
+required-features = ["live-db"]

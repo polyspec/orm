@@ -131,6 +131,11 @@ one statement; multiple result sets are not silently merged. Explicit
 `QueryLimits` may lower these limits. Exceeding either budget rejects the result
 without returning a truncated success or including values in the budget error.
 This bounds accumulated output, not database execution or driver packet memory.
+`query_result_bounded` also returns ordered column names and native type names
+from prepared metadata, even when no rows are returned. Duplicate names stay
+distinct by their array position. Metadata is limited to 2,048 columns and
+64 KiB of name/type UTF-8 bytes. Catalog connections expose the same operation
+through `query`; callers must separately enforce their execution policy.
 Supported tool cells remain NULL, signed integers, text and booleans; unsupported
 types fail rather than being converted. This is not a read-only SQL sandbox.
 

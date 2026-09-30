@@ -1,5 +1,15 @@
 # Changelog
 
+Expose ordered prepared column names/native type names with bounded query
+rows, including empty results and duplicate aliases. Catalog connections
+provide the same public query operation. Bound metadata to 2,048 columns
+and 64 KiB of name/type bytes without logging values. The missing result
+API compile Red is Green; the three-database query case, ten owning
+integration tests, one metadata-budget unit case and eleven CLI tests pass.
+Metadata budget tests are post-implementation regressions, not pre-fix Red.
+Read-only execution policy, additional SQL types and the query UI remain
+incomplete; this API executes only statements authorized by its caller.
+
 Accumulate Rust tool/catalog query rows from driver streams with validated
 row and JSON-result budgets (100,000 rows / 64 MiB ceilings). Reject budget
 overflow without partial success or value exposure, and reject multiple
