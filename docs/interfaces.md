@@ -290,7 +290,7 @@ The interface check rejects a declared or called `multi_statement` method in Go,
 
 A passing symbol check proves the declared surface only. A passing conformance vector proves the tested input and result. A feature is complete only when all supported clients, required databases, tests, documents, and Pages checks pass.
 
-### Rust native grid query contract (in development)
+### Rust native grid query specification (in development)
 
 `CatalogConnection::read_only_grid_query(sql, params, limits)` returns ordered
 column metadata and typed grid cells. Binary cells preserve bytes and remain
