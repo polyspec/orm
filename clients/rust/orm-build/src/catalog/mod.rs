@@ -9,6 +9,7 @@ mod mutation;
 mod mutation_finish;
 mod row_delete;
 mod row_insert;
+mod insert_mysql_identity;
 pub use mutation::MutationPhase;
 pub use row_snapshot::RowSnapshot;
 pub use page::TablePage;

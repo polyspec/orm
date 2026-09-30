@@ -194,11 +194,14 @@ async fn check() {
             .await
             .unwrap_err()
             .starts_with("ROW_CONFLICT"));
-        assert!(catalog
-            .insert_row(&descriptor, &[("n".into(), P::I(40))], Arc::new(AtomicBool::new(false)), publish.clone())
-            .await
-            .unwrap_err()
-            .starts_with("ROW_INSERT_IDENTITY_REQUIRED"));
+        let omitted_key = catalog.insert_row(&descriptor, &[("n".into(), P::I(40))], Arc::new(AtomicBool::new(false)), publish.clone()).await;
+        if dialect == "sqlite" {
+            let inserted = omitted_key.expect("SQLite INTEGER PRIMARY KEY returns its rowid alias");
+            assert!(matches!(inserted.rows[0].as_slice(), [GridCell::Integer(key), GridCell::Integer(40), GridCell::Integer(41)] if *key > 3));
+            seed.exec(&format!("DELETE FROM {name} WHERE n=40"), &[]).await.unwrap();
+        } else {
+            assert!(omitted_key.unwrap_err().starts_with("ROW_INSERT_IDENTITY_REQUIRED"));
+        }
         for values in [
             vec![("id".into(), P::I(4)), ("n".into(), P::I(30))],
             vec![("id".into(), P::I(4)), ("n".into(), P::S("40".into()))],

@@ -10,7 +10,7 @@ fn page_assembly_rejects_column_or_descriptor_changes() {
     let metadata = TableMetadata {
         table: TableRef { namespace: "main".into(), name: "fixture".into() },
         kind: TableKind::Table,
-        columns: vec![TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false }],
+        columns: vec![TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false }],
         primary_key: vec!["a".into()],
         reliable_row_identity: true,
     };

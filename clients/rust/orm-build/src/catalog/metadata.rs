@@ -22,6 +22,9 @@ pub struct TableColumnMetadata {
     pub native_type: String,
     pub nullable: bool,
     pub generated: bool,
+    pub automatic_key: bool,
+    pub default_expression: Option<String>,
+    pub expression_default: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct TableMetadata {
@@ -94,16 +97,16 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
         _ => return Err("TABLE_KIND_UNSUPPORTED".into()),
     };
     let sql=match dialect {
-        "mysql"=>"SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0) FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
-        "postgres"=>"SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
-        "sqlite"=>"SELECT name,type,NOT \"notnull\",hidden<>0,pk FROM pragma_table_xinfo(?2,?1) ORDER BY cid",
+        "mysql"=>"SELECT c.COLUMN_NAME,c.COLUMN_TYPE,c.IS_NULLABLE='YES',(c.GENERATION_EXPRESSION IS NOT NULL AND c.GENERATION_EXPRESSION<>''),COALESCE(pk.ORDINAL_POSITION,0),(c.EXTRA LIKE '%auto_increment%'),c.COLUMN_DEFAULT,(c.EXTRA LIKE '%DEFAULT_GENERATED%') FROM information_schema.COLUMNS c LEFT JOIN information_schema.KEY_COLUMN_USAGE pk ON pk.CONSTRAINT_SCHEMA=c.TABLE_SCHEMA AND pk.TABLE_NAME=c.TABLE_NAME AND pk.COLUMN_NAME=c.COLUMN_NAME AND pk.CONSTRAINT_NAME='PRIMARY' WHERE c.TABLE_SCHEMA=? AND c.TABLE_NAME=? ORDER BY c.ORDINAL_POSITION",
+        "postgres"=>"SELECT a.attname::text,format_type(a.atttypid,a.atttypmod),NOT a.attnotnull,(a.attgenerated<>'' OR a.attidentity='a'),COALESCE(k.ord,0),(a.attidentity<>''),pg_get_expr(d.adbin,d.adrelid),(d.adbin IS NOT NULL) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum LEFT JOIN pg_index i ON i.indrelid=c.oid AND i.indisprimary LEFT JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,ord) ON k.attnum=a.attnum WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum",
+        "sqlite"=>"SELECT name,type,NOT \"notnull\",hidden<>0,pk,0,dflt_value,(dflt_value IS NOT NULL) FROM pragma_table_xinfo(?2,?1) ORDER BY cid",
         _=>unreachable!(),
     };
     let result = rows(connection, sql, &params).await?;
     let mut columns = Vec::new();
     let mut keys = Vec::new();
     for row in result {
-        if row.len() != 5 {
+        if row.len() != 8 {
             return Err("TABLE_METADATA_INVALID: column shape".into());
         }
         let column = TableColumnMetadata {
@@ -111,6 +114,9 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
             native_type: text(&row[1])?,
             nullable: row[2].bool().map_err(|e| e.to_string())?,
             generated: row[3].bool().map_err(|e| e.to_string())?,
+            automatic_key: row[5].bool().map_err(|e| e.to_string())?,
+            default_expression: match &row[6] { Val::Null => None, value => Some(text(value)?) },
+            expression_default: row[7].bool().map_err(|e| e.to_string())?,
         };
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {
             return Err("TABLE_METADATA_INVALID: duplicate column".into());
@@ -137,6 +143,7 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
         }
         if indexes[0][0].int().map_err(|e| e.to_string())? == 0 {
             columns[keys[0].1].nullable = false;
+            columns[keys[0].1].automatic_key = true;
         }
     }
     let reliable_row_identity =
