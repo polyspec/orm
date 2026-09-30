@@ -23,10 +23,11 @@ tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros
 orm = { version = "=0.0.1", path = "../orm", optional = true }
 url = { version = "2", optional = true }
 futures-util = { version = "=0.3.34", optional = true }
+sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 
 [features]
 # The orm-gen command-line tool; its database commands need the drivers.
-live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util"]
+live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser"]
 cli = ["live-db"]
 
 [[bin]]
@@ -60,4 +61,8 @@ required-features = ["live-db"]
 
 [[test]]
 name = "tool_columns"
+required-features = ["live-db"]
+
+[[test]]
+name = "read_only_query"
 required-features = ["live-db"]
