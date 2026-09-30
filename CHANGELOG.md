@@ -1,5 +1,14 @@
 # Changelog
 
+Document physical Markdown projection requirements (T7.17.2.10.1).
+Separate exact JSON metadata from restricted diagram labels and unverified
+crow-foot multiplicity. Require stable IDs, joint contradiction checks,
+ordinary Markdown preservation, bounded source handling and full-field
+four-client roundtrips before enabling this input. The existing logical
+parser is not an authoritative physical document parser. Paired records
+and writing checks pass; no grammar or rendering implementation is claimed.
+
+
 Read and emit strict physical graph JSON in four clients (T7.17.2.9).
 Reject decoded duplicate members, malformed syntax/Unicode, rounding and
 byte/depth/node excess before information can disappear. Reuse physical

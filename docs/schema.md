@@ -144,6 +144,42 @@ not connected-graph resolution, archive import or memory proof.
 PHYSICAL_RUST_TOOLCHAIN selects Rust explicitly (default 1.98.1); the command
 does not replace the user's global toolchain.
 
+### Annotated physical Markdown requirements
+
+The physical JSON APIs do not yet parse annotated Markdown. The logical
+Mermaid parser remains a separate input and must not normalize physical names,
+native types or expressions into its supported logical vocabulary.
+
+Define and verify one versioned document grammar before activating this path:
+
+- Physical names and SQL text remain exact JSON strings. Mermaid attribute
+  comments do not accept embedded double quotes; they are not a lossless raw
+  SQL container. Display escaping must be reversible and verified with real
+  diagram parsing, including quotes, backslashes, Unicode, control characters,
+  HTML/comment closers and Markdown fence text. Do not silently replace names.
+- Table, column and constraint associations use stable IDs, not display labels,
+  concatenated qualified names or positional guesses. Composite pair order and
+  separate constraints on shared columns remain distinguishable in the view.
+- Crow-foot notation is view information, not proof of FK target uniqueness,
+  row existence or executable dialect semantics. Do not infer stronger physical
+  constraints from the diagram. Unverified multiplicity must be explicit rather
+  than silently emitted as a fact.
+- Parse the diagram and annotations together before returning an authoritative
+  document. Missing, extra, renamed, reordered or contradictory references need
+  located safe diagnostics; neither side silently overrides the other.
+- Preserve ordinary Markdown and unrelated fenced examples during read/edit/
+  emit. Text inside examples is not an active annotation. Duplicate or unknown
+  version markers, incomplete blocks and ambiguous ownership fail explicitly.
+- Specify total UTF-8 bytes, line/block/diagram counts and retained diagnostics
+  before allocation. Test both each supported limit and excess in four clients.
+  A document limit does not implicitly enlarge a wire payload limit.
+- Compare every physical field after document emission/parsing/re-emission,
+  including source containing comment/fence delimiters. Retain the connected
+  2000-table/60000-column/10000-FK scenario. Separate owner CPU/retention results
+  from actual platform evidence.
+
+These requirements do not enable physical documents, imports or execution.
+
 For text interchange, read one UTF-8 JSON object and emit a compact JSON object
 from a validated graph. Before general decoding, reject duplicate decoded
 member names at every depth, malformed syntax, invalid Unicode (including
