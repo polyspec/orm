@@ -1,5 +1,16 @@
 # 변경 이력
 
+중첩 savepoint가 Box 할당 객체 대신 타입을 지운 Send callback을 직접 빌리게
+수정했다(N9.2.1). 엄격한 borrowed-Box lint와 추적되는 callback 참조 컴파일
+실패를 재현했고 억제 없이 Green이다. 분리된 소유 트랜잭션 테스트와 공개
+rust-send-savepoint-check를 추가했다. Rust 1.98.1의 엄격한 Clippy와 세 DB
+MySQL/PostgreSQL/SQLite 사례가 두 번 통과했다. Send future·중첩/외부 rollback·
+정확한 테스트 행·callback 오류·프레임 복구·연결 재사용을 유지한다. 연결 전용
+임시 테이블을 사용하므로 사용자 테이블 쓰기나 영구 테스트 데이터 정리가 없다.
+공통 Make 테스트 환경이 SQLite URI를 선언해 기존 테스트 진입점도 전달받는다.
+macOS arm64에서 소유 라이브러리/테스트 Clippy·수정 파일 포맷·영한 문서 검사가
+통과했다. 공개 트랜잭션 의미 변경이나 네 언어의 DB conformance는 아니다.
+
 네 클라이언트에서 불변 물리 그래프를 해석한다(T7.17.2.4). 테이블/컬럼/FK
 순서·정확한 이름·독립 제약을 유지하고 중복 ID/이름·누락/다른 소속 참조·
 개수/문자열 초과를 값 없는 JSON pointer 오류로 거부한다. 네 언어의 API 누락과
