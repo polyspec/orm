@@ -340,9 +340,28 @@ atomic schema revision; mutation must revalidate metadata in its owning scope.
 MySQL `SYSTEM VIEW` catalog relations are classified as views, never as tables
 or writable row identity. Unknown native relation kinds still fail explicitly.
 
-### Qualified Rust table pages
+### Native Rust typed bind values
 
-Row-edit groundwork: `RowSnapshot::from_page(&TablePage, row_index)` captures
+Tool `P` retains text/signed integers and
+adds Binary, Boolean, Float32/Float64 bit values, Decimal plain strings, Unsigned
+and Null(ParamType). Use SQLx typed driver encoding, never formatted SQL values.
+Unsigned is MySQL-only; SQLite rejects Decimal and Float32, preserving its native
+integer/float64/text/blob classes without implicit widening or numeric affinity
+coercion. PostgreSQL supports decimal and both native float widths. Reject
+nonfinite MySQL floats and SQLite NaN before execution; SQLite infinities remain
+native float64 values. Reject malformed decimals, PostgreSQL text NUL, more than
+65535 parameters or total value bytes exceeding 16 MiB before preparing/executing.
+Typed NULLs use the selected native bind kind, not empty text or zero.
+Native Boolean binding uses SQLx bool; PostgreSQL grid reads preserve Boolean,
+while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
+inventing a distinct native boolean type. SQLite storage class is owner-tested.
+These are bind semantics, not protection from column/server coercion: mutation
+execution still needs schema validation, strict post-write verification and
+rollback/conflict handling. Native Rust tooling does not prove four-client writes.
+
+### Rust row-edit baselines
+
+`RowSnapshot::from_page(&TablePage, row_index)` captures
 one checked immutable row, reliable non-null declared primary-key values in
 constraint order and a value-sensitive SHA-256 revision of descriptor/typed cells.
 Bound the complete captured encoding to 8 MiB. Reject views/unreliable identities,
@@ -357,6 +376,8 @@ The descriptor is not a complete physical schema revision and cannot detect ABA.
 Prepared native types may be data-dependent; compare projection names and the
 native descriptor, not prepared type names as schema revisions. Rust native
 tooling scope does not establish four-client mutation conformance.
+
+### Qualified Rust table pages
 
 `CatalogConnection::table_page(&TableRef, limit, offset)` reads one explicit
 qualified table in a fresh enforced read-only scope, selecting descriptor columns

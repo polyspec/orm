@@ -1,5 +1,21 @@
 # Changelog
 
+Extend native Rust tool binds with explicit typed NULLs, binary, bool, native
+float bits, exact decimal and MySQL unsigned values through SQLx driver codecs.
+Share bind paths across bounded queries and affected-row execution. Reject
+unsupported dialect kinds, malformed/nonrepresentable inputs and parameter
+count/value budgets before prepare/execute; do not format values into SQL.
+Missing API compile Red is Green. Three added validation/physical use-path
+cases and all 40 focused native/library/CLI tests pass. Actual three-database
+fixtures verify stored values, all supported NULL kinds, affected rows, native
+constraint errors, rejected-write preservation and rollback; PostgreSQL float
+NaN/infinity/negative-zero and SQLite infinity bindings also pass. Other cases
+are added regressions. Correct the SQLite boolean expectation using measured
+INTEGER storage, not a codec change, and avoid premature per-dialect pass logs.
+Owned tables/files are removed. Native binds do not prevent column/server
+coercion: locked row mutation/post-verification, wire/UI and four-client
+conformance remain pending.
+
 Capture immutable Rust RowSnapshot baselines from qualified table pages with
 checked non-null primary-key identity, exact typed original cells and an 8 MiB
 bounded SHA-256 descriptor/value revision. Distinguish descriptor changes,
