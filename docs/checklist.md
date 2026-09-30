@@ -2,6 +2,12 @@
 
 Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypassed.
 
+## Physical schema completion
+
+- [o] T7.17.2.5.1 Correct the new CHECK documentation wording and use the declared dot-separated sub-item ID. Cause: docs-rules-check rejected the new prohibited terms and checklist-check rejected a hyphenated ID. Evidence: both owning checks reproduced the rejections and now pass without changing record meaning or weakening their rules.
+
+- [o] T7.17.2.5 Preserve immutable physical CHECK records (follows T7.17.2.4). Priority: prerequisite for lossless physical import. Cause: the physical graph cannot represent CHECK expressions or enforcement/validation states. Evidence: missing-API Reds in four clients are Green; physical-check-check executes the same 24 exact-field/rejection and 17 byte/count/missing-field cases twice in Go/PHP/Rust/TypeScript, plus encoding and detached-value cases and 25 column regressions per client. Rust 1.98.1 strict owner Clippy/formatting, TypeScript compilation on Node 26.10.0, PHP syntax and paired-record rules pass on macOS arm64. This unit defines a structural record, not graph attachment, SQL validation, import, DDL, DB conformance or execution.
+
 ## Common interface verification
 
 - [o] I1 Define common structure, ownership, and state transitions in `interfaces.md` and Mermaid diagrams.

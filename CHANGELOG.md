@@ -1,5 +1,20 @@
 # Changelog
 
+Preserve immutable physical CHECK records in all four clients (T7.17.2.5).
+Keep exact names, raw expressions, independent nullable enforcement and
+validation states, comments and ordered options. Reject malformed records
+and size/encoding excess with value-free errors; detach caller-owned values.
+Missing APIs are Red-to-Green in Go, PHP, Rust and TypeScript. The reusable
+physical-check-check passes 24 shared vectors and 17 shared limit cases
+twice per client, plus encoding/alias cases and 25 column regressions.
+Rust 1.98.1 strict owner Clippy and scoped formatting, Node 26.10.0
+TypeScript compilation, PHP syntax and paired documentation checks pass
+on macOS arm64. Correct new prohibited documentation terms and the
+unsupported hyphenated sub-item ID (T7.17.2.5.1) without weakening checks.
+This is structural interchange, not graph attachment, SQL validation,
+physical import, DDL, DB conformance or execution.
+
+
 Borrow the erased Send callback directly in nested savepoints (N9.2.1),
 instead of requiring a reference to its Box allocation. Reproduce the
 strict borrowed-Box lint and a tracked callback-reference compile failure;
