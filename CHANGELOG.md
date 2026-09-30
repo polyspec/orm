@@ -1,5 +1,17 @@
 # Changelog
 
+Shield explicit HTML blocks during physical source scanning
+(T7.17.2.10.3.1.1). Ignore schema-shaped fences in comments, raw elements,
+processing instructions, declarations and CDATA; resume after the closing
+line and reject unfinished blocks with safe opening-line diagnostics.
+Keep HTML-shaped content inside code fences unchanged. Locate each HTML
+terminator once instead of searching the remaining source on every line.
+Four reproduced comment Reds are Green. The owning command passes 29 new
+shared cases, two 100000-line stress cases and related source/limit/encoding
+regressions twice per client. Scoped lint, compilation, paired records and
+diff checks pass. Blank-line HTML, general containers, joint graph/diagram
+parsing, imports and native/platform evidence are still unfinished.
+
 Locate physical Markdown source blocks in four clients (T7.17.2.10.2).
 Return UTF-8 byte ranges without retaining body/line copies. Keep foreign
 fenced examples opaque; reject unknown/duplicate/unfinished blocks and
