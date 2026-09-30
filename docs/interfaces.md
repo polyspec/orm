@@ -311,3 +311,28 @@ database's declared result scale, including trailing zeros. Do not pass through
 binary floats or fixed-precision model codecs. SQLite has no native decimal
 storage class: its actual text/integer/real values keep their existing tags.
 Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.
+
+### Qualified native Rust table metadata
+
+`CatalogConnection::current_namespace()` reports the selected namespace.
+`describe_table(&TableRef { namespace, name })` resolves an explicitly qualified
+table through bound catalog names, preserving native column types, declared
+primary-key order, actual nullability and generated-column flags. Do not derive
+identity from logical schema column order or arbitrary query results. SQLite
+supports its connected `main` namespace; nullable legacy primary keys are not
+reliable identity, while a genuine INTEGER rowid alias is non-null. A descriptor
+is not edit authorization: table mutation requires explicit commands, validated
+schema/row revisions, typed binds and optimistic conflict checks.
+
+`TableMetadata` contains the qualified `table`, native relation `kind`, ordered
+`columns` (`name`, `native_type`, `nullable`, `generated`), constraint-ordered
+`primary_key` and `reliable_row_identity`. Identity requires an ordinary or
+partitioned table with a nonempty, entirely non-null primary key. Generated
+flags also cover PostgreSQL always-generated identity and SQLite hidden columns;
+they are not a complete writable-column permission model. Preserve an empty
+SQLite native type for an untyped column rather than inventing a type.
+
+Names require 1..1024 UTF-8 bytes and no NUL. Each catalog result is bounded to
+2048 rows and 4 MiB. Unsupported relation kinds and SQLite namespaces fail
+explicitly. This descriptor is not a complete physical schema import or an
+atomic schema revision; mutation must revalidate metadata in its owning scope.

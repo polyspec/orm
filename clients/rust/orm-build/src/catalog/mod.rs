@@ -1,6 +1,8 @@
 //! Native catalog connections selected by a DSN URI.
 mod reader;
 mod read_only;
+mod metadata;
+pub use metadata::{TableRef, TableMetadata, TableColumnMetadata, TableKind};
 pub use reader::{read_tables, live_manifest, trigger_bodies, postgres_check_expr};
 use crate::{live::Table, schema::Manifest, tool_db::Conn};
 use orm::db::{ConnectOptions, Pool};
@@ -32,6 +34,12 @@ impl CatalogConnection {
         Ok(Self { connection, pool, dialect })
     }
     pub fn dialect(&self) -> &str { &self.dialect }
+    pub async fn current_namespace(&mut self) -> Result<String, String> {
+        metadata::current_namespace(&mut self.connection, &self.dialect).await
+    }
+    pub async fn describe_table(&mut self, table: &TableRef) -> Result<TableMetadata, String> {
+        metadata::describe(&mut self.connection, &self.dialect, table).await
+    }
     pub async fn tables(&mut self, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
         read_tables(&mut self.connection, &self.dialect, only).await
     }

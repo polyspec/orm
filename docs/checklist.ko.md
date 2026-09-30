@@ -107,6 +107,8 @@
 
 - [o] T7.17.1.8 실수 변환 없이 유한 Rust 그리드 decimal 정밀도와 선언 scale을 보존한다. 원인: 그리드 값에 decimal 태그가 없고 고정 정밀도 모델 디코딩은 임의 SQL numeric 결과를 표현하지 못한다. 근거: decimal variant 누락 컴파일 Red가 실제 MySQL 65자리·PostgreSQL 끝자리 0 scale·SQLite 네이티브 저장 클래스에서 Green이다. 추가 PostgreSQL 200자리/지수·숫자 NULL·바이트 예산·비유한 거부 회귀가 통과했다. 통합 14개·CLI 11개·라이브러리 5개가 통과했다. BigDecimal 0.4.11을 고정하고 공개 드라이버 디코딩 뒤 PostgreSQL 이진 dscale을 복원하며 값이 달라지는 scale 조정을 거부한다. 비유한 numeric 지원·시간 타입은 미완료다.
 
+- [o] T7.17.1.9 명시적 테이블 조회/편집을 위해 한정된 Rust 테이블 메타데이터의 선언 기본키 순서·네이티브 타입·nullable·생성 컬럼을 노출한다. 원인: 논리 카탈로그 컬럼 플래그는 복합키 순서를 잃고 신뢰할 행 식별을 확정할 수 없다. 근거: 공개 API 누락 컴파일 Red 후 실제 MySQL/PostgreSQL/SQLite 역순 복합키·생성 컬럼·nullable SQLite 키/rowid 별칭 Green. 추가 뷰·DESC/WITHOUT ROWID 키·타입 없는 컬럼·한정 이름/입력 회귀와 소유 테스트 12개가 통과했다. 메타데이터는 편집 권한이 아니며 변경·낙관적 충돌 검사는 미완료다.
+
 ## 문서 작업
 
 - [o] T7.D1 각 영어 페이지 옆에 한국어 `.ko.md` 페이지를 둔다.
