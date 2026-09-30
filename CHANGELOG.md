@@ -1,5 +1,15 @@
 # Changelog
 
+Expose Rust typed read-only grid results with byte-preserving binary cells,
+distinct from text, empty text and NULL. Share streaming/metadata budgets
+and the enforced read-only connection scope with catalog tooling rather
+than duplicating transaction policy. Keep strict catalog value semantics.
+Missing typed API compile Red is Green on MySQL, PostgreSQL and SQLite;
+post-implementation budget, mutation, empty metadata and bind regressions
+pass. Twelve owning integration tests, eleven CLI tests and five library
+tests pass. Additional query types, other-client grid APIs and consumer
+wire/UI integration remain pending; no complete SQL-grid claim is made.
+
 Add bounded read-only catalog queries with dialect AST validation and
 database-enforced scopes on dedicated discard-on-drop connections. Reject
 write CTEs, mutation/transaction statements, SELECT INTO, locks and executable

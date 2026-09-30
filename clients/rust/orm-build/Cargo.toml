@@ -66,3 +66,7 @@ required-features = ["live-db"]
 [[test]]
 name = "read_only_query"
 required-features = ["live-db"]
+
+[[test]]
+name = "grid_cells"
+required-features = ["live-db"]
