@@ -336,3 +336,6 @@ Names require 1..1024 UTF-8 bytes and no NUL. Each catalog result is bounded to
 2048 rows and 4 MiB. Unsupported relation kinds and SQLite namespaces fail
 explicitly. This descriptor is not a complete physical schema import or an
 atomic schema revision; mutation must revalidate metadata in its owning scope.
+
+MySQL `SYSTEM VIEW` catalog relations are classified as views, never as tables
+or writable row identity. Unknown native relation kinds still fail explicitly.

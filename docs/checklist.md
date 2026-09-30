@@ -112,6 +112,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 - [o] T7.17.1.9 Expose qualified Rust table metadata with declared primary-key order, native types, nullability and generated columns for explicit table browsing/editing. Cause: logical catalog column flags lose composite-key order and cannot establish reliable row identity. Evidence: missing public API compile Red; actual MySQL/PostgreSQL/SQLite Green for reversed composite keys, generated columns, nullable SQLite keys and rowid aliases. Added views, DESC/WITHOUT ROWID keys, untyped columns and qualified-name/input regressions pass; 12 focused tests pass. This metadata does not authorize edits; mutations and optimistic conflict checks remain pending.
 
+- [o] T7.17.1.9.1 Read qualified MySQL system-view metadata through the Rust catalog API. Cause: actual process inspection of a system catalog fails; the native SYSTEM VIEW kind was absent from the relation classifier. Evidence: actual-MySQL Red confirmed native kind and failed descriptor; Green classifies it as View without reliable row identity. Six focused metadata/catalog tests pass, including ordinary table/view cases on all three databases. The new system-view case changes no database contents; Rust scope does not establish four-client conformance.
+
 ## Documentation tasks
 
 - [o] T7.D1 Keep each English page beside its Korean `.ko.md` page.
