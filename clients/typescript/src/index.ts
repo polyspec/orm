@@ -17,6 +17,8 @@ export { GroupRow, GroupRows } from './group_rows.js';
 export { createPhysicalIdentity } from './physical.js';
 export type { PhysicalIdentity, PhysicalParts } from './physical.js';
 export { createPhysicalColumn } from './physical_column.js';
+export { createPhysicalCheck } from './physical_check.js';
+export type { PhysicalCheck } from './physical_check.js';
 export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './physical_column.js';
 export { createPhysicalForeignKey } from './physical_foreign_key.js';
 export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physical_foreign_key.js';
