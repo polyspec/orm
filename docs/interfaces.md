@@ -299,3 +299,9 @@ is a separate cell. Grid decoding does not modify catalog/schema coercion
 rules or add a compatibility fallback. It uses the same database-enforced
 read-only scope, connection disposal and explicit query budgets. Unsupported
 types fail explicitly until their owning type cases are implemented.
+
+Grid floating-point cells carry native IEEE-754 bits as `Float32(u32)` or
+`Float64(u64)`, preserving signed zero and nonfinite values without JSON
+number coercion. `Unsigned(u64)` preserves the entire MySQL unsigned range.
+These native Rust values require explicit typed conversion at wire boundaries;
+they do not change schema/catalog scalar conversion rules.

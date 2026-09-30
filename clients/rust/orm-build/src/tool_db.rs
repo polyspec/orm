@@ -160,12 +160,23 @@ macro_rules! grid_cell {
         let (row, i) = ($row, $i);
         let raw = row.try_get_raw(i)?;
         if raw.is_null() { Ok(GridCell::Null) }
+        else if matches!(raw.type_info().name(), "FLOAT"|"FLOAT4") {
+            row.try_get::<f32, _>(i).map(|value| GridCell::Float32(value.to_bits()))
+        }
+        else if matches!(raw.type_info().name(), "DOUBLE"|"FLOAT8"|"REAL") {
+            row.try_get::<f64, _>(i).map(|value| GridCell::Float64(value.to_bits()))
+        }
         else if matches!(raw.type_info().name(), $($binary)|+) {
             row.try_get::<Vec<u8>, _>(i).map(GridCell::Binary)
         } else { $decoder!(row, i).map(GridCell::from) }
     }};
 }
-macro_rules! grid_mysql { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BINARY"|"VARBINARY"|"TINYBLOB"|"BLOB"|"MEDIUMBLOB"|"LONGBLOB") }; }
+macro_rules! grid_mysql { ($row:expr, $i:expr) => {{
+    let (row,i)=($row,$i);
+    if matches!(row.columns()[i].type_info().name(), "TINYINT UNSIGNED"|"SMALLINT UNSIGNED"|"MEDIUMINT UNSIGNED"|"INT UNSIGNED"|"BIGINT UNSIGNED") {
+        row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
+    } else { grid_cell!(row, i, cell, "BINARY"|"VARBINARY"|"TINYBLOB"|"BLOB"|"MEDIUMBLOB"|"LONGBLOB") }
+}}; }
 macro_rules! grid_pg { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell_pg, "BYTEA") }; }
 macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BLOB") }; }
 
