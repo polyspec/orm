@@ -165,6 +165,10 @@ fn has_params(params: &[P]) -> bool {
 }
 
 impl Conn {
+    /// Never return a scope-modified connection to the pool, including cancellation.
+    pub(crate) fn discard_on_drop(&mut self) {
+        match self { Self::MySql(c)=>c.close_on_drop(),Self::Postgres(c)=>c.close_on_drop(),Self::Sqlite(c)=>c.close_on_drop() }
+    }
     pub async fn acquire(pool: &Pool) -> Result<Conn, sqlx::Error> {
         Ok(match pool {
             Pool::MySql(p) => Conn::MySql(p.acquire().await?),
