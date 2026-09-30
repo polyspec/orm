@@ -42,6 +42,16 @@ PHYSICAL_NODE ?= node
 PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
 .PHONY: physical-check-check
 .PHONY: physical-index-check
+.PHONY: physical-key-check
+physical-key-check: physical-index-check physical-fk-check
+	go test ./clients/go/orm -run '^TestPhysicalKeyVectors$$' -count=2 -v
+	php clients/php/tests/physical_key_test.php
+	php clients/php/tests/physical_key_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_key -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_key -- --nocapture
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-key.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-key.mjs
+
 physical-index-check: physical-check-check
 	go test ./clients/go/orm -run '^TestPhysicalIndexVectors$$' -count=2 -v
 	php clients/php/tests/physical_index_test.php
