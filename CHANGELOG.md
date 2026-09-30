@@ -1,5 +1,14 @@
 # Changelog
 
+Expose qualified Rust table descriptors with bound catalog names, native
+column types, generated flags and constraint-ordered primary keys. Distinguish
+SQLite nullable legacy keys, DESC keys, INTEGER rowid aliases and WITHOUT
+ROWID keys before declaring reliable row identity. Missing public API compile
+Red is Green on MySQL, PostgreSQL and SQLite. Added view, invalid-name,
+unsupported-namespace and untyped-column regressions pass; twelve focused
+library/catalog/read-only/column/metadata tests pass. Descriptors do not
+authorize mutations or complete physical imports or four-client conformance.
+
 Preserve finite Rust grid decimals as exact plain strings using pinned
 BigDecimal 0.4.11 rather than binary floats or fixed-precision model codecs.
 Restore PostgreSQL result scale from public driver bytes and reject any
