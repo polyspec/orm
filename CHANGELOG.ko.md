@@ -1,5 +1,13 @@
 # 변경 이력
 
+네이티브 타입형 값·descriptor 컬럼 출처·선언 기본키 순서가 있는 명시적 한정
+Rust 테이블 페이지를 추가한다. 식별자를 인용하고 새 강제 읽기 전용 범위·
+limit/offset·행 인코딩 상한을 적용하며 추가 행 하나로 다음 페이지를 확인한다.
+descriptor 변경이나 prepared 컬럼 불일치를 거부한다. API 누락 컴파일 Red는
+실제 세 DB에서 Green이며 빈/뷰·인용 이름·상한·8 MiB 초과/복구·조립 회귀와
+소유 테스트 10개가 통과했다. offset 페이지는 독립 스냅샷이고 편집 권한이 아니다.
+네 클라이언트 conformance는 미완료다.
+
 Rust 한정 테이블 descriptor에서 MySQL 네이티브 SYSTEM VIEW를 뷰로 분류한다.
 실제 MySQL 테스트로 네이티브 종류와 descriptor 거부를 먼저 Red로 확인한 뒤
 기본키 행 식별이나 DB 쓰기 없이 Green을 검증했다. 세 DB 일반 테이블/뷰 회귀를

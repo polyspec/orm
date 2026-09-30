@@ -1,5 +1,15 @@
 # Changelog
 
+Add explicit qualified Rust table-page reads with native typed values,
+descriptor column provenance and declared primary-key ordering. Quote native
+identifiers, enforce a fresh read-only scope, bound limit/offset and row encoding,
+and use one sentinel row for continuation. Reject changed descriptors or prepared
+column mismatches instead of returning ambiguous metadata. Missing API compile
+Red is Green on MySQL, PostgreSQL and SQLite. Empty/view, quoted-name, bounds,
+8 MiB overflow/recovery and assembly regressions pass; ten focused tests pass.
+Offset pages remain independent snapshots, not edit authorization.
+Four-client conformance remains pending.
+
 Classify native MySQL SYSTEM VIEW relations as views in the Rust qualified
 table descriptor. An actual-MySQL test first confirmed the native kind and
 reproduced the rejected descriptor, then passes without primary-key identity

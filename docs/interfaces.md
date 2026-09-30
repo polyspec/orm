@@ -339,3 +339,18 @@ atomic schema revision; mutation must revalidate metadata in its owning scope.
 
 MySQL `SYSTEM VIEW` catalog relations are classified as views, never as tables
 or writable row identity. Unknown native relation kinds still fail explicitly.
+
+### Qualified Rust table pages
+
+`CatalogConnection::table_page(&TableRef, limit, offset)` reads one explicit
+qualified table in a fresh enforced read-only scope, selecting descriptor columns
+in physical order with dialect-quoted identifiers. Order by declared primary-key
+constraint order when present; no key means unspecified ordering, never an
+invented row identity. Require limit 1..1000 and offset 0..1000000; read one extra
+bounded sentinel row to report `has_more`, not a total count. The page carries
+`metadata`, typed `result`, `limit`, `offset`, `order_by` and `has_more`.
+Bound native row encoding to 8 MiB, reject rather than truncate excess payloads.
+Prepared column names must exactly match the descriptor, and changed metadata
+within the read scope fails. Preserve unsupported-type errors and rollback the
+scope on completion/failure. Independent offset pages can drift as data changes;
+metadata is not an atomic schema revision or authorization for row mutations.

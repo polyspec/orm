@@ -2,6 +2,8 @@
 mod reader;
 mod read_only;
 mod metadata;
+mod page;
+pub use page::TablePage;
 pub use metadata::{TableRef, TableMetadata, TableColumnMetadata, TableKind};
 pub use reader::{read_tables, live_manifest, trigger_bodies, postgres_check_expr};
 use crate::{live::Table, schema::Manifest, tool_db::Conn};
@@ -39,6 +41,13 @@ impl CatalogConnection {
     }
     pub async fn describe_table(&mut self, table: &TableRef) -> Result<TableMetadata, String> {
         metadata::describe(&mut self.connection, &self.dialect, table).await
+    }
+    /// Reads one bounded table page; this does not authorize row mutations.
+    pub async fn table_page(&mut self, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, String> {
+        page::validate_request(table, limit, offset)?;
+        let mut connection=self.read_only_connection("SELECT 1").await?;
+        let result=page::read(&mut connection,&self.dialect,table,limit,offset).await;
+        finish_read_only(&mut connection,result).await
     }
     pub async fn tables(&mut self, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
         read_tables(&mut self.connection, &self.dialect, only).await

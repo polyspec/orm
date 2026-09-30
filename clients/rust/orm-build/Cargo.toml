@@ -83,3 +83,7 @@ required-features = ["live-db"]
 [[test]]
 name = "table_metadata"
 required-features = ["live-db"]
+
+[[test]]
+name = "table_page"
+required-features = ["live-db"]

@@ -1,0 +1,93 @@
+use orm_build::{
+    catalog::{CatalogConnection, TableRef},
+    tool_db::{self, GridCell},
+};
+fn quote(value: &str, dialect: &str) -> String {
+    let mark = if dialect == "mysql" { '`' } else { '"' };
+    format!("{mark}{}{mark}", value.replace(mark, &format!("{mark}{mark}")))
+}
+#[tokio::test]
+async fn qualified_table_pages_preserve_columns_key_order_and_bounds() {
+    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table page deadline");
+}
+async fn check() {
+    let path = std::env::temp_dir().join(format!("orm-table-page-{}.sqlite", std::process::id()));
+    assert!(!path.exists());
+    let mut failures = Vec::new();
+    for dialect in ["sqlite", "mysql", "postgres"] {
+        let started = std::time::Instant::now();
+        eprintln!("running table_page:{dialect}");
+        let dsn = match dialect {
+            "sqlite" => format!("sqlite://{}", path.display()),
+            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
+            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
+        };
+        let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
+        let name = format!("orm_table_page_{}_\"'", std::process::id());
+        let sql_name = quote(&name, dialect);
+        let note = "note\"';--";
+        let sql_note = quote(note, dialect);
+        seed.exec(&format!("CREATE TABLE {sql_name}(a BIGINT NOT NULL,b BIGINT NOT NULL,{sql_note} VARCHAR(50),g BIGINT GENERATED ALWAYS AS (a+1) STORED,PRIMARY KEY(b,a))"),&[]).await.expect("owned fixture table");
+        seed.exec(&format!("INSERT INTO {sql_name}(a,b,{sql_note}) VALUES(1,3,'first'),(2,1,'second'),(3,2,'third')"), &[]).await.expect("owned fixture rows");
+        let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
+        let namespace = catalog.current_namespace().await.expect("selected namespace");
+        let table = TableRef { namespace, name: name.clone() };
+        let page = catalog.table_page(&table, 2, 0).await.expect("first page");
+        if page.limit != 2
+            || page.offset != 0
+            || !page.has_more
+            || page.order_by != vec!["b", "a"]
+            || page.result.columns.iter().map(|column| column.name.as_str()).collect::<Vec<_>>() != vec!["a", "b", note, "g"]
+            || page.result.rows.len() != 2
+            || page.result.rows[0][0] != GridCell::Integer(2)
+            || page.result.rows[1][0] != GridCell::Integer(3)
+        {
+            failures.push(dialect);
+        }
+        let next = catalog.table_page(&table, 2, 2).await.expect("second page");
+        if next.has_more || next.result.rows.len() != 1 || next.result.rows[0][0] != GridCell::Integer(1) {
+            failures.push("next-page");
+        }
+        let empty = catalog.table_page(&table, 2, 3).await.expect("empty page");
+        if !empty.result.rows.is_empty() || empty.has_more || empty.result.columns.len() != 4 {
+            failures.push("empty-page");
+        }
+        let view = format!("{name}_view");
+        let sql_view = quote(&view, dialect);
+        seed.exec(&format!("CREATE VIEW {sql_view} AS SELECT a,b FROM {sql_name}"), &[]).await.expect("owned view");
+        let view_page = catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: view }, 2, 0).await.expect("view page");
+        if !view_page.order_by.is_empty() || view_page.metadata.reliable_row_identity || view_page.result.rows.len() != 2 || !view_page.has_more {
+            failures.push("view-page");
+        }
+        seed.exec(&format!("DROP VIEW {sql_view}"), &[]).await.expect("remove owned view");
+        if catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: "missing' OR '1'='1".into() }, 1, 0).await.is_ok() {
+            failures.push("missing-name");
+        }
+        let large = format!("orm_table_page_large_{}", std::process::id());
+        let large_type = if dialect == "mysql" { "LONGTEXT" } else { "TEXT" };
+        seed.exec(&format!("CREATE TABLE {large}(note {large_type})"), &[]).await.expect("owned budget table");
+        let insert = if dialect == "postgres" { format!("INSERT INTO {large} VALUES($1)") } else { format!("INSERT INTO {large} VALUES(?)") };
+        seed.exec(&insert, &[tool_db::s(&"x".repeat(8 * 1024 * 1024))]).await.expect("owned budget row");
+        match catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: large.clone() }, 1, 0).await {
+            Err(error) if error.contains("TOOL_QUERY_LIMIT") => {}
+            _ => failures.push("byte-budget"),
+        }
+        let recovery = catalog.table_page(&table, 2, 0).await.expect("recovered page");
+        if recovery.result.rows.len() != 2 || !recovery.has_more {
+            failures.push("read-only-cleanup");
+        }
+        seed.exec(&format!("DROP TABLE {large}"), &[]).await.expect("remove owned budget table");
+        for (limit, offset) in [(0, 0), (1001, 0), (1, 1000001)] {
+            if catalog.table_page(&table, limit, offset).await.is_ok() {
+                failures.push("page-bounds");
+            }
+        }
+        catalog.close().await;
+        seed.exec(&format!("DROP TABLE {sql_name}"), &[]).await.expect("remove owned fixture");
+        drop(seed);
+        database.close().await;
+        eprintln!("finished table_page:{dialect} {:?}", started.elapsed());
+    }
+    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+    assert!(failures.is_empty(), "table page cases failed: {failures:?}");
+}
