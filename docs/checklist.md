@@ -103,6 +103,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] T7.20 Split oversized root `IN` predicates, preserve non-`IN` parameters, merge rows, sum count results, and reject unsafe query shapes.
 - [o] T7.21 Add the `soft_delete` schema directive, apply active-row predicates to reads and updates, and convert deletes to timestamp updates.
 
+- [o] T7.17.1.6 Add bounded Rust typed read-only grid results with byte-preserving binary cells separate from text. Cause: tool values reject arbitrary bytes or interpret valid binary UTF-8 as text; SQL grid values need faithful representation. Evidence: missing GridCell/API compile Red is Green; actual MySQL/PostgreSQL/SQLite binary/NULL/empty/text cases pass. Added post-implementation budget, mutation-policy, empty-metadata and bind regressions pass. Twelve owning integration tests, eleven CLI tests and five library tests pass; streaming/metadata budgets and enforced read-only scope/disposal share the existing implementation. Numeric/temporal types and other-client grid APIs remain pending; binary support alone does not complete query types.
+
 ## Documentation tasks
 
 - [o] T7.D1 Keep each English page beside its Korean `.ko.md` page.

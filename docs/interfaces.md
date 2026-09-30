@@ -289,3 +289,13 @@ The verification suite checks the manifest, generated symbols, stored fields, re
 The interface check rejects a declared or called `multi_statement` method in Go, PHP, Rust, and TypeScript source. Its source mutation cases verify both failures. The CI workflow runs the generated Go model, interface, and schema checks; a test fails if any command is removed.
 
 A passing symbol check proves the declared surface only. A passing conformance vector proves the tested input and result. A feature is complete only when all supported clients, required databases, tests, documents, and Pages checks pass.
+
+### Rust native grid query contract (in development)
+
+`CatalogConnection::read_only_grid_query(sql, params, limits)` returns ordered
+column metadata and typed grid cells. Binary cells preserve bytes and remain
+distinct from text, including empty binary and valid UTF-8 binary. SQL NULL
+is a separate cell. Grid decoding does not modify catalog/schema coercion
+rules or add a compatibility fallback. It uses the same database-enforced
+read-only scope, connection disposal and explicit query budgets. Unsupported
+types fail explicitly until their owning type cases are implemented.

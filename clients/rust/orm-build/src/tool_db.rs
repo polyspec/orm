@@ -2,12 +2,14 @@
 //! values, and statements run as written.
 
 use sqlx::pool::PoolConnection;
-use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, Sqlite, SqlSafeStr, Statement, TypeInfo};
+use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, Sqlite, SqlSafeStr, Statement, TypeInfo, ValueRef};
 
 use orm::db::Pool;
 use futures_util::TryStreamExt;
 mod limits;
 mod result;
+mod grid;
+pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub use result::{QueryColumn, QueryResult};
 
@@ -153,6 +155,40 @@ macro_rules! cell_pg {
     }};
 }
 
+macro_rules! grid_cell {
+    ($row:expr, $i:expr, $decoder:ident, $($binary:literal)|+) => {{
+        let (row, i) = ($row, $i);
+        let raw = row.try_get_raw(i)?;
+        if raw.is_null() { Ok(GridCell::Null) }
+        else if matches!(raw.type_info().name(), $($binary)|+) {
+            row.try_get::<Vec<u8>, _>(i).map(GridCell::Binary)
+        } else { $decoder!(row, i).map(GridCell::from) }
+    }};
+}
+macro_rules! grid_mysql { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BINARY"|"VARBINARY"|"TINYBLOB"|"BLOB"|"MEDIUMBLOB"|"LONGBLOB") }; }
+macro_rules! grid_pg { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell_pg, "BYTEA") }; }
+macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BLOB") }; }
+
+macro_rules! fetch_result {
+    ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident) => {{
+        let statement = (&mut **$conn).prepare($sql.into_sql_str()).await?;
+        let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+        let mut q = statement.query();
+        for p in $params {
+            q = match p { P::S(v) => q.bind(v.clone()), P::I(v) => q.bind(*v) };
+        }
+        let mut stream = q.fetch(&mut **$conn);
+        let mut rows = Vec::new();
+        while let Some(row) = stream.try_next().await? {
+            $budget.check_row_count(rows.len())?;
+            let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
+            $budget.add_row(&values, rows.len())?;
+            rows.push(values);
+        }
+        Ok($result { columns, rows })
+    }};
+}
+
 /// One reserved connection of a pool.
 pub enum Conn {
     MySql(PoolConnection<MySql>),
@@ -221,29 +257,24 @@ impl Conn {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
         let sql = AssertSqlSafe(sql.to_owned());
-        macro_rules! fetch {
-            ($conn:expr, $cell:ident) => {{
-                let statement = (&mut **$conn).prepare(sql.into_sql_str()).await?;
-                let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
-                let mut q = statement.query();
-                for p in params {
-                    q = match p { P::S(v) => q.bind(v.clone()), P::I(v) => q.bind(*v) };
-                }
-                let mut stream = q.fetch(&mut **$conn);
-                let mut rows = Vec::new();
-                while let Some(row) = stream.try_next().await? {
-                    budget.check_row_count(rows.len())?;
-                    let values = (0..row.columns().len()).map(|i| $cell!(&row, i)).collect::<Result<Vec<_>, sqlx::Error>>()?;
-                    budget.add_row(&values, rows.len())?;
-                    rows.push(values);
-                }
-                Ok(QueryResult { columns, rows })
-            }};
-        }
         match self {
-            Conn::MySql(c) => fetch!(c, cell),
-            Conn::Postgres(c) => fetch!(c, cell_pg),
-            Conn::Sqlite(c) => fetch!(c, cell),
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult),
+        }
+    }
+
+    /// Typed SQL grid rows using the same streaming and metadata budgets.
+    pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
+        let mut budget = limits::Budget::new(limits)?;
+        if orm_schema::sql::split_sql(sql).len() != 1 {
+            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
+        }
+        let sql = AssertSqlSafe(sql.to_owned());
+        match self {
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult),
         }
     }
 }
