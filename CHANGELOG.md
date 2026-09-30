@@ -1,5 +1,16 @@
 # Changelog
 
+Preserve exact physical foreign keys in four clients (T7.17.2.3). Retain
+constraint names, ordered column pairs, independent actions, match and deferral;
+reject malformed/contradictory records without value exposure. Extract shared
+bounded validators for columns/FKs and replace Rust ColumnError with RecordError.
+Missing API Reds are Green. The exposed physical-fk-check passes all 26 FK and
+25 column vectors twice per client, plus immutable/sparse/arity limits and 2000
+retained FK records. Rust 1.98.1 Clippy, TypeScript compilation on declared Node
+26.10.0, PHP syntax and paired documentation checks pass on macOS arm64.
+Record-retention timing does not prove connected-graph or rendered performance;
+graph resolution, imports, physical DDL and execution remain incomplete.
+
 Preserve immutable physical column records in all four clients (T7.17.2.2).
 Keep native SQL, absent/NULL/literal/expression defaults, identity/computed
 generation, exact names/comments and ordered options without coercion.

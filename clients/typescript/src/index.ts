@@ -18,6 +18,8 @@ export { createPhysicalIdentity } from './physical.js';
 export type { PhysicalIdentity, PhysicalParts } from './physical.js';
 export { createPhysicalColumn } from './physical_column.js';
 export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './physical_column.js';
+export { createPhysicalForeignKey } from './physical_foreign_key.js';
+export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physical_foreign_key.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
 export type { EntityDef } from './core.js';

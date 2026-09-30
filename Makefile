@@ -38,16 +38,27 @@ physical-identity-check:
 	node --test clients/typescript/tests/physical-identity.mjs
 
 PHYSICAL_NODE ?= node
+PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
 .PHONY: physical-column-check
 physical-column-check:
 	go test ./clients/go/orm -run '^TestPhysicalColumnVectors$$' -count=2 -v
 	php clients/php/tests/physical_column_test.php
 	php clients/php/tests/physical_column_test.php
-	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_column -- --nocapture
-	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_column -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_column -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_column -- --nocapture
 	$(PHYSICAL_NODE) clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-column.mjs
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-column.mjs
+
+.PHONY: physical-fk-check
+physical-fk-check: physical-column-check
+	go test ./clients/go/orm -run '^TestPhysicalForeignKeyVectors$$' -count=2 -v
+	php clients/php/tests/physical_foreign_key_test.php
+	php clients/php/tests/physical_foreign_key_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_foreign_key -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_foreign_key -- --nocapture
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
 
 test-servers:
 	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
