@@ -173,11 +173,17 @@ macro_rules! grid_cell {
 }
 macro_rules! grid_mysql { ($row:expr, $i:expr) => {{
     let (row,i)=($row,$i);
-    if matches!(row.columns()[i].type_info().name(), "TINYINT UNSIGNED"|"SMALLINT UNSIGNED"|"MEDIUMINT UNSIGNED"|"INT UNSIGNED"|"BIGINT UNSIGNED") {
+    if matches!(row.columns()[i].type_info().name(), "DECIMAL"|"DECIMAL UNSIGNED") {
+        row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(GridCell::Null,|value|GridCell::Decimal(value.to_plain_string())))
+    }else if matches!(row.columns()[i].type_info().name(), "TINYINT UNSIGNED"|"SMALLINT UNSIGNED"|"MEDIUMINT UNSIGNED"|"INT UNSIGNED"|"BIGINT UNSIGNED") {
         row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
     } else { grid_cell!(row, i, cell, "BINARY"|"VARBINARY"|"TINYBLOB"|"BLOB"|"MEDIUMBLOB"|"LONGBLOB") }
 }}; }
-macro_rules! grid_pg { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell_pg, "BYTEA") }; }
+macro_rules! grid_pg { ($row:expr, $i:expr) => {{
+    let(row,i)=($row,$i);
+    if row.columns()[i].type_info().name()=="NUMERIC" {grid::postgres_decimal(row,i)}
+    else{grid_cell!(row,i,cell_pg,"BYTEA")}
+}}; }
 macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BLOB") }; }
 
 macro_rules! fetch_result {
