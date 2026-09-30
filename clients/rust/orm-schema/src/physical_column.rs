@@ -15,7 +15,11 @@ impl fmt::Debug for PhysicalColumn {
 
 impl PhysicalColumn {
     pub fn from_value(value: Value) -> Result<Self, RecordError> {
-        let record = object(&value, &["id", "name", "typeSql", "nullable", "default", "generation", "comment", "options"])?;
+        Self::validate(&value)?;
+        Ok(Self { value })
+    }
+    pub(crate) fn validate(value: &Value) -> Result<(), RecordError> {
+        let record = object(value, &["id", "name", "typeSql", "nullable", "default", "generation", "comment", "options"])?;
         let mut validator = Validator::new();
         validator.id(&record["id"])?;
         let name = validator.text(&record["name"], 1, 1024)?;
@@ -53,7 +57,7 @@ impl PhysicalColumn {
             _ => return Err(RecordError),
         }
         validator.options(&record["options"])?;
-        Ok(Self { value })
+        Ok(())
     }
     pub fn value(&self) -> &Value {
         &self.value

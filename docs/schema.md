@@ -66,6 +66,43 @@ not connected-graph resolution, archive import or memory proof.
 PHYSICAL_RUST_TOOLCHAIN selects Rust explicitly (default 1.98.1); the command
 does not replace the user's global toolchain.
 
+Physical graphs have exactly `version` (numeric value 1, never a boolean),
+`dialect` (mysql/postgres/sqlite), nonempty UTF-8 `dialectVersion` up to 128 bytes,
+`tables` and `foreignKeys`. Each table has exactly `id`, `identity` (the four
+physical identity components, with column null), ordered `columns`, `comment`
+and `options`. Validate metadata with the record limits; require 1–4096 columns
+per table, at most 4096 tables, 120000 total columns, 20000 FKs and 16 MiB of
+string values in the graph. Empty graphs are valid; null lists are not.
+Table, column and FK IDs are globally unique. Exact qualified table identities,
+column names within each table and named FKs within each source table are unique.
+Build table/column-owner maps once before resolving FK pairs. Every local and
+target ID must belong to its declared table; preserve order and allow cycles,
+self references and multiple independent constraints on shared columns.
+Graph errors expose SCHEMA_INVALID and a JSON-pointer path of fixed field names
+and numeric positions, never input names/SQL. Component errors locate their
+record; ownership/duplicate errors locate the invalid field. Results are
+detached/deeply immutable. These graphs represent physical nodes and FK links,
+not yet indices/checks, complete physical schemas, SQL dialect validation or
+execution authority. The dialect version is preserved, not inferred or verified.
+
+Public entry points are Go `orm.PhysicalGraphFromValue` (decoded JSON values,
+with version also accepting native int 1), PHP `Orm\PhysicalGraph::fromValue`,
+Rust `orm_schema::physical_graph::PhysicalGraph::from_value` and TypeScript
+`createPhysicalGraph`. Go/PHP return detached snapshots through Value()/value();
+Rust exposes an immutable borrowed Value and TypeScript deeply freezes output.
+The located error types are PhysicalGraphError in Go/PHP/TypeScript and
+GraphError in Rust. Root-shape errors have the empty JSON pointer.
+
+Run `make physical-graph-check PHYSICAL_NODE=/absolute/path/to/node` for
+28 shared graph vectors, five generated count/byte-limit vectors, the connected
+2000-table/60000-column/10000-FK scenario and column/FK regressions, twice in
+each client. Each owner reports its elapsed time and a 15-second graph-test
+deadline. Generation and validation timing are separate; Rust tests use debug
+builds. PHP reports process peak allocated bytes and its unmodified memory
+limit, not resident memory or the memory of another runtime. These are
+structural graph tests, not SQL dialect validation or DB proof.
+
+
 
 
 

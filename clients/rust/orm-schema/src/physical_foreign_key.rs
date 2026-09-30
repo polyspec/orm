@@ -13,8 +13,12 @@ impl fmt::Debug for PhysicalForeignKey {
 }
 impl PhysicalForeignKey {
     pub fn from_value(value: Value) -> Result<Self, RecordError> {
+        Self::validate(&value)?;
+        Ok(Self { value })
+    }
+    pub(crate) fn validate(value: &Value) -> Result<(), RecordError> {
         let record = object(
-            &value,
+            value,
             &["id", "name", "tableId", "columns", "target", "onDelete", "onUpdate", "match", "deferrable", "initiallyDeferred", "comment", "options"],
         )?;
         let mut v = Validator::new();
@@ -49,7 +53,7 @@ impl PhysicalForeignKey {
         }
         v.text(&record["comment"], 0, 8192)?;
         v.options(&record["options"])?;
-        Ok(Self { value })
+        Ok(())
     }
     pub fn value(&self) -> &Value {
         &self.value
