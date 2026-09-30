@@ -70,22 +70,34 @@ pub fn s(v: &str) -> P {
 
 pub type Rows = Vec<Vec<Val>>;
 
+fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
+    value.map(String::from_utf8).transpose()
+        .map(|value| value.map_or(Val::Null, Val::Text))
+        .map_err(|error| sqlx::Error::Decode(Box::new(error)))
+}
+
+fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
+    value.map(i64::try_from).transpose()
+        .map(|value| value.map_or(Val::Null, Val::Int))
+        .map_err(|error| sqlx::Error::Decode(Box::new(error)))
+}
+
 macro_rules! cell {
     ($row:expr, $i:expr) => {{
         let row = $row;
         let i = $i;
         if let Ok(v) = row.try_get::<Option<String>, _>(i) {
-            v.map_or(Val::Null, Val::Text)
+            Ok(v.map_or(Val::Null, Val::Text))
         } else if let Ok(v) = row.try_get::<Option<i64>, _>(i) {
-            v.map_or(Val::Null, Val::Int)
+            Ok(v.map_or(Val::Null, Val::Int))
         } else if let Ok(v) = row.try_get::<Option<i32>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<i16>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<bool>, _>(i) {
-            v.map_or(Val::Null, Val::Bool)
+            Ok(v.map_or(Val::Null, Val::Bool))
         } else if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(i) {
-            v.map_or(Val::Null, |b| Val::Text(String::from_utf8_lossy(&b).into_owned()))
+            decode_bytes(v)
         } else {
             cell_extra!(row, i)
         }
@@ -96,15 +108,15 @@ macro_rules! cell_extra {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
         if let Ok(v) = row.try_get::<Option<u64>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(n as i64))
+            decode_unsigned(v)
         } else if let Ok(v) = row.try_get::<Option<u32>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<u8>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else {
-            Val::Null
+            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
         }
     }};
 }
@@ -113,21 +125,21 @@ macro_rules! cell_pg {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
         if let Ok(v) = row.try_get::<Option<String>, _>(i) {
-            v.map_or(Val::Null, Val::Text)
+            Ok(v.map_or(Val::Null, Val::Text))
         } else if let Ok(v) = row.try_get::<Option<i64>, _>(i) {
-            v.map_or(Val::Null, Val::Int)
+            Ok(v.map_or(Val::Null, Val::Int))
         } else if let Ok(v) = row.try_get::<Option<i32>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<i16>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Int(i64::from(n)))
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<bool>, _>(i) {
-            v.map_or(Val::Null, Val::Bool)
+            Ok(v.map_or(Val::Null, Val::Bool))
         } else if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(i) {
-            v.map_or(Val::Null, |b| Val::Text(String::from_utf8_lossy(&b).into_owned()))
+            decode_bytes(v)
         } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
-            v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string()))
+            Ok(v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string())))
         } else {
-            Val::Null
+            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
         }
     }};
 }
@@ -198,11 +210,11 @@ impl Conn {
                 }
             }};
         }
-        Ok(match self {
-            Conn::MySql(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect()).collect(),
-            Conn::Postgres(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell_pg!(r, i)).collect()).collect(),
-            Conn::Sqlite(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect()).collect(),
-        })
+        match self {
+            Conn::MySql(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
+            Conn::Postgres(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell_pg!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
+            Conn::Sqlite(c) => fetch!(c).iter().map(|r| (0..r.columns().len()).map(|i| cell!(r, i)).collect::<Result<Vec<_>, sqlx::Error>>()).collect(),
+        }
     }
 }
 
