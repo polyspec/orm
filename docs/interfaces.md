@@ -305,3 +305,9 @@ Grid floating-point cells carry native IEEE-754 bits as `Float32(u32)` or
 number coercion. `Unsigned(u64)` preserves the entire MySQL unsigned range.
 These native Rust values require explicit typed conversion at wire boundaries;
 they do not change schema/catalog scalar conversion rules.
+
+Finite grid decimal cells use exact plain decimal strings, preserving the
+database's declared result scale, including trailing zeros. Do not pass through
+binary floats or fixed-precision model codecs. SQLite has no native decimal
+storage class: its actual text/integer/real values keep their existing tags.
+Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.

@@ -1,5 +1,13 @@
 # 변경 이력
 
+이진 실수나 고정 정밀도 모델 codec 대신 고정한 BigDecimal 0.4.11로 유한 Rust
+그리드 decimal을 정확한 일반 문자열로 보존한다. 공개 드라이버 바이트에서
+PostgreSQL 결과 scale을 복원하고 값이 달라지는 조정을 거부한다. decimal variant
+누락 컴파일 Red는 실제 MySQL 65자리·PostgreSQL scale 보존 결과에서 Green이며
+SQLite는 실제 저장 클래스를 유지한다. 추가 200자리/지수·NULL·예산·비유한
+거부 회귀가 통과했다. 통합 14개·CLI 11개·라이브러리 5개가 통과했다. 소비자
+연결·비유한 numeric 지원·시간 타입은 미완료다.
+
 엄격한 카탈로그 스칼라 디코딩을 바꾸지 않고 Rust 그리드 float32/float64의
 IEEE-754 비트와 unsigned 전체 범위를 보존한다. 타입 variant 누락 컴파일 Red는
 실제 세 DB float64·PostgreSQL float32/부호 있는 0/NaN·MySQL u64::MAX에서

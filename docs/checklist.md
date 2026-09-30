@@ -107,6 +107,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 - [o] T7.17.1.7 Preserve native Rust grid floating-point bits and unsigned integer range. Cause: strict catalog scalar decoding rejects these query values. Evidence: missing typed variants compile Red is Green; actual three-database float64, PostgreSQL float32/signed-zero/NaN and MySQL u64::MAX cases pass. Numeric NULL and byte-budget checks are added regressions. Thirteen integration, eleven CLI and five library tests pass, retaining strict catalog semantics and read-only disposal. Decimal/temporal types and consumer integration remain pending.
 
+- [o] T7.17.1.8 Preserve finite Rust grid decimal precision and declared scale without float conversion. Cause: current grid values have no decimal tag and fixed-precision model decoding cannot represent arbitrary SQL numeric results. Evidence: missing decimal variant compile Red is Green on actual MySQL 65-digit decimals, PostgreSQL declared trailing-zero scale and SQLite native storage classes. Added PostgreSQL 200-digit/exponent, numeric NULL, byte-budget and nonfinite rejection regressions pass. Fourteen integration, eleven CLI and five library tests pass. Use pinned BigDecimal 0.4.11; restore PostgreSQL binary dscale after public driver decoding and reject any value-changing scale adjustment. Consumer integration, nonfinite numeric support and temporal values remain pending.
+
 ## Documentation tasks
 
 - [o] T7.D1 Keep each English page beside its Korean `.ko.md` page.
