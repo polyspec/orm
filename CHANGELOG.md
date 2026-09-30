@@ -1,5 +1,14 @@
 # Changelog
 
+Remove the unimplemented general HTML expansion (T7.17.2.10.3.2).
+Discard two owning uncommitted experiment files and paired prose that
+described an unimplemented tag/paragraph cursor. Withdraw the general HTML
+task; do not present its removal as implementing that feature. Retain
+correct committed source protections and historical test evidence.
+Return the next priority to physical metadata/diagram parsing and require
+the physical grammar to establish active-document ownership. Paired records
+and diff checks pass. Runtime behavior and product completion are unchanged.
+
 Shield named block HTML until a blank line or EOF (T7.17.2.10.3.1.2).
 Keep source opaque after a closing tag; nested HTML and fence markers do
 not alter its ending rule. Match only bounded ASCII block-tag names and
