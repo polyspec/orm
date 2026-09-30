@@ -120,3 +120,6 @@ ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ..
 
 `integration`과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. 테스트는 그 DB에서 자기 테이블을 삭제하고 설치한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.
 Rust conformance 출력은 bind를 손실 없이 표현할 수 없거나 요청한 선택 필드·관계가 없거나 계산한 정수가 유효하지 않거나 범위를 벗어나면 실패한다. 이런 오류를 null, 0, 대체 텍스트, 빈 point로 바꾸지 않는다.
+
+Rust 소스 검사기는 styled setter 바로 다음 `expect`와 `unwrap`을 Result 처리로 구분한다.
+후속 호출에서 모델을 유지하고 알 수 없는 모델 메서드는 거부한다.
