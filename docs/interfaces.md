@@ -368,8 +368,16 @@ MySQL uses the executing statement's insert acknowledgement for an omitted
 AUTO_INCREMENT key and rereads the row on that same transaction. Literal default
 keys use server-side `DEFAULT(column)` predicates and declared composite-key
 ordering, without frontend default evaluation. `expression_default` distinguishes
-MySQL expression defaults from literal defaults; omitted expression-default keys
-still fail before writing until an authoritative returning strategy exists.
+MySQL expression defaults from literal defaults. For omitted expression keys,
+select a bounded transactional input locator before writing. It must match no
+existing rows under a target-table lock, then match exactly one row whose supplied
+values are exact after inserting. Return that row's actual primary keys and
+revalidate it by key before commit. Never reevaluate a volatile default. An
+existing locator match fails before writing with `ROW_IDENTITY_AMBIGUOUS`; an
+ambiguous or coerced post-write result requires rollback. Empty assignments can
+identify only an initially empty table. This strategy is not a retry or fallback
+after another strategy fails. Acquire MySQL target-table metadata locking before
+descriptor/engine safety checks; catalog reads alone are insufficient.
 Verify the
 declared key-generation strategy before writing; unsupported returning
 strategies fail explicitly. Concurrent inserts must return their own rows.
