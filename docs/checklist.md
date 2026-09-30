@@ -75,7 +75,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
   Rust formatting and Clippy pass.
 - [o] N9.2 Provide `Db::transaction_send` for generated model writes that must cross a `Send` service callback.
   Require the callback and its future to be `Send`, preserve transaction options and retry behavior, and verify
-  the returned future's `Send` contract with an owner test. Evidence: the ORM compiles and the contract test passes.
+  the returned future's `Send` requirement with an owner test. Evidence: the ORM compiles and the requirement test passes.
 
 ## Stage 3 — Schema tools per language
 
@@ -129,7 +129,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] T7.D4 Remove informal, figurative, personifying, and ambiguous manual wording.
 - [o] T7.D7 Check paired document structure in CI.
 - [o] T7.D8 Check configured writing-style rules in CI.
-  - [ ] T7.D8.2 Remove prohibited prose in existing checklist, interface and performance documents. Cause: `npm run docs:rules-check` fails on existing expressions, independently of native mutation test results. Criterion: preserve technical meaning and English/Korean alignment; reproduce the checker failure and pass the same command after correction.
+  - [o] T7.D8.2 Remove prohibited prose without changing interface requirements, performance measurements or checker criteria. Evidence: `npm run docs:rules-check` reproduced ten file/expression failures before correction and now passes all 21 English/Korean pairs; a fresh `npm run docs:build` followed by `npm run docs:static-check` passes 42 pages, 437 internal targets and 26 SVG diagrams, including no-JS reading, search, theme and mobile navigation. `make checklist-check` passes.
 - [o] T7.D8.1 Keep persistent rules in `AGENTS.md` and task deliverables in this checklist. Remove unnumbered procedure, work-lane, and dated status prose; reject its return with the checklist checker while preserving existing item IDs and states. Evidence: a failing checker case before the cleanup, a passing `make checklist-check` and paired document checks, and one local commit containing both language versions and the record.
 - [o] T7.D11 Regenerate the feature pages from the updated feature manifest. Evidence: `make feature-docs` generated all 17 feature rows and left the English and Korean feature pages current; the paired-document and static documentation checks pass.
 

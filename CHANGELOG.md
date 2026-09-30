@@ -1,5 +1,12 @@
 # Changelog
 
+Correct prohibited prose in checklist, interface and performance documents
+without changing technical requirements, measurements or validation rules.
+The existing documentation-rules Red is Green for all 21 language pairs.
+Fresh documentation build and static checks pass 42 pages, 437 internal
+targets and 26 diagrams, including no-JS reading and interactive navigation.
+Checklist validation also passes (T7.D8.2).
+
 Add caller-authorized native Rust update/delete and explicit-key insertion in
 fresh discard-on-drop transactions. Lock original keys, compare descriptors and
 exact baselines, bind typed values and verify stored values/affected rows before
