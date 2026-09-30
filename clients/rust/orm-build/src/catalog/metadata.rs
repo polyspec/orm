@@ -31,7 +31,7 @@ pub struct TableMetadata {
     pub primary_key: Vec<String>,
     pub reliable_row_identity: bool,
 }
-fn validate_name(value: &str) -> Result<(), String> {
+pub(super) fn validate_name(value: &str) -> Result<(), String> {
     if value.is_empty() || value.len() > 1024 || value.contains('\0') {
         return Err("TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL".into());
     }

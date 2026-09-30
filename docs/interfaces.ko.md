@@ -334,3 +334,17 @@ identity와 SQLite 숨김 컬럼도 포함하며 완전한 컬럼 쓰기 권한 
 
 MySQL `SYSTEM VIEW` 카탈로그 관계는 테이블이나 쓰기 행 식별이 아닌 뷰로
 분류한다. 알 수 없는 네이티브 관계 종류는 계속 명시적으로 실패한다.
+
+### 한정된 Rust 테이블 페이지
+
+`CatalogConnection::table_page(&TableRef, limit, offset)`는 새 강제 읽기 전용
+범위에서 명시적 한정 테이블의 descriptor 컬럼을 물리 순서로 조회하며 dialect별
+식별자 인용을 적용한다. 기본키가 있으면 제약 선언 순서로 정렬하고 키가 없으면
+정렬 미지정이며 행 식별을 만들어내지 않는다. limit 1..1000·offset 0..1000000을
+요구하며 제한된 추가 행 하나로 전체 개수 아닌 `has_more`를 보고한다. 페이지는
+`metadata`·타입형 `result`·`limit`·`offset`·`order_by`·`has_more`를 담는다.
+네이티브 행 인코딩은 8 MiB로 제한하고 초과 payload를 잘라내지 않고 거부한다.
+prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메타데이터 변경은
+실패한다. 미지원 타입 오류를 보존하고 완료/실패 시 rollback한다. 독립 offset
+페이지는 데이터 변경 시 이동할 수 있으며 메타데이터는 원자적 스키마 revision이나
+행 변경 권한이 아니다.
