@@ -1,5 +1,5 @@
 use orm_build::{
-    catalog::{CatalogConnection, TableRef, RowSnapshot},
+    catalog::{CatalogConnection, RowSnapshot, TableRef},
     tool_db::{self, GridCell},
 };
 fn quote(value: &str, dialect: &str) -> String {
@@ -27,34 +27,68 @@ async fn check() {
         let sql_name = quote(&name, dialect);
         let note = "note\"';--";
         let sql_note = quote(note, dialect);
-        seed.exec(&format!("CREATE TABLE {sql_name}(a BIGINT NOT NULL,b BIGINT NOT NULL,{sql_note} VARCHAR(50),g BIGINT GENERATED ALWAYS AS (a+1) STORED,PRIMARY KEY(b,a))"),&[]).await.expect("owned fixture table");
+        seed.exec(
+            &format!(
+                "CREATE TABLE {sql_name}(a BIGINT NOT NULL,b BIGINT NOT NULL,{sql_note} VARCHAR(50),g BIGINT GENERATED ALWAYS AS (a+1) STORED,PRIMARY KEY(b,a))"
+            ),
+            &[],
+        )
+        .await
+        .expect("owned fixture table");
         seed.exec(&format!("INSERT INTO {sql_name}(a,b,{sql_note}) VALUES(1,3,'first'),(2,1,'second'),(3,2,'third')"), &[]).await.expect("owned fixture rows");
         let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
         let namespace = catalog.current_namespace().await.expect("selected namespace");
         let table = TableRef { namespace, name: name.clone() };
         let page = catalog.table_page(&table, 2, 0).await.expect("first page");
         eprintln!("running row_snapshot_live:{dialect}");
-        let baseline_started=std::time::Instant::now();
-        let baseline=RowSnapshot::from_page(&page,0).expect("owned original row baseline");
-        let current=orm_build::tool_db::GridQueryResult{columns:page.result.columns.clone(),rows:vec![page.result.rows[0].clone()]};
-        baseline.check_current(&page.metadata,&current).expect("unchanged original row");
-        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='changed' WHERE a=2 AND b=1"),&[]).await.expect("change only owned fixture row");
-        let changed=catalog.table_page(&table,1,0).await.expect("changed owned row");
-        let assignments=vec![(note.to_owned(),GridCell::Text("changed".into()))];
-        if baseline.check_updated(&changed.metadata,&changed.result,&assignments).is_err() { failures.push("row-update-exact"); }
-        if !baseline.check_updated(&page.metadata,&current,&assignments).is_err_and(|error|error.starts_with("ROW_WRITE_MISMATCH")) { failures.push("row-update-mismatch"); }
-        if !baseline.check_current(&changed.metadata,&changed.result).is_err_and(|error|error.starts_with("ROW_CONFLICT")) { failures.push("row-baseline-conflict"); }
-        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='second' WHERE a=2 AND b=1"),&[]).await.expect("restore owned fixture baseline");
-        let restored=catalog.table_page(&table,1,0).await.expect("restored owned row");
-        baseline.check_current(&restored.metadata,&restored.result).expect("restored original values");
-        let phases=std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));let captured=phases.clone();
-        let publish:std::sync::Arc<dyn Fn(orm_build::catalog::MutationPhase)+Send+Sync>=std::sync::Arc::new(move|phase|captured.lock().unwrap().push(phase));
-        let changed=catalog.update_row(&baseline,&[("a".into(),tool_db::P::I(4)),(note.to_owned(),tool_db::P::S("typed change".into()))],std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),publish.clone()).await.expect("quoted composite-key update");
-        assert_eq!(changed.rows[0],vec![GridCell::Integer(4),GridCell::Integer(1),GridCell::Text("typed change".into()),GridCell::Integer(5)]);
-        let page_after=catalog.table_page(&table,1,0).await.unwrap();let changed_baseline=RowSnapshot::from_page(&page_after,0).unwrap();
-        catalog.update_row(&changed_baseline,&[("a".into(),tool_db::P::I(2)),(note.to_owned(),tool_db::P::S("second".into()))],std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),publish).await.expect("restore only owned composite row");
-        assert_eq!(phases.lock().unwrap().last(),Some(&orm_build::catalog::MutationPhase::Committed));
-        eprintln!("finished row_snapshot_live:{dialect} {:?}",baseline_started.elapsed());
+        let baseline_started = std::time::Instant::now();
+        let baseline = RowSnapshot::from_page(&page, 0).expect("owned original row baseline");
+        let current = orm_build::tool_db::GridQueryResult { columns: page.result.columns.clone(), rows: vec![page.result.rows[0].clone()] };
+        baseline.check_current(&page.metadata, &current).expect("unchanged original row");
+        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='changed' WHERE a=2 AND b=1"), &[]).await.expect("change only owned fixture row");
+        let changed = catalog.table_page(&table, 1, 0).await.expect("changed owned row");
+        let assignments = vec![(note.to_owned(), GridCell::Text("changed".into()))];
+        if baseline.check_updated(&changed.metadata, &changed.result, &assignments).is_err() {
+            failures.push("row-update-exact");
+        }
+        if !baseline.check_updated(&page.metadata, &current, &assignments).is_err_and(|error| error.starts_with("ROW_WRITE_MISMATCH")) {
+            failures.push("row-update-mismatch");
+        }
+        if !baseline.check_current(&changed.metadata, &changed.result).is_err_and(|error| error.starts_with("ROW_CONFLICT")) {
+            failures.push("row-baseline-conflict");
+        }
+        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='second' WHERE a=2 AND b=1"), &[]).await.expect("restore owned fixture baseline");
+        let restored = catalog.table_page(&table, 1, 0).await.expect("restored owned row");
+        baseline.check_current(&restored.metadata, &restored.result).expect("restored original values");
+        let phases = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured = phases.clone();
+        let publish: std::sync::Arc<dyn Fn(orm_build::catalog::MutationPhase) + Send + Sync> =
+            std::sync::Arc::new(move |phase| captured.lock().unwrap().push(phase));
+        let changed = catalog
+            .update_row(
+                &baseline,
+                &[("a".into(), tool_db::P::I(4)), (note.to_owned(), tool_db::P::S("typed change".into()))],
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                publish.clone(),
+                std::sync::Arc::new(|| Ok(())),
+            )
+            .await
+            .expect("quoted composite-key update");
+        assert_eq!(changed.rows[0], vec![GridCell::Integer(4), GridCell::Integer(1), GridCell::Text("typed change".into()), GridCell::Integer(5)]);
+        let page_after = catalog.table_page(&table, 1, 0).await.unwrap();
+        let changed_baseline = RowSnapshot::from_page(&page_after, 0).unwrap();
+        catalog
+            .update_row(
+                &changed_baseline,
+                &[("a".into(), tool_db::P::I(2)), (note.to_owned(), tool_db::P::S("second".into()))],
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                publish,
+                std::sync::Arc::new(|| Ok(())),
+            )
+            .await
+            .expect("restore only owned composite row");
+        assert_eq!(phases.lock().unwrap().last(), Some(&orm_build::catalog::MutationPhase::Committed));
+        eprintln!("finished row_snapshot_live:{dialect} {:?}", baseline_started.elapsed());
         if page.limit != 2
             || page.offset != 0
             || !page.has_more

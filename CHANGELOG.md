@@ -1,5 +1,15 @@
 # Changelog
 
+Require explicit fallible pre-commit permission for native Rust row mutations.
+After transactional write verification, a rejected permit rolls back before
+commit-start publication or detached ownership. Preserve the permit failure;
+invalid assignments never reach permission. Required-argument API compile Red
+is Green; actual MySQL/PostgreSQL/SQLite insert/update/delete rejection and
+accepted commits pass. All 20 focused owner tests and owner Clippy --no-deps
+pass. Existing callers provide explicit permits without compatibility defaults.
+Changed Rust formatting, checklist/rules and fresh docs build/static checks
+pass: 42 pages, 437 targets, 26 diagrams. Durable journal/authorization/recovery, other platforms and four-client conformance remain incomplete.
+
 Return MySQL expression-default identities with a bounded, explicitly selected
 transactional input locator. Prove no existing match, exact one-row post-write
 values and actual keys before commit; reject ambiguous locators without writing.
