@@ -1,4 +1,4 @@
-//! Bounded physical nodes and FK membership, not full schema or SQL authority.
+//! Bounded physical memberships, not complete SQL object/dialect validation.
 use crate::{
     physical::PhysicalIdentity,
     physical_column::PhysicalColumn,
@@ -26,7 +26,7 @@ impl fmt::Display for GraphError {
     }
 }
 impl std::error::Error for GraphError {}
-fn error(path: &str) -> GraphError {
+pub(crate) fn error(path: &str) -> GraphError {
     GraphError { path: path.to_owned() }
 }
 fn list<'a>(value: &'a Value, max: usize, min: usize, path: &str) -> Result<&'a [Value], GraphError> {
@@ -37,7 +37,7 @@ fn list<'a>(value: &'a Value, max: usize, min: usize, path: &str) -> Result<&'a 
     Ok(values)
 }
 // Only bounded-depth validated record trees are counted.
-fn string_bytes(value: &Value) -> usize {
+pub(crate) fn string_bytes(value: &Value) -> usize {
     match value {
         Value::String(text) => text.len(),
         Value::Array(values) => values.iter().map(string_bytes).sum(),
@@ -45,13 +45,13 @@ fn string_bytes(value: &Value) -> usize {
         _ => 0,
     }
 }
-fn reserve<'a>(ids: &mut HashSet<&'a str>, id: &'a str, path: &str) -> Result<(), GraphError> {
+pub(crate) fn reserve<'a>(ids: &mut HashSet<&'a str>, id: &'a str, path: &str) -> Result<(), GraphError> {
     if !ids.insert(id) {
         return Err(error(path));
     }
     Ok(())
 }
-fn budget(bytes: &mut usize, size: usize, path: &str) -> Result<(), GraphError> {
+pub(crate) fn budget(bytes: &mut usize, size: usize, path: &str) -> Result<(), GraphError> {
     *bytes += size;
     if *bytes > 16 * 1024 * 1024 {
         return Err(error(path));
@@ -69,7 +69,7 @@ impl fmt::Debug for PhysicalGraph {
 }
 impl PhysicalGraph {
     pub fn from_value(value: Value) -> Result<Self, GraphError> {
-        let root = object(&value, &["version", "dialect", "dialectVersion", "tables", "foreignKeys"]).map_err(|_| error(""))?;
+        let root = object(&value, &["version", "dialect", "dialectVersion", "tables", "foreignKeys", "indices", "keys", "checks"]).map_err(|_| error(""))?;
         if root["version"].as_f64() != Some(1.0) {
             return Err(error("/version"));
         }
@@ -77,6 +77,13 @@ impl PhysicalGraph {
         let version = Validator::new().text(&root["dialectVersion"], 1, 128).map_err(|_| error("/dialectVersion"))?;
         let tables = list(&root["tables"], 4096, 0, "/tables")?;
         let fks = list(&root["foreignKeys"], 20000, 0, "/foreignKeys")?;
+        let mut record_count = fks.len();
+        for field in ["indices", "keys", "checks"] {
+            record_count += list(&root[field], 20000, 0, &format!("/{field}"))?.len();
+        }
+        if record_count > 60000 {
+            return Err(error(""));
+        }
         let (mut ids, mut identities, mut table_ids, mut owners) = (HashSet::new(), HashSet::new(), HashSet::new(), HashMap::new());
         let (mut bytes, mut columns_count) = (dialect.len() + version.len(), 0usize);
         for (index, input) in tables.iter().enumerate() {
@@ -161,6 +168,7 @@ impl PhysicalGraph {
             }
             budget(&mut bytes, string_bytes(fk), &path)?;
         }
+        crate::physical_graph_records::resolve(root, &mut ids, &table_ids, &owners, &mut names, &mut bytes)?;
         Ok(Self { value })
     }
     pub fn value(&self) -> &Value {

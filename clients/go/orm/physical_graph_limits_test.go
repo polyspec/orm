@@ -55,7 +55,7 @@ func TestPhysicalGraphLimits(t *testing.T) {
 			for i := range fks {
 				fks[i] = fixture.Base["foreignKeys"].([]any)[0]
 			}
-			value := map[string]any{"version": float64(1), "dialect": "sqlite", "dialectVersion": "3.50.0", "tables": tables, "foreignKeys": fks}
+			value := map[string]any{"version": float64(1), "dialect": "sqlite", "dialectVersion": "3.50.0", "tables": tables, "foreignKeys": fks, "indices": []any{}, "keys": []any{}, "checks": []any{}}
 			_, err := PhysicalGraphFromValue(value)
 			var located *PhysicalGraphError
 			if !errors.As(err, &located) || located.Path() != limit.Error {

@@ -98,14 +98,16 @@ physical-fk-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
 
 .PHONY: physical-graph-check
-physical-graph-check: physical-fk-check
-	go test ./clients/go/orm -run '^TestPhysicalGraph(Vectors|Limits)$$' -count=2 -v
+physical-graph-check: physical-key-check
+	go test ./clients/go/orm -run '^TestPhysicalGraph(Vectors|Limits|Records)$$' -count=2 -v
 	php clients/php/tests/physical_graph_test.php
 	php clients/php/tests/physical_graph_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
+	php clients/php/tests/physical_graph_records_test.php
+	php clients/php/tests/physical_graph_records_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits --test physical_graph_records -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits --test physical_graph_records -- --nocapture
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs clients/typescript/tests/physical-graph-records.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs clients/typescript/tests/physical-graph-records.mjs
 
 legacy-check:
 	node scripts/legacy/check.mjs

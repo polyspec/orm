@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {recordsFixture,recordScale} from './physical-graph-records-fixture.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as api from '../dist/index.js';
@@ -37,11 +38,12 @@ test('physical graph retains 2000 tables 60000 columns and 10000 connected FKs',
  assert.equal(count,2000);assert.equal(columnsPerTable,30);assert.equal(fkCount,10000);
  const tables=Array.from({length:count},(_,i)=>({...structuredClone(fixture.base.tables[0]),id:`t-${i}`,identity:[null,'main',`Table.${i}`,null],columns:Array.from({length:columnsPerTable},(_,j)=>({...structuredClone(fixture.base.tables[0].columns[0]),id:`c-${i}-${j}`,name:`Column.${j}`}))}));
  const foreignKeys=Array.from({length:fkCount},(_,i)=>{const source=Math.floor(i/5),target=(source+i%5)%count;return {...structuredClone(fixture.base.foreignKeys[0]),id:`fk-${i}`,name:`FK.${i%5}`,tableId:`t-${source}`,columns:[`c-${source}-0`,`c-${source}-1`],target:{tableId:`t-${target}`,columns:[`c-${target}-1`,`c-${target}-0`]}};});
- const generated=performance.now();const graph=api.createPhysicalGraph({...fixture.base,tables,foreignKeys});const validated=performance.now();
+ const records=recordScale(recordsFixture.base,count);const generated=performance.now();const graph=api.createPhysicalGraph({...fixture.base,tables,foreignKeys,...records});const validated=performance.now();
+ for(const field of ['indices','keys','checks']){assert.equal(graph[field].length,2000);assert.deepEqual(graph[field],records[field]);}
  assert.equal(graph.tables.length,count);assert.equal(graph.tables.reduce((sum,t)=>sum+t.columns.length,0),60000);assert.equal(graph.foreignKeys.length,fkCount);
  for(let i=0;i<fkCount;i++){assert.equal(graph.foreignKeys[i].id,`fk-${i}`);assert.equal(graph.foreignKeys[i].target.columns[0],foreignKeys[i].target.columns[0]);}
  tables[0].columns[0].name='changed';assert.equal(graph.tables[0].columns[0].name,'Column.0');
- console.log(JSON.stringify({event:'physical-graph-retention',tables:count,columns:60000,foreignKeys:fkCount,generateMs:generated-started,validateMs:validated-generated,elapsedMs:performance.now()-started}));
+ console.log(JSON.stringify({event:'physical-graph-retention',tables:count,columns:60000,foreignKeys:fkCount,indices:2000,keys:2000,checks:2000,generateMs:generated-started,validateMs:validated-generated,elapsedMs:performance.now()-started}));
 });
 test('physical graph shared count and byte limits',{timeout:15000},()=>{
  assert.equal(fixture.limits.length,5);
