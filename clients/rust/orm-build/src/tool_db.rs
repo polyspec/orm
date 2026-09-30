@@ -2,12 +2,14 @@
 //! values, and statements run as written.
 
 use sqlx::pool::PoolConnection;
-use sqlx::{AssertSqlSafe, Column, MySql, Postgres, Row, Sqlite, TypeInfo};
+use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, Sqlite, SqlSafeStr, Statement, TypeInfo};
 
 use orm::db::Pool;
 use futures_util::TryStreamExt;
 mod limits;
+mod result;
 pub use limits::QueryLimits;
+pub use result::{QueryColumn, QueryResult};
 
 /// A column value as the tools read it.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -205,6 +207,11 @@ impl Conn {
 
     /// Rejects oversized accumulated results; never returns truncated rows.
     pub async fn query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<Rows, sqlx::Error> {
+        Ok(self.query_result_bounded(sql, params, limits).await?.rows)
+    }
+
+    /// Ordered prepared columns and bounded checked rows, including empty results.
+    pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let mut budget = limits::Budget::new(limits)?;
         if orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
@@ -212,7 +219,9 @@ impl Conn {
         let sql = AssertSqlSafe(sql.to_owned());
         macro_rules! fetch {
             ($conn:expr, $cell:ident) => {{
-                let mut q = sqlx::query(sql);
+                let statement = (&mut **$conn).prepare(sql.into_sql_str()).await?;
+                let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+                let mut q = statement.query();
                 for p in params {
                     q = match p { P::S(v) => q.bind(v.clone()), P::I(v) => q.bind(*v) };
                 }
@@ -224,7 +233,7 @@ impl Conn {
                     budget.add_row(&values, rows.len())?;
                     rows.push(values);
                 }
-                Ok(rows)
+                Ok(QueryResult { columns, rows })
             }};
         }
         match self {

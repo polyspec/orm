@@ -33,6 +33,10 @@ impl CatalogConnection {
     pub async fn manifest(&mut self) -> Result<Manifest, String> {
         live_manifest(&mut self.connection, &self.dialect).await
     }
+    /// Executes one caller-authorized statement; this does not impose read-only isolation.
+    pub async fn query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {
+        self.connection.query_result_bounded(sql, params, limits).await.map_err(|error|error.to_string())
+    }
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
         drop(connection);
