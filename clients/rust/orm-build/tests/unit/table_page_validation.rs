@@ -1,0 +1,33 @@
+use super::*;
+use crate::{
+    catalog::{TableColumnMetadata, TableKind},
+    tool_db::QueryColumn,
+};
+#[test]
+fn page_assembly_rejects_column_or_descriptor_changes() {
+    let started = std::time::Instant::now();
+    eprintln!("running table_page_validation");
+    let metadata = TableMetadata {
+        table: TableRef { namespace: "main".into(), name: "fixture".into() },
+        kind: TableKind::Table,
+        columns: vec![TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false }],
+        primary_key: vec!["a".into()],
+        reliable_row_identity: true,
+    };
+    let result = GridQueryResult { columns: vec![QueryColumn { name: "a".into(), native_type: "INT8".into() }], rows: vec![] };
+    let mut columns = result.clone();
+    columns.columns[0].name = "other".into();
+    assert!(assemble(metadata.clone(), columns, metadata.clone(), 1, 0).unwrap_err().starts_with("TABLE_PAGE_METADATA_CHANGED"));
+    for change in 0..3 {
+        let mut after = metadata.clone();
+        match change {
+            0 => after.primary_key.clear(),
+            1 => after.columns[0].generated = true,
+            _ => after.columns[0].native_type = "TEXT".into(),
+        };
+        assert!(assemble(metadata.clone(), result.clone(), after, 1, 0).unwrap_err().starts_with("TABLE_PAGE_METADATA_CHANGED"));
+    }
+    assert!(assemble(metadata.clone(), result, metadata, 1, 0).is_ok());
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    eprintln!("passed table_page_validation {:?}", started.elapsed());
+}
