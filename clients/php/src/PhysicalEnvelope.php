@@ -10,10 +10,13 @@ final class PhysicalEnvelope {
   if($size>67108864||preg_match('//u',$source)!==1||str_starts_with($source,"\xef\xbb\xbf")||substr_count($source,"\n")+1>200000)throw new PhysicalEnvelopeError(0);
   for($i=0;($i=strpos($source,"\r",$i))!==false;$i++){if($i+1===$size||$source[$i+1]!=="\n")throw new PhysicalEnvelopeError(0);}
   $active='';$run=0;$opened=0;$blocks=0;$found=false;$owned=false;$result=[];
+  $htmlEnd=0;
   for($start=0,$line=1;$start<$size;$line++){
    $next=strpos($source,"\n",$start);$end=$next===false?$size:$next+1;$contentEnd=$end;
    if($contentEnd>$start&&$source[$contentEnd-1]==="\n")$contentEnd--;if($contentEnd>$start&&$source[$contentEnd-1]==="\r")$contentEnd--;
    $p=$start;while($p<$contentEnd&&$p-$start<4&&$source[$p]===' ')$p++;
+   if($htmlEnd!==0){if($htmlEnd<=$contentEnd)$htmlEnd=0;$start=$end;continue;}
+   if($active===''&&$p-$start<=3){$close=PhysicalHtml::end($source,$p,$contentEnd);if($close!==null){if($close<0)throw new PhysicalEnvelopeError($line);if($close>$contentEnd)$htmlEnd=$close;$start=$end;continue;}}
    if($p-$start<=3&&$p<$contentEnd&&($source[$p]==='`'||$source[$p]==='~')){
     $ch=$source[$p];$q=$p;while($q<$contentEnd&&$source[$q]===$ch)$q++;$length=$q-$p;
     $left=$q;$right=$contentEnd;while($left<$right&&($source[$left]===' '||$source[$left]==="\t"))$left++;while($right>$left&&($source[$right-1]===' '||$source[$right-1]==="\t"))$right--;

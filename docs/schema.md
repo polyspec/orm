@@ -197,9 +197,19 @@ an unfinished foreign fence also fails instead of hiding an owned block.
 An active info starting `mermaid orm-physical-` with any other suffix fails.
 Indented code and blockquote/list-contained fences are not owned blocks.
 Use a top-level block for the physical document; this scanner is not a general
-Markdown AST or a diagram validator. In particular, HTML block/container
-interpretation is not implemented here and must be resolved by the complete
-document reader before activating imports.
+Markdown AST or a diagram validator. Explicitly terminated HTML blocks are
+opaque: raw pre/script/style/textarea elements, comments, processing
+instructions, declarations and CDATA. A raw-element start is ASCII
+case-insensitive and requires space/tab, `>` or end-of-line after the name;
+any of the four exact closing tags ends its block, also case-insensitively.
+Other starts are `<!--`, `<?`, `<!` followed by an ASCII letter, and
+`<![CDATA[`; their ends are `-->`, `?>`, `>` and `]]>` respectively.
+Allow 0–3 leading spaces. Ignore nested starts, blank lines and fence text
+until the terminating line; resume on the following line, not its suffix.
+An unfinished explicit HTML block fails at its opening line. HTML-looking
+text inside a code fence does not change ownership. Blank-line-terminated
+HTML and full container interpretation remain pending; this source scanner
+alone cannot authorize an import.
 
 Accept valid UTF-8 without a BOM, LF or CRLF (not bare CR), at most 64 MiB,
 200000 lines (LF count plus one, including a final empty line) and 4096 opening

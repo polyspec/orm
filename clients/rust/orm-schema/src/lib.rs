@@ -18,6 +18,7 @@ pub mod physical_graph;
 mod physical_graph_records;
 mod physical_json;
 pub mod physical_envelope;
+mod physical_html;
 pub mod schema;
 pub mod sql;
 pub mod triggers;

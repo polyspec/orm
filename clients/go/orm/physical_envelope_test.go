@@ -62,6 +62,40 @@ func TestPhysicalEnvelope(t *testing.T) {
 	for _, c := range f.Cases {
 		check(c.ID, c.Text, c.Reject, c.Line, c.Before, c.Body, c.After)
 	}
+	data, err = os.ReadFile("../../../contracts/fixtures/physical_html.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var html struct {
+		StressLines int
+		Cases       []struct {
+			ID, Prefix, Body, Suffix string
+			Reject                   bool
+			Line                     int
+		}
+	}
+	if err = json.Unmarshal(data, &html); err != nil {
+		t.Fatal(err)
+	}
+	if len(html.Cases) != 29 {
+		t.Fatal("missing HTML cases")
+	}
+	for _, c := range html.Cases {
+		body := c.Body
+		if body == "" {
+			body = "x\n"
+		}
+		text := c.Prefix + "```mermaid orm-physical-v1\n" + body + "```\n" + c.Suffix
+		check(c.ID, text, c.Reject, c.Line, c.Prefix, body, c.Suffix)
+	}
+	for _, tag := range []string{"comment", "raw"} {
+		open, close := "<!--\n", "-->\n"
+		if tag == "raw" {
+			open, close = "<script>\n", "</style>\n"
+		}
+		prefix := open + strings.Repeat("x\n", html.StressLines) + close
+		check("html-stress-"+tag, prefix+"```mermaid orm-physical-v1\nx\n```\n", false, 0, prefix, "x\n", "")
+	}
 	block := "```mermaid orm-physical-v1\n```\n"
 	for _, n := range []int{f.Limits.Bytes, f.Limits.Bytes + 1} {
 		check(fmt.Sprintf("bytes-%d", n-f.Limits.Bytes), strings.Repeat("x", n-len(block)-1)+"\n"+block, n > f.Limits.Bytes, 0, "<bounds>", "", "")

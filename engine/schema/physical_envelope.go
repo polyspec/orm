@@ -32,6 +32,7 @@ func LocatePhysicalEnvelope(source []byte) (PhysicalEnvelope, error) {
 	}
 	active, run, opened, blocks, found := byte(0), 0, 0, 0, false
 	owned := false
+	htmlEnd := 0
 	for start, line := 0, 1; start < len(source); line++ {
 		end := len(source)
 		if n := bytes.IndexByte(source[start:], '\n'); n >= 0 {
@@ -47,6 +48,25 @@ func LocatePhysicalEnvelope(source []byte) (PhysicalEnvelope, error) {
 		p := start
 		for p < contentEnd && p-start < 4 && source[p] == ' ' {
 			p++
+		}
+		if htmlEnd != 0 {
+			if htmlEnd <= contentEnd {
+				htmlEnd = 0
+			}
+			start = end
+			continue
+		}
+		if active == 0 && p-start <= 3 {
+			if close, html := physicalHTMLEnd(source, p, contentEnd); html {
+				if close < 0 {
+					return fail(line)
+				}
+				if close > contentEnd {
+					htmlEnd = close
+				}
+				start = end
+				continue
+			}
 		}
 		if p-start <= 3 && p < contentEnd && (source[p] == '`' || source[p] == '~') {
 			ch := source[p]
