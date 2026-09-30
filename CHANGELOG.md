@@ -1,5 +1,12 @@
 # Changelog
 
+Withdraw the restarted standalone-tag experiment (T7.17.2.10.3.1.4).
+Its proposed rejection rule was not established by the physical grammar.
+Reproduce its first PHP rejection failure, then remove the two uncommitted
+experiment files and record the withdrawal. Runtime code is unchanged;
+authoritative ownership and DB Studio integration remain incomplete.
+Paired checklist, documentation rules and diff checks pass.
+
 Verify physical document input bounds through all four parsers
 (T7.17.2.10.3.4). Keep 64 MiB, 200000 lines and 4096 blocks unchanged;
 execute each upper bound and excess twice per owner with exact retention
