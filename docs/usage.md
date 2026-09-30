@@ -499,3 +499,5 @@ go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```
 
 Examples: [`examples/thin-slice`](../examples/thin-slice) (Go, PHP, and Rust, the same JSON) and [`examples/complex`](../examples/complex) (joins, groups, two-level relations, and aggregates).
+
+Rust source analysis separates a fallible model setter result from its model. Error mapping and checked extraction preserve the model; success mapping can return another type. Result operations do not create column methods. Unknown calls on a known model still fail generation.

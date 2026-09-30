@@ -83,7 +83,8 @@ impl Builder {
         let m = manifest::Manifest::load(&text).map_err(|e| format!("{}: {e}", schema_path.display()))?;
         let models: HashSet<String> = m.entities().map(|e| names::pascal(&e.name)).collect();
         let paths: Vec<PathBuf> = self.scan.iter().map(|p| abs(p)).collect();
-        let scanned = scan::scan(&paths, &models)?;
+        let fallible_setters = generate::fallible_setters(&m);
+        let scanned = scan::scan(&paths, &models, &fallible_setters)?;
         std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         let schema_copy = out_dir.join("orm_schema.json");
         write_if_changed(&schema_copy, text.as_bytes())?;
