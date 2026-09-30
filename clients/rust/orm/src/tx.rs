@@ -253,7 +253,7 @@ where
             if self.set {
                 return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
             }
-            return savepoint_send(outer, &self.f).await;
+            return savepoint_send(outer, self.f.as_ref()).await;
         }
         let mut attempt = 0u32;
         loop {
@@ -407,7 +407,7 @@ where
     result
 }
 
-async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b Box<SendOperation<'a, T>>) -> Result<T>
+async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b SendOperation<'a, T>) -> Result<T>
 where
     'a: 'b,
     T: Send + 'a,
@@ -633,6 +633,10 @@ async fn rollback(tx: &TxShared) -> Result<()> {
 pub fn transaction_conflict(message: impl Into<String>) -> Error {
     Error::Engine { code: codes::DEADLOCK.into(), msg: message.into() }
 }
+
+#[cfg(test)]
+#[path = "tx_send_tests.rs"]
+mod send_tests;
 
 #[cfg(test)]
 mod tests {

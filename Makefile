@@ -12,7 +12,8 @@ TEST_POSTGRES_REPLICA_PORT = 55481
 TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) &&
+SEND_SQLITE_DSN = sqlite://$(abspath .runtime/servers/send-savepoint.sqlite)
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
 check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check conformance-check db-test perf-check package-check
 	$(WITH_TEST_ENV) go test ./...
@@ -39,6 +40,12 @@ physical-identity-check:
 
 PHYSICAL_NODE ?= node
 PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
+.PHONY: rust-send-savepoint-check
+rust-send-savepoint-check:
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
+
 .PHONY: physical-column-check
 physical-column-check:
 	go test ./clients/go/orm -run '^TestPhysicalColumnVectors$$' -count=2 -v
