@@ -1,5 +1,18 @@
 # Changelog
 
+Return MySQL expression-default identities with a bounded, explicitly selected
+transactional input locator. Prove no existing match, exact one-row post-write
+values and actual keys before commit; reject ambiguous locators without writing.
+Do not reevaluate defaults, alter user schemas or add triggers. Fix unheld MySQL
+target metadata locking before engine/descriptor checks. UUID identity and real
+table-lock Reds are Green; other added cases are regressions. Actual three-DB
+volatile text keys, NULL selectors, cancellation/coercion rollback and indexed
+concurrent identities pass in 21 focused tests; owning Clippy passes. Split
+validation, RETURNING and locator responsibilities. Native key-insertion work is
+verified; sidecar authority/recovery, UI, other OS and four-client work remain.
+Checklist/rules and modified Rust formatting checks pass. Fresh docs build and
+static checks pass 42 pages, 437 internal targets and 26 diagrams.
+
 Return generated and literal-default keys with authoritative metadata, bounded
 RETURNING or MySQL statement acknowledgement/server DEFAULT. Generated-key
 and MySQL literal-default Reds are Green; 21 focused tests pass on actual local
