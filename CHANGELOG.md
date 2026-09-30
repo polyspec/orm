@@ -1,5 +1,13 @@
 # Changelog
 
+Preserve Rust grid float32/float64 IEEE-754 bits and full-range unsigned
+integers without changing strict catalog scalar decoding. Missing typed
+variants compile Red is Green on actual three-database float64 results,
+PostgreSQL float32/signed-zero/NaN and MySQL u64::MAX. Added numeric NULL
+and byte-budget regressions pass. Thirteen integration tests, eleven CLI
+tests and five library tests pass. Decimal/temporal types remain
+pending.
+
 Expose Rust typed read-only grid results with byte-preserving binary cells,
 distinct from text, empty text and NULL. Share streaming/metadata budgets
 and the enforced read-only connection scope with catalog tooling rather
