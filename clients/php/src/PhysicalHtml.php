@@ -4,6 +4,13 @@ namespace Orm;
 
 /** Internal explicit HTML ownership, without line/body copies. */
 final class PhysicalHtml {
+ private const BLOCK_TAGS=' address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot th thead title tr track ul ';
+ public static function blankStart(string $source,int $p,int $end):bool {
+  if($end-$p<2||$source[$p]!=='<')return false;$p++;if($source[$p]==='/')$p++;$start=$p;
+  while($p<$end&&(($source[$p]>='a'&&$source[$p]<='z')||($source[$p]>='A'&&$source[$p]<='Z')||($source[$p]>='0'&&$source[$p]<='9'))){if(++$p-$start>10)return false;}
+  if($p===$start||!str_contains(self::BLOCK_TAGS,' '.strtolower(substr($source,$start,$p-$start)).' '))return false;
+  return $p===$end||in_array($source[$p],[' ',"\t",'>'],true)||($source[$p]==='/'&&$p+1<$end&&$source[$p+1]==='>');
+ }
  /** Null means ordinary text; -1 means a recognized but unfinished block. */
  public static function end(string $source,int $p,int $end):?int {
   if($p===$end||$source[$p]!=='<')return null;

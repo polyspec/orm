@@ -208,8 +208,14 @@ Allow 0–3 leading spaces. Ignore nested starts, blank lines and fence text
 until the terminating line; resume on the following line, not its suffix.
 An unfinished explicit HTML block fails at its opening line. HTML-looking
 text inside a code fence does not change ownership. Blank-line-terminated
-HTML and full container interpretation remain pending; this source scanner
-alone cannot authorize an import.
+HTML with a standard block-tag name remains opaque through the next blank
+line (ASCII spaces/tabs only) or EOF, not merely its closing tag. Starts
+allow an opening or closing name followed by space/tab, `>`, `/>` or
+end-of-line, with ASCII case-insensitive matching and 0–3 leading spaces.
+These block names are enumerated in the shared HTML fixture. Nested starts
+do not switch its ending rule; explicit raw HTML keeps its own ending rule.
+Arbitrary complete tags with paragraph-sensitive starts and full container
+interpretation remain pending; this scanner alone cannot authorize an import.
 
 Accept valid UTF-8 without a BOM, LF or CRLF (not bare CR), at most 64 MiB,
 200000 lines (LF count plus one, including a final empty line) and 4096 opening

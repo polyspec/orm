@@ -33,6 +33,29 @@ fn physical_envelope() {
     let block = "```mermaid orm-physical-v1\n```\n";
     let html: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_html.json")).unwrap();
     assert_eq!(html["cases"].as_array().unwrap().len(), 29);
+    assert_eq!(html["blockTags"].as_array().unwrap().len(), 62);
+    assert_eq!(html["blockCases"].as_array().unwrap().len(), 23);
+    for tag in html["blockTags"].as_array().unwrap() {
+        for slash in ["", "/"] {
+            let tag = tag.as_str().unwrap();
+            let before = format!("<{slash}{tag}>\n```mermaid orm-physical-v2\n\n");
+            let text = format!("{before}```mermaid orm-physical-v1\nx\n```\n");
+            let r = check(&format!("block-tag-{slash}{tag}"), text.as_bytes(), false, 0).unwrap();
+            assert_eq!(r.start, before.len());
+            assert_eq!(r.end, text.len());
+        }
+    }
+    for c in html["blockCases"].as_array().unwrap() {
+        let before = c["prefix"].as_str().unwrap_or("");
+        let body = c["body"].as_str().unwrap_or("x\n");
+        let after = c["suffix"].as_str().unwrap_or("");
+        let text = format!("{before}```mermaid orm-physical-v1\n{body}```\n{after}");
+        if let Some(r) = check(c["id"].as_str().unwrap(), text.as_bytes(), c["reject"] == true, c["line"].as_u64().unwrap_or(0) as usize) {
+            assert_eq!(&text[..r.start], before);
+            assert_eq!(&text[r.body..r.close], body);
+            assert_eq!(&text[r.end..], after);
+        }
+    }
     for c in html["cases"].as_array().unwrap() {
         let before = c["prefix"].as_str().unwrap_or("");
         let body = c["body"].as_str().unwrap_or("x\n");
@@ -55,8 +78,13 @@ fn physical_envelope() {
             check(&format!("{kind}-{extra}"), text.as_bytes(), extra == 1, 0);
         }
     }
-    for tag in ["comment", "raw"] {
-        let (open, close) = if tag == "comment" { ("<!--\n", "-->\n") } else { ("<script>\n", "</style>\n") };
+    for tag in ["comment", "raw", "block"] {
+        let (open, close) = match tag {
+            "comment" => ("<!--\n", "-->\n"),
+            "raw" => ("<script>\n", "</style>\n"),
+            "block" => ("<div>\n", "</div>\n\n"),
+            _ => unreachable!(),
+        };
         let before = format!("{open}{}{close}", "x\n".repeat(html["stressLines"].as_u64().unwrap() as usize));
         let text = format!("{before}```mermaid orm-physical-v1\nx\n```\n");
         let r = check(&format!("html-stress-{tag}"), text.as_bytes(), false, 0).unwrap();

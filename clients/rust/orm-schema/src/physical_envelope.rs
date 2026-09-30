@@ -39,6 +39,7 @@ pub fn locate(source: &[u8]) -> Result<Envelope, EnvelopeError> {
     let mut result = Envelope { start: 0, body: 0, close: 0, end: 0 };
     let (mut start, mut line) = (0, 1);
     let mut html_end = 0;
+    let mut html_blank = false;
     while start < source.len() {
         let end = source[start..].iter().position(|c| *c == b'\n').map_or(source.len(), |n| start + n + 1);
         let mut content_end = end;
@@ -60,12 +61,26 @@ pub fn locate(source: &[u8]) -> Result<Envelope, EnvelopeError> {
             line += 1;
             continue;
         }
+        if html_blank {
+            if source[start..content_end].iter().all(|c| matches!(c, b' ' | b'\t')) {
+                html_blank = false
+            }
+            start = end;
+            line += 1;
+            continue;
+        }
         if active == 0 && p - start <= 3 {
             if let Some(close) = crate::physical_html::end(source, p, content_end) {
                 let Some(close) = close else { return fail(line) };
                 if close > content_end {
                     html_end = close
                 }
+                start = end;
+                line += 1;
+                continue;
+            }
+            if crate::physical_html::blank_start(&source[p..content_end]) {
+                html_blank = true;
                 start = end;
                 line += 1;
                 continue;
