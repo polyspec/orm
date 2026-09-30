@@ -14,6 +14,8 @@ export { Utils, SchemaUtils, PrivilegeUtils, AesUtils } from './utils.js';
 export type { AesRotationStatus, TablePrivileges } from './utils.js';
 export { Model, Collection } from './model.js';
 export { GroupRow, GroupRows } from './group_rows.js';
+export { createPhysicalIdentity } from './physical.js';
+export type { PhysicalIdentity, PhysicalParts } from './physical.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
 export type { EntityDef } from './core.js';

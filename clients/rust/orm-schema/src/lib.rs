@@ -7,6 +7,7 @@
 //! uses it for build scripts and the `orm-gen` tool.
 
 pub mod ddl;
+pub mod physical;
 pub mod schema;
 pub mod sql;
 pub mod triggers;

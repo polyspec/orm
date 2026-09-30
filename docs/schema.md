@@ -1,5 +1,23 @@
 # Schema
 
+Physical identities are separate from logical model identifiers. Preserve exact
+optional catalog/schema/column components and a required table, never lowercase
+or split a component at dots. Each present component is nonempty valid UTF-8,
+at most 1024 bytes, without ASCII controls (U+0000–001F or U+007F). Reject invalid
+components with SCHEMA_INVALID and a value-free message. An immutable identity
+key is `p1:` plus four dot-separated tokens: `-` for absent, otherwise lowercase
+UTF-8 hex, in catalog/schema/table/column order. This distinguishes namespace
+boundaries without SQL quoting or name normalization. This key identifies a
+name, not a stable document ID across renames. These primitives do not yet
+implement physical schema import, annotations, DDL or migration execution.
+
+Public APIs: Go `orm.NewPhysicalIdentity`, PHP `Orm\PhysicalIdentity`, Rust
+`orm_schema::physical::PhysicalIdentity::new`, TypeScript
+`createPhysicalIdentity` (exported from the package root). Components are returned
+as detached values or immutable borrows. `make physical-identity-check` executes
+the ten shared vectors twice per client and checks byte limits/invalid encodings.
+
+
 The human-maintained schema files are `schema/*.mmd` (Mermaid `erDiagram`). GitHub, IDEs, and build artifacts render them as diagrams, and `ormgen` parses them into a generated **manifest** (`schema.json`) with columns, keys, relations, indexes, and styles. Do not edit the manifest.
 For an existing database, `ormgen import --dsn … --out schema/service.mmd` creates the diagram; foreign keys become relation lines and indexes become `%%` directives.
 
