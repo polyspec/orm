@@ -2,8 +2,8 @@ package schema
 
 import "fmt"
 
-// PhysicalGraph owns detached physical nodes and resolved FK memberships.
-// It is not a complete physical schema or permission to execute SQL.
+// PhysicalGraph owns detached nodes and resolved constraint/index memberships.
+// It does not validate all SQL objects, dialect semantics or execution authority.
 type PhysicalGraph struct{ value map[string]any }
 type PhysicalGraphError struct{ path string }
 
@@ -39,7 +39,7 @@ func graphStringBytes(value any) int {
 	return 0
 }
 func PhysicalGraphFromValue(value map[string]any) (*PhysicalGraph, error) {
-	root, err := physicalObject(value, "version", "dialect", "dialectVersion", "tables", "foreignKeys")
+	root, err := physicalObject(value, "version", "dialect", "dialectVersion", "tables", "foreignKeys", "indices", "keys", "checks")
 	if err != nil {
 		return nil, graphError("")
 	}
@@ -69,6 +69,17 @@ func PhysicalGraphFromValue(value map[string]any) (*PhysicalGraph, error) {
 	fkInputs, err := graphList(root["foreignKeys"], 20000, 0, "/foreignKeys")
 	if err != nil {
 		return nil, err
+	}
+	recordCount := len(fkInputs)
+	for _, field := range []string{"indices", "keys", "checks"} {
+		list, e := graphList(root[field], 20000, 0, "/"+field)
+		if e != nil {
+			return nil, e
+		}
+		recordCount += len(list)
+	}
+	if recordCount > 60000 {
+		return nil, graphError("")
 	}
 	ids, identities, tableIDs := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	owners := map[string]string{}
@@ -224,7 +235,11 @@ func PhysicalGraphFromValue(value map[string]any) (*PhysicalGraph, error) {
 		}
 		fks[index] = fk
 	}
-	return &PhysicalGraph{value: map[string]any{"version": root["version"], "dialect": dialect, "dialectVersion": dialectVersion, "tables": tables, "foreignKeys": fks}}, nil
+	records, err := resolvePhysicalGraphRecords(root, ids, tableIDs, owners, constraintNames, budget)
+	if err != nil {
+		return nil, err
+	}
+	return &PhysicalGraph{value: map[string]any{"version": root["version"], "dialect": dialect, "dialectVersion": dialectVersion, "tables": tables, "foreignKeys": fks, "indices": records["indices"], "keys": records["keys"], "checks": records["checks"]}}, nil
 }
 func (graph *PhysicalGraph) Value() map[string]any {
 	return clonePhysicalValue(graph.value).(map[string]any)

@@ -73,8 +73,9 @@ value-free `SCHEMA_INVALID`. Records detach caller-owned input/output.
 The APIs are Go `orm.PhysicalCheckFromValue`, PHP `Orm\PhysicalCheck::fromValue`,
 Rust `orm_schema::physical_check::PhysicalCheck::from_value` and TypeScript
 `createPhysicalCheck` from the package root. `make physical-check-check`
-executes the common vectors twice in each client. This record does not yet
-attach constraints to physical graphs or validate dialect support, SQL
+executes the common vectors twice in each client. The record constructor does
+not resolve graph membership; PhysicalGraph resolves declared CHECK ownership
+and shared constraint names. Neither constructor validates dialect support, SQL
 grammar, expression references, imports, DDL or migration execution.
 
 Physical identities are separate from logical model identifiers. Preserve exact
@@ -145,12 +146,16 @@ does not replace the user's global toolchain.
 
 Physical graphs have exactly `version` (numeric value 1, never a boolean),
 `dialect` (mysql/postgres/sqlite), nonempty UTF-8 `dialectVersion` up to 128 bytes,
-`tables` and `foreignKeys`. Each table has exactly `id`, `identity` (the four
+`tables`, `foreignKeys`, `indices`, `keys` and `checks`. All arrays are required;
+the former nodes/FK-only shape is rejected rather than filled implicitly.
+Each table has exactly `id`, `identity` (the four
 physical identity components, with column null), ordered `columns`, `comment`
 and `options`. Validate metadata with the record limits; require 1–4096 columns
 per table, at most 4096 tables, 120000 total columns, 20000 FKs and 16 MiB of
-string values in the graph. Empty graphs are valid; null lists are not.
-Table, column and FK IDs are globally unique. Exact qualified table identities,
+string values in the graph. Each additional record list has at most 20000 entries;
+the four record lists together have at most 60000 entries (root error on excess).
+Empty graphs are valid; null lists are not.
+Table, column, FK, index, key and CHECK IDs are globally unique. Exact qualified table identities,
 column names within each table and named FKs within each source table are unique.
 Build table/column-owner maps once before resolving FK pairs. Every local and
 target ID must belong to its declared table; preserve order and allow cycles,
@@ -159,8 +164,22 @@ Graph errors expose SCHEMA_INVALID and a JSON-pointer path of fixed field names
 and numeric positions, never input names/SQL. Component errors locate their
 record; ownership/duplicate errors locate the invalid field. Results are
 detached/deeply immutable. These graphs represent physical nodes and FK links,
-not yet indices/checks, complete physical schemas, SQL dialect validation or
+including indices/keys/CHECKs, but not complete SQL object coverage, dialect validation or
 execution authority. The dialect version is preserved, not inferred or verified.
+
+Validation order is root bounds, tables/columns, FKs, indices, keys, CHECKs.
+Names of FKs, keys and CHECKs share one exact per-table constraint namespace.
+Index names have a separate per-table namespace, so a key and its index may
+share a name. Every record tableId and column/include ID resolves to its owner.
+Expression references require SQL parsing and are not inferred from SQL text.
+At most one primary key per table is permitted. A declared backing index must
+belong to the same table, have exactly the key's ordered column sources and no
+partial predicate; each backing index links to at most one key. Ordinary keys
+require a unique index; temporal overlap keys preserve exclusion-index metadata
+without claiming SQL/range-type validity. Explicit unique null-treatment values
+must agree when both key/index specify them. Mismatches locate the key indexId.
+Keep unspecified values unchanged rather than inferring defaults. New-list
+shape errors locate the record; duplicate/ownership errors locate its field.
 
 Public entry points are Go `orm.PhysicalGraphFromValue` (decoded JSON values,
 with version also accepting native int 1), PHP `Orm\PhysicalGraph::fromValue`,
@@ -171,8 +190,11 @@ The located error types are PhysicalGraphError in Go/PHP/TypeScript and
 GraphError in Rust. Root-shape errors have the empty JSON pointer.
 
 Run `make physical-graph-check PHYSICAL_NODE=/absolute/path/to/node` for
-28 shared graph vectors, five generated count/byte-limit vectors, the connected
-2000-table/60000-column/10000-FK scenario and column/FK regressions, twice in
+28 existing graph vectors, five existing count/byte-limit vectors, 35 additional
+record graph vectors, three duplicates, three list counts, one combined count
+and three independently sized new-list byte-limit vectors. The connected
+2000-table/60000-column/10000-FK scenario also retains 2000 indices, 2000 keys
+and 2000 CHECKs. Run these cases and all record regressions twice in
 each client. Each owner reports its elapsed time and a 15-second graph-test
 deadline. Generation and validation timing are separate; Rust tests use debug
 builds. PHP reports process peak allocated bytes and its unmodified memory

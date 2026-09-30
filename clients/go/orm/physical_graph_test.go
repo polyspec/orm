@@ -150,6 +150,10 @@ func TestPhysicalGraphVectors(t *testing.T) {
 	value := clone(fixture.Base).(map[string]any)
 	value["tables"] = tables
 	value["foreignKeys"] = fks
+	records := graphRecordScale(t, physicalGraphRecordFixture(t)["base"].(map[string]any), 2000)
+	for _, field := range []string{"indices", "keys", "checks"} {
+		value[field] = records[field]
+	}
 	generated := time.Now()
 	graph, err := PhysicalGraphFromValue(value)
 	if err != nil {
@@ -164,5 +168,5 @@ func TestPhysicalGraphVectors(t *testing.T) {
 	if graph.Value()["tables"].([]any)[0].(map[string]any)["columns"].([]any)[0].(map[string]any)["name"] != "Column.0" {
 		t.Fatal("aliased nested graph")
 	}
-	t.Logf("physical-graph-retention tables=2000 columns=60000 foreignKeys=10000 generate=%s validate=%s elapsed=%s", generated.Sub(scaleStarted), validated.Sub(generated), time.Since(scaleStarted))
+	t.Logf("physical-graph-retention tables=2000 columns=60000 foreignKeys=10000 indices=2000 keys=2000 checks=2000 generate=%s validate=%s elapsed=%s", generated.Sub(scaleStarted), validated.Sub(generated), time.Since(scaleStarted))
 }

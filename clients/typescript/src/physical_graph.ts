@@ -1,8 +1,12 @@
-/** Bounded physical nodes and FK membership; not complete schema or SQL validation. */
+/** Bounded physical graph memberships; not complete SQL object or dialect validation. */
 import {createPhysicalIdentity, type PhysicalParts} from './physical.js';
 import {createPhysicalColumn, type PhysicalColumn} from './physical_column.js';
 import {createPhysicalForeignKey, type PhysicalForeignKey} from './physical_foreign_key.js';
 import {PhysicalRecord, shape} from './physical_record.js';
+import {resolveGraphRecords} from './physical_graph_records.js';
+import type {PhysicalIndex} from './physical_index.js';
+import type {PhysicalKey} from './physical_key.js';
+import type {PhysicalCheck} from './physical_check.js';
 
 export class PhysicalGraphError extends Error {
  readonly code='SCHEMA_INVALID';
@@ -15,6 +19,7 @@ export interface PhysicalTable {
 export interface PhysicalGraph {
  readonly version:1; readonly dialect:'mysql'|'postgres'|'sqlite'; readonly dialectVersion:string;
  readonly tables:readonly PhysicalTable[]; readonly foreignKeys:readonly PhysicalForeignKey[];
+ readonly indices:readonly PhysicalIndex[];readonly keys:readonly PhysicalKey[];readonly checks:readonly PhysicalCheck[];
 }
 function fail(path:string):never{throw new PhysicalGraphError(path);}
 function at<T>(path:string,run:()=>T):T{
@@ -30,11 +35,13 @@ function stringBytes(value:unknown,encoder:TextEncoder):number{
  let total=0;for(const child of Object.values(value))total+=stringBytes(child,encoder);return total;
 }
 export function createPhysicalGraph(value:unknown):PhysicalGraph{
- const root=at('',()=>shape(value,['version','dialect','dialectVersion','tables','foreignKeys']));
+ const root=at('',()=>shape(value,['version','dialect','dialectVersion','tables','foreignKeys','indices','keys','checks']));
  if(root.version!==1)fail('/version');
  if(root.dialect!=='mysql'&&root.dialect!=='postgres'&&root.dialect!=='sqlite')fail('/dialect');
  const dialect=root.dialect,dialectVersion=at('/dialectVersion',()=>new PhysicalRecord().text(root.dialectVersion,1,128));
  const inputTables=list(root.tables,4096,'/tables'),inputFKs=list(root.foreignKeys,20000,'/foreignKeys');
+ const inputRecords={indices:list(root.indices,20000,'/indices'),keys:list(root.keys,20000,'/keys'),checks:list(root.checks,20000,'/checks')};
+ if(inputFKs.length+inputRecords.indices.length+inputRecords.keys.length+inputRecords.checks.length>60000)fail('');
  const ids=new Set<string>(),identities=new Set<string>(),tableIds=new Set<string>(),owners=new Map<string,string>();
  const encoder=new TextEncoder();let bytes=encoder.encode(dialect+dialectVersion).length,columnCount=0;
  const reserve=(id:string,path:string)=>{if(ids.has(id))fail(path);ids.add(id);};
@@ -67,5 +74,6 @@ export function createPhysicalGraph(value:unknown):PhysicalGraph{
   if(fk.name!==null){let names=constraintNames.get(fk.tableId);if(!names){names=new Set();constraintNames.set(fk.tableId,names);}if(names.has(fk.name))fail(`${path}/name`);names.add(fk.name);}
   budget(fk,path);return fk;
  });
- return Object.freeze({version:1,dialect,dialectVersion,tables:Object.freeze(tables),foreignKeys:Object.freeze(foreignKeys)});
+ const records=resolveGraphRecords(inputRecords,{reserve,tableIds,owners,constraintNames,budget,at,fail});
+ return Object.freeze({version:1,dialect,dialectVersion,tables:Object.freeze(tables),foreignKeys:Object.freeze(foreignKeys),...records});
 }

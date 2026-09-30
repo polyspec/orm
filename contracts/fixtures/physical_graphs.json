@@ -1,6 +1,6 @@
 {
  "base":{
-  "version":1,"dialect":"sqlite","dialectVersion":"3.50.0",
+  "version":1,"dialect":"sqlite","dialectVersion":"3.50.0","indices":[],"keys":[],"checks":[],
   "tables":[
    {"id":"child","identity":[null,"main","Child 名",null],"columns":[
     {"id":"child-c1","name":"First","typeSql":"INTEGER","nullable":false,"default":{"kind":"absent"},"generation":{"kind":"none"},"comment":"","options":[]},

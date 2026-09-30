@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace Orm;
 
-/** Detached physical nodes and FK membership, not full schema or SQL authority. */
+/** Detached physical memberships, not complete SQL object/dialect validation. */
 final readonly class PhysicalGraph
 {
     private function __construct(private array $snapshot){}
@@ -21,11 +21,12 @@ final readonly class PhysicalGraph
     }
     public static function fromValue(mixed $value):self
     {
-        $root=self::at('',fn()=>PhysicalRecord::shape($value,['version','dialect','dialectVersion','tables','foreignKeys']));
+        $root=self::at('',fn()=>PhysicalRecord::shape($value,['version','dialect','dialectVersion','tables','foreignKeys','indices','keys','checks']));
         if($root['version']!==1&&$root['version']!==1.0)throw new PhysicalGraphError('/version');
         if(!in_array($root['dialect'],['mysql','postgres','sqlite'],true))throw new PhysicalGraphError('/dialect');
         $dialectVersion=self::at('/dialectVersion',fn()=>(new PhysicalRecord())->text($root['dialectVersion'],1,128));
         $inputTables=self::items($root['tables'],4096,'/tables');$inputFKs=self::items($root['foreignKeys'],20000,'/foreignKeys');
+        $count=count($inputFKs);foreach(['indices','keys','checks'] as $field)$count+=count(self::items($root[$field],20000,"/$field"));if($count>60000)throw new PhysicalGraphError('');
         $ids=[];$identities=[];$tableIDs=[];$owners=[];$tables=[];$fks=[];$columnCount=0;$bytes=strlen($root['dialect'].$dialectVersion);
         $reserve=static function(string $id,string $path)use(&$ids):void{if(isset($ids[$id]))throw new PhysicalGraphError($path);$ids[$id]=true;};
         $budget=static function(array $record,string $path)use(&$bytes):void{$bytes+=self::bytes($record);if($bytes>16*1024*1024)throw new PhysicalGraphError($path);};
@@ -48,7 +49,39 @@ final readonly class PhysicalGraph
             foreach($fk['columns']as$j=>$column){if(($owners[$column]??null)!==$fk['tableId'])throw new PhysicalGraphError("$path/columns/$j");if(($owners[$fk['target']['columns'][$j]]??null)!==$fk['target']['tableId'])throw new PhysicalGraphError("$path/target/columns/$j");}
             if($fk['name']!==null){if(isset($names[$fk['tableId']][$fk['name']]))throw new PhysicalGraphError("$path/name");$names[$fk['tableId']][$fk['name']]=true;}$budget($fk,$path);$fks[]=$fk;
         }
-        $fields=['version'=>$root['version'],'dialect'=>$root['dialect'],'dialectVersion'=>$dialectVersion,'tables'=>$tables,'foreignKeys'=>$fks];$owned=[];foreach(array_keys($root)as$key)$owned[$key]=$fields[$key];return new self($owned);
+        $records=self::records($root,$reserve,$tableIDs,$owners,$names,$budget);
+        $fields=['version'=>$root['version'],'dialect'=>$root['dialect'],'dialectVersion'=>$dialectVersion,'tables'=>$tables,'foreignKeys'=>$fks]+$records;$owned=[];foreach(array_keys($root)as$key)$owned[$key]=$fields[$key];return new self($owned);
+    }
+    /** Lists and table/column ownership have already passed their limits. */
+    private static function records(array $root,callable $reserve,array $tableIDs,array $owners,array &$names,callable $budget):array
+    {
+        $register=static function(array $record,string $path,array &$namespace)use($reserve,$tableIDs):void{
+            $reserve($record['id'],"$path/id");if(!isset($tableIDs[$record['tableId']]))throw new PhysicalGraphError("$path/tableId");
+            if($record['name']!==null){if(isset($namespace[$record['tableId']][$record['name']]))throw new PhysicalGraphError("$path/name");$namespace[$record['tableId']][$record['name']]=true;}
+        };
+        $result=['indices'=>[],'keys'=>[],'checks'=>[]];$indexNames=[];$byID=[];
+        foreach($root['indices'] as $i=>$input){
+            $path="/indices/$i";$index=self::at($path,fn()=>PhysicalIndex::fromValue($input))->value();$register($index,$path,$indexNames);
+            foreach($index['terms'] as $j=>$term)if($term['source']['kind']==='column'&&($owners[$term['source']['columnId']]??null)!==$index['tableId'])throw new PhysicalGraphError("$path/terms/$j/source/columnId");
+            foreach($index['include'] as $j=>$column)if(($owners[$column]??null)!==$index['tableId'])throw new PhysicalGraphError("$path/include/$j");
+            $budget($index,$path);$byID[$index['id']]=$index;$result['indices'][]=$index;
+        }
+        $primary=[];$linked=[];
+        foreach($root['keys'] as $i=>$input){
+            $path="/keys/$i";$key=self::at($path,fn()=>PhysicalKey::fromValue($input))->value();$register($key,$path,$names);
+            foreach($key['columns'] as $j=>$column)if(($owners[$column]??null)!==$key['tableId'])throw new PhysicalGraphError("$path/columns/$j");
+            if($key['kind']==='primary'){if(isset($primary[$key['tableId']]))throw new PhysicalGraphError("$path/kind");$primary[$key['tableId']]=true;}
+            if($key['indexId']!==null){$index=$byID[$key['indexId']]??null;if($index===null||isset($linked[$key['indexId']])||!self::indexMatchesKey($index,$key))throw new PhysicalGraphError("$path/indexId");$linked[$key['indexId']]=true;}
+            $budget($key,$path);$result['keys'][]=$key;
+        }
+        foreach($root['checks'] as $i=>$input){$path="/checks/$i";$check=self::at($path,fn()=>PhysicalCheck::fromValue($input))->value();$register($check,$path,$names);$budget($check,$path);$result['checks'][]=$check;}
+        return $result;
+    }
+    private static function indexMatchesKey(array $index,array $key):bool
+    {
+        if($index['tableId']!==$key['tableId']||$index['predicateSql']!==null||($key['withoutOverlaps']!==true&&!$index['unique'])||count($index['terms'])!==count($key['columns']))return false;
+        foreach($index['terms'] as $i=>$term)if($term['source']['kind']!=='column'||$term['source']['columnId']!==$key['columns'][$i])return false;
+        return $key['nullsDistinct']===null||$index['nullsDistinct']===null||$key['nullsDistinct']===$index['nullsDistinct'];
     }
     public function value():array{return $this->snapshot;}
 }
