@@ -105,6 +105,8 @@
 
 - [o] T7.17.1.7 Rust 그리드의 네이티브 부동소수점 비트와 unsigned 정수 범위를 보존한다. 원인: 엄격한 카탈로그 스칼라 디코딩이 이 조회 값을 거부한다. 근거: 타입 variant 누락 컴파일 Red는 Green이며 실제 세 DB float64·PostgreSQL float32/부호 있는 0/NaN·MySQL u64::MAX 사례가 통과했다. 숫자 NULL·바이트 예산은 추가 회귀다. 통합 13개·CLI 11개·라이브러리 5개가 통과하며 엄격한 카탈로그 의미와 읽기 전용 해제를 유지한다. decimal/시간 타입은 미완료다.
 
+- [o] T7.17.1.8 실수 변환 없이 유한 Rust 그리드 decimal 정밀도와 선언 scale을 보존한다. 원인: 그리드 값에 decimal 태그가 없고 고정 정밀도 모델 디코딩은 임의 SQL numeric 결과를 표현하지 못한다. 근거: decimal variant 누락 컴파일 Red가 실제 MySQL 65자리·PostgreSQL 끝자리 0 scale·SQLite 네이티브 저장 클래스에서 Green이다. 추가 PostgreSQL 200자리/지수·숫자 NULL·바이트 예산·비유한 거부 회귀가 통과했다. 통합 14개·CLI 11개·라이브러리 5개가 통과했다. BigDecimal 0.4.11을 고정하고 공개 드라이버 디코딩 뒤 PostgreSQL 이진 dscale을 복원하며 값이 달라지는 scale 조정을 거부한다. 비유한 numeric 지원·시간 타입은 미완료다.
+
 ## 문서 작업
 
 - [o] T7.D1 각 영어 페이지 옆에 한국어 `.ko.md` 페이지를 둔다.

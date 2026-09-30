@@ -1,5 +1,15 @@
 # Changelog
 
+Preserve finite Rust grid decimals as exact plain strings using pinned
+BigDecimal 0.4.11 rather than binary floats or fixed-precision model codecs.
+Restore PostgreSQL result scale from public driver bytes and reject any
+value-changing adjustment. Missing decimal variant compile Red is Green
+on actual MySQL 65-digit decimals and PostgreSQL scale-preserving results;
+SQLite retains its actual storage classes. Added 200-digit/exponent, NULL,
+budget and nonfinite-rejection regressions pass. Fourteen integration,
+eleven CLI and five library tests pass. Nonfinite numeric support and
+temporal values remain pending.
+
 Preserve Rust grid float32/float64 IEEE-754 bits and full-range unsigned
 integers without changing strict catalog scalar decoding. Missing typed
 variants compile Red is Green on actual three-database float64 results,
