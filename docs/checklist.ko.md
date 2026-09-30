@@ -78,6 +78,8 @@
 
 ## 3단계 — 언어별 스키마 도구
 
+- [o] T7.17.2.1 논리 정규화 없이 물리 한정 이름을 보존한다. 원인: 논리 식별자 규칙이 임의의 물리 이름을 표현하지 못한다. 근거: 네 클라이언트의 API 누락과 TypeScript sparse array 거부 Red가 Green이다. 추적되는 physical-identity-check가 공통 벡터 10개를 Go/PHP/Rust/TypeScript마다 두 번 실행해 정확한 키/거부 결과를 검증하고 불변 요소·잘못된 인코딩·UTF-8 바이트 제한도 확인한다. TypeScript 컴파일·소유 Rust Clippy·PHP 문법·영한 체크리스트·문서 규칙·diff 검사가 통과했다. 선택적 catalog/schema/column·필수 table·정확한 대소문자/UTF-8·충돌 없는 이름 키를 정규화 없이 보존한다. 물리 임포트·주석 해석·DDL·마이그레이션·DB 의존 conformance는 활성화하지 않는다.
+
 - [ ] N9.2.1 Send savepoint의 기존 borrowed-Box 경고를 제거한다. 원인: 의존성을 포함한 Clippy가 orm/src/tx.rs의 savepoint_send에서 실패한다. 기준: lint 실패를 재현하고 소유 테스트로 Send/savepoint 동작을 보존하며 경고 억제 없이 통과한다.
 
 - [o] L1 모든 언어에서 `.mmd` 파일로 `schema.json`을 빌드한다. 근거: `make schema-cross-language-check`가 같은 Mermaid 원본을 Go·PHP·Rust·TypeScript로 빌드하고 전체 JSON 매니페스트를 비교해 12개 엔티티와 schema hash `16198b563e2e3cae`가 네 출력에서 같음을 보고했다.
