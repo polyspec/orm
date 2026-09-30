@@ -1,5 +1,8 @@
 # Changelog
 
+Verify styled-setter Result handling with generation cases, unknown-method
+rejection and a compiled controller use case.
+
 Recognize Rust Result handling immediately after styled setters without
 generating column methods for `expect` or `unwrap`. Preserve subsequent
 model-call validation.

@@ -1,5 +1,8 @@
 # 변경 이력
 
+생성 사례·알 수 없는 메서드 거부·컴파일한 컨트롤러 사용 사례로
+styled setter Result 처리를 검증한다.
+
 styled setter 바로 다음 Rust Result 처리를 구분하고 `expect`나 `unwrap`의
 열 메서드를 생성하지 않는다. 후속 모델 호출 검증을 유지한다.
 
