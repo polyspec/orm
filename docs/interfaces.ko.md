@@ -335,9 +335,27 @@ identity와 SQLite 숨김 컬럼도 포함하며 완전한 컬럼 쓰기 권한 
 MySQL `SYSTEM VIEW` 카탈로그 관계는 테이블이나 쓰기 행 식별이 아닌 뷰로
 분류한다. 알 수 없는 네이티브 관계 종류는 계속 명시적으로 실패한다.
 
-### 한정된 Rust 테이블 페이지
+### 네이티브 Rust 타입형 bind 값
 
-행 편집 기반: `RowSnapshot::from_page(&TablePage, row_index)`는 검증된 행·
+tool `P`는 텍스트/signed 정수 외에 Binary·
+Boolean·Float32/Float64 비트·Decimal 평문 문자열·Unsigned·Null(ParamType)을
+제공한다. SQL 값 서식화 대신 SQLx 드라이버 타입형 인코딩을 사용한다.
+Unsigned는 MySQL 전용이고 SQLite는 Decimal/Float32를 거부하여 암묵적 확장이나
+numeric affinity 변환 없이 네이티브 정수/float64/text/blob을 유지한다.
+PostgreSQL은 decimal·두 네이티브 실수 폭을 지원한다. 실행 전에 MySQL 비유한
+실수·SQLite NaN을 거부하고 SQLite 무한대는 float64로 유지한다. 잘못된 decimal·
+PostgreSQL 텍스트 NUL·65535개 초과 인수·총 값 16 MiB 초과를 prepare/실행 전에
+거부한다. 타입형 NULL은 빈 텍스트/0이 아닌 지정 네이티브 bind 종류다.
+Boolean bind는 SQLx bool을 사용하며 PostgreSQL grid는 Boolean을 유지한다.
+MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 만들어내지
+않고 정수 0/1로 읽힌다. SQLite 저장 클래스는 소유 테스트로 검증한다.
+이는 bind 의미이며 컬럼/서버 강제 변환 방지가 아니다. 변경 실행은 스키마 검증·
+엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. Rust 도구는 4클라이언트 쓰기
+근거가 아니다.
+
+### Rust 행 편집 기준
+
+`RowSnapshot::from_page(&TablePage, row_index)`는 검증된 행·
 신뢰할 비NULL 기본키 값을 제약 순서로 불변 캡처하고 descriptor/타입형 셀의
 값별 SHA-256 revision을 만든다. 전체 인코딩은 8 MiB로 제한한다. 뷰/불안정한
 식별·잘못된 projection/키·잘못된 decimal·비NULL 컬럼의 NULL·페이지 범위를
@@ -349,6 +367,8 @@ descriptor/원본 행을 비교한 뒤 타입형 쓰기를 수행해야 한다. 
 물리 스키마 revision이 아니며 ABA를 감지하지 못한다. prepared 타입은 데이터에
 의존할 수 있으므로 스키마 revision으로 삼지 않고 projection 이름과 네이티브
 descriptor를 비교한다. Rust 네이티브 범위는 4클라이언트 변경 적합성 근거가 아니다.
+
+### 한정된 Rust 테이블 페이지
 
 `CatalogConnection::table_page(&TableRef, limit, offset)`는 새 강제 읽기 전용
 범위에서 명시적 한정 테이블의 descriptor 컬럼을 물리 순서로 조회하며 dialect별
