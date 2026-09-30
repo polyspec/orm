@@ -1,5 +1,11 @@
 # Changelog
 
+Correct prohibited wording in the final Korean mutation-permit records after
+the documentation check failed and the prior commit continued. The unchanged
+rule is Green for all 21 bilingual pairs; paired checklist and fresh static
+documentation checks pass (42 pages, 437 targets, 26 diagrams). Native code
+and acceptance criteria are unchanged.
+
 Require explicit fallible pre-commit permission for native Rust row mutations.
 After transactional write verification, a rejected permit rolls back before
 commit-start publication or detached ownership. Preserve the permit failure;
