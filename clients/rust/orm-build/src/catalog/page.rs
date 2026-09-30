@@ -19,7 +19,7 @@ pub(super) fn validate_request(table: &TableRef, limit: usize, offset: u64) -> R
     }
     Ok(())
 }
-fn quote(value: &str, dialect: &str) -> Result<String, String> {
+pub(super) fn quote(value: &str, dialect: &str) -> Result<String, String> {
     let mark = match dialect {
         "mysql" => '`',
         "postgres" | "sqlite" => '"',

@@ -1,6 +1,36 @@
 use super::{params, ParamType, P};
 use sqlx::{mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments, MySql, Postgres, Sqlite};
 
+pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeInfo>, sqlx::Error> {
+    use sqlx::Type;
+    values
+        .iter()
+        .map(|value| {
+            let kind = match value {
+                P::S(_) => ParamType::Text,
+                P::I(_) => ParamType::Integer,
+                P::Unsigned(_) => ParamType::Unsigned,
+                P::Float32(_) => ParamType::Float32,
+                P::Float64(_) => ParamType::Float64,
+                P::Decimal(_) => ParamType::Decimal,
+                P::Boolean(_) => ParamType::Boolean,
+                P::Binary(_) => ParamType::Binary,
+                P::Null(kind) => *kind,
+            };
+            Ok(match kind {
+                ParamType::Text => <String as Type<Postgres>>::type_info(),
+                ParamType::Integer => <i64 as Type<Postgres>>::type_info(),
+                ParamType::Float32 => <f32 as Type<Postgres>>::type_info(),
+                ParamType::Float64 => <f64 as Type<Postgres>>::type_info(),
+                ParamType::Decimal => <bigdecimal::BigDecimal as Type<Postgres>>::type_info(),
+                ParamType::Boolean => <bool as Type<Postgres>>::type_info(),
+                ParamType::Binary => <Vec<u8> as Type<Postgres>>::type_info(),
+                ParamType::Unsigned => return Err(params::invalid()),
+            })
+        })
+        .collect()
+}
+
 pub(super) fn mysql<'q>(mut q: Query<'q, MySql, MySqlArguments>, values: &[P]) -> Result<Query<'q, MySql, MySqlArguments>, sqlx::Error> {
     for value in values {
         q = match value {

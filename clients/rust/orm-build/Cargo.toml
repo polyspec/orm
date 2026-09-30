@@ -95,3 +95,7 @@ required-features = ["live-db"]
 [[test]]
 name = "typed_binds"
 required-features = ["live-db"]
+
+[[test]]
+name = "row_mutation"
+required-features = ["live-db"]

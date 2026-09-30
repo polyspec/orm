@@ -1,5 +1,28 @@
 # Changelog
 
+Add caller-authorized native Rust update/delete and explicit-key insertion in
+fresh discard-on-drop transactions. Lock original keys, compare descriptors and
+exact baselines, bind typed values and verify stored values/affected rows before
+commit. Reject generated-column assignment, coercion and unsafe MySQL engine or
+unverified trigger visibility. Publish value-free phases and retain commit
+ownership after caller cancellation; distinguish confirmed PostgreSQL rejection
+from missing acknowledgement without automatic retries.
+Public API/verification compile Reds, INTEGER-key preparation and explicit
+commit-rejection Reds are Green. Eighteen focused library/baseline/page/bind/
+mutation tests pass on macOS, including actual MySQL/PostgreSQL/SQLite writes,
+quoted composite keys, key changes, schema conflicts, FK/unique preservation,
+generated/default/NULL values, cancellation rollback, lock contention and abort
+cleanup. PostgreSQL owned connection termination verifies an indeterminate
+commit; detached successful commit remains observable. Other new cases are
+regressions, not claimed Reds. Prepare PostgreSQL queries with declared bind
+codec types and validate borrowed inputs before value cloning.
+Test-owned resources, including failed-Red fixtures, are removed. Automatic
+primary-key insertion, durable operation identity/authorization,
+four-client conformance and other-platform gates remain incomplete.
+The checklist checker passes. The documentation rules check still fails on
+existing prohibited prose; track correction separately as T7.D8.2.
+
+
 Extend native Rust tool binds with explicit typed NULLs, binary, bool, native
 float bits, exact decimal and MySQL unsigned values through SQLx driver codecs.
 Share bind paths across bounded queries and affected-row execution. Reject
