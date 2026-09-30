@@ -1,5 +1,5 @@
 /** UTF-8 source ranges only; no validated schema or diagram is returned. */
-import {physicalHTMLEnd} from './physical_html.js';
+import {physicalHTMLEnd,physicalHTMLBlankStart} from './physical_html.js';
 export interface PhysicalEnvelope {readonly start:number;readonly body:number;readonly close:number;readonly end:number}
 export class PhysicalEnvelopeError extends Error {
  constructor(readonly line:number){super('SCHEMA_INVALID');}
@@ -17,13 +17,15 @@ export function locatePhysicalEnvelope(input:unknown):PhysicalEnvelope {
  let active='',run=0,opened=0,blocks=0,found=false,owned=false,byteStart=0;
  const result={start:0,body:0,close:0,end:0};
  let htmlEnd=0;
+ let htmlBlank=false;
  for(let start=0,line=1;start<source.length;line++){
   const next=source.indexOf('\n',start),end=next<0?source.length:next+1;let contentEnd=end;
   if(contentEnd>start&&source[contentEnd-1]==='\n')contentEnd--;if(contentEnd>start&&source[contentEnd-1]==='\r')contentEnd--;
   const byteEnd=byteStart+utf8Size(source,start,end);
   let p=start;while(p<contentEnd&&p-start<4&&source[p]===' ')p++;
   if(htmlEnd){if(htmlEnd<=contentEnd)htmlEnd=0;start=end;byteStart=byteEnd;continue;}
-  if(!active&&p-start<=3){const close=physicalHTMLEnd(source,p,contentEnd);if(close!==null){if(close<0)return fail(line);if(close>contentEnd)htmlEnd=close;start=end;byteStart=byteEnd;continue;}}
+  if(htmlBlank){let blank=start;while(blank<contentEnd&&(source[blank]===' '||source[blank]==='\t'))blank++;if(blank===contentEnd)htmlBlank=false;start=end;byteStart=byteEnd;continue;}
+  if(!active&&p-start<=3){const close=physicalHTMLEnd(source,p,contentEnd);if(close!==null){if(close<0)return fail(line);if(close>contentEnd)htmlEnd=close;start=end;byteStart=byteEnd;continue;}if(physicalHTMLBlankStart(source,p,contentEnd)){htmlBlank=true;start=end;byteStart=byteEnd;continue;}}
   if(p-start<=3&&p<contentEnd&&(source[p]==='`'||source[p]==='~')){
    const ch=source[p];let q=p;while(q<contentEnd&&source[q]===ch)q++;const length=q-p;
    let left=q,right=contentEnd;while(left<right&&(source[left]===' '||source[left]==='\t'))left++;while(right>left&&(source[right-1]===' '||source[right-1]==='\t'))right--;

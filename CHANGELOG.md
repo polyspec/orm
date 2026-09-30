@@ -1,5 +1,16 @@
 # Changelog
 
+Shield named block HTML until a blank line or EOF (T7.17.2.10.3.1.2).
+Keep source opaque after a closing tag; nested HTML and fence markers do
+not alter its ending rule. Match only bounded ASCII block-tag names and
+their declared delimiters; retain explicit raw-element ending behavior.
+Old named-tag failures are Green in four clients. The owning command runs
+124 opening/closing tag cases, 23 additional cases and a 100000-line block
+case twice per owner, with related HTML/source/resource regressions.
+Scoped lint, compilation, paired records and diff checks pass on macOS
+arm64. Paragraph-sensitive tags, general containers and joint graph/diagram
+parsing remain unfinished; no import or rendered-frame capability is claimed.
+
 Shield explicit HTML blocks during physical source scanning
 (T7.17.2.10.3.1.1). Ignore schema-shaped fences in comments, raw elements,
 processing instructions, declarations and CDATA; resume after the closing
