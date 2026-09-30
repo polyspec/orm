@@ -1,5 +1,11 @@
 # 변경 이력
 
+물리 원문 scanner의 범위를 적는다(T7.17.2.10.3.2). docs/schema.md(+ko)는
+scanner가 임의의 HTML 태그나 전체 Markdown container를 분류하지 않으며,
+문서 reader가 자기 원문 소유를 확정하고 graph metadata를 그림과 함께
+검증한 뒤에 import를 켠다고 적는다. 문서 쌍과 diff 검사가 통과했고 실행
+코드는 그대로다.
+
 이름 있는 블록 HTML을 빈 줄이나 EOF까지 보호한다(T7.17.2.10.3.1.2).
 종료 태그 뒤에도 내부 원문을 해석하지 않으며 중첩 HTML·펜스 표시는 종료
 규칙을 바꾸지 않는다. 제한된 ASCII 블록 이름과 명시한 구분자만 비교하고

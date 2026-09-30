@@ -214,8 +214,11 @@ allow an opening or closing name followed by space/tab, `>`, `/>` or
 end-of-line, with ASCII case-insensitive matching and 0–3 leading spaces.
 These block names are enumerated in the shared HTML fixture. Nested starts
 do not switch its ending rule; explicit raw HTML keeps its own ending rule.
-Arbitrary complete tags with paragraph-sensitive starts and full container
-interpretation remain pending; this scanner alone cannot authorize an import.
+This utility does not classify arbitrary HTML tags or full Markdown
+containers. Those are not implemented capabilities, and expanding a general
+HTML parser is not a prerequisite for defining the physical document format.
+The document reader must establish its own unambiguous source ownership
+and validate graph metadata with the diagram before enabling imports.
 
 Accept valid UTF-8 without a BOM, LF or CRLF (not bare CR), at most 64 MiB,
 200000 lines (LF count plus one, including a final empty line) and 4096 opening
