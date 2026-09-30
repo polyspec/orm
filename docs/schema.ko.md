@@ -1,5 +1,20 @@
 # 스키마
 
+물리 CHECK 레코드는 정확히 `id`, `name`, `tableId`, `expressionSql`,
+`enforced`, `validated`, `comment`, `options`를 가진다. ID는 물리 레코드
+규칙을 따르며 이름은 null이거나 정확한 물리 이름 규칙을 따른다. 식은
+비어 있지 않은 UTF-8 문자열로 최대 16384바이트를 그대로 보존하며 파싱하거나
+실행을 허용하지 않는다. 두 상태는 서로 독립적인 boolean 또는
+null(미지정)이며 검증 상태가 강제를 의미하지 않는다. 주석과 순서 있는 옵션은
+기존 레코드 제한과 전체 65536바이트 제한을 따른다. 알 수 없거나 빠진 필드,
+잘못된 타입·인코딩·제한 초과는 값을 노출하지 않는 `SCHEMA_INVALID`로 거절한다.
+호출자의 입력·출력과 레코드를 분리한다. API는 Go `orm.PhysicalCheckFromValue`,
+PHP `Orm\PhysicalCheck::fromValue`, Rust
+`orm_schema::physical_check::PhysicalCheck::from_value`, TypeScript 패키지
+루트의 `createPhysicalCheck`다. `make physical-check-check`가 공통 벡터를
+클라이언트마다 두 번 실행한다. 아직 그래프 연결, 방언 지원, SQL 문법,
+식 참조, 임포트, DDL, 마이그레이션 실행을 검증하지 않는다.
+
 물리 이름은 논리 모델 식별자와 분리한다. 선택적 catalog/schema/column과 필수
 table을 정확히 보존하고 소문자화나 점으로 분리하지 않는다. 존재하는 각
 요소는 빈 값이 아닌 유효 UTF-8이며 최대 1024바이트이고 ASCII 제어문자

@@ -1,5 +1,21 @@
 # Schema
 
+Physical CHECK records have exactly `id`, `name`, `tableId`, `expressionSql`,
+`enforced`, `validated`, `comment` and `options`. IDs use the physical-record
+ID rule; a nullable name otherwise follows the exact physical-name rule.
+Expressions are preserved verbatim as nonempty UTF-8 text up to 16384 bytes,
+not parsed or authorized for execution. Each independent state is boolean or
+null (unspecified); validation does not imply enforcement. Comments and
+ordered options use existing record bounds, including the 65536-byte total.
+Unknown/missing fields, invalid types, encodings and bounds reject with
+value-free `SCHEMA_INVALID`. Records detach caller-owned input/output.
+The APIs are Go `orm.PhysicalCheckFromValue`, PHP `Orm\PhysicalCheck::fromValue`,
+Rust `orm_schema::physical_check::PhysicalCheck::from_value` and TypeScript
+`createPhysicalCheck` from the package root. `make physical-check-check`
+executes the common vectors twice in each client. This record does not yet
+attach constraints to physical graphs or validate dialect support, SQL
+grammar, expression references, imports, DDL or migration execution.
+
 Physical identities are separate from logical model identifiers. Preserve exact
 optional catalog/schema/column components and a required table, never lowercase
 or split a component at dots. Each present component is nonempty valid UTF-8,
