@@ -144,6 +144,37 @@ not connected-graph resolution, archive import or memory proof.
 PHYSICAL_RUST_TOOLCHAIN selects Rust explicitly (default 1.98.1); the command
 does not replace the user's global toolchain.
 
+For text interchange, read one UTF-8 JSON object and emit a compact JSON object
+from a validated graph. Before general decoding, reject duplicate decoded
+member names at every depth, malformed syntax, invalid Unicode (including
+unpaired escaped surrogates), trailing input and a BOM. Limits are 32 MiB of
+UTF-8 input/output, container depth 16 and 3000000 value nodes. Number tokens
+are at most 64 ASCII bytes and must denote exact safe integers; integral
+decimal/exponent forms are accepted without rounding. Preserve every graph
+field and array order, not whitespace/member order or number spelling. Text
+syntax/resource failures have SCHEMA_INVALID and the empty graph pointer;
+valid JSON uses the existing graph's located structural errors. Neither text
+serialization nor decoding grants Markdown, import or execution authority.
+
+Text APIs are Go `orm.PhysicalGraphFromJSON([]byte)` / `graph.JSON()`, PHP
+`Orm\PhysicalGraph::fromJson(string)` / `graph->toJson()`, Rust
+`PhysicalGraph::from_json(&[u8])` / `graph.to_json()` and TypeScript
+`parsePhysicalGraphJSON(string)` / `emitPhysicalGraphJSON(graph)`. Invalid
+UTF-8 bytes fail in byte/string runtimes; TypeScript rejects ill-formed UTF-16
+strings and non-string inputs rather than accepting a byte array implicitly.
+`make physical-json-check PHYSICAL_NODE=/absolute/path/to/node` runs 30 shared
+syntax/value cases, six number-form cases, complete-record roundtrips and
+native encoding checks twice per client, plus two shared output-size cases.
+Owner decoder checks separately
+accept each byte/depth/node limit and reject its next value, so a structural
+graph error cannot stand in for a resource check. The connected graph case
+also compares every field through emission/parsing/emission and reports JSON
+byte count and elapsed time. PHP uses direct tree construction and bounded
+256-entry short-string/small-scalar-object caches with FIFO replacement;
+copy-on-write keeps shared immutable data detached after edits. Record actual
+PHP peak allocation with its unchanged 128M limit, not process RSS. These
+checks do not establish unexecuted platforms.
+
 Physical graphs have exactly `version` (numeric value 1, never a boolean),
 `dialect` (mysql/postgres/sqlite), nonempty UTF-8 `dialectVersion` up to 128 bytes,
 `tables`, `foreignKeys`, `indices`, `keys` and `checks`. All arrays are required;

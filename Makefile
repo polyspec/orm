@@ -98,6 +98,23 @@ physical-fk-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
 
 .PHONY: physical-graph-check
+.PHONY: physical-json-check
+physical-json-check: physical-graph-check
+	go test ./engine/schema -run '^TestPhysicalJSONPreflightBounds$$' -count=2 -v
+	go test ./clients/go/orm -run '^TestPhysicalGraphJSON(Output)?$$' -count=2 -v
+	php clients/php/tests/physical_graph_json_test.php
+	php clients/php/tests/physical_graph_json_test.php
+	php clients/php/tests/physical_graph_json_output_test.php
+	php clients/php/tests/physical_graph_json_output_test.php
+	php clients/php/tests/physical_json_limits_test.php
+	php clients/php/tests/physical_json_limits_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --lib physical_json::tests::preflight_bounds -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --lib physical_json::tests::preflight_bounds -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph_json -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph_json -- --nocapture
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph-json.mjs
+	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph-json.mjs
+
 physical-graph-check: physical-key-check
 	go test ./clients/go/orm -run '^TestPhysicalGraph(Vectors|Limits|Records)$$' -count=2 -v
 	php clients/php/tests/physical_graph_test.php

@@ -136,6 +136,35 @@ FK API는 Go `orm.PhysicalForeignKeyFromValue`, PHP
 아니다. PHYSICAL_RUST_TOOLCHAIN으로 Rust를 명시한다(기본 1.98.1). 사용자
 전역 도구는 바꾸지 않는다.
 
+텍스트 교환은 UTF-8 JSON 객체 하나를 읽고 검증된 그래프를 compact JSON
+객체로 출력한다. 일반 디코딩 전에 모든 깊이의 디코딩된 중복 멤버 이름,
+잘못된 문법·Unicode(짝 없는 이스케이프 surrogate 포함), 뒤따르는 입력과
+BOM을 거절한다. UTF-8 입력·출력은 32 MiB, 컨테이너 깊이는 16, 값 노드는
+3000000개로 제한한다. 숫자 토큰은 ASCII 64바이트 이하이며 정확한 안전
+정수여야 한다. 정수 값인 소수·지수 표기는 반올림 없이 받는다. 모든 그래프
+필드와 배열 순서를 보존하지만 공백·멤버 순서·숫자 표기는 보존하지 않는다.
+텍스트 문법·자원 오류는 SCHEMA_INVALID와 빈 그래프 포인터로 표시하고
+유효한 JSON의 구조 오류는 기존 그래프 위치를 사용한다. 텍스트 직렬화·
+디코딩은 마크다운·임포트·실행 권한을 주지 않는다.
+
+텍스트 API는 Go `orm.PhysicalGraphFromJSON([]byte)` / `graph.JSON()`, PHP
+`Orm\PhysicalGraph::fromJson(string)` / `graph->toJson()`, Rust
+`PhysicalGraph::from_json(&[u8])` / `graph.to_json()`, TypeScript
+`parsePhysicalGraphJSON(string)` / `emitPhysicalGraphJSON(graph)`이다.
+바이트·문자열 런타임은 잘못된 UTF-8을 거절한다. TypeScript는 잘못된
+UTF-16 문자열과 문자열 아닌 입력을 거절하며 바이트 배열을 암묵적으로
+받지 않는다. `make physical-json-check PHYSICAL_NODE=/absolute/path/to/node`가
+클라이언트별 공통 문법·값 사례 30개, 숫자 표기 6개, 전체 레코드 왕복,
+네이티브 인코딩을 두 번 검사하고 공통 출력 크기 사례 2개도 확인한다.
+소유 디코더는 바이트·깊이·노드 제한을
+각각 허용하고 다음 값을 거절하므로 그래프 구조 오류로 자원 검사를
+대체할 수 없다. 연결된 부하 그래프도 출력·파싱·재출력으로 모든 필드를
+비교하고 JSON 바이트 수·시간을 기록한다. PHP는 직접 트리를 구성하고
+짧은 문자열·작은 스칼라 객체의 FIFO 캐시를 각각 256개로 제한한다.
+copy-on-write가 공유된 불변 데이터를 수정 후에도 분리한다. 기존 128M
+제한에서 실제 PHP 최대 할당량을 기록하며 프로세스 RSS가 아니다.
+이 검사는 실행하지 않은 플랫폼의 증거가 아니다.
+
 물리 그래프는 정확히 `version`(숫자 값 1이며 boolean 아님), `dialect`
 (mysql/postgres/sqlite), 빈 값이 아닌 128바이트 이하 UTF-8 `dialectVersion`,
 `tables`, `foreignKeys`, `indices`, `keys`, `checks`를 가진다. 모든 배열이
