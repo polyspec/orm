@@ -1,5 +1,5 @@
 use orm_build::{
-    catalog::{CatalogConnection, TableRef},
+    catalog::{CatalogConnection, TableRef, RowSnapshot},
     tool_db::{self, GridCell},
 };
 fn quote(value: &str, dialect: &str) -> String {
@@ -33,6 +33,18 @@ async fn check() {
         let namespace = catalog.current_namespace().await.expect("selected namespace");
         let table = TableRef { namespace, name: name.clone() };
         let page = catalog.table_page(&table, 2, 0).await.expect("first page");
+        eprintln!("running row_snapshot_live:{dialect}");
+        let baseline_started=std::time::Instant::now();
+        let baseline=RowSnapshot::from_page(&page,0).expect("owned original row baseline");
+        let current=orm_build::tool_db::GridQueryResult{columns:page.result.columns.clone(),rows:vec![page.result.rows[0].clone()]};
+        baseline.check_current(&page.metadata,&current).expect("unchanged original row");
+        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='changed' WHERE a=2 AND b=1"),&[]).await.expect("change only owned fixture row");
+        let changed=catalog.table_page(&table,1,0).await.expect("changed owned row");
+        if !baseline.check_current(&changed.metadata,&changed.result).is_err_and(|error|error.starts_with("ROW_CONFLICT")) { failures.push("row-baseline-conflict"); }
+        seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='second' WHERE a=2 AND b=1"),&[]).await.expect("restore owned fixture baseline");
+        let restored=catalog.table_page(&table,1,0).await.expect("restored owned row");
+        baseline.check_current(&restored.metadata,&restored.result).expect("restored original values");
+        eprintln!("passed row_snapshot_live:{dialect} {:?}",baseline_started.elapsed());
         if page.limit != 2
             || page.offset != 0
             || !page.has_more
