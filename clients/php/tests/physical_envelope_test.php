@@ -15,8 +15,11 @@ $check=function(array $c):void {
 foreach($f['cases']as$c)$check($c);
 $html=json_decode(file_get_contents(__DIR__.'/../../../contracts/fixtures/physical_html.json'),true,512,JSON_THROW_ON_ERROR);
 if(count($html['cases'])!==29)throw new RuntimeException('Missing HTML cases');
+if(count($html['blockTags'])!==62||count($html['blockCases'])!==23)throw new RuntimeException('Missing block HTML cases');
+foreach($html['blockTags']as$tag)foreach(['','/']as$slash){$before='<'.$slash.$tag.">\n```mermaid orm-physical-v2\n\n";$check(['id'=>'block-tag-'.$slash.$tag,'text'=>$before."```mermaid orm-physical-v1\nx\n```\n",'before'=>$before,'body'=>"x\n",'after'=>'']);}
+foreach($html['blockCases']as$c){$before=$c['prefix']??'';$body=$c['body']??"x\n";$after=$c['suffix']??'';$check(['id'=>$c['id'],'text'=>$before."```mermaid orm-physical-v1\n".$body."```\n".$after,'before'=>$before,'body'=>$body,'after'=>$after,'reject'=>$c['reject']??false,'line'=>$c['line']??0]);}
 foreach($html['cases']as$c){$before=$c['prefix']??'';$body=$c['body']??"x\n";$after=$c['suffix']??'';$check(['id'=>$c['id'],'text'=>$before."```mermaid orm-physical-v1\n".$body."```\n".$after,'before'=>$before,'body'=>$body,'after'=>$after,'reject'=>$c['reject']??false,'line'=>$c['line']??0]);}
-foreach(['comment','raw']as$tag){$before=($tag==='comment'?"<!--\n":"<script>\n").str_repeat("x\n",$html['stressLines']).($tag==='comment'?"-->\n":"</style>\n");$check(['id'=>'html-stress-'.$tag,'text'=>$before."```mermaid orm-physical-v1\nx\n```\n",'before'=>$before,'body'=>"x\n",'after'=>'']);}unset($before);
+foreach(['comment','raw','block']as$tag){$open=match($tag){'comment'=>"<!--\n",'raw'=>"<script>\n",'block'=>"<div>\n"};$close=match($tag){'comment'=>"-->\n",'raw'=>"</style>\n",'block'=>"</div>\n\n"};$before=$open.str_repeat("x\n",$html['stressLines']).$close;$check(['id'=>'html-stress-'.$tag,'text'=>$before."```mermaid orm-physical-v1\nx\n```\n",'before'=>$before,'body'=>"x\n",'after'=>'']);}unset($before);
 $block="```mermaid orm-physical-v1\n```\n";
 foreach(['bytes','lines','blocks']as$kind)foreach([0,1]as$extra){$n=$f['limits'][$kind]+$extra;$text=match($kind){'bytes'=>str_repeat('x',$n-strlen($block)-1)."\n".$block,'lines'=>str_repeat("\n",$n-3).$block,'blocks'=>str_repeat("```text\n```\n",$n-1).$block};$check(['id'=>$kind.'-'.$extra,'text'=>$text,'bounds'=>true,'reject'=>$extra===1,'line'=>0]);unset($text);}
 $check(['id'=>'invalid-utf8','text'=>"\xff",'reject'=>true,'line'=>0]);

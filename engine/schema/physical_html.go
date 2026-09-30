@@ -3,9 +3,39 @@ package schema
 import (
 	"bytes"
 	"regexp"
+	"strings"
 )
 
 var physicalRawEnd = regexp.MustCompile(`</(?:[pP][rR][eE]|[sS][cC][rR][iI][pP][tT]|[sS][tT][yY][lL][eE]|[tT][eE][xX][tT][aA][rR][eE][aA])>`)
+
+var physicalBlockTags = func() map[string]bool {
+	tags := map[string]bool{}
+	for _, tag := range strings.Fields("address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot th thead title tr track ul") {
+		tags[tag] = true
+	}
+	return tags
+}()
+
+func physicalHTMLBlankStart(line []byte) bool {
+	if len(line) < 2 || line[0] != '<' {
+		return false
+	}
+	p := 1
+	if line[p] == '/' {
+		p++
+	}
+	start := p
+	for p < len(line) && (line[p] >= 'a' && line[p] <= 'z' || line[p] >= 'A' && line[p] <= 'Z' || line[p] >= '0' && line[p] <= '9') {
+		p++
+		if p-start > 10 {
+			return false
+		}
+	}
+	if !physicalBlockTags[strings.ToLower(string(line[start:p]))] {
+		return false
+	}
+	return p == len(line) || line[p] == ' ' || line[p] == '\t' || line[p] == '>' || line[p] == '/' && p+1 < len(line) && line[p+1] == '>'
+}
 
 // Find the terminator once per opaque block, not once per contained line.
 // The returned offset ends on the terminating line; its suffix is still opaque.

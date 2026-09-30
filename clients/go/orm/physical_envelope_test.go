@@ -68,7 +68,13 @@ func TestPhysicalEnvelope(t *testing.T) {
 	}
 	var html struct {
 		StressLines int
-		Cases       []struct {
+		BlockTags   []string
+		BlockCases  []struct {
+			ID, Prefix, Body, Suffix string
+			Reject                   bool
+			Line                     int
+		}
+		Cases []struct {
 			ID, Prefix, Body, Suffix string
 			Reject                   bool
 			Line                     int
@@ -88,10 +94,29 @@ func TestPhysicalEnvelope(t *testing.T) {
 		text := c.Prefix + "```mermaid orm-physical-v1\n" + body + "```\n" + c.Suffix
 		check(c.ID, text, c.Reject, c.Line, c.Prefix, body, c.Suffix)
 	}
-	for _, tag := range []string{"comment", "raw"} {
+	if len(html.BlockTags) != 62 || len(html.BlockCases) != 23 {
+		t.Fatal("missing block HTML cases")
+	}
+	for _, tag := range html.BlockTags {
+		for _, slash := range []string{"", "/"} {
+			prefix := "<" + slash + tag + ">\n```mermaid orm-physical-v2\n\n"
+			check("block-tag-"+slash+tag, prefix+"```mermaid orm-physical-v1\nx\n```\n", false, 0, prefix, "x\n", "")
+		}
+	}
+	for _, c := range html.BlockCases {
+		body := c.Body
+		if body == "" {
+			body = "x\n"
+		}
+		check(c.ID, c.Prefix+"```mermaid orm-physical-v1\n"+body+"```\n"+c.Suffix, c.Reject, c.Line, c.Prefix, body, c.Suffix)
+	}
+	for _, tag := range []string{"comment", "raw", "block"} {
 		open, close := "<!--\n", "-->\n"
 		if tag == "raw" {
 			open, close = "<script>\n", "</style>\n"
+		}
+		if tag == "block" {
+			open, close = "<div>\n", "</div>\n\n"
 		}
 		prefix := open + strings.Repeat("x\n", html.StressLines) + close
 		check("html-stress-"+tag, prefix+"```mermaid orm-physical-v1\nx\n```\n", false, 0, prefix, "x\n", "")
