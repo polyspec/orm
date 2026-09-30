@@ -101,5 +101,9 @@ name = "row_mutation"
 required-features = ["live-db"]
 
 [[test]]
+name = "row_commit_permit"
+required-features = ["live-db"]
+
+[[test]]
 name = "row_insert_identity"
 required-features = ["live-db"]

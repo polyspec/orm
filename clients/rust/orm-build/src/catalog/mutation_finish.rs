@@ -1,8 +1,9 @@
 //! Shared writable transaction acknowledgement, never automatic retry.
-use super::mutation::{MutationPhase, Publisher};
+use super::mutation::{CommitPermit, MutationPhase, Publisher};
 use crate::tool_db::Conn;
 
-pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Result<T, String>, publish: Publisher) -> Result<T, String> {
+pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Result<T, String>, publish: Publisher, permit: CommitPermit) -> Result<T, String> {
+    let result = result.and_then(|value| permit().map(|()| value).map_err(|error| format!("ROW_COMMIT_PERMIT_FAILED: {error}")));
     let value = match result {
         Ok(value) => value,
         Err(error) => {
