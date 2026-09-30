@@ -1,5 +1,18 @@
 # Changelog
 
+Add bounded read-only catalog queries with dialect AST validation and
+database-enforced scopes on dedicated discard-on-drop connections. Reject
+write CTEs, mutation/transaction statements, SELECT INTO, locks and executable
+comments; retain original SQL and explicitly reject unsupported grammar.
+Bound SQL/parser/visitor depth. Validate actual read-only state on PostgreSQL
+and SQLite, MySQL function-write rejection, unchanged rows and recovery after
+errors. Event-driven aborted-scope tests verify no pool reuse on all three DBs;
+this is not measured cancellation latency or an external-function sandbox.
+Missing API compile Red is Green; eleven owning integration tests, two owning
+policy/disposal unit regressions and eleven CLI tests pass. Correct the initial
+MySQL session-variable test assumption, without changing server configuration.
+Keep additional SQL result types pending.
+
 Expose ordered prepared column names/native type names with bounded query
 rows, including empty results and duplicate aliases. Catalog connections
 provide the same public query operation. Bound metadata to 2,048 columns

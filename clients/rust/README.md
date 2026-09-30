@@ -125,6 +125,14 @@ of `Val::as_f64` for ordinary values.
 
 ## Build and test
 
+`CatalogConnection::read_only_query` accepts one dialect-parsed query, not
+mutation/transaction statements, write CTEs, SELECT INTO, locking queries or
+executable comments. It executes original SQL in a DB-enforced read-only scope
+using a dedicated discard-on-drop pooled connection and rolls back afterward.
+SQL is limited to 256 KiB and parser recursion to 64. Unsupported grammar fails
+explicitly. This protects database writes, not arbitrary external effects of
+privileged database functions; use a least-privilege database role.
+
 Rust tool/catalog queries accumulate streamed rows with validated budgets:
 100,000 rows and 64 MiB of JSON-encoded values by default. Each query accepts
 one statement; multiple result sets are not silently merged. Explicit
