@@ -1,5 +1,11 @@
 # 변경 이력
 
+Rust 한정 테이블 descriptor에서 MySQL 네이티브 SYSTEM VIEW를 뷰로 분류한다.
+실제 MySQL 테스트로 네이티브 종류와 descriptor 거부를 먼저 Red로 확인한 뒤
+기본키 행 식별이나 DB 쓰기 없이 Green을 검증했다. 세 DB 일반 테이블/뷰 회귀를
+포함한 메타데이터/카탈로그 테스트 6개가 통과했다. 알 수 없는 종류는 계속 거부하며
+쓰기 권한이나 네 클라이언트 conformance를 뜻하지 않는다.
+
 생성 사례·알 수 없는 메서드 거부·컴파일한 컨트롤러 사용 사례로
 styled setter Result 처리를 검증한다.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+Classify native MySQL SYSTEM VIEW relations as views in the Rust qualified
+table descriptor. An actual-MySQL test first confirmed the native kind and
+reproduced the rejected descriptor, then passes without primary-key identity
+or database writes. Six focused metadata/catalog tests pass, retaining ordinary
+table/view coverage on MySQL, PostgreSQL and SQLite. Unknown kinds still fail;
+no write authorization or four-client conformance is implied.
+
 Verify styled-setter Result handling with generation cases, unknown-method
 rejection and a compiled controller use case.
 

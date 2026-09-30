@@ -7,6 +7,21 @@ use orm_build::{
 async fn qualified_table_metadata_preserves_identity_and_generated_columns() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table metadata deadline");
 }
+#[tokio::test]
+async fn mysql_system_views_are_described_without_row_identity() {
+    let started = std::time::Instant::now();
+    eprintln!("running mysql_system_view_metadata");
+    tokio::time::timeout(std::time::Duration::from_secs(10),async{
+        let dsn=std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN");
+        let mut catalog=CatalogConnection::connect(&dsn).await.expect("catalog connection");
+        let native=catalog.query("SELECT TABLE_TYPE='SYSTEM VIEW' FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME=?",&[tool_db::s("information_schema"),tool_db::s("TABLES")],tool_db::QueryLimits{max_rows:1,max_bytes:1024}).await.expect("native classification");
+        assert!(native.rows.len()==1&&native.rows[0].len()==1&&native.rows[0][0].bool().unwrap(),"fixture must exercise native system-view classification");
+        let result=catalog.describe_table(&TableRef{namespace:"information_schema".into(),name:"TABLES".into()}).await;
+        catalog.close().await;
+        assert!(matches!(result,Ok(ref metadata) if metadata.kind==orm_build::catalog::TableKind::View&&!metadata.columns.is_empty()&&metadata.primary_key.is_empty()&&!metadata.reliable_row_identity),"system-view descriptor must remain read-only view metadata");
+    }).await.expect("system view deadline");
+    eprintln!("passed mysql_system_view_metadata {:?}", started.elapsed());
+}
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-table-metadata-{}.sqlite", std::process::id()));
     assert!(!path.exists());

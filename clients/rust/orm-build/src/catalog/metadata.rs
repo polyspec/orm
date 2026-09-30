@@ -85,7 +85,7 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
     }
     let kind = match (dialect, text(&result[0][0])?.as_str()) {
         ("mysql", "BASE TABLE") | ("postgres", "r") | ("sqlite", "table") => TableKind::Table,
-        ("mysql", "VIEW") | ("postgres", "v") | ("sqlite", "view") => TableKind::View,
+        ("mysql", "VIEW" | "SYSTEM VIEW") | ("postgres", "v") | ("sqlite", "view") => TableKind::View,
         ("postgres", "p") => TableKind::Partitioned,
         ("postgres", "m") => TableKind::MaterializedView,
         ("postgres", "f") => TableKind::Foreign,
