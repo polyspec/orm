@@ -18,6 +18,8 @@ export { createPhysicalIdentity } from './physical.js';
 export type { PhysicalIdentity, PhysicalParts } from './physical.js';
 export { createPhysicalColumn } from './physical_column.js';
 export { createPhysicalCheck } from './physical_check.js';
+export { createPhysicalIndex } from './physical_index.js';
+export type { PhysicalIndex, PhysicalIndexSource, PhysicalIndexTerm } from './physical_index.js';
 export type { PhysicalCheck } from './physical_check.js';
 export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './physical_column.js';
 export { createPhysicalForeignKey } from './physical_foreign_key.js';

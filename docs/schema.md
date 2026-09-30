@@ -1,5 +1,38 @@
 # Schema
 
+Physical index records have exactly `id`, `name`, `tableId`, `unique`,
+`methodSql`, `terms`, `include`, `predicateSql`, `nullsDistinct`, `visible`,
+`comment` and `options`. IDs and nullable names use the existing record rules;
+unique is boolean. methodSql is null (unspecified) or nonempty text up to 128
+UTF-8 bytes. predicateSql is null (absent) or nonempty raw SQL up to 16384 bytes.
+nullsDistinct and visible independently distinguish boolean from unspecified
+null. Preserve comments/options and apply the existing 65536-byte total limit.
+Structural acceptance never implies a dialect supports an option.
+
+terms is an ordered list of 1–64 exact objects: `source`, `order`, `nulls`,
+`collationSql`, `operatorClassSql`, `prefixLength`. source is exactly
+`{kind:"column",columnId}` or `{kind:"expression",sql}`; IDs use the stable-ID
+rule and raw expression text is nonempty up to 16384 UTF-8 bytes. Preserve
+repeated terms rather than deduplicating them. order is asc/desc/unspecified;
+nulls is first/last/unspecified. Nullable raw collation/operator-class text is
+nonempty up to 1024/4096 bytes respectively, including quoted names/parameters.
+prefixLength is null or an integer numeric value 1–2147483647 (never boolean),
+only for a column source. include is an ordered list of 0–64 distinct column
+IDs; it does not change uniqueness terms. Column ownership and dialect-specific
+cross-field restrictions are validated when assembling/planning the schema.
+Missing/unknown fields, types, encodings and bound violations return value-free
+SCHEMA_INVALID. Values are detached/deeply immutable without normalization.
+
+The APIs are Go `orm.PhysicalIndexFromValue`, PHP `Orm\PhysicalIndex::fromValue`,
+Rust `orm_schema::physical_index::PhysicalIndex::from_value` and TypeScript
+package export `createPhysicalIndex`. Run `make physical-index-check` for shared
+vectors twice per client. Index records are not primary/unique constraints;
+those constraints require separate records and explicit backing-index links.
+This primitive is not graph attachment, SQL parsing, imports, DDL or execution.
+Feature distinctions follow the official [PostgreSQL CREATE INDEX](https://www.postgresql.org/docs/18/sql-createindex.html),
+[MySQL CREATE INDEX](https://dev.mysql.com/doc/refman/8.4/en/create-index.html) and
+[SQLite CREATE INDEX](https://www.sqlite.org/lang_createindex.html) references.
+
 Physical CHECK records have exactly `id`, `name`, `tableId`, `expressionSql`,
 `enforced`, `validated`, `comment` and `options`. IDs use the physical-record
 ID rule; a nullable name otherwise follows the exact physical-name rule.
