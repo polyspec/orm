@@ -33,8 +33,14 @@ pub(super) fn validate(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
     if values.len() > 65535 {
         return Err(limit());
     }
+    validate_refs(values.iter(), dialect)
+}
+pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &str) -> Result<(), sqlx::Error> {
     let mut bytes = 0usize;
-    for value in values {
+    for (index, value) in values.enumerate() {
+        if index >= 65535 {
+            return Err(limit());
+        }
         let kind = match value {
             P::S(_) => ParamType::Text,
             P::I(_) => ParamType::Integer,

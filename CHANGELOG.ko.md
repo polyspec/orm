@@ -1,5 +1,24 @@
 # 변경 이력
 
+새 discard-on-drop 트랜잭션에서 호출자가 승인한 네이티브 Rust update/delete와
+명시적 키 삽입을 추가한다. 원본 키를 잠그고 descriptor/정확한 기준 값을 비교한
+뒤 타입형 bind로 쓰고 저장 값/영향 행을 commit 전에 검증한다. 생성 컬럼 대입·
+강제 변환·안전하지 않은 MySQL 엔진/미확인 트리거 가시성을 거부한다. 값 없는
+단계를 발행하고 호출자 취소 뒤에도 commit을 소유하며 확인된 PostgreSQL 거부와
+응답 미확인을 구분하고 자동 재시도하지 않는다.
+공개 API/검증 누락 컴파일 Red·INTEGER 키 준비·명시적 commit 거부 Red가 Green이다.
+macOS에서 소유 라이브러리/기준/페이지/bind/변경 테스트 18개가 통과했으며 실제
+세 DB 쓰기·인용 복합키·키 변경·스키마 충돌·FK/unique 원본 보존·생성/default/NULL·
+취소 rollback·경쟁 잠금·중단 정리를 포함한다. PostgreSQL 소유 연결 종료로 불명
+commit을 확인하고 대기 중단 뒤 성공 commit도 관측한다. 다른 추가 사례는 회귀
+검사이며 Red라고 주장하지 않는다. PostgreSQL 준비에 선언 bind codec 타입을
+전달하고 값 복사 전에 빌린 입력의 상한을 검증한다.
+실패한 Red의 fixture를 포함한 테스트 소유 자원을 제거했다. 자동 기본키 삽입·
+영속 작업 식별/권한·4클라이언트 적합성·다른 플랫폼은 미완료다.
+체크리스트 검사는 통과했다. 문서 규칙 검사는 기존 금지 표현에서 여전히 실패하며
+별도 T7.D8.2에서 수정한다.
+
+
 SQLx 드라이버 codec으로 네이티브 Rust tool bind에 명시적 타입형 NULL·바이너리·
 bool·네이티브 실수 비트·정확한 decimal·MySQL unsigned를 추가한다. 제한된 조회와
 영향 행 실행이 bind 경로를 공유한다. 미지원 dialect 종류·잘못되거나 표현할 수

@@ -361,6 +361,52 @@ rollback/conflict handling. Native Rust tooling does not prove four-client write
 
 ### Rust row-edit baselines
 
+PostgreSQL prepared query metadata must use the explicit bind codec types, not
+untyped inferred placeholders. A grid i64 key can select an INTEGER column via
+the database's integer comparison, without sending i64 bytes as an inferred
+int4 parameter. Native functions still require explicit SQL casts where their
+signature differs from a declared bind type; no codec guessing is permitted.
+
+Before writing, `RowSnapshot::validate_update` checks named assignments and must
+reject duplicates, unknown names, generated columns, invalid NULLs and oversized
+values. After writing under the same lock, compare exact requested values and
+untouched ordinary columns; generated columns may be recomputed. A coercion or
+unrequested ordinary-column change requires rollback, never success. Pure
+verification alone is not transactional execution or mutation authorization.
+
+The native update executor accepts an original `RowSnapshot`, explicit
+typed `P` assignments, an atomic cancellation flag and a required phase event
+subscriber. Use a fresh discard-on-drop transaction, original-key row locking
+(`BEGIN IMMEDIATE` on SQLite), descriptor/original comparison and exact post-write
+verification before commit. Reject non-InnoDB MySQL tables and MySQL triggers.
+Trigger absence is valid only with a verified direct account grant; role-only
+grants and enabled partial revokes are currently rejected, not assumed visible.
+Cancellation checkpoints before commit roll back; cancellation after commit begins does not
+claim rollback. Commit runs in an owned task publishing Committed/Indeterminate,
+even if its awaiting caller drops. Unconfirmed commit errors are indeterminate;
+never automatically retry. Explicit PostgreSQL constraint/transaction rejection is
+distinguished from missing acknowledgement and requires rollback confirmation
+before reporting `ROW_COMMIT_REJECTED`. Preserve the owning native error cause.
+These events are not a durable operation journal and give no durable
+operation identity or recovery.
+
+`delete_row` uses the same explicit baseline, cancellation checkpoints and phase
+subscriber. Lock and compare the original, require exactly one affected row and
+verify absence with an unchanged descriptor before commit. Constraint failure or
+pre-commit cancellation rolls back; never invent a successful deletion for a
+missing or changed original. Database FK effects require review before
+authorization; the native API does not independently authorize cascading effects.
+
+`insert_row` takes a checked `TableMetadata` and explicit typed
+assignments, cancellation flag and phase subscriber. Initially require all
+primary-key values explicitly; omitted/generated identities are unsupported,
+not guessed. Lock/probe the key, revalidate the descriptor, reject existing keys,
+write with typed binds, require one affected row and reread by the declared key.
+Compare every supplied value exactly; omitted defaults and generated values are
+returned from the database. Reject unknown/duplicate/generated assignments.
+Automatic-key insertion still requires owning metadata and returning-key work
+before data editing is complete; this initial API is not full CRUD.
+
 `RowSnapshot::from_page(&TablePage, row_index)` captures
 one checked immutable row, reliable non-null declared primary-key values in
 constraint order and a value-sensitive SHA-256 revision of descriptor/typed cells.
