@@ -1,5 +1,12 @@
 # Changelog
 
+Reject unsupported Rust tool/catalog cells, invalid UTF-8 and unsigned
+integer overflow instead of substituting NULL, replacement text or wrapped
+integers. Propagate decoding errors without including cell values. Seven
+lossy cases fail before correction and pass on SQLite, MySQL and PostgreSQL
+afterward; four catalog owner tests and the SQLite CLI rowid case pass.
+Numeric and boolean accessor validation remains a separate pending item.
+
 Expose Rust DSN-only catalog connections under `live-db`; move the existing
 reader into the library and make the CLI use the same implementation. Reject
 missing SQLite database files without creating them and release connections

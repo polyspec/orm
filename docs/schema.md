@@ -217,6 +217,8 @@ The Rust tool is the `orm-gen` binary of the `orm-build` crate, built with its `
 
 ### Rust catalog connections
 
+Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
+
 The `live-db` feature exposes `orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. `dialect()`, `tables(only)` and `manifest()` reuse the CLI-owned catalog reader and logical conversion. Catalog connections preserve SQLite foreign-key settings instead of applying migration-rebuild settings.
 
 SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Four owner cases verify invalid DSNs, missing SQLite file rejection, SQLite FK/content preservation and repeatable MySQL/PostgreSQL catalog reads; this evidence does not establish lossless physical import.
