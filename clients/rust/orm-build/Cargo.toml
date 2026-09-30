@@ -44,3 +44,7 @@ required-features = ["live-db"]
 [[test]]
 name = "tool_cells"
 required-features = ["live-db"]
+
+[[test]]
+name = "tool_values"
+required-features = ["live-db"]

@@ -219,6 +219,8 @@ Rust 도구는 `orm-build` crate의 `orm-gen` 바이너리이며 `cli` feature�
 
 도구 셀 디코딩은 실제 SQL NULL과 지원되는 정수·텍스트·boolean을 보존하되 미지원 타입·잘못된 UTF-8·signed 64비트 범위를 넘는 unsigned 정수를 거부한다. SQL NULL·대체 문자열·순환한 정수로 대체하지 않는다. 이 검증이 카탈로그 도구를 범용 쿼리 결과 디코더로 만드는 것은 아니다.
 
+도구 `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 카탈로그·마이그레이션 작업에 전달된다.
+
 `live-db` 기능은 `orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. `dialect()`, `tables(only)`, `manifest()`는 CLI 소유 카탈로그 읽기와 논리 변환을 재사용한다. 카탈로그 연결은 마이그레이션 재구축 설정을 적용하지 않고 SQLite 외래키 설정을 보존한다.
 
 SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 소유 사례 4개로 잘못된 DSN·없는 SQLite 파일 거부·SQLite FK/내용 보존·MySQL/PostgreSQL 반복 카탈로그 조회를 검증했으며 이는 무손실 물리 임포트의 근거가 아니다.

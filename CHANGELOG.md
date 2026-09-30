@@ -1,5 +1,14 @@
 # Changelog
 
+Return checked Rust tool integer, optional-integer and boolean conversions
+instead of zero/false defaults. Preserve optional SQL NULL and reject
+invalid required values without exposing contents. Propagate failures
+through catalog and migration readers while retaining transaction cleanup.
+The missing Result API compile Red is Green; two accessor tests (including
+all three databases), four catalog tests, one cell test and five CLI
+regressions pass. Invalid SQLite history remains unchanged after rejection;
+plan/apply/rollback/recovery passes on MySQL, PostgreSQL and SQLite.
+
 Reject unsupported Rust tool/catalog cells, invalid UTF-8 and unsigned
 integer overflow instead of substituting NULL, replacement text or wrapped
 integers. Propagate decoding errors without including cell values. Seven

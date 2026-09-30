@@ -32,28 +32,30 @@ impl Val {
         }
     }
 
-    pub fn int(&self) -> i64 {
+    pub fn int(&self) -> Result<i64, sqlx::Error> {
         match self {
-            Val::Int(n) => *n,
-            Val::Bool(b) => i64::from(*b),
-            Val::Text(s) => s.parse().unwrap_or(0),
-            Val::Null => 0,
+            Val::Int(n) => Ok(*n),
+            Val::Bool(b) => Ok(i64::from(*b)),
+            Val::Text(s) => s.parse().map_err(|_| sqlx::Error::Decode("Invalid tool integer".into())),
+            Val::Null => Err(sqlx::Error::Decode("Required tool integer is NULL".into())),
         }
     }
 
-    pub fn opt_int(&self) -> Option<i64> {
+    pub fn opt_int(&self) -> Result<Option<i64>, sqlx::Error> {
         match self {
-            Val::Null => None,
-            v => Some(v.int()),
+            Val::Null => Ok(None),
+            v => v.int().map(Some),
         }
     }
 
-    pub fn bool(&self) -> bool {
+    pub fn bool(&self) -> Result<bool, sqlx::Error> {
         match self {
-            Val::Bool(b) => *b,
-            Val::Int(n) => *n != 0,
-            Val::Text(s) => s == "t" || s == "true" || s == "1",
-            Val::Null => false,
+            Val::Bool(b) => Ok(*b),
+            Val::Int(0) => Ok(false),
+            Val::Int(1) => Ok(true),
+            Val::Text(s) if matches!(s.as_str(), "t" | "true" | "1") => Ok(true),
+            Val::Text(s) if matches!(s.as_str(), "f" | "false" | "0") => Ok(false),
+            _ => Err(sqlx::Error::Decode("Invalid or NULL tool boolean".into())),
         }
     }
 }

@@ -151,7 +151,7 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
             last.columns.push(col);
             continue;
         }
-        t.indexes.push(Index { name, unique: r[2].int() == 0, fulltext: r[3].text() == "FULLTEXT", columns: vec![col] });
+        t.indexes.push(Index { name, unique: r[2].int().map_err(err)? == 0, fulltext: r[3].text() == "FULLTEXT", columns: vec![col] });
     }
     let fks = conn
         .query(
@@ -218,7 +218,7 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
         }
         let mut c = Column {
             name: r[1].text(),
-            typ: live::pg_type_text(&r[2].text(), &r[7].text(), r[3].opt_int(), r[4].opt_int(), r[5].opt_int(), r[6].opt_int()),
+            typ: live::pg_type_text(&r[2].text(), &r[7].text(), r[3].opt_int().map_err(err)?, r[4].opt_int().map_err(err)?, r[5].opt_int().map_err(err)?, r[6].opt_int().map_err(err)?),
             nullable: r[8].text() == "YES",
             comment: r[11].text(),
             default: NO_DEFAULT.into(),
@@ -267,13 +267,13 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
         let table = r[0].text();
         let Some(t) = by_name.get_mut(&table) else { continue };
         let col = r[5].text();
-        if r[3].bool() {
+        if r[3].bool().map_err(err)? {
             for c in t.columns.iter_mut().filter(|c| c.name == col) {
                 c.key = "PRI".into();
             }
             continue;
         }
-        let unique = r[2].bool();
+        let unique = r[2].bool().map_err(err)?;
         let name = live::postgres_logical_index_name(&table, &r[1].text(), unique);
         if let Some(last) = t.indexes.last_mut().filter(|ix| ix.name == name) {
             last.columns.push(col);
@@ -365,7 +365,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
         let qname = sqlite_quote(&name);
         let cols = conn.query(&format!("PRAGMA table_info('{qname}')"), &[]).await.map_err(|e| format!("table {name} columns: {e}"))?;
         for c in cols {
-            let (column_name, pk) = (c[1].text(), c[5].int());
+            let (column_name, pk) = (c[1].text(), c[5].int().map_err(err)?);
             let default = match c[4].opt_text() {
                 None => NO_DEFAULT.into(),
                 Some(d) if live::sqlite_clock_default(&d) => "CURRENT_TIMESTAMP".into(),
@@ -375,7 +375,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             t.columns.push(Column {
                 name: column_name,
                 typ: if auto { "bigint".into() } else { live::sqlite_logical_type(&c[2].text()) },
-                nullable: c[3].int() == 0 && pk == 0,
+                nullable: c[3].int().map_err(err)? == 0 && pk == 0,
                 default,
                 extra: if auto { "auto_increment".into() } else { String::new() },
                 key: if pk > 0 { "PRI".into() } else { String::new() },
@@ -383,7 +383,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             });
         }
         for ix in conn.query(&format!("PRAGMA index_list('{qname}')"), &[]).await.map_err(err)? {
-            let (index_name, unique, origin) = (ix[1].text(), ix[2].int() != 0, ix[3].text());
+            let (index_name, unique, origin) = (ix[1].text(), ix[2].int().map_err(err)? != 0, ix[3].text());
             if origin == "pk" {
                 continue;
             }
@@ -396,7 +396,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
         }
         let mut by_id: HashMap<i64, usize> = HashMap::new();
         for fk in conn.query(&format!("PRAGMA foreign_key_list('{qname}')"), &[]).await.map_err(err)? {
-            let id = fk[0].int();
+            let id = fk[0].int().map_err(err)?;
             let position = *by_id.entry(id).or_insert_with(|| {
                 t.foreign_keys.push(ForeignKey {
                     name: format!("fk_{name}_{id}"),
