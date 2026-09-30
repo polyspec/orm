@@ -83,6 +83,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 
 ## Schema and migration tools
 
+
 - [o] T7.3 Implement deterministic `ormgen diff` and destructive-change checks.
 - [o] T7.5 Implement YAML 1.2 and `point` conversions in Go, PHP, Rust, and TypeScript. Verify `point` DDL and SQL on MySQL, PostgreSQL, and SQLite.
 - [o] T7.9 Compare Rust `mysql_async` 0.37.1 with sqlx 0.9 using equal SQL, binds, typed results, connection count, and fixture. Retain sqlx because neither measured workload shows the required 2x improvement.
@@ -92,6 +93,8 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] T7.15 Add migration execution locking, transaction boundaries, and detailed recovery states for MySQL, PostgreSQL, and SQLite.
 - [o] T7.16 Replace semicolon splitting with a dialect-aware SQL statement parser and preserve statement-level failure locations.
 - [o] T7.17 Accept MMD, manifest JSON, metadata-bearing ORM SQL, and live DB schema sources for DDL, diff, structured plans, verification, recovery, idempotent migration, and verified rollback.
+- [o] T7.17.1 Expose Rust DSN-only catalog connections through the public library and make the CLI use the same implementation. Evidence: missing module compile Red corrected; missing SQLite file creation Red corrected. Four public API owner tests pass, including actual MySQL/PostgreSQL repeated catalog reads and SQLite FK/content preservation; existing SQLite CLI automatic-rowid import regression passes. This extracts existing behavior, not lossless physical import or arbitrary data decoding.
+- [ ] T7.17.1.1 Reject lossy catalog/tool cell decoding before extending public data access. Cause: unsupported cells become NULL, invalid UTF-8 is replaced and unsigned overflow wraps. Criterion: owning physical Red/Green cases on MySQL/PostgreSQL/SQLite, explicit errors without secret values, and unchanged valid catalog/CLI paths. Also replace invalid numeric/boolean conversion defaults with checked results.
 - [o] T7.19 Add AES blind-index schema declarations, keyed equality predicates, and write synchronization.
 - [o] T7.20 Split oversized root `IN` predicates, preserve non-`IN` parameters, merge rows, sum count results, and reject unsafe query shapes.
 - [o] T7.21 Add the `soft_delete` schema directive, apply active-row predicates to reads and updates, and convert deletes to timestamp updates.
