@@ -17,6 +17,31 @@ Public APIs: Go `orm.NewPhysicalIdentity`, PHP `Orm\PhysicalIdentity`, Rust
 as detached values or immutable borrows. `make physical-identity-check` executes
 the ten shared vectors twice per client and checks byte limits/invalid encodings.
 
+Physical column records have exactly `id`, `name`, `typeSql`, `nullable`,
+`default`, `generation`, `comment` and `options`. IDs match `[A-Za-z0-9_-]{1,128}`;
+names follow the physical identity component rules. Preserve nonempty typeSql
+up to 4096 UTF-8 bytes and comments up to 8192 bytes. nullable is a boolean.
+Defaults are `{kind:"absent"}` or `{kind:"null"}`, or literal/expression kinds
+with a nonempty `sql` up to 16384 bytes. Generation is `{kind:"none"}`, identity
+with `sql`, or computed with `sql` and `storage` (stored/virtual/unspecified).
+Generation SQL has the same 16384-byte limit. Ordered options contain at most 64
+exact `{name,value}` string objects; name is nonempty up to 128 bytes, value up
+to 4096 bytes. Every string is valid UTF-8 without NUL; a record contains at most
+65536 bytes across string values. Unknown fields and wrong types fail with
+value-free SCHEMA_INVALID. Return detached values or deeply immutable objects.
+These APIs accept already decoded records, not JSON text; strict text parsing is
+the input producer's responsibility. Classification and SQL semantics belong to
+the dialect-aware importer/planner; structural acceptance does not permit DDL
+or establish that an expression, literal or type is executable.
+
+Column APIs: Go `orm.PhysicalColumnFromValue`, PHP
+`Orm\PhysicalColumn::fromValue`, Rust
+`orm_schema::physical_column::PhysicalColumn::from_value`, TypeScript package
+export `createPhysicalColumn`. `make physical-column-check` runs the 25 shared
+vectors twice per client, plus aggregate/field/option limits, invalid encodings
+and alias checks. `PHYSICAL_NODE` explicitly selects its TypeScript tool runtime.
+
+
 
 The human-maintained schema files are `schema/*.mmd` (Mermaid `erDiagram`). GitHub, IDEs, and build artifacts render them as diagrams, and `ormgen` parses them into a generated **manifest** (`schema.json`) with columns, keys, relations, indexes, and styles. Do not edit the manifest.
 For an existing database, `ormgen import --dsn … --out schema/service.mmd` creates the diagram; foreign keys become relation lines and indexes become `%%` directives.
