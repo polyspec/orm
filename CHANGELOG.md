@@ -1,5 +1,14 @@
 # Changelog
 
+Return generated and literal-default keys with authoritative metadata, bounded
+RETURNING or MySQL statement acknowledgement/server DEFAULT. Generated-key
+and MySQL literal-default Reds are Green; 21 focused tests pass on actual local
+three-database fixtures, including concurrency, defaults, constraint/coercion
+rejection and cancellation rollback. Owning Clippy --no-deps passes; the existing
+dependency borrowed-Box lint fails (N9.2.1). Omitted MySQL expression-default
+keys remain unresolved (T7.17.1.13.2.2), rejected before writing, not completed.
+Full insertion/editing, four-client and other-platform requirements remain open.
+
 Correct prohibited prose in checklist, interface and performance documents
 without changing technical requirements, measurements or validation rules.
 The existing documentation-rules Red is Green for all 21 language pairs.

@@ -8,8 +8,8 @@ fn fixture() -> TablePage {
             table: TableRef { namespace: "main".into(), name: "fixture".into() },
             kind: TableKind::Table,
             columns: vec![
-                TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false },
-                TableColumnMetadata { name: "b".into(), native_type: "TEXT".into(), nullable: false, generated: false },
+                TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false },
+                TableColumnMetadata { name: "b".into(), native_type: "TEXT".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false },
             ],
             primary_key: vec!["b".into(), "a".into()],
             reliable_row_identity: true,

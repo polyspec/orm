@@ -228,6 +228,16 @@ fn has_params(params: &[P]) -> bool {
 }
 
 impl Conn {
+    /// Statement-scoped MySQL identity, not session-global state or a guessed key.
+    pub(crate) async fn mysql_insert(&mut self, sql: &str, params: &[P]) -> Result<(u64, u64), sqlx::Error> {
+        self.validate_params(params)?;
+        let Conn::MySql(connection) = self else {
+            return Err(sqlx::Error::Decode("TOOL_INSERT_DIALECT: expected MySQL".into()));
+        };
+        let sql = AssertSqlSafe(sql.to_owned());
+        let result = binds::mysql(sqlx::query(sql), params)?.execute(&mut **connection).await?;
+        Ok((result.rows_affected(), result.last_insert_id()))
+    }
     fn validate_params(&self, values: &[P]) -> Result<(), sqlx::Error> {
         params::validate(values,match self {Self::MySql(_)=>"mysql",Self::Postgres(_)=>"postgres",Self::Sqlite(_)=>"sqlite"})
     }

@@ -361,6 +361,19 @@ rollback/conflict handling. Native Rust tooling does not prove four-client write
 
 ### Rust row-edit baselines
 
+Automatic/default-key insertion must receive database-owned identities, never
+derive them from row counts, maxima or a later unrelated connection. PostgreSQL
+and SQLite use bounded typed `INSERT ... RETURNING` on the owning transaction.
+MySQL uses the executing statement's insert acknowledgement for an omitted
+AUTO_INCREMENT key and rereads the row on that same transaction. Literal default
+keys use server-side `DEFAULT(column)` predicates and declared composite-key
+ordering, without frontend default evaluation. `expression_default` distinguishes
+MySQL expression defaults from literal defaults; omitted expression-default keys
+still fail before writing until an authoritative returning strategy exists.
+Verify the
+declared key-generation strategy before writing; unsupported returning
+strategies fail explicitly. Concurrent inserts must return their own rows.
+
 PostgreSQL prepared query metadata must use the explicit bind codec types, not
 untyped inferred placeholders. A grid i64 key can select an INTEGER column via
 the database's integer comparison, without sending i64 bytes as an inferred
@@ -398,14 +411,16 @@ missing or changed original. Database FK effects require review before
 authorization; the native API does not independently authorize cascading effects.
 
 `insert_row` takes a checked `TableMetadata` and explicit typed
-assignments, cancellation flag and phase subscriber. Initially require all
-primary-key values explicitly; omitted/generated identities are unsupported,
-not guessed. Lock/probe the key, revalidate the descriptor, reject existing keys,
+assignments, cancellation flag and phase subscriber. Columns expose
+`automatic_key` and `default_expression`; these participate in descriptor
+comparison and the bounded baseline revision. Require explicit primary-key
+values unless an authoritative generator supports returning the omitted keys.
+Lock/probe explicit keys, revalidate the descriptor, reject existing keys,
 write with typed binds, require one affected row and reread by the declared key.
 Compare every supplied value exactly; omitted defaults and generated values are
 returned from the database. Reject unknown/duplicate/generated assignments.
-Automatic-key insertion still requires owning metadata and returning-key work
-before data editing is complete; this initial API is not full CRUD.
+Automatic-key insertion validation is in progress; this native API is not full
+CRUD, durable authorization or recovery.
 
 `RowSnapshot::from_page(&TablePage, row_index)` captures
 one checked immutable row, reliable non-null declared primary-key values in
