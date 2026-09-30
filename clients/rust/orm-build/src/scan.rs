@@ -75,17 +75,19 @@ pub fn attaches(name: &str) -> Option<bool> {
 struct Binding {
     model: Option<String>,
     aliases: Vec<String>,
+    result: bool,
 }
 
 struct Scanner<'a> {
     models: &'a HashSet<String>,
+    fallible_setters: &'a HashSet<(String, String)>,
     file: String,
     scopes: Vec<HashMap<String, Binding>>,
     attached: Vec<bool>,
     out: &'a mut Scan,
 }
 
-pub fn scan(paths: &[PathBuf], models: &HashSet<String>) -> Result<Scan, String> {
+pub fn scan(paths: &[PathBuf], models: &HashSet<String>, fallible_setters: &HashSet<(String, String)>) -> Result<Scan, String> {
     let mut out = Scan::default();
     let mut files = Vec::new();
     for p in paths {
@@ -98,7 +100,7 @@ pub fn scan(paths: &[PathBuf], models: &HashSet<String>) -> Result<Scan, String>
             let at = e.span().start();
             format!("{}:{}:{}: {e}", f.display(), at.line, at.column + 1)
         })?;
-        let mut s = Scanner { models, file: f.display().to_string(), scopes: vec![HashMap::new()], attached: Vec::new(), out: &mut out };
+        let mut s = Scanner { models, fallible_setters, file: f.display().to_string(), scopes: vec![HashMap::new()], attached: Vec::new(), out: &mut out };
         s.visit_file(&ast);
     }
     out.files = files;
@@ -184,6 +186,23 @@ impl Scanner<'_> {
         }
     }
 
+    fn result_of(&self, expression: &Expr) -> bool {
+        match expression {
+            Expr::MethodCall(call) => {
+                let name = call.method.unraw().to_string();
+                self.model_of(&call.receiver).is_some_and(|model|
+                    self.fallible_setters.contains(&(model, name.clone())))
+                    || (matches!(name.as_str(), "map_err" | "map") && self.result_of(&call.receiver))
+            }
+            Expr::Path(path) if path.path.segments.len() == 1 => self.lookup(
+                &path.path.segments[0].ident.unraw().to_string()).is_some_and(|binding| binding.result),
+            Expr::Reference(reference) => self.result_of(&reference.expr),
+            Expr::Paren(paren) => self.result_of(&paren.expr),
+            Expr::Group(group) => self.result_of(&group.expr),
+            _ => false,
+        }
+    }
+
     fn model_of(&self, e: &Expr) -> Option<String> {
         match e {
             Expr::Call(c) => match &*c.func {
@@ -199,12 +218,19 @@ impl Scanner<'_> {
             },
             Expr::MethodCall(m) => {
                 let name = m.method.unraw().to_string();
+                if self.result_of(&m.receiver) {
+                    return match name.as_str() {
+                        "map_err" | "unwrap" | "expect" => self.model_of(&m.receiver),
+                        _ => None,
+                    };
+                }
                 if name == "clone" || returns_model(&name) {
                     self.model_of(&m.receiver)
                 } else {
                     None
                 }
             }
+            Expr::Try(tried) => self.model_of(&tried.expr),
             Expr::Reference(r) => self.model_of(&r.expr),
             Expr::Paren(p) => self.model_of(&p.expr),
             Expr::Group(g) => self.model_of(&g.expr),
@@ -223,7 +249,7 @@ impl Scanner<'_> {
         for p in params {
             if let Some((name, ty)) = pat_ident(p) {
                 let model = ty.and_then(|t| self.type_name(t));
-                self.bind(name, Binding { model, aliases: Vec::new() });
+                self.bind(name, Binding { model, aliases: Vec::new(), result: false });
             }
         }
     }
@@ -335,7 +361,8 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
                 None => l.init.as_ref().and_then(|i| self.model_of(&i.expr)),
             };
             let aliases = l.init.as_ref().map(|i| aliases_in(&i.expr)).unwrap_or_default();
-            self.bind(name, Binding { model, aliases });
+            let result = l.init.as_ref().is_some_and(|init| self.result_of(&init.expr));
+            self.bind(name, Binding { model, aliases, result });
         }
     }
 
@@ -349,7 +376,7 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
     fn visit_expr_method_call(&mut self, m: &'ast syn::ExprMethodCall) {
         let name = m.method.unraw().to_string();
         self.visit_expr(&m.receiver);
-        if matches!(name.as_str(), "expect" | "unwrap") && matches!(&*m.receiver, Expr::MethodCall(setter) if setter.method.to_string().starts_with("set_")) {
+        if self.result_of(&m.receiver) {
             for argument in &m.args {
                 self.visit_expr(argument);
             }

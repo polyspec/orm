@@ -1,7 +1,7 @@
 //! Generates the model source: fixed methods for every model and the
 //! grammar-derived methods that the scanned source calls.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write as _;
 
 use syn::Expr;
@@ -9,6 +9,15 @@ use syn::Expr;
 use crate::manifest::{check_column_name, Column, Entity, Manifest};
 use crate::names::{column_name, parse_chain, parse_order, pascal, snake_to_pascal, split_pair, ChainKey};
 use crate::scan::{Call, Scan};
+
+pub(crate) fn fallible_setters(manifest: &Manifest) -> HashSet<(String, String)> {
+    manifest.entities().flat_map(|entity| {
+        let model = pascal(&entity.name);
+        entity.columns.iter()
+            .filter(|column| is_styled_value(column) || column.typ == "decimal")
+            .map(move |column| (model.clone(), format!("set_{}", column.name)))
+    }).collect()
+}
 
 const RUST_RESERVED: &[&str] = &[
     "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move",

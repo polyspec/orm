@@ -140,3 +140,42 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
     .expect_err("unknown model call must fail");
     assert!(error.contains("missing_method"), "{error}");
 }
+
+#[test]
+fn styled_setter_result_transformations_are_not_column_calls() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    for handling in ["map_err(|error| error)?", "map_err(|error| error).map(Some)"] {
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; }}");
+        let text = generate_with_schema(root.clone(), &source).expect("Result transformations are not columns");
+        assert!(!text.contains("pub fn map_err"));
+        assert!(!text.contains("pub fn map("));
+    }
+}
+
+#[test]
+fn unknown_model_after_result_error_mapping_still_fails() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    for handling in ["map_err(|error| error)?", "map_err(|error| error).unwrap()"] {
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
+        let error = generate_with_schema(root.clone(), &source).expect_err("unknown model call must fail");
+        assert!(error.contains("missing_method"), "{error}");
+        assert!(!error.contains("MapErr"), "{error}");
+    }
+}
+
+#[test]
+fn infallible_setter_does_not_accept_result_methods() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let error = generate_with_schema(root, "fn main() { Author::new().set_seq(1).map_err(|error| error); }")
+        .expect_err("infallible model setter does not return Result");
+    assert!(error.contains("map_err"), "{error}");
+}
+
+#[test]
+fn bound_setter_results_preserve_model_calls_after_extraction() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let source = "fn main() { let result = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
+    let error = generate_with_schema(root, source).expect_err("bound Result must retain its model after extraction");
+    assert!(error.contains("missing_method"), "{error}");
+    assert!(!error.contains("MapErr"), "{error}");
+}
