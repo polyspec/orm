@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.3: PHP client는 `Orm\Dbspec\Dbspec`으로 schema plan을 parse, chain, diff하고 쓴다. `make dbspec-plan-php-check`가 이를 MySQL, PostgreSQL, SQLite에 적용한다.
+
 - T8.2.6.1.3: Korean protocol 문서가 manifest 절을 ASCII anchor로 가리킨다.
 
 - T8.7.2: Go engine은 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
