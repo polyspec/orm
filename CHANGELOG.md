@@ -1,6 +1,10 @@
 # Changelog
 
 Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the Rust client (`dbspec::render`), compared with tests/dbspec/ddl.json
+(T8.3.5).
+
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
 in the TypeScript client (`renderDbspec`), compared with
 tests/dbspec/ddl.json, and export `renderDbspec` and `dbspecManifest`
 from the package root (T8.3.4).
