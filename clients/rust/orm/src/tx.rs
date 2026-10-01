@@ -984,6 +984,80 @@ mod tests {
         db.close().await;
     }
 
+    // 끝나지 않은 채 drop된 transaction future는 connection을 닫는다. server는 그 session의
+    // transaction과 lock을 끝내므로 다른 connection이 그 lock을 잡는다. MySQL test server의
+    // connection은 TLS로 연결되며, sqlx의 TLS stream shutdown은 server가 보내지 않는 data를 기다린다.
+    // SQLite에서는 닫힌 connection의 write transaction이 끝나 다른 connection이 write lock을 잡는다.
+    #[tokio::test]
+    async fn dropped_transaction_closes_its_connection() {
+        let tmp = std::env::temp_dir().join(format!("orm-dropped-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let targets = [
+            ("sqlite", format!("sqlite://{}", tmp.join("dropped.sqlite").display())),
+            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
+            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
+        ];
+        for (driver, dsn) in targets {
+            let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            match db.pool() {
+                Pool::MySql(pool) => {
+                    let cipher: (String, String) = sqlx::query_as("SHOW SESSION STATUS LIKE 'Ssl_cipher'").fetch_one(pool).await.expect("Ssl_cipher");
+                    assert!(!cipher.1.is_empty(), "the MySQL test connection uses TLS");
+                }
+                Pool::Sqlite(_) => execute(&db, "CREATE TABLE orm_dropped_probe (id INTEGER PRIMARY KEY)").await,
+                Pool::Postgres(_) => {}
+            }
+            let key = format!("orm_test.dropped.{}", std::process::id());
+            let held = Arc::new(tokio::sync::Notify::new());
+            let transaction = db
+                .transaction(async || -> Result<()> {
+                    db.utils().lock(&key).await?;
+                    if driver == "sqlite" {
+                        active_for(&db).expect("transaction active").raw("INSERT INTO orm_dropped_probe (id) VALUES (1)").await?;
+                    }
+                    held.notify_one();
+                    std::future::pending::<()>().await;
+                    Ok(())
+                })
+                .retry(0)
+                .into_future();
+            tokio::select! {
+                result = transaction => panic!("{driver}: the transaction ended before the drop: {result:?}"),
+                _ = held.notified() => {}
+            }
+            // 닫힌 session의 lock이 풀릴 때까지 server가 5초까지 기다린다.
+            match db.pool() {
+                Pool::MySql(pool) => {
+                    let mut other = pool.acquire().await.expect("another connection");
+                    let got: Option<i64> = sqlx::query_scalar("SELECT GET_LOCK(?, 5)").bind(&key).fetch_one(&mut *other).await.expect("GET_LOCK");
+                    assert_eq!(got, Some(1), "mysql: the dropped transaction released its lock");
+                    let released: Option<i64> = sqlx::query_scalar("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *other).await.expect("RELEASE_LOCK");
+                    assert_eq!(released, Some(1));
+                }
+                Pool::Postgres(pool) => {
+                    let mut other = pool.begin().await.expect("another transaction");
+                    sqlx::raw_sql("SET LOCAL lock_timeout = '5s'").execute(&mut *other).await.expect("lock_timeout");
+                    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+                        .bind(&key)
+                        .execute(&mut *other)
+                        .await
+                        .expect("postgres: the dropped transaction released its lock");
+                    other.rollback().await.expect("rollback");
+                }
+                Pool::Sqlite(pool) => {
+                    let mut other = pool.acquire().await.expect("another connection");
+                    sqlx::raw_sql("PRAGMA busy_timeout = 5000").execute(&mut *other).await.expect("busy_timeout");
+                    sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut *other).await.expect("sqlite: the dropped transaction released its write lock");
+                    let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM orm_dropped_probe").fetch_one(&mut *other).await.expect("count");
+                    assert_eq!(rows, 0, "sqlite: the dropped transaction rolled back");
+                    sqlx::raw_sql("ROLLBACK").execute(&mut *other).await.expect("rollback");
+                }
+            }
+            db.close().await;
+        }
+        std::fs::remove_dir_all(tmp).unwrap();
+    }
+
     /// sqlite_denied가 고른 statement를 SQLite authorizer가 거부한다. 실제 SQLite는 transaction 끝의
     /// ROLLBACK과 PRAGMA를 거부하지 않으므로 이렇게 실패를 만든다.
     static SQLITE_DENIED: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(DENY_NOTHING);
