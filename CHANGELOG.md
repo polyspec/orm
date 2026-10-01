@@ -1,5 +1,9 @@
 # Changelog
 
+Judge each client's dbspec parse budget on the median of five parses of
+the stress document, so a parse slowed by other load on the machine no
+longer fails the check while a slow parser still does (T8.2.4.2).
+
 Sort repeated `blind_index` settings by AES column, and let a failed key,
 index or tab-broken line keep its kind so that it hides the rules that
 depend on its columns (T8.1.2). Six shared cases lock these rules, and

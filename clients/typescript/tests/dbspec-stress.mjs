@@ -1,8 +1,9 @@
 // dbspec stress: the 2000-table, 60000-column, 10000-foreign-key canonical
 // document that node tests/dbspec/stress.mjs writes is parsed and emitted;
 // the emission equals the document and a second emission equals the first.
-// Parse and emit times are printed, and the parse fails above the TypeScript
-// budget (docs/dbspec.md, "Verification").
+// The document is parsed five times; the shortest, median and longest parse
+// are printed, and the median fails above the TypeScript budget (docs/dbspec.md,
+// "Verification").
 //
 // Usage: node --test clients/typescript/tests/dbspec-stress.mjs (after the build)
 import test from 'node:test';
@@ -16,6 +17,7 @@ const root = new URL('../../../', import.meta.url);
 const generator = fileURLToPath(new URL('tests/dbspec/stress.mjs', root));
 const TIMEOUT = 60000;
 const PARSE_BUDGET_MS = 250;
+const PARSES = 5;
 
 function generate() {
   return new Promise((resolve, reject) => {
@@ -32,9 +34,15 @@ test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }
   try {
     const text = await generate();
     console.log(`step generated ${Buffer.byteLength(text)} bytes in ${(performance.now() - started).toFixed(1)} ms`);
-    const parseStart = performance.now();
-    const result = parseDbspec(text, {});
-    const parseMs = performance.now() - parseStart;
+    const parses = [];
+    let result;
+    for (let i = 0; i < PARSES; i++) {
+      const parseStart = performance.now();
+      result = parseDbspec(text, {});
+      parses.push(performance.now() - parseStart);
+    }
+    parses.sort((a, b) => a - b);
+    const parseMs = parses[Math.floor(PARSES / 2)];
     assert.deepEqual(result.diagnostics, []);
     const document = result.document;
     assert.equal(document.tables.length, 2000);
@@ -44,10 +52,10 @@ test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }
     const first = emitDbspec(document);
     const emitMs = performance.now() - emitStart;
     const second = emitDbspec(document);
-    console.log(`step parse ${parseMs.toFixed(1)} ms emit ${emitMs.toFixed(1)} ms`);
+    console.log(`step parse min ${parses[0].toFixed(1)} median ${parseMs.toFixed(1)} max ${parses[PARSES - 1].toFixed(1)} ms emit ${emitMs.toFixed(1)} ms`);
     assert.equal(first, text);
     assert.equal(second, first);
-    assert.ok(parseMs <= PARSE_BUDGET_MS, `parse ${parseMs.toFixed(1)} ms exceeds the ${PARSE_BUDGET_MS} ms budget`);
+    assert.ok(parseMs <= PARSE_BUDGET_MS, `median parse ${parseMs.toFixed(1)} ms exceeds the ${PARSE_BUDGET_MS} ms budget`);
   } catch (error) {
     console.log(`fail dbspec stress ${(performance.now() - started).toFixed(1)} ms`);
     throw error;

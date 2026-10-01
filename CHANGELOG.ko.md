@@ -1,5 +1,9 @@
 # 변경 이력
 
+각 client의 dbspec parse budget을 부하 문서 parse 다섯 번의 median으로
+판정한다. machine의 다른 부하로 느려진 parse는 더 이상 check를 실패시키지
+않고, 느린 parser는 여전히 실패한다(T8.2.4.2).
+
 반복된 `blind_index` setting을 AES column 순으로 정렬하고, 실패한
 key, index, tab이 든 줄도 종류를 유지해 그 column에 기대는 규칙을
 가리게 한다(T8.1.2). 공유 case 6개가 이 규칙을 고정하고, PHP와
