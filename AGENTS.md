@@ -3,6 +3,9 @@
 [Korean](AGENTS.ko.md)
 
 - The user's instructions take precedence. Develop locally; do not add a remote or push.
+- Work on `main` directly by default; use a branch and worktree when agents or parallel work need
+  one. A branch or worktree left after its merge takes disk space, scatters folders and makes the
+  merge state unclear.
 - Name branches `{type}/{shortname}-{checklist ID}` and worktrees
   `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
   or equivalent changes are present and its worktree is clean. Before removal, preserve any files
