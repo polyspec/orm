@@ -38,7 +38,7 @@ diagram main {
 }
 ```
 
-A document is UTF-8 text without a byte order mark, with LF or CRLF line ends. It starts with the header line `dbspec 1 <document>`: the language version and the document name. Blank lines are allowed anywhere. A line whose first non-space character is `#` is a comment; a comment never changes the meaning and canonical emission keeps it in place (see [Canonical form](#canonical-form)).
+A document is UTF-8 text without a byte order mark. Lines end with LF or CRLF, both may appear in one document, and the last line may lack a line end; a bare CR is an `encoding` error. Parsing takes text: a tool that reads a file reports bytes that are not UTF-8 as an `encoding` error before parsing. Only the space character separates tokens; a tab is a `syntax` error. Its first line is the header `dbspec 1 <document>`: the language version and the document name; no blank or comment line comes before it. After the header, blank lines are allowed anywhere. A line whose first non-space character is `#` is a comment; a comment never changes the meaning and canonical emission keeps it in place (see [Canonical form](#canonical-form)).
 
 After the header come `use` lines, then `table` blocks, then `diagram` blocks, in that order.
 
@@ -46,15 +46,17 @@ After the header come `use` lines, then `table` blocks, then `diagram` blocks, i
 
 Every name of a document, table, column, index, key, foreign key, check, setting target and diagram matches `[a-z][a-z0-9_]*` and has at most 63 bytes. A longer name is an error; it is never shortened. Upper case is an error, so every database's case folding gives the same name.
 
-Index, unique key, foreign key and check names are unique in the whole schema, across all four kinds and across the documents joined by `use`, because MySQL, PostgreSQL and SQLite scope these names differently. `primary` is not a valid name. Names are physical names: the renderer writes them unchanged and adds no prefix or suffix.
+The words `dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true` and `false` are reserved and are not valid names.
+
+Index, unique key, foreign key and check names are unique in the whole schema, across all four kinds, against every table name, and across this document and the documents it uses directly, because MySQL, PostgreSQL and SQLite scope these names differently and PostgreSQL keeps index and table names in one namespace. `primary` is not a valid name. Names are physical names: the renderer writes them unchanged and adds no prefix or suffix.
 
 ## Documents and `use`
 
-`use <document> { <table>, ... }` makes tables of another document available as foreign key targets. The other document is found by its name in the declared document set that the tool receives (a configuration file or command arguments list each document file of the set); a document never names a file path. A used table is not rendered by this document. Using a table that the named document does not define, or a document that is not in the set, is an error.
+`use <document> { <table>, ... }` makes tables of another document available as foreign key targets. The other document is found by its name in the declared document set that the tool receives (a configuration file or command arguments list each document file of the set); a document never names a file path. A used table is not rendered by this document; a diagram may place it. A used document is itself parsed and validated with its own `use` lines. Using a table that the named document does not define, a document that is not in the set, the document itself, or a document whose header name differs from the used name, and any use cycle, are `use` errors; a used document that fails reports one `use` error at its name with its first error in the message. A document or table repeated in `use` lines, and a table named like a used table, are `name.duplicate` errors. `use` lines are sorted by document name; the tables inside one line keep their written order.
 
 ## Tables
 
-`table <name> { ... }` holds column lines, then key, index, foreign key and check lines, then at most one `settings` block. A table has at least one column and exactly one primary key, and at most 1000 columns.
+`table <name> { ... }` holds column lines, then key, index, foreign key and check lines in any order among themselves, then at most one `settings` block. A column line after a constraint line, a constraint line after `settings`, or a second `settings` block is an `order` error. A block that the document leaves open is a `syntax` error at its `{`. A table has at least one column and exactly one primary key, and at most 1000 columns.
 
 ### Columns
 
@@ -62,7 +64,8 @@ Index, unique key, foreign key and check names are unique in the whole schema, a
 
 - Columns are NOT NULL unless the line says `null`. Primary key columns cannot be `null`.
 - `identity` makes the column the automatic key: it must be the only primary key column and its type `i64`. The database generates a key when the insert omits it; clients reject an explicit value. A table has at most one identity column.
-- `default <value>` gives a literal of the column's type, or `now` for a `datetime(p)` column, which writes the UTC statement time. `null` and `default` cannot be combined with `identity`. A `text` or `bytes` column has no default.
+- The modifiers come in this order: `null`, `identity`, `default`. A `null` column without a default reads as SQL NULL when an insert omits it; `default null` is a `column` error.
+- `default <value>` gives a literal of the column's type, or `now` for a `datetime(p)` column, which writes the UTC statement time. `null` and `default` cannot be combined with `identity`. A `text` or `bytes` column has no default. A decimal default with more fraction digits than the scale is a `column` error, even when the extra digits are zeros; fewer digits are padded in canonical form.
 
 ### Types
 
@@ -92,14 +95,15 @@ Not supported: 8-bit and 24-bit integers, unsigned types, `f32`, `char(n)`, `bin
 - `unique <name> (<column>, ...)`: NULLs are distinct.
 - `index <name> (<column> [asc|desc], ...)`: ascending is the default and is not written in canonical form.
 
-A key or index lists 1 to 16 distinct columns of its table. A `text` or `bytes` column cannot be part of one. The declared lengths of the `varchar` columns of one index or unique key total at most 640. Prefix, partial, expression and full-text indexes are not supported.
+A key or index lists 1 to 16 distinct columns of its table. A `text` or `bytes` column cannot be part of one. The declared lengths of the `varchar` columns of one primary key, unique key or index total at most 640. Prefix, partial, expression and full-text indexes are not supported.
 
 ### Foreign keys
 
 `foreign key <name> (<column>, ...) references <table> (<column>, ...) [on delete <action>] [on update <action>]`
 
 - `<action>` is `restrict`, `cascade` or `set_null`; an omitted action is `restrict` and canonical form writes both actions.
-- The referenced columns are the referenced table's primary key or one of its unique keys, in that order.
+- The referenced columns are exactly the columns of the referenced table's primary key or of one of its unique keys, in the key's column order.
+- `on delete` comes before `on update` when both are written.
 - Child column types equal the referenced column types.
 - The table declares an index or key whose leading columns are the foreign key's columns.
 - `set_null` requires every child column to be `null`.
@@ -117,11 +121,13 @@ The expression uses only:
 - `and`, `or`, `not`, parentheses;
 - `<expr> [not] in (<literal>, ...)`, `<expr> [not] between <a> and <b>`, `<expr> is [not] null`.
 
-There are no functions, so no clock, random or session values. A check cannot use a column of a foreign key with `cascade` or `set_null`, because MySQL rejects it (3823).
+A unary minus applies only to a number literal. There are no functions, so no clock, random or session values. A check cannot use a column of a foreign key with `cascade` or `set_null`, because MySQL rejects it (3823).
 
 ## Settings
 
-`settings { ... }` holds one setting per line. A setting names the columns it applies to; a column's name never selects a behavior.
+`settings { ... }` holds one setting per line. A setting names the columns it applies to; a column's name never selects a behavior. `codec` repeats once per column, `navigation` once per foreign key and `blind_index` once per AES column; every other setting appears at most once, and a repeat is a `setting` error. An empty `settings {}` block has no meaning, and canonical form omits it.
+
+Codec stages run in the written order on write. The storage type follows the last stage: `hex`, `base64`, `ordered_json`, `yaml` and `serialize` produce text and need a `varchar` or `text` column; `aes`, `gz` and `ip` produce bytes and need a `bytes` column. `ordered_json` is the first stage when it appears. `aes_version` is required when a column uses `aes`, and an `aes_version` setting without such a column is a `setting` error. The `blind_index` index column is a `varchar(n)` with n ≥ 64 or a `bytes` column, has the same nullability as the AES column, is not itself AES-encoded, and is the only column of a declared index or unique key.
 
 | Setting | Meaning | Hash |
 | --- | --- | --- |
@@ -170,14 +176,14 @@ table service_history {
 ```
 
 - **Operation column.** `operation <column>` names a non-null `i64` or `uuid` column of the audited table. The executor writes the current operation's id into it on every `INSERT` and `UPDATE` of the table. `NEW.<column>` is the operation that makes the change and `OLD.<column>` the operation that made the previous version.
-- **History table.** `into <history table>` names a table of the document or a used table. It has an `i64 identity` primary key, the `action` column (`varchar(8)`), the `previous` column (nullable, the type of the operation column) and one column for every column of the audited table, with the same name and type; it has no other column. The history columns may be nullable. The history table is not audited itself.
+- **History table.** `into <history table>` names a table of the document or a used table. It is another table than the audited one. It has an `i64 identity` primary key, the `action` column (a non-null `varchar(8)`), the `previous` column (nullable, the type of the operation column) and one column for every column of the audited table, with the same name and type; it has no other column. The history columns may be nullable. The history table is not audited itself.
 - **Triggers.** An `AFTER INSERT` row trigger writes `action = 'insert'`, `previous = NULL` and every `NEW` value. An `AFTER UPDATE` row trigger writes `action = 'update'`, `previous = OLD.<operation column>` and every `NEW` value. A `BEFORE DELETE` row trigger rejects the delete. Values are copied column to column, so the history row is equal on the three databases; no row is serialized as JSON.
 - **Deleting.** An audited table requires a `soft_delete` setting: a delete is an `UPDATE` of the soft delete column, which the history records with its operation. A physical `DELETE` fails.
 - **Limits.** The setting is rejected on a child of a `cascade` or `set_null` foreign key, because MySQL triggers do not fire for rows changed by a foreign key action. `TRUNCATE` is not covered. Raw SQL that does not write the operation column records the previous operation's id again; the executor is the only writer that sets it. Creating the triggers on MySQL with binary logging needs `SUPER` or `log_bin_trust_function_creators=ON`, which apply checks first.
 
 ## Diagrams
 
-`diagram <name> { <table> at <x> <y> ... }` places tables for a view. Coordinates are integers in diagram units; a table appears in a diagram at most once, and a diagram may leave tables out. Diagrams change no hash and no rendering. A document may hold several diagrams.
+`diagram <name> { <table> at <x> <y> ... }` places tables for a view. Coordinates are integers from −2147483648 to 2147483647 in diagram units; a table appears in a diagram at most once, and a diagram may leave tables out. Diagrams change no hash and no rendering. A document may hold several diagrams.
 
 ## Canonical form
 
@@ -189,11 +195,22 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 - defaults and actions written in full (`on delete restrict on update restrict`), `asc` omitted;
 - literals in one form: integers without a sign for zero or leading zeros, decimals with exactly the column scale (`0.00` for `decimal(13,2)`), strings in single quotes with `''` for a quote, `true` and `false`, `date` as `'YYYY-MM-DD'`, `time(p)` and `datetime(p)` with exactly p fraction digits (`'2026-01-01 00:00:00.000000'` for `datetime(6)`), `uuid` in lower case;
 - tables and diagrams in document order; diagram lines in document order;
-- a comment line stays attached to the line that follows it.
+- `select explicit` columns and the tables of a `use` line in their written order;
+- `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; check literals keep decimal fraction digits as written and drop integer leading zeros;
+- a comment line stays attached to the line that follows it and takes that line's indentation; a comment before a closing `}` takes the indentation of the block's lines; comments after the last block follow one blank line; a comment keeps its text from `#` to the line end unchanged.
 
 ## Limits and errors
 
-A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign keys; the check happens before allocation. An error is `SCHEMA_INVALID` with the 1-based line and column of the offending token, the rule below and a message. A rule about a whole table, constraint or setting points at its name or keyword token; any other rule points at the token that breaks it. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
+A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign keys; the check happens before allocation. An error is `SCHEMA_INVALID` with the 1-based line and column of the offending token, the rule below and a message. Columns count Unicode code points. A stopping error (`encoding`, `header`, `limit`) is reported after the diagnostics found before it. Diagnostics are ordered by line, then column, then the order of the rule table below. A header name that does not match the name rule is `name.format` and parsing continues. A rule about a whole table, constraint or setting points at its name or keyword token; any other rule points at the token that breaks it:
+
+- foreign key: the index, `set_null`, type, arity and key-target rules at the constraint name; an unknown column or target at that token;
+- key: the 16-column and 640-character limits at the key name, or at `primary`;
+- setting: whole-setting and companion rules at the setting keyword, column type rules at the column, the history table shape at the history table name;
+- a table without columns reports `column` and `key` at the table name; `null identity` reports `column` at `identity` and `key` at the primary key;
+- a used document that fails reports one `use` diagnostic at its name with its first error in the message; two used documents that repeat a constraint name report `name.duplicate` at the later document name; a document or table repeated in `use` lines is `name.duplicate`; a use cycle or a header name that differs from the used name is `use`;
+- the 32 MiB limit points at line 1, column 1; a table with more than 1000 columns is a `limit` error at its 1001st column name;
+- a line has at most one `syntax` diagnostic; a check expression reports only its first `check` syntax error; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more;
+- a header that is not the first line, including a comment or blank line before it, is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
 
 | Rule | Meaning |
 | --- | --- |
