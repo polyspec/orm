@@ -69,7 +69,7 @@ final class Emitter
             $rank = array_flip(Setting::KINDS);
             $settings = $table->settings->settings;
             usort($settings, static fn(Setting $a, Setting $b): int => $rank[$a->kind] <=> $rank[$b->kind]
-                ?: (($a->kind === 'codec' || $a->kind === 'navigation') ? strcmp($a->arguments[0], $b->arguments[0]) : 0));
+                ?: (($a->kind === 'codec' || $a->kind === 'blind_index' || $a->kind === 'navigation') ? strcmp($a->arguments[0], $b->arguments[0]) : 0));
             foreach ($settings as $setting) {
                 $out .= self::comments($setting->comments, '    ') . '    ' . self::setting($setting) . "\n";
             }

@@ -1,5 +1,10 @@
 # 변경 이력
 
+반복된 `blind_index` setting을 AES column 순으로 정렬하고, 실패한
+key, index, tab이 든 줄도 종류를 유지해 그 column에 기대는 규칙을
+가리게 한다(T8.1.2). 공유 case 6개가 이 규칙을 고정하고, PHP와
+TypeScript parser가 이를 따른다.
+
 Go engine에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.2).
 Parse와 Emit이 공유 case 44개를 통과하고, 2000-table 부하 문서를
 48-53 ms에 parse한다.

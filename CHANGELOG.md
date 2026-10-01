@@ -1,5 +1,10 @@
 # Changelog
 
+Sort repeated `blind_index` settings by AES column, and let a failed key,
+index or tab-broken line keep its kind so that it hides the rules that
+depend on its columns (T8.1.2). Six shared cases lock these rules, and
+the PHP and TypeScript parsers follow them.
+
 Implement dbspec parse, validation and canonical emit in the Go engine
 (T8.2.2): Parse and Emit pass all 44 shared cases, and the 2000-table
 stress document parses in 48-53 ms.

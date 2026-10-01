@@ -146,6 +146,10 @@ interface ITable {
   readonly open: Tk;
   /** Names of columns whose own line failed: references to them report nothing more. */
   readonly failed: Set<string>;
+  /** A primary key line failed: the table's primary key columns are unknown. */
+  failedPrimary: boolean;
+  /** A primary key, unique or index line failed: some key's columns are unknown. */
+  failedKey: boolean;
 }
 
 interface IUse {
@@ -702,6 +706,8 @@ class DocumentParser {
       identity: false,
       open: named && isPunct(toks[2], '{') ? toks[2]! : kw,
       failed: new Set(),
+      failedPrimary: false,
+      failedKey: false,
     };
     if (this.document.tables.length >= MAX_TABLES) {
       this.stop('limit', kw, `a document has at most ${MAX_TABLES} tables`);
@@ -877,9 +883,16 @@ class DocumentParser {
     const kw = toks[0]!;
     switch (kw.t) {
       case 'primary': {
-        if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
+        const failed = (): void => {
+          table.failedPrimary = true;
+          table.failedKey = true;
+        };
+        if (!isWord(toks[1], 'key')) {
+          failed();
+          return this.syntax(toks, 1, line, 'expected key');
+        }
         const cols = this.keyColumns(toks, 2, line, false);
-        if (cols === null || !this.end(toks, cols[1], line)) return;
+        if (cols === null || !this.end(toks, cols[1], line)) return failed();
         for (const c of cols[0]) this.name(c.tok);
         table.pks.push({ kw, name: null, cols: cols[0], comments });
         return;
@@ -887,9 +900,15 @@ class DocumentParser {
       case 'unique':
       case 'index': {
         const name = toks[1];
-        if (name === undefined || name.k !== K.Word) return this.syntax(toks, 1, line, 'expected a name');
+        if (name === undefined || name.k !== K.Word) {
+          table.failedKey = true;
+          return this.syntax(toks, 1, line, 'expected a name');
+        }
         const cols = this.keyColumns(toks, 2, line, kw.t === 'index');
-        if (cols === null || !this.end(toks, cols[1], line)) return;
+        if (cols === null || !this.end(toks, cols[1], line)) {
+          table.failedKey = true;
+          return;
+        }
         this.constraintName(name);
         for (const c of cols[0]) this.name(c.tok);
         (kw.t === 'index' ? table.indexes : table.uniques).push({ kw, name, cols: cols[0], comments });
@@ -1215,7 +1234,7 @@ class DocumentParser {
 
   private validateTable(table: ITable, available: Map<string, ITable | null>): void {
     if (table.columns.length === 0) this.at('column', table.name, 'a table has at least one column');
-    if (table.pks.length === 0) this.at('key', table.name, `table ${table.name.t} has no primary key`);
+    if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${table.name.t} has no primary key`);
     for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'a table has exactly one primary key');
     for (const pk of table.pks) this.keyLike(table, pk, true);
     for (const u of table.uniques) this.keyLike(table, u, false);
@@ -1224,7 +1243,7 @@ class DocumentParser {
     for (const column of table.columns) {
       if (column.identity === null) continue;
       const only = pk !== undefined && pk.cols.length === 1 && pk.cols[0]!.tok.t === column.name.t;
-      if (!only) this.at('column', column.identity, 'an identity column is the only primary key column');
+      if (!only && !table.failedPrimary) this.at('column', column.identity, 'an identity column is the only primary key column');
     }
     const banned = new Set<string>();
     let actionChild = false;
@@ -1283,7 +1302,7 @@ class DocumentParser {
     }
     const refs = fk.refs.map(r => r.t).join(',');
     const keys = [...target.pks.slice(0, 1), ...target.uniques].map(k => k.cols.map(c => c.tok.t).join(','));
-    if (!keys.includes(refs)) {
+    if (!keys.includes(refs) && !target.failedKey) {
       this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${target.name.t}`);
     }
     for (let i = 0; i < children.length; i++) {
@@ -1297,7 +1316,7 @@ class DocumentParser {
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
     );
-    if (!indexed) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
+    if (!indexed && !table.failedKey) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
     if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => !c.nullable)) {
       this.at('foreign_key', fk.name, 'set_null requires every child column to be null');
     }

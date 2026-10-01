@@ -55,7 +55,7 @@ function defaultText(value: DbspecDefault): string {
 }
 
 function settingKey(setting: DbspecSetting): string {
-  if (setting.kind === 'codec') return setting.column;
+  if (setting.kind === 'codec' || setting.kind === 'blind_index') return setting.column;
   if (setting.kind === 'navigation') return setting.foreignKey;
   return '';
 }

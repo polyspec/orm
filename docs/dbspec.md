@@ -191,7 +191,7 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 
 - two-space indentation, one space between tokens, LF line ends, one final newline;
 - the header, a blank line, the `use` lines sorted by document name, a blank line before each block;
-- within a table: columns in declared order, `primary key`, then `unique`, `index`, `foreign key` and `check` lines each sorted by name, then `settings` with its lines in the order of the table above (`codec` and `navigation` lines sorted by column or key name);
+- within a table: columns in declared order, `primary key`, then `unique`, `index`, `foreign key` and `check` lines each sorted by name, then `settings` with its lines in the order of the table above (`codec`, `blind_index` and `navigation` lines sorted by column or key name);
 - defaults and actions written in full (`on delete restrict on update restrict`), `asc` omitted;
 - literals in one form: integers without a sign for zero or leading zeros, decimals with exactly the column scale (`0.00` for `decimal(13,2)`), strings in single quotes with `''` for a quote, `true` and `false`, `date` as `'YYYY-MM-DD'`, `time(p)` and `datetime(p)` with exactly p fraction digits (`'2026-01-01 00:00:00.000000'` for `datetime(6)`), `uuid` in lower case;
 - tables and diagrams in document order; diagram lines in document order;
@@ -209,7 +209,7 @@ A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign key
 - a table without columns reports `column` and `key` at the table name; `null identity` reports `column` at `identity` and `key` at the primary key;
 - a used document that fails reports one `use` diagnostic at its name with its first error in the message; two used documents that repeat a constraint name report `name.duplicate` at the later document name; a document or table repeated in `use` lines is `name.duplicate`; a use cycle or a header name that differs from the used name is `use`;
 - the 32 MiB limit points at line 1, column 1; a table with more than 1000 columns is a `limit` error at its 1001st column name;
-- a line has at most one `syntax` diagnostic; a check expression reports only its first diagnostic; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more;
+- a line has at most one `syntax` diagnostic; a check expression reports only its first diagnostic; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more; a failed line keeps the kind that its first word gives and the name it would declare, reading a tab as a space only to learn them; a failed key or index line therefore still declares a key or index whose columns are unknown, so no rule that depends on them is reported: a failed `primary key` line hides the missing primary key and the identity rule of its table, and a failed `primary key`, `unique` or `index` line hides the leading-index rule of its table's foreign keys and the key-target rule of foreign keys that reference its table;
 - a header that is not the first line, including a comment or blank line before it, and a header line that is not exactly `dbspec`, a space, `1`, a space and a name (for example one with a tab) is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
 
 | Rule | Meaning |
