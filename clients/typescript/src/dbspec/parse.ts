@@ -1592,8 +1592,8 @@ class DocumentParser {
     const target = this.lookup(table, s.indexColumn, 'setting');
     if (!target) return;
     const type = target.type;
-    if (type !== null && !(type.kind === 'bytes' || (type.kind === 'varchar' && type.length >= 64))) {
-      this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64 or bytes');
+    if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) {
+      this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64');
     }
     if (source && source.nullable !== target.nullable) {
       this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');

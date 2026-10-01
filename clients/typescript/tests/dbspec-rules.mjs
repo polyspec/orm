@@ -340,6 +340,7 @@ invalid('settings', [
   ['setting', 20, 22],
   ['setting', 21, 17],
   ['setting', 22, 17], // name has no aes stage
+  ['setting', 22, 22], // the index column is bytes, not varchar(n >= 64)
   ['setting', 22, 22], // the index column is aes-encoded
   ['setting', 22, 22], // and is not the only column of an index
   ['setting', 23, 16],
@@ -712,4 +713,22 @@ normalize('f64 shortest decimal without exponent', [
   '  third f64 default 0.3333333333333333',
   '  primary key (id)',
   '}',
+]);
+invalid('blind index column is not bytes', [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  version i32',
+  '  email bytes',
+  '  hash bytes',
+  '  primary key (id)',
+  '  settings {',
+  '    codec email aes',
+  '    aes_version version',
+  '    blind_index email hash',
+  '  }',
+  '}',
+], [
+  ['setting', 11, 23], // bytes is not varchar(n >= 64)
+  ['setting', 11, 23], // and is not the only column of an index (bytes cannot be indexed)
 ]);
