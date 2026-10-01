@@ -14,12 +14,15 @@ const TABLES: usize = 0;
 const COLUMNS: usize = 1;
 const INDEXES: usize = 2;
 const FOREIGN_KEYS: usize = 3;
-const CHECKS: usize = 4;
-const TRIGGERS: usize = 5;
-const ROUTINES: usize = 6;
-const EVENTS: usize = 7;
+const CHECK_CLAUSES: usize = 4;
+const CHECKS: usize = 5;
+const TRIGGERS: usize = 6;
+const ROUTINES: usize = 7;
+const EVENTS: usize = 8;
 
-pub(super) const QUERIES: [&str; 8] = [
+// CHECK_CONSTRAINTS와 TABLE_CONSTRAINTS의 join은 table 수에 비례해 느려지므로(2000 table에서
+// 60초 이상) 두 query로 읽고 이름으로 잇는다. MySQL의 CHECK 이름은 database 안에서 유일하다.
+pub(super) const QUERIES: [&str; 9] = [
     "SELECT TABLE_NAME, TABLE_TYPE, IFNULL(CREATE_OPTIONS, '') FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME",
     "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA,
@@ -33,10 +36,10 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION",
-    "SELECT tc.TABLE_NAME, cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE, tc.ENFORCED
-FROM information_schema.CHECK_CONSTRAINTS cc JOIN information_schema.TABLE_CONSTRAINTS tc
-ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME AND tc.CONSTRAINT_TYPE = 'CHECK'
-WHERE cc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY tc.TABLE_NAME, cc.CONSTRAINT_NAME",
+    "SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME",
+    "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME",
     "SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
 FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME",
     "SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME",
@@ -104,8 +107,13 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     read_indexes(results, &mut c)?;
     read_foreign_keys(results, &mut c)?;
     let mut checked: BTreeMap<String, BTreeMap<String, bool>> = BTreeMap::new();
+    let mut clauses: BTreeMap<String, String> = BTreeMap::new();
+    for row in results.rows(CHECK_CLAUSES) {
+        clauses.insert(row.text(0)?, row.text(1)?);
+    }
     for row in results.rows(CHECKS) {
-        let (table, name, clause, enforced) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?);
+        let (table, name, enforced) = (row.text(0)?, row.text(1)?, row.text(2)?);
+        let clause = clauses.get(&name).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK_CLAUSE"))?;
         let Some(types) = c.table(&table).map(|t| t.types()) else { continue };
         if enforced != "YES" {
             c.report("check", &table, &name, "the check is not enforced");

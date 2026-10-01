@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.2.3: MySQL introspection reads checks with two catalog queries instead of a join that took over a minute on 2000 tables.
+
 - T8.4.2.2: MySQL introspection recognizes renderer CHECKs after `ALTER TABLE` rewrites their character set introducers, in the four clients.
 
 - T8.4.2.1: introspection reports each unsupported object once, leaves the objects of a rejected table out with it, and reads only renderer-form SQLite table items, in Go, PHP, TypeScript and Rust.

@@ -24,10 +24,12 @@ rc.MATCH_OPTION, k.COLUMN_NAME, k.REFERENCED_COLUMN_NAME FROM information_schema
 JOIN information_schema.KEY_COLUMN_USAGE k ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA
 AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME AND k.TABLE_NAME = rc.TABLE_NAME
 WHERE rc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY rc.TABLE_NAME, rc.CONSTRAINT_NAME, k.ORDINAL_POSITION';
-    private const CHECKS = "SELECT tc.TABLE_NAME, cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE, tc.ENFORCED
-FROM information_schema.CHECK_CONSTRAINTS cc JOIN information_schema.TABLE_CONSTRAINTS tc
-ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME AND tc.CONSTRAINT_TYPE = 'CHECK'
-WHERE cc.CONSTRAINT_SCHEMA = DATABASE() ORDER BY tc.TABLE_NAME, cc.CONSTRAINT_NAME";
+    // CHECK_CONSTRAINTS 와 TABLE_CONSTRAINTS 의 join 은 table 수에 비례해 느려지므로(2000 table 에서
+    // 60초 이상) 두 query 로 읽고 이름으로 잇는다. MySQL 의 CHECK 이름은 database 안에서 유일하다.
+    private const CHECK_CLAUSES = 'SELECT CONSTRAINT_NAME, CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME';
+    private const CHECKS = "SELECT TABLE_NAME, CONSTRAINT_NAME, ENFORCED FROM information_schema.TABLE_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'CHECK' ORDER BY TABLE_NAME, CONSTRAINT_NAME";
     private const TRIGGERS = 'SELECT EVENT_OBJECT_TABLE, TRIGGER_NAME, ACTION_TIMING, EVENT_MANIPULATION, ACTION_STATEMENT
 FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME';
     private const ROUTINES = 'SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() ORDER BY ROUTINE_NAME';
@@ -91,8 +93,13 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         self::readIndexes($connection, $c);
         self::readForeignKeys($connection, $c);
         $checked = [];
+        $clauses = [];
+        foreach (CatalogRows::read($connection, self::CHECK_CLAUSES) as $row) {
+            $clauses[CatalogRows::text($row, 0, self::CHECK_CLAUSES)] = CatalogRows::text($row, 1, self::CHECK_CLAUSES);
+        }
         foreach (CatalogRows::read($connection, self::CHECKS) as $row) {
-            [$table, $name, $clause, $enforced] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2, 3]);
+            [$table, $name, $enforced] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2]);
+            $clause = $clauses[$name] ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
             $t = $c->table($table);
             if ($t === null) {
                 continue;

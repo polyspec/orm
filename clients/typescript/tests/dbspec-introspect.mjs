@@ -23,7 +23,7 @@ const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 30000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 // 모든 집합에서 dialect마다 같아야 하는 catalog query 수다(docs/dialects.md "Introspection").
-const QUERIES = { mysql: 8, postgres: 7, sqlite: 3 };
+const QUERIES = { mysql: 9, postgres: 7, sqlite: 3 };
 // 모든 client가 새 connection에서 실행하는 문장이다(tests/dialects connectionRules).
 const CONNECTION_RULES = {
   mysql: ["SET time_zone = '+00:00'"],

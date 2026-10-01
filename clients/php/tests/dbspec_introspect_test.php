@@ -31,7 +31,7 @@ final class CountingPdo extends PDO
 
 const CASE_DEADLINE_MS = 60000;
 // dialect 마다 table 수와 무관한 catalog query 수 (docs/dialects.md "Introspection").
-const QUERY_COUNTS = ['mysql' => 8, 'postgres' => 7, 'sqlite' => 3];
+const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // 모든 client 가 새 connection 에서 실행하는 statement.
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 

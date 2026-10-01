@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.2.3: MySQL introspection은 2000 table에서 1분이 넘던 join 대신 catalog query 두 개로 check를 읽는다.
+
 - T8.4.2.2: MySQL introspection은 네 client에서 `ALTER TABLE`이 character set introducer를 다시 쓴 뒤의 renderer CHECK도 알아본다.
 
 - T8.4.2.1: introspection은 Go, PHP, TypeScript, Rust에서 각 미지원 객체를 한 번만 보고하고, 거부된 table의 객체를 table과 함께 빼며, renderer 형식의 SQLite table 항목만 읽는다.
