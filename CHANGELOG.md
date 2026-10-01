@@ -1,5 +1,10 @@
 # Changelog
 
+Rewrite the bench schema and the shared schema fixtures as dbspec
+documents with every name convention declared as a setting, and apply
+each rendered document to MySQL, PostgreSQL and SQLite in `make
+dbspec-ddl-check` (T8.2.6.3.2).
+
 Specify the runtime model and generated code that clients build from a
 dbspec document set, and map every Mermaid manifest field to it
 (T8.2.6.3.1).

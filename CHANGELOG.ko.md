@@ -1,5 +1,9 @@
 # 변경 이력
 
+bench schema와 공유 schema fixture를 이름 관례를 모두 setting으로
+선언한 dbspec 문서로 다시 쓰고, `make dbspec-ddl-check`에서 렌더링한
+각 문서를 MySQL, PostgreSQL, SQLite에 적용한다(T8.2.6.3.2).
+
 client가 dbspec 문서 집합으로 만드는 runtime model과 생성 코드를 정하고,
 Mermaid manifest의 모든 field를 그에 대응시킨다(T8.2.6.3.1).
 

@@ -1,0 +1,97 @@
+//go:build physical
+
+package dialects
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/polyspec/orm/engine/dbspec"
+)
+
+// schemaDocumentPatterns finds the dbspec documents that the clients and
+// tests use as schemas; each document is one set.
+var schemaDocumentPatterns = []string{
+	filepath.Join("..", "..", "schema", "*.dbspec"),
+	filepath.Join("..", "..", "contracts", "fixtures", "*.dbspec"),
+}
+
+// TestSchemaDocumentsApply renders every schema document for MySQL,
+// PostgreSQL and SQLite and applies the statements to its own database,
+// schema or file of TEST_ENV.
+func TestSchemaDocumentsApply(t *testing.T) {
+	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
+	if mysqlDSN == "" || postgresDSN == "" {
+		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
+	}
+	var paths []string
+	for _, pattern := range schemaDocumentPatterns {
+		found, err := filepath.Glob(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, found...)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no schema document found")
+	}
+	connect, cancel := context.WithTimeout(context.Background(), probeDeadline)
+	servers, err := OpenServers(connect, mysqlDSN, postgresDSN, t.TempDir(), "doc"+strconv.Itoa(os.Getpid()))
+	cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := servers.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	started := time.Now()
+	index := 0
+	for _, path := range paths {
+		text, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		document, diagnostics := dbspec.Parse(string(text), nil)
+		if len(diagnostics) > 0 {
+			t.Errorf("%s: %v", path, diagnostics)
+			continue
+		}
+		name := strings.TrimSuffix(filepath.Base(path), ".dbspec")
+		for _, db := range []string{"mysql", "postgres", "sqlite"} {
+			statements, diagnostics := dbspec.Render([]*dbspec.Document{document}, dbspec.Dialect(db))
+			if len(diagnostics) > 0 {
+				t.Errorf("%s on %s: %v", path, db, diagnostics)
+				continue
+			}
+			probe := Probe{
+				ID:   db + ".schema." + name,
+				DB:   db,
+				Fact: "the rendered statements of " + path + " apply",
+				Run: func(e *Env) {
+					e.Exec(connectionRules[db]...)
+					e.Exec(statements...)
+				},
+			}
+			index++
+			t.Run(probe.ID, func(t *testing.T) {
+				begin := time.Now()
+				t.Logf("start %s: %d statements", probe.ID, len(statements))
+				_, err := runWithDeadline(servers, probe, index)
+				elapsed := time.Since(begin).Round(time.Millisecond)
+				if err != nil {
+					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
+					return
+				}
+				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
+			})
+		}
+	}
+	t.Logf("summary: %d documents on three databases in %s", len(paths), time.Since(started).Round(time.Millisecond))
+}
