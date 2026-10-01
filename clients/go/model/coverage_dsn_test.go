@@ -1,3 +1,5 @@
+//go:build featurecoverage
+
 package model_test
 
 import (
