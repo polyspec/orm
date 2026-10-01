@@ -33,7 +33,7 @@ function command(language, database) {
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
-    return ['go', ['test', '-json', './clients/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '45s']];
+    return ['go', ['test', '-json', '-tags', 'decimalphysical', './clients/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '45s']];
   }
   if (language === 'php') return ['php', ['clients/php/tests/decimal_model_db.php', '--dialect', database]];
   if (language === 'rust') {

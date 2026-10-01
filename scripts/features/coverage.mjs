@@ -223,7 +223,7 @@ async function nativeTest(item, command, root) {
       throw new Error(`test symbol ${symbol} is absent from declared test file`);
   }
   if (command.runner === 'go')
-    return { program: 'go', args: ['test', '-json', '-run', `^(${nativeSymbols.join('|')})$`, '.'],
+    return { program: 'go', args: ['test', '-json', '-tags', 'featurecoverage', '-run', `^(${nativeSymbols.join('|')})$`, '.'],
       cwd: dirname(testPath), format: 'go', symbols: nativeSymbols };
   let crate = dirname(testPath);
   while (crate.startsWith(resolve(root, item.part))) {

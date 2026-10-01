@@ -1,5 +1,7 @@
 # Changelog
 
+- T14: the decimal and feature-coverage Go tests run only from `decimal-physical-check` and `feature-check`, behind build tags, so `client-db-check` no longer runs tests whose DSNs it does not provide.
+
 - T8.4.2: the Go engine introspects MySQL, PostgreSQL and SQLite into a dbspec document with a constant number of catalog queries and reports unsupported objects; `make dbspec-introspect-check` runs the round trips and the unsupported cases.
 
 - T8.4.1: docs/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.

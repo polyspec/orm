@@ -1,3 +1,5 @@
+//go:build decimalphysical
+
 package decimalmodel_test
 
 import (
