@@ -38,7 +38,7 @@ diagram main {
 }
 ```
 
-문서는 byte order mark 없는 UTF-8 text이고 줄 끝은 LF 또는 CRLF다. 첫 줄은 header `dbspec 1 <document>`로, 언어 version과 문서 이름이다. 빈 줄은 어디에나 둘 수 있다. 첫 공백 아닌 문자가 `#`인 줄은 comment다. comment는 의미를 바꾸지 않으며 canonical 출력은 그 자리를 유지한다([Canonical form](#canonical-form) 참조).
+문서는 byte order mark 없는 UTF-8 text다. 줄 끝은 LF 또는 CRLF이며 한 문서에 둘이 섞일 수 있고, 마지막 줄에는 줄 끝이 없어도 된다. 단독 CR은 `encoding` error다. parse는 text를 받는다. 파일을 읽는 도구는 UTF-8이 아닌 bytes를 parse 전에 `encoding` error로 보고한다. token 사이 구분은 공백 문자만 쓰며 tab은 `syntax` error다. 첫 줄은 header `dbspec 1 <document>`로, 언어 version과 문서 이름이다. 그 앞에는 빈 줄이나 comment 줄이 올 수 없다. header 뒤에는 빈 줄을 어디에나 둘 수 있다. 첫 공백 아닌 문자가 `#`인 줄은 comment다. comment는 의미를 바꾸지 않으며 canonical 출력은 그 자리를 유지한다([Canonical form](#canonical-form) 참조).
 
 header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 온다.
 
@@ -46,15 +46,17 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 문서, table, column, index, key, foreign key, check, setting 대상, diagram의 모든 이름은 `[a-z][a-z0-9_]*`이고 63 bytes 이하다. 더 긴 이름은 error이며 줄이지 않는다. 대문자는 error이므로 모든 database의 대소문자 접기가 같은 이름을 준다.
 
-index, unique key, foreign key, check 이름은 네 종류 전체와 `use`로 이어진 문서 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다.
+`dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true`, `false`는 예약어이며 어떤 이름에도 쓸 수 없다.
+
+index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와 이 문서가 직접 쓰는 문서 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다.
 
 ## 문서와 `use`
 
-`use <document> { <table>, ... }`는 다른 문서의 table을 foreign key 대상으로 쓸 수 있게 한다. 다른 문서는 도구가 받는 선언된 문서 집합에서 그 이름과 같은 문서를 찾는다(설정 파일이나 명령 인자가 집합의 문서 파일을 나열한다). 문서는 파일 경로를 적지 않는다. 쓰는 table은 이 문서가 렌더링하지 않는다. 지정한 문서가 정의하지 않은 table이나 집합에 없는 문서를 쓰면 error다.
+`use <document> { <table>, ... }`는 다른 문서의 table을 foreign key 대상으로 쓸 수 있게 한다. 다른 문서는 도구가 받는 선언된 문서 집합에서 그 이름과 같은 문서를 찾는다(설정 파일이나 명령 인자가 집합의 문서 파일을 나열한다). 문서는 파일 경로를 적지 않는다. 쓰는 table은 이 문서가 렌더링하지 않으며 diagram에는 배치할 수 있다. 쓰는 문서 자신도 자기 `use` 줄과 함께 parse하고 검증한다. 지정한 문서가 정의하지 않은 table, 집합에 없는 문서, 문서 자신, header 이름이 쓰는 이름과 다른 문서를 쓰거나 use가 순환하면 `use` error다. 실패한 쓰는 문서는 그 이름에서 `use` error 하나를 보고하고 message에 첫 error를 담는다. `use` 줄에서 반복한 문서나 table, 그리고 쓰는 table과 이름이 같은 table은 `name.duplicate` error다. `use` 줄은 문서 이름 순으로 정렬하고, 한 줄 안의 table은 적힌 순서를 유지한다.
 
 ## Table
 
-`table <name> { ... }`은 column 줄, 그다음 key, index, foreign key, check 줄, 그리고 최대 하나의 `settings` block을 갖는다. table은 column이 하나 이상이고 primary key가 정확히 하나이며 column은 1000개 이하다.
+`table <name> { ... }`은 column 줄, 그다음 서로 순서가 자유로운 key, index, foreign key, check 줄, 그리고 최대 하나의 `settings` block을 갖는다. constraint 줄 뒤의 column 줄, `settings` 뒤의 constraint 줄, 두 번째 `settings` block은 `order` error다. 문서가 닫지 않은 block은 그 `{`에서 `syntax` error다. table은 column이 하나 이상이고 primary key가 정확히 하나이며 column은 1000개 이하다.
 
 ### Column
 
@@ -62,7 +64,8 @@ index, unique key, foreign key, check 이름은 네 종류 전체와 `use`로 �
 
 - 줄에 `null`이 없으면 NOT NULL이다. primary key column은 `null`일 수 없다.
 - `identity`는 그 column을 자동 key로 만든다. 유일한 primary key column이어야 하고 type은 `i64`다. insert가 값을 생략하면 database가 key를 만들고, client는 명시적 값을 거부한다. table당 identity column은 최대 하나다.
-- `default <value>`는 column type의 literal이거나, `datetime(p)` column에서 UTC statement 시각을 쓰는 `now`다. `null`과 `default`는 `identity`와 함께 쓸 수 없다. `text`와 `bytes` column에는 default가 없다.
+- 수식어 순서는 `null`, `identity`, `default`다. default가 없는 `null` column은 insert가 값을 생략하면 SQL NULL이 된다. `default null`은 `column` error다.
+- `default <value>`는 column type의 literal이거나, `datetime(p)` column에서 UTC statement 시각을 쓰는 `now`다. `null`과 `default`는 `identity`와 함께 쓸 수 없다. `text`와 `bytes` column에는 default가 없다. scale보다 소수 자릿수가 많은 decimal default는 늘어난 자리가 0이어도 `column` error이며, 적은 자릿수는 canonical form에서 채운다.
 
 ### Type
 
@@ -92,14 +95,15 @@ index, unique key, foreign key, check 이름은 네 종류 전체와 `use`로 �
 - `unique <name> (<column>, ...)`: NULL은 서로 다르다.
 - `index <name> (<column> [asc|desc], ...)`: 오름차순이 기본이며 canonical 형식에서는 쓰지 않는다.
 
-key나 index는 자기 table의 서로 다른 column을 1~16개 나열한다. `text`나 `bytes` column은 포함할 수 없다. index나 unique key 하나의 `varchar` column 선언 길이 합은 640 이하다. prefix, partial, expression, full-text index는 지원하지 않는다.
+key나 index는 자기 table의 서로 다른 column을 1~16개 나열한다. `text`나 `bytes` column은 포함할 수 없다. primary key, unique key, index 하나의 `varchar` column 선언 길이 합은 640 이하다. prefix, partial, expression, full-text index는 지원하지 않는다.
 
 ### Foreign key
 
 `foreign key <name> (<column>, ...) references <table> (<column>, ...) [on delete <action>] [on update <action>]`
 
 - `<action>`은 `restrict`, `cascade`, `set_null`이다. 생략한 action은 `restrict`이며 canonical 형식은 두 action을 모두 쓴다.
-- 참조 column은 참조 table의 primary key 또는 unique key 하나이며, 그 순서를 따른다.
+- 참조 column은 참조 table의 primary key나 unique key 하나의 column과 정확히 같고, 그 key의 column 순서를 따른다.
+- 둘 다 쓸 때 `on delete`가 `on update`보다 먼저 온다.
 - 자식 column type은 참조 column type과 같다.
 - table은 앞쪽 column이 foreign key column인 index나 key를 선언한다.
 - `set_null`은 모든 자식 column이 `null`이어야 한다.
@@ -117,11 +121,13 @@ key나 index는 자기 table의 서로 다른 column을 1~16개 나열한다. `t
 - `and`, `or`, `not`, 괄호
 - `<expr> [not] in (<literal>, ...)`, `<expr> [not] between <a> and <b>`, `<expr> is [not] null`
 
-함수가 없으므로 시각, 난수, session 값도 없다. MySQL이 거부하므로(3823) `cascade`나 `set_null` foreign key의 column은 check에 쓸 수 없다.
+단항 minus는 숫자 literal에만 쓴다. 함수가 없으므로 시각, 난수, session 값도 없다. MySQL이 거부하므로(3823) `cascade`나 `set_null` foreign key의 column은 check에 쓸 수 없다.
 
 ## Settings
 
-`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다.
+`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다 한 번씩 반복하고, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다.
+
+codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이나 `bytes` column이고, AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
 
 | Setting | 의미 | Hash |
 | --- | --- | --- |
@@ -170,14 +176,14 @@ table service_history {
 ```
 
 - **Operation column.** `operation <column>`은 감사 대상 table의 non-null `i64` 또는 `uuid` column의 이름이다. executor는 그 table의 모든 `INSERT`와 `UPDATE`에서 현재 operation의 id를 이 column에 쓴다. `NEW.<column>`은 변경하는 operation이고 `OLD.<column>`은 이전 version을 만든 operation이다.
-- **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 `i64 identity` primary key, `action` column(`varchar(8)`), `previous` column(nullable, operation column의 type), 그리고 감사 대상 table의 모든 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
+- **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 감사 대상과 다른 table이다. `i64 identity` primary key, `action` column(non-null `varchar(8)`), `previous` column(nullable, operation column의 type), 그리고 감사 대상 table의 모든 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
 - **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 모든 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 모든 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
 - **삭제.** 감사 대상 table은 `soft_delete` setting이 필요하다. 삭제는 soft delete column의 `UPDATE`이므로 이력이 그 operation과 함께 기록한다. physical `DELETE`는 실패한다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. operation column을 쓰지 않는 raw SQL은 이전 operation의 id를 다시 기록한다. 이 column을 쓰는 것은 executor뿐이다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.
 
 ## Diagram
 
-`diagram <name> { <table> at <x> <y> ... }`는 view를 위해 table을 배치한다. 좌표는 diagram 단위의 정수다. table은 diagram에 최대 한 번 나오며, diagram은 table을 빼놓을 수 있다. diagram은 어떤 hash도, 어떤 렌더링도 바꾸지 않는다. 문서는 diagram을 여러 개 가질 수 있다.
+`diagram <name> { <table> at <x> <y> ... }`는 view를 위해 table을 배치한다. 좌표는 diagram 단위의 −2147483648 ~ 2147483647 정수다. table은 diagram에 최대 한 번 나오며, diagram은 table을 빼놓을 수 있다. diagram은 어떤 hash도, 어떤 렌더링도 바꾸지 않는다. 문서는 diagram을 여러 개 가질 수 있다.
 
 ## Canonical form
 
@@ -189,11 +195,22 @@ table service_history {
 - default와 action은 모두 쓰고(`on delete restrict on update restrict`), `asc`는 생략
 - literal은 한 형식으로 쓴다: 정수는 0의 부호나 앞자리 0 없이, decimal은 column scale만큼의 소수 자리로(`decimal(13,2)`이면 `0.00`), 문자열은 작은따옴표 안에 따옴표를 `''`로, `true`와 `false`, `date`는 `'YYYY-MM-DD'`, `time(p)`와 `datetime(p)`는 정확히 p자리 소수로(`datetime(6)`이면 `'2026-01-01 00:00:00.000000'`), `uuid`는 소문자로
 - table과 diagram은 문서 순서, diagram 줄도 문서 순서
-- comment 줄은 바로 다음 줄에 붙어 있는다
+- `select explicit` column과 `use` 줄 안의 table은 적힌 순서로
+- `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 decimal의 소수 자릿수를 적힌 대로 두고 정수의 앞자리 0을 뺀다
+- comment 줄은 바로 다음 줄에 붙고 그 줄의 들여쓰기를 따른다. 닫는 `}` 앞의 comment는 그 block 안 줄의 들여쓰기를 따른다. 마지막 block 뒤의 comment는 빈 줄 하나 뒤에 온다. comment는 `#`부터 줄 끝까지의 text를 바꾸지 않는다
 
 ## 한도와 error
 
-문서는 최대 32 MiB, table 4096개, column 120000개, foreign key 20000개이며, 할당 전에 확인한다. error는 `SCHEMA_INVALID`이고, 문제 token의 1부터 세는 줄과 열, 아래 규칙, message를 갖는다. table, constraint, setting 전체에 대한 규칙의 위치는 그 이름이나 keyword token이고, 다른 규칙의 위치는 규칙을 어긴 token이다. parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
+문서는 최대 32 MiB, table 4096개, column 120000개, foreign key 20000개이며, 할당 전에 확인한다. error는 `SCHEMA_INVALID`이고, 문제 token의 1부터 세는 줄과 열, 아래 규칙, message를 갖는다. 열의 단위는 Unicode code point다. 멈추게 하는 error(`encoding`, `header`, `limit`)는 그 전에 찾은 diagnostic 뒤에 보고한다. diagnostic은 줄, 열, 아래 규칙 표의 순서로 정렬한다. 이름 규칙에 맞지 않는 header 이름은 `name.format`이며 parse는 계속한다. table, constraint, setting 전체에 대한 규칙의 위치는 그 이름이나 keyword token이고, 다른 규칙의 위치는 규칙을 어긴 token이다.
+
+- foreign key: index, `set_null`, type, column 수, 참조 key 규칙은 constraint 이름, 모르는 column이나 대상은 그 token
+- key: 16 column과 640자 한도는 key 이름이나 `primary`
+- setting: setting 전체와 함께 필요한 setting 규칙은 setting keyword, column type 규칙은 그 column, 이력 table 형태는 이력 table 이름
+- column이 없는 table은 table 이름에서 `column`과 `key`를 보고한다. `null identity`는 `identity`에서 `column`을, primary key에서 `key`를 보고한다
+- 실패한 쓰는 문서는 그 이름에서 `use` diagnostic 하나를 보고하고 message에 첫 error를 담는다. 두 쓰는 문서가 constraint 이름을 반복하면 뒤 문서 이름에서 `name.duplicate`를 보고한다. `use` 줄에서 문서나 table을 반복하면 `name.duplicate`다. use 순환이나 쓰는 이름과 다른 header 이름은 `use`다
+- 32 MiB 한도의 위치는 1줄 1열이다. column이 1000개를 넘는 table은 1001번째 column 이름에서 `limit` error다
+- 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 `check` syntax error만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다
+- 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함)는 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
 
 | 규칙 | 의미 |
 | --- | --- |
