@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.6.6: `make dbspec-apply-pairs-check` applies the first plan of a chain with one client and the rest with another, for every ordered pair of the Go, PHP, TypeScript and Rust clients on MySQL, PostgreSQL and SQLite, and finishes on MySQL with one client a plan another one stopped.
+
+- T8.6.2.2: Go, TypeScript and Rust assert the apply cleanup errors like PHP; TypeScript and Rust reject a PostgreSQL unlock that released nothing, Go returns a failure without cleanup errors unchanged, and docs/plans.md states how each client reports a failure with cleanup errors.
+
 - T8.7: every client exports and imports standard Mermaid erDiagrams with the list of what each leaves out, and the four clients agree byte for byte.
 
 - T8.7.6: `make dbspec-compare-check` compares the Mermaid export, import and round trip results of the Go, PHP, TypeScript and Rust clients.

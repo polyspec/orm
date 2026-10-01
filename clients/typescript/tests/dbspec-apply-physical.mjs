@@ -1,10 +1,11 @@
 // dbspec plan apply on MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"):
 // the chain of create-from-empty and rename-table-and-column of
 // tests/dbspec/plans.json with its history and a second apply, drift, the
-// lock of a second session, rollback after a stop, a verify failure and the
-// MySQL recovery after a stop before and after a statement, through the
-// TypeScript client's applyPlans and recoverPlans. Each run uses an empty
-// database, schema or file named after the language, the pid and the run.
+// lock of a second session, rollback after a stop, an unlock that released
+// nothing on PostgreSQL, a verify failure and the MySQL recovery after a
+// stop before and after a statement, through the TypeScript client's
+// applyPlans and recoverPlans. Each run uses an empty database, schema or
+// file named after the language, the pid and the run.
 //
 // Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test clients/typescript/tests/dbspec-apply-physical.mjs (after the build)
 import test from 'node:test';
@@ -257,6 +258,15 @@ const scenarios = [
     await applyPlans(session.connection, dialect, plans, fixedNow, null);
     await schemaIs(session, dialect, target);
   }],
+  ['unlock_not_held', ['postgres'], async (session, dialect) => {
+    // event에서 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도 풀지 않는다.
+    const release = async event => {
+      if (event.kind === 'plan' && event.plan === plans[0].name) await session.exec("SELECT pg_advisory_unlock(hashtext('dbspec$plans'))");
+    };
+    await assert.rejects(applyPlans(session.connection, dialect, plans, fixedNow, release), {
+      message: 'the advisory lock of dbspec$plans was not held at unlock',
+    });
+  }],
   ['verify_failure', ['mysql', 'postgres', 'sqlite'], async (session, dialect) => {
     // 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패한다.
     const sneak = async event => {
@@ -303,6 +313,6 @@ for (const [name, dialects, body] of scenarios) {
 
 vector('every apply scenario runs on its dialects', () => {
   assert.equal(runs, expected);
-  assert.equal(runs, 16);
+  assert.equal(runs, 17);
   console.log(`apply runs: ${runs}`);
 });
