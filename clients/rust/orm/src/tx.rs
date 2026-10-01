@@ -8,6 +8,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
+use futures_util::FutureExt as _;
 use sqlx::SqlSafeStr as _;
 
 use crate::db::{Db, Executor, Pool};
@@ -232,7 +233,11 @@ impl Db {
         let tx = Arc::new(begin(self, None, false, None).await.map_err(TransactionOnceError::Orm)?);
         let mut stack = frames();
         stack.push(tx.clone());
-        match FLOW.scope(stack, f()).await {
+        let result = match std::panic::AssertUnwindSafe(FLOW.scope(stack, f())).catch_unwind().await {
+            Ok(result) => result,
+            Err(payload) => match rollback_and_resume(&tx, payload).await {},
+        };
+        match result {
             Ok(value) => {
                 commit(&tx).await.map_err(TransactionOnceError::Orm)?;
                 Ok(value)
@@ -306,14 +311,18 @@ where
             let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let callback = FLOW.scope(stack, (self.f)());
+            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, (self.f)())).catch_unwind();
             let result = if self.timeout_ms == 0 {
                 callback.await
             } else {
                 match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
                     Ok(result) => result,
-                    Err(_) => Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() }),
+                    Err(_) => Ok(Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() })),
                 }
+            };
+            let result = match result {
+                Ok(result) => result,
+                Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
             match result {
                 Ok(v) => {
@@ -404,14 +413,18 @@ impl<'a, F> Transaction<'a, F> {
             let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let callback = FLOW.scope(stack, (self.f)());
+            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, (self.f)())).catch_unwind();
             let result = if self.timeout_ms == 0 {
                 callback.await
             } else {
                 match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
                     Ok(result) => result,
-                    Err(_) => Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() }),
+                    Err(_) => Ok(Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() })),
                 }
+            };
+            let result = match result {
+                Ok(result) => result,
+                Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
             match result {
                 Ok(v) => {
@@ -594,32 +607,63 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     Ok(())
 }
 
+/// panic한 callback의 transaction을 rollback하고 panic을 이어 간다. rollback이 실패하면
+/// panic message가 원인과 실패한 rollback을 함께 담는다(docs/interfaces.md).
+async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Send>) -> std::convert::Infallible {
+    if let Err(rollback_error) = rollback(tx).await {
+        let cause = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
+            (Some(text), _) => (*text).to_owned(),
+            (None, Some(text)) => text.clone(),
+            (None, None) => "a panic without a text payload".to_owned(),
+        };
+        std::panic::resume_unwind(Box::new(Error::Config(format!("transaction failed ({cause}) and rollback failed ({rollback_error})")).to_string()));
+    }
+    std::panic::resume_unwind(payload)
+}
+
 /// Releases named locks, resets session values, and leaves SQLite modes before
-/// the transaction ends.
+/// the transaction ends. 이 상태는 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로
+/// 모든 단계를 시도하고 실패를 모두 돌려준다. RELEASE_LOCK 결과가 1이 아니면 이
+/// connection이 lock을 갖고 있지 않았다.
 async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
+    let mut errors: Vec<Error> = Vec::new();
     let locks: Vec<String> = std::mem::take(&mut *tx.locks.lock().unwrap());
     if let TxInner::MySql(t) = inner {
         let conn = &mut **t.conn.as_mut().expect("active MySQL transaction connection");
         for key in locks {
-            sqlx::query("SELECT RELEASE_LOCK(?)").bind(key).execute(&mut *conn).await?;
+            match sqlx::query_scalar::<_, Option<i64>>("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *conn).await {
+                Ok(Some(1)) => {}
+                Ok(_) => errors.push(Error::Config(format!("lock {key} was not held at transaction end"))),
+                Err(error) => errors.push(error.into()),
+            }
         }
         let keys: Vec<String> = tx.locals.lock().unwrap().keys().cloned().collect();
         for key in keys {
-            raw_on_conn(conn, &format!("SET @`orm.{key}` = NULL")).await?;
+            if let Err(error) = raw_on_conn(conn, &format!("SET @`orm.{key}` = NULL")).await {
+                errors.push(error);
+            }
         }
     }
     if let TxInner::Sqlite(t) = inner {
         let mode = tx.sqlite_mode.lock().unwrap().take();
         if let Some((uncommitted, read_only)) = mode {
             if read_only {
-                sqlx::raw_sql("PRAGMA query_only = 0").execute(&mut **t).await?;
+                if let Err(error) = sqlx::raw_sql("PRAGMA query_only = 0").execute(&mut **t).await {
+                    errors.push(error.into());
+                }
             }
             if uncommitted {
-                sqlx::raw_sql("PRAGMA read_uncommitted = 0").execute(&mut **t).await?;
+                if let Err(error) = sqlx::raw_sql("PRAGMA read_uncommitted = 0").execute(&mut **t).await {
+                    errors.push(error.into());
+                }
             }
         }
     }
-    Ok(())
+    match errors.len() {
+        0 => Ok(()),
+        1 => Err(errors.remove(0)),
+        _ => Err(Error::Config(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))),
+    }
 }
 
 async fn raw_on_conn(conn: &mut sqlx::MySqlConnection, sql: &str) -> Result<()> {
@@ -877,6 +921,145 @@ mod tests {
         tx.locals.lock().unwrap().insert("ormtest.actor".into(), "tester".into());
         sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.expect("kill the transaction connection");
         tx
+    }
+
+    // transaction 끝의 MySQL RELEASE_LOCK이 lock을 풀지 못하면(결과가 1이 아니면) 그 결과를 보고한다.
+    // 풀리지 않은 named lock은 COMMIT과 ROLLBACK 뒤에도 connection에 남는다.
+    #[tokio::test]
+    async fn lock_not_held_at_transaction_end_is_reported() {
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let key = format!("orm_test.released.{}", std::process::id());
+        let result = db
+            .transaction(async || {
+                db.utils().lock(&key).await?;
+                // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+                active_for(&db).expect("transaction active").raw(&format!("DO RELEASE_LOCK('{key}')")).await
+            })
+            .retry(0)
+            .await;
+        let error = result.expect_err("a lock released early is reported");
+        assert!(error.to_string().contains(&format!("lock {key} was not held at transaction end")), "{error}");
+        db.close().await;
+    }
+
+    // RELEASE_LOCK이 실패해도 local 값 reset까지 시도하고 두 실패를 모두 보고한다.
+    #[tokio::test]
+    async fn every_failed_cleanup_step_is_reported() {
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let tx = transaction_with_failing_reset(&db).await;
+        tx.locks.lock().unwrap().push(format!("orm_test.killed.{}", std::process::id()));
+        let mut inner = tx.inner.lock().await.take().expect("transaction inner");
+        let cleanup = finish(&tx, &mut inner).await.expect_err("the cleanup of a killed connection fails");
+        drop(inner);
+        assert_eq!(cleanup.to_string().split("; ").count(), 2, "the release and the reset are both reported: {cleanup}");
+        db.close().await;
+    }
+
+    // panic한 callback의 transaction은 connection을 닫아 끝난다. server는 그 session의 transaction과
+    // named lock을 끝내므로 다른 connection이 그 lock을 잡는다.
+    #[tokio::test]
+    async fn panicking_callback_ends_its_transaction() {
+        use futures_util::FutureExt as _;
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let key = format!("orm_test.panicked.{}", std::process::id());
+        let panicked = std::panic::AssertUnwindSafe(
+            db.transaction(async || -> Result<()> {
+                db.utils().lock(&key).await?;
+                panic!("callback panicked")
+            })
+            .retry(0)
+            .into_future(),
+        )
+        .catch_unwind()
+        .await;
+        assert!(panicked.is_err(), "the callback panics");
+        let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
+        let mut other = pool.acquire().await.expect("another connection");
+        // 닫힌 session의 lock이 풀릴 때까지 server가 기다린다.
+        let got: Option<i64> = sqlx::query_scalar("SELECT GET_LOCK(?, 5)").bind(&key).fetch_one(&mut *other).await.expect("GET_LOCK");
+        assert_eq!(got, Some(1), "the panicked transaction released its lock");
+        let released: Option<i64> = sqlx::query_scalar("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *other).await.expect("RELEASE_LOCK");
+        assert_eq!(released, Some(1));
+        drop(other);
+        db.close().await;
+    }
+
+    /// sqlite_denied가 고른 statement를 SQLite authorizer가 거부한다. 실제 SQLite는 transaction 끝의
+    /// ROLLBACK과 PRAGMA를 거부하지 않으므로 이렇게 실패를 만든다.
+    static SQLITE_DENIED: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(DENY_NOTHING);
+    const DENY_NOTHING: u8 = 0;
+    const DENY_ROLLBACK: u8 = 1;
+    const DENY_QUERY_ONLY_ON: u8 = 2;
+    const DENY_QUERY_ONLY_OFF: u8 = 3;
+
+    unsafe extern "C" fn sqlite_authorizer(
+        _: *mut std::ffi::c_void,
+        action: std::ffi::c_int,
+        first: *const std::ffi::c_char,
+        second: *const std::ffi::c_char,
+        _: *const std::ffi::c_char,
+        _: *const std::ffi::c_char,
+    ) -> std::ffi::c_int {
+        // SAFETY: SQLite는 null이거나 NUL로 끝나는 문자열을 넘긴다.
+        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().unwrap_or("") };
+        let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
+            DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
+            DENY_QUERY_ONLY_ON => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "1",
+            DENY_QUERY_ONLY_OFF => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "0",
+            _ => false,
+        };
+        if denied {
+            libsqlite3_sys::SQLITE_DENY
+        } else {
+            libsqlite3_sys::SQLITE_OK
+        }
+    }
+
+    /// pool의 하나뿐인 connection에 authorizer를 두고 denied를 거부하게 한다.
+    async fn deny_on_sqlite(db: &Db, denied: u8) {
+        let Pool::Sqlite(pool) = db.pool() else { panic!("SQLite pool") };
+        let mut conn = pool.acquire().await.expect("SQLite connection");
+        let mut handle = conn.lock_handle().await.expect("SQLite handle");
+        // SAFETY: handle은 열린 connection이고 authorizer는 'static 함수다.
+        let rc = unsafe { libsqlite3_sys::sqlite3_set_authorizer(handle.as_raw_handle().as_ptr(), Some(sqlite_authorizer), std::ptr::null_mut()) };
+        assert_eq!(rc, libsqlite3_sys::SQLITE_OK, "sqlite3_set_authorizer");
+        SQLITE_DENIED.store(denied, Ordering::Release);
+    }
+
+    // native rollback, SQLite mode 복원, begin의 PRAGMA가 실패하면 transaction이 그 오류를 원인과 함께
+    // 보고하고, 끝나지 않은 transaction의 connection은 닫혀 다음 transaction이 시작한다.
+    #[tokio::test]
+    async fn sqlite_transaction_end_failures_are_reported() {
+        let tmp = std::env::temp_dir().join(format!("orm-transaction-end-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let db = Db::connect(&format!("sqlite://{}", tmp.join("end.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
+        let both = |error: &Error, cause: &str| {
+            let text = error.to_string();
+            assert!(text.starts_with(&format!("CONFIG: transaction failed ({cause}) and rollback failed (")) && text.contains("not authorized"), "{text}");
+        };
+        deny_on_sqlite(&db, DENY_ROLLBACK).await;
+        let error = db.transaction(async || Err::<(), _>(Error::Config("callback failed".into()))).retry(0).await.expect_err("rollback");
+        both(&error, "CONFIG: callback failed");
+        deny_on_sqlite(&db, DENY_ROLLBACK).await;
+        let panicked =
+            std::panic::AssertUnwindSafe(db.transaction(async || -> Result<()> { panic!("callback panicked") }).retry(0).into_future()).catch_unwind().await;
+        let payload = panicked.expect_err("the callback panics");
+        let text = payload.downcast_ref::<String>().expect("the panic carries the transaction failure");
+        assert!(text.starts_with("CONFIG: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"), "{text}");
+        deny_on_sqlite(&db, DENY_QUERY_ONLY_ON).await;
+        let error = db.transaction(async || Ok(())).read_only().retry(0).await.expect_err("begin");
+        assert!(error.to_string().contains("not authorized"), "begin: {error}");
+        SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
+        db.transaction(async || Ok(())).retry(0).await.expect("a transaction after the failed begin");
+        deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
+        let error = db.transaction(async || Ok(())).read_only().retry(0).await.expect_err("commit");
+        assert!(error.to_string().contains("not authorized"), "commit: {error}");
+        deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
+        let error = db.transaction(async || Err::<(), _>(Error::Config("callback failed".into()))).read_only().retry(0).await.expect_err("mode reset");
+        both(&error, "CONFIG: callback failed");
+        SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
+        db.close().await;
+        std::fs::remove_dir_all(tmp).unwrap();
     }
 
     // transaction 끝의 MySQL local 값 reset이 실패하면 그 오류를 보고한다. MySQL user

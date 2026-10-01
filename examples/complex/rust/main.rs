@@ -6,9 +6,20 @@ orm::models!();
 use model::{Author, Service, ServiceMember, User};
 use serde_json::json;
 
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
+/// 않고 그 변수 이름을 출력하며 끝난다.
 fn dsn() -> String {
-    std::env::var("ORM_BENCH_MYSQL_DSN")
-        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            std::process::exit(1)
+        }
+        Err(e) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
+            std::process::exit(1)
+        }
+    }
 }
 
 #[tokio::main]

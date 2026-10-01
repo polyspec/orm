@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
-import { OrmError } from './runtime_error.js';
+import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
@@ -377,9 +377,7 @@ export class Db {
       try {
         await this.finish(frame, false);
       } catch (cleanup) {
-        // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
-        const text = (e: unknown) => (e instanceof Error ? e.message : String(e));
-        throw new OrmError('CONFIG', `transaction failed (${text(error)}) and rollback failed (${text(cleanup)})`, error);
+        throw rollbackFailed(error, cleanup);
       }
       throw error;
     }
@@ -387,18 +385,39 @@ export class Db {
     return result;
   }
 
+  /**
+   * transaction을 끝낸다. 끝내기 전에 MySQL named lock을 풀고 MySQL local 값을 지운다. 이 상태는
+   * COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 모든 단계를 시도하고 실패를 모두 보고한다.
+   * cleanup이 실패한 commit은 rollback하고 cleanup 오류를 던진다.
+   */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
     frame.finished = true;
-    try {
-      for (const key of frame.locks) await frame.tx.control('SELECT RELEASE_LOCK(?)', [key]);
-      if (this.driver === 'mysql') for (const key of frame.locals.keys()) await frame.tx.control(`SET @\`orm.${key}\` = NULL`);
-    } catch (error) {
-      await frame.tx.rollback();
-      throw error;
+    const errors: unknown[] = [];
+    for (const key of frame.locks.splice(0)) {
+      try {
+        const released = (await frame.tx.control('SELECT RELEASE_LOCK(?)', [key])).rows[0]?.[0];
+        // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+        if (Number(released) !== 1) errors.push(new OrmError('CONFIG', `lock ${key} was not held at transaction end`));
+      } catch (error) { errors.push(error); }
     }
-    if (commit) await frame.tx.commit();
-    else await frame.tx.rollback();
+    if (this.driver === 'mysql') {
+      for (const key of frame.locals.keys()) {
+        try { await frame.tx.control(`SET @\`orm.${key}\` = NULL`); } catch (error) { errors.push(error); }
+      }
+    }
+    const failure = joinedErrors(errors);
+    if (commit && failure === undefined) {
+      await frame.tx.commit();
+      return;
+    }
+    try {
+      await frame.tx.rollback();
+    } catch (rollback) {
+      if (commit) throw rollbackFailed(failure, rollback);
+      throw joinedErrors(failure === undefined ? [rollback] : [failure, rollback]);
+    }
+    if (failure !== undefined) throw failure;
   }
 
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {

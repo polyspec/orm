@@ -1,7 +1,7 @@
 <?php
 // A complex statement in every client language, one JSON document. Run:
 //
-//   php examples/complex/php/main.php /abs/schema/schema.json
+//   php examples/complex/php/main.php
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
@@ -14,8 +14,8 @@ use Orm\Config;
 use Orm\Orm;
 
 $db = Orm::connect(
-    getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock',
-    new Config(schemaPath: $argv[1], aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
+    dsn(),
+    new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
 );
 
 // A join child with its own ON conditions whose WHERE conditions are placed
@@ -51,3 +51,14 @@ echo json_encode([
     'page_pages' => $page->totalPages,
     'page_length' => count($page->items),
 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
+
+/** 시드된 bench database 를 가리키는 ORM_BENCH_MYSQL_DSN 이다. 없거나 비어 있으면 연결하지 않고 끝난다. */
+function dsn(): string
+{
+    $dsn = getenv('ORM_BENCH_MYSQL_DSN');
+    if ($dsn === false || $dsn === '') {
+        fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database\n");
+        exit(1);
+    }
+    return $dsn;
+}

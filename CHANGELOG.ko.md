@@ -1,5 +1,13 @@
 # 변경 이력
 
+- T17.1: graph test 15초 제한은 Rust(case의 thread), Go와 PHP(test process)에서 wall-clock 대신 CPU 시간을 제한하므로 부하가 걸린 공유 machine에서 더 실패하지 않고, 모든 case가 두 시간을 보고한다.
+
+- T17.3: Rust native benchmark는 고정 socket과 database 대신 `ORM_BENCH_MYSQL_DSN`에서 database를 읽고, 없거나 비어 있으면 연결하지 않고 status 1로 끝나며, `make rust-driver-check`가 그 test를 실행한다.
+
+- T17.2: Go, PHP, Rust 예제 program은 `ORM_BENCH_MYSQL_DSN`을 요구하고, 없거나 비어 있으면 연결하지 않고 status 1로 끝나며, PHP 예제는 없어진 `schemaPath`를 더 넘기지 않는다.
+
+- T8.0.14.1: 모든 client가 transaction 끝의 모든 실패를 보고한다. 모든 정리 단계를 실행하고, 아무것도 풀지 않은 `RELEASE_LOCK`은 오류이며, callback, begin, commit 실패 뒤의 실패한 rollback은 원인과 함께 보고하고, panic한 Go나 Rust callback은 panic을 이어 가기 전에 rollback하며, Go client는 driver가 닫은 connection의 rollback을 완료로 본다.
+
 - T8.7.6.1: 실패한 Go Mermaid나 plan vector case는 지켜지는 deadline 아래에서 실패만 기록하고, 모든 dbspec runner는 없는 input이나 directory input을 `<path>: <reason>`과 0이 아닌 exit로 거부한다.
 
 - T8.5.6.1: dbspec compare runner는 빠지거나 type이 틀린 vector section, id, document, 줄을 빈 값으로 읽지 않고 `<file>: <location> <problem>`과 0이 아닌 exit로 거부한다.

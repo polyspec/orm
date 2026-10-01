@@ -1,5 +1,13 @@
 # Changelog
 
+- T17.1: the 15-second graph-test deadline bounds CPU time instead of wall-clock time in Rust (the thread of the case), Go and PHP (the test process), so a loaded shared machine no longer fails it; every case reports both times.
+
+- T17.3: the Rust native benchmarks read their database from `ORM_BENCH_MYSQL_DSN` instead of a fixed socket and database, exit with status 1 without connecting when it is unset or empty, and `make rust-driver-check` runs that test.
+
+- T17.2: the Go, PHP and Rust example programs require `ORM_BENCH_MYSQL_DSN` and exit with status 1 without connecting when it is unset or empty, and the PHP examples no longer pass the removed `schemaPath`.
+
+- T8.0.14.1: every client reports every transaction-end failure: each cleanup step runs, a `RELEASE_LOCK` that released nothing is an error, a failed rollback after a callback, begin or commit failure is reported with its cause, a Go or Rust callback that panics rolls back before the panic continues, and the Go client treats a rollback on a connection the driver closed as complete.
+
 - T8.7.6.1: a failing Go Mermaid or plan vector case logs only its failure under an enforced deadline, and every dbspec runner rejects a missing or directory input with `<path>: <reason>` and a nonzero exit.
 
 - T8.5.6.1: the dbspec compare runners reject a missing or mistyped vector section, id, document or line with `<file>: <location> <problem>` and a nonzero exit instead of reading it as empty.

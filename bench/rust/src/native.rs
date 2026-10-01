@@ -1,8 +1,9 @@
-//! S0 native baseline: sqlx (mysql) over the local socket, same workloads as Go/PHP.
-//! Usage: native [iters]
+//! S0 native baseline: sqlx (mysql) on the seeded bench database, same workloads as Go/PHP.
+//! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> native [iters]
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use sqlx::{MySqlPool, Row};
 use std::collections::HashMap;
+use std::str::FromStr as _;
 use std::time::Instant;
 
 const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
@@ -78,11 +79,32 @@ async fn relation4(pool: &MySqlPool, service_seq: u64) -> HashMap<u64, Vec<Autho
     out
 }
 
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
+/// 않고 그 변수 이름을 출력하며 끝난다.
+fn bench_dsn() -> String {
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            std::process::exit(1)
+        }
+        Err(e) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
+            std::process::exit(1)
+        }
+    }
+}
+
+/// `ORM_BENCH_MYSQL_DSN`을 해석하지 못하면 그 오류를 출력하며 끝난다.
+fn invalid_dsn(error: impl std::fmt::Display) -> ! {
+    eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
+    std::process::exit(1)
+}
+
 #[tokio::main]
 async fn main() {
     let iters: usize = std::env::args().nth(1).and_then(|s| s.parse().ok()).unwrap_or(3000);
-    let opts = MySqlConnectOptions::new().socket("/tmp/mysql.sock").username("root").database("orm_bench")
-        .statement_cache_capacity(256);
+    let opts = MySqlConnectOptions::from_str(&bench_dsn()).unwrap_or_else(|e| invalid_dsn(e)).statement_cache_capacity(256);
     let pool = MySqlPoolOptions::new().max_connections(1).connect_with(opts).await.expect("connect");
 
     for _ in 0..200 { pk_get(&pool, 1).await; }

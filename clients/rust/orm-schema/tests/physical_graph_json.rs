@@ -1,9 +1,12 @@
 use orm_schema::physical_graph::PhysicalGraph;
 use serde_json::Value;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 #[test]
 fn physical_graph_json() {
-    let start = Instant::now();
+    let start = CaseClock::start();
     println!("RUN physical_graph_json");
     let f: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graph_json.json")).unwrap();
     assert_eq!(f["cases"].as_array().unwrap().len(), 30);
@@ -42,12 +45,12 @@ fn physical_graph_json() {
         fail(text.as_bytes(), "");
     }
     fail(&[255], "");
-    println!("PASS physical_graph_json {:?}", start.elapsed());
-    assert!(start.elapsed() < Duration::from_secs(15));
+    println!("PASS physical_graph_json {:?}", start.wall());
+    start.assert_within("physical_graph_json", Duration::from_secs(15));
 }
 #[test]
 fn physical_graph_json_output() {
-    let start = Instant::now();
+    let start = CaseClock::start();
     println!("RUN physical_graph_json_output");
     let f: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graph_json.json")).unwrap();
     let records: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graph_records.json")).unwrap();
@@ -76,6 +79,6 @@ fn physical_graph_json_output() {
             assert_eq!(e.to_string(), "SCHEMA_INVALID");
         }
     }
-    println!("PASS physical_graph_json_output {:?}", start.elapsed());
-    assert!(start.elapsed() < Duration::from_secs(15));
+    println!("PASS physical_graph_json_output {:?}", start.wall());
+    start.assert_within("physical_graph_json_output", Duration::from_secs(15));
 }

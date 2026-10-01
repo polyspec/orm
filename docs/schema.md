@@ -332,9 +332,13 @@ record graph vectors, three duplicates, three list counts, one combined count
 and three independently sized new-list byte-limit vectors. The connected
 2000-table/60000-column/10000-FK scenario also retains 2000 indices, 2000 keys
 and 2000 CHECKs. Run these cases and all record regressions twice in
-each client. Each owner reports its elapsed time and a 15-second graph-test
-deadline. Generation and validation timing are separate; Rust tests use debug
-builds. PHP reports process peak allocated bytes and its unmodified memory
+each client. Each owner reports its elapsed time and asserts a 15-second
+graph-test deadline on CPU time: Rust on the CPU time of the thread that runs
+the case, Go and PHP on the CPU time of the test process, whose tests run one at
+a time. Wall-clock time is reported but not bounded, because on a shared
+machine it includes the time other processes hold the processors. TypeScript
+bounds each case with a 15-second `node:test` timeout. Generation and
+validation timing are separate; Rust tests use debug builds. PHP reports process peak allocated bytes and its unmodified memory
 limit, not resident memory or the memory of another runtime. These are
 structural graph tests, not SQL dialect validation or DB proof.
 

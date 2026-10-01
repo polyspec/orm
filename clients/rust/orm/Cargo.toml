@@ -34,3 +34,7 @@ sha2 = "0.10"
 hmac = "0.12"
 serde_yaml_ng = "0.10.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }
+
+[dev-dependencies]
+# SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
+libsqlite3-sys = { version = "0.37", default-features = false }
