@@ -21,6 +21,14 @@ export type DbspecRule =
   | 'limit'
   | 'encoding';
 
+/** One SCHEMA_INVALID diagnostic: the rule, the 1-based line and column of the offending token, and a message. */
+export interface DbspecDiagnostic {
+  readonly rule: DbspecRule;
+  readonly line: number;
+  readonly column: number;
+  readonly message: string;
+}
+
 export type DbspecType =
   | { readonly kind: 'i16' | 'i32' | 'i64' | 'bool' | 'f64' | 'text' | 'bytes' | 'uuid' | 'date' }
   | { readonly kind: 'decimal'; readonly precision: number; readonly scale: number }

@@ -42,7 +42,8 @@ foreach ($vectors['cases'] as $case) {
         $want = $case['statements'][$dialect] ?? throw new RuntimeException("{$case['id']}: no $dialect statements");
         // 문서 집합의 순서는 결과를 바꾸지 않는다.
         foreach ([$documents, array_reverse($documents)] as $set) {
-            $got = Dbspec::render($set, $dialect);
+            $rendered = Dbspec::render($set, $dialect);
+            $got = $rendered->statements ?? throw new RuntimeException("{$case['id']}/$dialect: diagnostics " . json_encode(array_map(fn($d) => [$d->rule, $d->line, $d->column, $d->message], $rendered->diagnostics)));
             for ($i = 0; $i < max(count($got), count($want)); $i++) {
                 if (($got[$i] ?? null) !== ($want[$i] ?? null)) {
                     throw new RuntimeException("{$case['id']}/$dialect: statement $i differs\n--- want\n" . ($want[$i] ?? '(none)') . "\n--- got\n" . ($got[$i] ?? '(none)'));

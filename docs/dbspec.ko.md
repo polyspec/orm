@@ -202,6 +202,8 @@ table service_history {
 
 선언된 문서 집합이 유일한 schema 원천이다. generator, schema tool, schema 설치는 dbspec 문서를 읽으며, 다른 manifest 파일은 없다.
 
+manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합의 parse된 문서를 받는다. 집합은 각 문서를 한 번씩, 그리고 그 문서들이 쓰는 모든 문서를 담는다. 반복된 문서 이름은 `name.duplicate` diagnostic, 집합에 없는 쓰이는 문서는 `use` diagnostic이며, 둘 다 뒤쪽 문서나 쓰는 문서의 header 이름(1줄 10열)에 위치하고 message에 문서 이름을 담는다. 문서는 이름 순으로, 한 문서가 쓰는 이름도 이름 순으로 확인한다. diagnostic이 있는 집합에는 manifest도 statement도 없다.
+
 - 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
 - **schema text**는 manifest text에서 `immutable`과 `audit`을 뺀 모든 setting을 지운 것이다. 비게 된 `settings` block은 canonical form처럼 쓰지 않는다.
 - `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.

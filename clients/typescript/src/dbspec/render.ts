@@ -1,9 +1,15 @@
 // dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered statements").
 // 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
 import { readCheck, type CheckExpr } from './check.js';
-import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
+import { checkSet } from './set.js';
+import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
 
 export type DbspecDialect = 'mysql' | 'postgres' | 'sqlite';
+
+/** The statements and no diagnostic, or the diagnostics of an invalid document set and no statements. */
+export type DbspecRenderResult =
+  | { readonly statements: readonly string[]; readonly diagnostics: readonly [] }
+  | { readonly statements: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
 const DIALECTS: ReadonlySet<string> = new Set(['mysql', 'postgres', 'sqlite']);
 
@@ -16,25 +22,19 @@ function sorted<T>(items: readonly T[], key: (item: T) => string): T[] {
 }
 
 /**
- * Orders the documents so that a used document comes before the documents
- * that use it, ties by document name. A repeated document name or a used
- * document missing from the set is an Error.
+ * Orders the documents of a checked set (set.ts checkSet) so that a used
+ * document comes before the documents that use it, ties by document name.
  */
 function useOrder(documents: readonly DbspecDocument[]): DbspecDocument[] {
   const byName = new Map<string, DbspecDocument>();
-  for (const document of documents) {
-    if (byName.has(document.name)) throw new Error(`document ${document.name} appears twice in the document set`);
-    byName.set(document.name, document);
-  }
+  for (const document of documents) byName.set(document.name, document);
   const out: DbspecDocument[] = [];
   const done = new Set<string>();
   const visit = (document: DbspecDocument): void => {
     if (done.has(document.name)) return;
     done.add(document.name);
     for (const name of sorted(document.uses.map(u => u.document), n => n)) {
-      const used = byName.get(name);
-      if (used === undefined) throw new Error(`document ${document.name} uses document ${name}, which is not in the document set`);
-      visit(used);
+      visit(byName.get(name)!);
     }
     out.push(document);
   };
@@ -433,11 +433,14 @@ function operandType(t: DbspecTable, a: CheckExpr, b: CheckExpr | null): DbspecT
 /**
  * Writes the statements that create the tables of a parsed document set in
  * one dialect (docs/dialects.md "Rendered statements"): documents in `use`
- * order, tables in document order. An unknown dialect is a TypeError.
+ * order, tables in document order, or the diagnostics of an invalid set
+ * (docs/dbspec.md, "Manifest and hashes"). An unknown dialect is a TypeError.
  */
-export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): readonly string[] {
+export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult {
   if (!DIALECTS.has(dialect)) throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
   if (!Array.isArray(documents)) throw new TypeError('dbspec documents must be an array of parsed documents');
+  const { diagnostics } = checkSet(documents);
+  if (diagnostics.length > 0) return Object.freeze({ statements: null, diagnostics });
   const r = new Renderer(dialect);
   const ordered = useOrder(documents);
   const out: string[] = [];
@@ -450,5 +453,5 @@ export function renderDbspec(documents: readonly DbspecDocument[], dialect: Dbsp
     }
   }
   for (const document of ordered) for (const t of document.tables) out.push(...r.triggers(t));
-  return Object.freeze(out);
+  return Object.freeze({ statements: Object.freeze(out), diagnostics: Object.freeze([]) as readonly [] });
 }

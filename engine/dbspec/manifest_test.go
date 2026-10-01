@@ -104,3 +104,73 @@ func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 		return nil
 	})
 }
+
+// setCase is one `sets` case of tests/dbspec/cases.json: the listed
+// documents form the set, each parsed against the other listed documents and
+// the parsing documents.
+type setCase struct {
+	ID        string              `json:"id"`
+	Documents [][]string          `json:"documents"`
+	Parsing   map[string][]string `json:"parsing"`
+	Errors    []vectorError       `json:"errors"`
+}
+
+func expectSetErrors(want []vectorError, got []Diagnostic) error {
+	if len(got) != len(want) {
+		return fmt.Errorf("diagnostics %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i].Rule != want[i].Rule || got[i].Line != want[i].Line || got[i].Column != want[i].Column {
+			return fmt.Errorf("diagnostics %v, want %v", got, want)
+		}
+	}
+	return nil
+}
+
+func TestDocumentSets(t *testing.T) {
+	vectors := loadVectors(t)
+	if len(vectors.Sets) == 0 {
+		t.Fatal("tests/dbspec/cases.json has no sets cases")
+	}
+	for _, c := range vectors.Sets {
+		t.Run(c.ID, func(t *testing.T) {
+			runTimed(t, "sets/"+c.ID, 5*time.Second, func() error {
+				var documents []*Document
+				for i, lines := range c.Documents {
+					set := map[string]string{}
+					for name, other := range c.Parsing {
+						set[name] = joinLines(other, false)
+					}
+					for j, other := range c.Documents {
+						if j != i {
+							name := strings.TrimPrefix(other[0], "dbspec 1 ")
+							set[name] = joinLines(other, false)
+						}
+					}
+					document, diagnostics := Parse(joinLines(lines, false), set)
+					if err := expectDocument(document, diagnostics); err != nil {
+						return fmt.Errorf("document %d: %w", i+1, err)
+					}
+					documents = append(documents, document)
+				}
+				manifest, diagnostics := ManifestOf(documents)
+				if err := expectSetErrors(c.Errors, diagnostics); err != nil {
+					return fmt.Errorf("manifest: %w", err)
+				}
+				if (manifest == nil) != (len(c.Errors) > 0) {
+					return fmt.Errorf("manifest present: %v with %d errors", manifest != nil, len(c.Errors))
+				}
+				for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
+					statements, diagnostics := Render(documents, dialect)
+					if err := expectSetErrors(c.Errors, diagnostics); err != nil {
+						return fmt.Errorf("render %s: %w", dialect, err)
+					}
+					if (len(statements) == 0) != (len(c.Errors) > 0) {
+						return fmt.Errorf("render %s: %d statements with %d errors", dialect, len(statements), len(c.Errors))
+					}
+				}
+				return nil
+			})
+		})
+	}
+}

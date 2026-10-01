@@ -1,5 +1,9 @@
 # Changelog
 
+Reject a dbspec document set with a repeated document name or a missing
+used document in the manifest and the renderer of every client, which
+now returns statements or diagnostics (T8.2.6.2.1).
+
 Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
 in the Rust client (`dbspec::render`), compared with tests/dbspec/ddl.json
 (T8.3.5).

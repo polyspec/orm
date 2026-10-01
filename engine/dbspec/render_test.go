@@ -72,7 +72,11 @@ func TestRenderVectors(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					got, want := Render(documents, dialect), c.Statements[string(dialect)]
+					got, diagnostics := Render(documents, dialect)
+					if len(diagnostics) > 0 {
+						return fmt.Errorf("diagnostics %v", diagnostics)
+					}
+					want := c.Statements[string(dialect)]
 					for i := 0; i < max(len(got), len(want)); i++ {
 						var g, w string
 						if i < len(got) {

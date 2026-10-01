@@ -2,6 +2,7 @@
 //! dialect (docs/dialects.md, "Rendered statements").
 
 use super::model::{Action, Column, DefaultValue, Document, Expr, ForeignKey, Operand, Setting, Table, Type};
+use super::{check_set, Diagnostic};
 
 /// A database whose statements [`render`] writes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -12,8 +13,10 @@ pub enum Dialect {
 }
 
 /// Writes the statements that create the tables of the document set in
-/// `dialect`. The documents are valid parsed documents of one declared set.
-pub fn render(documents: &[&Document], dialect: Dialect) -> Vec<String> {
+/// `dialect` (docs/dialects.md, "Rendered statements"), or the diagnostics of
+/// an invalid document set, as [`super::manifest`] reports them.
+pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>> {
+    check_set(documents)?;
     let r = Renderer { d: dialect };
     let ordered = use_order(documents);
     let mut out = Vec::new();
@@ -36,7 +39,7 @@ pub fn render(documents: &[&Document], dialect: Dialect) -> Vec<String> {
             out.extend(r.triggers(table));
         }
     }
-    out
+    Ok(out)
 }
 
 /// Orders documents so that a used document comes before the documents that
