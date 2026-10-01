@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.14.2: a Rust transaction future dropped before its transaction ends closes its connection at once, so over TLS too the server ends the transaction and its named locks with the session.
+
 - T8.2.6.4.1: the Rust lock file no longer lists the removed `libc` dependency of `orm-schema`, so `cargo check --locked` passes.
 
 - T8.2, T8.2.6, T8.3, T8.5: closed with their completed sub-items; T7.17.2.10.3 and T7.17.2.10.3.1 closed as superseded by dbspec.

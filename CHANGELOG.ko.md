@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.14.2: 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 connection을 바로 닫으므로, TLS에서도 server에서 session과 함께 트랜잭션과 named lock이 끝난다.
+
 - T8.2.6.4.1: Rust lock file이 지운 `orm-schema`의 `libc` 의존성을 더 이상 나열하지 않아 `cargo check --locked`가 통과한다.
 
 - T8.2, T8.2.6, T8.3, T8.5: 끝난 하위 항목과 함께 닫는다. T7.17.2.10.3과 T7.17.2.10.3.1은 dbspec으로 대체되어 닫는다.
