@@ -12,6 +12,7 @@ mod emit;
 mod introspect;
 mod lexer;
 mod literal;
+mod mermaid;
 mod model;
 mod parser;
 mod plan;
@@ -23,6 +24,7 @@ mod runtime;
 mod validate;
 
 pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
+pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
 pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, TableRename, RULE_CHAIN, RULE_PLAN};
 pub use plan_diff::{diff, Change};
