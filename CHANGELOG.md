@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.5.2.2: plan names over 63 bytes are rejected, and shared cases cover plan parse errors.
+
 - T8.5.5: the Rust client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-rust-check` applies them.
 
 - T8.5.4: the TypeScript client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-ts-check` applies them.
