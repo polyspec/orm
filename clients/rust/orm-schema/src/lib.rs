@@ -6,6 +6,7 @@
 //! into statements. The runtime installs schemas with it, and `orm-build`
 //! uses it for build scripts and the `orm-gen` tool.
 
+pub mod dbspec;
 pub mod ddl;
 pub mod physical;
 pub mod physical_column;
