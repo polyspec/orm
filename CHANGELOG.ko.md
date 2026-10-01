@@ -1,5 +1,11 @@
 # 변경 이력
 
+TypeScript client에 선언된 interface(parseDbspec, emitDbspec,
+DbspecDiagnostic)로 dbspec parse, 검증, canonical emit을 구현한다
+(T8.2.4). 공유 case 44개와 집중 case 45개가 통과하고, 2000-table 부하
+문서를 105-156 ms에 parse하며 그대로 emit한다. symbol 279개를
+contracts/symbols/typescript.json에 기록한다.
+
 Mermaid schema source를 대신할 neutral schema 언어 dbspec을 명세한다
 (T8.1). docs/dbspec.md와 한국어 짝 문서는 선언된 문서 집합에서 이름으로
 이어지는 문서, 열세 가지 neutral type, key, index, foreign key, neutral
