@@ -90,7 +90,7 @@ export function parsePlan(text: string): DbspecPlanResult {
   if (!text.endsWith('\n')) return failed(text.split('\n').length, 'a plan ends with a line end');
   const lines = text.slice(0, -1).split('\n');
   const header = PLAN_HEADER.exec(lines[0]!);
-  if (header === null || RESERVED.has(header[1]!)) return failed(1, 'the first line is exactly `dbplan 1 <name>`');
+  if (header === null || RESERVED.has(header[1]!) || Buffer.byteLength(header[1]!, 'utf8') > 63) return failed(1, 'the first line is exactly `dbplan 1 <name>`');
   const name = header[1]!;
   const fromLine = lines.length < 2 ? null : PLAN_FROM.exec(lines[1]!);
   if (fromLine === null) return failed(2, 'the second line is `from empty` or `from <schemaHash>`');

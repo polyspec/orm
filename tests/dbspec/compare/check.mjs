@@ -1,11 +1,16 @@
 // Compares the four dbspec clients: every runner reads the shared cases, the
-// stress document and the statement vectors and prints, for each case, its
-// name and then its emission, manifest or rendered statements ("| " and "= "
-// lines) or its diagnostics ("! rule line column"); the stress document prints
-// "= unchanged" when it emits back unchanged. Each runner runs twice and every
-// output must equal the first Go output.
+// stress document, the statement vectors and the plan vectors and prints, for
+// each case, its name and then its emission, manifest or rendered statements
+// ("| " and "= " lines) or its diagnostics ("! rule line column"); the stress
+// document prints "= unchanged" when it emits back unchanged. A plan case
+// prints its emitted plan, then "<name>/changes" with "| kind table name"
+// lines and "<name>/<dialect>" with its statements; an invalid plan case its
+// diagnostics or changes; a chain case its order ("| name") or diagnostics;
+// a parse case its diagnostics or emitted plan. A plan or chain diagnostic
+// ends with its message, which the clients share. Each runner runs twice and
+// every output must equal the first Go output.
 //
-// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json>
+// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json>
 // (after the TypeScript build and the release build of the Rust example)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -14,9 +19,9 @@ import { compare } from './compare.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const TIMEOUT = 120000;
-const [cases, stress, ddl] = process.argv.slice(2);
-if (cases === undefined || stress === undefined || ddl === undefined) {
-  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json>');
+const [cases, stress, ddl, plans] = process.argv.slice(2);
+if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined) {
+  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json>');
   process.exit(2);
 }
 
@@ -29,7 +34,7 @@ const runners = [
 
 function run(runner) {
   return new Promise((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, cases, stress, ddl], { cwd: root, timeout: TIMEOUT });
+    const child = spawn(runner.command, [...runner.args, cases, stress, ddl, plans], { cwd: root, timeout: TIMEOUT });
     const out = [];
     const err = [];
     child.stdout.on('data', chunk => out.push(chunk));

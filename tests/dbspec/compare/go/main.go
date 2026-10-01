@@ -1,7 +1,8 @@
-// Command go prints the Go dbspec result of every shared case and of the
-// stress document in the line format of tests/dbspec/compare/check.mjs.
+// Command go prints the Go dbspec result of every shared case, of the
+// stress document, of the statement vectors and of the plan vectors in the
+// line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json>
+// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json>
 package main
 
 import (
@@ -155,9 +156,144 @@ func writeRender(out *bufio.Writer, c hashCase) {
 	}
 }
 
+// writeDiagnostics prints diagnostics; a plan or chain diagnostic ends with
+// its message, which every client shares, and a schema diagnostic of the
+// target or source does not.
+func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
+	for _, d := range diagnostics {
+		if d.Rule == dbspec.RulePlan || d.Rule == dbspec.RuleChain {
+			fmt.Fprintf(out, "! %s %d %d %s\n", d.Rule, d.Line, d.Column, d.Message)
+		} else {
+			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		}
+	}
+}
+
+// planVectors is tests/dbspec/plans.json (docs/plans.md).
+type planVectors struct {
+	Cases []struct {
+		ID     string    `json:"id"`
+		Source *[]string `json:"source"`
+		Plan   []string  `json:"plan"`
+	} `json:"cases"`
+	Invalid []struct {
+		ID     string    `json:"id"`
+		Source *[]string `json:"source"`
+		Plan   []string  `json:"plan"`
+	} `json:"invalid"`
+	Chains []struct {
+		ID    string     `json:"id"`
+		Plans [][]string `json:"plans"`
+	} `json:"chains"`
+	Parse []struct {
+		ID   string   `json:"id"`
+		Plan []string `json:"plan"`
+	} `json:"parse"`
+}
+
+// planSource parses the source schema of a plan case, nil for the empty
+// schema, or prints its diagnostics and reports false.
+func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
+	if lines == nil {
+		return nil, true
+	}
+	document, diagnostics := dbspec.Parse(join(*lines, false, false), nil)
+	if len(diagnostics) > 0 {
+		writeDiagnostics(out, diagnostics)
+		return nil, false
+	}
+	return document, true
+}
+
+// writeChanges prints the changes as "| kind table name".
+func writeChanges(out *bufio.Writer, changes []dbspec.Change) {
+	for _, c := range changes {
+		fmt.Fprintf(out, "| %s %s %s\n", c.Kind, c.Table, c.Name)
+	}
+}
+
+// writePlans prints, for every plan case, the emitted plan, the changes and
+// the statements of each dialect; for every invalid case its diagnostics; for
+// every chain case the chain order or its diagnostics; and for every parse
+// case its diagnostics or the emitted plan.
+func writePlans(out *bufio.Writer, v planVectors) {
+	for _, c := range v.Cases {
+		fmt.Fprintf(out, "plans/cases/%s\n", c.ID)
+		source, ok := planSource(out, c.Source)
+		if !ok {
+			continue
+		}
+		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
+			fmt.Fprintf(out, "| %s\n", line)
+		}
+		fmt.Fprintf(out, "plans/cases/%s/changes\n", c.ID)
+		changes, diagnostics := dbspec.Diff(source, p)
+		writeDiagnostics(out, diagnostics)
+		writeChanges(out, changes)
+		for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
+			fmt.Fprintf(out, "plans/cases/%s/%s\n", c.ID, dialect)
+			statements, diagnostics := dbspec.PlanStatements(source, p, dialect)
+			writeDiagnostics(out, diagnostics)
+			for _, s := range statements {
+				fmt.Fprintf(out, "| %s\n", s)
+			}
+		}
+	}
+	for _, c := range v.Invalid {
+		fmt.Fprintf(out, "plans/invalid/%s\n", c.ID)
+		source, ok := planSource(out, c.Source)
+		if !ok {
+			continue
+		}
+		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		changes, diagnostics := dbspec.Diff(source, p)
+		writeDiagnostics(out, diagnostics)
+		writeChanges(out, changes)
+	}
+	for _, c := range v.Chains {
+		fmt.Fprintf(out, "plans/chains/%s\n", c.ID)
+		var plans []*dbspec.Plan
+		parsed := true
+		for _, lines := range c.Plans {
+			p, diagnostics := dbspec.ParsePlan(join(lines, false, false))
+			writeDiagnostics(out, diagnostics)
+			parsed = parsed && len(diagnostics) == 0
+			plans = append(plans, p)
+		}
+		if !parsed {
+			continue
+		}
+		chain, diagnostics := dbspec.Chain(plans)
+		writeDiagnostics(out, diagnostics)
+		for _, p := range chain {
+			fmt.Fprintf(out, "| %s\n", p.Name)
+		}
+	}
+	for _, c := range v.Parse {
+		fmt.Fprintf(out, "plans/parse/%s\n", c.ID)
+		p, diagnostics := dbspec.ParsePlan(join(c.Plan, false, false))
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
+			fmt.Fprintf(out, "| %s\n", line)
+		}
+	}
+}
+
 func main() {
-	if len(os.Args) != 4 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json>")
+	if len(os.Args) != 5 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json>")
 		os.Exit(2)
 	}
 	raw, err := os.ReadFile(os.Args[1])
@@ -212,6 +348,17 @@ func main() {
 	for _, c := range ddl.Cases {
 		writeRender(out, c)
 	}
+	rawPlans, err := os.ReadFile(os.Args[4])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	var plans planVectors
+	if err := json.Unmarshal(rawPlans, &plans); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	writePlans(out, plans)
 	if err := out.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

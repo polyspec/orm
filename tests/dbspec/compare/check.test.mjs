@@ -23,6 +23,19 @@ test('a different diagnostic names its case and both lines', () => {
   });
 });
 
+test('a different plan message names its plan case', () => {
+  const plans = 'plans/parse/name-too-long\n! plan 1 1 the first line is exactly `dbplan 1 <name>`\n';
+  const rust = plans.replace('exactly', 'not');
+  assert.deepEqual(compare([{ name: 'go 1', output: plans }, { name: 'rust 1', output: rust }]), {
+    reference: 'go 1',
+    other: 'rust 1',
+    case: 'plans/parse/name-too-long',
+    line: 2,
+    expected: '! plan 1 1 the first line is exactly `dbplan 1 <name>`',
+    actual: '! plan 1 1 the first line is not `dbplan 1 <name>`',
+  });
+});
+
 test('a shorter output differs at its end', () => {
   const php = go.slice(0, go.indexOf('stress'));
   const difference = compare([{ name: 'go 1', output: go }, { name: 'php 1', output: php }]);
