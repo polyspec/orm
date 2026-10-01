@@ -8,7 +8,7 @@ async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
             assert!(validate(&vec![P::Null(ParamType::Text); 65535], dialect).is_ok());
             assert!(validate(&vec![P::Null(ParamType::Text); 65536], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
             let exact = P::S("x".repeat(16 * 1024 * 1024));
-            assert!(validate(&[exact.clone()], dialect).is_ok());
+            assert!(validate(std::slice::from_ref(&exact), dialect).is_ok());
             assert!(validate(&[exact, P::I(1)], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
             assert!(validate(&[P::Binary(vec![0; 16 * 1024 * 1024 + 1])], dialect).unwrap_err().to_string().contains("TOOL_BIND_LIMIT"));
         }
