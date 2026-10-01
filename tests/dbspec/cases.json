@@ -164,14 +164,14 @@
           "  at datetime(6)",
           "  raw bytes",
           "  primary key (id)",
-          "  check ck_t_active (active)",
+          "  check ck_t_active (active = true)",
           "  check ck_t_at (at < '2100-01-01 00:00:00.000000')",
           "  check ck_t_cost (cost <= price)",
-          "  check ck_t_day (day between '2000-01-01' and '2099-12-31')",
+          "  check ck_t_day (day >= '2000-01-01' and day <= '2099-12-31')",
           "  check ck_t_name (name <> '' and name not in ('none', 'null'))",
           "  check ck_t_note (note <> name or note is null)",
-          "  check ck_t_price (price >= 0.00 and not (price > 99999.99))",
-          "  check ck_t_qty (qty between -10 and 100 and qty <= big)",
+          "  check ck_t_price (price >= 0.00 and price <= 99999.99)",
+          "  check ck_t_qty (qty >= -10 and qty <= 100 and qty <= big)",
           "  check ck_t_ratio (ratio < 1.5 and active = true)",
           "  check ck_t_time (at_time < '12:00:00')",
           "  check ck_t_token (token <> '00000000-0000-0000-0000-000000000000')",
@@ -479,6 +479,62 @@
         "  check ck_t_qty (qty > 7)",
         "  check ck_t_ratio (ratio < 1.5)",
         "  check ck_t_token (token <> '0000000a-0000-0000-0000-000000000000')",
+        "}"
+      ]
+    },
+    {
+      "id": "check-redundant-parentheses",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t_a (((qty > 1)) and (name <> 'a' and (big > 2)))",
+          "  check ck_t_b ((qty > 1 or big > 2) and name <> 'a')",
+          "  check ck_t_c (qty > 1 or (big > 2 and name <> 'a'))",
+          "}"
+        ]
+      },
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  qty i32",
+        "  big i64",
+        "  price decimal(13,2)",
+        "  cost decimal(13,2)",
+        "  rate decimal(8,4)",
+        "  ratio f64",
+        "  active bool",
+        "  name varchar(32)",
+        "  note text",
+        "  token uuid",
+        "  day date",
+        "  at_time time(0)",
+        "  at datetime(6)",
+        "  raw bytes",
+        "  primary key (id)",
+        "  check ck_t_a (qty > 1 and name <> 'a' and big > 2)",
+        "  check ck_t_b ((qty > 1 or big > 2) and name <> 'a')",
+        "  check ck_t_c (qty > 1 or big > 2 and name <> 'a')",
         "}"
       ]
     }
@@ -3594,6 +3650,150 @@
           "line": 5,
           "column": 3,
           "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "check-not-operator",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (not (qty > 1))",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-between",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty between 1 and 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 19,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bool-column-alone",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (active)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-literal-before-not",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (1 not between 0 and 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 17,
+          "rule": "check"
         }
       ]
     }

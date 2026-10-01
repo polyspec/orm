@@ -1,5 +1,10 @@
 # Changelog
 
+Keep only the dbspec check predicate forms that MySQL and PostgreSQL
+catalogs give back: remove `not`, `between` and a column alone, and
+write only the parentheses that an `or` inside an `and` needs, in every
+client (T8.1.7).
+
 Rewrite the bench schema and the shared schema fixtures as dbspec
 documents with every name convention declared as a setting, and apply
 each rendered document to MySQL, PostgreSQL and SQLite in `make

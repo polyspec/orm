@@ -179,18 +179,12 @@ pub(crate) struct Check {
 /// A check predicate (docs/dbspec.md, "Checks").
 #[derive(Clone, Debug)]
 pub(crate) enum Expr {
-    /// A `bool` column alone.
-    Column(Name),
-    Paren(Box<Expr>),
-    Not(Box<Expr>),
     /// `and` or `or`.
     Logic(Box<Expr>, &'static str, Box<Expr>),
     /// A comparison with its operator and the operator position.
     Compare(Operand, &'static str, Pos, Operand),
     /// `<column> [not] in (<literal>, ...)`.
     In(Name, bool, Vec<Literal>),
-    /// `<column> [not] between <low> and <high>` with the `between` position.
-    Between(Name, bool, Pos, Literal, Literal),
     /// `<column> is [not] null`.
     IsNull(Name, bool),
 }
@@ -211,11 +205,16 @@ pub(crate) struct Literal {
 }
 
 impl Expr {
+    /// `op` predicate의 한 side인 이 expression이 `and` 안의 `or`이라 괄호가
+    /// 필요한지 여부. tree는 그 밖의 괄호를 갖지 않는다.
+    pub fn needs_parentheses(&self, op: &str) -> bool {
+        op == "and" && matches!(self, Expr::Logic(_, "or", _))
+    }
+
     /// The column references of the expression in source order.
     pub fn columns<'e>(&'e self, out: &mut Vec<&'e Name>) {
         match self {
-            Expr::Column(name) | Expr::In(name, _, _) | Expr::Between(name, _, _, _, _) | Expr::IsNull(name, _) => out.push(name),
-            Expr::Paren(inner) | Expr::Not(inner) => inner.columns(out),
+            Expr::In(name, _, _) | Expr::IsNull(name, _) => out.push(name),
             Expr::Logic(left, _, right) => {
                 left.columns(out);
                 right.columns(out);
@@ -233,8 +232,7 @@ impl Expr {
     /// The literals of the expression in source order.
     pub fn literals_mut<'e>(&'e mut self, out: &mut Vec<&'e mut Literal>) {
         match self {
-            Expr::Column(_) | Expr::IsNull(_, _) => {}
-            Expr::Paren(inner) | Expr::Not(inner) => inner.literals_mut(out),
+            Expr::IsNull(_, _) => {}
             Expr::Logic(left, _, right) => {
                 left.literals_mut(out);
                 right.literals_mut(out);
@@ -247,7 +245,6 @@ impl Expr {
                 }
             }
             Expr::In(_, _, list) => out.extend(list.iter_mut()),
-            Expr::Between(_, _, _, low, high) => out.extend([low, high]),
         }
     }
 }

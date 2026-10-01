@@ -257,10 +257,10 @@ func TestCanonicalForms(t *testing.T) {
 		{
 			id: "check-expressions",
 			input: with(block("table v {", "  id i64 identity", "  s varchar(8) null", "  n decimal(5,2)", "  primary key (id)",
-				"  check ck_b (s   not in('a','b''c') and(n between -01.50 and 2))", "  check ck_a (not(id>=0)or s is not null or 2.5<>n)",
+				"  check ck_b (s   not in('a','b''c') and(n >= -01.50 and n<=2))", "  check ck_a ((id>=0)or s is not null or 2.5<>n)",
 				"  check ck_c (s is null)", "}")),
 			want: with(block("table v {", "  id i64 identity", "  s varchar(8) null", "  n decimal(5,2)", "  primary key (id)",
-				"  check ck_a (not (id >= 0) or s is not null or 2.50 <> n)", "  check ck_b (s not in ('a', 'b''c') and (n between -1.50 and 2.00))",
+				"  check ck_a (id >= 0 or s is not null or 2.50 <> n)", "  check ck_b (s not in ('a', 'b''c') and n >= -1.50 and n <= 2.00)",
 				"  check ck_c (s is null)", "}")),
 		},
 		{

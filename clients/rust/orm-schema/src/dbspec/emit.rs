@@ -202,22 +202,12 @@ fn setting_text(setting: &Setting) -> String {
 
 fn emit_expr(out: &mut String, expr: &Expr) {
     match expr {
-        Expr::Column(name) => out.push_str(&name.text),
-        Expr::Paren(inner) => {
-            out.push('(');
-            emit_expr(out, inner);
-            out.push(')');
-        }
-        Expr::Not(inner) => {
-            out.push_str("not ");
-            emit_expr(out, inner);
-        }
         Expr::Logic(left, op, right) => {
-            emit_expr(out, left);
+            emit_side(out, op, left);
             out.push(' ');
             out.push_str(op);
             out.push(' ');
-            emit_expr(out, right);
+            emit_side(out, op, right);
         }
         Expr::Compare(left, op, _, right) => {
             emit_operand(out, left);
@@ -237,17 +227,21 @@ fn emit_expr(out: &mut String, expr: &Expr) {
             }
             out.push(')');
         }
-        Expr::Between(column, negated, _, low, high) => {
-            out.push_str(&column.text);
-            out.push_str(if *negated { " not between " } else { " between " });
-            out.push_str(&low.text);
-            out.push_str(" and ");
-            out.push_str(&high.text);
-        }
         Expr::IsNull(column, negated) => {
             out.push_str(&column.text);
             out.push_str(if *negated { " is not null" } else { " is null" });
         }
+    }
+}
+
+/// `op` predicate의 `side`를 쓰며, `and` 안의 `or`이면 괄호로 감싼다.
+fn emit_side(out: &mut String, op: &str, side: &Expr) {
+    if side.needs_parentheses(op) {
+        out.push('(');
+        emit_expr(out, side);
+        out.push(')');
+    } else {
+        emit_expr(out, side);
     }
 }
 

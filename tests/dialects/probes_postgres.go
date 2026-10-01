@@ -271,6 +271,15 @@ func postgresProbes() []Probe {
 			e.Exec("CREATE TABLE t (v text, CONSTRAINT ck CHECK (v IN ('x','y')))")
 			e.Want("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'ck'", "CHECK ((v = ANY (ARRAY['x'::text, 'y'::text])))")
 		}),
+		p("check.between_rewritten", "pg_get_constraintdef rewrites BETWEEN as two comparisons and NOT BETWEEN as their negation", func(e *Env) {
+			e.Exec("CREATE TABLE t (a integer, CONSTRAINT ck1 CHECK (a BETWEEN -5 AND 5), CONSTRAINT ck2 CHECK (a NOT BETWEEN 1 AND 2))")
+			e.WantRows("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 't'::regclass AND contype = 'c' ORDER BY conname",
+				"CHECK (((a >= '-5'::integer) AND (a <= 5))),CHECK (((a < 1) OR (a > 2)))")
+		}),
+		p("check.not_kept", "pg_get_constraintdef keeps NOT over a comparison", func(e *Env) {
+			e.Exec("CREATE TABLE t (a integer, CONSTRAINT ck CHECK (NOT (a > 3)))")
+			e.Want("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 't'::regclass AND contype = 'c'", "CHECK ((NOT (a > 3)))")
+		}),
 		p("check.nondeterministic_allowed", "a CHECK may call now()", func(e *Env) {
 			e.Exec("CREATE TABLE t (d timestamptz, CONSTRAINT ck CHECK (d < now()))")
 		}),
