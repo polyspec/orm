@@ -46,3 +46,16 @@ test('a shorter output differs at its end', () => {
 test('an empty output is a difference, not an agreement', () => {
   assert.throws(() => compare([{ name: 'go 1', output: '' }]), /go 1 printed no case/);
 });
+
+test('a different Mermaid dropped object names its case', () => {
+  const go = 'mermaid/import/a\n| dbspec 1 imported\n= index\tb\tix_b_a_id\n';
+  const ts = go.replace('= index\tb\tix_b_a_id\n', '= index\tb\tix_b_a_id\n= index\tb\tix_b_a_id\n');
+  assert.deepEqual(compare([{ name: 'go 1', output: go }, { name: 'typescript 1', output: ts }]), {
+    reference: 'go 1',
+    other: 'typescript 1',
+    case: 'mermaid/import/a',
+    line: 4,
+    expected: '(end of output)',
+    actual: '= index\tb\tix_b_a_id',
+  });
+});

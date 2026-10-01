@@ -3,15 +3,15 @@
 declare(strict_types=1);
 
 // Prints the PHP dbspec result of every shared case, of the stress document,
-// of the statement vectors and of the plan vectors in the line format of
-// tests/dbspec/compare/check.mjs.
+// of the statement vectors, of the plan vectors and of the Mermaid vectors in
+// the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json>
+// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 
-if ($argc !== 5) {
-    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json>\n");
+if ($argc !== 6) {
+    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>\n");
     exit(2);
 }
 
@@ -278,4 +278,76 @@ foreach ($plans['parse'] as $case) {
         continue;
     }
     dbspec_emitted_plan($parsed->plan);
+}
+
+/** Prints what an export or import left out as "= kind<TAB>table<TAB>name"; reasons are not compared. @param list<Orm\Dbspec\Unsupported> $dropped */
+function dbspec_dropped(array $dropped): void
+{
+    foreach ($dropped as $u) {
+        echo "= {$u->kind}\t{$u->table}\t{$u->name}\n";
+    }
+}
+
+/** Prints the Mermaid text and the dropped objects of a document and returns the text. */
+function dbspec_export(Orm\Dbspec\Document $document): string
+{
+    $result = Orm\Dbspec\Dbspec::exportMermaid($document);
+    foreach (explode("\n", $result->text) as $line) {
+        echo "| $line\n";
+    }
+    dbspec_dropped($result->dropped);
+    return $result->text;
+}
+
+/** Prints the emitted document and the dropped objects of an import, or its diagnostics. */
+function dbspec_import(string $text): void
+{
+    $result = Orm\Dbspec\Dbspec::importMermaid($text, 'imported');
+    if ($result->document === null) {
+        dbspec_plan_diagnostics($result->diagnostics);
+        return;
+    }
+    foreach (explode("\n", Orm\Dbspec\Dbspec::emit($result->document)) as $line) {
+        echo "| $line\n";
+    }
+    dbspec_dropped($result->dropped);
+}
+
+$mermaidText = file_get_contents($argv[5]);
+if ($mermaidText === false) {
+    fwrite(STDERR, "{$argv[5]}: cannot be read\n");
+    exit(1);
+}
+$mermaid = json_decode($mermaidText, true, 512, JSON_THROW_ON_ERROR);
+foreach ($mermaid['export'] as $case) {
+    echo "mermaid/export/{$case['id']}\n";
+    $set = array_map(static fn(array $lines): string => dbspec_join($lines, false, false), $case['documents']);
+    $parsed = Orm\Dbspec\Dbspec::parse(dbspec_join($case['document'], false, false), $set);
+    if ($parsed->document === null) {
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        continue;
+    }
+    dbspec_export($parsed->document);
+}
+foreach (['import', 'invalid'] as $kind) {
+    foreach ($mermaid[$kind] as $case) {
+        echo "mermaid/$kind/{$case['id']}\n";
+        dbspec_import(dbspec_join($case['mermaid'], false, false));
+    }
+}
+foreach ($mermaid['round_trip'] as $case) {
+    echo "mermaid/round_trip/{$case['id']}\n";
+    $source = file_get_contents($case['path']);
+    if ($source === false) {
+        fwrite(STDERR, "{$case['path']}: cannot be read\n");
+        exit(1);
+    }
+    $parsed = Orm\Dbspec\Dbspec::parse($source, []);
+    if ($parsed->document === null) {
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        continue;
+    }
+    $text = dbspec_export($parsed->document);
+    echo "mermaid/round_trip/{$case['id']}/import\n";
+    dbspec_import($text);
 }

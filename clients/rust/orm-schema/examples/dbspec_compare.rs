@@ -1,10 +1,10 @@
 //! Prints the Rust dbspec result of every shared case, of the stress
-//! document, of the statement vectors and of the plan vectors in the line
-//! format of tests/dbspec/compare/check.mjs.
+//! document, of the statement vectors, of the plan vectors and of the Mermaid
+//! vectors in the line format of tests/dbspec/compare/check.mjs.
 //!
-//! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json>`
+//! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
 
-use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan};
+use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, Unsupported};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -241,7 +241,88 @@ fn write_plans(out: &mut impl Write, plans: &Value) -> std::io::Result<()> {
     Ok(())
 }
 
-fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str) -> Result<(), String> {
+/// Prints what an export or import left out as `= kind<TAB>table<TAB>name`;
+/// reasons are not compared.
+fn write_dropped(out: &mut impl Write, dropped: &[Unsupported]) -> std::io::Result<()> {
+    for u in dropped {
+        writeln!(out, "= {}\t{}\t{}", u.kind, u.table, u.name)?;
+    }
+    Ok(())
+}
+
+/// Prints the Mermaid text and the dropped objects of a document and returns the text.
+fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<String> {
+    let (text, dropped) = orm_schema::dbspec::export_mermaid(document);
+    for line in text.split('\n') {
+        writeln!(out, "| {line}")?;
+    }
+    write_dropped(out, &dropped)?;
+    Ok(text)
+}
+
+/// Prints the emitted document and the dropped objects of an import, or its diagnostics.
+fn write_import(out: &mut impl Write, text: &str) -> std::io::Result<()> {
+    match orm_schema::dbspec::import_mermaid(text, "imported") {
+        Err(diagnostics) => write_plan_diagnostics(out, &diagnostics),
+        Ok((document, dropped)) => {
+            for line in orm_schema::dbspec::emit(&document).split('\n') {
+                writeln!(out, "| {line}")?;
+            }
+            write_dropped(out, &dropped)
+        }
+    }
+}
+
+/// The array `key` of `value`, or an error that names it.
+fn array<'v>(value: &'v Value, key: &str) -> Result<&'v Vec<Value>, String> {
+    value[key].as_array().ok_or_else(|| format!("mermaid vectors: {key} is not an array"))
+}
+
+/// The string `key` of `value`, or an error that names it.
+fn string<'v>(value: &'v Value, key: &str) -> Result<&'v str, String> {
+    value[key].as_str().ok_or_else(|| format!("mermaid vectors: {key} is not a string"))
+}
+
+/// Prints every export case, every import and invalid case, and every round
+/// trip case: the export of its document, then `<case>/import` with the
+/// import of that export.
+fn write_mermaid(out: &mut impl Write, mermaid: &Value) -> Result<(), String> {
+    let io = |e: std::io::Error| e.to_string();
+    for case in array(mermaid, "export")? {
+        writeln!(out, "mermaid/export/{}", string(case, "id")?).map_err(io)?;
+        let documents = case["documents"].as_object().ok_or("mermaid vectors: documents is not an object")?;
+        let set = documents.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
+        match orm_schema::dbspec::parse(&join(&case["document"], false, false), &set) {
+            Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
+            Ok(document) => {
+                write_export(out, &document).map_err(io)?;
+            }
+        }
+    }
+    for kind in ["import", "invalid"] {
+        for case in array(mermaid, kind)? {
+            writeln!(out, "mermaid/{kind}/{}", string(case, "id")?).map_err(io)?;
+            write_import(out, &join(&case["mermaid"], false, false)).map_err(io)?;
+        }
+    }
+    for case in array(mermaid, "round_trip")? {
+        let id = string(case, "id")?;
+        writeln!(out, "mermaid/round_trip/{id}").map_err(io)?;
+        let path = string(case, "path")?;
+        let source = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+        match orm_schema::dbspec::parse(&source, &BTreeMap::new()) {
+            Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
+            Ok(document) => {
+                let text = write_export(out, &document).map_err(io)?;
+                writeln!(out, "mermaid/round_trip/{id}/import").map_err(io)?;
+                write_import(out, &text).map_err(io)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
     let cases: Value =
         serde_json::from_str(&std::fs::read_to_string(cases_path).map_err(|e| format!("{cases_path}: {e}"))?).map_err(|e| format!("{cases_path}: {e}"))?;
     let stress = std::fs::read_to_string(stress_path).map_err(|e| format!("{stress_path}: {e}"))?;
@@ -277,16 +358,19 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str) ->
     let plans: Value =
         serde_json::from_str(&std::fs::read_to_string(plans_path).map_err(|e| format!("{plans_path}: {e}"))?).map_err(|e| format!("{plans_path}: {e}"))?;
     write_plans(&mut out, &plans).map_err(io)?;
+    let mermaid: Value = serde_json::from_str(&std::fs::read_to_string(mermaid_path).map_err(|e| format!("{mermaid_path}: {e}"))?)
+        .map_err(|e| format!("{mermaid_path}: {e}"))?;
+    write_mermaid(&mut out, &mermaid)?;
     out.flush().map_err(io)
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [cases, stress, ddl, plans] = args.as_slice() else {
-        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plans.json>");
+    let [cases, stress, ddl, plans, mermaid] = args.as_slice() else {
+        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>");
         return ExitCode::from(2);
     };
-    match run(cases, stress, ddl, plans) {
+    match run(cases, stress, ddl, plans, mermaid) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");

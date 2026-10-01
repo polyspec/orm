@@ -183,8 +183,8 @@ dbspec-introspect-compare-check:
 
 # dbspec-compare-check runs the Go, PHP, TypeScript and Rust dbspec runners
 # twice each on tests/dbspec/cases.json, the stress document,
-# tests/dbspec/ddl.json and tests/dbspec/plans.json and fails on the first
-# case whose output differs between any two runs.
+# tests/dbspec/ddl.json, tests/dbspec/plans.json and tests/dbspec/mermaid.json
+# and fails on the first case whose output differs between any two runs.
 .PHONY: dbspec-compare-check
 dbspec-compare-check:
 	node --test tests/dbspec/compare/check.test.mjs
@@ -192,7 +192,7 @@ dbspec-compare-check:
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare
-	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json
+	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
 
 dbspec-rust-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
