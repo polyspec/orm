@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.2.6.1.3: Korean protocol 문서가 manifest 절을 ASCII anchor로 가리킨다.
+
 - T8.7.2: Go engine은 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
 
 - T8.7.1: docs/mermaid.md가 표준 Mermaid export와 import, 그리고 각각 빼는 것의 목록을 정한다.
