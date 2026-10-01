@@ -34,6 +34,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [ ] T8.6 Apply plans with lock, step journal, step events, verification and recovery in every client (requires T8.5). Acceptance: apply then introspect then diff is empty on all three databases; an interrupted non-transactional step is detected from the catalog.
 - [ ] T8.7 Export standard Mermaid `erDiagram` and import it with a complete list of dropped information (requires T8.2).
 - [ ] T8.8 Merge `feat/dbspec-T8` into `main` and remove the worktree (requires T8.0–T8.7). Acceptance: obsolete development rules (`auto`, `COLUMN_UNSELECTED`, Mermaid as source, full-suite timing) are rewritten.
+- [ ] T9 Implement the dbspec interface in a PHP extension as a fifth implementation of the same contract (requires T8.2.5). Cause: a native PHP extension is planned; it must satisfy `Dbspec.parse`, `Dbspec.emit` and `DbspecDiagnostic` and every shared case like the other clients.
 
 ## Physical schema completion
 
