@@ -3,10 +3,13 @@ use orm_schema::{
     physical_graph::PhysicalGraph,
 };
 use serde_json::Value;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 #[test]
 fn physical_document() {
-    let start = Instant::now();
+    let start = CaseClock::start();
     println!("RUN physical-document");
     let f: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_document.json")).unwrap();
     let records: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graph_records.json")).unwrap();
@@ -51,6 +54,6 @@ fn physical_document() {
     }
     let empty = PhysicalGraph::from_value(v.clone()).unwrap();
     assert_eq!(parse(emit(&empty, "", "", "\n").unwrap().as_bytes()).unwrap().graph.value(), &v);
-    println!("PASS physical-document {:?}", start.elapsed());
-    assert!(start.elapsed() < Duration::from_secs(15));
+    println!("PASS physical-document {:?}", start.wall());
+    start.assert_within("physical-document", Duration::from_secs(15));
 }

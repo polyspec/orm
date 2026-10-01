@@ -93,11 +93,15 @@ func main() {
 	fmt.Fprintf(os.Stderr, "go: client p50 %dµs, native p50 %dµs (%d iterations)\n", client, native, iterations)
 }
 
+// dsn은 시드된 bench database를 가리키는 ORM_BENCH_MYSQL_DSN이다. 없거나 비어
+// 있으면 연결하지 않고 그 변수 이름을 출력하며 끝난다.
 func dsn() string {
-	if v := os.Getenv("ORM_BENCH_MYSQL_DSN"); v != "" {
-		return v
+	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
+	if v == "" {
+		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database")
+		os.Exit(1)
 	}
-	return "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock"
+	return v
 }
 
 func nativeDSN(raw string) string {

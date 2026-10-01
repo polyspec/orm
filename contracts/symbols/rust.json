@@ -3070,6 +3070,7 @@
   "clients/rust/orm/src/tx.rs::raw_on_conn": " async fn raw_on_conn (conn : \u0026 mut sqlx :: MySqlConnection , sql : \u0026 str) -\u003e Result \u003c () \u003e",
   "clients/rust/orm/src/tx.rs::resolve": "pub (crate) fn resolve (conn : \u0026 Option \u003c Db \u003e) -\u003e Result \u003c Executor \u003e",
   "clients/rust/orm/src/tx.rs::rollback": " async fn rollback (tx : \u0026 TxShared) -\u003e Result \u003c () \u003e",
+  "clients/rust/orm/src/tx.rs::rollback_and_resume": " async fn rollback_and_resume (tx : \u0026 TxShared , payload : Box \u003c dyn std :: any :: Any + Send \u003e) -\u003e std :: convert :: Infallible",
   "clients/rust/orm/src/tx.rs::savepoint": " async fn savepoint \u003c T , F \u003e (tx : Arc \u003c TxShared \u003e , f : \u0026 F) -\u003e Result \u003c T \u003e where F : AsyncFn () -\u003e Result \u003c T \u003e ,",
   "clients/rust/orm/src/tx.rs::savepoint_once": " async fn savepoint_once \u003c F , T , E \u003e (tx : Arc \u003c TxShared \u003e , f : F) -\u003e std :: result :: Result \u003c T , TransactionOnceError \u003c E \u003e \u003e where F : AsyncFnOnce () -\u003e std :: result :: Result \u003c T , E \u003e ,",
   "clients/rust/orm/src/tx.rs::savepoint_send": " async fn savepoint_send \u003c 'a , 'b , T \u003e (tx : Arc \u003c TxShared \u003e , f : \u0026 'b SendOperation \u003c 'a , T \u003e) -\u003e Result \u003c T \u003e where 'a : 'b , T : Send + 'a ,",

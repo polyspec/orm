@@ -32,13 +32,11 @@ func TestPhysicalEnvelope(t *testing.T) {
 	check := func(id, text string, reject bool, line int, before, body, after string) {
 		t.Helper()
 		t.Run(id, func(t *testing.T) {
-			start := time.Now()
+			start := startCaseClock(t)
 			t.Log("RUN", id)
 			defer func() {
-				t.Log("DONE", id, time.Since(start))
-				if time.Since(start) > 15*time.Second {
-					t.Fatal("deadline exceeded")
-				}
+				t.Log("DONE", id, start.wallTime())
+				start.assertWithin(t, id, 15*time.Second)
 			}()
 			r, e := LocatePhysicalEnvelope([]byte(text))
 			if reject {

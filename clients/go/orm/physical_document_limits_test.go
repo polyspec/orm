@@ -39,7 +39,7 @@ func TestPhysicalDocumentLimits(t *testing.T) {
 	for _, kind := range []string{"bytes", "lines", "blocks"} {
 		for extra := 0; extra < 2; extra++ {
 			t.Run(kind+string(rune('0'+extra)), func(t *testing.T) {
-				started := time.Now()
+				started := startCaseClock(t)
 				t.Log("RUN", kind, extra)
 				n := resources.Limits[kind] + extra
 				var source []byte
@@ -70,10 +70,8 @@ func TestPhysicalDocumentLimits(t *testing.T) {
 						t.Fatal("changed document")
 					}
 				}
-				if time.Since(started) > 15*time.Second {
-					t.Fatal("deadline exceeded")
-				}
-				t.Log("PASS", kind, extra, time.Since(started))
+				started.assertWithin(t, kind+string(rune('0'+extra)), 15*time.Second)
+				t.Log("PASS", kind, extra, started.wallTime())
 			})
 		}
 	}

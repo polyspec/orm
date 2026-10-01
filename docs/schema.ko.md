@@ -307,8 +307,12 @@ Go/PHP/TypeScript의 PhysicalGraphError와 Rust의 GraphError다. 최상위 형�
 개수 3개·합계 개수 1개·독립적으로 계산한 새 목록 바이트 제한 3개를 실행한다.
 연결된 테이블 2000개/컬럼 60000개/FK 10000개에 인덱스·키·CHECK를 각각
 2000개 유지한다. 이 사례들과 모든 레코드 회귀를 각 언어에서 두 번 실행한다.
-소유 테스트가 시간과 그래프 테스트
-15초 제한을 보고한다. 생성과 검증 시간을 분리하고 Rust는 debug 빌드다. PHP는
+소유 테스트가 시간을 보고하고 그래프 테스트
+15초 제한을 CPU 시간으로 확인한다. Rust는 case를 실행한 thread의 CPU 시간,
+Go와 PHP는 test를 하나씩 실행하는 test process의 CPU 시간이다. wall-clock
+시간은 보고만 하고 제한하지 않는다. 공유 machine에서는 다른 process가
+processor를 쓰는 시간도 담기 때문이다. TypeScript는 각 case를 15초
+`node:test` timeout으로 제한한다. 생성과 검증 시간을 분리하고 Rust는 debug 빌드다. PHP는
 프로세스 최대 할당 바이트와 바꾸지 않은 메모리 제한을 보고하며 상주 메모리나
 다른 런타임의 메모리 측정은 아니다. 구조적 그래프 테스트이며 SQL 방언 검증·
 DB의 증거가 아니다.

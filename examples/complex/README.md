@@ -7,11 +7,11 @@ One statement with the main parts of the grammar, in three languages, printing t
 - a column selection (`removeAllColumns()` + `addColumn<Col>()`),
 - aggregates on the same data: a grouped count, a sum, an average, and a page.
 
-The programs read the seeded MySQL bench database. Every program takes the DSN from `ORM_BENCH_MYSQL_DSN`; the default is `mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock`.
+The programs read the seeded MySQL bench database. Every program takes the DSN from `ORM_BENCH_MYSQL_DSN` and exits with status 1 without connecting when it is unset or empty.
 
 ```sh
 go run ./examples/complex/go > go.json
-php examples/complex/php/main.php "$PWD/schema/schema.json" > php.json
+php examples/complex/php/main.php > php.json
 (cd clients/rust && cargo build --release -p orm-tests) && clients/rust/target/release/complex > rust.json
 diff go.json php.json && diff go.json rust.json                      # identical
 ```

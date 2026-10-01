@@ -1,8 +1,11 @@
 use orm_schema::physical_envelope::locate;
 use serde_json::Value;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 fn check(id: &str, text: &[u8], reject: bool, line: usize) -> Option<orm_schema::physical_envelope::Envelope> {
-    let start = Instant::now();
+    let start = CaseClock::start();
     println!("RUN {id}");
     let result = locate(text);
     let out = if reject {
@@ -13,8 +16,8 @@ fn check(id: &str, text: &[u8], reject: bool, line: usize) -> Option<orm_schema:
     } else {
         Some(result.unwrap())
     };
-    println!("PASS {id} {:?}", start.elapsed());
-    assert!(start.elapsed() < Duration::from_secs(15));
+    println!("PASS {id} {:?}", start.wall());
+    start.assert_within(id, Duration::from_secs(15));
     out
 }
 #[test]

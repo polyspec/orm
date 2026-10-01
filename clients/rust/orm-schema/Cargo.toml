@@ -15,3 +15,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 regex = "1"
+
+[dev-dependencies]
+# graph test가 thread CPU 시간을 읽는 clock_gettime(CLOCK_THREAD_CPUTIME_ID)이다.
+libc = "0.2"

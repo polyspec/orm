@@ -1,16 +1,17 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/autoload.php';
+require __DIR__.'/process_cpu.php';
 $f=json_decode(file_get_contents(__DIR__.'/../../../contracts/fixtures/physical_envelope.json'),true,512,JSON_THROW_ON_ERROR);
 if(count($f['cases'])!==21)throw new RuntimeException('Missing cases');
 $check=function(array $c):void {
- $start=hrtime(true);echo 'RUN '.$c['id']."\n";
+ $start=hrtime(true);$startCpu=processCpuNs();echo 'RUN '.$c['id']."\n";
  try {
   $r=Orm\PhysicalEnvelope::locate($c['text']);
   if($c['reject']??false)throw new RuntimeException('Accepted invalid source');
   if(!isset($c['bounds'])&&(substr($c['text'],0,$r['start'])!==$c['before']||substr($c['text'],$r['body'],$r['close']-$r['body'])!==$c['body']||substr($c['text'],$r['end'])!==$c['after']))throw new RuntimeException('Source changed');
  }catch(Orm\PhysicalEnvelopeError $e){if(!($c['reject']??false)||$e->getMessage()!=='SCHEMA_INVALID'||$e->line()!==$c['line'])throw new RuntimeException('Wrong diagnostic');}
- if(hrtime(true)-$start>15e9)throw new RuntimeException('Deadline exceeded');echo 'PASS '.$c['id'].' '.((hrtime(true)-$start)/1e6)." ms\n";
+ $cpu=processCpuNs()-$startCpu;if($cpu>=15e9)throw new RuntimeException('Deadline exceeded: process CPU '.($cpu/1e6).' ms');echo 'PASS '.$c['id'].' '.((hrtime(true)-$start)/1e6).' ms cpu='.($cpu/1e6)." ms\n";
 };
 foreach($f['cases']as$c)$check($c);
 $html=json_decode(file_get_contents(__DIR__.'/../../../contracts/fixtures/physical_html.json'),true,512,JSON_THROW_ON_ERROR);

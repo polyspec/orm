@@ -11,13 +11,11 @@ import (
 )
 
 func TestPhysicalGraphLimits(t *testing.T) {
-	started := time.Now()
+	started := startCaseClock(t)
 	t.Log("RUN physical_graph_limits")
 	defer func() {
-		t.Logf("DONE physical_graph_limits %s", time.Since(started))
-		if time.Since(started) > 15*time.Second {
-			t.Fatal("graph deadline exceeded")
-		}
+		t.Logf("DONE physical_graph_limits %s", started.wallTime())
+		started.assertWithin(t, "physical_graph_limits", 15*time.Second)
 	}()
 	data, err := os.ReadFile("../../../contracts/fixtures/physical_graphs.json")
 	if err != nil {

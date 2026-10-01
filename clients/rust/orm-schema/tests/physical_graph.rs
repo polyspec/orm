@@ -1,12 +1,15 @@
 use orm_schema::physical_graph::PhysicalGraph;
 use serde_json::{json, Value};
 use std::time::{Duration, Instant};
+#[path = "common/case_clock.rs"]
+mod case_clock;
 #[path = "common/physical_graph_records.rs"]
 mod records;
+use case_clock::CaseClock;
 
 #[test]
 fn physical_graph_vectors() {
-    let started = Instant::now();
+    let started = CaseClock::start();
     println!("RUN physical_graph");
     let fixture: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graphs.json")).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
@@ -112,6 +115,6 @@ fn physical_graph_vectors() {
         validated.duration_since(generated),
         scale_started.elapsed()
     );
-    assert!(started.elapsed() < Duration::from_secs(15));
-    println!("PASS physical_graph 28 vectors {:?}", started.elapsed());
+    started.assert_within("physical_graph", Duration::from_secs(15));
+    println!("PASS physical_graph 28 vectors {:?}", started.wall());
 }
