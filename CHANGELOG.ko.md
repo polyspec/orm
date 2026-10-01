@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.7.2: Go engine은 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
+
 - T8.7.1: docs/mermaid.md가 표준 Mermaid export와 import, 그리고 각각 빼는 것의 목록을 정한다.
 
 - T8.6.2: Go engine은 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용한다.
