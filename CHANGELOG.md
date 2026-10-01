@@ -1,5 +1,10 @@
 # Changelog
 
+Define the dbspec manifest text, schema text, `manifestHash` and
+`schemaHash`, and make the document set the only schema source with no
+separate manifest file; three shared cases lock the texts and hashes
+(T8.2.6.1).
+
 Add `make dbspec-compare-check`, which runs the Go, PHP, TypeScript and
 Rust dbspec clients twice each on the shared cases and the stress
 document and fails on any difference in emission or diagnostics

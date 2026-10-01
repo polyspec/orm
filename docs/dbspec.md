@@ -142,7 +142,7 @@ Codec stages run in the written order on write. The storage type follows the las
 | `immutable` | The database rejects `UPDATE` and `DELETE` of the table's rows with generated row triggers. `TRUNCATE` is not covered. Rejected on a child of a `cascade` or `set_null` foreign key | schema |
 | `audit into <history table> operation <column> action <history column> previous <history column>` | Generated row triggers copy every `INSERT` and `UPDATE` into the history table; see [Audit](#audit) | schema |
 
-`schemaHash` covers the tables' definitions and the settings marked schema; it changes exactly when the database must change. `manifestHash` covers the definitions and every setting; generated code checks it. Diagrams and comments belong to neither.
+`schemaHash` covers the tables' definitions and the settings marked schema; it changes exactly when the database must change. `manifestHash` covers the definitions and every setting; generated code checks it. Diagrams and comments belong to neither; [Manifest and hashes](#manifest-and-hashes) defines both.
 
 ### Audit
 
@@ -180,6 +180,16 @@ table service_history {
 - **Triggers.** An `AFTER INSERT` row trigger writes `action = 'insert'`, `previous = NULL` and every `NEW` value. An `AFTER UPDATE` row trigger writes `action = 'update'`, `previous = OLD.<operation column>` and every `NEW` value. A `BEFORE DELETE` row trigger rejects the delete. Values are copied column to column, so the history row is equal on the three databases; no row is serialized as JSON.
 - **Deleting.** An audited table requires a `soft_delete` setting: a delete is an `UPDATE` of the soft delete column, which the history records with its operation. A physical `DELETE` fails.
 - **Limits.** The setting is rejected on a child of a `cascade` or `set_null` foreign key, because MySQL triggers do not fire for rows changed by a foreign key action. `TRUNCATE` is not covered. Raw SQL that does not write the operation column records the previous operation's id again; the executor is the only writer that sets it. Creating the triggers on MySQL with binary logging needs `SUPER` or `log_bin_trust_function_creators=ON`, which apply checks first.
+
+## Manifest and hashes
+
+The declared document set is the only schema source. Generators, schema tools and schema installation read dbspec documents; no other manifest file exists.
+
+- The **manifest text** of a document is its canonical emission with every comment and every diagram removed. The manifest text of a document set is the manifest texts of its documents in document name order, concatenated; each starts with its header and ends with a line end, so the concatenation is unambiguous.
+- The **schema text** is the manifest text with every setting removed except `immutable` and `audit`; a `settings` block left empty is omitted, as in canonical form.
+- `manifestHash` is `sha256:` followed by the lower-case hexadecimal SHA-256 of the UTF-8 bytes of the manifest text; `schemaHash` is the same over the schema text.
+
+Generated code carries the manifest text of the document set it was generated from and its `manifestHash`, and every request it sends carries that hash. A runtime builds its model from the embedded text once, when the process starts; the PHP generator writes that model as PHP arrays instead, so the opcode cache keeps it and no request parses the text. `schemaHash` identifies the database state that migration plans and their history record.
 
 ## Diagrams
 

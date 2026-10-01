@@ -1,5 +1,9 @@
 # 변경 이력
 
+dbspec manifest text, schema text, `manifestHash`, `schemaHash`를
+정하고, 별도 manifest 파일 없이 문서 집합을 유일한 schema 원천으로
+한다. 공유 case 3개가 text와 hash를 고정한다(T8.2.6.1).
+
 Go, PHP, TypeScript, Rust dbspec client를 공유 case와 부하 문서에
 각각 두 번 실행하고 emission이나 diagnostic이 하나라도 다르면 실패하는
 `make dbspec-compare-check`를 더한다(T8.2.5). 이제 `make check`가 모든
