@@ -371,4 +371,6 @@ literal은 만나는 column의 값으로 읽어 canonical default 형식으로 �
 
 미지원 객체마다 kind, 있으면 table과 이름, 이유를 보고하며 문서에서는 뺀다. 목록은 table, kind, 이름 순이고 table이 없는 객체가 먼저 온다. kind는 `column`, `index`, `unique`, `foreign_key`, `check`, `trigger`(parse되지 않는 `immutable`이나 `audit` setting마다 하나), `view`, `routine`, `sequence`, `event`, `partition`(MySQL이나 PostgreSQL의 partitioned table과 PostgreSQL partition), `table`(SQLite `WITHOUT ROWID`나 virtual table, primary key가 없는 table)이다.
 
-빠진 객체를 참조하는 객체도 보고하고 뺀다. 미지원 column 위의 index나 key, 빠진 table로 가는 foreign key, 미지원 column을 쓰는 check가 그렇다. introspect한 문서는 parse되며, parse가 거부한 줄의 객체는 그 diagnostic을 이유로 보고되고 빠진다. 문서가 parse될 때까지 반복한다.
+빠진 객체를 참조하는 객체도 보고하고 뺀다. 미지원 column 위의 index나 key, 빠진 table로 가는 foreign key, 미지원 column을 쓰는 check가 그렇다. introspect한 문서는 parse되며, parse가 거부한 줄의 객체는 그 diagnostic을 이유로 보고되고 빠진다. 문서가 parse될 때까지 반복한다. parse가 table을 거부하면 그 table은 모든 객체와 함께 빠지고, 같은 parse에서 거부된 그 table의 객체는 따로 보고하지 않는다. 각 객체는 한 번만 보고한다. catalog row가 column마다 하나인 foreign key도 그렇다.
+
+SQLite는 table 항목을 `CREATE TABLE` text에서 읽는다. column 정의는 renderer 형식, 곧 따옴표 친 이름, 선언 type, `NULL`이나 `NOT NULL`, 있으면 default일 때 읽는다. 다른 clause(`CHECK`, `REFERENCES`, `UNIQUE`, `COLLATE` 등)가 있는 column은 미지원이다. renderer 형식이 아닌 `CHECK`, `UNIQUE`, `FOREIGN KEY` 항목은 그 kind와 constraint 이름을 붙여 보고하며, 이름이 없으면 빈 이름이다. `UNIQUE` 항목이나 clause의 자동 index는 따로 보고하지 않는다. 다른 형식의 primary key 항목과 그 밖의 항목은 table을 빼게 한다.

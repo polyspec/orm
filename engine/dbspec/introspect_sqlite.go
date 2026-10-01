@@ -29,6 +29,7 @@ var (
 	sqlitePrimaryKeyItem  = regexp.MustCompile(`^PRIMARY KEY \(([^)]*)\)$`)
 	sqliteIdentityColumn  = regexp.MustCompile(`^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$`)
 	sqliteColumnItem      = regexp.MustCompile(`^"([^"]+)" `)
+	sqliteConstraintItem  = regexp.MustCompile(`^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b`)
 	sqliteNumberDefault   = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
 )
 
@@ -39,6 +40,9 @@ type sqliteTable struct {
 	fks      []ifk
 	primary  []string
 	identity string
+	columns  map[string]string // 이름: column 정의 text
+	// unsupported가 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+	unsupported string
 }
 
 func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
@@ -57,6 +61,10 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 				return nil
 			}
 			st, unsupported := parseSQLiteTable(text)
+			if st.unsupported != "" {
+				c.report("table", name, name, "%s", st.unsupported)
+				return nil
+			}
 			for _, u := range unsupported {
 				c.report(u.Kind, name, u.Name, "%s", u.Reason)
 			}
@@ -90,6 +98,10 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			return nil
 		}
 		col := icolumn{name: name, null: notNull == 0}
+		if st.identity != name && !sqliteColumnText(st.columns[name], name, declared, notNull != 0, dflt) {
+			c.report("column", table, name, "the column definition %q has clauses that dbspec does not read", st.columns[name])
+			return nil
+		}
 		check, hasCheck := st.checks[rendererCheckName(table, name)]
 		if st.identity == name {
 			col.typ, col.identity = Type{Kind: TypeI64}, true
@@ -142,7 +154,9 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			return err
 		}
 		t := c.table(table)
-		if t == nil || origin == "pk" {
+		// pk와 u origin index는 primary key와 unique 정의에서 나오며, 그 정의를
+		// 읽거나 보고한다.
+		if t == nil || origin == "pk" || origin == "u" {
 			return nil
 		}
 		list := strings.Split(columns, ",")
@@ -256,11 +270,12 @@ func sqliteDefault(r renderer, text string, typ Type) (string, bool) {
 // parseSQLiteTable은 renderer가 쓰는 한 줄 CREATE TABLE text에서 primary key,
 // identity, foreign key, check를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
 func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
-	st := &sqliteTable{checks: map[string]string{}}
+	st := &sqliteTable{checks: map[string]string{}, columns: map[string]string{}}
 	var unsupported []Unsupported
 	open := strings.IndexByte(text, '(')
 	if open < 0 || !strings.HasSuffix(text, ")") {
-		return st, []Unsupported{{Kind: "table", Reason: "the CREATE TABLE text has no column list"}}
+		st.unsupported = "the CREATE TABLE text has no column list"
+		return st, nil
 	}
 	for _, item := range splitTopLevel(text[open+1 : len(text)-1]) {
 		switch {
@@ -278,10 +293,22 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			m := sqliteCheckItem.FindStringSubmatch(item)
 			st.checks[m[1]] = m[2]
 			st.order = append(st.order, m[1])
+		case sqliteConstraintItem.MatchString(item):
+			// 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른
+			// 형식은 table을 읽지 못하게 한다.
+			m := sqliteConstraintItem.FindStringSubmatch(item)
+			kind := map[string]string{"CHECK": "check", "UNIQUE": "unique", "FOREIGN KEY": "foreign_key"}[m[2]]
+			if kind == "" {
+				st.unsupported = fmt.Sprintf("the primary key %q has no dbspec definition", item)
+				return st, nil
+			}
+			unsupported = append(unsupported, Unsupported{Kind: kind, Name: m[1], Reason: fmt.Sprintf("the table item %q has no dbspec definition", item)})
 		case sqliteColumnItem.MatchString(item):
-			// column 정의는 pragma_table_xinfo가 읽는다.
+			// 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
+			st.columns[sqliteColumnItem.FindStringSubmatch(item)[1]] = item
 		default:
-			unsupported = append(unsupported, Unsupported{Kind: "check", Name: item, Reason: fmt.Sprintf("the table item %q has no dbspec definition", item)})
+			st.unsupported = fmt.Sprintf("the table item %q has no dbspec definition", item)
+			return st, nil
 		}
 	}
 	return st, unsupported
@@ -319,4 +346,24 @@ func unquoteList(text string) []string {
 		out = append(out, strings.Trim(strings.TrimSpace(part), `"`))
 	}
 	return out
+}
+
+// sqliteColumnText는 column 정의 text가 renderer의 column 형식, 곧 이름, 선언
+// type, NULL이나 NOT NULL, 그리고 있으면 DEFAULT뿐인지 알려 준다. 그 밖의
+// clause(CHECK, REFERENCES, UNIQUE, COLLATE 등)가 있으면 false다. SQLite는
+// keyword인 type 이름을 대문자로 보고하므로 type은 대소문자 없이 비교한다.
+func sqliteColumnText(item, name, declared string, notNull bool, dflt sql.NullString) bool {
+	rest, ok := strings.CutPrefix(item, `"`+name+`" `)
+	if !ok || len(rest) < len(declared) || !strings.EqualFold(rest[:len(declared)], declared) {
+		return false
+	}
+	rest = rest[len(declared):]
+	tail := " NULL"
+	if notNull {
+		tail = " NOT NULL"
+	}
+	if !dflt.Valid {
+		return rest == tail
+	}
+	return rest == tail+" DEFAULT "+dflt.String || rest == tail+" DEFAULT ("+dflt.String+")"
 }

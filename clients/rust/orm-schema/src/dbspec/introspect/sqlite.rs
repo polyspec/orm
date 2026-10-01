@@ -38,6 +38,8 @@ static PRIMARY_KEY_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^PRIMAR
 static IDENTITY_COLUMN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$"#).expect("SQLite identity pattern"));
 static COLUMN_ITEM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^"([^"]+)" "#).expect("SQLite column pattern"));
+static CONSTRAINT_ITEM: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b"#).expect("SQLite constraint pattern"));
 static NUMBER_DEFAULT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").expect("SQLite number pattern"));
 
 /// CREATE TABLE text에서 읽은 constraint.
@@ -50,6 +52,10 @@ struct SqliteTable {
     fks: Vec<IForeignKey>,
     primary: Vec<String>,
     identity: String,
+    /// column 이름: 정의 text.
+    columns: BTreeMap<String, String>,
+    /// 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+    unsupported: String,
 }
 
 pub(super) fn read(results: &Results) -> Result<Catalog, String> {
@@ -65,6 +71,10 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
                     continue;
                 }
                 let (st, unsupported) = parse_table(&text);
+                if !st.unsupported.is_empty() {
+                    c.report("table", &name, &name, st.unsupported);
+                    continue;
+                }
                 for u in unsupported {
                     c.report(&u.kind, &name, &u.name, u.reason);
                 }
@@ -90,6 +100,11 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         let st = parsed.get_mut(&table).expect("table parsed above");
         if hidden != 0 {
             c.report("column", &table, &name, "a generated column has no dbspec definition");
+            continue;
+        }
+        let item = st.columns.get(&name).cloned().unwrap_or_default();
+        if st.identity != name && !column_text(&item, &name, &declared, not_null != 0, dflt.as_deref()) {
+            c.report("column", &table, &name, format!("the column definition {item:?} has clauses that dbspec does not read"));
             continue;
         }
         let check_name = renderer_check_name(&table, &name);
@@ -132,7 +147,8 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     for row in results.rows(INDEXES) {
         let (table, name, unique, origin, partial, columns, desc) =
             (row.text(0)?, row.text(1)?, row.int(2)?, row.text(3)?, row.int(4)?, row.text(5)?, row.text(6)?);
-        if !c.has_table(&table) || origin == "pk" {
+        // pk와 u origin index는 primary key와 unique 정의에서 나오며, 그 정의를 읽거나 보고한다.
+        if !c.has_table(&table) || origin == "pk" || origin == "u" {
             continue;
         }
         let list: Vec<String> = columns.split(',').map(str::to_owned).collect();
@@ -215,8 +231,8 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
     let mut st = SqliteTable::default();
     let mut unsupported = Vec::new();
     let (Some(open), true) = (text.find('('), text.ends_with(')')) else {
-        let reason = "the CREATE TABLE text has no column list".to_owned();
-        return (st, vec![Unsupported { kind: "table".to_owned(), table: String::new(), name: String::new(), reason }]);
+        st.unsupported = "the CREATE TABLE text has no column list".to_owned();
+        return (st, Vec::new());
     };
     for item in split_top_level(&text[open + 1..text.len() - 1]) {
         if let Some(m) = IDENTITY_COLUMN.captures(item) {
@@ -236,14 +252,46 @@ fn parse_table(text: &str) -> (SqliteTable, Vec<Unsupported>) {
         } else if let Some(m) = CHECK_ITEM.captures(item) {
             st.checks.insert(group(&m, 1).to_owned(), group(&m, 2).to_owned());
             st.order.push(group(&m, 1).to_owned());
-        } else if COLUMN_ITEM.is_match(item) {
-            // column 정의는 pragma_table_xinfo가 읽는다.
-        } else {
+        } else if let Some(m) = CONSTRAINT_ITEM.captures(item) {
+            // 이름 없는 constraint는 이름이 빈 객체로 보고한다. primary key의 다른 형식은 table을 읽지 못하게 한다.
+            let kind = match group(&m, 2) {
+                "CHECK" => "check",
+                "UNIQUE" => "unique",
+                "FOREIGN KEY" => "foreign_key",
+                _ => {
+                    st.unsupported = format!("the primary key {item:?} has no dbspec definition");
+                    return (st, Vec::new());
+                }
+            };
+            let name = m.get(1).map_or("", |g| g.as_str()).to_owned();
             let reason = format!("the table item {item:?} has no dbspec definition");
-            unsupported.push(Unsupported { kind: "check".to_owned(), table: String::new(), name: item.to_owned(), reason });
+            unsupported.push(Unsupported { kind: kind.to_owned(), table: String::new(), name, reason });
+        } else if let Some(m) = COLUMN_ITEM.captures(item) {
+            // 정의는 pragma_table_xinfo가 읽고, 그 text는 renderer 형식인지 확인한다.
+            st.columns.insert(group(&m, 1).to_owned(), item.to_owned());
+        } else {
+            st.unsupported = format!("the table item {item:?} has no dbspec definition");
+            return (st, Vec::new());
         }
     }
     (st, unsupported)
+}
+
+/// column 정의 text가 renderer의 column 형식, 곧 이름, 선언 type, NULL이나 NOT
+/// NULL, 그리고 있으면 DEFAULT뿐인지 알려 준다. SQLite는 keyword인 type 이름을
+/// 대문자로 보고하므로 type은 대소문자 없이 비교한다.
+fn column_text(item: &str, name: &str, declared: &str, not_null: bool, dflt: Option<&str>) -> bool {
+    let Some(rest) = item.strip_prefix(&format!("\"{name}\" ")) else { return false };
+    let Some(head) = rest.get(..declared.len()) else { return false };
+    if !head.eq_ignore_ascii_case(declared) {
+        return false;
+    }
+    let rest = &rest[declared.len()..];
+    let tail = if not_null { " NOT NULL" } else { " NULL" };
+    match dflt {
+        None => rest == tail,
+        Some(d) => rest == format!("{tail} DEFAULT {d}") || rest == format!("{tail} DEFAULT ({d})"),
+    }
 }
 
 /// 괄호와 따옴표 밖의 쉼표로 나눈다.

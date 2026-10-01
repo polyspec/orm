@@ -120,17 +120,26 @@ func (c *catalog) document(name string) (*Document, []Unsupported, error) {
 			})
 			return document, c.unsupported, nil
 		}
-		removed := map[lineObject]bool{}
+		// 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+		rejected := map[string]bool{}
 		for _, d := range diagnostics {
 			o, ok := objects[d.Line]
 			if !ok {
 				return nil, nil, fmt.Errorf("introspected document does not parse: %v\n%s", diagnostics, text)
 			}
-			if !removed[o] {
-				removed[o] = true
-				c.report(o.kind, o.table, o.name, "%s: %s", d.Rule, d.Message)
-				c.remove(o)
+			if o.kind == "table" {
+				rejected[o.table] = true
 			}
+		}
+		removed := map[lineObject]bool{}
+		for _, d := range diagnostics {
+			o := objects[d.Line]
+			if removed[o] || (o.kind != "table" && rejected[o.table]) {
+				continue
+			}
+			removed[o] = true
+			c.report(o.kind, o.table, o.name, "%s: %s", d.Rule, d.Message)
+			c.remove(o)
 		}
 	}
 }
