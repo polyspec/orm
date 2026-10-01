@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.7: 모든 client가 plan 없이 두 schema text의 모든 차이를, plan이 거부하는 type, identity, primary key, column 순서 변경까지 `[kind, table, name]`으로 나열한다.
+
 - T17.1: graph test 15초 제한은 Rust(case의 thread), Go와 PHP(test process)에서 wall-clock 대신 CPU 시간을 제한하므로 부하가 걸린 공유 machine에서 더 실패하지 않고, 모든 case가 두 시간을 보고한다.
 
 - T17.3: Rust native benchmark는 고정 socket과 database 대신 `ORM_BENCH_MYSQL_DSN`에서 database를 읽고, 없거나 비어 있으면 연결하지 않고 status 1로 끝나며, `make rust-driver-check`가 그 test를 실행한다.

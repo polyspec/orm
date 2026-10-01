@@ -310,7 +310,7 @@ foreach ($ddl as $case) {
 function dbspec_plan_diagnostics(array $diagnostics): void
 {
     foreach ($diagnostics as $d) {
-        echo $d->rule === 'plan' || $d->rule === 'chain' ? "! {$d->rule} {$d->line} {$d->column} {$d->message}\n" : "! {$d->rule} {$d->line} {$d->column}\n";
+        echo in_array($d->rule, ['plan', 'chain', 'compare'], true) ? "! {$d->rule} {$d->line} {$d->column} {$d->message}\n" : "! {$d->rule} {$d->line} {$d->column}\n";
     }
 }
 
@@ -373,6 +373,10 @@ $plans = dbspec_read_vectors($argv[4], static function (string $path, stdClass $
     });
     $plans['parse'] = dbspec_vector_cases($path, $v, 'parse', static fn(stdClass $case, string $at): array => [
         'plan' => dbspec_vector_lines($path, $case, $at, 'plan'),
+    ]);
+    $plans['comparisons'] = dbspec_vector_cases($path, $v, 'comparisons', static fn(stdClass $case, string $at): array => [
+        'source' => dbspec_vector_lines($path, $case, $at, 'source'),
+        'target' => dbspec_vector_lines($path, $case, $at, 'target'),
     ]);
     return $plans;
 });
@@ -441,6 +445,21 @@ foreach ($plans['parse'] as $case) {
         continue;
     }
     dbspec_emitted_plan($parsed->plan);
+}
+foreach ($plans['comparisons'] as $case) {
+    echo "plans/comparisons/{$case['id']}\n";
+    $source = Orm\Dbspec\Dbspec::parse(dbspec_join($case['source'], false, false), []);
+    dbspec_plan_diagnostics($source->diagnostics);
+    $target = Orm\Dbspec\Dbspec::parse(dbspec_join($case['target'], false, false), []);
+    dbspec_plan_diagnostics($target->diagnostics);
+    if ($source->document === null || $target->document === null) {
+        continue;
+    }
+    $result = Orm\Dbspec\Dbspec::compareSchemas($source->document, $target->document);
+    dbspec_plan_diagnostics($result->diagnostics);
+    foreach ($result->differences ?? [] as $d) {
+        echo "| {$d->kind} {$d->table} {$d->name}\n";
+    }
 }
 
 /** Prints what an export or import left out as "= kind<TAB>table<TAB>name"; reasons are not compared. @param list<Orm\Dbspec\Unsupported> $dropped */

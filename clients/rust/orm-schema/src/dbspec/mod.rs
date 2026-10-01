@@ -8,6 +8,7 @@
 
 mod check;
 mod check_type;
+mod compare;
 mod emit;
 mod introspect;
 mod lexer;
@@ -23,6 +24,7 @@ mod render;
 mod runtime;
 mod validate;
 
+pub use compare::{compare_schemas, Difference, RULE_COMPARE};
 pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};

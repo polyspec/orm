@@ -131,6 +131,15 @@ final class Dbspec
     }
 
     /**
+     * plan 없이 source 에서 target 까지의 모든 차이, 또는 schema text 가 아닌 쪽의
+     * `compare` diagnostic 이다(docs/plans.md "Comparison").
+     */
+    public static function compareSchemas(Document $source, Document $target): ComparisonResult
+    {
+        return SchemaComparison::compare($source, $target);
+    }
+
+    /**
      * The statements of the plan from the source schema, null for the empty
      * database, in one dialect, `mysql`, `postgres` or `sqlite`, or the diff's
      * diagnostics (docs/plans.md "Statements"). An unknown dialect is an

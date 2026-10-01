@@ -19,6 +19,16 @@ type planVectors struct {
 	Invalid []planInvalidCase `json:"invalid"`
 	Chains  []planChainCase   `json:"chains"`
 	Parse   []planParseCase   `json:"parse"`
+	// Comparisons는 plan 없이 두 schema를 비교하는 case다(docs/plans.md "Comparison").
+	Comparisons []comparisonCase `json:"comparisons"`
+}
+
+type comparisonCase struct {
+	ID          string      `json:"id"`
+	Source      []string    `json:"source"`
+	Target      []string    `json:"target"`
+	Differences [][3]string `json:"differences"`
+	Errors      [][]any     `json:"errors"`
 }
 
 type planCase struct {
@@ -222,5 +232,47 @@ func checkPlanParse(t *testing.T, c planParseCase) {
 			got = append(got, []any{d.Rule, float64(d.Line), float64(d.Column), message})
 		}
 		return jsonEqual("errors", got, c.Errors)
+	})
+}
+
+// TestCompareSchemas는 comparison case의 차이와 diagnostic이 vector와 같은지
+// 확인한다.
+func TestCompareSchemas(t *testing.T) {
+	v := loadPlanVectors(t)
+	if len(v.Comparisons) == 0 {
+		t.Fatal("tests/dbspec/plans.json has no comparisons")
+	}
+	for _, c := range v.Comparisons {
+		t.Run(c.ID, func(t *testing.T) { checkComparison(t, c) })
+	}
+}
+
+func checkComparison(t *testing.T, c comparisonCase) {
+	runTimed(t, "plan/comparison/"+c.ID, 5*time.Second, func() error {
+		source, diagnostics := Parse(strings.Join(c.Source, "\n")+"\n", nil)
+		if len(diagnostics) > 0 {
+			return fmt.Errorf("parse source: %v", diagnostics)
+		}
+		target, diagnostics := Parse(strings.Join(c.Target, "\n")+"\n", nil)
+		if len(diagnostics) > 0 {
+			return fmt.Errorf("parse target: %v", diagnostics)
+		}
+		differences, diagnostics := CompareSchemas(source, target)
+		got := [][3]string{}
+		for _, d := range differences {
+			got = append(got, [3]string{d.Kind, d.Table, d.Name})
+		}
+		var problems []error
+		if !slices.Equal(got, c.Differences) {
+			problems = append(problems, fmt.Errorf("differences\nwant %v\ngot  %v", c.Differences, got))
+		}
+		errs := [][]any{}
+		for _, d := range diagnostics {
+			errs = append(errs, []any{d.Rule, float64(d.Line), float64(d.Column), d.Message})
+		}
+		if err := jsonEqual("errors", errs, c.Errors); err != nil {
+			problems = append(problems, err)
+		}
+		return errors.Join(problems...)
 	})
 }

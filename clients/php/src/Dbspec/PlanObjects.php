@@ -170,7 +170,7 @@ final class PlanObjects
     }
 
     /** @param callable(string): string $f */
-    private static function indexDef(Index $x, callable $f): string
+    public static function indexDef(Index $x, callable $f): string
     {
         $out = '';
         foreach ($x->columns as $c) {
@@ -183,7 +183,7 @@ final class PlanObjects
      * @param list<string> $cols
      * @param list<string> $refs
      */
-    private static function foreignKeyDef(array $cols, string $parent, array $refs, ForeignKey $f): string
+    public static function foreignKeyDef(array $cols, string $parent, array $refs, ForeignKey $f): string
     {
         return implode(',', $cols) . ">$parent(" . implode(',', $refs) . ")$f->onDelete/$f->onUpdate";
     }

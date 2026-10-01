@@ -161,7 +161,7 @@ func writeRender(out *bufio.Writer, c hashCase) {
 // target or source does not.
 func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 	for _, d := range diagnostics {
-		if d.Rule == dbspec.RulePlan || d.Rule == dbspec.RuleChain {
+		if d.Rule == dbspec.RulePlan || d.Rule == dbspec.RuleChain || d.Rule == dbspec.RuleCompare {
 			fmt.Fprintf(out, "! %s %d %d %s\n", d.Rule, d.Line, d.Column, d.Message)
 		} else {
 			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
@@ -175,6 +175,14 @@ type planVectors struct {
 	Invalid []planCase
 	Chains  []chainCase
 	Parse   []parseCase
+	// Comparisons는 plan 없이 비교하는 두 schema다.
+	Comparisons []comparisonCase
+}
+
+type comparisonCase struct {
+	ID     string
+	Source []string
+	Target []string
 }
 
 // planCase의 Source가 nil이면 빈 schema이다.
@@ -290,6 +298,21 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		}
 		for _, line := range strings.Split(dbspec.EmitPlan(p), "\n") {
 			fmt.Fprintf(out, "| %s\n", line)
+		}
+	}
+	for _, c := range v.Comparisons {
+		fmt.Fprintf(out, "plans/comparisons/%s\n", c.ID)
+		source, sourceDiagnostics := dbspec.Parse(join(c.Source, false, false), nil)
+		writeDiagnostics(out, sourceDiagnostics)
+		target, targetDiagnostics := dbspec.Parse(join(c.Target, false, false), nil)
+		writeDiagnostics(out, targetDiagnostics)
+		if len(sourceDiagnostics) > 0 || len(targetDiagnostics) > 0 {
+			continue
+		}
+		differences, diagnostics := dbspec.CompareSchemas(source, target)
+		writeDiagnostics(out, diagnostics)
+		for _, d := range differences {
+			fmt.Fprintf(out, "| %s %s %s\n", d.Kind, d.Table, d.Name)
 		}
 	}
 }

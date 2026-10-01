@@ -76,7 +76,7 @@ export function sameDefault(a: DbspecDefault | null, b: DbspecDefault | null): b
 }
 
 /** Whether a type change keeps every value on the three databases. */
-function widens(from: DbspecType, to: DbspecType): boolean {
+export function widens(from: DbspecType, to: DbspecType): boolean {
   switch (from.kind) {
     case 'i16':
       return to.kind === 'i32' || to.kind === 'i64';

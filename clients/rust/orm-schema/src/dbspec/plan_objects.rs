@@ -142,7 +142,7 @@ impl<'d> PlanDiff<'d> {
     }
 }
 
-fn same(c: &str) -> &str {
+pub(crate) fn same(c: &str) -> &str {
     c
 }
 
@@ -150,11 +150,11 @@ fn names(list: &[Name]) -> Vec<&str> {
     list.iter().map(|n| n.text.as_str()).collect()
 }
 
-fn names_def<'n>(list: &'n [Name], f: impl Fn(&'n str) -> &'n str) -> String {
+pub(crate) fn names_def<'n>(list: &'n [Name], f: impl Fn(&'n str) -> &'n str) -> String {
     list.iter().map(|n| f(&n.text)).collect::<Vec<_>>().join(",")
 }
 
-fn index_def<'n>(list: &'n [(Name, bool)], f: impl Fn(&'n str) -> &'n str) -> String {
+pub(crate) fn index_def<'n>(list: &'n [(Name, bool)], f: impl Fn(&'n str) -> &'n str) -> String {
     let mut out = String::new();
     for (c, descending) in list {
         out.push_str(f(&c.text));
@@ -166,12 +166,12 @@ fn index_def<'n>(list: &'n [(Name, bool)], f: impl Fn(&'n str) -> &'n str) -> St
     out
 }
 
-fn foreign_key_def(cols: &[&str], parent: &str, refs: &[&str], f: &ForeignKey) -> String {
+pub(crate) fn foreign_key_def(cols: &[&str], parent: &str, refs: &[&str], f: &ForeignKey) -> String {
     format!("{}>{parent}({}){}/{}", cols.join(","), refs.join(","), f.on_delete.as_str(), f.on_update.as_str())
 }
 
 /// column 이름을 f로 바꾼 식의 canonical text.
-fn expr_text<'e>(e: &'e Expr, f: impl Fn(&'e str) -> &'e str + Copy) -> String {
+pub(crate) fn expr_text<'e>(e: &'e Expr, f: impl Fn(&'e str) -> &'e str + Copy) -> String {
     let mut out = String::new();
     emit_expr(&mut out, &renamed_expr(e, f));
     out

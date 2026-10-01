@@ -7,6 +7,7 @@
 import { readInput } from '../input.mjs';
 import {
   chainPlans,
+  compareSchemas,
   dbspecManifest,
   diffPlan,
   emitDbspec,
@@ -122,6 +123,10 @@ function checkPlans(path, v) {
   }
   cases(path, v, 'chains', (c, at) => field(path, c, at, 'plans', 'array').forEach((p, i) => checkLines(path, p, `${at}.plans[${i}]`)));
   cases(path, v, 'parse', (c, at) => lines(path, c, at, 'plan'));
+  cases(path, v, 'comparisons', (c, at) => {
+    lines(path, c, at, 'source');
+    lines(path, c, at, 'target');
+  });
 }
 
 function checkMermaid(path, v) {
@@ -230,7 +235,7 @@ for (const c of readVectors(ddlPath, checkDdl).cases) writeRender(c);
 // target or source does not.
 function writePlanDiagnostics(diagnostics) {
   for (const d of diagnostics) {
-    out.push(d.rule === 'plan' || d.rule === 'chain' ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
+    out.push(['plan', 'chain', 'compare'].includes(d.rule) ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
   }
 }
 
@@ -304,6 +309,17 @@ for (const c of plans.parse) {
   const parsed = parsePlan(join(c.plan, false, false));
   if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
   else writeEmittedPlan(parsed.plan);
+}
+for (const c of plans.comparisons) {
+  out.push(`plans/comparisons/${c.id}`);
+  const source = parseDbspec(join(c.source, false, false), {});
+  writePlanDiagnostics(source.diagnostics);
+  const target = parseDbspec(join(c.target, false, false), {});
+  writePlanDiagnostics(target.diagnostics);
+  if (source.document === null || target.document === null) continue;
+  const result = compareSchemas(source.document, target.document);
+  writePlanDiagnostics(result.diagnostics);
+  for (const d of result.differences ?? []) out.push(`| ${d.kind} ${d.table} ${d.name}`);
 }
 // writeDropped prints what an export or import left out as
 // "= kind<TAB>table<TAB>name"; reasons are not compared.
