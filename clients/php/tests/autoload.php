@@ -25,6 +25,11 @@ spl_autoload_register(static function (string $class) use ($root): void {
         }
         $name = substr($class, strlen($prefix));
         if (str_contains($name, '\\')) {
+            // A sub-namespace maps to its directory, as composer's PSR-4 rule does.
+            $file = $spec['dir'] . str_replace('\\', '/', $name) . '.php';
+            if (is_file($file)) {
+                require_once $file;
+            }
             return;
         }
         $file = $spec['dir'] . ($spec['shared'][$name] ?? $name) . '.php';
