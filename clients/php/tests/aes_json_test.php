@@ -8,7 +8,7 @@
 // Usage: php clients/php/tests/aes_json_test.php
 declare(strict_types=1);
 
-// The bench models are not loaded: one process holds the models of one schema.
+// The bench models are not loaded; the test uses only the models of its own schema.
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use AesJson\Orm\SecretConfig;

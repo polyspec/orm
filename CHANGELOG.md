@@ -1,5 +1,14 @@
 # Changelog
 
+Load the generated PHP models of several schemas in one process (N3.1).
+Each generated model class carries its schema hash, and a connection keeps
+one engine per registered schema: the schema it opened with and every
+manifest installed through `utils()->schema()->install()`. Install verifies
+the manifest hash against its content before any statement runs, and a
+request of a schema the connection has not registered fails with
+`SCHEMA_HASH_MISMATCH`. Owner cases in Go, PHP, Rust and TypeScript use two
+schemas on one connection on MySQL, PostgreSQL and SQLite.
+
 Withdraw the restarted standalone-tag experiment (T7.17.2.10.3.1.4).
 Its proposed rejection rule was not established by the physical grammar.
 Reproduce its first PHP rejection failure, then remove the two uncommitted

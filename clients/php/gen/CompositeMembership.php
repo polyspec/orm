@@ -19,6 +19,7 @@ final class CompositeMembership extends Model
             'auto' => '',
             'updated' => '',
             'aes_version' => '',
+            'schema_hash' => '16198b563e2e3cae',
             'columns' => [
                 'tenant_id' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
                 'account_id' => ['type' => 'i64', 'nullable' => false, 'styles' => []],

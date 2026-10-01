@@ -1,5 +1,14 @@
 # 변경 이력
 
+한 process에서 여러 schema의 생성 PHP model을 읽는다(N3.1).
+생성된 model class마다 자기 schema hash를 가지며, 연결은 등록된 schema마다
+engine 하나를 유지한다. 연결을 열 때의 schema와
+`utils()->schema()->install()`로 설치한 모든 manifest가 등록된다. install은
+문장을 실행하기 전에 manifest hash를 내용과 대조하고, 연결에 등록되지 않은
+schema의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. Go, PHP, Rust,
+TypeScript owner case가 MySQL, PostgreSQL, SQLite에서 schema 두 개를 한
+연결에서 사용한다.
+
 다시 시작한 단독 태그 실험을 철회한다(T7.17.2.10.3.1.4).
 제안한 거절 규칙은 물리 문법으로 확정되지 않았다. 첫 PHP 거절 기준의
 실패를 재현한 뒤 미커밋 실험 파일 두 개를 제거하고 철회를 기록한다.

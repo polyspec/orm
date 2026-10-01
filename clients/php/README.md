@@ -18,9 +18,11 @@ runs beside it. PHP 8.4 or later. Version 0.0.1.
   getters and setters; every other method name (conditions, joins, relations, columns, finders) is
   resolved at call time with the grammar of `docs/dsl.md`. Autoloading the generated namespace is
   the application's concern; the runtime needs `gen/bootstrap.php` required once — it registers the
-  models and the schema hash they were generated from.
+  models and the schema hash they were generated from. A process may load the generated models of
+  several schemas; each model class carries its schema hash, and a connection plans its requests with
+  the schema it opened with or a schema installed through `utils()->schema()->install()`.
 - `tests/` — `model_test.php` (the model integration test), `engine_test.php`, `hostcodec.php`, `dsn.php`,
-  `relation_keys.php`, `perf_gate.php`, and the schema tool tests `schema_test.php` (the shared Go results in
+  `relation_keys.php`, `perf_gate.php`, `schema_set_test.php` (several schemas on one connection), and the schema tool tests `schema_test.php` (the shared Go results in
   `tests/schema/cases.json`), `schema_tool_test.php`, and `schema_db_test.php` (parity with the Go
   tool and an incremental migration on live databases). The conformance runner is
   `tests/conformance/runner.php`.
