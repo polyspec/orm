@@ -427,8 +427,9 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-// mapDriverErr converts driver errors named by the error catalog into coded
-// errors and keeps the driver message.
+// mapDriverErr reports a driver error with the code the error catalog names
+// for it and every other driver error with DRIVER; the coded error keeps the
+// driver message and the driver error as its cause.
 func mapDriverErr(err error) error {
 	if err == nil {
 		return nil
@@ -436,15 +437,23 @@ func mapDriverErr(err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return &ir.Error{Code: CodeCanceled, Msg: err.Error()}
 	}
+	var coded *ir.Error
+	if errors.As(err, &coded) {
+		return err
+	}
 	driverMu.RLock()
 	mappers := errMappers
 	driverMu.RUnlock()
 	for _, m := range mappers {
 		if mapped := m(err); mapped != err {
+			if errors.As(mapped, &coded) && coded.Cause == nil {
+				coded.Cause = err
+			}
 			return mapped
 		}
 	}
-	return err
+	// Every other driver error, such as a write that a trigger refuses, is DRIVER.
+	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
 func mapMySQLErr(err error) error {

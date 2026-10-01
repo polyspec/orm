@@ -1,8 +1,9 @@
 # Error codes shared by the planner and every executor. `ormgen errors --lang go|php|rust`
 # generates one constants file per language from this file; codes are the stable `error.code`.
 # origin: engine = raised while planning a request in the client process;
-#         executor = raised by the language runtime; driver = passed through from the DB driver
-#         with the original message, only the listed ones are mapped to a code.
+#         executor = raised by the language runtime; driver = reported by the DB driver: the listed
+#         conditions map to their code, every other driver error maps to DRIVER; each keeps the
+#         driver message and the driver error as its cause.
 codes:
   # ---- request ----
   - code: VERSION_MISMATCH        # ir_version the engine does not speak
@@ -69,9 +70,11 @@ codes:
     origin: driver
   - code: DUPLICATE_KEY           # MySQL 1062 / SQLSTATE 23000
     origin: driver
-  - code: FOREIGN_KEY             # MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
+  - code: FOREIGN_KEY             # MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787
     origin: driver
   - code: CONSTRAINT              # MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
     origin: driver
   - code: READ_ONLY               # a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+    origin: driver
+  - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811
     origin: driver

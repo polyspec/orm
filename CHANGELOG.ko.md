@@ -1,5 +1,17 @@
 # 변경 이력
 
+모든 driver 오류를 catalog code를 가진 ORM 오류로 보고한다(N11). PHP
+클라이언트는 `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기처럼 catalog에
+없는 driver 오류를 `PDOException` 그대로 돌려주었고, Go 클라이언트는 바꾸지 않고
+돌려주었으며, Rust 클라이언트는 code `SQLX`를 보고했다. 이제 catalog가 그런
+오류에 `DRIVER`를 두고, 모든 클라이언트가 driver 메시지와 원인인 driver 오류를
+유지한다. PHP `OrmException::fromDriver`는 항상 `OrmException`을 돌려주고, Go
+`orm.Error`는 driver 오류로 unwrap되며, Rust는 `Error::Driver { code, msg,
+source }`를 보고한다. SQLite 1811은 `FOREIGN_KEY`가 아니라 trigger 거부이고,
+PHP, Rust, TypeScript는 CHECK 위반을 `CONSTRAINT`로 바꾼다. `trigger_refused`와
+`check_refused` case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL,
+SQLite로 통과한다.
+
 모든 클라이언트에서 클라이언트 clock을 마이크로초로 기록한다(N10).
 TypeScript 클라이언트는 `Date`로 clock을 읽어 SQLite `now` bind slot에
 `.mmm000`을 저장했다. 이제 wall clock에 맞춘 monotonic clock의 마이크로초를

@@ -331,10 +331,11 @@ final class OrmException extends \RuntimeException
     }
 
     /**
-     * Maps the driver errors named by the error catalog to their codes and
-     * keeps the driver message; other driver errors are returned unchanged.
+     * Reports a driver error with the code the error catalog names for it,
+     * and every other driver error with DRIVER. The exception keeps the driver
+     * message and the driver error as its previous exception.
      */
-    public static function fromDriver(\PDOException $e, string $driver): \Throwable
+    public static function fromDriver(\PDOException $e, string $driver): self
     {
         $state = (string) ($e->errorInfo[0] ?? $e->getCode());
         $num = $e->errorInfo[1] ?? null;
@@ -347,17 +348,19 @@ final class OrmException extends \RuntimeException
                 '23503' => Code::FOREIGN_KEY,
                 '57014' => Code::CANCELED,
                 '25006' => Code::READ_ONLY,
-                default => null,
+                '23514' => Code::CONSTRAINT,
+                default => Code::DRIVER,
             },
             'sqlite' => match (true) {
                 // SQLITE_BUSY: another connection held the lock when busy_timeout ended.
                 is_int($num) && ($num & 0xff) === 5 => Code::CANCELED,
                 in_array($num, [6, 262], true) => Code::DEADLOCK,
                 in_array($num, [2067, 1555], true) || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
-                in_array($num, [787, 1811], true) || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
+                $num === 787 || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
+                $num === 275 || ($num === 19 && str_starts_with($message, 'CHECK constraint failed')) => Code::CONSTRAINT,
                 $num === 9 => Code::CANCELED,
                 is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,
-                default => null,
+                default => Code::DRIVER,
             },
             default => match (true) {
                 $num === 3572 || $state === 'ER_LOCK_NOWAIT' => Code::LOCK_NOT_AVAILABLE,
@@ -366,9 +369,10 @@ final class OrmException extends \RuntimeException
                 $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
                 $num === 1317 || $num === 3024 => Code::CANCELED,
                 $num === 1290 || $num === 1792 => Code::READ_ONLY,
-                default => null,
+                $num === 3819 || $num === 4025 => Code::CONSTRAINT,
+                default => Code::DRIVER,
             },
         };
-        return $code === null ? $e : new self($code, $e->getMessage(), $e);
+        return new self($code, $e->getMessage(), $e);
     }
 }

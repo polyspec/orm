@@ -1381,6 +1381,14 @@
         {
           "code": "SCHEMA_INVALID",
           "when": "a directive names an unknown table or column"
+        },
+        {
+          "code": "CONSTRAINT",
+          "when": "a write breaks a CHECK constraint"
+        },
+        {
+          "code": "DRIVER",
+          "when": "a trigger, such as an immutable or audit trigger, refuses a write, or the driver reports another error that the catalog does not list"
         }
       ],
       "clients": {
@@ -1391,7 +1399,8 @@
       },
       "fixtures": [
         "schema/schema.json",
-        "tests/schema/cases.json"
+        "tests/schema/cases.json",
+        "contracts/fixtures/refusal_schema.json"
       ],
       "tests": [
         "engine/schema/external_fk_test.go",
@@ -1406,7 +1415,11 @@
         "clients/php/tests/schema_test.php",
         "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm/tests/soft_delete.rs",
-        "clients/typescript/tests/schema-cases.mjs"
+        "clients/typescript/tests/schema-cases.mjs",
+        "clients/go/orm/refusal_test.go",
+        "clients/php/tests/driver_error_test.php",
+        "clients/rust/orm/tests/refusal.rs",
+        "clients/typescript/tests/driver-error.mjs"
       ],
       "docs": [
         "docs/schema.md",

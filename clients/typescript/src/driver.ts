@@ -78,7 +78,10 @@ function driverError(name: DriverName, error: unknown): OrmError {
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
   // extended codes report a write the read-only server or connection rejects.
   const readOnly = source.code === 'ER_OPTION_PREVENTS_STATEMENT' || source.code === 'ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION' || source.code === '25006' || (typeof source.errcode === 'number' && (source.errcode & 0xff) === 8);
-  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : readOnly ? 'READ_ONLY' : 'DRIVER';
+  // MySQL 3819/4025, PostgreSQL 23514, and SQLite CONSTRAINT_CHECK (275) report a CHECK violation.
+  const constraint = source.code === 'ER_CHECK_CONSTRAINT_VIOLATED' || source.code === 'ER_CONSTRAINT_FAILED' || source.code === '23514' || source.errcode === 275;
+  // Every other driver error, such as a write that a trigger refuses, is DRIVER.
+  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : readOnly ? 'READ_ONLY' : constraint ? 'CONSTRAINT' : 'DRIVER';
   return new OrmError(code, `${name}: ${message}`, error);
 }
 

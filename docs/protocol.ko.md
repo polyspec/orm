@@ -139,7 +139,7 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 ## 3. 오류
 
-오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`를 추가한다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
+오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기는 `DRIVER`다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
 ## 4. 클라이언트 안의 계획
 

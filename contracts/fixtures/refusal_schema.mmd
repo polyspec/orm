@@ -1,0 +1,7 @@
+erDiagram
+  refused_row {
+    bigint  seq    PK "auto"
+    int     amount
+  }
+  %% check refused_row amount_positive : `amount` > 0
+  %% orm:immutable entity=refused_row
