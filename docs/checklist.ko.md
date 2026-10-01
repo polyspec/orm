@@ -93,7 +93,7 @@
 - [o] T8.7.2 Go engine에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요). Evidence: engine/dbspec/mermaid.go의 `ExportMermaid`와 `ImportMermaid`. 이것 없이 test는 build되지 않았다(`undefined: ExportMermaid`). `make dbspec-go-check`는 tests/dbspec/mermaid.json의 export, import, invalid case를 통과한다. schema/bench.dbspec을 export하고 다시 import하면 table, column, key, foreign key가 되살아나고 export가 뺀 객체 16개를 보고한다.
 - [ ] T8.7.3 PHP client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
 - [ ] T8.7.4 TypeScript client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
-- [ ] T8.7.5 Rust client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
+- [o] T8.7.5 Rust client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요). Evidence: clients/rust/orm-schema/src/dbspec/mermaid.rs의 orm_schema::dbspec `export_mermaid`, `import_mermaid`, `RULE_MERMAID`. 이것 없이 Mermaid test는 build되지 않았다(unresolved imports `orm_schema::dbspec::export_mermaid`, `orm_schema::dbspec::import_mermaid`). `make dbspec-rust-check`는 tests/dbspec/mermaid.json의 case 7개를 두 번 통과한다: Mermaid text와 뺀 객체가 맞는 export case 1개, emit한 문서와 뺀 객체가 맞는 import case 2개, `[rule, line, column]` diagnostic이 맞는 invalid case 4개. `rust-check`와 `interface-check`가 통과한다.
 - [ ] T8.7.6 `make dbspec-compare-check`에서 네 client의 Mermaid 결과를 비교한다 (T8.7.2-T8.7.5 필요).
 - [ ] T8.8 `feat/dbspec-T8`을 `main`에 merge하고 worktree를 제거한다(T8.0–T8.7 선행). 완료 기준: 낡은 개발 규칙(`auto`, `COLUMN_UNSELECTED`, Mermaid가 source라는 규칙, full suite 실행 시점)을 다시 쓴다.
 - [ ] T9 dbspec 인터페이스를 PHP 확장으로, 같은 contract의 다섯 번째 구현으로 만든다(T8.2.5 선행). 원인: native PHP 확장을 계획한다. 다른 client처럼 `Dbspec.parse`, `Dbspec.emit`, `DbspecDiagnostic`과 모든 공유 case를 만족해야 한다.

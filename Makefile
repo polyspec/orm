@@ -71,7 +71,7 @@ physical-check-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 
 # dbspec-rust-check runs the shared dbspec vectors, the Rust rule cases and
-# the plan cases twice, then measures the stress document of
+# the plan and Mermaid cases twice, then measures the stress document of
 # tests/dbspec/stress.mjs in
 # release mode twice: parse within 300 ms, emit(parse(doc)) == doc and two
 # equal emissions.
@@ -175,8 +175,8 @@ dbspec-compare-check:
 dbspec-rust-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
