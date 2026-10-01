@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.9.2: every client opens the percent-decoded path of a SQLite DSN and rejects an invalid escape, a NUL byte and a path that is not UTF-8 with `CONFIG`, checked by the shared cases of tests/dsn/sqlite-paths.json.
+
 - T8.5.1.1: a SQLite table rebuild carries the `sqlite_sequence` counter of an identity table, so a key deleted before the rebuild is not given again, in every client.
 
 - T8.6.7: the apply lock covers one MySQL database or one PostgreSQL schema, so applies to other databases or schemas run at the same time, an unexpected lock result is an error instead of `locked`, and an empty plan chain is valid for a database without tables in every client.

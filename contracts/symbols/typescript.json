@@ -1175,6 +1175,7 @@
   "clients/typescript/src/driver.ts::sessionError": "function sessionError(setup: SessionSetup): OrmError | undefined",
   "clients/typescript/src/driver.ts::sqliteBusy": "function sqliteBusy(name: DriverName, error: unknown): boolean",
   "clients/typescript/src/driver.ts::sqliteExecute": "function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult",
+  "clients/typescript/src/driver.ts::sqlitePath": "function sqlitePath(url: URL): string",
   "clients/typescript/src/driver.ts::zoneOffset": "export function zoneOffset(zone: string): number",
   "clients/typescript/src/engine/ddl.ts::ForeignKey": "interface ForeignKey",
   "clients/typescript/src/engine/ddl.ts::ForeignKey#field.columns": "string[]",

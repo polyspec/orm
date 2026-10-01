@@ -511,9 +511,26 @@ export function parseDsn(dsn: string): ParsedDsn {
     case 'sqlite:':
       if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError('CONFIG', 'sqlite DSN must include an absolute database path');
       if (url.searchParams.has('_txlock')) throw new OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+      sqlitePath(url);
       return { driver: 'sqlite', zone };
   }
   throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
+}
+
+/**
+ * Returns the percent-decoded path of a sqlite:// DSN. An invalid escape, a
+ * path that is not UTF-8 after decoding and a NUL byte are CONFIG errors.
+ */
+function sqlitePath(url: URL): string {
+  let path: string;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    throw new OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
+  }
+  // NUL 뒤를 버리는 opener는 다른 file을 연다.
+  if (path.includes('\0')) throw new OrmError('CONFIG', 'sqlite DSN path must not contain a NUL byte');
+  return path;
 }
 
 /** Returns the offset of a fixed zone such as +00:00 in minutes east of UTC. */
@@ -615,7 +632,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
       });
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
-      const db = new DatabaseSync(decodeURIComponent(url.pathname), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
+      const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       const version = String((db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v);
       const [major, minor] = version.split('.').map(Number);
       if (major! < 3 || (major === 3 && minor! < 46)) {

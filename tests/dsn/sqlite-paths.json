@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "note": "Each case connects with the DSN sqlite://<directory>/<path>, where <directory> is a new temporary directory without characters that need escaping. A case with file opens the database, runs one statement, and requires the directory to hold file and no other name except its -journal, -wal and -shm files. A case with error must fail to connect with that error code and leave the directory empty. docs/config.md \"Runtime connection\".",
+  "cases": [
+    {
+      "id": "plain",
+      "path": "plain.sqlite",
+      "file": "plain.sqlite"
+    },
+    {
+      "id": "space",
+      "path": "a%20b.sqlite",
+      "file": "a b.sqlite"
+    },
+    {
+      "id": "escaped-percent",
+      "path": "a%2520b.sqlite",
+      "file": "a%20b.sqlite"
+    },
+    {
+      "id": "escaped-hash",
+      "path": "a%23b.sqlite",
+      "file": "a#b.sqlite"
+    },
+    {
+      "id": "escaped-question-mark",
+      "path": "a%3Fb.sqlite",
+      "file": "a?b.sqlite"
+    },
+    {
+      "id": "utf8",
+      "path": "%ED%95%9C.sqlite",
+      "file": "한.sqlite"
+    },
+    {
+      "id": "space-with-query",
+      "path": "c%20d.sqlite?_pragma=busy_timeout(1000)",
+      "file": "c d.sqlite"
+    },
+    {
+      "id": "invalid-escape",
+      "path": "a%zzb.sqlite",
+      "error": "CONFIG"
+    },
+    {
+      "id": "truncated-escape",
+      "path": "a%2",
+      "error": "CONFIG"
+    },
+    {
+      "id": "nul",
+      "path": "a%00b.sqlite",
+      "error": "CONFIG"
+    },
+    {
+      "id": "invalid-utf8",
+      "path": "a%FFb.sqlite",
+      "error": "CONFIG"
+    }
+  ]
+}

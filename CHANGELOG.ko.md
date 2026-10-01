@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.9.2: 모든 client는 SQLite DSN의 percent-decode한 path를 열고, 잘못된 escape, NUL byte, UTF-8이 아닌 path를 `CONFIG`로 거부하며, tests/dsn/sqlite-paths.json의 공유 case가 이를 확인한다.
+
 - T8.5.1.1: 모든 client에서 SQLite table rebuild는 identity table의 `sqlite_sequence` counter를 옮겨, rebuild 전에 지운 key를 다시 주지 않는다.
 
 - T8.6.7: apply lock은 MySQL database 하나나 PostgreSQL schema 하나만 덮어 다른 database나 schema의 apply가 동시에 실행되고, 예상 밖의 lock 결과는 `locked`가 아닌 error이며, 모든 client에서 빈 plan chain은 table 없는 database의 올바른 chain이다.

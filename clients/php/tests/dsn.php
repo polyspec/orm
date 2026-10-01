@@ -51,4 +51,37 @@ foreach ($names as $name) {
 expect(rmdir($directory), "remove $directory");
 expect(in_array('named.sqlite', $names, true), 'files ' . json_encode($names) . ': named.sqlite is missing');
 
+// tests/dsn/sqlite-paths.json: DSN path 는 percent-decode 한 file 을 열고, 잘못된 path 는
+// CONFIG 다(docs/config.md "Runtime connection").
+$vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dsn/sqlite-paths.json'), true, 512, JSON_THROW_ON_ERROR);
+expect($vectors['version'] === 1 && $vectors['cases'] !== [], 'tests/dsn/sqlite-paths.json has no cases');
+foreach ($vectors['cases'] as $case) {
+    $started = hrtime(true);
+    echo "RUN dsn/sqlite-path/{$case['id']}\n";
+    $directory = sys_get_temp_dir() . "/orm-php-sqlite-path-" . getmypid() . "-{$case['id']}";
+    expect(!file_exists($directory) && mkdir($directory), "temporary directory $directory");
+    $code = null;
+    try {
+        $db = Orm::connect("sqlite://$directory/{$case['path']}", new Config());
+        $db = null;
+    } catch (OrmException $e) {
+        $code = $e->code_;
+    }
+    $names = array_values(array_diff(scandir($directory), ['.', '..']));
+    foreach ($names as $name) {
+        expect(unlink("$directory/$name"), "remove $name");
+    }
+    expect(rmdir($directory), "remove $directory");
+    if (isset($case['error'])) {
+        expect($code === $case['error'] && $names === [], "dsn/sqlite-path/{$case['id']}: code " . json_encode($code) . ', files ' . json_encode($names, JSON_UNESCAPED_UNICODE) . "; want {$case['error']} and no file");
+    } else {
+        expect($code === null, "dsn/sqlite-path/{$case['id']}: code $code");
+        foreach ($names as $name) {
+            expect(in_array($name, [$case['file'], "{$case['file']}-journal", "{$case['file']}-shm", "{$case['file']}-wal"], true), "dsn/sqlite-path/{$case['id']}: files " . json_encode($names, JSON_UNESCAPED_UNICODE) . ": $name is not {$case['file']}");
+        }
+        expect(in_array($case['file'], $names, true), "dsn/sqlite-path/{$case['id']}: files " . json_encode($names, JSON_UNESCAPED_UNICODE) . ": {$case['file']} is missing");
+    }
+    echo "PASS dsn/sqlite-path/{$case['id']} elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";
+}
+
 echo "php DSN parsing passed\n";

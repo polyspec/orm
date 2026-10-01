@@ -135,6 +135,18 @@ final class Orm
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];
                 }
+                // parse_url 은 path 를 decode 하지 않는다. 잘못된 escape, NUL, UTF-8 이 아닌
+                // 결과는 다른 file 을 열게 되므로 거부한다.
+                if (preg_match('/%(?![0-9A-Fa-f]{2})/', $path) === 1) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path has a % without two hexadecimal digits');
+                }
+                $path = rawurldecode($path);
+                if (str_contains($path, "\0")) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must not contain a NUL byte');
+                }
+                if (preg_match('//u', $path) !== 1) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must be UTF-8 after percent-decoding');
+                }
                 return [$driver, 'sqlite:' . $path, null, null, $pragmas];
         }
     }
