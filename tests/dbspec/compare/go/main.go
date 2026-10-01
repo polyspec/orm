@@ -1,8 +1,8 @@
 // Command go prints the Go dbspec result of every shared case, of the
-// stress document, of the statement vectors and of the plan vectors in the
-// line format of tests/dbspec/compare/check.mjs.
+// stress document, of the statement vectors, of the plan vectors and of the
+// Mermaid vectors in the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json>
+// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 package main
 
 import (
@@ -291,9 +291,105 @@ func writePlans(out *bufio.Writer, v planVectors) {
 	}
 }
 
+// mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
+type mermaidVectors struct {
+	Export []struct {
+		ID        string              `json:"id"`
+		Document  []string            `json:"document"`
+		Documents map[string][]string `json:"documents"`
+	} `json:"export"`
+	Import []struct {
+		ID      string   `json:"id"`
+		Mermaid []string `json:"mermaid"`
+	} `json:"import"`
+	Invalid []struct {
+		ID      string   `json:"id"`
+		Mermaid []string `json:"mermaid"`
+	} `json:"invalid"`
+	RoundTrip []struct {
+		ID   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"round_trip"`
+}
+
+// writeDropped prints what an export or import left out as
+// "= kind<TAB>table<TAB>name"; reasons are not compared.
+func writeDropped(out *bufio.Writer, dropped []dbspec.Unsupported) {
+	for _, u := range dropped {
+		fmt.Fprintf(out, "= %s\t%s\t%s\n", u.Kind, u.Table, u.Name)
+	}
+}
+
+// writeExport prints the Mermaid text and the dropped objects of a document.
+func writeExport(out *bufio.Writer, d *dbspec.Document) string {
+	text, dropped := dbspec.ExportMermaid(d)
+	for _, line := range strings.Split(text, "\n") {
+		fmt.Fprintf(out, "| %s\n", line)
+	}
+	writeDropped(out, dropped)
+	return text
+}
+
+// writeImport prints the emitted document and the dropped objects of an
+// import, or its diagnostics.
+func writeImport(out *bufio.Writer, text string) {
+	d, dropped, diagnostics := dbspec.ImportMermaid(text, "imported")
+	if len(diagnostics) > 0 {
+		writeDiagnostics(out, diagnostics)
+		return
+	}
+	for _, line := range strings.Split(dbspec.Emit(d), "\n") {
+		fmt.Fprintf(out, "| %s\n", line)
+	}
+	writeDropped(out, dropped)
+}
+
+// writeMermaid prints every export case, every import and invalid case, and
+// every round trip case: the export of its document, then "<case>/import"
+// with the import of that export.
+func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
+	for _, c := range v.Export {
+		fmt.Fprintf(out, "mermaid/export/%s\n", c.ID)
+		set := map[string]string{}
+		for name, lines := range c.Documents {
+			set[name] = join(lines, false, false)
+		}
+		d, diagnostics := dbspec.Parse(join(c.Document, false, false), set)
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		writeExport(out, d)
+	}
+	for _, c := range v.Import {
+		fmt.Fprintf(out, "mermaid/import/%s\n", c.ID)
+		writeImport(out, join(c.Mermaid, false, false))
+	}
+	for _, c := range v.Invalid {
+		fmt.Fprintf(out, "mermaid/invalid/%s\n", c.ID)
+		writeImport(out, join(c.Mermaid, false, false))
+	}
+	for _, c := range v.RoundTrip {
+		fmt.Fprintf(out, "mermaid/round_trip/%s\n", c.ID)
+		source, err := os.ReadFile(c.Path)
+		if err != nil {
+			return err
+		}
+		d, diagnostics := dbspec.Parse(string(source), nil)
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		text := writeExport(out, d)
+		fmt.Fprintf(out, "mermaid/round_trip/%s/import\n", c.ID)
+		writeImport(out, text)
+	}
+	return nil
+}
+
 func main() {
-	if len(os.Args) != 5 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json>")
+	if len(os.Args) != 6 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>")
 		os.Exit(2)
 	}
 	raw, err := os.ReadFile(os.Args[1])
@@ -359,6 +455,20 @@ func main() {
 		os.Exit(1)
 	}
 	writePlans(out, plans)
+	rawMermaid, err := os.ReadFile(os.Args[5])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	var mermaid mermaidVectors
+	if err := json.Unmarshal(rawMermaid, &mermaid); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := writeMermaid(out, mermaid); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := out.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

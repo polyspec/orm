@@ -40,3 +40,7 @@ import가 옮기는 것과 `[kind, entity, name, reason]`으로 보고하는 것
 - **Cardinality.** dbspec은 cardinality를 foreign key에서 얻는다. cardinality가 export가 그 nullability에 쓰는 것과 다른 relationship은 `cardinality`로 보고한다.
 
 import한 문서는 parse되며, introspection처럼 parse가 거부한 줄의 객체는 그 dbspec diagnostic과 함께 보고되고 빠진다. 문서가 parse될 때까지 반복한다. export를 import하면 export가 보고한 것을 뺀 원래 문서에 보고한 index를 더한 문서가 나온다.
+
+## 검증
+
+각 client는 자기 check에서 `tests/dbspec/mermaid.json`의 case를 실행한다: `make dbspec-go-check`, `make dbspec-php-check`, `make dbspec-ts-check`, `make dbspec-rust-check`. `make dbspec-compare-check`는 모든 case를 Go, PHP, TypeScript, Rust client로 각각 두 번 실행하고 모든 출력이 첫 Go 출력과 같기를 요구한다: 모든 export case의 Mermaid text와 뺀 `[kind, table, name]`, 모든 import case와 invalid case의 emit한 문서와 뺀 객체 또는 `[rule, line, column]` diagnostic, 모든 round trip case의 export와 그 import다. reason은 비교하지 않는다.

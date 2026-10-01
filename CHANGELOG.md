@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.7.6: `make dbspec-compare-check` compares the Mermaid export, import and round trip results of the Go, PHP, TypeScript and Rust clients.
+
 - T8.7.2.1: Mermaid import in every client reports a label whose column counts differ, decides dbspec type ranges before keys, requires single spaces between comment parts and adds a shared foreign key index once; export reports every comment it leaves out.
 
 - T8.6.2.1: a failed Go apply reports its cleanup errors together with the failure, and a MySQL effect query without a row is an error.

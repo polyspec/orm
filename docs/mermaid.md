@@ -40,3 +40,7 @@ What import carries over and what it reports, as `[kind, entity, name, reason]`:
 - **Cardinality.** dbspec derives cardinality from the foreign key; a relationship whose cardinalities differ from the ones export writes for its nullability is reported as `cardinality`.
 
 The imported document is parsed; a line it rejects is reported with the dbspec diagnostic and its object left out, as introspection does, until the document parses. Import of an export gives back the exported document without what export reported, plus the reported indexes.
+
+## Verification
+
+Each client runs the cases of `tests/dbspec/mermaid.json` in its own check: `make dbspec-go-check`, `make dbspec-php-check`, `make dbspec-ts-check` and `make dbspec-rust-check`. `make dbspec-compare-check` runs every case through the Go, PHP, TypeScript and Rust clients twice each and requires every output to equal the first Go output: the Mermaid text and dropped `[kind, table, name]` of every export case, the emitted document and dropped objects or the `[rule, line, column]` diagnostics of every import and invalid case, and the export and its import of every round trip case. Reasons are not compared.
