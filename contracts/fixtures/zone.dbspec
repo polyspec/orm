@@ -1,0 +1,8 @@
+dbspec 1 zone
+
+table zone_event {
+  seq i64 identity
+  start_dt datetime(6)
+  created_ts datetime(6) default now
+  primary key (seq)
+}

@@ -77,10 +77,11 @@ physical-check-check: physical-column-check
 DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbspec
 .PHONY: dbspec-rust-check
 # dbspec-ddl-check applies every vector of tests/dbspec/ddl.json to MySQL,
-# PostgreSQL and SQLite of TEST_ENV and runs its behavior steps.
+# PostgreSQL and SQLite of TEST_ENV and runs its behavior steps, and applies
+# the rendered statements of every schema/*.dbspec and contracts/fixtures/*.dbspec.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestDDLVectors$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1 -timeout 10m -v
 
 # dbspec-compare-check runs the Go, PHP, TypeScript and Rust dbspec runners
 # twice each on tests/dbspec/cases.json and the stress document and fails on
