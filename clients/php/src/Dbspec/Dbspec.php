@@ -28,6 +28,28 @@ final class Dbspec
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */
     public static function emit(Document $document): string
     {
-        return Emitter::emit($document);
+        return Emitter::emit($document, View::Canonical);
+    }
+
+    /**
+     * The manifest of the document set, whose documents are taken in document
+     * name order. A document name that repeats in the set is a name.duplicate
+     * diagnostic at the header name of the later document.
+     *
+     * @param list<Document> $documents
+     */
+    public static function manifest(array $documents): ManifestResult
+    {
+        usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
+        $manifestText = '';
+        $schemaText = '';
+        foreach ($documents as $i => $document) {
+            if ($i > 0 && $documents[$i - 1]->name === $document->name) {
+                return ManifestResult::invalid([new Diagnostic('name.duplicate', 1, strlen('dbspec 1 ') + 1, "document {$document->name} appears twice in the document set")]);
+            }
+            $manifestText .= Emitter::emit($document, View::Manifest);
+            $schemaText .= Emitter::emit($document, View::Schema);
+        }
+        return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText), 'sha256:' . hash('sha256', $schemaText)));
     }
 }

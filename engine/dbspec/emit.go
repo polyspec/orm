@@ -105,7 +105,21 @@ func (s *settingsNode) model() *Settings {
 	return out
 }
 
-type emitter struct{ b strings.Builder }
+// view selects what an emission writes: the canonical text, the manifest
+// text without comments and diagrams, or the schema text that also keeps only
+// the schema settings (docs/dbspec.md, "Manifest and hashes").
+type view int
+
+const (
+	viewCanonical view = iota
+	viewManifest
+	viewSchema
+)
+
+type emitter struct {
+	b    strings.Builder
+	view view
+}
 
 // line writes comments, then one line, at the indentation level.
 func (e *emitter) line(indent int, comments []string, text string) {
@@ -116,6 +130,9 @@ func (e *emitter) line(indent int, comments []string, text string) {
 }
 
 func (e *emitter) comments(indent int, comments []string) {
+	if e.view != viewCanonical {
+		return
+	}
 	for _, c := range comments {
 		e.b.WriteString(strings.Repeat("  ", indent))
 		e.b.WriteString(c)
@@ -129,8 +146,8 @@ func sortedBy[T any](items []T, key func(T) string) []T {
 	return out
 }
 
-func emitDocument(d *Document) string {
-	var e emitter
+func emitDocument(d *Document, v view) string {
+	e := emitter{view: v}
 	e.b.Grow(64 * (len(d.Tables)*32 + 16))
 	e.line(0, nil, "dbspec 1 "+d.Name)
 	uses := sortedBy(d.Uses, func(u Use) string { return u.Document })
@@ -143,6 +160,9 @@ func emitDocument(d *Document) string {
 	for i := range d.Tables {
 		e.b.WriteByte('\n')
 		e.table(&d.Tables[i])
+	}
+	if v != viewCanonical {
+		return e.b.String()
 	}
 	for _, g := range d.Diagrams {
 		e.b.WriteByte('\n')
@@ -203,7 +223,7 @@ func (e *emitter) table(t *Table) {
 		e.line(1, k.Comments, "check "+k.Name+" ("+b.String()+")")
 	}
 	if s := t.Settings; s != nil {
-		if s.empty() {
+		if s.empty() || (e.view == viewSchema && s.Immutable == nil && s.Audit == nil) {
 			e.comments(1, s.Comments)
 			e.comments(1, s.ClosingComments)
 		} else {
@@ -223,6 +243,21 @@ func (s *Settings) empty() bool {
 
 func (e *emitter) settings(s *Settings) {
 	e.line(1, s.Comments, "settings {")
+	if e.view != viewSchema {
+		e.mappingSettings(s)
+	}
+	if s.Immutable != nil {
+		e.line(2, s.Immutable.Comments, "immutable")
+	}
+	if a := s.Audit; a != nil {
+		e.line(2, a.Comments, "audit into "+a.History+" operation "+a.Operation+" action "+a.Action+" previous "+a.Previous)
+	}
+	e.comments(2, s.ClosingComments)
+	e.line(1, nil, "}")
+}
+
+// mappingSettings writes the settings that only the manifest covers.
+func (e *emitter) mappingSettings(s *Settings) {
 	if s.Entity != nil {
 		e.line(2, s.Entity.Comments, "entity "+s.Entity.Name)
 	}
@@ -247,12 +282,4 @@ func (e *emitter) settings(s *Settings) {
 	for _, n := range sortedBy(s.Navigations, func(n NavigationSetting) string { return n.ForeignKey }) {
 		e.line(2, n.Comments, "navigation "+n.ForeignKey+" "+n.ChildName+" "+n.ParentName)
 	}
-	if s.Immutable != nil {
-		e.line(2, s.Immutable.Comments, "immutable")
-	}
-	if a := s.Audit; a != nil {
-		e.line(2, a.Comments, "audit into "+a.History+" operation "+a.Operation+" action "+a.Action+" previous "+a.Previous)
-	}
-	e.comments(2, s.ClosingComments)
-	e.line(1, nil, "}")
 }

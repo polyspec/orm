@@ -48,6 +48,42 @@ fn write(out: &mut impl Write, text: &str, set: &BTreeMap<String, String>, stres
     Ok(())
 }
 
+fn write_diagnostics(out: &mut impl Write, diagnostics: &[orm_schema::dbspec::Diagnostic]) -> std::io::Result<()> {
+    for d in diagnostics {
+        writeln!(out, "! {} {} {}", d.rule, d.line, d.column)?;
+    }
+    Ok(())
+}
+
+/// Prints the hashes and texts of the case's document set, or the
+/// diagnostics of a document or of the set.
+fn write_manifest(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
+    let documents_value = case["documents"].as_object().into_iter().flatten().collect::<BTreeMap<_, _>>();
+    let mut documents = Vec::new();
+    for (name, lines) in &documents_value {
+        let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| ((*other).clone(), join(l, false, false))).collect();
+        match orm_schema::dbspec::parse(&join(lines, false, false), &set) {
+            Ok(document) => documents.push(document),
+            Err(diagnostics) => return write_diagnostics(out, &diagnostics),
+        }
+    }
+    let refs: Vec<&orm_schema::dbspec::Document> = documents.iter().collect();
+    match orm_schema::dbspec::manifest(&refs) {
+        Err(diagnostics) => write_diagnostics(out, &diagnostics),
+        Ok(m) => {
+            writeln!(out, "= manifestHash {}\n= schemaHash {}\n= manifestText", m.manifest_hash, m.schema_hash)?;
+            for line in m.manifest_text.split('\n') {
+                writeln!(out, "| {line}")?;
+            }
+            writeln!(out, "= schemaText")?;
+            for line in m.schema_text.split('\n') {
+                writeln!(out, "| {line}")?;
+            }
+            Ok(())
+        }
+    }
+}
+
 fn run(cases_path: &str, stress_path: &str) -> Result<(), String> {
     let cases: Value =
         serde_json::from_str(&std::fs::read_to_string(cases_path).map_err(|e| format!("{cases_path}: {e}"))?).map_err(|e| format!("{cases_path}: {e}"))?;
@@ -72,6 +108,10 @@ fn run(cases_path: &str, stress_path: &str) -> Result<(), String> {
     }
     writeln!(out, "stress").map_err(io)?;
     write(&mut out, &stress, &BTreeMap::new(), true).map_err(io)?;
+    for case in cases["hashes"].as_array().into_iter().flatten() {
+        writeln!(out, "hashes/{}", case["id"].as_str().unwrap_or_default()).map_err(io)?;
+        write_manifest(&mut out, case).map_err(io)?;
+    }
     out.flush().map_err(io)
 }
 

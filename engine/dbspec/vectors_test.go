@@ -15,6 +15,7 @@ type vectorFile struct {
 	Canonical []vectorCase `json:"canonical"`
 	Normalize []vectorCase `json:"normalize"`
 	Invalid   []vectorCase `json:"invalid"`
+	Hashes    []hashCase   `json:"hashes"`
 }
 
 type vectorCase struct {

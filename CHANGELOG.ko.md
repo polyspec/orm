@@ -1,5 +1,10 @@
 # 변경 이력
 
+Go, PHP, TypeScript, Rust client에서 dbspec 문서 집합의 manifest text,
+schema text, `manifestHash`, `schemaHash`를 계산하고(`ManifestOf`,
+`Dbspec::manifest`, `dbspecManifest`, `manifest`), `make
+dbspec-compare-check`에서 비교한다(T8.2.6.2).
+
 dbspec manifest text, schema text, `manifestHash`, `schemaHash`를
 정하고, 별도 manifest 파일 없이 문서 집합을 유일한 schema 원천으로
 한다. 공유 case 3개가 text와 hash를 고정한다(T8.2.6.1).

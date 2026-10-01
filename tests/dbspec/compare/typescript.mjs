@@ -4,7 +4,7 @@
 // Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
-import { emitDbspec, parseDbspec } from '../../../clients/typescript/dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec } from '../../../clients/typescript/dist/dbspec/index.js';
 
 const [casesPath, stressPath] = process.argv.slice(2);
 if (casesPath === undefined || stressPath === undefined) {
@@ -47,4 +47,35 @@ for (const kind of ['canonical', 'normalize', 'invalid']) {
 }
 out.push('stress');
 write(readFileSync(stressPath, 'utf8'), {}, true);
+
+// writeManifest prints the hashes and texts of the case's document set, or the
+// diagnostics of a document or of the set.
+function writeManifest(c) {
+  const documents = [];
+  for (const name of Object.keys(c.documents).sort()) {
+    const set = {};
+    for (const [other, lines] of Object.entries(c.documents)) if (other !== name) set[other] = join(lines, false, false);
+    const result = parseDbspec(join(c.documents[name], false, false), set);
+    if (result.diagnostics.length > 0) {
+      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    documents.push(result.document);
+  }
+  const result = dbspecManifest(documents);
+  if (result.diagnostics.length > 0) {
+    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    return;
+  }
+  const m = result.manifest;
+  out.push(`= manifestHash ${m.manifestHash}`, `= schemaHash ${m.schemaHash}`, '= manifestText');
+  for (const line of m.manifestText.split('\n')) out.push(`| ${line}`);
+  out.push('= schemaText');
+  for (const line of m.schemaText.split('\n')) out.push(`| ${line}`);
+}
+
+for (const c of cases.hashes) {
+  out.push(`hashes/${c.id}`);
+  writeManifest(c);
+}
 process.stdout.write(out.join('\n') + '\n');
