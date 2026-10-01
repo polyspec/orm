@@ -200,7 +200,11 @@ class Applier {
           throw new DbspecApplyError('locked', '', 0, `another session holds the advisory lock of ${HISTORY_TABLE}`);
         }
         await this.release(f, async () => {
-          await this.queryValue(`SELECT pg_advisory_unlock(hashtext('${HISTORY_TABLE}'))`);
+          const released = await this.queryValue(`SELECT pg_advisory_unlock(hashtext('${HISTORY_TABLE}'))`);
+          if (released !== true) {
+            if (released !== false) throw new Error(`pg_advisory_unlock returned ${String(released)}`);
+            throw new Error(`the advisory lock of ${HISTORY_TABLE} was not held at unlock`);
+          }
         });
         return;
       }
@@ -488,8 +492,12 @@ function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly
  * one connection under the dialect's lock (docs/plans.md "Apply"). A
  * database that has applied the whole chain is left unchanged. `now` gives
  * the time recorded in `applied_at`; `events` receives each event. A
- * failure rejects with a DbspecApplyError, the handler's error or the
- * driver's error.
+ * failure rejects unchanged with a DbspecApplyError, the handler's error or
+ * the driver's error; an advisory unlock that released nothing and a catalog
+ * query without a row are errors. When releasing the lock, ending the
+ * transaction or restoring SQLite foreign keys fails after it, apply rejects
+ * with an AggregateError whose `errors` are the failure and then the cleanup
+ * errors in order.
  */
 export function applyPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
 export function applyPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
@@ -511,7 +519,8 @@ export async function applyPlans(
 /**
  * Finishes an interrupted MySQL plan from the catalog effect of its
  * interrupted statement, then verifies it and marks it done (docs/plans.md
- * "Apply", recovery). Without a running plan nothing changes.
+ * "Apply", recovery). Without a running plan nothing changes. Failures
+ * are reported as for applyPlans.
  */
 export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
 export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;

@@ -162,7 +162,7 @@ func (a *applier) locked(f func() error) error {
 		}
 		err := f()
 		_, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK('"+historyTable+"')")
-		return errors.Join(err, unlock)
+		return joinCleanup(err, unlock)
 	case DialectPostgres:
 		var got bool
 		if err := a.queryRow("SELECT pg_try_advisory_lock(hashtext('"+historyTable+"'))", &got); err != nil {
@@ -177,14 +177,14 @@ func (a *applier) locked(f func() error) error {
 		if unlock == nil && !released {
 			unlock = fmt.Errorf("the advisory lock of %s was not held at unlock", historyTable)
 		}
-		return errors.Join(err, unlock)
+		return joinCleanup(err, unlock)
 	}
 	if _, err := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return err
 	}
 	if _, err := a.c.ExecContext(a.ctx, "BEGIN IMMEDIATE"); err != nil {
 		_, restore := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON")
-		return errors.Join(&ApplyError{Code: "locked", Message: "another connection holds the SQLite write lock", Err: err}, restore)
+		return joinCleanup(&ApplyError{Code: "locked", Message: "another connection holds the SQLite write lock", Err: err}, restore)
 	}
 	err := f()
 	end := "COMMIT"
@@ -193,7 +193,22 @@ func (a *applier) locked(f func() error) error {
 	}
 	_, ended := a.c.ExecContext(a.ctx, end)
 	_, restore := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON")
-	return errors.Join(err, ended, restore)
+	return joinCleanup(err, ended, restore)
+}
+
+// joinCleanup은 실패와 그 뒤 정리 단계의 error를 함께 돌려준다. nil이 아닌 error가
+// 하나뿐이면 감싸지 않고 그 error를 그대로 돌려주고, 여럿이면 errors.Join으로 순서대로 담는다.
+func joinCleanup(errs ...error) error {
+	var found []error
+	for _, err := range errs {
+		if err != nil {
+			found = append(found, err)
+		}
+	}
+	if len(found) == 1 {
+		return found[0]
+	}
+	return errors.Join(found...)
 }
 
 func (a *applier) queryRow(query string, dest ...any) error {
@@ -206,7 +221,7 @@ func (a *applier) queryRow(query string, dest ...any) error {
 	} else if err = rows.Err(); err == nil {
 		err = fmt.Errorf("%s returned no row", query)
 	}
-	return errors.Join(err, rows.Close())
+	return joinCleanup(err, rows.Close())
 }
 
 // createHistory는 history table을 없을 때 만든다.
@@ -338,7 +353,7 @@ func (a *applier) applyPlan(p *Plan, start int, resume bool) error {
 			end = "ROLLBACK"
 		}
 		_, ended := a.c.ExecContext(a.ctx, end)
-		err = errors.Join(err, ended)
+		err = joinCleanup(err, ended)
 	}
 	if err != nil {
 		return err
@@ -483,7 +498,7 @@ func (a *applier) mysqlEffect(statement string) (bool, error) {
 		} else if err = rows.Err(); err == nil {
 			err = fmt.Errorf("%s returned no row", query)
 		}
-		err = errors.Join(err, rows.Close())
+		err = joinCleanup(err, rows.Close())
 		if err != nil {
 			return false, err
 		}
