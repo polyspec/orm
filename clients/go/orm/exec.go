@@ -83,7 +83,7 @@ func (d *DB) plan(r *request) (*cached, error) {
 	if ok {
 		return c, nil
 	}
-	p, err := d.compile(&r.ir)
+	p, err := d.compile(r.schema, &r.ir)
 	if err != nil {
 		return nil, err
 	}
@@ -183,20 +183,6 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 					return nil, nil, err
 				}
 			}
-			if b.ColType == "point" && v != nil {
-				p, err := ParsePoint(v)
-				if err != nil {
-					return nil, nil, err
-				}
-				if d.driver == "postgres" {
-					v, err = postgresPointText(p)
-				} else {
-					v, err = PointText(p)
-				}
-				if err != nil {
-					return nil, nil, err
-				}
-			}
 			out = append(out, v)
 		case "secret":
 			if b.Name != "aes" || d.cfg.AESKey == "" {
@@ -217,6 +203,12 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 				clock = d.now()
 			}
 			out = append(out, clock)
+		case "operation":
+			v, err := operationValue(r.operation, b.ColType)
+			if err != nil {
+				return nil, nil, err
+			}
+			out = append(out, v)
 		default:
 			return nil, nil, &ir.Error{Code: CodeInternal, Msg: "bind from " + b.From}
 		}
@@ -229,6 +221,45 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 		}
 	}
 	return out, masks, nil
+}
+
+// operationValue는 operation slot의 값이다. operation id가 없거나 operation
+// column type에 맞지 않으면 CONFIG다.
+func operationValue(id any, columnType string) (any, error) {
+	if id == nil {
+		return nil, configErr("a write of an audited table needs an operation id: run it in a transaction with orm.Operation(id)")
+	}
+	switch columnType {
+	case "i64":
+		if _, ok := id.(int64); ok {
+			return id, nil
+		}
+	case "uuid":
+		if s, ok := id.(string); ok && canonicalUUID(s) {
+			return s, nil
+		}
+	}
+	return nil, configErr("operation id %v does not fit the %s operation column", id, columnType)
+}
+
+// canonicalUUID는 소문자 8-4-4-4-12 UUID text인지 알린다.
+func canonicalUUID(s string) bool {
+	if len(s) != 36 {
+		return false
+	}
+	for i, c := range s {
+		switch i {
+		case 8, 13, 18, 23:
+			if c != '-' {
+				return false
+			}
+		default:
+			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func paramValue(b *plan.BindSlot, r *request) (any, error) {
@@ -246,12 +277,6 @@ func paramValue(b *plan.BindSlot, r *request) (any, error) {
 // Transform applies an executor-side value transform.
 func Transform(kind, s string) string {
 	switch kind {
-	case "fulltext_boolean":
-		s = strings.TrimSpace(s)
-		if s == "" {
-			return s
-		}
-		return "+" + strings.ReplaceAll(s, " ", " +") + "*"
 	case "like_contains":
 		return "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s) + "%"
 	}
@@ -907,6 +932,9 @@ func write(ex executor, r *request) (lastID, affected int64, err error) {
 	c, err := d.plan(r)
 	if err != nil {
 		return 0, 0, err
+	}
+	if t := ex.transaction(); t != nil {
+		r.operation = t.operation
 	}
 	st := &c.plan.Steps[0]
 	args, masks, err := d.args(st, r, nil)

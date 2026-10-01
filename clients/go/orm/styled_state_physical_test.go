@@ -10,19 +10,26 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
-const styledStateSchema = `erDiagram
-  styled_case {
-    bigint   seq                 PK "auto"
-    jsontext json_payload       "?"
-    jsontext jsons_payload      "?"
-    text     serialize_payload  "?"
-    text     yaml_payload       "?"
-    jsontext json_required
+const styledStateSchema = `dbspec 1 styled_state
+
+table styled_case {
+  seq i64 identity
+  json_payload text null
+  jsons_payload text null
+  serialize_payload text null
+  yaml_payload text null
+  json_required text
+  primary key (seq)
+  settings {
+    codec json_payload ordered_json
+    codec json_required ordered_json
+    codec jsons_payload ordered_json
+    codec serialize_payload serialize
+    codec yaml_payload yaml
   }
+}
 `
 
 func TestStyledFixturePhysicalCells(t *testing.T) {
@@ -47,18 +54,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 	if err := json.Unmarshal(data, &fixture); err != nil {
 		t.Fatal(err)
 	}
-	diagram, err := schema.Parse(styledStateSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := schema.Build(diagram)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifestJSON, err := json.Marshal(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := documentSchema(t, styledStateSchema)
 	for driver, dsn := range map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "styled-state.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -68,16 +64,12 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "styled_case")
 			defer dropTable(t, driver, dsn, "styled_case")
-			eng, err := engine.New(manifest, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{})
+			db, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			if err := db.Utils().Schema().Install(manifestJSON); err != nil {
+			if err := db.Utils().Schema().Install(s.Text); err != nil {
 				t.Fatal(err)
 			}
 			var raw *sql.DB
@@ -90,7 +82,7 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer raw.Close()
-			entity := rowEntity("styled_case", manifest.SchemaHash, "seq", "json_payload", "jsons_payload", "serialize_payload", "yaml_payload", "json_required")
+			entity := rowEntity("styled_case", s, "seq", "json_payload", "jsons_payload", "serialize_payload", "yaml_payload", "json_required")
 			newRow := func() *orm.Core { c := orm.NewCore(entity); entity.New(c); c.Connect(db); return c }
 			bind := "?"
 			if driver == "postgres" {

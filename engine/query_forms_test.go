@@ -6,45 +6,48 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-const formsSchema = `erDiagram
-  place {
-    bigint        seq          PK "auto"
-    bigint        owner_seq
-    varchar(50)   name
-    int           price           "=0"
-    point         location        "?"
-    datetime(6)   created_ts      "=now"
-  }
-  owner {
-    bigint        seq          PK "auto"
-    varchar(50)   name
-    int           min_price       "=0"
-  }
-  visit {
-    bigint        seq          PK "auto"
-    bigint        place_seq
-    int           amount          "=0"
-    int           status          "=0"
-  }
-  membership {
-    int           tenant_id    PK
-    int           account_id   PK
-    varchar(20)   role
-  }
+const formsSchema = `dbspec 1 forms
+
+table place {
+  seq i64 identity
+  owner_seq i64
+  name varchar(50)
+  price i32 default 0
+  created_ts datetime(6) default now
+  primary key (seq)
+}
+
+table owner {
+  seq i64 identity
+  name varchar(50)
+  min_price i32 default 0
+  primary key (seq)
+}
+
+table visit {
+  seq i64 identity
+  place_seq i64
+  amount i32 default 0
+  status i32 default 0
+  primary key (seq)
+}
+
+table membership {
+  tenant_id i32
+  account_id i32
+  role varchar(20)
+  primary key (tenant_id, account_id)
+}
 `
 
 func formsEngine(t *testing.T, driver string) *Engine {
 	t.Helper()
-	d, err := schema.Parse(formsSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
+	m, diagnostics := runtimemodel.LoadDocuments([]string{formsSchema})
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	e, err := New(m, driver)
 	if err != nil {
@@ -55,7 +58,7 @@ func formsEngine(t *testing.T, driver string) *Engine {
 
 func formsCompile(t *testing.T, e *Engine, body string) *plan.Plan {
 	t.Helper()
-	full := `{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","n_params":16,` + body + `}`
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + body + `}`
 	out, err := e.Compile([]byte(full))
 	if err != nil {
 		t.Fatalf("%s compile %s: %v", e.P.D.Name(), body, err)
@@ -69,7 +72,7 @@ func formsCompile(t *testing.T, e *Engine, body string) *plan.Plan {
 
 func formsError(t *testing.T, e *Engine, body, code string) {
 	t.Helper()
-	full := `{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","n_params":16,` + body + `}`
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + body + `}`
 	_, err := e.Compile([]byte(full))
 	if err == nil || !strings.Contains(err.Error(), code) {
 		t.Fatalf("%s: want %s, got %v", body, code, err)
@@ -156,49 +159,45 @@ func TestColumnComparisonWithJoinedModel(t *testing.T) {
 
 func TestColumnFunctionsForEveryDialect(t *testing.T) {
 	body := `"kind":"all","entity":"place",
-	 "columns":{"fn":{"distance":{"column":"location","fn":{"name":"distance","ps":[0,1]}}}},
+	 "columns":{"fn":{"created_date":{"column":"created_ts","fn":{"name":"date"}}}},
 	 "where":{"items":[
-	   {"pred":{"column":"location","op":"lte","p":2,"fn":{"name":"distance","ps":[3,4]}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"eq","p":5,"fn":{"name":"day_of_week"}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"gt","p":6,"fn":{"name":"year"}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"in","ps":[7,8],"fn":{"name":"month"}}}]},
-	 "order":[{"column":"location","fn":{"name":"distance","ps":[9,10]}}]`
+	   {"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}},
+	   {"pred":{"conn":"and","column":"created_ts","op":"gt","p":1,"fn":{"name":"year"}}},
+	   {"pred":{"conn":"and","column":"created_ts","op":"in","ps":[2,3],"fn":{"name":"month"}}}]},
+	 "order":[{"column":"created_ts","fn":{"name":"year"}}]`
 	for driver, parts := range map[string][]string{
 		"mysql": {
-			"ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) AS `a__distance`",
-			"ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) <= ?",
+			"DATE(`a`.`created_ts`) AS `a__created_date`",
 			"DAYOFWEEK(`a`.`created_ts`) = ?",
 			"YEAR(`a`.`created_ts`) > ?",
 			"MONTH(`a`.`created_ts`) IN (?, ?)",
-			"ORDER BY ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) ASC",
+			"ORDER BY YEAR(`a`.`created_ts`) ASC",
 		},
 		"postgres": {
-			`(2 * 6370986 * ASIN(SQRT(POWER(SIN((RADIANS(CAST($`,
+			`CAST("a"."created_ts" AS date) AS "a__created_date"`,
 			`(EXTRACT(DOW FROM "a"."created_ts")::int + 1) = $`,
 			`EXTRACT(YEAR FROM "a"."created_ts")::int > $`,
-			`RADIANS("a"."location"[1])`,
 		},
 		"sqlite": {
-			`CAST(substr("a"."location", 7, instr("a"."location", ' ') - 7) AS REAL)`,
+			`date("a"."created_ts") AS "a__created_date"`,
 			`(CAST(strftime('%w', "a"."created_ts") AS INTEGER) + 1) = ?`,
 			`CAST(strftime('%Y', "a"."created_ts") AS INTEGER) > ?`,
 		},
 	} {
 		p := formsCompile(t, formsEngine(t, driver), body)
 		requireSQL(t, p.Steps[0].SQL, parts...)
-		want := map[string]int{"mysql": 11, "postgres": 14, "sqlite": 14}[driver]
-		if n := len(p.Steps[0].BindSlots); n != want {
-			t.Errorf("%s binds %d, want %d", driver, n, want)
+		if n := len(p.Steps[0].BindSlots); n != 4 {
+			t.Errorf("%s binds %d, want 4", driver, n)
 		}
 		col := p.Steps[0].Assemble.Columns
-		if col[len(col)-1].Name != "distance" || col[len(col)-1].Type != "f64" {
-			t.Errorf("%s distance output %+v", driver, col[len(col)-1])
+		if col[len(col)-1].Name != "created_date" || col[len(col)-1].Type != "date" {
+			t.Errorf("%s created_date output %+v", driver, col[len(col)-1])
 		}
 	}
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"name","op":"eq","p":0,"fn":{"name":"year"}}}]}`, "OPERATOR_NOT_ALLOWED")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"concat"}}}]}`, "FUNCTION_UNKNOWN")
-	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"location","op":"lte","p":0,"fn":{"name":"distance","ps":[1]}}}]}`, "IR_INVALID")
+	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"created_ts","op":"lte","p":0,"fn":{"name":"year","ps":[1]}}}]}`, "IR_INVALID")
 }
 
 func TestValueFunctionsForEveryDialect(t *testing.T) {

@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -10,8 +9,6 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 // keywordRow is a hand-written model for a table and columns named with SQL
@@ -25,10 +22,10 @@ func (r *keywordRow) Orm_() *orm.Core { return r.m }
 
 var keywordColumns = []string{"seq", "key", "group", "select"}
 
-func keywordEntity(hash string) *orm.Entity {
+func keywordEntity(s *orm.Schema) *orm.Entity {
 	return &orm.Entity{
 		Name:   "order",
-		Schema: &orm.Schema{Hash: hash},
+		Schema: s,
 		New: func(c *orm.Core) orm.Model {
 			r := &keywordRow{m: c, vals: map[string]any{}}
 			c.Bind(r)
@@ -53,31 +50,23 @@ func keywordEntity(hash string) *orm.Entity {
 	}
 }
 
-const keywordSchema = `erDiagram
-  order {
-    bigint       seq     PK "auto"
-    varchar(20)  key
-    int          group      "=0"
-    int          select     "=0"
-  }
-  %% index order (key, group) ix_key
+const keywordSchema = `dbspec 1 keyword
+
+table order {
+  seq i64 identity
+  key varchar(20)
+  group i32 default 0
+  select i32 default 0
+  primary key (seq)
+  index ix_key (key, group)
+}
 `
 
 // TestSQLKeywordNames creates, reads, groups, updates, and deletes rows of a
 // table whose table and column names are SQL keywords.
 func TestSQLKeywordNames(t *testing.T) {
-	d, err := schema.Parse(keywordSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := documentSchema(t, keywordSchema)
+	manifest := s.Text
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "keyword.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -87,11 +76,7 @@ func TestSQLKeywordNames(t *testing.T) {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "order")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{})
+			db, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +85,7 @@ func TestSQLKeywordNames(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer dropTable(t, driver, dsn, "order")
-			ent := keywordEntity(m.SchemaHash)
+			ent := keywordEntity(s)
 			model := func() *orm.Core {
 				c := orm.NewCore(ent)
 				ent.New(c)

@@ -25,10 +25,10 @@ type AuthorModel struct {
 	fDisplayStartDt        *time.Time
 	fDisplayEndDt          *time.Time
 	fIsAllday              bool
-	fTargetClubReaderCount int64
-	fSuccessCount          int64
-	fReaderCount           int64
-	fReadCount             int64
+	fTargetClubReaderCount int32
+	fSuccessCount          int32
+	fReaderCount           int32
+	fReadCount             int32
 	fPhotoUrl              *string
 	fUserSeq               int64
 	fServiceSeq            int64
@@ -38,7 +38,7 @@ type AuthorModel struct {
 	fEndDt                 time.Time
 	fUuid                  *string
 	fIsSingleWork          bool
-	fLikeCount             int64
+	fLikeCount             int32
 	fAesKeyVersion         int32
 	fAesHexEmail           *string
 	fEmailBlindIndex       *string
@@ -171,7 +171,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 		if v == nil {
 			return true, fmt.Errorf("column target_club_reader_count: %w", orm.ErrNullColumn)
 		}
-		t, err := orm.AsInt64(v)
+		t, err := orm.AsInt32(v)
 		if err != nil {
 			return true, fmt.Errorf("column target_club_reader_count: %w", err)
 		}
@@ -180,7 +180,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 		if v == nil {
 			return true, fmt.Errorf("column success_count: %w", orm.ErrNullColumn)
 		}
-		t, err := orm.AsInt64(v)
+		t, err := orm.AsInt32(v)
 		if err != nil {
 			return true, fmt.Errorf("column success_count: %w", err)
 		}
@@ -189,7 +189,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 		if v == nil {
 			return true, fmt.Errorf("column reader_count: %w", orm.ErrNullColumn)
 		}
-		t, err := orm.AsInt64(v)
+		t, err := orm.AsInt32(v)
 		if err != nil {
 			return true, fmt.Errorf("column reader_count: %w", err)
 		}
@@ -198,7 +198,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 		if v == nil {
 			return true, fmt.Errorf("column read_count: %w", orm.ErrNullColumn)
 		}
-		t, err := orm.AsInt64(v)
+		t, err := orm.AsInt32(v)
 		if err != nil {
 			return true, fmt.Errorf("column read_count: %w", err)
 		}
@@ -290,7 +290,7 @@ func (x *AuthorModel) assign(name string, v any) (bool, error) {
 		if v == nil {
 			return true, fmt.Errorf("column like_count: %w", orm.ErrNullColumn)
 		}
-		t, err := orm.AsInt64(v)
+		t, err := orm.AsInt32(v)
 		if err != nil {
 			return true, fmt.Errorf("column like_count: %w", err)
 		}
@@ -977,10 +977,10 @@ func (x *AuthorModel) OrderByIsAlldayDesc(fn ...orm.Func) *AuthorModel {
 }
 
 // GetTargetClubReaderCount returns target_club_reader_count.
-func (x *AuthorModel) GetTargetClubReaderCount() int64 { return x.fTargetClubReaderCount }
+func (x *AuthorModel) GetTargetClubReaderCount() int32 { return x.fTargetClubReaderCount }
 
 // SetTargetClubReaderCount sets target_club_reader_count.
-func (x *AuthorModel) SetTargetClubReaderCount(v int64) *AuthorModel {
+func (x *AuthorModel) SetTargetClubReaderCount(v int32) *AuthorModel {
 	x.fTargetClubReaderCount = v
 	x.m.Set("target_club_reader_count", v)
 	return x
@@ -1014,11 +1014,11 @@ func (x *AuthorModel) OrderByTargetClubReaderCountDesc(fn ...orm.Func) *AuthorMo
 	x.m.OrderBy("target_club_reader_count", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusTargetClubReaderCount(n int64) *AuthorModel {
+func (x *AuthorModel) PlusTargetClubReaderCount(n int32) *AuthorModel {
 	x.m.Plus("target_club_reader_count", n)
 	return x
 }
-func (x *AuthorModel) MinusTargetClubReaderCount(n int64) *AuthorModel {
+func (x *AuthorModel) MinusTargetClubReaderCount(n int32) *AuthorModel {
 	x.m.Minus("target_club_reader_count", n)
 	return x
 }
@@ -1032,10 +1032,10 @@ func (x *AuthorModel) AvgTargetClubReaderCount() *AuthorModel {
 }
 
 // GetSuccessCount returns success_count.
-func (x *AuthorModel) GetSuccessCount() int64 { return x.fSuccessCount }
+func (x *AuthorModel) GetSuccessCount() int32 { return x.fSuccessCount }
 
 // SetSuccessCount sets success_count.
-func (x *AuthorModel) SetSuccessCount(v int64) *AuthorModel {
+func (x *AuthorModel) SetSuccessCount(v int32) *AuthorModel {
 	x.fSuccessCount = v
 	x.m.Set("success_count", v)
 	return x
@@ -1060,8 +1060,8 @@ func (x *AuthorModel) OrderBySuccessCountDesc(fn ...orm.Func) *AuthorModel {
 	x.m.OrderBy("success_count", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusSuccessCount(n int64) *AuthorModel { x.m.Plus("success_count", n); return x }
-func (x *AuthorModel) MinusSuccessCount(n int64) *AuthorModel {
+func (x *AuthorModel) PlusSuccessCount(n int32) *AuthorModel { x.m.Plus("success_count", n); return x }
+func (x *AuthorModel) MinusSuccessCount(n int32) *AuthorModel {
 	x.m.Minus("success_count", n)
 	return x
 }
@@ -1069,10 +1069,10 @@ func (x *AuthorModel) SumSuccessCount() *AuthorModel { x.m.Aggregate("sum", "suc
 func (x *AuthorModel) AvgSuccessCount() *AuthorModel { x.m.Aggregate("avg", "success_count"); return x }
 
 // GetReaderCount returns reader_count.
-func (x *AuthorModel) GetReaderCount() int64 { return x.fReaderCount }
+func (x *AuthorModel) GetReaderCount() int32 { return x.fReaderCount }
 
 // SetReaderCount sets reader_count.
-func (x *AuthorModel) SetReaderCount(v int64) *AuthorModel {
+func (x *AuthorModel) SetReaderCount(v int32) *AuthorModel {
 	x.fReaderCount = v
 	x.m.Set("reader_count", v)
 	return x
@@ -1097,16 +1097,16 @@ func (x *AuthorModel) OrderByReaderCountDesc(fn ...orm.Func) *AuthorModel {
 	x.m.OrderBy("reader_count", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusReaderCount(n int64) *AuthorModel  { x.m.Plus("reader_count", n); return x }
-func (x *AuthorModel) MinusReaderCount(n int64) *AuthorModel { x.m.Minus("reader_count", n); return x }
+func (x *AuthorModel) PlusReaderCount(n int32) *AuthorModel  { x.m.Plus("reader_count", n); return x }
+func (x *AuthorModel) MinusReaderCount(n int32) *AuthorModel { x.m.Minus("reader_count", n); return x }
 func (x *AuthorModel) SumReaderCount() *AuthorModel          { x.m.Aggregate("sum", "reader_count"); return x }
 func (x *AuthorModel) AvgReaderCount() *AuthorModel          { x.m.Aggregate("avg", "reader_count"); return x }
 
 // GetReadCount returns read_count.
-func (x *AuthorModel) GetReadCount() int64 { return x.fReadCount }
+func (x *AuthorModel) GetReadCount() int32 { return x.fReadCount }
 
 // SetReadCount sets read_count.
-func (x *AuthorModel) SetReadCount(v int64) *AuthorModel {
+func (x *AuthorModel) SetReadCount(v int32) *AuthorModel {
 	x.fReadCount = v
 	x.m.Set("read_count", v)
 	return x
@@ -1128,8 +1128,8 @@ func (x *AuthorModel) OrderByReadCountDesc(fn ...orm.Func) *AuthorModel {
 	x.m.OrderBy("read_count", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusReadCount(n int64) *AuthorModel  { x.m.Plus("read_count", n); return x }
-func (x *AuthorModel) MinusReadCount(n int64) *AuthorModel { x.m.Minus("read_count", n); return x }
+func (x *AuthorModel) PlusReadCount(n int32) *AuthorModel  { x.m.Plus("read_count", n); return x }
+func (x *AuthorModel) MinusReadCount(n int32) *AuthorModel { x.m.Minus("read_count", n); return x }
 func (x *AuthorModel) SumReadCount() *AuthorModel          { x.m.Aggregate("sum", "read_count"); return x }
 func (x *AuthorModel) AvgReadCount() *AuthorModel          { x.m.Aggregate("avg", "read_count"); return x }
 
@@ -1455,10 +1455,10 @@ func (x *AuthorModel) OrderByIsSingleWorkDesc(fn ...orm.Func) *AuthorModel {
 }
 
 // GetLikeCount returns like_count.
-func (x *AuthorModel) GetLikeCount() int64 { return x.fLikeCount }
+func (x *AuthorModel) GetLikeCount() int32 { return x.fLikeCount }
 
 // SetLikeCount sets like_count.
-func (x *AuthorModel) SetLikeCount(v int64) *AuthorModel {
+func (x *AuthorModel) SetLikeCount(v int32) *AuthorModel {
 	x.fLikeCount = v
 	x.m.Set("like_count", v)
 	return x
@@ -1480,8 +1480,8 @@ func (x *AuthorModel) OrderByLikeCountDesc(fn ...orm.Func) *AuthorModel {
 	x.m.OrderBy("like_count", true, fn)
 	return x
 }
-func (x *AuthorModel) PlusLikeCount(n int64) *AuthorModel  { x.m.Plus("like_count", n); return x }
-func (x *AuthorModel) MinusLikeCount(n int64) *AuthorModel { x.m.Minus("like_count", n); return x }
+func (x *AuthorModel) PlusLikeCount(n int32) *AuthorModel  { x.m.Plus("like_count", n); return x }
+func (x *AuthorModel) MinusLikeCount(n int32) *AuthorModel { x.m.Minus("like_count", n); return x }
 func (x *AuthorModel) SumLikeCount() *AuthorModel          { x.m.Aggregate("sum", "like_count"); return x }
 func (x *AuthorModel) AvgLikeCount() *AuthorModel          { x.m.Aggregate("avg", "like_count"); return x }
 
@@ -1769,7 +1769,7 @@ func (x *AuthorModel) GetGzExtend() (orm.StyledValue, error) {
 
 // SetGzExtend sets gz_extend.
 func (x *AuthorModel) SetGzExtend(v orm.StyledValue) (*AuthorModel, error) {
-	normalized, err := orm.NormalizeStyled([]string{"serialize", "gz"}, true, v)
+	normalized, err := orm.NormalizeStyled([]string{"gz"}, true, v)
 	if err != nil {
 		return nil, err
 	}
@@ -1805,7 +1805,7 @@ func (x *AuthorModel) GetJsonSetting() (orm.StyledValue, error) {
 
 // SetJsonSetting sets json_setting.
 func (x *AuthorModel) SetJsonSetting(v orm.StyledValue) (*AuthorModel, error) {
-	normalized, err := orm.NormalizeStyled([]string{"json"}, true, v)
+	normalized, err := orm.NormalizeStyled([]string{"ordered_json"}, true, v)
 	if err != nil {
 		return nil, err
 	}
@@ -1844,7 +1844,7 @@ func (x *AuthorModel) GetJsonsTags() (orm.StyledValue, error) {
 
 // SetJsonsTags sets jsons_tags.
 func (x *AuthorModel) SetJsonsTags(v orm.StyledValue) (*AuthorModel, error) {
-	normalized, err := orm.NormalizeStyled([]string{"jsons"}, true, v)
+	normalized, err := orm.NormalizeStyled([]string{"ordered_json"}, true, v)
 	if err != nil {
 		return nil, err
 	}
@@ -1880,7 +1880,7 @@ func (x *AuthorModel) GetBase64Extra() (orm.StyledValue, error) {
 
 // SetBase64Extra sets base64_extra.
 func (x *AuthorModel) SetBase64Extra(v orm.StyledValue) (*AuthorModel, error) {
-	normalized, err := orm.NormalizeStyled([]string{"serialize", "base64"}, true, v)
+	normalized, err := orm.NormalizeStyled([]string{"base64"}, true, v)
 	if err != nil {
 		return nil, err
 	}
@@ -1952,6 +1952,10 @@ func (x *AuthorModel) OrderBySerializeDataDesc(fn ...orm.Func) *AuthorModel {
 }
 
 func (x *AuthorModel) ForceIndexIk() *AuthorModel { x.m.ForceIndex("ik"); return x }
+func (x *AuthorModel) ForceIndexIxAuthorServiceMember() *AuthorModel {
+	x.m.ForceIndex("ix_author_service_member")
+	return x
+}
 func (x *AuthorModel) ForceIndexIxEmailBlindIndex() *AuthorModel {
 	x.m.ForceIndex("ix_email_blind_index")
 	return x

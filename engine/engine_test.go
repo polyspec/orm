@@ -3,30 +3,27 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
+
+// benchModel은 schema/bench.dbspec의 runtime model이다.
+func benchModel(t *testing.T) *runtimemodel.Model {
+	t.Helper()
+	m, err := runtimemodel.LoadFiles("../schema/bench.dbspec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
 
 func testEngine(t *testing.T) *Engine {
 	t.Helper()
-	src, err := os.ReadFile("../schema/bench.mmd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	d, err := schema.Parse(string(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e, err := New(m, "mysql")
+	e, err := New(benchModel(t), "mysql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +32,7 @@ func testEngine(t *testing.T) *Engine {
 
 func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 	t.Helper()
-	full := `{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","n_params":64,` + irBody + `}`
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":64,` + irBody + `}`
 	out, err := e.Compile([]byte(full))
 	if err != nil {
 		t.Fatalf("compile %s: %v", irBody, err)
@@ -92,25 +89,15 @@ func TestSelectAll(t *testing.T) {
 		t.Errorf("bind kinds: %s", got)
 	}
 	asm := p.Steps[0].Assemble
-	// 27 public columns plus the hidden AES version column.
-	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 28 || asm.Columns[26].Name != "ip" || !asm.Columns[27].Hidden || !strings.Contains(sql, "INET6_NTOA(`a`.`ip`) AS `a__ip`") {
+	// default select set의 26개 column과 숨은 AES version column이다. select
+	// explicit column(ip 등)은 빠진다.
+	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "aes_key_version" || !asm.Columns[26].Hidden || strings.Contains(sql, "`a`.`ip`") {
 		t.Errorf("assemble: %+v", asm)
 	}
 }
 
 func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
-	src, err := os.ReadFile("../schema/bench.mmd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	d, err := schema.Parse(string(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := benchModel(t)
 	for _, tc := range []struct {
 		dialect string
 		want    string
@@ -123,7 +110,7 @@ func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
 			t.Fatal(err)
 		}
 		body := `{"kind":"one","entity":"author","columns":{"mode":"none","expr":{"database_now":{"sql":"$CURRENT_TIME"}}}}`
-		out, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + m.SchemaHash + `",` + body[1:]))
+		out, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + m.ManifestHash + `",` + body[1:]))
 		if err != nil {
 			t.Fatalf("%s: %v", tc.dialect, err)
 		}
@@ -140,27 +127,16 @@ func TestRowLock(t *testing.T) {
 		t.Fatalf("mysql row lock: %s", p.Steps[0].SQL)
 	}
 
-	src, err := os.ReadFile("../schema/bench.mmd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	diagram, err := schema.Parse(string(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(diagram)
-	if err != nil {
-		t.Fatal(err)
-	}
+	m := benchModel(t)
 	sqliteEngine, err := New(m, "sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
-	full := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"author","lock":"share"}`
+	full := `{"ir_version":1,"manifest_hash":"` + sqliteEngine.M.ManifestHash + `","n_params":0,"kind":"all","entity":"author","lock":"share"}`
 	if plan, err := sqliteEngine.Compile([]byte(full)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
 		t.Fatalf("sqlite transaction-level row lock: %v", err)
 	}
-	sqliteNowait := `{"ir_version":1,"schema_hash":"` + sqliteEngine.M.SchemaHash + `","n_params":0,"kind":"all","entity":"author","lock":"update_nowait"}`
+	sqliteNowait := `{"ir_version":1,"manifest_hash":"` + sqliteEngine.M.ManifestHash + `","n_params":0,"kind":"all","entity":"author","lock":"update_nowait"}`
 	if plan, err := sqliteEngine.Compile([]byte(sqliteNowait)); err != nil || strings.Contains(string(plan), "CAPABILITY_UNSUPPORTED") {
 		t.Fatalf("sqlite nowait lock: %v", err)
 	}
@@ -168,7 +144,7 @@ func TestRowLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	nowait := `{"ir_version":1,"schema_hash":"` + postgresEngine.M.SchemaHash + `","n_params":0,"kind":"one","entity":"author","lock":"update_nowait"}`
+	nowait := `{"ir_version":1,"manifest_hash":"` + postgresEngine.M.ManifestHash + `","n_params":0,"kind":"one","entity":"author","lock":"update_nowait"}`
 	plan, err := postgresEngine.Compile([]byte(nowait))
 	if err != nil || !strings.Contains(string(plan), "FOR UPDATE NOWAIT") {
 		t.Fatalf("postgres nowait row lock: %v", err)
@@ -187,10 +163,10 @@ func mustCompileError(t *testing.T, e *Engine, input string) error {
 func TestJoinAndPlacement(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"count","entity":"author",
-	 "joins":[{"rel":"service_region","kind":"left","query":{"entity":"service_region",
+	 "joins":[{"rel":"service_region","kind":"left","left":"service_region_seq","right":"seq","query":{"entity":"service_region",
 	    "on":{"items":[{"pred":{"column":"name","op":"eq","p":0}}]},
 	    "where":{"items":[{"pred":{"column":"seq","op":"gt","p":3}}]},
-	    "joins":[{"rel":"service","kind":"inner","query":{"entity":"service",
+	    "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service",
 	       "where":{"items":[{"pred":{"column":"name","op":"eq","p":4}}]}}}]}}],
 	 "where":{"items":[
 	   {"pred":{"column":"user_seq","op":"eq","p":2}},
@@ -246,8 +222,8 @@ func TestUpsertAndCascade(t *testing.T) {
 	}
 	// cascade: service → members (owned) yes; member → user (parent) no; no_cascade_delete stops it
 	p = compile(t, e, `"kind":"one","entity":"service","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
-	  "relations":[{"rel":"members","query":{"entity":"service_member","relations":[{"rel":"user","query":{"entity":"user"}}]}},
-	               {"rel":"modules","query":{"entity":"service_region","no_cascade_delete":true}}]`)
+	  "relations":[{"rel":"members","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_member","relations":[{"rel":"user","kind":"one","left":"user_seq","right":"seq","query":{"entity":"user"}}]}},
+	               {"rel":"modules","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_region","no_cascade_delete":true}}]`)
 	root := p.Steps[0].Assemble
 	if !root.Children[0].Cascade || root.Children[1].Cascade {
 		t.Errorf("cascade flags: members=%v modules=%v", root.Children[0].Cascade, root.Children[1].Cascade)
@@ -266,7 +242,7 @@ func TestUpsertAndCascade(t *testing.T) {
 		`"kind":"insert","entity":"author","n_params":1,"set":[{"column":"name","p":0}]`:                                                                                                                                                                                                                                                "IR_INVALID: required column author.user_seq is not set",
 		`"kind":"all","entity":"author","no_cascade_delete":true`:                                                                                                                                                                                                                                                                       "IR_INVALID: relation-only options",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("%s\n got %v\n want %s", irs, err, code)
 		}
@@ -298,7 +274,7 @@ func TestAggregates(t *testing.T) {
 		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`: "COLUMN_UNKNOWN",
 		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:             "IR_INVALID",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("%s\n got %v\n want %s", irs, err, code)
 		}
@@ -324,7 +300,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 		t.Errorf("postgres select:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	// aes/hex are client-side on postgres: the read is the bare column and the styles reach the executor
-	p = compile(t, pg, `"kind":"one","entity":"author","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
+	p = compile(t, pg, `"kind":"one","entity":"author","n_params":1,"columns":{"add":["ip"]},"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)
 	var aes, ip *plan.OutCol
 	for i := range p.Steps[0].Assemble.Columns {
 		c := &p.Steps[0].Assemble.Columns[i]
@@ -338,18 +314,14 @@ func TestPostgresAndSQLite(t *testing.T) {
 	if aes == nil || strings.Join(aes.Styles, ",") != "aes,hex" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"aes_hex_email\" AS \"a__aes_hex_email\"") {
 		t.Errorf("postgres aes read: %+v", aes)
 	}
-	if ip == nil || len(ip.Styles) != 0 || !strings.Contains(p.Steps[0].SQL, "host(\"a\".\"ip\") AS \"a__ip\"") {
+	// ip는 bytea column의 packed byte이므로 executor가 address text로 바꾼다.
+	if ip == nil || strings.Join(ip.Styles, ",") != "ip" || !strings.Contains(p.Steps[0].SQL, "\"a\".\"ip\" AS \"a__ip\"") {
 		t.Errorf("postgres ip read: %+v", ip)
 	}
 	// upsert: RETURNING, ON CONFLICT on the unique key covered by the insert (uuid), no LAST_INSERT_ID idiom
 	p = compile(t, pg, `"kind":"insert","entity":"author","n_params":3,"set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":2},{"column":"end_dt","p":2}],"on_duplicate":[{"column":"name","p":1}]`)
 	if want := "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"name\" = $10 RETURNING \"seq\""; p.Steps[0].SQL != want {
 		t.Errorf("postgres upsert:\n got  %s\n want %s", p.Steps[0].SQL, want)
-	}
-	// fulltext on postgres
-	p = compile(t, pg, `"kind":"count","entity":"author","n_params":1,"where":{"items":[{"pred":{"op":"match_boolean","match":["name","description"],"p":0}}]}`)
-	if !strings.Contains(p.Steps[0].SQL, "to_tsvector('simple', coalesce(\"a\".\"name\", '') || ' ' || coalesce(\"a\".\"description\", '')) @@ websearch_to_tsquery('simple', $1)") {
-		t.Errorf("postgres fulltext: %s", p.Steps[0].SQL)
 	}
 
 	lite := testEngineFor(t, "sqlite")
@@ -358,15 +330,16 @@ func TestPostgresAndSQLite(t *testing.T) {
 		t.Errorf("sqlite select:\n got  %s\n want %s", p.Steps[0].SQL, want)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"count","entity":"author","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "OPERATOR_NOT_ALLOWED",
+		// fulltext 조건은 protocol에 없다.
+		`"kind":"count","entity":"author","n_params":1,"where":{"items":[{"pred":{"op":"match","match":["name","description"],"p":0}}]}`: "IR_INVALID",
 	} {
-		_, err := lite.Compile([]byte(`{"ir_version":1,"schema_hash":"` + lite.M.SchemaHash + `",` + irs + `}`))
+		_, err := lite.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + lite.M.ManifestHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("sqlite %s\n got %v\n want %s", irs, err, code)
 		}
 	}
 	// the relation window survives quoting
-	p = compile(t, lite, `"kind":"all","entity":"service","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"modules","query":{"entity":"service_region","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
+	p = compile(t, lite, `"kind":"all","entity":"service","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"modules","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_region","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
 	if !strings.Contains(p.Steps[1].SQL, "ROW_NUMBER() OVER (PARTITION BY \"a\".\"service_seq\" ORDER BY \"a\".\"seq\" DESC) AS \"orm_rn\"") || !strings.Contains(p.Steps[1].SQL, "\"a\".\"service_seq\" IN (?)") {
 		t.Errorf("sqlite relation window: %s", p.Steps[1].SQL)
 	}
@@ -378,10 +351,10 @@ func TestJoinAliasNamespaces(t *testing.T) {
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","expr":{"author_name":{"sql":"{name}"}}},"n_params":1,
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
-	 "joins":[{"rel":"service_member","kind":"inner","query":{"entity":"service_member","columns":{"mode":"none"},
-	     "joins":[{"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","expr":{"service_name":{"sql":"{name}"}}}}},
-	              {"rel":"user","kind":"inner","query":{"entity":"user","columns":{"mode":"none","expr":{"user_name":{"sql":"{name}"}}}}}]}},
-	          {"rel":"service","kind":"inner","query":{"entity":"service","columns":{"mode":"none","expr":{"root_service_name":{"sql":"{name}"}}}}}]`)
+	 "joins":[{"rel":"service_member","kind":"inner","left":"service_member_seq","right":"seq","query":{"entity":"service_member","columns":{"mode":"none"},
+	     "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","expr":{"service_name":{"sql":"{name}"}}}}},
+	              {"rel":"user","kind":"inner","left":"user_seq","right":"seq","query":{"entity":"user","columns":{"mode":"none","expr":{"user_name":{"sql":"{name}"}}}}}]}},
+	          {"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","expr":{"root_service_name":{"sql":"{name}"}}}}}]`)
 	sql := p.Steps[0].SQL
 	for _, want := range []string{
 		"`service_member`.`name` AS `service_member__author_name`", // not present: author's alias belongs to the root
@@ -425,7 +398,7 @@ func TestJoinAliasNamespaces(t *testing.T) {
 	for irs, code := range map[string]string{
 		`"kind":"all","entity":"author","columns":{"expr":{"seq":{"sql":"1"}}}`: "COLUMN_ALIAS_CONFLICT",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("%s\n got %v\n want %s", irs, err, code)
 		}
@@ -434,25 +407,25 @@ func TestJoinAliasNamespaces(t *testing.T) {
 
 func TestCompileErrors(t *testing.T) {
 	e := testEngine(t)
-	h := e.M.SchemaHash
+	h := e.M.ManifestHash
 	cases := map[string]string{
-		`{"ir_version":2,"schema_hash":"` + h + `","kind":"all","entity":"author"}`:                                                                                             "VERSION_MISMATCH",
-		`{"ir_version":1,"schema_hash":"nope","kind":"all","entity":"author"}`:                                                                                                  "SCHEMA_HASH_MISMATCH",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                               "ENTITY_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`: "OPERATOR_NOT_ALLOWED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:  "OPERATOR_NOT_ALLOWED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                   "OR_AT_GROUP_START",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                             "EMPTY_IN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                     "IR_INVALID",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":7}}]}}`:                  "IR_INVALID: param index 7 out of range",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"joined":{"join":"service"}}]}}`:                                           "ENTITY_NOT_JOINED",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                        "RELATION_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"update","entity":"author","n_params":1,"set":[{"column":"name","p":0}]}`:                                             "IR_INVALID: update without where",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","force_index":"nope"}`:                                                                        "INDEX_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                 "COLUMN_UNKNOWN",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","relations":[{"rel":"service","query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`: "LIMIT_IN_RELATION",
-		`{"ir_version":1,"schema_hash":"` + h + `","kind":"all","entity":"author","multi_statement":true}`:                                                                      "IR_INVALID",
+		`{"ir_version":2,"manifest_hash":"` + h + `","kind":"all","entity":"author"}`:                                                                                                                                             "VERSION_MISMATCH",
+		`{"ir_version":1,"manifest_hash":"nope","kind":"all","entity":"author"}`:                                                                                                                                                  "SCHEMA_HASH_MISMATCH",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"nope"}`:                                                                                                                                               "ENTITY_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"nope","op":"eq","p":2}}]}}`:                                                                 "COLUMN_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"name","op":"between","p":0,"ps":[1,2]}}]}}`:                                                 "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":8,"where":{"items":[{"pred":{"column":"aes_hex_email","op":"contains","p":0}}]}}`:                                                  "OPERATOR_NOT_ALLOWED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"conn":"or","column":"seq","op":"eq","p":2}}]}}`:                                                                   "OR_AT_GROUP_START",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"in","ps":[]}}]}}`:                                                                             "EMPTY_IN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"gt"}}]}}`:                                                                                     "IR_INVALID",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","n_params":1,"where":{"items":[{"pred":{"column":"seq","op":"eq","p":7}}]}}`:                                                                  "IR_INVALID: param index 7 out of range",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","where":{"items":[{"joined":{"join":"service"}}]}}`:                                                                                           "ENTITY_NOT_JOINED",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                                                                        "IR_INVALID: join nope: left, right and query are required",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"update","entity":"author","n_params":1,"set":[{"column":"name","p":0}]}`:                                                                                             "IR_INVALID: update without where",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","force_index":"nope"}`:                                                                                                                        "INDEX_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                                                                 "COLUMN_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","relations":[{"rel":"service","kind":"one","left":"service_seq","right":"seq","query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`: "LIMIT_IN_RELATION",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","multi_statement":true}`:                                                                                                                      "IR_INVALID",
 	}
 	for irs, code := range cases {
 		_, err := e.Compile([]byte(irs))
@@ -464,7 +437,7 @@ func TestCompileErrors(t *testing.T) {
 
 func BenchmarkCompileList(b *testing.B) {
 	e := testEngine(&testing.T{})
-	in := []byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","kind":"all","entity":"author","n_params":8,
+	in := []byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","kind":"all","entity":"author","n_params":8,
 	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}},{"pred":{"conn":"and","column":"is_close","op":"eq","p":1}},
 	 {"group":{"conn":"and","items":[{"pred":{"column":"is_display","op":"eq","p":2}},{"group":{"conn":"or","items":[{"pred":{"column":"is_display","op":"eq","p":3}},{"pred":{"conn":"and","column":"display_start_dt","op":"lt","p":4}}]}}]}},
 	 {"pred":{"conn":"and","column":"seq","op":"in","ps":[5,6,7]}}]},"order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}`)
@@ -483,11 +456,11 @@ func TestRelations(t *testing.T) {
 	 "columns":{"mode":"none"},
 	 "where":{"items":[{"pred":{"column":"service_seq","op":"eq","p":0}}]},
 	 "order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":20},
-	 "joins":[{"rel":"service","kind":"inner","query":{"entity":"service",
-	    "relations":[{"rel":"modules","query":{"entity":"service_region","key_by":"name","limit_per_parent":3,
+	 "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service",
+	    "relations":[{"rel":"modules","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_region","key_by":"name","limit_per_parent":3,
 	       "order":[{"column":"seq","desc":true}],
-	       "relations":[{"rel":"service","query":{"entity":"service","order":[{"column":"seq","desc":false}]}}]}}]}}],
-	 "relations":[{"rel":"user","query":{"entity":"user","flatten":true,"if_parent":{"column":"is_close","p":1},
+	       "relations":[{"rel":"service","kind":"one","left":"service_seq","right":"seq","query":{"entity":"service","order":[{"column":"seq","desc":false}]}}]}}]}}],
+	 "relations":[{"rel":"user","kind":"one","left":"user_seq","right":"seq","query":{"entity":"user","flatten":true,"if_parent":{"column":"is_close","p":1},
 	    "where":{"items":[{"pred":{"column":"name","op":"contains","p":2}}]}}}]`)
 	if len(p.Steps) != 4 {
 		t.Fatalf("steps: %d", len(p.Steps))
@@ -533,21 +506,21 @@ func TestRelations(t *testing.T) {
 		t.Errorf("modules children: %+v", mc)
 	}
 	// paginate: main, its relation, then count
-	p = compile(t, e, `"kind":"paginate","entity":"service","limit":{"offset":0,"count":10},"relations":[{"rel":"modules","query":{"entity":"service_region"}}]`)
+	p = compile(t, e, `"kind":"paginate","entity":"service","limit":{"offset":0,"count":10},"relations":[{"rel":"modules","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_region"}}]`)
 	if len(p.Steps) != 3 || p.Steps[1].Role != "relation" || p.Steps[2].Role != "count" {
 		t.Errorf("paginate roles: %s %s %s", p.Steps[0].Role, p.Steps[1].Role, p.Steps[2].Role)
 	}
 	// zero-order one relation: plain IN, executor takes the first row
-	p = compile(t, e, `"kind":"one","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"user","query":{"entity":"user"}}]`)
+	p = compile(t, e, `"kind":"one","entity":"author","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"relations":[{"rel":"user","kind":"one","left":"user_seq","right":"seq","query":{"entity":"user"}}]`)
 	if want := "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?)"; p.Steps[1].SQL != want {
 		t.Errorf("plain relation: %s", p.Steps[1].SQL)
 	}
 	for irs, code := range map[string]string{
-		`"kind":"all","entity":"author","relations":[{"rel":"user","query":{"entity":"user","key_by":"name"}}]`:                                  "IR_INVALID",
-		`"kind":"all","entity":"service","relations":[{"rel":"modules","query":{"entity":"service_region","flatten":true}}]`:                     "IR_INVALID",
-		`"kind":"all","entity":"author","n_params":2,"relations":[{"rel":"user","query":{"entity":"user","if_parent":{"column":"nope","p":0}}}]`: "COLUMN_UNKNOWN",
+		`"kind":"all","entity":"author","relations":[{"rel":"user","kind":"one","left":"user_seq","right":"seq","query":{"entity":"user","key_by":"name"}}]`:                                  "IR_INVALID",
+		`"kind":"all","entity":"service","relations":[{"rel":"modules","kind":"many","left":"seq","right":"service_seq","query":{"entity":"service_region","flatten":true}}]`:                 "IR_INVALID",
+		`"kind":"all","entity":"author","n_params":2,"relations":[{"rel":"user","kind":"one","left":"user_seq","right":"seq","query":{"entity":"user","if_parent":{"column":"nope","p":0}}}]`: "COLUMN_UNKNOWN",
 	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `",` + irs + `}`))
+		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
 		if err == nil || !strings.HasPrefix(err.Error(), code) {
 			t.Errorf("%s\n got %v\n want %s", irs, err, code)
 		}

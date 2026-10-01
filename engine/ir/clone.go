@@ -65,7 +65,7 @@ func cloneGroup(g *Group) *Group {
 		if item.Pred != nil {
 			p := *item.Pred
 			p.P = clonePtr(p.P)
-			p.Ps, p.Match = slices.Clone(p.Ps), slices.Clone(p.Match)
+			p.Ps = slices.Clone(p.Ps)
 			p.Ref = clonePtr(p.Ref)
 			out.Items[i].Pred = &p
 		}

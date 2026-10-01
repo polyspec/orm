@@ -20,10 +20,6 @@ type Dialect interface {
 	Limit(offset, count int) string
 	// ForceIndex renders an index hint or "" when unsupported.
 	ForceIndex(name string) string
-	// Fulltext renders MATCH … AGAINST; boolean selects boolean mode.
-	Fulltext(cols []string, ph string, boolean bool) string
-	// FulltextValue transforms the search value for boolean full-text mode.
-	FulltextValue(v string, boolean bool) string
 	// RowNumber renders ROW_NUMBER() OVER (PARTITION BY p ORDER BY o).
 	RowNumber(partition, orderBy string) string
 	// InsertReturningID reports whether INSERT … RETURNING pk is used (else last insert id).
@@ -31,17 +27,15 @@ type Dialect interface {
 	// Upsert renders the ON DUPLICATE/ON CONFLICT clause for the given conflict columns and assignments.
 	Upsert(conflict []string, assigns string) string
 	// ReadExpr wraps SQL-side stages for a style pipeline and returns the bind count.
-	ReadExpr(col, colType string, styles []string, ph func() string) (string, int)
+	ReadExpr(col string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
-	WriteExpr(ph func() string, colType string, styles []string) (string, int)
+	WriteExpr(ph func() string, styles []string) (string, int)
 	// Now renders CURRENT_TIMESTAMP.
 	Now() string
 	// CurrentTime renders a wall-clock expression that advances during a transaction.
 	CurrentTime() string
-	// Supports reports whether a predicate operator exists in this dialect (false → OPERATOR_NOT_ALLOWED).
-	Supports(op string) bool
-	// HandlesStyle reports whether a column style stage is applied in SQL here
-	// (MySQL: aes/hex/ip); the rest of the stack is left to the executor.
+	// HandlesStyle은 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
+	// (MySQL: hex, ip). 나머지 stage는 executor가 적용한다.
 	HandlesStyle(style string) bool
 	// HostNow reports that the database has no sub-second clock function, so
 	// timestamps written by the ORM (updated_ts) come from the executor (a `now` slot).

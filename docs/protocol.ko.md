@@ -7,7 +7,7 @@
 ```json
 {
   "ir_version": 1,
-  "schema_hash": "cd21c76a45bcb2dd",
+  "manifest_hash": "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
   "entity": "author",
   "columns": Columns,
@@ -33,6 +33,7 @@
 
 | 필드 | 규칙 |
 |---|---|
+| `manifest_hash` | generated code가 가진 document set의 `manifestHash`다. `sha256:` 뒤에 소문자 16진수 64자리가 온다([manifest와 hash](dbspec.ko.md#manifest와-hash)). 클라이언트가 읽은 모델과 hash가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. 이 필드는 `schema_hash`를 대신하며 오류 코드 이름은 그대로다 |
 | `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓴다 |
 | `set` | `insert`와 `update`의 할당 |
 | `rows` | 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다 |
@@ -50,12 +51,12 @@ Columns = {
   "add": ["name"],
   "remove": ["description"],
   "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
-  "fn": {"distance": {"column": "location", "fn": Func}},
+  "fn": {"created_date": {"column": "created_ts", "fn": Func}},
   "sub": {"read_total": Sub}
 }
 ```
 
-- `mode`가 `""`이면 지연 로딩이 아닌 컬럼을, `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다.
+- `mode`가 `""`이면 default select set, 즉 `select explicit`의 컬럼을 뺀 모든 컬럼을 선택한다([runtime model](dbspec.ko.md#runtime-model)). `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다.
 - `expr`, `fn`, `sub`는 이름이 있는 출력을 추가한다. 출력 명칭은 엔티티의 컬럼 명칭과 같을 수 없다.
 - 기본 키와 관계가 바인드하는 키는 항상 선택한다.
 
@@ -68,7 +69,7 @@ Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": 
             "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
 ```
 
-- `rel`은 결과 명칭이다. `left`는 부모의 컬럼이고 `right`는 자식의 컬럼이다.
+- `rel`은 결과 명칭이다. `left`는 부모의 컬럼이고 `right`는 자식의 컬럼이며 둘 다 필수다. 관계는 `kind`도 필수다. 클라이언트는 이름이나 외래 키에서 키를 추론하지 않는다.
 - 조인 자식의 `on` 그룹은 `ON` 절에 추가한다. `where` 그룹은 `joined` 항목이 지정한 위치에 두며, 지정하지 않으면 부모 `WHERE`에 `AND`로 붙인다.
 - 관계는 별도 문장으로 실행한다. `limit_per_parent`는 부모 키마다 자식 행 수를 제한하고, `if_parent`는 컬럼 값이 매개변수와 같은 부모에 대해서만 자식을 읽는다. `flatten`은 자식 컬럼을 부모 행에 합치고, `key_by`는 자식 컬렉션의 키를 정하며, `no_cascade_delete`는 재귀 삭제에서 관계를 제외한다.
 
@@ -81,13 +82,12 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
       | {"conn", "column", "op": "is_null | is_not_null"}
       | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
-      | {"conn", "op": "match | match_boolean", "match": ["name", "description"], "p"}
       | {"conn", "op": "tuple_in | tuple_not_in", "cols": ["tenant_id", "account_id"], "ps": [0, 1, 2, 3]}
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
       | {"conn", "expr": "{read_count} > ?", "ps": [0]}
-Func  = {"name": "day_of_week | year | month | date | distance | point_x | point_y | now | today | days_ago | …", "ps": [0, 1]}
+Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 ```
 
@@ -106,11 +106,13 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 원시 정렬 표현식은 방향을 직접 포함한다. `minus_p`는 음수 값을 저장하지 않는다.
 
+default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, duplicate update의 operation 컬럼이다. AES 키 버전이나 operation 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
+
 ## 2. Plan
 
 ```json
 {
-  "schema_hash": "…", "kind": "all",
+  "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
     {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20",
      "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
@@ -123,7 +125,7 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 }
 ```
 
-- `bind_slots.from`은 `param`(요청 매개변수. 전문 검색과 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각) 중 하나다.
+- `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각), `operation`(unit of work의 operation id. operation 컬럼의 `col_type` `i64` 또는 `uuid`가 있다) 중 하나다. `operation` 슬롯이 있는 쓰기를 operation id 없이 실행하거나 id가 `col_type`에 맞지 않으면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
 - `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.
@@ -151,6 +153,6 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 | Rust | `clients/rust/orm/src/engine/` |
 | TypeScript | `clients/typescript/src/engine/` |
 
-연결은 `schema.json`을 읽어 내용으로 `schema_hash`를 확인하고, 해시가 다른 생성 모델을 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 스키마 해시와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
+generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부하며(`SCHEMA_HASH_MISMATCH`), 모든 요청을 그 요청의 `manifest_hash` 모델로 계획한다. plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
 
 네 플래너는 같은 요청에서 같은 SQL과 bind slot을 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 같은 벡터를 네 클라이언트로 실행하고 문장, bind, 결과를 기록된 기대값과 비교한다.

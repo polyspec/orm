@@ -57,7 +57,9 @@ type txConn struct {
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
-	contextRow bool
+	// operation은 이 transaction(unit of work)의 operation id다. audit table의
+	// insert와 update가 operation column에 쓴다. 없으면 nil이다.
+	operation any
 	// inserted records generated ORM inserts that succeeded in this
 	// transaction. It is an adapter-neutral transaction fact used by callers
 	// that must distinguish a row created in this transaction from a matching
@@ -235,6 +237,7 @@ type txOptions struct {
 	readOnly  bool
 	timeoutMs int
 	retry     int
+	operation any
 	set       bool
 }
 
@@ -256,6 +259,14 @@ func TimeoutMs(ms int) TransactionOption {
 	return func(o *txOptions) { o.timeoutMs, o.set = ms, true }
 }
 
+// Operation은 transaction을 operation id의 unit of work로 만든다. audit table에
+// 대한 transaction 안의 모든 insert와 update는 이 id를 table의 operation
+// column에 쓴다. id는 i64 operation column이면 int64, uuid column이면
+// 소문자 UUID string이다. nested transaction은 바깥 transaction의 id를 쓴다.
+func Operation(id any) TransactionOption {
+	return func(o *txOptions) { o.operation, o.set = id, true }
+}
+
 // Retry sets how many times a deadlocked callback runs again; 0 disables retry.
 func Retry(n int) TransactionOption {
 	return func(o *txOptions) { o.retry = n }
@@ -275,6 +286,11 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	}
 	if o.timeoutMs < 0 {
 		return configErr("transaction timeoutMs must not be negative")
+	}
+	switch o.operation.(type) {
+	case nil, int64, string:
+	default:
+		return configErr("operation id is %T; an operation id is an int64 or a UUID string", o.operation)
 	}
 	if outer := activeFor(d); outer != nil {
 		if o.set {
@@ -359,7 +375,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		cancel()
 		return nil, mapDriverErr(err)
 	}
-	t := &txConn{db: d, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation}
+	t := &txConn{db: d, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, operation: o.operation}
 	if o.timeoutMs > 0 {
 		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)); err != nil {
 			t.abort()
@@ -403,12 +419,6 @@ func (t *txConn) commit() error {
 	if err := t.ctx.Err(); err != nil {
 		t.abort()
 		return &ir.Error{Code: CodeCanceled, Msg: err.Error()}
-	}
-	if t.contextRow {
-		if _, err := t.tx.ExecContext(t.ctx, "DELETE FROM orm__context"); err != nil {
-			t.abort()
-			return mapDriverErr(err)
-		}
 	}
 	if err := t.finishSQLiteMode(); err != nil {
 		t.abort()

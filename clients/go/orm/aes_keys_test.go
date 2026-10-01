@@ -1,48 +1,37 @@
 package orm_test
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
-const aesKeysSchema = `erDiagram
-  secret_note {
-    bigint   seq             PK "auto"
-    int      aes_key_version
-    longblob note             "aes"
+const aesKeysSchema = `dbspec 1 aes_keys
+
+table secret_note {
+  seq i64 identity
+  aes_key_version i32
+  note bytes
+  primary key (seq)
+  settings {
+    codec note aes
+    aes_version aes_key_version
   }
+}
 `
 
 // TestAESWriteUsesKeyOfCurrentVersion writes an AES column with only AESKeys
 // and AESVersion configured. The write uses AESKeys[AESVersion], and a
 // connection with only that version's key reads the value.
 func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
-	d, err := schema.Parse(aesKeysSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := documentSchema(t, aesKeysSchema)
+	manifest := s.Text
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "aes-keys.sqlite")
 	open := func(cfg orm.Config) *orm.DB {
 		t.Helper()
-		db, err := orm.Open(dsn, eng, cfg)
+		db, err := orm.Connect(dsn, s, cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +42,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 	if err := writer.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
-	entity := rowEntity("secret_note", m.SchemaHash, "seq", "aes_key_version", "note")
+	entity := rowEntity("secret_note", s, "seq", "aes_key_version", "note")
 	model := func(db *orm.DB) *orm.Core {
 		c := orm.NewCore(entity)
 		entity.New(c)
@@ -82,19 +71,8 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 // TestAESKeyMustMatchKeyOfCurrentVersion rejects a configuration whose AESKey
 // differs from AESKeys[AESVersion].
 func TestAESKeyMustMatchKeyOfCurrentVersion(t *testing.T) {
-	d, err := schema.Parse(aesKeysSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = orm.Open("sqlite://"+filepath.Join(t.TempDir(), "aes-conflict.sqlite"), eng,
+	s := documentSchema(t, aesKeysSchema)
+	_, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "aes-conflict.sqlite"), s,
 		orm.Config{AESKey: "other-key", AESKeys: map[int32]string{1: "note-key-one"}, AESVersion: 1})
 	if orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), "AESKey") {
 		t.Fatalf("open error = %v, want CONFIG about AESKey", err)

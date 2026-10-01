@@ -2,7 +2,7 @@
 // stdout: the result as JSON. stderr: p50 of the generated client and of the
 // same SQL through database/sql directly.
 //
-//	go run ./examples/thin-slice/go schema/schema.json
+//	go run ./examples/thin-slice/go
 package main
 
 import (
@@ -28,7 +28,7 @@ func main() {
 	const aesKey = "bench-salt"
 	var lastSQL string
 	var lastArgs []any
-	db, err := model.Connect(dsn(), os.Args[1], orm.Config{
+	db, err := model.Connect(dsn(), orm.Config{
 		AESKey:        aesKey,
 		BlindIndexKey: "bench-blind-index",
 		OnQuery: func(e orm.Event) {

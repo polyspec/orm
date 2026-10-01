@@ -7,10 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/schema"
-	"github.com/polyspec/orm/internal/ormgen"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Utils provides operations outside the query syntax.
@@ -109,7 +108,8 @@ func (t *txConn) releaseLocks() {
 	t.locks = nil
 }
 
-// SetLocal sets a transaction-local value.
+// SetLocal은 transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은
+// user variable에 쓰고 SQLite는 transaction 안에만 둔다.
 func (u *Utils) SetLocal(key, value string) error {
 	t, err := u.active("setLocal")
 	if err != nil {
@@ -127,14 +127,6 @@ func (u *Utils) SetLocal(key, value string) error {
 		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = ?", value); err != nil {
 			return mapDriverErr(err)
 		}
-	default:
-		if _, err := t.tx.ExecContext(t.ctx, `CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)`); err != nil {
-			return mapDriverErr(err)
-		}
-		if _, err := t.tx.ExecContext(t.ctx, `INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"`, key, value); err != nil {
-			return mapDriverErr(err)
-		}
-		t.contextRow = true
 	}
 	if t.locals == nil {
 		t.locals = map[string]string{}
@@ -188,29 +180,44 @@ type SchemaUtils struct{ u *Utils }
 // Schema returns the schema utilities.
 func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 
-// Install installs the canonical schema manifest and registers it with the
-// connection. PostgreSQL and SQLite apply it in the active transaction or in a
-// new one; MySQL commits schema statements implicitly, so it applies them
-// outside a transaction and returns CONFIG inside one.
-func (s *SchemaUtils) Install(manifestJSON []byte) error {
+// Install은 manifest text의 document set을 이 연결의 dialect로 render해
+// 적용한다. set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도
+// 바꾸지 않으며, 일부만 있으면 CONFIG다. PostgreSQL과 SQLite는 진행 중인
+// transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를
+// 암묵적으로 commit하므로 transaction 밖에서 적용하고 안에서는 CONFIG다.
+func (s *SchemaUtils) Install(manifestText string) error {
 	d := s.u.db
-	manifest, err := schema.Load(manifestJSON)
-	if err != nil {
-		return configErr("invalid schema manifest: %v", err)
+	m, diagnostics := runtimemodel.Load(manifestText)
+	if len(diagnostics) > 0 {
+		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
-	compiled, err := engine.New(manifest, d.driver)
-	if err != nil {
-		return configErr("compile schema: %v", err)
+	statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(d.driver))
+	if len(diagnostics) > 0 {
+		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
-	ddl, err := ormgen.RenderCreateDDL(manifest, d.driver)
-	if err != nil {
-		return configErr("render schema: %v", err)
-	}
-	statements := ormgen.SplitSQL(ddl)
-	if len(statements) == 0 {
-		return configErr("schema manifest produced no statements")
+	if d.driver == "mysql" && activeFor(d) != nil {
+		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
 	}
 	apply := func(ctx context.Context, q querier) error {
+		var present, missing []string
+		for _, name := range m.Order {
+			table := m.Entities[name].Table
+			found, err := tableExists(ctx, q, d.driver, table)
+			if err != nil {
+				return err
+			}
+			if found {
+				present = append(present, table)
+			} else {
+				missing = append(missing, table)
+			}
+		}
+		switch {
+		case len(missing) == 0:
+			return nil
+		case len(present) > 0:
+			return configErr("the manifest is partly installed: tables %s exist and %s do not", strings.Join(present, ", "), strings.Join(missing, ", "))
+		}
 		for _, statement := range statements {
 			if _, err := q.ExecContext(ctx, statement); err != nil {
 				return mapDriverErr(err)
@@ -219,20 +226,27 @@ func (s *SchemaUtils) Install(manifestJSON []byte) error {
 		return nil
 	}
 	if d.driver == "mysql" {
-		if activeFor(d) != nil {
-			return configErr("MySQL commits schema statements implicitly; install outside a transaction")
-		}
-		err = apply(d.ctx, d.sql)
-	} else {
-		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+		return apply(d.ctx, d.sql)
 	}
-	if err != nil {
-		return err
+	return s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+}
+
+// tableExists는 연결의 현재 database나 schema에 table이 있는지 알린다.
+func tableExists(ctx context.Context, q querier, driver, table string) (bool, error) {
+	var query string
+	switch driver {
+	case "postgres":
+		query = "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1)"
+	case "mysql":
+		query = "SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)"
+	default:
+		query = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)"
 	}
-	d.m.engineMu.Lock()
-	d.engines[manifest.SchemaHash] = compiled
-	d.m.engineMu.Unlock()
-	return RegisterEngine(compiled)
+	var found bool
+	if err := q.QueryRowContext(ctx, query, table).Scan(&found); err != nil {
+		return false, mapDriverErr(err)
+	}
+	return found, nil
 }
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
@@ -413,15 +427,15 @@ func (a *AESUtils) spec(m Model) (*aesSpec, error) {
 		return nil, configErr("aes requires a model")
 	}
 	c := m.Orm_()
-	ent := c.entitySchema(a.u.db)
-	if ent == nil {
-		return nil, configErr("entity %s is not registered for the connection", c.ent.Name)
+	ent, err := c.entityModel(a.u.db)
+	if err != nil {
+		return nil, err
 	}
 	spec := &aesSpec{table: ent.Table, keys: ent.PK, version: ent.AESVersion}
-	for _, col := range ent.Columns {
-		if slices.Contains(col.Styles, "aes") {
+	for _, col := range ent.Fields {
+		if col.Encrypted() {
 			var host []string
-			for _, s := range col.Styles {
+			for _, s := range col.Codec {
 				if s == "aes" || s == "hex" {
 					host = append(host, s)
 				}

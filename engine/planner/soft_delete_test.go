@@ -6,20 +6,12 @@ import (
 
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-func softDeleteManifest(t *testing.T) *schema.Manifest {
+func softDeleteManifest(t *testing.T) *runtimemodel.Model {
 	t.Helper()
-	d, err := schema.Parse("erDiagram\n account {\n bigint id PK\n datetime deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return m
+	return testModel(t, "dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n")
 }
 
 func TestSoftDeleteFiltersReads(t *testing.T) {
