@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.5: the Rust client introspects MySQL, PostgreSQL and SQLite into a dbspec document: `orm::dbspec::introspect` runs the catalog queries of `orm_schema::dbspec` on a sqlx connection and returns the document and the unsupported objects; `make dbspec-introspect-rust-check` runs the round trips and the unsupported cases.
+
 - T8.4.3: the PHP client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-php-check` runs the round trips and the unsupported cases.
 
 - T8.4.4: the TypeScript client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `introspectDbspec` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-ts-check` runs the round trips and the unsupported cases.
