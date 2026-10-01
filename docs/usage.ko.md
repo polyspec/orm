@@ -197,7 +197,7 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 ```sh
 go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
-npx orm-gen gen --schema schema/schema.json --out src/models --scan src
+npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
 ```
 
 ```rust
@@ -278,9 +278,16 @@ let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..D
 
 ```typescript
 import { Db } from '@polyspec/orm-typescript';
+import { Item } from './models/models.js';
 
-const master = await Db.connect(masterDsn, schemaPath, { aesKey });
+const master = await Db.connect(masterDsn, { aesKey });
+await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.transaction(async () => {
+  await new Item().setTitle('first').create();
+}, { operation: 42 });
 ```
+
+`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로 export하며 import될 때 model을 등록한다. `Db.connect(dsn, options)`는 schema 경로를 받지 않으며, 프로세스가 import하지 않은 model의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(texts)`는 한 document set의 dbspec 텍스트를 받아, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. `transaction`의 `operation` 옵션은 작업 단위의 operation id다. 트랜잭션 안에서 `audit` setting이 있는 테이블의 모든 insert와 update는 soft delete를 포함해 이 값을 operation column에 쓴다. `i64` operation column에는 safe integer, `uuid` operation column에는 문자열을 쓴다. 이 값이 없거나 다른 타입이면 audit 테이블의 insert와 update는 `CONFIG`로 실패하고, operation column을 직접 지정하면 `IR_INVALID`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 operation을 그대로 쓴다.
 
 각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(manifestJson)`은 모든 데이터베이스에서 manifest의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지한다.
 
@@ -448,7 +455,7 @@ psql … -f schema.pg.sql
 - Go: `model.Connect(url, schemaPath, config)`. DSN scheme이 드라이버를 선택한다.
 - PHP: `Orm::connect(url, config)`. DSN scheme이 PDO 드라이버를 선택한다.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`. DSN scheme이 sqlx 드라이버를 선택한다.
-- TypeScript: `Db.connect(url, schemaPath, options)`. DSN scheme이 드라이버 패키지를 선택한다.
+- TypeScript: `Db.connect(url, options)`. DSN scheme이 드라이버 패키지를 선택한다.
 - 여러 연결을 함께 열 수 있으며, `connect`가 모델마다 하나를 선택한다. 예를 들어 읽기는 `slave1`, 쓰기는 `master`를 사용한다.
 - SQLite는 `Lb`와 전문 검색 연산자를 거부한다(`OPERATOR_NOT_ALLOWED`).
 
