@@ -126,7 +126,7 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
     };
     let lines: Vec<&str> = body.split('\n').collect();
     let name = match PLAN_HEADER.captures(lines[0]) {
-        Some(m) if !reserved(&m[1]) => m[1].to_owned(),
+        Some(m) if !reserved(&m[1]) && m[1].len() <= 63 => m[1].to_owned(),
         _ => return Err(plan_failure(1, "the first line is exactly `dbplan 1 <name>`".to_owned())),
     };
     let from_failure = || plan_failure(2, "the second line is `from empty` or `from <schemaHash>`".to_owned());
