@@ -31,7 +31,11 @@
         "CREATE EVENT `e_tick` ON SCHEDULE EVERY 1 DAY DISABLE DO SELECT 1",
         "CREATE TRIGGER `orders_bi` BEFORE INSERT ON `orders` FOR EACH ROW SET NEW.`name` = NEW.`name`",
         "ALTER TABLE `orders` ADD COLUMN `next_id` bigint AS (char_length(`name`) + 1) STORED NOT NULL",
-        "ALTER TABLE `orders` ADD COLUMN `name_size` bigint AS (char_length(`name`)) VIRTUAL"
+        "ALTER TABLE `orders` ADD COLUMN `name_size` bigint AS (char_length(`name`)) VIRTUAL",
+        "ALTER TABLE `orders` ADD COLUMN `ts` timestamp(6) NULL",
+        "ALTER TABLE `orders` ADD COLUMN `ch` char(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL",
+        "ALTER TABLE `orders` ADD COLUMN `fl` float NULL",
+        "CREATE TABLE `refs` (`id` bigint NOT NULL, `b` bigint NULL, PRIMARY KEY (`id`), INDEX `ix_refs_b` (`b`), CONSTRAINT `fk_refs_b` FOREIGN KEY (`b`) REFERENCES `orders` (`id`) ON DELETE RESTRICT ON UPDATE SET DEFAULT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
       ],
       "document": [
         "dbspec 1 introspected",
@@ -40,6 +44,13 @@
         "  id i64 identity",
         "  name varchar(64)",
         "  primary key (id)",
+        "}",
+        "",
+        "table refs {",
+        "  id i64",
+        "  b i64 null",
+        "  primary key (id)",
+        "  index ix_refs_b (b)",
         "}"
       ],
       "unsupported": [
@@ -66,7 +77,17 @@
         [
           "column",
           "orders",
+          "ch"
+        ],
+        [
+          "column",
+          "orders",
           "doc"
+        ],
+        [
+          "column",
+          "orders",
+          "fl"
         ],
         [
           "column",
@@ -87,6 +108,11 @@
           "column",
           "orders",
           "qty"
+        ],
+        [
+          "column",
+          "orders",
+          "ts"
         ],
         [
           "index",
@@ -112,6 +138,11 @@
           "partition",
           "parts",
           "parts"
+        ],
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_b"
         ],
         [
           "view",
@@ -151,7 +182,13 @@
         "CREATE TRIGGER \"orders_bi\" BEFORE INSERT ON \"orders\" FOR EACH ROW EXECUTE FUNCTION \"t_touch\"()",
         "CREATE TABLE \"events\" (\"id\" bigint NOT NULL, PRIMARY KEY (\"id\")) PARTITION BY RANGE (\"id\")",
         "CREATE TABLE \"events_1\" PARTITION OF \"events\" FOR VALUES FROM (0) TO (100)",
-        "ALTER TABLE \"orders\" ADD COLUMN \"next_id\" bigint GENERATED ALWAYS AS (\"id\" + 1) STORED NOT NULL"
+        "ALTER TABLE \"orders\" ADD COLUMN \"next_id\" bigint GENERATED ALWAYS AS (\"id\" + 1) STORED NOT NULL",
+        "ALTER TABLE \"orders\" ADD COLUMN \"tz\" time(0) with time zone",
+        "ALTER TABLE \"orders\" ADD COLUMN \"ch\" char(4) COLLATE \"C\"",
+        "ALTER TABLE \"orders\" ADD COLUMN \"r\" real",
+        "ALTER TABLE \"orders\" ADD COLUMN \"j\" json",
+        "ALTER TABLE \"orders\" ADD COLUMN \"jb\" jsonb",
+        "CREATE TABLE \"refs\" (\"id\" bigint NOT NULL, \"a\" bigint NOT NULL, \"b\" bigint NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"fk_refs_a\" FOREIGN KEY (\"a\") REFERENCES \"orders\" (\"id\") ON DELETE NO ACTION ON UPDATE RESTRICT, CONSTRAINT \"fk_refs_b\" FOREIGN KEY (\"b\") REFERENCES \"orders\" (\"id\") ON DELETE RESTRICT ON UPDATE SET DEFAULT)"
       ],
       "document": [
         "dbspec 1 introspected",
@@ -166,6 +203,13 @@
         "table orders {",
         "  id i64 identity",
         "  name varchar(64)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table refs {",
+        "  id i64",
+        "  a i64",
+        "  b i64 null",
         "  primary key (id)",
         "}"
       ],
@@ -208,7 +252,22 @@
         [
           "column",
           "orders",
+          "ch"
+        ],
+        [
+          "column",
+          "orders",
           "code"
+        ],
+        [
+          "column",
+          "orders",
+          "j"
+        ],
+        [
+          "column",
+          "orders",
+          "jb"
         ],
         [
           "column",
@@ -219,6 +278,16 @@
           "column",
           "orders",
           "next_id"
+        ],
+        [
+          "column",
+          "orders",
+          "r"
+        ],
+        [
+          "column",
+          "orders",
+          "tz"
         ],
         [
           "index",
@@ -239,6 +308,16 @@
           "trigger",
           "orders",
           "orders_bi"
+        ],
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_a"
+        ],
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_b"
         ],
         [
           "view",
@@ -315,7 +394,8 @@
         "CREATE VIEW \"v_orders\" AS SELECT \"id\" FROM \"orders\"",
         "CREATE TRIGGER \"orders_ai\" AFTER INSERT ON \"orders\" BEGIN SELECT 1; END",
         "CREATE TABLE \"tags\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" TEXT NOT NULL, CONSTRAINT \"ck_label\" CHECK (length(\"label\") > 0))",
-        "ALTER TABLE \"orders\" ADD COLUMN \"s\" INTEGER GENERATED ALWAYS AS (\"id\" + 2) STORED"
+        "ALTER TABLE \"orders\" ADD COLUMN \"s\" INTEGER GENERATED ALWAYS AS (\"id\" + 2) STORED",
+        "CREATE TABLE \"refs\" (\"id\" bigint NOT NULL, \"a\" bigint NOT NULL, \"b\" bigint NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"fk_refs_a\" FOREIGN KEY (\"a\") REFERENCES \"orders\" (\"id\") ON DELETE NO ACTION ON UPDATE RESTRICT, CONSTRAINT \"fk_refs_b\" FOREIGN KEY (\"b\") REFERENCES \"orders\" (\"id\") ON DELETE RESTRICT ON UPDATE SET DEFAULT, CONSTRAINT \"refs$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"refs$a\" CHECK (typeof(\"a\") IN ('integer', 'null')), CONSTRAINT \"refs$b\" CHECK (typeof(\"b\") IN ('integer', 'null')))"
       ],
       "document": [
         "dbspec 1 introspected",
@@ -323,6 +403,13 @@
         "table orders {",
         "  id i64 identity",
         "  name varchar(64)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table refs {",
+        "  id i64",
+        "  a i64",
+        "  b i64 null",
         "  primary key (id)",
         "}",
         "",
@@ -367,6 +454,16 @@
           "trigger",
           "orders",
           "orders_ai"
+        ],
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_a"
+        ],
+        [
+          "foreign_key",
+          "refs",
+          "fk_refs_b"
         ],
         [
           "check",
