@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.7: 모든 client가 표준 Mermaid erDiagram을 export하고 import하며 각각 빼는 것을 나열하고, 네 client가 byte 단위로 일치한다.
+
 - T8.7.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 Mermaid export, import, round trip 결과를 비교한다.
 
 - T8.7.2.1: 모든 client의 Mermaid import는 column 수가 다른 label을 보고하고, key보다 먼저 dbspec type 범위를 판정하고, comment 부분 사이에 공백 하나를 요구하고, 함께 쓰는 foreign key index를 한 번 더한다. export는 빼는 모든 comment를 보고한다.
