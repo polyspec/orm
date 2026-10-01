@@ -1,5 +1,10 @@
 # 변경 이력
 
+Go, PHP, TypeScript, Rust dbspec client를 공유 case와 부하 문서에
+각각 두 번 실행하고 emission이나 diagnostic이 하나라도 다르면 실패하는
+`make dbspec-compare-check`를 더한다(T8.2.5). 이제 `make check`가 모든
+dbspec target을 실행한다.
+
 모든 client에서 dbspec `header` error의 위치를 `dbspec 1 <name>`에서
 처음 벗어나는 문자로 정하고, TypeScript header의 이중 공백을 거부한다
 (T8.1.3). 공유 case 7개가 이 위치를 고정한다.

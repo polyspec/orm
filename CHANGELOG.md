@@ -1,5 +1,10 @@
 # Changelog
 
+Add `make dbspec-compare-check`, which runs the Go, PHP, TypeScript and
+Rust dbspec clients twice each on the shared cases and the stress
+document and fails on any difference in emission or diagnostics
+(T8.2.5). `make check` now runs every dbspec target.
+
 Point a dbspec `header` error at the first character that departs from
 `dbspec 1 <name>` in every client, and reject double spaces in the
 TypeScript header (T8.1.3). Seven shared cases lock the positions.
