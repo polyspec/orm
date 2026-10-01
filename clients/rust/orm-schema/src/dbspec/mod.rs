@@ -9,6 +9,7 @@
 mod check;
 mod check_type;
 mod emit;
+mod introspect;
 mod lexer;
 mod literal;
 mod model;
@@ -16,6 +17,7 @@ mod parser;
 mod render;
 mod validate;
 
+pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
 pub use model::Document;
 pub use render::{render, Dialect};
 

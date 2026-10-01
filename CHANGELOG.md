@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.5: the Rust client introspects MySQL, PostgreSQL and SQLite into a dbspec document: `orm::dbspec::introspect` runs the catalog queries of `orm_schema::dbspec` on a sqlx connection and returns the document and the unsupported objects; `make dbspec-introspect-rust-check` runs the round trips and the unsupported cases.
+
 - T8.4.2: the Go engine introspects MySQL, PostgreSQL and SQLite into a dbspec document with a constant number of catalog queries and reports unsupported objects; `make dbspec-introspect-check` runs the round trips and the unsupported cases.
 
 - T8.4.1: docs/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.

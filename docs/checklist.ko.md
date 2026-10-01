@@ -63,7 +63,7 @@
 - [o] T8.4.2 Go client에서 dbspec으로 introspect한다(T8.4.1 필요). Evidence: engine/dbspec/introspect*.go `Introspect(ctx, querier, dialect, name)`가 문서와 미지원 객체를 돌려준다. 이것 없이 physical test는 build되지 않았다(`undefined: dbspec.Introspect`). `make dbspec-introspect-check`는 ddl.json vector 5개와 schema 문서 5개를 MySQL, PostgreSQL, SQLite에서 30번 round trip해 같은 schema text와 미지원 객체 없음을 확인하고, 모든 집합에서 query 수가 8, 7, 3임을 확인하며, tests/dbspec/introspect.json의 case 3개를 통과한다. 기대 항목 하나를 빼면 그 확인은 실패한다.
 - [ ] T8.4.3 PHP client에서 dbspec으로 introspect한다(T8.4.1 필요).
 - [ ] T8.4.4 TypeScript client에서 dbspec으로 introspect한다(T8.4.1 필요).
-- [ ] T8.4.5 Rust client에서 dbspec으로 introspect한다(T8.4.1 필요).
+- [o] T8.4.5 Rust client에서 dbspec으로 introspect한다(T8.4.1 필요). Evidence: clients/rust/orm-schema/src/dbspec/introspect/*.rs가 catalog query의 row를 읽고(`catalog_queries`, `read_catalog`), clients/rust/orm/src/dbspec.rs의 `introspect(connection, dialect, name)`이 sqlx MySQL, PostgreSQL, SQLite connection에서 이를 실행해 문서와 미지원 객체를 돌려준다. 이것 없이 physical test는 build되지 않았다(unresolved import `orm::dbspec`). `make dbspec-introspect-rust-check`는 MySQL, PostgreSQL, SQLite에서 ddl.json vector 5개와 schema 문서 5개의 round trip 30개를 같은 schema text와 미지원 객체 없이 통과하고, 모든 집합에서 query 수가 8, 7, 3임을 확인하며, tests/dbspec/introspect.json의 case 3개를 통과한다. 기대 항목 하나를 빼면 그 확인은 실패한다.
 - [ ] T8.4.6 세 database에서 네 client가 introspect한 문서를 비교한다(T8.4.2-T8.4.5 필요).
 - [ ] T8.5 모든 client에서 schema diff와 migration plan chain을 만든다(T8.4 선행). 완료 기준: 의존 순서 plan, plan chain 안의 명시적 rename, destructive 변경에 대한 명시적 허용.
 - [ ] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
