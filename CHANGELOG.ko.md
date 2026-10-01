@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T12: `make ts-model-check`는 TypeScript models script가 model을 호출하지 않는 source를 scan하거나 호출하는 source를 빠뜨릴 때, 또는 commit된 models.ts가 그 출력과 다를 때 실패한다. script는 model을 호출하는 8개 source만 scan한다.
+
 - T8.5.2.2: 63 bytes를 넘는 plan 이름을 거부하고, 공유 case가 plan parse error를 덮는다.
 
 - T8.5.5: Rust client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-rust-check`가 이를 적용한다.

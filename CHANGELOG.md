@@ -1,5 +1,7 @@
 # Changelog
 
+- T12: `make ts-model-check` fails when the TypeScript models script scans a source that does not call models or misses one that does, or when the committed models.ts differs from its output; the script scans only the 8 sources that call models.
+
 - T8.5.2.2: plan names over 63 bytes are rejected, and shared cases cover plan parse errors.
 
 - T8.5.5: the Rust client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-rust-check` applies them.
