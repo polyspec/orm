@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.3: Introspection case는 stored와 virtual generated column이 모든 client에서 MySQL, PostgreSQL, SQLite 모두 미지원으로 보고되는지 검사한다.
+
 - T8.0.2: Introspection은 모든 client에서 prefix, partial, expression index를 table과 이름과 함께 미지원으로 보고한다.
 
 - T8.0.1: PostgreSQL introspection은 참조 table이 다른 schema에 있는 foreign key를 같은 이름의 table을 가리키는 key로 읽지 않고 미지원으로 보고한다.
