@@ -1768,6 +1768,12 @@
           6,
           7,
           null
+        ],
+        [
+          "column",
+          7,
+          10,
+          null
         ]
       ],
       "id": "target-diagnostic-located",
