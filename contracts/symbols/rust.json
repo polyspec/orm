@@ -870,6 +870,7 @@
   "clients/rust/orm-schema/src/dbspec/mermaid.rs::pattern": " fn pattern (text : \u0026 str) -\u003e Regex",
   "clients/rust/orm-schema/src/dbspec/mermaid.rs::report": " fn report (dropped : \u0026 mut Vec \u003c Unsupported \u003e , kind : \u0026 str , table : \u0026 str , name : \u0026 str , reason : \u0026 str)",
   "clients/rust/orm-schema/src/dbspec/mermaid.rs::split_names": " fn split_names (s : \u0026 str) -\u003e Vec \u003c String \u003e",
+  "clients/rust/orm-schema/src/dbspec/mermaid.rs::within": " fn within (digits : \u0026 str , lo : u32 , hi : u32) -\u003e Option \u003c u32 \u003e",
   "clients/rust/orm-schema/src/dbspec/mod.rs::Diagnostic": "pub struct Diagnostic  { pub rule : String , pub line : usize , pub column : usize , pub message : String , }",
   "clients/rust/orm-schema/src/dbspec/mod.rs::Diagnostic as fmt :: Display::fmt": " fn fmt (\u0026 self , f : \u0026 mut fmt :: Formatter \u003c '_ \u003e) -\u003e fmt :: Result",
   "clients/rust/orm-schema/src/dbspec/mod.rs::Diagnostic#field.column": "usize",
