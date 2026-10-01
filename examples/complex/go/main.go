@@ -46,17 +46,30 @@ func main() {
 	page, err := model.Author().Connect(db).ServiceSeq(7).RemoveAllColumns().OrderBySeqAsc().GetsPage(2, 10)
 	check(err)
 
-	out, err := json.MarshalIndent(map[string]any{
-		"rows":        rows,
-		"groups":      groups.Len(),
-		"read_sum":    sum,
-		"like_avg":    avg,
-		"page_total":  page.TotalCount,
-		"page_pages":  page.TotalPages,
-		"page_length": page.Items.Len(),
-	}, "", "  ")
-	check(err)
-	fmt.Println(string(out))
+	// 세 언어가 같은 byte를 내도록 member 순서는 output이 고정하고 HTML 문자는
+	// escape하지 않는다.
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	check(enc.Encode(output{
+		Rows:       rows,
+		Groups:     groups.Len(),
+		ReadSum:    sum,
+		LikeAvg:    avg,
+		PageTotal:  page.TotalCount,
+		PagePages:  page.TotalPages,
+		PageLength: page.Items.Len(),
+	}))
+}
+
+// output은 출력 문서의 member를 PHP와 Rust 프로그램과 같은 순서로 선언한다.
+type output struct {
+	Rows       any     `json:"rows"`
+	Groups     int     `json:"groups"`
+	ReadSum    float64 `json:"read_sum"`
+	LikeAvg    float64 `json:"like_avg"`
+	PageTotal  int64   `json:"page_total"`
+	PagePages  int64   `json:"page_pages"`
+	PageLength int     `json:"page_length"`
 }
 
 // dsn은 시드된 bench database를 가리키는 ORM_BENCH_MYSQL_DSN이다. 없거나 비어

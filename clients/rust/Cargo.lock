@@ -1105,6 +1105,7 @@ dependencies = [
  "chrono",
  "orm",
  "orm-build",
+ "serde",
  "serde_json",
  "sqlx",
  "tokio",

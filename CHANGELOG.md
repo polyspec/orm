@@ -1,5 +1,7 @@
 # Changelog
 
+- T17.4: the Go, PHP and Rust programs of examples/complex print the same compact JSON bytes, and `make example-check` compares the outputs of examples/complex and examples/thin-slice byte for byte against the seeded bench database.
+
 - T8.2.6.4.1: clients/rust/Cargo.lock matches the workspace manifests again, so the `--locked` cargo commands, among them `make rust-check`, run.
 
 - T8.2, T8.2.6, T8.3, T8.5: closed with their completed sub-items; T7.17.2.10.3 and T7.17.2.10.3.1 closed as superseded by dbspec.
