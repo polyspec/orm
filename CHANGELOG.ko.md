@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.2.2: 63 bytes를 넘는 plan 이름을 거부하고, 공유 case가 plan parse error를 덮는다.
+
 - T8.6.2: Go engine은 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용한다.
 
 - T8.6.1: docs/plans.md가 plan 적용을 정한다: lock, history, drift, 검증, event, MySQL recovery.

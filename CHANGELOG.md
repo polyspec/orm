@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.5.2.2: plan names over 63 bytes are rejected, and shared cases cover plan parse errors.
+
 - T8.6.2: the Go engine applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery.
 
 - T8.6.1: docs/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.
