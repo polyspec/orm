@@ -332,6 +332,8 @@ func readMySQLIndexes(ctx context.Context, q Querier, c *catalog) error {
 func readMySQLForeignKeys(ctx context.Context, q Querier, c *catalog) error {
 	var current *ifk
 	var currentTable *itable
+	// 보고한 key의 나머지 column row는 건너뛴다.
+	skipped := ""
 	flush := func() {
 		if current != nil && currentTable != nil {
 			currentTable.fks = append(currentTable.fks, *current)
@@ -346,6 +348,10 @@ func readMySQLForeignKeys(ctx context.Context, q Querier, c *catalog) error {
 		if current != nil && (current.name != name || currentTable.name != table) {
 			flush()
 		}
+		if skipped == table+"\x00"+name {
+			return nil
+		}
+		skipped = ""
 		if current == nil {
 			t := c.table(table)
 			del, okDelete := actionName(onDelete)
@@ -355,6 +361,7 @@ func readMySQLForeignKeys(ctx context.Context, q Querier, c *catalog) error {
 			}
 			if !okDelete || !okUpdate || match != "NONE" {
 				c.report("foreign_key", table, name, "actions %s, %s or match %s have no dbspec definition", onDelete, onUpdate, match)
+				skipped = table + "\x00" + name
 				return nil
 			}
 			current, currentTable = &ifk{name: name, table: refTable, onDelete: del, onUpdate: upd}, t

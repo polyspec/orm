@@ -254,6 +254,8 @@ async function readIndexes(query: CatalogQuery, c: Catalog): Promise<void> {
 
 async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
   let current: { fk: IForeignKey; table: ITable } | null = null;
+  // 보고한 key의 나머지 column row는 건너뛴다.
+  let skipped = '';
   for (const r of await query(FOREIGN_KEYS_QUERY)) {
     const [table, name, refTable, onDelete, onUpdate, match, column, refColumn] = [0, 1, 2, 3, 4, 5, 6, 7].map(i => r.text(i)) as [
       string, string, string, string, string, string, string, string,
@@ -262,6 +264,8 @@ async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
       current.table.fks.push(current.fk);
       current = null;
     }
+    if (skipped === `${table}\x00${name}`) continue;
+    skipped = '';
     if (current === null) {
       const t = c.table(table);
       const del = actionName(onDelete);
@@ -269,6 +273,7 @@ async function readForeignKeys(query: CatalogQuery, c: Catalog): Promise<void> {
       if (t === undefined) continue;
       if (del === null || upd === null || match !== 'NONE') {
         c.report('foreign_key', table, name, `actions ${onDelete}, ${onUpdate} or match ${match} have no dbspec definition`);
+        skipped = `${table}\x00${name}`;
         continue;
       }
       current = { fk: { name, columns: [], table: refTable, refs: [], onDelete: del, onUpdate: upd }, table: t };

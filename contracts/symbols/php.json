@@ -665,6 +665,7 @@
   "clients/php/src/Dbspec/Settings.php::Orm\\Dbspec\\Settings::$settings": "public array",
   "clients/php/src/Dbspec/Settings.php::Orm\\Dbspec\\Settings::__construct": "public function __construct(array $comments=[]): ",
   "clients/php/src/Dbspec/SqliteCatalog.php::Orm\\Dbspec\\SqliteCatalog": "final class Orm\\Dbspec\\SqliteCatalog extends  implements  uses ",
+  "clients/php/src/Dbspec/SqliteCatalog.php::Orm\\Dbspec\\SqliteCatalog::columnText": "private static function columnText(string $item, string $name, string $declared, bool $notNull, ?string $default): bool",
   "clients/php/src/Dbspec/SqliteCatalog.php::Orm\\Dbspec\\SqliteCatalog::defaultLiteral": "private static function defaultLiteral(string $text, Orm\\Dbspec\\ColumnType $type): ?string",
   "clients/php/src/Dbspec/SqliteCatalog.php::Orm\\Dbspec\\SqliteCatalog::parseTable": "private static function parseTable(string $text): array",
   "clients/php/src/Dbspec/SqliteCatalog.php::Orm\\Dbspec\\SqliteCatalog::read": "public static function read(PDO $connection): Orm\\Dbspec\\Catalog",

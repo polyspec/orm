@@ -240,12 +240,23 @@ impl Catalog {
                 }
                 Err(diagnostics) => diagnostics,
             };
-            let mut removed: Vec<LineObject> = Vec::new();
+            // 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+            let mut rejected: Vec<String> = Vec::new();
             for d in &diagnostics {
                 let Some(o) = objects.get(&d.line) else {
                     let list: Vec<String> = diagnostics.iter().map(|d| d.to_string()).collect();
                     return Err(format!("introspected document does not parse: {}\n{text}", list.join("; ")));
                 };
+                if o.kind == "table" {
+                    rejected.push(o.table.clone());
+                }
+            }
+            let mut removed: Vec<LineObject> = Vec::new();
+            for d in &diagnostics {
+                let o = &objects[&d.line];
+                if o.kind != "table" && rejected.contains(&o.table) {
+                    continue;
+                }
                 if !removed.contains(o) {
                     removed.push(o.clone());
                     self.report(o.kind, &o.table, &o.name, format!("{}: {}", d.rule, d.message));
@@ -261,7 +272,7 @@ impl Catalog {
             self.tables.retain(|t| t.name != o.table);
             return;
         }
-        let Some(t) = self.table(&o.table) else { return };
+        let t = self.table(&o.table).expect("an introspected object belongs to a read table");
         match o.kind {
             "column" => t.columns.retain(|x| x.name != o.name),
             "unique" => t.uniques.retain(|x| x.name != o.name),

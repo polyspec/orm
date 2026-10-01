@@ -48,12 +48,23 @@ final class Catalog
                 usort($unsupported, static fn(Unsupported $a, Unsupported $b): int => strcmp("{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"));
                 return new IntrospectResult($result->document, $unsupported);
             }
-            $removed = [];
+            // 거부된 table 의 객체는 table 과 함께 빠지므로 따로 보고하지 않는다.
+            $rejected = [];
             foreach ($result->diagnostics as $d) {
                 $object = $objects[$d->line] ?? null;
                 if ($object === null) {
                     $found = implode("\n", array_map(static fn(Diagnostic $x): string => "{$x->line}:{$x->column} {$x->rule} {$x->message}", $result->diagnostics));
                     throw new \RuntimeException("Introspected document does not parse:\n$found\n$text");
+                }
+                if ($object[0] === 'table') {
+                    $rejected[$object[1]] = true;
+                }
+            }
+            $removed = [];
+            foreach ($result->diagnostics as $d) {
+                $object = $objects[$d->line];
+                if ($object[0] !== 'table' && isset($rejected[$object[1]])) {
+                    continue;
                 }
                 $key = implode("\0", $object);
                 if (!isset($removed[$key])) {

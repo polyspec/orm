@@ -274,18 +274,25 @@ fn read_indexes(results: &Results, c: &mut Catalog) -> Result<(), String> {
 fn read_foreign_keys(results: &Results, c: &mut Catalog) -> Result<(), String> {
     // 읽는 중인 foreign key와 그 table. 다른 key의 row가 오면 table에 더한다.
     let mut current: Option<(String, IForeignKey)> = None;
+    // 보고한 key의 나머지 column row는 건너뛴다.
+    let mut skipped: Option<(String, String)> = None;
     for row in results.rows(FOREIGN_KEYS) {
         let (table, name, ref_table, on_delete, on_update) = (row.text(0)?, row.text(1)?, row.text(2)?, row.text(3)?, row.text(4)?);
         let (match_option, column, ref_column) = (row.text(5)?, row.text(6)?, row.text(7)?);
         if current.as_ref().is_some_and(|(t, f)| f.name != name || *t != table) {
             flush(c, current.take());
         }
+        if skipped.as_ref().is_some_and(|(t, n)| *t == table && *n == name) {
+            continue;
+        }
+        skipped = None;
         if current.is_none() {
             if !c.has_table(&table) {
                 continue;
             }
             let (Some(del), Some(upd), "NONE") = (action_name(&on_delete), action_name(&on_update), match_option.as_str()) else {
                 c.report("foreign_key", &table, &name, format!("actions {on_delete}, {on_update} or match {match_option} have no dbspec definition"));
+                skipped = Some((table, name));
                 continue;
             };
             let key = IForeignKey { name, columns: Vec::new(), table: ref_table, refs: Vec::new(), on_delete: del, on_update: upd };

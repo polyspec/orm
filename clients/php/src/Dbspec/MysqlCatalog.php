@@ -261,6 +261,8 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         $q = self::FOREIGN_KEYS;
         $current = null;
         $currentTable = null;
+        // 보고한 key 의 나머지 column row 는 건너뛴다.
+        $skipped = '';
         $flush = static function () use (&$current, &$currentTable): void {
             if ($current !== null && $currentTable !== null) {
                 $currentTable->foreignKeys[] = $current;
@@ -273,6 +275,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if ($current !== null && ($current['name'] !== $name || $currentTable->name !== $table)) {
                 $flush();
             }
+            if ($skipped === "$table\0$name") {
+                continue;
+            }
+            $skipped = '';
             if ($current === null) {
                 $t = $c->table($table);
                 $delete = Catalog::actionName($onDelete);
@@ -282,6 +288,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 }
                 if ($delete === null || $update === null || $match !== 'NONE') {
                     $c->report('foreign_key', $table, $name, "actions $onDelete, $onUpdate or match $match have no dbspec definition");
+                    $skipped = "$table\0$name";
                     continue;
                 }
                 $current = ['name' => $name, 'columns' => [], 'table' => $refTable, 'refs' => [], 'onDelete' => $delete, 'onUpdate' => $update];

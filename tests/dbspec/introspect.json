@@ -310,6 +310,90 @@
           "v_orders"
         ]
       ]
+    },
+    {
+      "id": "mysql-dependents-once",
+      "dialect": "mysql",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE `u` (`id` int unsigned NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+        "CREATE INDEX `ix_u` ON `u` (`id`)",
+        "CREATE TABLE `p` (`a` bigint NOT NULL, `b` bigint NOT NULL, PRIMARY KEY (`a`, `b`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+        "CREATE TABLE `c` (`id` bigint NOT NULL, `a` bigint NOT NULL, `b` bigint NOT NULL, PRIMARY KEY (`id`), INDEX `ix_c` (`a`, `b`), CONSTRAINT `fk_c` FOREIGN KEY (`a`, `b`) REFERENCES `p` (`a`, `b`) ON DELETE NO ACTION ON UPDATE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table c {",
+        "  id i64",
+        "  a i64",
+        "  b i64",
+        "  primary key (id)",
+        "  index ix_c (a, b)",
+        "}",
+        "",
+        "table p {",
+        "  a i64",
+        "  b i64",
+        "  primary key (a, b)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "foreign_key",
+          "c",
+          "fk_c"
+        ],
+        [
+          "column",
+          "u",
+          "id"
+        ],
+        [
+          "table",
+          "u",
+          "u"
+        ]
+      ]
+    },
+    {
+      "id": "sqlite-table-items",
+      "dialect": "sqlite",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE \"s\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"a\" TEXT NOT NULL, \"b\" TEXT NOT NULL CHECK (\"b\" <> ''), \"r\" TEXT REFERENCES \"s\" (\"id\"), UNIQUE (\"a\"), CHECK (\"a\" <> ''))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table s {",
+        "  id i64 identity",
+        "  a text",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "check",
+          "s",
+          ""
+        ],
+        [
+          "column",
+          "s",
+          "b"
+        ],
+        [
+          "column",
+          "s",
+          "r"
+        ],
+        [
+          "unique",
+          "s",
+          ""
+        ]
+      ]
     }
   ]
 }

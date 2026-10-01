@@ -25,6 +25,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     private const PRIMARY_KEY_ITEM = '/^PRIMARY KEY \(([^)]*)\)$/D';
     private const IDENTITY_COLUMN = '/^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$/D';
     private const COLUMN_ITEM = '/^"([^"]+)" /';
+    private const CONSTRAINT_ITEM = '/^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b/';
     private const NUMBER_DEFAULT = '/^-?\d+(\.\d+)?$/D';
 
     public static function read(\PDO $connection): Catalog
@@ -42,6 +43,10 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                     continue;
                 }
                 [$st, $unsupported] = self::parseTable($text);
+                if ($st['unsupported'] !== '') {
+                    $c->report('table', $name, $name, $st['unsupported']);
+                    continue;
+                }
                 foreach ($unsupported as [$unsupportedKind, $unsupportedName, $reason]) {
                     $c->report($unsupportedKind, $name, $unsupportedName, $reason);
                 }
@@ -70,6 +75,11 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             }
             if ($hidden !== 0) {
                 $c->report('column', $table, $name, 'a generated column has no dbspec definition');
+                continue;
+            }
+            $item = $parsed[$table]['columns'][$name] ?? '';
+            if ($parsed[$table]['identity'] !== $name && !self::columnText($item, $name, $declared, $notNull !== 0, $default)) {
+                $c->report('column', $table, $name, "the column definition \"$item\" has clauses that dbspec does not read");
                 continue;
             }
             $column = ['name' => $name, 'null' => $notNull === 0, 'identity' => false, 'default' => ''];
@@ -126,7 +136,8 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             $columns = CatalogRows::text($row, 5, $q);
             $desc = CatalogRows::text($row, 6, $q);
             $t = $c->table($table);
-            if ($t === null || $origin === 'pk') {
+            // pk 와 u origin index 는 primary key 와 unique 정의에서 나오며, 그 정의를 읽거나 보고한다.
+            if ($t === null || $origin === 'pk' || $origin === 'u') {
                 continue;
             }
             $list = explode(',', $columns);
@@ -201,14 +212,16 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
      * renderer 가 쓰는 한 줄 CREATE TABLE text 에서 primary key, identity,
      * foreign key, check 를 읽는다. 그 밖의 table 수준 항목은 미지원이다.
      *
-     * @return array{0: array{checks: array<string, string>, order: list<string>, foreignKeys: list<array>, primary: list<string>, identity: string}, 1: list<array{0: string, 1: string, 2: string}>}
+     * @return array{0: array{checks: array<string, string>, order: list<string>, foreignKeys: list<array>, primary: list<string>, identity: string, columns: array<string, string>, unsupported: string}, 1: list<array{0: string, 1: string, 2: string}>}
      */
     private static function parseTable(string $text): array
     {
-        $st = ['checks' => [], 'order' => [], 'foreignKeys' => [], 'primary' => [], 'identity' => ''];
+        // unsupported 가 비어 있지 않으면 table 전체를 읽지 못한 이유다.
+        $st = ['checks' => [], 'order' => [], 'foreignKeys' => [], 'primary' => [], 'identity' => '', 'columns' => [], 'unsupported' => ''];
         $open = strpos($text, '(');
         if ($open === false || !str_ends_with($text, ')')) {
-            return [$st, [['table', '', 'the CREATE TABLE text has no column list']]];
+            $st['unsupported'] = 'the CREATE TABLE text has no column list';
+            return [$st, []];
         }
         $unsupported = [];
         foreach (self::splitTopLevel(substr($text, $open + 1, -1)) as $item) {
@@ -223,13 +236,46 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
             } elseif (preg_match(self::CHECK_ITEM, $item, $m)) {
                 $st['checks'][$m[1]] = $m[2];
                 $st['order'][] = $m[1];
-            } elseif (preg_match(self::COLUMN_ITEM, $item)) {
-                // column 정의는 pragma_table_xinfo 가 읽는다.
+            } elseif (preg_match(self::CONSTRAINT_ITEM, $item, $m)) {
+                // 이름 없는 constraint 는 이름이 빈 객체로 보고한다. primary key 의 다른 형식은 table 을 읽지 못하게 한다.
+                $kind = ['CHECK' => 'check', 'UNIQUE' => 'unique', 'FOREIGN KEY' => 'foreign_key'][$m[2]] ?? null;
+                if ($kind === null) {
+                    $st['unsupported'] = "the primary key \"$item\" has no dbspec definition";
+                    return [$st, []];
+                }
+                $unsupported[] = [$kind, $m[1], "the table item \"$item\" has no dbspec definition"];
+            } elseif (preg_match(self::COLUMN_ITEM, $item, $m)) {
+                // 정의는 pragma_table_xinfo 가 읽고, 그 text 는 renderer 형식인지 확인한다.
+                $st['columns'][$m[1]] = $item;
             } else {
-                $unsupported[] = ['check', $item, "the table item \"$item\" has no dbspec definition"];
+                $st['unsupported'] = "the table item \"$item\" has no dbspec definition";
+                return [$st, []];
             }
         }
         return [$st, $unsupported];
+    }
+
+    /**
+     * column 정의 text 가 renderer 의 column 형식, 곧 이름, 선언 type, NULL 이나 NOT
+     * NULL, 그리고 있으면 DEFAULT 뿐인지 알려 준다. SQLite 는 keyword 인 type 이름을
+     * 대문자로 보고하므로 type 은 대소문자 없이 비교한다.
+     */
+    private static function columnText(string $item, string $name, string $declared, bool $notNull, ?string $default): bool
+    {
+        $prefix = "\"$name\" ";
+        if (!str_starts_with($item, $prefix)) {
+            return false;
+        }
+        $rest = substr($item, strlen($prefix));
+        if (strlen($rest) < strlen($declared) || strcasecmp(substr($rest, 0, strlen($declared)), $declared) !== 0) {
+            return false;
+        }
+        $rest = substr($rest, strlen($declared));
+        $tail = $notNull ? ' NOT NULL' : ' NULL';
+        if ($default === null) {
+            return $rest === $tail;
+        }
+        return $rest === "$tail DEFAULT $default" || $rest === "$tail DEFAULT ($default)";
     }
 
     /** 괄호와 따옴표 밖의 쉼표로 나눈다. @return list<string> */

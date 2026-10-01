@@ -113,14 +113,20 @@ export class Catalog {
         this.unsupported.sort((a, b) => byteOrder(key(a), key(b)));
         return { document: parsed.document, unsupported: this.unsupported };
       }
-      const removed = new Set<string>();
+      // 거부된 table의 객체는 table과 함께 빠지므로 따로 보고하지 않는다.
+      const rejected = new Set<string>();
       for (const d of parsed.diagnostics) {
         const o = objects.get(d.line);
         if (o === undefined) {
           throw new Error(`introspected document does not parse: ${JSON.stringify(parsed.diagnostics)}\n${text}`);
         }
+        if (o.kind === 'table') rejected.add(o.table);
+      }
+      const removed = new Set<string>();
+      for (const d of parsed.diagnostics) {
+        const o = objects.get(d.line)!;
         const key = `${o.kind}\x00${o.table}\x00${o.name}`;
-        if (removed.has(key)) continue;
+        if (removed.has(key) || (o.kind !== 'table' && rejected.has(o.table))) continue;
         removed.add(key);
         this.report(o.kind, o.table, o.name, `${d.rule}: ${d.message}`);
         this.remove(o);
@@ -128,13 +134,10 @@ export class Catalog {
     }
   }
 
-  /**
-   * 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다. 같은
-   * parse에서 table이 이미 빠졌으면 그 table의 객체도 이미 빠진 것이다.
-   */
+  /** 객체 하나를 뺀다. table이나 primary key를 빼면 table 전체가 빠진다. */
   private remove(o: LineObject): void {
     const t = this.table(o.table);
-    if (t === undefined) return;
+    if (t === undefined) throw new Error(`introspected table ${o.table} is not in the catalog`);
     switch (o.kind) {
       case 'table':
         this.tables = this.tables.filter(x => x !== t);
