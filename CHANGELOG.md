@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.6.4.1: the Rust lock file no longer lists the removed `libc` dependency of `orm-schema`, so `cargo check --locked` passes.
+
 - T8.2, T8.2.6, T8.3, T8.5: closed with their completed sub-items; T7.17.2.10.3 and T7.17.2.10.3.1 closed as superseded by dbspec.
 
 - T8.2.6.4: the dbspec document set is the only schema source; the Mermaid schema source, its manifest and `orm-schema-v1` SQL, every schema CLI command that read them and the PhysicalGraph records are removed from every client, and the CLI is `orm-gen` in Go, PHP and TypeScript.
