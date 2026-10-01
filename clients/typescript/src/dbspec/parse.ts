@@ -30,6 +30,10 @@ const MAX_NAME_BYTES = 63;
 const MAX_KEY_COLUMNS = 16;
 const MAX_KEY_VARCHAR = 640;
 
+const RULE_ORDER: readonly DbspecRule[] = [
+  'header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type', 'column',
+  'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding',
+];
 const NAME = /^[a-z][a-z0-9_]*$/;
 const INTEGER = /^-?[0-9]+$/;
 const NUMBER = /^-?[0-9]+(\.[0-9]+)?$/;
@@ -116,6 +120,7 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
 );
 
 interface ISettings {
+  readonly open: Tk;
   readonly entries: ISetting[];
   readonly comments: string[];
   closing: string[];
@@ -137,6 +142,10 @@ interface ITable {
   closing: string[];
   phase: 0 | 1 | 2;
   identity: boolean;
+  /** The { that opens the block, or the table keyword when the line has none. */
+  readonly open: Tk;
+  /** Names of columns whose own line failed: references to them report nothing more. */
+  readonly failed: Set<string>;
 }
 
 interface IUse {
@@ -153,6 +162,7 @@ interface IPlacement {
 }
 
 interface IDiagram {
+  readonly open: Tk;
   readonly name: Tk;
   readonly named: boolean;
   readonly entries: IPlacement[];
@@ -166,6 +176,8 @@ interface IDocument {
   readonly tables: ITable[];
   readonly diagrams: IDiagram[];
   closing: string[];
+  /** Names of tables whose own line failed: references to them report nothing more. */
+  readonly failed: Set<string>;
   /** The first declaration of every index, unique key, foreign key and check name. */
   readonly constraints: Map<string, Tk>;
 }
@@ -181,8 +193,14 @@ interface ParseContext {
   readonly cache: Map<string, Parsed>;
 }
 
+const RESERVED = new Set([
+  'dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings',
+  'null', 'identity', 'default', 'true', 'false',
+]);
+
+/** Whether a name matches the name rule; reserved words are not names. */
 function wellFormed(name: string): boolean {
-  return NAME.test(name) && name !== 'primary';
+  return NAME.test(name) && !RESERVED.has(name);
 }
 
 function utf8Length(text: string): number {
@@ -234,14 +252,23 @@ function isDelimiter(c: number): boolean {
   );
 }
 
-/** Tokens of one line; bad is the index of an unterminated string that ends them, or -1. */
-function tokenize(text: string, line: number): { toks: Tk[]; bad: number } {
+interface Tokens {
+  readonly toks: Tk[];
+  /** The index of the first tab or of an unterminated string, or -1. */
+  readonly bad: number;
+  readonly why: string;
+}
+
+/** Tokens of one line. A tab is read as a separator after it is reported; an unterminated string ends the tokens. */
+function tokenize(text: string, line: number): Tokens {
   const toks: Tk[] = [];
   const n = text.length;
   let i = 0;
+  let tab = -1;
   while (i < n) {
     const c = text.charCodeAt(i);
     if (c === 32 || c === 9) {
+      if (c === 9 && tab < 0) tab = i;
       i++;
     } else if (c === 40 || c === 41 || c === 123 || c === 125 || c === 44) {
       toks.push({ k: K.Punct, t: text[i]!, s: i, e: i + 1, line });
@@ -249,7 +276,7 @@ function tokenize(text: string, line: number): { toks: Tk[]; bad: number } {
     } else if (c === 39) {
       let j = i + 1;
       for (;;) {
-        if (j >= n) return { toks, bad: i };
+        if (j >= n) return tab >= 0 ? { toks, bad: tab, why: 'a tab is not a separator' } : { toks, bad: i, why: 'the string is not terminated' };
         if (text.charCodeAt(j) === 39) {
           if (text.charCodeAt(j + 1) === 39) {
             j += 2;
@@ -274,7 +301,7 @@ function tokenize(text: string, line: number): { toks: Tk[]; bad: number } {
       i = j;
     }
   }
-  return { toks, bad: -1 };
+  return tab >= 0 ? { toks, bad: tab, why: 'a tab is not a separator' } : { toks, bad: -1, why: '' };
 }
 
 function isWord(tok: Tk | undefined, text: string): boolean {
@@ -331,6 +358,25 @@ function numberText(text: string): string {
   return (negative && !zero ? '-' : '') + whole + part;
 }
 
+/** The shortest decimal without exponent that reads back as the same double; 0 for negative zero. */
+function shortestDecimal(value: number): string {
+  if (value === 0) return '0';
+  const text = String(value);
+  const e = text.indexOf('e');
+  if (e < 0) return text;
+  const negative = text.startsWith('-');
+  const mantissa = text.slice(negative ? 1 : 0, e);
+  const exponent = Number(text.slice(e + 1));
+  const dot = mantissa.indexOf('.');
+  const digits = mantissa.replace('.', '');
+  const point = (dot < 0 ? mantissa.length : dot) + exponent;
+  let plain: string;
+  if (point <= 0) plain = '0.' + '0'.repeat(-point) + digits;
+  else if (point >= digits.length) plain = digits + '0'.repeat(point - digits.length);
+  else plain = digits.slice(0, point) + '.' + digits.slice(point);
+  return (negative ? '-' : '') + plain;
+}
+
 /** The canonical default of a column type, or the reason the literal does not fit. */
 function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
   const word = tok.k === K.Word ? tok.t : null;
@@ -364,10 +410,9 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
     }
     case 'f64': {
       if (word === null || !NUMBER.test(word)) return 'default of f64 must be a decimal number';
-      if (!Number.isFinite(Number(word))) return `default ${word} is not a finite double`;
-      let canonical = numberText(word);
-      if (canonical.includes('.')) canonical = canonical.replace(/0+$/, '').replace(/\.$/, '');
-      return literal(canonical === '-0' ? '0' : canonical);
+      const value = Number(word);
+      if (!Number.isFinite(value)) return `default ${word} is not a finite double`;
+      return literal(shortestDecimal(value));
     }
     case 'varchar':
       if (text === null) return `default of ${typeText(type)} must be a string`;
@@ -411,7 +456,7 @@ class ExpressionSyntax {
 
 class DocumentParser {
   readonly diagnostics: RawDiagnostic[] = [];
-  readonly document: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], constraints: new Map() };
+  readonly document: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   private stopped = false;
   /** The line of the last syntax error: a line reports at most one, since the rest of it cannot be read reliably. */
   private syntaxLine = 0;
@@ -457,7 +502,7 @@ class DocumentParser {
   private name(tok: Tk): boolean {
     const formed = wellFormed(tok.t);
     if (!formed) {
-      this.at('name.format', tok, tok.t === 'primary' ? 'primary is not a valid name' : `${tok.t} does not match [a-z][a-z0-9_]*`);
+      this.at('name.format', tok, RESERVED.has(tok.t) ? `${tok.t} is a reserved word` : `${tok.t} does not match [a-z][a-z0-9_]*`);
     }
     if (utf8Length(tok.t) > MAX_NAME_BYTES) this.at('name.length', tok, `${tok.t} is longer than 63 bytes`);
     return formed;
@@ -481,7 +526,7 @@ class DocumentParser {
       const text = lines[n]!;
       const line = n + 1;
       let i = 0;
-      while (i < text.length && (text.charCodeAt(i) === 32 || text.charCodeAt(i) === 9)) i++;
+      while (i < text.length && text.charCodeAt(i) === 32) i++;
       if (i === text.length) continue;
       if (text.charCodeAt(i) === 35) {
         comments.push(text.slice(i));
@@ -489,8 +534,8 @@ class DocumentParser {
       }
       const own = comments;
       comments = [];
-      const { toks, bad } = tokenize(text, line);
-      if (bad >= 0) this.report('syntax', line, bad, 'the string is not terminated');
+      const { toks, bad, why } = tokenize(text, line);
+      if (bad >= 0) this.report('syntax', line, bad, why);
       const first = toks[0];
       if (first === undefined) continue;
       if (state === 'top') {
@@ -519,7 +564,7 @@ class DocumentParser {
           state = 'top';
         } else if (isWord(first, 'settings')) {
           if (t.settings !== null) this.at('order', first, 'a table has at most one settings block');
-          else t.settings = { entries: [], comments: own, closing: [] };
+          else t.settings = { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] };
           t.phase = 2;
           if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, 'expected {');
           else if (toks.length > 2) this.syntax(toks, 2, line, 'expected the end of the line');
@@ -554,18 +599,17 @@ class DocumentParser {
       }
     }
     if (this.stopped) return;
-    if (state !== 'top') {
-      const last = lines.length;
-      this.report('syntax', last, lines[last - 1]!.length, 'the block is not closed');
-    }
+    if (state === 'settings') this.at('syntax', table!.settings!.open, 'the settings block is not closed');
+    if (state === 'settings' || state === 'table') this.at('syntax', table!.open, 'the table block is not closed');
+    if (state === 'diagram') this.at('syntax', diagram!.open, 'the diagram block is not closed');
     this.document.closing = comments;
   }
 
   private header(): boolean {
     const text = this.lines[0]!;
     const { toks, bad } = tokenize(text, 1);
-    if (bad >= 0) {
-      this.report('header', 1, bad, 'the first line is not dbspec 1 <document>');
+    if (bad >= 0 || text.startsWith(' ')) {
+      this.report('header', 1, Math.max(bad, 0), 'the first line is not dbspec 1 <document>');
       this.stopped = true;
       return false;
     }
@@ -623,6 +667,7 @@ class DocumentParser {
   }
 
   private use(toks: Tk[], line: number, comments: string[]): void {
+    for (const t of toks.slice(2)) if (t.k === K.Word) this.document.failed.add(t.t);
     const doc = toks[1];
     if (doc === undefined || doc.k !== K.Word) return this.syntax(toks, 1, line, 'expected a document name');
     if (!isPunct(toks[2], '{')) return this.syntax(toks, 2, line, 'expected {');
@@ -631,6 +676,7 @@ class DocumentParser {
     if (!this.end(toks, listed[1], line)) return;
     this.name(doc);
     for (const t of listed[0]) this.name(t);
+    for (const t of listed[0]) this.document.failed.delete(t.t);
     this.document.uses.push({ doc, tables: listed[0], comments });
   }
 
@@ -654,6 +700,8 @@ class DocumentParser {
       closing: [],
       phase: 0,
       identity: false,
+      open: named && isPunct(toks[2], '{') ? toks[2]! : kw,
+      failed: new Set(),
     };
     if (this.document.tables.length >= MAX_TABLES) {
       this.stop('limit', kw, `a document has at most ${MAX_TABLES} tables`);
@@ -672,7 +720,8 @@ class DocumentParser {
   private diagramHeader(toks: Tk[], line: number, comments: string[]): IDiagram {
     const name = toks[1];
     const named = name !== undefined && name.k === K.Word;
-    const diagram: IDiagram = { name: named ? name : toks[0]!, named, entries: [], comments, closing: [] };
+    const open = named && isPunct(toks[2], '{') ? toks[2]! : toks[0]!;
+    const diagram: IDiagram = { open, name: named ? name : toks[0]!, named, entries: [], comments, closing: [] };
     this.document.diagrams.push(diagram);
     if (!named) this.syntax(toks, 1, line, 'expected a diagram name');
     else {
@@ -732,12 +781,18 @@ class DocumentParser {
     const name = toks[0]!;
     if (name.k !== K.Word) return this.syntax(toks, 0, line, 'expected a column name');
     const typeTok = toks[1];
-    if (typeTok === undefined || typeTok.k !== K.Word) return this.syntax(toks, 1, line, 'expected a type');
+    if (typeTok === undefined || typeTok.k !== K.Word) {
+      table.failed.add(name.t);
+      return this.syntax(toks, 1, line, 'expected a type');
+    }
     let i = 2;
     let params: Tk[] | null = null;
     if (isPunct(toks[i], '(')) {
       const listed = this.list(toks, i + 1, line, ')');
-      if (listed === null) return;
+      if (listed === null) {
+        table.failed.add(name.t);
+        return;
+      }
       [params, i] = listed;
     }
     this.columnCount++;
@@ -1012,8 +1067,10 @@ class DocumentParser {
     this.name(table);
     const values: number[] = [];
     for (const c of coordinates) {
-      const value = INTEGER.test(c.text) ? Number(c.text) : NaN;
-      if (!Number.isSafeInteger(value)) this.at('diagram', c.tok, `coordinate ${c.text} is not an integer`);
+      const value = INTEGER.test(c.text) && c.text.length <= 12 ? Number(c.text) : NaN;
+      if (!(value >= -2147483648 && value <= 2147483647)) {
+        this.at('diagram', c.tok, `coordinate ${c.text} is not an integer from -2147483648 to 2147483647`);
+      }
       values.push(value + 0);
     }
     diagram.entries.push({ table, x: values[0]!, y: values[1]!, comments });
@@ -1027,6 +1084,7 @@ class DocumentParser {
     const usedAt = new Map<string, Tk>();
     const usedDocuments = new Set<string>();
     const usedConstraints = new Set<string>();
+    const usedTables = new Set<string>();
     for (const use of doc.uses) {
       if (!wellFormed(use.doc.t)) continue;
       if (usedDocuments.has(use.doc.t)) {
@@ -1034,12 +1092,20 @@ class DocumentParser {
         continue;
       }
       usedDocuments.add(use.doc.t);
+      if (use.doc.t === doc.name) {
+        this.at('use', use.doc, `document ${doc.name} uses itself`);
+        continue;
+      }
       const target = this.resolve(use.doc);
       if (target !== null) {
+        const names = new Set<string>();
         for (const name of target.constraints.keys()) {
-          if (usedConstraints.has(name)) this.at('name.duplicate', use.doc, `${name} is declared by two used documents`);
-          else usedConstraints.add(name);
+          if (usedConstraints.has(name) || usedTables.has(name)) names.add(name);
         }
+        for (const t of target.tables) if (t.named && usedConstraints.has(t.name.t)) names.add(t.name.t);
+        for (const name of names) this.at('name.duplicate', use.doc, `${name} is declared by two used documents`);
+        for (const name of target.constraints.keys()) usedConstraints.add(name);
+        for (const t of target.tables) if (t.named) usedTables.add(t.name.t);
       }
       const tables = target === null ? null : new Map(target.tables.filter(t => t.named).map(t => [t.name.t, t]));
       for (const t of use.tables) {
@@ -1054,18 +1120,24 @@ class DocumentParser {
         usedAt.set(t.t, t);
       }
     }
+    const later = (a: Tk, b: Tk): Tk => (a.line > b.line || (a.line === b.line && a.s > b.s) ? a : b);
+    const localTables = new Map<string, Tk>();
     for (const t of doc.tables) {
       if (!t.named || !wellFormed(t.name.t)) continue;
       if (!available.has(t.name.t)) {
         available.set(t.name.t, t);
+        localTables.set(t.name.t, t.name);
+        if (usedConstraints.has(t.name.t)) this.at('name.duplicate', t.name, `table ${t.name.t} repeats a constraint name of a used document`);
         continue;
       }
       const used = usedAt.get(t.name.t);
-      const later = used !== undefined && (used.line > t.name.line || (used.line === t.name.line && used.s > t.name.s)) ? used : t.name;
-      this.at('name.duplicate', later, `table ${t.name.t} repeats`);
+      this.at('name.duplicate', used === undefined ? t.name : later(used, t.name), `table ${t.name.t} repeats`);
     }
+    for (const name of doc.failed) if (!available.has(name)) available.set(name, null);
     for (const [name, tok] of doc.constraints) {
-      if (usedConstraints.has(name)) this.at('name.duplicate', tok, `${name} repeats a name of a used document`);
+      const table = localTables.get(name);
+      if (table !== undefined) this.at('name.duplicate', later(table, tok), `${name} names both a table and a constraint`);
+      else if (usedConstraints.has(name) || usedTables.has(name)) this.at('name.duplicate', tok, `${name} repeats a name of a used document`);
     }
     for (const t of doc.tables) this.validateTable(t, available);
     for (const d of doc.diagrams) {
@@ -1111,6 +1183,7 @@ class DocumentParser {
     if (!wellFormed(tok.t)) return undefined;
     const column = table.colMap.get(tok.t);
     if (column === undefined) {
+      if (table.failed.has(tok.t)) return undefined;
       this.at(rule, tok, `${what} ${tok.t} is not a column of table ${table.name.t}`);
       return null;
     }
@@ -1233,6 +1306,13 @@ class DocumentParser {
   private check(table: ITable, check: ICheck, banned: Set<string>): void {
     const toks = check.expr;
     const out: string[] = [];
+    // An expression reports only its first diagnostic.
+    let flagged = false;
+    const flag = (rule: DbspecRule, tok: Tk, message: string): void => {
+      if (flagged) return;
+      flagged = true;
+      this.at(rule, tok, message);
+    };
     let i = 0;
     const peek = (): Tk | undefined => toks[i];
     const take = (): Tk => {
@@ -1265,7 +1345,7 @@ class DocumentParser {
       if (t.k === K.Str) out.push(t.t);
       else if (isNumber(t)) out.push(numberText(t.t));
       else if (t.k === K.Word && (t.t === 'true' || t.t === 'false' || t.t === 'null')) out.push(t.t);
-      else if (t.k === K.Word && !EXPRESSION_WORDS.has(t.t)) this.at('check', t, `${t.t} is not a literal`);
+      else if (t.k === K.Word && !EXPRESSION_WORDS.has(t.t)) flag('check', t, `${t.t} is not a literal`);
       else throw new ExpressionSyntax(t);
     };
     const primary = (): void => {
@@ -1282,7 +1362,7 @@ class DocumentParser {
         return;
       }
       if (t.k === K.Op && t.t === '-') {
-        this.at('check', t, 'unary minus applies only to a number literal');
+        flag('check', t, 'unary minus applies only to a number literal');
         primary();
         return;
       }
@@ -1297,7 +1377,7 @@ class DocumentParser {
       }
       if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
       if (isPunct(peek(), '(')) {
-        this.at('check', t, `function ${t.t} is not in the neutral expression set`);
+        flag('check', t, `function ${t.t} is not in the neutral expression set`);
         i++;
         if (!isPunct(peek(), ')')) {
           or();
@@ -1310,12 +1390,14 @@ class DocumentParser {
         return;
       }
       if (!wellFormed(t.t)) {
-        this.at('check', t, `${t.t} is not in the neutral expression set`);
+        flag('check', t, `${t.t} is not in the neutral expression set`);
         return;
       }
       const column = table.colMap.get(t.t);
-      if (column === undefined) this.at('check', t, `${t.t} is not a column of table ${table.name.t}`);
-      else if (banned.has(t.t)) this.at('check', t, `column ${t.t} belongs to a cascade or set_null foreign key`);
+      if (column === undefined && table.failed.has(t.t)) {
+        // The column's own line failed and was reported there.
+      } else if (column === undefined) flag('check', t, `${t.t} is not a column of table ${table.name.t}`);
+      else if (banned.has(t.t)) flag('check', t, `column ${t.t} belongs to a cascade or set_null foreign key`);
       out.push(t.t);
     };
     const operator = (tok: Tk | undefined, set: readonly string[]): boolean =>
@@ -1368,7 +1450,7 @@ class DocumentParser {
         if (isWord(peek(), 'not')) out.push(take().t);
         expectWord('null');
       } else if (u !== undefined && u.k === K.Word && !EXPRESSION_WORDS.has(u.t)) {
-        this.at('check', u, `${u.t} is not in the neutral expression set`);
+        flag('check', u, `${u.t} is not in the neutral expression set`);
         throw new ExpressionSyntax(null);
       }
     };
@@ -1401,7 +1483,7 @@ class DocumentParser {
       if (!(error instanceof ExpressionSyntax)) throw error;
       if (error.at === null && i < toks.length) return;
       const at = error.at ?? check.close;
-      this.at('syntax', at, 'the check expression is malformed here');
+      flag('syntax', at, 'the check expression is malformed here');
       return;
     }
     let text = '';
@@ -1422,7 +1504,14 @@ class DocumentParser {
     for (const s of entries) if (s.kind === 'codec' && s.stages.some(stage => stage.t === 'aes')) aesColumns.add(s.column.t);
     const lookup = (tok: Tk): IColumn | null | undefined => this.lookup(table, tok, 'setting');
     for (const s of entries) {
-      const key = s.kind === 'codec' ? `codec ${s.column.t}` : s.kind === 'navigation' ? `navigation ${s.foreignKey.t}` : s.kind;
+      const key =
+        s.kind === 'codec'
+          ? `codec ${s.column.t}`
+          : s.kind === 'navigation'
+            ? `navigation ${s.foreignKey.t}`
+            : s.kind === 'blind_index'
+              ? `blind_index ${s.column.t}`
+              : s.kind;
       if (seen.has(key)) {
         this.at('setting', s.kw, `setting ${key} repeats`);
         continue;
@@ -1452,22 +1541,19 @@ class DocumentParser {
           break;
         }
         case 'codec':
-          lookup(s.column);
-          if (aesColumns.has(s.column.t) && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires aes_version');
+          this.codec(table, s, hasAesVersion);
           break;
         case 'aes_version': {
           const c = lookup(s.column);
           if (c && c.type !== null && (!['i16', 'i32', 'i64'].includes(c.type.kind) || c.nullable)) {
             this.at('setting', s.column, 'aes_version names a non-null integer column');
           }
+          if (aesColumns.size === 0) this.at('setting', s.kw, 'aes_version requires a column with the aes codec stage');
           break;
         }
-        case 'blind_index': {
-          const c = lookup(s.column);
-          if (c && !aesColumns.has(s.column.t)) this.at('setting', s.column, `column ${s.column.t} has no aes codec stage`);
-          lookup(s.indexColumn);
+        case 'blind_index':
+          this.blindIndex(table, s, aesColumns);
           break;
-        }
         case 'navigation':
           if (wellFormed(s.foreignKey.t) && !table.fks.some(fk => fk.name.t === s.foreignKey.t)) {
             this.at('setting', s.foreignKey, `${s.foreignKey.t} is not a foreign key of table ${table.name.t}`);
@@ -1481,6 +1567,40 @@ class DocumentParser {
           break;
       }
     }
+  }
+
+  /** The stage order and the storage type that the last stage needs. */
+  private codec(table: ITable, s: Extract<ISetting, { kind: 'codec' }>, hasAesVersion: boolean): void {
+    const column = this.lookup(table, s.column, 'setting');
+    const stages = s.stages.map(stage => stage.t);
+    if (stages.includes('aes') && !hasAesVersion) this.at('setting', s.kw, 'a column with the aes stage requires aes_version');
+    const json = stages.indexOf('ordered_json');
+    if (json > 0) this.at('setting', s.stages[json]!, 'ordered_json is the first codec stage');
+    if (!column || column.type === null || !stages.every(stage => STAGES.has(stage))) return;
+    const last = stages[stages.length - 1]!;
+    const bytes = last === 'aes' || last === 'gz' || last === 'ip';
+    const kind = column.type.kind;
+    if (bytes && kind !== 'bytes') this.at('setting', s.column, `the ${last} stage stores bytes and needs a bytes column`);
+    if (!bytes && kind !== 'varchar' && kind !== 'text') {
+      this.at('setting', s.column, `the ${last} stage stores text and needs a varchar or text column`);
+    }
+  }
+
+  private blindIndex(table: ITable, s: Extract<ISetting, { kind: 'blind_index' }>, aesColumns: Set<string>): void {
+    const source = this.lookup(table, s.column, 'setting');
+    if (source && !aesColumns.has(s.column.t)) this.at('setting', s.column, `column ${s.column.t} has no aes codec stage`);
+    const target = this.lookup(table, s.indexColumn, 'setting');
+    if (!target) return;
+    const type = target.type;
+    if (type !== null && !(type.kind === 'bytes' || (type.kind === 'varchar' && type.length >= 64))) {
+      this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64 or bytes');
+    }
+    if (source && source.nullable !== target.nullable) {
+      this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');
+    }
+    if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not aes-encoded');
+    const indexed = [...table.uniques, ...table.indexes].some(k => k.cols.length === 1 && k.cols[0]!.tok.t === s.indexColumn.t);
+    if (!indexed) this.at('setting', s.indexColumn, 'the blind index column is the only column of a declared index or unique key');
   }
 
   private audit(
@@ -1515,7 +1635,9 @@ class DocumentParser {
     const action = wellFormed(s.action.t) ? history.colMap.get(s.action.t) : undefined;
     if (wellFormed(s.action.t)) {
       if (action === undefined) this.at('setting', s.action, `${s.action.t} is not a column of history table ${s.into.t}`);
-      else if (action.type !== null && typeText(action.type) !== 'varchar(8)') this.at('setting', s.action, 'the action column is varchar(8)');
+      else if ((action.type !== null && typeText(action.type) !== 'varchar(8)') || action.nullable) {
+        this.at('setting', s.action, 'the action column is a non-null varchar(8)');
+      }
     }
     if (wellFormed(s.previous.t)) {
       const previous = history.colMap.get(s.previous.t);
@@ -1591,14 +1713,16 @@ class DocumentParser {
         ),
         checks: freeze(t.checks.map(c => freeze({ comments: freeze(c.comments), name: c.name.t, expression: c.text }))),
         settings:
-          settings === null
+          settings === null || settings.entries.length === 0
             ? null
             : freeze({
                 comments: freeze(settings.comments),
                 settings: freeze(settings.entries.map(settingOf)),
                 closingComments: freeze(settings.closing),
               }),
-        closingComments: freeze(t.closing),
+        closingComments: freeze(
+          settings !== null && settings.entries.length === 0 ? [...settings.comments, ...settings.closing, ...t.closing] : t.closing,
+        ),
       });
     });
     return freeze({
@@ -1681,7 +1805,7 @@ function encodingError(lines: string[]): RawDiagnostic | null {
 
 /** Parses and validates one document text; parents are the names of the documents that use it. */
 function parseText(text: string, context: ParseContext, parents: readonly string[]): Parsed {
-  const empty: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], constraints: new Map() };
+  const empty: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   if (utf8Length(text) > MAX_BYTES) {
     const diagnostics: RawDiagnostic[] = [{ rule: 'limit', line: 1, column: 1, message: 'a document has at most 32 MiB' }];
     return { diagnostics, document: empty, parser: null };
@@ -1693,10 +1817,16 @@ function parseText(text: string, context: ParseContext, parents: readonly string
   const parser = new DocumentParser(lines, context, parents);
   parser.parse();
   if (!parser.halted) parser.validate();
-  const diagnostics = parser.diagnostics
+  // A stopping error comes after the diagnostics found before it; the others
+  // are ordered by line, column and the order of the rule table.
+  const found = parser.diagnostics.slice();
+  const stop = parser.halted ? found.pop() : undefined;
+  const rank = (d: RawDiagnostic): number => RULE_ORDER.indexOf(d.rule);
+  const diagnostics = found
     .map((d, order) => ({ d, order }))
-    .sort((a, b) => a.d.line - b.d.line || a.d.column - b.d.column || a.order - b.order)
+    .sort((a, b) => a.d.line - b.d.line || a.d.column - b.d.column || rank(a.d) - rank(b.d) || a.order - b.order)
     .map(x => x.d);
+  if (stop !== undefined) diagnostics.push(stop);
   return { diagnostics, document: parser.document, parser };
 }
 

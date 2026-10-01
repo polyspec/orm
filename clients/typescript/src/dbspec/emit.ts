@@ -1,4 +1,6 @@
-// Canonical dbspec emission (docs/dbspec.md, "Canonical form").
+// Canonical dbspec emission (docs/dbspec.md, "Canonical form"). A comment
+// takes the indentation of the line it attaches to; a comment before a
+// closing brace takes the indentation of the block's lines.
 import type {
   DbspecDocument,
   DbspecDefault,
@@ -122,7 +124,9 @@ function table(out: string[], t: DbspecTable): void {
     comments(out, c.comments, '  ');
     out.push(`  check ${c.name} (${c.expression})`);
   }
-  if (t.settings !== null) {
+  // An empty settings block has no meaning: canonical form omits it and keeps its comments before the closing brace.
+  const empty = t.settings !== null && t.settings.settings.length === 0;
+  if (t.settings !== null && !empty) {
     comments(out, t.settings.comments, '  ');
     out.push('  settings {');
     const settings = [...t.settings.settings].sort(
@@ -132,10 +136,14 @@ function table(out: string[], t: DbspecTable): void {
       comments(out, s.comments, '    ');
       out.push(`    ${settingText(s)}`);
     }
-    comments(out, t.settings.closingComments, '  ');
+    comments(out, t.settings.closingComments, '    ');
     out.push('  }');
   }
-  comments(out, t.closingComments, '');
+  if (t.settings !== null && empty) {
+    comments(out, t.settings.comments, '  ');
+    comments(out, t.settings.closingComments, '  ');
+  }
+  comments(out, t.closingComments, '  ');
   out.push('}');
 }
 
@@ -159,7 +167,7 @@ export function emitDocument(document: DbspecDocument): string {
       comments(out, p.comments, '  ');
       out.push(`  ${p.table} at ${p.x} ${p.y}`);
     }
-    comments(out, d.closingComments, '');
+    comments(out, d.closingComments, '  ');
     out.push('}');
   }
   if (document.closingComments.length > 0) {
