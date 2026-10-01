@@ -232,7 +232,8 @@ physical-document-limits-check: physical-document-php-limits-check
 .PHONY: dbspec-php-check
 # dbspec-php-check runs the shared dbspec vectors, the focused PHP rules, the
 # statement vectors of tests/dbspec/ddl.json, the plan vectors of
-# tests/dbspec/plans.json and the stress document of tests/dbspec/stress.mjs
+# tests/dbspec/plans.json, the Mermaid vectors of tests/dbspec/mermaid.json
+# and the stress document of tests/dbspec/stress.mjs
 # twice each; the stress test prints its parse and
 # emit times and peak memory.
 dbspec-php-check:
@@ -246,6 +247,8 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_render_test.php
 	php clients/php/tests/dbspec_plan_test.php
 	php clients/php/tests/dbspec_plan_test.php
+	php clients/php/tests/dbspec_mermaid_test.php
+	php clients/php/tests/dbspec_mermaid_test.php
 	php clients/php/tests/dbspec_stress_test.php
 	php clients/php/tests/dbspec_stress_test.php
 
