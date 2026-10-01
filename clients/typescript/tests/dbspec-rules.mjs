@@ -274,7 +274,8 @@ normalize('check expression form', [
   '  status varchar(8)',
   '  qty i32 null',
   '  primary key (id)',
-  "  check ck_t ((qty>=-007 and qty<>0)or status not in('a','it''s') or qty is not null or not qty between 1 and 2)",
+  "  check ck_t ((qty>=-007 and qty<>0)or status not in('a','it''s') or qty is not null or (qty <= 1 and (qty >= 2)))",
+  "  check ck_u ((((qty = 1) or (qty = 2))) and ((status <> 'x')))",
   '}',
 ], [
   'dbspec 1 shop',
@@ -284,7 +285,8 @@ normalize('check expression form', [
   '  status varchar(8)',
   '  qty i32 null',
   '  primary key (id)',
-  "  check ck_t ((qty >= -7 and qty <> 0) or status not in ('a', 'it''s') or qty is not null or not qty between 1 and 2)",
+  "  check ck_t (qty >= -7 and qty <> 0 or status not in ('a', 'it''s') or qty is not null or qty <= 1 and qty >= 2)",
+  "  check ck_u ((qty = 1 or qty = 2) and status <> 'x')",
   '}',
 ]);
 invalid('check outside the neutral set', [
@@ -300,7 +302,7 @@ invalid('check outside the neutral set', [
 ], [
   ['check', 5, 15],
   ['check', 6, 18],
-  ['syntax', 7, 20],
+  ['check', 7, 20],
   ['check', 8, 22],
 ]);
 
@@ -341,8 +343,8 @@ normalize('check literal on the left takes the column form', [
 ]);
 invalid('check typed predicates', [
   ...typed,
-  '  check ck_a (active between false and true)',
-  '  check ck_b (active not between false and true)',
+  '  check ck_a (active < true)',
+  '  check ck_b (false >= active)',
   '  check ck_c (t0 < t3)',
   "  check ck_d ('a' = qty)",
   '  check ck_e (qty < 1.5 or qty + 1 > 2)',
@@ -350,11 +352,11 @@ invalid('check typed predicates', [
   '  check ck_g (true)',
   '  check ck_h (active <> 1 and active in (true, 0))',
   "  check ck_i (name in ('abcde'))",
-  '  check ck_j (not t0)',
+  '  check ck_j (active > false)',
   '}',
 ], [
   ['check', 13, 22],
-  ['check', 14, 26],
+  ['check', 14, 21],
   ['check', 15, 20],
   ['check', 16, 15],
   ['check', 17, 32],
@@ -362,7 +364,33 @@ invalid('check typed predicates', [
   ['check', 19, 15],
   ['check', 20, 25],
   ['check', 21, 24],
-  ['check', 22, 19],
+  ['check', 22, 22],
+]);
+// not, between과 피연산자 하나는 술어가 아니다: 뒤에 and, or, ) 또는 끝이 오면 피연산자에, 아니면 다음 토큰에 보고한다.
+invalid('check forms outside the predicates', [
+  ...typed,
+  '  check ck_a (not (qty > 1))',
+  '  check ck_b (qty > 1 and not qty = 2)',
+  '  check ck_c (qty between 1 and 2)',
+  '  check ck_d (qty not between 1 and 2)',
+  '  check ck_e (active)',
+  '  check ck_f ((active) or qty > 1)',
+  '  check ck_g (qty > 1 and t0)',
+  '  check ck_h (nope or qty > 1)',
+  '  check ck_i (1 not between 0 and 2)',
+  '  check ck_j (qty > 1 or 2)',
+  '}',
+], [
+  ['check', 13, 15],
+  ['check', 14, 27],
+  ['check', 15, 19],
+  ['check', 16, 19],
+  ['check', 17, 15],
+  ['check', 18, 16],
+  ['check', 19, 27],
+  ['check', 20, 15],
+  ['check', 21, 17],
+  ['check', 22, 26],
 ]);
 
 // settings

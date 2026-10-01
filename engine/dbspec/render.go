@@ -432,18 +432,20 @@ func (r renderer) predicate(b *strings.Builder, t *Table, e Expr) {
 	switch e := e.(type) {
 	case ColumnRef:
 		b.WriteString(r.q(e.Name))
-	case Not:
-		b.WriteString("NOT ")
-		r.predicate(b, t, e.Operand)
-	case Paren:
-		b.WriteString("(")
-		r.predicate(b, t, e.Inner)
-		b.WriteString(")")
 	case Binary:
 		if e.Op == "and" || e.Op == "or" {
-			r.predicate(b, t, e.Left)
-			b.WriteString(" " + strings.ToUpper(e.Op) + " ")
-			r.predicate(b, t, e.Right)
+			for i, side := range []Expr{e.Left, e.Right} {
+				if i > 0 {
+					b.WriteString(" " + strings.ToUpper(e.Op) + " ")
+				}
+				if needsParentheses(e.Op, side) {
+					b.WriteString("(")
+					r.predicate(b, t, side)
+					b.WriteString(")")
+				} else {
+					r.predicate(b, t, side)
+				}
+			}
 			return
 		}
 		typ := r.operandType(t, e.Left, e.Right)
@@ -464,16 +466,6 @@ func (r renderer) predicate(b *strings.Builder, t *Table, e Expr) {
 			b.WriteString(r.literal(typ, l.Text))
 		}
 		b.WriteString(")")
-	case Between:
-		typ := r.operandType(t, e.Operand, nil)
-		r.operand(b, typ, e.Operand)
-		if e.Negated {
-			b.WriteString(" NOT")
-		}
-		b.WriteString(" BETWEEN ")
-		r.operand(b, typ, e.Low)
-		b.WriteString(" AND ")
-		r.operand(b, typ, e.High)
 	case IsNull:
 		r.operand(b, Type{}, e.Operand)
 		if e.Negated {

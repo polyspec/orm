@@ -336,6 +336,22 @@ func mysqlProbes() []Probe {
 			e.WantRows("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME",
 				"(`a` in (1,2)),(`v` in (_utf8mb4\\'x\\',_utf8mb4\\'y\\'))")
 		}),
+		p("check.bool_column_rejected", "a bool column alone is not a CHECK expression (3812)", func(e *Env) {
+			e.Fails("CREATE TABLE t (f tinyint(1), CONSTRAINT ck CHECK (f))", "3812")
+		}),
+		p("check.not_pushed_down", "CHECK_CLAUSE pushes NOT into comparisons, IS NULL and AND or OR (De Morgan)", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, b int, CONSTRAINT ck1 CHECK (NOT (a > 1 AND b < 2)), CONSTRAINT ck2 CHECK (NOT (b IS NULL)))")
+			e.WantRows("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME",
+				"((`a` <= 1) or (`b` >= 2)),(`b` is not null)")
+		}),
+		p("check.between_kept", "CHECK_CLAUSE keeps BETWEEN and writes a negative literal as -(n)", func(e *Env) {
+			e.Exec("CREATE TABLE t (a int, CONSTRAINT ck CHECK (a BETWEEN -5 AND 5))")
+			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(`a` between -(5) and 5)")
+		}),
+		p("check.string_escaped_twice", "CHECK_CLAUSE escapes a string literal as MySQL text and then escapes that text again", func(e *Env) {
+			e.Exec("CREATE TABLE t (s varchar(32), CONSTRAINT ck CHECK (s <> 'it''s \\\\ x'))")
+			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(`s` <> _utf8mb4\\'it\\\\\\'s \\\\\\\\ x\\')")
+		}),
 		p("check.fk_action_column_rejected", "a column of a foreign key with a referential action cannot appear in a CHECK (3823)", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (pid int, CONSTRAINT fk FOREIGN KEY (pid) REFERENCES p (id) ON DELETE SET NULL, CONSTRAINT ck CHECK (pid > 0))", "3823")

@@ -93,11 +93,6 @@ impl Typing<'_> {
 
     fn expr(&mut self, expr: &Expr) {
         match expr {
-            Expr::Column(name) => match self.column_type(name) {
-                Some(Type::Bool) | None => {}
-                Some(ty) => self.report(name.pos, format!("column '{}' is {}, so it is not a predicate alone", name.text, ty.render())),
-            },
-            Expr::Paren(inner) | Expr::Not(inner) => self.expr(inner),
             Expr::Logic(left, _, right) => {
                 self.expr(left);
                 self.expr(right);
@@ -108,14 +103,6 @@ impl Typing<'_> {
                 for literal in list {
                     self.literal(literal, ty);
                 }
-            }
-            Expr::Between(name, _, between, low, high) => {
-                let ty = self.column_type(name);
-                if ty == Some(Type::Bool) {
-                    self.report(*between, format!("'between' does not apply to bool column '{}'", name.text));
-                }
-                self.literal(low, ty);
-                self.literal(high, ty);
             }
             Expr::IsNull(name, _) => {
                 self.column_type(name);

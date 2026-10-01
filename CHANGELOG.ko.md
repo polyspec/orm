@@ -1,5 +1,9 @@
 # 변경 이력
 
+MySQL과 PostgreSQL catalog가 돌려주는 dbspec check predicate 형식만
+남긴다. 모든 client에서 `not`, `between`, column 하나를 없애고 `and`
+안의 `or`에 필요한 괄호만 쓴다(T8.1.7).
+
 bench schema와 공유 schema fixture를 이름 관례를 모두 setting으로
 선언한 dbspec 문서로 다시 쓰고, `make dbspec-ddl-check`에서 렌더링한
 각 문서를 MySQL, PostgreSQL, SQLite에 적용한다(T8.2.6.3.2).

@@ -101,15 +101,6 @@ func (c *checkTyper) predicate(e Expr) Expr {
 			return Binary{Op: e.Op, Left: c.predicate(e.Left), Right: c.predicate(e.Right), at: e.at}
 		}
 		return c.comparison(e)
-	case Not:
-		return Not{Operand: c.predicate(e.Operand)}
-	case Paren:
-		return Paren{Inner: c.predicate(e.Inner)}
-	case ColumnRef:
-		if col := c.column(e); col != nil && col.typ.typ.Kind != TypeBool {
-			c.add(e.at, "column %q is %s; only a bool column is a predicate by itself", e.Name, col.typ.typ)
-		}
-		return e
 	case IsNull:
 		c.subject(e.Operand)
 		return e
@@ -123,24 +114,12 @@ func (c *checkTyper) predicate(e Expr) Expr {
 			}
 		}
 		return In{Operand: e.Operand, Negated: e.Negated, List: list}
-	case Between:
-		col := c.subject(e.Operand)
-		out := e
-		if col != nil {
-			if col.typ.typ.Kind == TypeBool {
-				c.add(e.at, "between does not order bool values")
-				return e
-			}
-			out.Low = c.literal(e.Low.(Literal), col.typ.typ)
-			out.High = c.literal(e.High.(Literal), col.typ.typ)
-		}
-		return out
 	}
 	return e
 }
 
-// subject resolves the column of an in, between or is null predicate; reading
-// has rejected a literal there.
+// subject는 in이나 is null predicate의 column을 찾는다. 그 자리의 literal은
+// 읽기 단계가 이미 거부했다.
 func (c *checkTyper) subject(e Expr) *columnNode {
 	return c.column(e.(ColumnRef))
 }

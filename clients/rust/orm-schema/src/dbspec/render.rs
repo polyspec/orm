@@ -279,20 +279,19 @@ impl Renderer {
     /// Writes a typed check predicate of table `t` in the dialect.
     fn predicate(&self, b: &mut String, t: &Table, e: &Expr) {
         match e {
-            Expr::Column(name) => b.push_str(&self.q(&name.text)),
-            Expr::Not(operand) => {
-                b.push_str("NOT ");
-                self.predicate(b, t, operand);
-            }
-            Expr::Paren(inner) => {
-                b.push('(');
-                self.predicate(b, t, inner);
-                b.push(')');
-            }
             Expr::Logic(left, op, right) => {
-                self.predicate(b, t, left);
-                b.push_str(&format!(" {} ", op.to_uppercase()));
-                self.predicate(b, t, right);
+                for (index, side) in [left, right].into_iter().enumerate() {
+                    if index > 0 {
+                        b.push_str(&format!(" {} ", op.to_uppercase()));
+                    }
+                    if side.needs_parentheses(op) {
+                        b.push('(');
+                        self.predicate(b, t, side);
+                        b.push(')');
+                    } else {
+                        self.predicate(b, t, side);
+                    }
+                }
             }
             Expr::Compare(left, op, _, right) => {
                 let ty = [left, right].into_iter().find_map(|o| match o {
@@ -309,14 +308,6 @@ impl Renderer {
                 b.push_str(if *negated { " NOT IN (" } else { " IN (" });
                 b.push_str(&list.iter().map(|l| self.literal(ty, &l.text)).collect::<Vec<_>>().join(", "));
                 b.push(')');
-            }
-            Expr::Between(name, negated, _, low, high) => {
-                let ty = column_type(t, &name.text);
-                b.push_str(&self.q(&name.text));
-                b.push_str(if *negated { " NOT BETWEEN " } else { " BETWEEN " });
-                b.push_str(&self.literal(ty, &low.text));
-                b.push_str(" AND ");
-                b.push_str(&self.literal(ty, &high.text));
             }
             Expr::IsNull(name, negated) => {
                 b.push_str(&self.q(&name.text));

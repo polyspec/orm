@@ -487,6 +487,26 @@ interface Operand {
   readonly slot: number;
 }
 
+/** 읽은 check predicate. 단순 predicate는 canonical token을 담고, tree에는 괄호가 없다. */
+type Predicate =
+  | { readonly kind: 'leaf'; readonly parts: readonly string[] }
+  | { readonly kind: 'logical'; readonly op: 'and' | 'or'; readonly left: Predicate; readonly right: Predicate };
+
+/** predicate의 canonical text. and 안의 or가 필요로 하는 괄호만 쓴다. */
+function predicateText(p: Predicate): string {
+  if (p.kind === 'logical') {
+    const side = (q: Predicate): string => (p.op === 'and' && q.kind === 'logical' && q.op === 'or' ? `(${predicateText(q)})` : predicateText(q));
+    return `${side(p.left)} ${p.op} ${side(p.right)}`;
+  }
+  let text = '';
+  for (let n = 0; n < p.parts.length; n++) {
+    const part = p.parts[n]!;
+    if (n > 0 && part !== ')' && part !== ',' && p.parts[n - 1] !== '(') text += ' ';
+    text += part;
+  }
+  return text;
+}
+
 class ExpressionSyntax {
   constructor(readonly at: Tk | null) {}
 }
@@ -1364,7 +1384,8 @@ class DocumentParser {
 
   private check(table: ITable, check: ICheck, banned: Set<string>): void {
     const toks = check.expr;
-    const out: string[] = [];
+    // 지금 읽는 단순 술어의 정규 토큰. 괄호와 and, or는 트리에 두고 출력할 때 필요한 괄호만 쓴다.
+    let out: string[] = [];
     // 술어를 먼저 읽는다. 읽기 진단은 처음 하나만 보고하고, 그 경우 타입은 검사하지 않는다.
     let flagged = false;
     const flag = (rule: DbspecRule, tok: Tk, message: string): void => {
@@ -1408,7 +1429,7 @@ class DocumentParser {
       const tok: Tk = { k: K.Word, t: '-' + number.t, s: t.s, e: number.e, line: t.line };
       return literalOperand(tok, numberText(tok.t));
     };
-    // in 목록과 between 경계의 리터럴. null은 진단 뒤의 알 수 없는 피연산자다.
+    // in 목록의 리터럴. null은 진단 뒤의 알 수 없는 피연산자다.
     const literal = (): Operand | null => {
       const signed = negative();
       if (signed !== null) return signed;
@@ -1496,7 +1517,7 @@ class DocumentParser {
       } else if (left.column !== null) fit(left, right);
       else if (right.column !== null) fit(right, left);
     };
-    // in, between, is 앞의 피연산자는 열이다.
+    // in, is 앞의 피연산자는 열이다.
     const subject = (left: Operand | null, word: Tk): Operand | null => {
       if (left !== null && left.column === null) {
         flag('check', left.tok, `${word.t} takes a column, not a literal`);
@@ -1504,13 +1525,23 @@ class DocumentParser {
       }
       return left;
     };
-    const predicate = (): void => {
+    // 비교, in, is가 뒤따르지 않는 피연산자: and, or, ) 또는 끝이 뒤따르면 피연산자에, 아니면 뒤따르는 토큰에 보고한다.
+    const alone = (start: Tk): never => {
+      const next = peek();
+      if (next !== undefined && !isWord(next, 'and') && !isWord(next, 'or') && !isPunct(next, ')')) {
+        flag('check', next, `${next.t} is not part of a predicate`);
+      } else flag('check', start, `${start.t} alone is not a predicate`);
+      throw new ExpressionSyntax(null);
+    };
+    const predicate = (): Predicate => {
       if (isPunct(peek(), '(')) {
-        out.push(take().t);
-        or();
-        expectPunct(')');
-        return;
+        take();
+        const inner = or();
+        if (!isPunct(take(), ')')) throw new ExpressionSyntax(toks[i - 1]!);
+        return inner;
       }
+      out = [];
+      const start = peek();
       const left = operand();
       const t = peek();
       if (t !== undefined && t.k === K.Op && COMPARISONS.has(t.t)) {
@@ -1519,13 +1550,10 @@ class DocumentParser {
         if (left !== null && right !== null && left.column === null && right.column === null) {
           flag('check', left.tok, 'a comparison has at least one column operand');
         } else if (left !== null && right !== null) compare(left, t, right);
-        return;
+        return { kind: 'leaf', parts: out };
       }
-      let negated = false;
-      if (isWord(t, 'not') && (isWord(toks[i + 1], 'in') || isWord(toks[i + 1], 'between'))) {
-        out.push(take().t);
-        negated = true;
-      }
+      const negated = isWord(t, 'not') && isWord(toks[i + 1], 'in');
+      if (negated) out.push(take().t);
       const u = peek();
       if (isWord(u, 'in')) {
         const column = subject(left, u!);
@@ -1538,61 +1566,40 @@ class DocumentParser {
         }
         expectPunct(')');
         if (column !== null) for (const value of values) if (value !== null) fit(column, value);
-      } else if (isWord(u, 'between')) {
-        const column = subject(left, u!);
-        out.push(take().t);
-        const low = literal();
-        expectWord('and');
-        const high = literal();
-        if (column !== null) {
-          if (isBool(column)) issue(u!, 'between does not compare bool values');
-          if (low !== null) fit(column, low);
-          if (high !== null) fit(column, high);
-        }
-      } else if (!negated && isWord(u, 'is')) {
+        return { kind: 'leaf', parts: out };
+      }
+      if (isWord(u, 'is')) {
         subject(left, u!);
         out.push(take().t);
         if (isWord(peek(), 'not')) out.push(take().t);
         expectWord('null');
-      } else if (u !== undefined && u.k === K.Word && !EXPRESSION_WORDS.has(u.t)) {
-        flag('check', u, `${u.t} is not part of a predicate`);
-        throw new ExpressionSyntax(null);
-      } else if (left !== null && left.column === null) {
-        flag('check', left.tok, 'a literal alone is not a predicate');
-      } else if (left !== null && left.type !== null && left.type.kind !== 'bool') {
-        issue(left.tok, `column ${left.tok.t} alone is not bool`);
+        return { kind: 'leaf', parts: out };
       }
+      return alone(start!);
     };
-    const not = (): void => {
-      if (isWord(peek(), 'not')) {
-        out.push(take().t);
-        not();
-        return;
-      }
-      predicate();
-    };
-    const and = (): void => {
-      not();
+    const and = (): Predicate => {
+      let left = predicate();
       while (isWord(peek(), 'and')) {
-        out.push(take().t);
-        not();
+        take();
+        left = { kind: 'logical', op: 'and', left, right: predicate() };
       }
+      return left;
     };
-    const or = (): void => {
-      and();
+    const or = (): Predicate => {
+      let left = and();
       while (isWord(peek(), 'or')) {
-        out.push(take().t);
-        and();
+        take();
+        left = { kind: 'logical', op: 'or', left, right: and() };
       }
+      return left;
     };
+    let tree: Predicate;
     try {
-      or();
+      tree = or();
       if (i < toks.length) throw new ExpressionSyntax(toks[i]!);
     } catch (error) {
       if (!(error instanceof ExpressionSyntax)) throw error;
-      if (error.at === null && i < toks.length) return;
-      const at = error.at ?? check.close;
-      flag('syntax', at, 'the check expression is malformed here');
+      flag('check', error.at ?? check.close, error.at === null ? 'the check expression ends early' : `${error.at.t} is not allowed here in a check expression`);
       return;
     }
     if (flagged) return;
@@ -1602,13 +1609,7 @@ class DocumentParser {
       this.at('check', first.tok, first.message);
       return;
     }
-    let text = '';
-    for (let n = 0; n < out.length; n++) {
-      const part = out[n]!;
-      if (n > 0 && part !== ')' && part !== ',' && out[n - 1] !== '(') text += ' ';
-      text += part;
-    }
-    check.text = text;
+    check.text = predicateText(tree);
   }
 
   private settings(table: ITable, settings: ISettings, available: Map<string, ITable | null>, actionChild: boolean): void {

@@ -1,6 +1,6 @@
-//! Reads a check predicate (docs/dbspec.md, "Checks"): comparisons of columns
-//! and literals, `in`, `between`, `is null`, a column alone, and
-//! `and`/`or`/`not` with parentheses. Types are checked by `check_type`.
+//! check predicate를 읽는다 (docs/dbspec.md, "Checks"): column과 literal의
+//! comparison, `in`, `is null`, 괄호를 포함한 `and`/`or`. type은 `check_type`이
+//! 검사한다.
 
 use super::lexer::{Kind, Token};
 use super::literal::Value;
@@ -63,30 +63,23 @@ impl<'t, 'a> CheckParser<'t, 'a> {
     }
 
     fn and(&mut self) -> Result<Expr, CheckError> {
-        let mut left = self.not()?;
+        let mut left = self.predicate()?;
         while self.peek_is("and") {
             self.at += 1;
-            let right = self.not()?;
+            let right = self.predicate()?;
             left = Expr::Logic(Box::new(left), "and", Box::new(right));
         }
         Ok(left)
     }
 
-    fn not(&mut self) -> Result<Expr, CheckError> {
-        if self.peek_is("not") {
-            self.at += 1;
-            return Ok(Expr::Not(Box::new(self.not()?)));
-        }
-        self.predicate()
-    }
-
-    /// A parenthesized predicate or a predicate form that starts with an operand.
+    /// 괄호로 묶인 predicate 또는 operand로 시작하는 predicate form. 괄호는 node를
+    /// 남기지 않으며, emission이 precedence에 필요한 괄호만 쓴다.
     fn predicate(&mut self) -> Result<Expr, CheckError> {
         if self.peek_is("(") {
             self.at += 1;
             let inner = self.expression()?;
             self.expect(")")?;
-            return Ok(Expr::Paren(Box::new(inner)));
+            return Ok(inner);
         }
         let left = self.operand()?;
         if let Some(token) = self.peek() {
@@ -112,7 +105,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
             self.expect("null")?;
             return Ok(Expr::IsNull(column, negated));
         }
-        let negated = self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in") || t.is("between"));
+        let negated = self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in"));
         if negated {
             self.at += 1;
         }
@@ -127,29 +120,25 @@ impl<'t, 'a> CheckParser<'t, 'a> {
             self.expect(")")?;
             return Ok(Expr::In(column, negated, list));
         }
-        if let Some(token) = self.peek().filter(|t| t.is("between")) {
-            self.at += 1;
-            let low = self.literal()?;
-            self.expect("and")?;
-            let high = self.literal()?;
-            return Ok(Expr::Between(column, negated, token.pos, low, high));
-        }
-        Ok(Expr::Column(column))
+        self.alone(column.pos, format!("column '{}' alone is not a predicate", column.text))
     }
 
-    /// The error after a literal that no comparison follows: a literal as the
-    /// subject of `in`, `between` or `is`, or alone, is reported at itself; any
-    /// other token at that token.
+    /// comparison이 뒤따르지 않는 literal의 error: `in` 또는 `is`의 subject인
+    /// literal은 literal 자신에서 보고하고, 그 밖에는 operand 단독으로 처리한다.
     fn after_literal<T>(&self, literal: &Literal) -> Result<T, CheckError> {
-        let subject = ["in", "between", "is"].iter().any(|w| self.peek_is(w))
-            || (self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in") || t.is("between")));
+        let subject = self.peek_is("in") || self.peek_is("is") || (self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in")));
         if subject {
-            return Err((literal.pos, "a literal is not the subject of 'in', 'between' or 'is'; the subject is a column".into()));
+            return Err((literal.pos, "a literal is not the subject of 'in' or 'is'; the subject is a column".into()));
         }
+        self.alone(literal.pos, "a literal alone is not a predicate".into())
+    }
+
+    /// comparison, `in`, `is`가 뒤따르지 않는 operand의 error: 뒤에 `and`, `or`,
+    /// `)` 또는 끝이 오면 operand에서, 그 밖에는 다음 token에서 보고한다.
+    fn alone<T>(&self, operand: Pos, message: String) -> Result<T, CheckError> {
         match self.peek() {
-            None => Err((literal.pos, "a literal alone is not a predicate".into())),
-            Some(t) if t.is("and") || t.is("or") || t.is(")") => Err((literal.pos, "a literal alone is not a predicate".into())),
-            Some(_) => self.unexpected(),
+            Some(t) if !(t.is("and") || t.is("or") || t.is(")")) => self.unexpected(),
+            _ => Err((operand, message)),
         }
     }
 

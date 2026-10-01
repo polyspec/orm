@@ -2,22 +2,15 @@
 // 모델은 정규 텍스트만 보관하므로, 렌더러는 이 트리에서 피연산자와 열을 찾는다.
 // 정규 텍스트가 아닌 입력은 위치를 담은 Error로 거부한다.
 
+type CheckLiteral = { readonly kind: 'literal'; readonly text: string };
+export type CheckOperand = { readonly kind: 'column'; readonly name: string } | CheckLiteral;
+
+// 트리는 괄호를 두지 않는다. 출력은 and 안의 or에만 괄호를 쓴다.
 export type CheckExpr =
-  | { readonly kind: 'column'; readonly name: string }
-  | { readonly kind: 'literal'; readonly text: string }
-  | { readonly kind: 'not'; readonly operand: CheckExpr }
-  | { readonly kind: 'paren'; readonly inner: CheckExpr }
   | { readonly kind: 'logical'; readonly op: 'and' | 'or'; readonly left: CheckExpr; readonly right: CheckExpr }
-  | { readonly kind: 'compare'; readonly op: string; readonly left: CheckExpr; readonly right: CheckExpr }
-  | { readonly kind: 'in'; readonly operand: CheckExpr; readonly negated: boolean; readonly list: readonly string[] }
-  | {
-      readonly kind: 'between';
-      readonly operand: CheckExpr;
-      readonly negated: boolean;
-      readonly low: CheckExpr;
-      readonly high: CheckExpr;
-    }
-  | { readonly kind: 'is_null'; readonly operand: CheckExpr; readonly negated: boolean };
+  | { readonly kind: 'compare'; readonly op: string; readonly left: CheckOperand; readonly right: CheckOperand }
+  | { readonly kind: 'in'; readonly operand: CheckOperand; readonly negated: boolean; readonly list: readonly string[] }
+  | { readonly kind: 'is_null'; readonly operand: CheckOperand; readonly negated: boolean };
 
 interface Token {
   readonly kind: 'string' | 'punct' | 'op' | 'word';
@@ -83,7 +76,7 @@ export function readCheck(text: string, name: string): CheckExpr {
     if (tok === undefined || tok.kind !== kind || tok.text !== text) fail();
     i++;
   };
-  const literal = (): CheckExpr => {
+  const literal = (): CheckLiteral => {
     const tok = toks[i];
     if (tok === undefined) return fail();
     if (tok.kind === 'string' || (tok.kind === 'word' && (NUMBER.test(tok.text) || tok.text === 'true' || tok.text === 'false'))) {
@@ -92,7 +85,7 @@ export function readCheck(text: string, name: string): CheckExpr {
     }
     return fail();
   };
-  const operand = (): CheckExpr => {
+  const operand = (): CheckOperand => {
     const tok = toks[i];
     if (tok !== undefined && tok.kind === 'word' && !KEYWORDS.has(tok.text) && COLUMN.test(tok.text) && tok.text !== 'true' && tok.text !== 'false') {
       i++;
@@ -106,7 +99,7 @@ export function readCheck(text: string, name: string): CheckExpr {
       i++;
       const inner = or();
       expect('punct', ')');
-      return { kind: 'paren', inner };
+      return inner;
     }
     const left = operand();
     const next = toks[i];
@@ -114,16 +107,14 @@ export function readCheck(text: string, name: string): CheckExpr {
       i++;
       return { kind: 'compare', op: next.text, left, right: operand() };
     }
-    const negated = peekWord('not') && (peekWord('in', 1) || peekWord('between', 1));
+    const negated = peekWord('not') && peekWord('in', 1);
     if (negated) i++;
     if (peekWord('in')) {
       i++;
       expect('punct', '(');
       const list: string[] = [];
       for (;;) {
-        const value = literal();
-        if (value.kind !== 'literal') return fail();
-        list.push(value.text);
+        list.push(literal().text);
         const sep = toks[i];
         if (sep === undefined || sep.kind !== 'punct' || sep.text !== ',') break;
         i++;
@@ -131,13 +122,6 @@ export function readCheck(text: string, name: string): CheckExpr {
       expect('punct', ')');
       return { kind: 'in', operand: left, negated, list };
     }
-    if (peekWord('between')) {
-      i++;
-      const low = literal();
-      expect('word', 'and');
-      return { kind: 'between', operand: left, negated, low, high: literal() };
-    }
-    if (negated) return fail();
     if (peekWord('is')) {
       i++;
       const isNot = peekWord('not');
@@ -145,21 +129,13 @@ export function readCheck(text: string, name: string): CheckExpr {
       expect('word', 'null');
       return { kind: 'is_null', operand: left, negated: isNot };
     }
-    if (left.kind !== 'column') return fail();
-    return left;
-  };
-  const not = (): CheckExpr => {
-    if (peekWord('not')) {
-      i++;
-      return { kind: 'not', operand: not() };
-    }
-    return predicate();
+    return fail();
   };
   const and = (): CheckExpr => {
-    let left = not();
+    let left = predicate();
     while (peekWord('and')) {
       i++;
-      left = { kind: 'logical', op: 'and', left, right: not() };
+      left = { kind: 'logical', op: 'and', left, right: predicate() };
     }
     return left;
   };

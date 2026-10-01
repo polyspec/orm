@@ -360,8 +360,8 @@ final class Renderer
 
     /**
      * 정규 check 텍스트를 dialect 형태로 쓴다: 컬럼은 인용하고, 키워드는 대문자로,
-     * literal 은 그것이 만나는 컬럼의 타입으로 쓴다. 정규 텍스트의 간격은
-     * 렌더링된 텍스트의 간격과 같다.
+     * literal 은 그것이 만나는 컬럼의 타입으로 쓴다. 정규 텍스트의 간격과
+     * 괄호는 (and 안의 or 만 묶는다) 렌더링된 텍스트의 간격, 괄호와 같다.
      */
     private function checkText(Table $t, Check $check): string
     {
@@ -420,20 +420,16 @@ final class Renderer
 
     private function conjunction(): string
     {
-        $text = $this->negation();
+        $text = $this->group();
         while ($this->peek() === 'and') {
             $this->at++;
-            $text .= ' AND ' . $this->negation();
+            $text .= ' AND ' . $this->group();
         }
         return $text;
     }
 
-    private function negation(): string
+    private function group(): string
     {
-        if ($this->peek() === 'not') {
-            $this->at++;
-            return 'NOT ' . $this->negation();
-        }
         if ($this->peek() === '(') {
             $this->at++;
             $text = '(' . $this->disjunction() . ')';
@@ -453,7 +449,7 @@ final class Renderer
             $type = $this->operandType($left, $right);
             return $this->operandText($type, $left) . " $next " . $this->operandText($type, $right);
         }
-        $negated = $next === 'not' && ($this->peek(1) === 'in' || $this->peek(1) === 'between');
+        $negated = $next === 'not' && $this->peek(1) === 'in';
         if ($negated) {
             $this->at++;
             $next = $this->peek();
@@ -470,14 +466,6 @@ final class Renderer
             $this->expect(')');
             return $this->operandText($type, $left) . ($negated ? ' NOT' : '') . ' IN (' . implode(', ', $list) . ')';
         }
-        if ($next === 'between') {
-            $type = $this->operandType($left, null);
-            $this->at++;
-            $low = $this->checkLiteral();
-            $this->expect('and');
-            $high = $this->checkLiteral();
-            return $this->operandText($type, $left) . ($negated ? ' NOT' : '') . ' BETWEEN ' . $this->operandText($type, $low) . ' AND ' . $this->operandText($type, $high);
-        }
         if ($next === 'is') {
             $this->at++;
             $isNot = $this->peek() === 'not';
@@ -487,10 +475,7 @@ final class Renderer
             $this->expect('null');
             return $this->operandText(null, $left) . ($isNot ? ' IS NOT NULL' : ' IS NULL');
         }
-        if ($left[0] !== 'column') {
-            $this->invalid("a literal alone is not a predicate, found `{$left[1]}`");
-        }
-        return $this->operandText(null, $left);
+        $this->invalid('`' . ($left[0] === 'column' ? $left[1]->name : $left[1]) . '` alone is not a predicate');
     }
 
     /** 테이블의 컬럼, 또는 literal: ['column', Column] 또는 ['literal', text]. */

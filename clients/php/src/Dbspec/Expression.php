@@ -11,6 +11,8 @@ namespace Orm\Dbspec;
  * first column or type diagnostic in source order.
  * The tokens follow the opening parenthesis of `check <name> (`; the
  * predicate ends with the matching parenthesis, which ends the line.
+ * tree에는 괄호가 없고, emission은 `and` 안의 `or`가 필요로 하는 괄호만
+ * 쓴다.
  */
 final class Expression
 {
@@ -21,14 +23,17 @@ final class Expression
     private const TEXT = ['varchar' => true, 'text' => true];
 
     private int $at = 0;
-    /** @var list<string> */
-    private array $out = [];
+    /** @var list<string> literal 의 텍스트; 타입 검사가 정규 형태로 바꾼다. */
+    private array $literals = [];
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $errors = [];
     /**
-     * The predicates read, in source order. An operand is
-     * ['column', name, column, ?Column] or ['literal', text, column, output index];
-     * the Column is null for a name that is not a column of the table.
+     * source 순서로 읽은 predicate. operand는
+     * ['column', name, column, ?Column]이나 ['literal', text, column, literal index]이고,
+     * table의 column이 아닌 이름이면 Column은 null이다.
+     * predicate는 ['compare', left, [operator, column], right],
+     * ['in', operand, list, negated], ['null', operand, negated]이며, tree는 이들을
+     * ['and' | 'or', left, right]로 잇는다.
      *
      * @var list<array>
      */
@@ -55,9 +60,8 @@ final class Expression
     {
         $parser = new self($tokens, $line, $endColumn, $columns, $actionColumns);
         try {
-            $parser->disjunction();
+            $tree = $parser->disjunction();
             $parser->expect(')');
-            array_pop($parser->out);
             if ($parser->at < count($tokens)) {
                 $parser->fail('a check predicate ends with its closing parenthesis');
             }
@@ -68,14 +72,7 @@ final class Expression
         if ($parser->errors !== []) {
             return [null, $parser->errors];
         }
-        $text = '';
-        foreach ($parser->out as $i => $token) {
-            if ($i > 0 && $parser->out[$i - 1] !== '(' && $token !== ')' && $token !== ',') {
-                $text .= ' ';
-            }
-            $text .= $token;
-        }
-        return [$text, []];
+        return [$parser->text($tree), []];
     }
 
     private function peek(int $ahead = 0): ?string
@@ -89,20 +86,12 @@ final class Expression
         return $this->tokens[$this->at][1] ?? $this->endColumn;
     }
 
-    private function take(): string
-    {
-        $token = $this->tokens[$this->at][0];
-        $this->at++;
-        $this->out[] = $token;
-        return $token;
-    }
-
     private function expect(string $token): void
     {
         if ($this->peek() !== $token) {
             $this->fail("expected `$token`");
         }
-        $this->take();
+        $this->at++;
     }
 
     /** Records a reading error at the current token (or the line end) and stops the predicate. */
@@ -121,97 +110,88 @@ final class Expression
         throw new ExpressionFailure();
     }
 
-    private function disjunction(): void
+    private function disjunction(): array
     {
-        $this->conjunction();
+        $left = $this->conjunction();
         while ($this->peek() === 'or') {
-            $this->take();
-            $this->conjunction();
+            $this->at++;
+            $left = ['or', $left, $this->conjunction()];
         }
+        return $left;
     }
 
-    private function conjunction(): void
+    private function conjunction(): array
     {
-        $this->negation();
+        $left = $this->group();
         while ($this->peek() === 'and') {
-            $this->take();
-            $this->negation();
+            $this->at++;
+            $left = ['and', $left, $this->group()];
         }
+        return $left;
     }
 
-    private function negation(): void
+    /** 괄호는 술어를 묶을 뿐 노드를 남기지 않는다; emission 이 우선순위에 필요한 괄호를 쓴다. */
+    private function group(): array
     {
-        if ($this->peek() === 'not') {
-            $this->take();
-            $this->negation();
-            return;
-        }
         if ($this->peek() === '(') {
-            $this->take();
-            $this->disjunction();
+            $this->at++;
+            $inner = $this->disjunction();
             $this->expect(')');
-            return;
+            return $inner;
         }
-        $this->predicate();
+        return $this->predicate();
     }
 
-    private function predicate(): void
+    private function predicate(): array
     {
         $left = $this->operand();
         $next = $this->peek();
         if ($next !== null && isset(self::COMPARISONS[$next])) {
             $operator = [$next, $this->position()];
-            $this->take();
+            $this->at++;
             $right = $this->operand();
             if ($left[0] === 'literal' && $right[0] === 'literal') {
                 $this->failAt($left[2], "a comparison needs a column operand, found `{$left[1]}` $next `{$right[1]}`");
             }
-            $this->predicates[] = ['compare', $left, $operator, $right];
-            return;
+            return $this->predicates[] = ['compare', $left, $operator, $right];
         }
-        if ($next === 'not' && ($this->peek(1) === 'in' || $this->peek(1) === 'between')) {
-            $this->requireColumn($left, $this->peek(1));
-            $this->take();
+        $negated = $next === 'not' && $this->peek(1) === 'in';
+        if ($negated) {
+            $this->requireColumn($left, 'in');
+            $this->at++;
             $next = $this->peek();
         }
         if ($next === 'in') {
             $this->requireColumn($left, 'in');
-            $this->take();
+            $this->at++;
             $this->expect('(');
             $list = [$this->literal()];
             while ($this->peek() === ',') {
-                $this->take();
+                $this->at++;
                 $list[] = $this->literal();
             }
             $this->expect(')');
-            $this->predicates[] = ['in', $left, $list];
-        } elseif ($next === 'between') {
-            $this->requireColumn($left, 'between');
-            $between = $this->position();
-            $this->take();
-            $low = $this->literal();
-            $this->expect('and');
-            $this->predicates[] = ['between', $left, $between, $low, $this->literal()];
-        } elseif ($next === 'is') {
+            return $this->predicates[] = ['in', $left, $list, $negated];
+        }
+        if ($next === 'is') {
             $this->requireColumn($left, 'is');
-            $this->take();
-            if ($this->peek() === 'not') {
-                $this->take();
+            $this->at++;
+            $isNot = $this->peek() === 'not';
+            if ($isNot) {
+                $this->at++;
             }
             $this->expect('null');
-            $this->predicates[] = ['null', $left];
-        } elseif ($left[0] === 'literal') {
-            // A literal followed by a token outside the forms reports that token.
-            if ($next !== null && $next !== 'and' && $next !== 'or' && $next !== ')') {
-                $this->fail("`$next` is not allowed here");
-            }
-            $this->failAt($left[2], "a literal alone is not a predicate, found `{$left[1]}`");
-        } else {
-            $this->predicates[] = ['alone', $left];
+            return $this->predicates[] = ['null', $left, $isNot];
         }
+        // 비교, in, is 가 따르지 않는 피연산자: and, or, ) 나 끝이 따르면 피연산자에서,
+        // 아니면 따르는 토큰에서 보고한다.
+        if ($next !== null && $next !== 'and' && $next !== 'or' && $next !== ')') {
+            $this->fail("`$next` is not allowed here");
+        }
+        $this->failAt($left[2], "`{$left[1]}` alone is not a predicate");
     }
 
-    /** `in`, `between` and `is` take a column on their left. */
+    /** `in`과 `is`는 왼쪽에 column을 받는다. */
     private function requireColumn(array $operand, string $keyword): void
     {
         if ($operand[0] === 'literal') {
@@ -229,7 +209,7 @@ final class Expression
             }
             if (!isset(self::KEYWORDS[$token])) {
                 $operand = ['column', $token, $this->position(), $this->columns[$token] ?? null];
-                $this->take();
+                $this->at++;
                 return $operand;
             }
         }
@@ -258,8 +238,35 @@ final class Expression
         if ($text === null) {
             $this->fail('expected a column, a literal or `(`');
         }
-        $this->out[] = $text;
-        return ['literal', $text, $column, count($this->out) - 1];
+        $this->literals[] = $text;
+        return ['literal', $text, $column, count($this->literals) - 1];
+    }
+
+    /** 정규 텍스트: and 안의 or 만 괄호로 묶는다. */
+    private function text(array $node): string
+    {
+        switch ($node[0]) {
+            case 'and':
+            case 'or':
+                $sides = [];
+                foreach ([$node[1], $node[2]] as $side) {
+                    $text = $this->text($side);
+                    $sides[] = $node[0] === 'and' && $side[0] === 'or' ? "($text)" : $text;
+                }
+                return implode(" {$node[0]} ", $sides);
+            case 'compare':
+                return $this->operandText($node[1]) . " {$node[2][0]} " . $this->operandText($node[3]);
+            case 'in':
+                $list = array_map(fn (array $literal): string => $this->operandText($literal), $node[2]);
+                return $this->operandText($node[1]) . ($node[3] ? ' not' : '') . ' in (' . implode(', ', $list) . ')';
+            default:
+                return $this->operandText($node[1]) . ($node[2] ? ' is not null' : ' is null');
+        }
+    }
+
+    private function operandText(array $operand): string
+    {
+        return $operand[0] === 'column' ? $operand[1] : $this->literals[$operand[3]];
     }
 
     /** Checks the operand types of the predicates and reports the first diagnostic in source order. */
@@ -283,26 +290,8 @@ final class Expression
                         }
                     }
                     break;
-                case 'between':
-                    if ($this->isBool($predicate[1])) {
-                        $found[] = [$predicate[2], 'a bool operand takes only =, <> and in, found `between`'];
-                    }
-                    if ($this->usable($predicate[1], $found)) {
-                        $this->meet($predicate[1], $predicate[3], $found);
-                        $this->meet($predicate[1], $predicate[4], $found);
-                    }
-                    break;
                 case 'null':
                     $this->usable($predicate[1], $found);
-                    break;
-                case 'alone':
-                    if (!$this->usable($predicate[1], $found)) {
-                        break;
-                    }
-                    $type = $predicate[1][3]->type->name;
-                    if ($type !== 'bool') {
-                        $found[] = [$predicate[1][2], "a column alone is a predicate only when it is bool, `{$predicate[1][1]}` is {$predicate[1][3]->type->text()}"];
-                    }
                     break;
             }
         }
@@ -382,7 +371,7 @@ final class Expression
             $found[] = [$literal[2], "`{$literal[1]}` does not meet `{$column[1]}` of {$type->text()}: $problem"];
             return;
         }
-        $this->out[$literal[3]] = $canonical;
+        $this->literals[$literal[3]] = $canonical;
     }
 
     private static function columnsMeet(ColumnType $a, ColumnType $b): bool

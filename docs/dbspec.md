@@ -117,10 +117,8 @@ A predicate is one of:
 
 - `<operand> <comparison> <operand>` with `=`, `<>`, `<`, `<=`, `>` or `>=`, where at least one operand is a column;
 - `<column> [not] in (<literal>, ...)`;
-- `<column> [not] between <literal> and <literal>`;
 - `<column> is [not] null`;
-- a `bool` column alone, which holds when the column is true;
-- `not <predicate>`, `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`.
+- `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`, where `and` binds tighter than `or`.
 
 An operand is a column of the same table or a literal. The three databases evaluate these predicates alike only when both sides have the same kind of value, so the types decide which operands meet. A literal that meets a column is a valid `default` literal of the column's type (a `text` column takes the `varchar` form), and canonical form writes it as that default, so `0` against `decimal(13,2)` is `0.00`. Two columns meet when:
 
@@ -139,6 +137,8 @@ An operand is a column of the same table or a literal. The three databases evalu
 A `bool` operand takes only `=`, `<>` and `in`.
 
 A `bytes` column, arithmetic, functions and the `null` literal are not part of a predicate: integer division, overflow and the scaled SQLite decimal give different results on the three databases. A unary minus applies only to a number literal. A check cannot use a column of a foreign key with `cascade` or `set_null`, because MySQL rejects it (3823).
+
+There is no `not` operator, no `between` and no `bool` column alone: MySQL writes `not` into the comparisons it negates and rejects a column alone, and PostgreSQL writes `between` as two comparisons, so introspection could not restore them ([dialects](dialects.md#check-constraints)). Write `a <= 3` for `not (a > 3)`, `a >= 1 and a <= 9` for `a between 1 and 9`, and `active = true` for `active`.
 
 ## Settings
 
@@ -255,7 +255,7 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 - literals in one form: integers without a sign for zero or leading zeros, decimals with exactly the column scale (`0.00` for `decimal(13,2)`), strings in single quotes with `''` for a quote, `true` and `false`, `date` as `'YYYY-MM-DD'`, `time(p)` and `datetime(p)` with exactly p fraction digits (`'2026-01-01 00:00:00.000000'` for `datetime(6)`), `uuid` in lower case;
 - tables and diagrams in document order; diagram lines in document order;
 - `select explicit` columns and the tables of a `use` line in their written order;
-- `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; a check literal takes the canonical default form of the column it meets;
+- `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; a check literal takes the canonical default form of the column it meets, and a predicate keeps only the parentheses that an `or` inside an `and` needs;
 - a comment line stays attached to the line that follows it and takes that line's indentation; a comment before a closing `}` takes the indentation of the block's lines; comments after the last block follow one blank line; a comment keeps its text from `#` to the line end unchanged.
 
 ## Limits and errors
@@ -269,7 +269,7 @@ A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign key
 - a used document that fails reports one `use` diagnostic at its name with its first error in the message; two used documents that repeat a constraint name report `name.duplicate` at the later document name; a document or table repeated in `use` lines is `name.duplicate`; a use cycle or a header name that differs from the used name is `use`;
 - a `header` error points at the first character where the line departs from `dbspec 1 <name>`, `<name>` being a run of ASCII letters, digits and `_`, or one past the line end when a part is missing;
 - the 32 MiB limit points at line 1, column 1; a table with more than 1000 columns is a `limit` error at its 1001st column name;
-- check: a predicate is read first. Reading reports, at the token, an arithmetic operator, a function, a `null` literal or any other token outside the predicate forms, and a literal where the forms need a column: the subject of `in`, `between` or `is`, a literal alone, and the first literal of a comparison of two literals. A predicate with a reading diagnostic is not checked further. A predicate that reads completely then has its columns and types checked, and the first of these diagnostics in source order is reported: an unknown column, a column of a `cascade` or `set_null` foreign key and a `bytes` column at the column; a column that does not meet the other column of its comparison at the later column; a literal that is not a default of the column it meets at the literal; `<`, `<=`, `>`, `>=` or `between` with a `bool` operand at the operator; a column alone that is not `bool` at the column;
+- check: a predicate is read first. Reading reports, at the token, an arithmetic operator, a function, a `null` literal or any other token outside the predicate forms, a literal where the forms need a column: the subject of `in` or `is` and the first literal of a comparison of two literals, and an operand that no comparison, `in` or `is` follows: at the operand when `and`, `or`, `)` or the end follows it, and at the following token otherwise. A predicate with a reading diagnostic is not checked further. A predicate that reads completely then has its columns and types checked, and the first of these diagnostics in source order is reported: an unknown column, a column of a `cascade` or `set_null` foreign key and a `bytes` column at the column; a column that does not meet the other column of its comparison at the later column; a literal that is not a default of the column it meets at the literal; `<`, `<=`, `>` or `>=` with a `bool` operand, column or `true` or `false`, at the operator;
 - a line has at most one `syntax` diagnostic; a check expression reports only its first diagnostic; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more; a failed line keeps the kind that its first word gives and the name it would declare, reading a tab as a space only to learn them; a failed key or index line therefore still declares a key or index whose columns are unknown, so no rule that depends on them is reported: a failed `primary key` line hides the missing primary key and the identity rule of its table, and a failed `primary key`, `unique` or `index` line hides the leading-index rule of its table's foreign keys and the key-target rule of foreign keys that reference its table;
 - a header that is not the first line, including a comment or blank line before it, and a header line that is not exactly `dbspec`, a space, `1`, a space and a name (for example one with a tab) is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
 

@@ -2,9 +2,8 @@ package dbspec
 
 import "strings"
 
-// Expr is a check predicate or one of its operands (docs/dbspec.md
-// "Checks"). Parentheses written in the source are kept as Paren nodes, so
-// emission reproduces the grouping.
+// Expr는 check predicate나 그 operand다(docs/dbspec.md "Checks"). tree에는
+// 괄호가 없고, emission은 and 안의 or가 필요로 하는 괄호만 쓴다.
 type Expr interface{ expr() }
 
 // ColumnRef refers to a column of the same table.
@@ -19,9 +18,6 @@ type Literal struct {
 	Text string
 	at   token
 }
-
-// Not is `not <operand>`.
-type Not struct{ Operand Expr }
 
 // Binary is `<left> <op> <right>` for and, or and the comparisons.
 type Binary struct {
@@ -38,32 +34,17 @@ type In struct {
 	List    []Literal
 }
 
-// Between is `<operand> [not] between <low> and <high>`.
-type Between struct {
-	Operand Expr
-	Negated bool
-	Low     Expr
-	High    Expr
-	at      token
-}
-
 // IsNull is `<operand> is [not] null`.
 type IsNull struct {
 	Operand Expr
 	Negated bool
 }
 
-// Paren is a parenthesized expression.
-type Paren struct{ Inner Expr }
-
 func (ColumnRef) expr() {}
 func (Literal) expr()   {}
-func (Not) expr()       {}
 func (Binary) expr()    {}
 func (In) expr()        {}
-func (Between) expr()   {}
 func (IsNull) expr()    {}
-func (Paren) expr()     {}
 
 var expressionKeywords = map[string]bool{
 	"and": true, "or": true, "not": true, "in": true, "between": true,
@@ -140,22 +121,15 @@ func (p *expressionParser) or() Expr {
 }
 
 func (p *expressionParser) and() Expr {
-	left := p.not()
+	left := p.predicate()
 	for p.bad == nil && p.word("and") {
-		left = Binary{Op: "and", Left: left, Right: p.not()}
+		left = Binary{Op: "and", Left: left, Right: p.predicate()}
 	}
 	return left
 }
 
-func (p *expressionParser) not() Expr {
-	if p.word("not") {
-		return Not{Operand: p.not()}
-	}
-	return p.predicate()
-}
-
-// predicate reads one predicate form; a parenthesis groups a predicate, and an
-// operand alone is a predicate whose type validation decides.
+// predicate는 predicate 형식 하나를 읽는다. 괄호는 predicate를 묶기만 하고
+// node를 남기지 않는다. emission이 우선순위에 필요한 괄호를 쓰기 때문이다.
 func (p *expressionParser) predicate() Expr {
 	if p.punct("(") {
 		inner := p.or()
@@ -165,7 +139,7 @@ func (p *expressionParser) predicate() Expr {
 		if !p.punct(")") {
 			return p.fail("is not allowed here; expected )")
 		}
-		return Paren{Inner: inner}
+		return inner
 	}
 	left := p.operand()
 	if p.bad != nil {
@@ -173,10 +147,7 @@ func (p *expressionParser) predicate() Expr {
 	}
 	literal, isLiteral := left.(Literal)
 	if p.i >= len(p.tokens) {
-		if isLiteral {
-			return p.literalAt(literal, "alone is not a predicate")
-		}
-		return left
+		return p.alone(left)
 	}
 	t := p.tokens[p.i]
 	switch {
@@ -187,7 +158,8 @@ func (p *expressionParser) predicate() Expr {
 			return p.literalAt(literal, "is compared with a literal; a comparison needs a column")
 		}
 		return Binary{Op: t.text, Left: left, Right: right, at: t}
-	case isLiteral && (t.is(tokenWord, "is") || t.is(tokenWord, "in") || t.is(tokenWord, "between") || t.is(tokenWord, "not")):
+	case isLiteral && (t.is(tokenWord, "is") || t.is(tokenWord, "in") ||
+		(t.is(tokenWord, "not") && p.i+1 < len(p.tokens) && p.tokens[p.i+1].is(tokenWord, "in"))):
 		return p.literalAt(literal, "is not a column")
 	case t.is(tokenWord, "is"):
 		p.i++
@@ -198,13 +170,11 @@ func (p *expressionParser) predicate() Expr {
 		return IsNull{Operand: left, Negated: negated}
 	}
 	negated := false
-	if t.is(tokenWord, "not") && p.i+1 < len(p.tokens) &&
-		(p.tokens[p.i+1].is(tokenWord, "in") || p.tokens[p.i+1].is(tokenWord, "between")) {
+	if t.is(tokenWord, "not") && p.i+1 < len(p.tokens) && p.tokens[p.i+1].is(tokenWord, "in") {
 		p.i++
 		negated = true
 	}
-	switch {
-	case p.word("in"):
+	if p.word("in") {
 		if !p.punct("(") {
 			return p.fail("is not allowed here; expected (")
 		}
@@ -222,30 +192,28 @@ func (p *expressionParser) predicate() Expr {
 				return p.fail("is not allowed here; expected , or )")
 			}
 		}
-	case p.i < len(p.tokens) && p.tokens[p.i].is(tokenWord, "between"):
-		keyword := p.tokens[p.i]
-		p.i++
-		low, ok := p.literal()
-		if !ok {
-			return p.fail("is not a literal")
-		}
-		if !p.word("and") {
-			return p.fail("is not allowed here; expected and")
-		}
-		high, ok := p.literal()
-		if !ok {
-			return p.fail("is not a literal")
-		}
-		return Between{Operand: left, Negated: negated, Low: low, High: high, at: keyword}
 	}
-	if isLiteral {
-		// A literal followed by a token outside the forms reports that token.
-		if next := p.peek(); !next.is(tokenWord, "and") && !next.is(tokenWord, "or") && !next.is(tokenPunct, ")") {
-			return p.fail("is not allowed here")
-		}
-		return p.literalAt(literal, "alone is not a predicate")
+	return p.alone(left)
+}
+
+// alone은 비교, in, is가 뒤따르지 않는 operand를 보고한다. 뒤에 and, or, ),
+// 끝이 오면 operand에서, 그 밖에는 뒤따르는 token에서 보고한다.
+func (p *expressionParser) alone(operand Expr) Expr {
+	if next := p.peek(); p.i < len(p.tokens) && !next.is(tokenWord, "and") && !next.is(tokenWord, "or") && !next.is(tokenPunct, ")") {
+		return p.fail("is not allowed here")
 	}
-	return left
+	at := token{}
+	switch o := operand.(type) {
+	case ColumnRef:
+		at = o.at
+	case Literal:
+		at = o.at
+	}
+	if p.bad == nil {
+		d := diagnosticAt(RuleCheck, at, "%s alone is not a predicate", at.describe())
+		p.bad = &d
+	}
+	return nil
 }
 
 func (p *expressionParser) punct(text string) bool {
@@ -333,13 +301,10 @@ func writeExpr(b *strings.Builder, e Expr) {
 		b.WriteString(e.Name)
 	case Literal:
 		b.WriteString(e.Text)
-	case Not:
-		b.WriteString("not ")
-		writeExpr(b, e.Operand)
 	case Binary:
-		writeExpr(b, e.Left)
+		writeOperand(b, e.Op, e.Left)
 		b.WriteString(" " + e.Op + " ")
-		writeExpr(b, e.Right)
+		writeOperand(b, e.Op, e.Right)
 	case In:
 		writeExpr(b, e.Operand)
 		if e.Negated {
@@ -353,15 +318,6 @@ func writeExpr(b *strings.Builder, e Expr) {
 			b.WriteString(l.Text)
 		}
 		b.WriteString(")")
-	case Between:
-		writeExpr(b, e.Operand)
-		if e.Negated {
-			b.WriteString(" not")
-		}
-		b.WriteString(" between ")
-		writeExpr(b, e.Low)
-		b.WriteString(" and ")
-		writeExpr(b, e.High)
 	case IsNull:
 		writeExpr(b, e.Operand)
 		if e.Negated {
@@ -369,9 +325,21 @@ func writeExpr(b *strings.Builder, e Expr) {
 		} else {
 			b.WriteString(" is null")
 		}
-	case Paren:
-		b.WriteString("(")
-		writeExpr(b, e.Inner)
-		b.WriteString(")")
 	}
+}
+
+// needsParentheses는 op의 operand인 e가 and 안의 or인지 알려 준다.
+func needsParentheses(op string, e Expr) bool {
+	inner, ok := e.(Binary)
+	return op == "and" && ok && inner.Op == "or"
+}
+
+func writeOperand(b *strings.Builder, op string, e Expr) {
+	if needsParentheses(op, e) {
+		b.WriteString("(")
+		writeExpr(b, e)
+		b.WriteString(")")
+		return
+	}
+	writeExpr(b, e)
 }

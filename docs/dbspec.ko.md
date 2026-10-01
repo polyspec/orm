@@ -117,10 +117,8 @@ predicate는 다음 중 하나다.
 
 - `=`, `<>`, `<`, `<=`, `>`, `>=`를 쓰는 `<operand> <비교> <operand>`. operand 중 적어도 하나는 column이다
 - `<column> [not] in (<literal>, ...)`
-- `<column> [not] between <literal> and <literal>`
 - `<column> is [not] null`
-- `bool` column 하나. column이 true일 때 참이다
-- `not <predicate>`, `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`
+- `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`. `and`가 `or`보다 먼저 묶인다
 
 operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 값의 종류가 같을 때에만 이 predicate를 같게 평가하므로, type이 만날 수 있는 operand를 정한다. column과 만나는 literal은 그 column type의 유효한 `default` literal이어야 하고(`text` column은 `varchar` 형식), canonical form은 그 default처럼 쓴다. 그래서 `decimal(13,2)`에 대한 `0`은 `0.00`이다. 두 column은 다음일 때 만난다.
 
@@ -139,6 +137,8 @@ operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 �
 `bool` operand에는 `=`, `<>`, `in`만 쓴다.
 
 `bytes` column, 산술, 함수, `null` literal은 predicate에 쓸 수 없다. 정수 나눗셈, overflow, scale을 곱한 SQLite decimal이 세 database에서 다른 결과를 내기 때문이다. 단항 minus는 숫자 literal에만 쓴다. MySQL이 거부하므로(3823) `cascade`나 `set_null` foreign key의 column은 check에 쓸 수 없다.
+
+`not` 연산자, `between`, `bool` column 하나는 없다. MySQL은 `not`을 그것이 부정하는 비교로 바꿔 쓰고 column 하나를 거부하며, PostgreSQL은 `between`을 비교 두 개로 쓰므로 introspection이 이를 복원할 수 없다([dialects](dialects.md#check-constraints)). `not (a > 3)` 대신 `a <= 3`, `a between 1 and 9` 대신 `a >= 1 and a <= 9`, `active` 대신 `active = true`를 쓴다.
 
 ## Settings
 
@@ -255,7 +255,7 @@ Mermaid manifest field는 이 model에 다음처럼 대응한다: `auto`는 iden
 - literal은 한 형식으로 쓴다: 정수는 0의 부호나 앞자리 0 없이, decimal은 column scale만큼의 소수 자리로(`decimal(13,2)`이면 `0.00`), 문자열은 작은따옴표 안에 따옴표를 `''`로, `true`와 `false`, `date`는 `'YYYY-MM-DD'`, `time(p)`와 `datetime(p)`는 정확히 p자리 소수로(`datetime(6)`이면 `'2026-01-01 00:00:00.000000'`), `uuid`는 소문자로
 - table과 diagram은 문서 순서, diagram 줄도 문서 순서
 - `select explicit` column과 `use` 줄 안의 table은 적힌 순서로
-- `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 만나는 column의 canonical default 형식을 따른다
+- `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 만나는 column의 canonical default 형식을 따르고, predicate는 `and` 안의 `or`가 필요로 하는 괄호만 남긴다
 - comment 줄은 바로 다음 줄에 붙고 그 줄의 들여쓰기를 따른다. 닫는 `}` 앞의 comment는 그 block 안 줄의 들여쓰기를 따른다. 마지막 block 뒤의 comment는 빈 줄 하나 뒤에 온다. comment는 `#`부터 줄 끝까지의 text를 바꾸지 않는다
 
 ## 한도와 error
@@ -269,7 +269,7 @@ Mermaid manifest field는 이 model에 다음처럼 대응한다: `auto`는 iden
 - 실패한 쓰는 문서는 그 이름에서 `use` diagnostic 하나를 보고하고 message에 첫 error를 담는다. 두 쓰는 문서가 constraint 이름을 반복하면 뒤 문서 이름에서 `name.duplicate`를 보고한다. `use` 줄에서 문서나 table을 반복하면 `name.duplicate`다. use 순환이나 쓰는 이름과 다른 header 이름은 `use`다
 - `header` error의 위치는 줄이 `dbspec 1 <name>`에서 처음 벗어나는 문자이고(`<name>`은 ASCII 문자, 숫자, `_`의 연속), 빠진 부분이 있으면 줄 끝 다음 열이다
 - 32 MiB 한도의 위치는 1줄 1열이다. column이 1000개를 넘는 table은 1001번째 column 이름에서 `limit` error다
-- check: predicate는 먼저 읽는다. 읽기는 산술 연산자, 함수, `null` literal 같은 predicate 형식 밖의 token과, 형식이 column을 요구하는 자리의 literal(`in`, `between`, `is`의 대상, 단독 literal, 두 literal 비교의 첫 literal)을 그 token에서 보고한다. 읽기 diagnostic이 있는 predicate는 더 확인하지 않는다. 끝까지 읽힌 predicate는 column과 type을 확인하고, 그중 source 순서의 첫 diagnostic을 보고한다. 모르는 column, `cascade`나 `set_null` foreign key의 column, `bytes` column은 그 column, 비교에서 상대 column과 만나지 않는 column은 뒤쪽 column, 만나는 column의 default가 아닌 literal은 그 literal, `bool` operand에 쓴 `<`, `<=`, `>`, `>=`, `between`은 그 연산자, `bool`이 아닌 column 하나는 그 column이 위치다
+- check: predicate는 먼저 읽는다. 읽기는 산술 연산자, 함수, `null` literal 같은 predicate 형식 밖의 token과, 형식이 column을 요구하는 자리의 literal(`in`, `is`의 대상, 두 literal 비교의 첫 literal), 그리고 비교, `in`, `is`가 뒤따르지 않는 operand를 보고한다. 그 operand 뒤에 `and`, `or`, `)`, 끝이 오면 operand에서, 그 밖에는 뒤따르는 token에서 보고한다. 읽기 diagnostic이 있는 predicate는 더 확인하지 않는다. 끝까지 읽힌 predicate는 column과 type을 확인하고, 그중 source 순서의 첫 diagnostic을 보고한다. 모르는 column, `cascade`나 `set_null` foreign key의 column, `bytes` column은 그 column, 비교에서 상대 column과 만나지 않는 column은 뒤쪽 column, 만나는 column의 default가 아닌 literal은 그 literal, `bool` operand(column이나 `true`, `false`)에 쓴 `<`, `<=`, `>`, `>=`는 그 연산자가 위치다
 - 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 diagnostic만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다. 실패한 줄은 첫 단어가 정하는 종류와 선언하려던 이름을 유지하며, 이를 알기 위해서만 tab을 공백으로 읽는다. 그래서 실패한 key나 index 줄도 column을 모르는 key나 index를 선언한 것으로 보므로, 그 column에 기대는 규칙은 보고하지 않는다. 실패한 `primary key` 줄은 그 table의 primary key 없음과 identity 규칙을 가리고, 실패한 `primary key`, `unique`, `index` 줄은 그 table foreign key의 선두 index 규칙과 그 table을 참조하는 foreign key의 참조 key 규칙을 가린다
 - 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함), 그리고 정확히 `dbspec`, 공백, `1`, 공백, 이름이 아닌 header 줄(예: tab이 있는 줄)은 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
 

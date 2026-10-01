@@ -1,6 +1,6 @@
 // dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered statements").
 // 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
-import { readCheck, type CheckExpr } from './check.js';
+import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
 import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
 
@@ -293,16 +293,12 @@ class Renderer {
   /** A check predicate of table t in the dialect. */
   predicate(t: DbspecTable, e: CheckExpr): string {
     switch (e.kind) {
-      case 'column':
-        return this.q(e.name);
-      case 'literal':
-        throw new Error(`check literal ${e.text} of table ${t.name} is not a predicate`);
-      case 'not':
-        return `NOT ${this.predicate(t, e.operand)}`;
-      case 'paren':
-        return `(${this.predicate(t, e.inner)})`;
-      case 'logical':
-        return `${this.predicate(t, e.left)} ${e.op.toUpperCase()} ${this.predicate(t, e.right)}`;
+      case 'logical': {
+        // and 안의 or만 괄호로 묶는다.
+        const side = (q: CheckExpr): string =>
+          e.op === 'and' && q.kind === 'logical' && q.op === 'or' ? `(${this.predicate(t, q)})` : this.predicate(t, q);
+        return `${side(e.left)} ${e.op.toUpperCase()} ${side(e.right)}`;
+      }
       case 'compare': {
         const type = operandType(t, e.left, e.right);
         return `${this.operand(type, e.left)} ${e.op} ${this.operand(type, e.right)}`;
@@ -312,22 +308,13 @@ class Renderer {
         const list = e.list.map(l => this.literal(type, l)).join(', ');
         return `${this.operand(type, e.operand)}${e.negated ? ' NOT' : ''} IN (${list})`;
       }
-      case 'between': {
-        const type = operandType(t, e.operand, null);
-        return (
-          `${this.operand(type, e.operand)}${e.negated ? ' NOT' : ''} BETWEEN ` +
-          `${this.operand(type, e.low)} AND ${this.operand(type, e.high)}`
-        );
-      }
       case 'is_null':
         return `${this.operand(null, e.operand)} IS ${e.negated ? 'NOT NULL' : 'NULL'}`;
     }
   }
 
-  operand(type: DbspecType | null, e: CheckExpr): string {
-    if (e.kind === 'column') return this.q(e.name);
-    if (e.kind === 'literal') return this.literal(type, e.text);
-    throw new Error(`check operand ${e.kind} is not a column or a literal`);
+  operand(type: DbspecType | null, e: CheckOperand): string {
+    return e.kind === 'column' ? this.q(e.name) : this.literal(type, e.text);
   }
 
   /** The triggers of the immutable and audit settings. */
@@ -420,7 +407,7 @@ function scaledDecimal(text: string): string {
 }
 
 /** The type of the column among the operands; a validated comparison has at least one column. */
-function operandType(t: DbspecTable, a: CheckExpr, b: CheckExpr | null): DbspecType | null {
+function operandType(t: DbspecTable, a: CheckOperand, b: CheckOperand | null): DbspecType | null {
   for (const e of [a, b]) {
     if (e === null || e.kind !== 'column') continue;
     const column = t.columns.find(c => c.name === e.name);
