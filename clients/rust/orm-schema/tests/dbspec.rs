@@ -11,23 +11,46 @@ fn cases_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/cases.json")
 }
 
-fn joined(lines: &Value, crlf: bool) -> String {
-    let end = if crlf { "\r\n" } else { "\n" };
+/// Line ends of a case: LF, CRLF when `crlf` is true, or alternating CRLF and
+/// LF starting with CRLF when `mixed` is true, where the last line has none.
+#[derive(Clone, Copy)]
+enum Ends {
+    Lf,
+    Crlf,
+    Mixed,
+}
+
+fn joined(lines: &Value, ends: Ends) -> String {
+    let lines = lines.as_array().unwrap();
     let mut text = String::new();
-    for line in lines.as_array().unwrap() {
+    for (index, line) in lines.iter().enumerate() {
         text.push_str(line.as_str().unwrap());
-        text.push_str(end);
+        match ends {
+            Ends::Lf => text.push('\n'),
+            Ends::Crlf => text.push_str("\r\n"),
+            Ends::Mixed if index + 1 == lines.len() => {}
+            Ends::Mixed => text.push_str(if index % 2 == 0 { "\r\n" } else { "\n" }),
+        }
     }
     text
 }
 
+fn ends(case: &Value) -> Ends {
+    match (case["crlf"].as_bool().unwrap_or(false), case["mixed"].as_bool().unwrap_or(false)) {
+        (false, false) => Ends::Lf,
+        (true, false) => Ends::Crlf,
+        (false, true) => Ends::Mixed,
+        (true, true) => panic!("{}: crlf and mixed are exclusive", case["id"]),
+    }
+}
+
 fn declared(case: &Value) -> (String, BTreeMap<String, String>) {
-    let crlf = case["crlf"].as_bool().unwrap_or(false);
+    let ends = ends(case);
     let main = case["main"].as_str().unwrap();
     let mut set = BTreeMap::new();
     let mut main_text = None;
     for (name, lines) in case["documents"].as_object().unwrap() {
-        let text = joined(lines, crlf);
+        let text = joined(lines, ends);
         if name == main {
             main_text = Some(text);
         } else {
@@ -58,7 +81,7 @@ fn run(case: &Value, kind: &str) {
         }
         "normalize" => {
             let document = parsed(id, &text, &set);
-            let expected = joined(&case["canonical"], false);
+            let expected = joined(&case["canonical"], Ends::Lf);
             let emitted = dbspec::emit(&document);
             assert_eq!(emitted, expected, "{id}: emits its canonical lines");
             let again = parsed(id, &emitted, &set);

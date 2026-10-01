@@ -2,7 +2,7 @@
 //! settings, `use` and diagrams.
 
 use super::model::*;
-use super::parser::Diag;
+use super::parser::{name_problem, well_formed, Diag};
 use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -31,7 +31,7 @@ impl<'s, 'd> TableScope<'s, 'd> {
     fn column(&self, name: &str) -> Lookup<'d> {
         match self.table.column(name) {
             Some(column) => Lookup::Found(column),
-            None if self.unresolved.is_some_and(|u| u.contains(name)) => Lookup::Unresolved,
+            None if !well_formed(name) || self.unresolved.is_some_and(|u| u.contains(name)) => Lookup::Unresolved,
             None => Lookup::Missing,
         }
     }
@@ -60,8 +60,9 @@ impl<'d> Scope<'d> {
         self.used.get(name).map(|table| TableScope { table, unresolved: None })
     }
 
+    /// A malformed table name, already reported, or a table of a failed `use` line.
     fn unresolved(&self, name: &str) -> bool {
-        self.unresolved.contains(name)
+        !well_formed(name) || self.unresolved.contains(name)
     }
 }
 
@@ -70,7 +71,7 @@ impl<'d> Scope<'d> {
 pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], used: &[Option<&Document>], diags: &mut Vec<Diag>) {
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
     let mut scope = Scope { tables: HashMap::new(), document, failed, used: HashMap::new(), unresolved: HashSet::new() };
-    let mut used_documents: Vec<&Document> = Vec::new();
+    let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
         if !seen_documents.insert(line.document.text.as_str()) {
@@ -80,8 +81,12 @@ pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], used: &[
             scope.unresolved.extend(line.tables.iter().map(|n| n.text.as_str()));
             continue;
         };
-        used_documents.push(other);
+        used_documents.push((&line.document, other));
         for name in &line.tables {
+            if !well_formed(&name.text) {
+                scope.unresolved.insert(name.text.as_str());
+                continue;
+            }
             match other.tables.iter().find(|t| t.name.text == name.text) {
                 None => {
                     scope.unresolved.insert(name.text.as_str());
@@ -121,18 +126,36 @@ fn constraint_names_of(table: &Table) -> impl Iterator<Item = &Name> {
 }
 
 /// Index, unique key, foreign key and check names are unique across the
-/// document and the documents it uses.
-fn constraint_names(document: &Document, used: &[&Document], diags: &mut Vec<Diag>) {
+/// document and the documents it uses directly, and differ from every table
+/// name. Two used documents that repeat a name report it at the later
+/// document name.
+fn constraint_names(document: &Document, used: &[(&Name, &Document)], diags: &mut Vec<Diag>) {
+    let mut tables: HashSet<&str> = document.tables.iter().map(|t| t.name.text.as_str()).collect();
     let mut seen: HashSet<&str> = HashSet::new();
-    for other in used {
+    let mut documents = HashSet::new();
+    for (name, other) in used {
+        if !documents.insert(name.text.as_str()) {
+            continue;
+        }
+        tables.extend(other.tables.iter().map(|t| t.name.text.as_str()));
+        let mut repeated = None;
         for table in &other.tables {
-            seen.extend(constraint_names_of(table).map(|n| n.text.as_str()));
+            for constraint in constraint_names_of(table) {
+                if !seen.insert(constraint.text.as_str()) && repeated.is_none() {
+                    repeated = Some(constraint.text.as_str());
+                }
+            }
+        }
+        if let Some(repeated) = repeated {
+            diags.push(err(name.pos, "name.duplicate", format!("document '{}' repeats the constraint name '{repeated}' of another used document", name.text)));
         }
     }
     let mut own: Vec<&Name> = document.tables.iter().flat_map(constraint_names_of).collect();
     own.sort_by_key(|n| n.pos);
     for name in own {
-        if !seen.insert(name.text.as_str()) {
+        if tables.contains(name.text.as_str()) {
+            diags.push(err(name.pos, "name.duplicate", format!("constraint name '{}' is a table name", name.text)));
+        } else if !seen.insert(name.text.as_str()) {
             diags.push(err(name.pos, "name.duplicate", format!("constraint name '{}' is already used in the schema", name.text)));
         }
     }
@@ -225,7 +248,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let mut varchar = 0u32;
         for (index, (name, _)) in columns.enumerate() {
             if index == MAX_KEY_COLUMNS {
-                self.report(name.pos, "key", format!("a key or index lists at most {MAX_KEY_COLUMNS} columns"));
+                self.report(at, "key", format!("a key or index lists at most {MAX_KEY_COLUMNS} columns"));
             }
             if !seen.insert(name.text.as_str()) {
                 self.report(name.pos, "key", format!("column '{}' is repeated", name.text));
@@ -325,14 +348,20 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let changed: HashSet<&str> = table.foreign_keys.iter().filter(|k| k.changes_rows()).flat_map(|k| k.columns.iter().map(|n| n.text.as_str())).collect();
         for check in &table.checks {
             let mut columns = Vec::new();
-            collect_columns(&check.expr, &mut columns);
+            check.expr.columns(&mut columns);
+            // A check expression reports only its first diagnostic.
             for name in columns {
-                match self.own.column(&name.text) {
-                    Lookup::Missing => self.report(name.pos, "check", format!("unknown column '{}'", name.text)),
-                    Lookup::Found(_) if changed.contains(name.text.as_str()) => {
-                        self.report(name.pos, "check", format!("column '{}' belongs to a cascade or set_null foreign key", name.text))
+                let problem = match (name_problem(&name.text), self.own.column(&name.text)) {
+                    (Some(problem), _) => Some(problem),
+                    (None, Lookup::Missing) => Some(("check", format!("unknown column '{}'", name.text))),
+                    (None, Lookup::Found(_)) if changed.contains(name.text.as_str()) => {
+                        Some(("check", format!("column '{}' belongs to a cascade or set_null foreign key", name.text)))
                     }
-                    _ => {}
+                    _ => None,
+                };
+                if let Some((rule, message)) = problem {
+                    self.report(name.pos, rule, message);
+                    break;
                 }
             }
         }
@@ -354,15 +383,18 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let table = self.own.table;
         let Some(settings) = &table.settings else { return };
         let has_aes_version = settings.lines.iter().any(|l| matches!(l.setting, Setting::AesVersion(_)));
+        let has_aes = settings.lines.iter().any(|l| matches!(&l.setting, Setting::Codec(_, stages) if stages.iter().any(|s| s.text == "aes")));
         let has_soft_delete = settings.lines.iter().any(|l| matches!(l.setting, Setting::SoftDelete(_)));
         let changes_rows = table.foreign_keys.iter().any(ForeignKey::changes_rows);
         let mut kinds = HashSet::new();
         let mut codecs = HashSet::new();
         let mut navigations = HashSet::new();
+        let mut blind_indexes = HashSet::new();
         for line in &settings.lines {
             let first = match &line.setting {
                 Setting::Codec(column, _) => codecs.insert(column.text.as_str()),
                 Setting::Navigation(key, _, _) => navigations.insert(key.text.as_str()),
+                Setting::BlindIndex(aes, _) => blind_indexes.insert(aes.text.as_str()),
                 other => kinds.insert(other.rank()),
             };
             if !first {
@@ -395,9 +427,17 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     }
                 }
                 Setting::Codec(name, stages) => {
-                    if let Some(column) = self.setting_column(name) {
-                        if !matches!(column.ty, Type::Varchar(_) | Type::Text | Type::Bytes) {
-                            self.report(name.pos, "setting", "codec names a varchar, text or bytes column");
+                    // The storage type follows the last stage.
+                    let last = stages.last().map_or("", |s| s.text.as_str());
+                    let storage = match last {
+                        "hex" | "base64" | "ordered_json" | "yaml" | "serialize" => Some("text, in a varchar or text column"),
+                        "aes" | "gz" | "ip" => Some("bytes, in a bytes column"),
+                        _ => None,
+                    };
+                    if let (Some(column), Some(storage)) = (self.setting_column(name), storage) {
+                        let text = matches!(column.ty, Type::Varchar(_) | Type::Text);
+                        if text != storage.starts_with("text") || (!text && column.ty != Type::Bytes) {
+                            self.report(name.pos, "setting", format!("codec stage '{last}' stores {storage}"));
                         }
                     }
                     if stages.iter().any(|s| s.text == "aes") && !has_aes_version {
@@ -405,6 +445,9 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     }
                 }
                 Setting::AesVersion(name) => {
+                    if !has_aes {
+                        self.report(line.pos, "setting", "aes_version requires a column with the aes codec stage");
+                    }
                     if let Some(column) = self.setting_column(name) {
                         if !matches!(column.ty, Type::I16 | Type::I32 | Type::I64) || column.nullable {
                             self.report(name.pos, "setting", "aes_version names a non-null integer column");
@@ -436,27 +479,30 @@ impl<'s, 'd> TableRules<'s, 'd> {
     }
 
     fn blind_index(&mut self, settings: &Settings, aes: &Name, target: &Name) {
-        let encrypted =
-            settings.lines.iter().any(|l| matches!(&l.setting, Setting::Codec(c, stages) if c.text == aes.text && stages.iter().any(|s| s.text == "aes")));
+        let encrypted = |name: &str| {
+            settings.lines.iter().any(|l| matches!(&l.setting, Setting::Codec(c, stages) if c.text == name && stages.iter().any(|s| s.text == "aes")))
+        };
         let aes_column = self.setting_column(aes);
-        if aes_column.is_some() && !encrypted {
+        if aes_column.is_some() && !encrypted(&aes.text) {
             self.report(aes.pos, "setting", format!("column '{}' has no codec with aes", aes.text));
         }
         let Some(column) = self.setting_column(target) else { return };
         let table = self.own.table;
-        let single = |names: &mut dyn Iterator<Item = &str>| {
+        let only = |names: &mut dyn Iterator<Item = &str>| {
             let names: Vec<&str> = names.collect();
             names == [target.text.as_str()]
         };
-        let indexed = table.uniques.iter().any(|u| single(&mut u.columns.iter().map(|n| n.text.as_str())))
-            || table.indexes.iter().any(|i| single(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
-        let wide = matches!(column.ty, Type::Varchar(n) if n >= BLIND_INDEX_LENGTH);
+        let indexed = table.uniques.iter().any(|u| only(&mut u.columns.iter().map(|n| n.text.as_str())))
+            || table.indexes.iter().any(|i| only(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
+        let storage = matches!(column.ty, Type::Varchar(n) if n >= BLIND_INDEX_LENGTH);
         let nullability = aes_column.is_none_or(|a| a.nullable == column.nullable);
-        if !wide || !indexed || !nullability {
+        if !storage || !indexed || !nullability || encrypted(&target.text) {
             self.report(
                 target.pos,
                 "setting",
-                format!("blind_index names a varchar({BLIND_INDEX_LENGTH}) or longer column with a single-column index and the nullability of the aes column"),
+                format!(
+                    "the blind_index column is varchar({BLIND_INDEX_LENGTH}) or longer, has the nullability of the aes column, is not aes-encoded and is the only column of an index or unique key"
+                ),
             );
         }
     }
@@ -485,8 +531,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
             self.report(into.pos, "setting", format!("history table '{}' is audited itself", into.text));
         }
         match history.column(&action.text) {
-            Some(column) if column.ty == Type::Varchar(8) && table.column(&action.text).is_none() => {}
-            _ => self.report(action.pos, "setting", format!("history table '{}' has no varchar(8) action column '{}' of its own", into.text, action.text)),
+            Some(column) if column.ty == Type::Varchar(8) && !column.nullable && table.column(&action.text).is_none() => {}
+            _ => self.report(
+                action.pos,
+                "setting",
+                format!("history table '{}' has no non-null varchar(8) action column '{}' of its own", into.text, action.text),
+            ),
         }
         match history.column(&previous.text) {
             Some(column)
@@ -528,23 +578,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
         if !problems.is_empty() {
             self.report(into.pos, "setting", format!("history table '{}': {}", into.text, problems.join("; ")));
-        }
-    }
-}
-
-fn collect_columns<'e>(expr: &'e Expr, out: &mut Vec<&'e Name>) {
-    match expr {
-        Expr::Column(name) => out.push(name),
-        Expr::Literal(_) => {}
-        Expr::Paren(inner) | Expr::Not(inner) | Expr::In(inner, _, _) | Expr::IsNull(inner, _) => collect_columns(inner, out),
-        Expr::Binary(left, _, right) => {
-            collect_columns(left, out);
-            collect_columns(right, out);
-        }
-        Expr::Between(value, _, low, high) => {
-            collect_columns(value, out);
-            collect_columns(low, out);
-            collect_columns(high, out);
         }
     }
 }

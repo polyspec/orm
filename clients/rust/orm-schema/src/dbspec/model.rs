@@ -187,6 +187,26 @@ pub(crate) enum Expr {
     IsNull(Box<Expr>, bool),
 }
 
+impl Expr {
+    /// The column references of the expression in source order.
+    pub fn columns<'e>(&'e self, out: &mut Vec<&'e Name>) {
+        match self {
+            Expr::Column(name) => out.push(name),
+            Expr::Literal(_) => {}
+            Expr::Paren(inner) | Expr::Not(inner) | Expr::In(inner, _, _) | Expr::IsNull(inner, _) => inner.columns(out),
+            Expr::Binary(left, _, right) => {
+                left.columns(out);
+                right.columns(out);
+            }
+            Expr::Between(value, _, low, high) => {
+                value.columns(out);
+                low.columns(out);
+                high.columns(out);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Settings {
     pub comments: Vec<String>,
@@ -255,6 +275,6 @@ pub(crate) struct Diagram {
 pub(crate) struct Placement {
     pub comments: Vec<String>,
     pub table: Name,
-    pub x: i64,
-    pub y: i64,
+    pub x: i32,
+    pub y: i32,
 }
