@@ -1,9 +1,12 @@
 use orm_schema::physical_graph::PhysicalGraph;
 use serde_json::{json, Value};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 #[test]
 fn physical_graph_limits() {
-    let started = Instant::now();
+    let started = CaseClock::start();
     println!("RUN physical_graph_limits");
     let fixture: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graphs.json")).unwrap();
     let cases = fixture["limits"].as_array().unwrap();
@@ -38,6 +41,6 @@ fn physical_graph_limits() {
         assert_eq!(error.to_string(), "SCHEMA_INVALID");
         println!("PASS physical_graph_limit {}", limit["id"]);
     }
-    assert!(started.elapsed() < Duration::from_secs(15));
-    println!("PASS physical_graph_limits {:?}", started.elapsed());
+    started.assert_within("physical_graph_limits", Duration::from_secs(15));
+    println!("PASS physical_graph_limits {:?}", started.wall());
 }

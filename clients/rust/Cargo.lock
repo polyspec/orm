@@ -1093,6 +1093,7 @@ dependencies = [
 name = "orm-schema"
 version = "0.0.1"
 dependencies = [
+ "libc",
  "regex",
  "serde",
  "serde_json",

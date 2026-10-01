@@ -61,13 +61,11 @@ func graphRecordScale(t *testing.T, base map[string]any, count int) map[string]a
 }
 
 func TestPhysicalGraphRecords(t *testing.T) {
-	started := time.Now()
+	started := startCaseClock(t)
 	t.Log("RUN physical_graph_records")
 	defer func() {
-		t.Logf("DONE physical_graph_records %s", time.Since(started))
-		if time.Since(started) > 15*time.Second {
-			t.Fatal("records deadline exceeded")
-		}
+		t.Logf("DONE physical_graph_records %s", started.wallTime())
+		started.assertWithin(t, "physical_graph_records", 15*time.Second)
 	}()
 	fixture := physicalGraphRecordFixture(t)
 	base := fixture["base"].(map[string]any)

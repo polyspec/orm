@@ -12,13 +12,11 @@ import (
 )
 
 func TestPhysicalDocument(t *testing.T) {
-	start := time.Now()
+	start := startCaseClock(t)
 	t.Log("RUN physical-document")
 	defer func() {
-		t.Logf("DONE physical-document %s", time.Since(start))
-		if time.Since(start) > 15*time.Second {
-			t.Fatal("deadline exceeded")
-		}
+		t.Logf("DONE physical-document %s", start.wallTime())
+		start.assertWithin(t, "physical-document", 15*time.Second)
 	}()
 	var f struct {
 		TableName, ColumnName, TypeSql, ColumnComment, Prefix, Suffix, Newline string
