@@ -89,13 +89,48 @@ impl Conn {
         }
     }
 
-    async fn close(self) -> Result<(), String> {
+    pub async fn close(self) -> Result<(), String> {
         match self {
             Conn::MySql(c) => c.close().await,
             Conn::Postgres(c) => c.close().await,
             Conn::Sqlite(c) => c.close().await,
         }
         .map_err(|e| e.to_string())
+    }
+}
+
+/// probe 하나의 database에 connection을 여는 값.
+#[derive(Clone)]
+pub struct Session {
+    db: String,
+    mysql_dsn: String,
+    postgres_dsn: String,
+    name: String,
+}
+
+impl Session {
+    /// probe의 database(MySQL), schema(PostgreSQL) 또는 file(SQLite)에 connection을 연다.
+    pub async fn open(&self) -> Result<Conn, String> {
+        let name = &self.name;
+        match self.db.as_str() {
+            "mysql" => {
+                let ConnectOptions::MySql(options) = parse_dsn(&self.mysql_dsn).map_err(|e| e.to_string())?.options else { unreachable!() };
+                MySqlConnection::connect_with(&options.database(name)).await.map(Conn::MySql).map_err(|e| e.to_string())
+            }
+            "postgres" => {
+                let ConnectOptions::Postgres(options) = parse_dsn(&self.postgres_dsn).map_err(|e| e.to_string())?.options else { unreachable!() };
+                let mut conn = Conn::Postgres(PgConnection::connect_with(&options).await.map_err(|e| e.to_string())?);
+                conn.exec(&format!("SET search_path TO \"{name}\"")).await?;
+                Ok(conn)
+            }
+            _ => {
+                let path = Servers::sqlite_path(name);
+                let ConnectOptions::Sqlite(options) = parse_dsn(&format!("sqlite://{}", path.display())).map_err(|e| e.to_string())?.options else {
+                    unreachable!()
+                };
+                SqliteConnection::connect_with(&options).await.map(Conn::Sqlite).map_err(|e| e.to_string())
+            }
+        }
     }
 }
 
@@ -138,32 +173,26 @@ impl Servers {
         result.map_err(|e| format!("{statement}: {e}"))
     }
 
+    /// probe `index`의 database에 새 session을 여는 값. probe가 만든 database를
+    /// 다른 connection에서 쓸 때(lock을 잡는 두 번째 session) body가 가져간다.
+    pub fn session(&self, db: &str, index: usize) -> Session {
+        Session { db: db.to_owned(), mysql_dsn: self.mysql_dsn.clone(), postgres_dsn: self.postgres_dsn.clone(), name: self.name(index) }
+    }
+
     /// 빈 database를 만들고 그 connection을 연다.
-    async fn create(&mut self, db: &str, name: &str) -> Result<Conn, String> {
-        match db {
-            "mysql" => {
-                self.admin(db, format!("CREATE DATABASE `{name}`")).await?;
-                let ConnectOptions::MySql(options) = parse_dsn(&self.mysql_dsn).map_err(|e| e.to_string())?.options else { unreachable!() };
-                MySqlConnection::connect_with(&options.database(name)).await.map(Conn::MySql).map_err(|e| e.to_string())
-            }
-            "postgres" => {
-                self.admin(db, format!("CREATE SCHEMA \"{name}\"")).await?;
-                let ConnectOptions::Postgres(options) = parse_dsn(&self.postgres_dsn).map_err(|e| e.to_string())?.options else { unreachable!() };
-                let mut conn = Conn::Postgres(PgConnection::connect_with(&options).await.map_err(|e| e.to_string())?);
-                conn.exec(&format!("SET search_path TO \"{name}\"")).await?;
-                Ok(conn)
-            }
+    async fn create(&mut self, session: &Session) -> Result<Conn, String> {
+        let name = &session.name;
+        match session.db.as_str() {
+            "mysql" => self.admin("mysql", format!("CREATE DATABASE `{name}`")).await?,
+            "postgres" => self.admin("postgres", format!("CREATE SCHEMA \"{name}\"")).await?,
             _ => {
                 let path = Self::sqlite_path(name);
                 if path.exists() {
                     return Err(format!("SQLite file {} already exists", path.display()));
                 }
-                let ConnectOptions::Sqlite(options) = parse_dsn(&format!("sqlite://{}", path.display())).map_err(|e| e.to_string())?.options else {
-                    unreachable!()
-                };
-                SqliteConnection::connect_with(&options).await.map(Conn::Sqlite).map_err(|e| e.to_string())
             }
         }
+        session.open().await
     }
 
     /// connection을 닫고 만든 것을 지운 뒤 남지 않았는지 확인한다.
@@ -238,8 +267,9 @@ pub async fn run_probe<T>(
 ) -> Result<T, String> {
     let begin = Instant::now();
     println!("start {id}");
-    let name = servers.name(index);
-    let (result, conn) = match servers.create(db, &name).await {
+    let session = servers.session(db, index);
+    let name = session.name.clone();
+    let (result, conn) = match servers.create(&session).await {
         Err(e) => (Err(format!("create: {e}")), None),
         Ok(mut conn) => {
             let result = match tokio::time::timeout(PROBE_DEADLINE, body(&mut conn)).await {
@@ -263,7 +293,7 @@ pub async fn run_probe<T>(
 }
 
 pub fn lines(value: &Value) -> String {
-    value.as_array().expect("lines").iter().map(|l| format!("{}\n", l.as_str().expect("line"))).collect()
+    strings(value).iter().map(|l| format!("{l}\n")).collect()
 }
 
 pub fn strings(value: &Value) -> Vec<String> {

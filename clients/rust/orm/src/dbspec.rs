@@ -5,6 +5,9 @@
 //! every item of `orm_schema::dbspec`, so `orm::dbspec` is the one path to
 //! the dbspec language.
 
+mod apply;
+
+pub use apply::{apply, recover, ApplyClock, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, ApplyEventKind, ApplyEvents};
 pub use orm_schema::dbspec::*;
 use sqlx::mysql::MySqlRow;
 use sqlx::postgres::PgRow;
