@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.10: An introspection case asserts that a SQLite primary key column keeps its declared nullability in every client.
+
 - T8.0.8: A shared DDL step asserts that the rendered binary collations keep `a`, `A`, `á` and `a ` distinct in a unique key on MySQL, PostgreSQL and SQLite.
 
 - T8.0.7: Every client asserts on the three dialects that an insert cannot write the identity column and an update or duplicate update cannot write a primary key or identity column.

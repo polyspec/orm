@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.10: Introspection case는 모든 client에서 SQLite primary key column이 선언한 nullability를 유지하는지 검사한다.
+
 - T8.0.8: 공유 DDL step은 렌더링한 binary collation이 MySQL, PostgreSQL, SQLite의 unique key에서 `a`, `A`, `á`, `a `를 서로 다르게 두는지 검사한다.
 
 - T8.0.7: 모든 client는 세 dialect에서 insert가 identity column을, update와 duplicate update가 primary key나 identity column을 쓰지 못하는지 검사한다.
