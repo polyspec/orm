@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.3: PHP client는 `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)`로 Go engine과 같은 catalog query를 써서 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-php-check`가 round trip과 미지원 case를 실행한다.
+
 - T8.4.4: TypeScript client는 Go engine과 같은 catalog query로 `introspectDbspec`을 통해 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-ts-check`가 round trip과 미지원 case를 실행한다.
 
 - T8.2.6.3.7: bench database는 schema/bench.dbspec에서 설치되고 conformance runner는 DSN만 받으며, conformance vector는 MySQL, PostgreSQL, SQLite에서 네 dbspec client로 기록된다.
