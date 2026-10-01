@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.14.1: every client reports every transaction-end failure: each cleanup step runs, a `RELEASE_LOCK` that released nothing is an error, a failed rollback after a callback, begin or commit failure is reported with its cause, a Go or Rust callback that panics rolls back before the panic continues, and the Go client treats a rollback on a connection the driver closed as complete.
+
 - T8.2.6.1.1.1: closed with T8.2.6.1.3, which corrected the same links.
 
 - T8.6: every client applies and recovers plan chains with lock, history, verification and events, and any client continues a chain that another applied.

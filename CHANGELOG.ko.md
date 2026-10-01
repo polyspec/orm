@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.14.1: 모든 client가 transaction 끝의 모든 실패를 보고한다. 모든 정리 단계를 실행하고, 아무것도 풀지 않은 `RELEASE_LOCK`은 오류이며, callback, begin, commit 실패 뒤의 실패한 rollback은 원인과 함께 보고하고, panic한 Go나 Rust callback은 panic을 이어 가기 전에 rollback하며, Go client는 driver가 닫은 connection의 rollback을 완료로 본다.
+
 - T8.2.6.1.1.1: 같은 link를 고친 T8.2.6.1.3으로 닫는다.
 
 - T8.6: 모든 client가 lock, history, 검증, event와 함께 plan chain을 적용하고 recover하며, 어느 client든 다른 client가 적용한 chain을 이어 간다.

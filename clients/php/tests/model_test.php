@@ -754,42 +754,138 @@ try {
 }
 echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 
-// transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
-// 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
-// (mysql.context.user_variable_session_scope). 실제 server 는 reset 을 거부하지
-// 않으므로 PDO 가 reset 만 실패시킨다.
-final class ResetFailingPdo extends PDO
+// 실제 server 는 transaction 끝의 cleanup statement 와 rollback 을 거부하지 않으므로
+// PDO 가 rejects 가 고른 statement 와, rejectRollback 이면 rollback 을 실패시킨다.
+// rollback 은 실제로 끝낸 뒤 실패를 돌려준다.
+final class FailingPdo extends PDO
 {
+    /** @var ?Closure(string): bool */
+    public ?Closure $rejects = null;
+    public bool $rejectRollback = false;
+
+    private function check(string $statement): void
+    {
+        if ($this->rejects !== null && ($this->rejects)($statement)) {
+            throw new PDOException('statement rejected by the test driver');
+        }
+    }
+
     public function exec(string $statement): int|false
     {
-        if (str_starts_with($statement, 'SET @`orm.') && str_ends_with($statement, '= NULL')) {
-            throw new PDOException('reset rejected by the test driver');
-        }
+        $this->check($statement);
         return parent::exec($statement);
+    }
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        $this->check($query);
+        return parent::prepare($query, $options);
+    }
+
+    public function rollBack(): bool
+    {
+        $ok = parent::rollBack();
+        if ($this->rejectRollback) {
+            throw new PDOException('rollback rejected by the test driver');
+        }
+        return $ok;
     }
 }
 
+/** fn 이 던진 오류의 message 다. 오류가 없으면 'no error' 다. */
+function failureMessage(callable $fn): string
+{
+    try {
+        $fn();
+    } catch (Throwable $e) {
+        return $e->getMessage();
+    }
+    return 'no error';
+}
+
+/** message 가 callback 오류와 transaction 끝의 오류를 함께 담은 CONFIG 인지 확인한다. */
+function checkBoth(string $what, string $message, string $cause, string $end): void
+{
+    check(str_starts_with($message, "CONFIG: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
+}
+
+// transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
+// 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
+// (mysql.context.user_variable_session_scope).
 $current = 'failed local reset/mysql';
 try {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
-    $failing = new Db(new ResetFailingPdo($pdoDsn, $user, $password), 'mysql', new Config(), new DateTimeZone('UTC'));
-    $message = static function (callable $fn): string {
-        try {
-            $fn();
-        } catch (Throwable $e) {
-            return $e->getMessage();
-        }
-        return 'no error';
-    };
-    $committed = $message(fn() => $failing->transaction(function () use ($failing): void {
+    $pdo = new FailingPdo($pdoDsn, $user, $password);
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SET @`orm.') && str_ends_with($sql, '= NULL');
+    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $committed = failureMessage(fn() => $failing->transaction(function () use ($failing): void {
         $failing->utils()->setLocal('ormtest.actor', 'tester');
     }));
-    check(str_contains($committed, 'reset rejected by the test driver'), "commit reports the failed reset: $committed");
-    $rolledBack = $message(fn() => $failing->transaction(function () use ($failing): void {
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed reset: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function () use ($failing): void {
         $failing->utils()->setLocal('ormtest.actor', 'tester');
         throw new RuntimeException('callback failed');
     }));
-    check(str_starts_with($rolledBack, 'CONFIG: ') && str_contains($rolledBack, 'callback failed') && str_contains($rolledBack, 'reset rejected by the test driver'), "rollback reports the callback and the failed reset: $rolledBack");
+    checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+
+// transaction 끝의 MySQL RELEASE_LOCK 이 실패하거나 lock 을 풀지 못하면 commit 과
+// rollback 이 그 오류를 보고한다. 풀리지 않은 named lock 은 connection 에 남는다.
+$current = 'failed lock release/mysql';
+try {
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
+    $pdo = new FailingPdo($pdoDsn, $user, $password);
+    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $key = static fn(string $name): string => "orm_test.$name." . getmypid();
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SELECT RELEASE_LOCK');
+    $committed = failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
+        $failing->utils()->lock($key('commit'));
+    }, retry: 0));
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed release: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
+        $failing->utils()->lock($key('rollback'));
+        throw new RuntimeException('callback failed');
+    }, retry: 0));
+    checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
+    $pdo->rejects = null;
+    // lock 을 미리 풀면 transaction 끝의 RELEASE_LOCK 은 0 을 돌려준다.
+    $notHeld = failureMessage(fn() => $failing->transaction(function () use ($failing, $pdo, $key): void {
+        $failing->utils()->lock($key('released'));
+        $pdo->prepare('DO RELEASE_LOCK(?)')->execute([$key('released')]);
+    }, retry: 0));
+    check(str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'), "a lock released early is reported: $notHeld");
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+
+// native rollback, SQLite mode 복원, begin 뒤의 rollback 이 실패하면 transaction 이
+// 그 오류를 원인과 함께 보고한다.
+$current = 'failed rollback/sqlite';
+try {
+    $pdo = new FailingPdo("sqlite:$work/transaction-end.sqlite");
+    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $pdo->rejectRollback = true;
+    $rolledBack = failureMessage(fn() => $failing->transaction(function (): void {
+        throw new RuntimeException('callback failed');
+    }, retry: 0));
+    checkBoth('rollback', $rolledBack, 'callback failed', 'rollback rejected by the test driver');
+    $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 1';
+    $began = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
+    checkBoth('begin', $began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
+    $pdo->rejectRollback = false;
+    $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 0';
+    $committed = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed mode reset: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function (): void {
+        throw new RuntimeException('callback failed');
+    }, readOnly: true, retry: 0));
+    checkBoth('mode reset', $rolledBack, 'callback failed', 'statement rejected by the test driver');
 } catch (Throwable $e) {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
