@@ -1,5 +1,19 @@
 # Changelog
 
+Report every driver error as an ORM error with a catalog code (N11). The
+PHP client returned a driver error that the catalog does not list, such as
+a write that an `orm:audit` or `orm:immutable` trigger refuses, as a raw
+`PDOException`; the Go client returned it unchanged, and the Rust client
+reported the code `SQLX`. The catalog now holds `DRIVER` for every such
+error, and each client keeps the driver message and the driver error as
+the cause: PHP `OrmException::fromDriver` always returns an
+`OrmException`, Go `orm.Error` unwraps to the driver error, and Rust
+reports `Error::Driver { code, msg, source }`. SQLite 1811 is a trigger
+refusal, not `FOREIGN_KEY`, and PHP, Rust and TypeScript map a CHECK
+violation to `CONSTRAINT`. The `trigger_refused` and `check_refused`
+cases pass in Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and
+SQLite.
+
 Write the client clock with microseconds in every client (N10). The
 TypeScript client read its clock from `Date`, so the SQLite `now` bind
 slot stored `.mmm000`. It now adds the microseconds of the monotonic

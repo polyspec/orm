@@ -23,7 +23,7 @@ final class Utils
         return strlen($key) <= 64 && preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.]*$/', $key) === 1;
     }
 
-    private function driverError(\PDOException $e): OrmException|\Throwable
+    private function driverError(\PDOException $e): OrmException
     {
         return OrmException::fromDriver($e, $this->db->driver());
     }
@@ -130,7 +130,7 @@ final class UtilsSql
         return $this->db->transaction($fn, retry: 0);
     }
 
-    private function driverError(\PDOException $e): OrmException|\Throwable
+    private function driverError(\PDOException $e): OrmException
     {
         return OrmException::fromDriver($e, $this->db->driver());
     }

@@ -208,11 +208,16 @@ type Optimist struct {
 type Error struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
+	// Cause is the driver error of a driver code; it is not part of the JSON form.
+	Cause error `json:"-"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Msg }
 
-func errf(code, format string, a ...any) *Error { return &Error{code, fmt.Sprintf(format, a...)} }
+// Unwrap returns the driver error of a driver code.
+func (e *Error) Unwrap() error { return e.Cause }
+
+func errf(code, format string, a ...any) *Error { return &Error{Code: code, Msg: fmt.Sprintf(format, a...)} }
 
 // Operators by canonical column type. Fulltext is handled separately (needs an index).
 var opsByType = map[string][]string{

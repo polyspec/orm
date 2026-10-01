@@ -92,8 +92,12 @@ final class Db
             return;
         }
         $this->closed = true;
-        foreach ($this->stmts as $st) {
-            $st->closeCursor();
+        try {
+            foreach ($this->stmts as $st) {
+                $st->closeCursor();
+            }
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
         }
         $this->stmts = [];
         $this->stmtOrder = [];
@@ -643,7 +647,7 @@ final class Db
         $st->execute();
     }
 
-    private function failed(?\PDOStatement $st, \PDOException $e): \Throwable
+    private function failed(?\PDOStatement $st, \PDOException $e): OrmException
     {
         try {
             $st?->closeCursor();
@@ -677,21 +681,28 @@ final class Db
             return;
         }
         $noWait = str_ends_with($mode, '_nowait');
-        $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
+        try {
+            $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
+        }
         try {
             if ($noWait) {
                 $this->pdo->exec('PRAGMA busy_timeout=0');
             }
             $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
         } catch (\PDOException $e) {
-            $mapped = OrmException::fromDriver($e, $this->driver);
             if ($noWait && (((int) ($e->errorInfo[1] ?? 0)) & 0xff) === 5) {
                 throw new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e);
             }
-            throw $mapped;
+            throw OrmException::fromDriver($e, $this->driver);
         } finally {
             if ($noWait) {
-                $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+                try {
+                    $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+                } catch (\PDOException $e) {
+                    throw OrmException::fromDriver($e, $this->driver);
+                }
             }
         }
     }

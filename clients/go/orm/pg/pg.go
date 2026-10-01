@@ -18,8 +18,8 @@ import (
 
 func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
 
-// mapErr names the two conditions docs/errors.yaml maps; everything else keeps
-// the driver's own error.
+// mapErr names the conditions docs/errors.yaml maps; the executor reports
+// every other driver error as DRIVER.
 func mapErr(err error) error {
 	var pe *pgconn.PgError
 	if !errors.As(err, &pe) {

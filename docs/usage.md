@@ -482,6 +482,8 @@ psql … -f schema.pg.sql
 | `DUPLICATE_KEY` / `DEADLOCK` | Mapped driver error with original text retained; deadlock follows the transaction retries |
 | `CANCELED` | The statement stopped before it finished: a cancellation, a timeout bound, or a SQLite lock that another connection still held when `busy_timeout` ended; it is not retried |
 | `READ_ONLY` | A write reached a read-only server or connection: a replica, a read-only transaction, or a SQLite database opened read-only; send the write through the primary connection |
+| `CONSTRAINT` | A CHECK constraint refused the row; the error keeps the driver message and the driver error |
+| `DRIVER` | Any other driver error, such as a write that an `orm:audit` or `orm:immutable` trigger refuses; the error keeps the driver message and the driver error as its cause |
 | `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 
 ---
