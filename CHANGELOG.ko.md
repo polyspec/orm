@@ -1,5 +1,10 @@
 # 변경 이력
 
+dbspec이 MySQL, PostgreSQL, SQLite에 렌더링하는 statement를
+docs/dialects.md에 정하고, 모든 vector를 세 database에 적용해 behavior
+step을 실행하는 `make dbspec-ddl-check`와 tests/dbspec/ddl.json을
+더한다(T8.3.1).
+
 모든 client에서 dbspec check predicate에 type 규칙을 둔다. 산술, 함수,
 `null` literal, `bytes` column을 거부하고, literal은 만나는 column의
 default여야 하며 그 default 형식으로 쓰고, 두 column은 type이 만날 때에만

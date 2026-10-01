@@ -1,5 +1,10 @@
 # Changelog
 
+Specify the statements that dbspec renders for MySQL, PostgreSQL and
+SQLite in docs/dialects.md, and add tests/dbspec/ddl.json with `make
+dbspec-ddl-check`, which applies every vector to the three databases and
+runs its behavior steps (T8.3.1).
+
 Type dbspec check predicates in every client: arithmetic, functions,
 the `null` literal and `bytes` columns are rejected, a literal must be a
 default of the column it meets and is written in that default form, and

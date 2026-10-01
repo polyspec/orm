@@ -148,6 +148,19 @@ func (e *Env) Fails(statement, want string, args ...any) {
 	}
 }
 
+// FailsAny runs a statement that must fail and notes the error it returned.
+func (e *Env) FailsAny(statement string, args ...any) {
+	if e.Err != nil {
+		return
+	}
+	_, err := e.Conn.ExecContext(e.Ctx, statement, args...)
+	if err == nil {
+		e.fail("%s: succeeded; want an error", statement)
+		return
+	}
+	e.Note("%s: %s", statement, ErrorCode(err))
+}
+
 // ErrorCode returns the MySQL error number, the PostgreSQL SQLSTATE or the
 // SQLite message of an error.
 func ErrorCode(err error) string {
