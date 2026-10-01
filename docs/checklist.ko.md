@@ -74,7 +74,7 @@
 - [~] T8.5 모든 client에서 schema diff와 migration plan chain을 만든다(T8.4 선행). 완료 기준: 의존 순서 plan, plan chain 안의 명시적 rename, destructive 변경에 대한 명시적 허용.
 - [o] T8.5.1 plan 문서, plan chain, diff, dialect별 statement, SQLite rebuild를 docs/plans.md와 Korean pair에 정하고 tests/dbspec/plans.json의 공유 case를 둔다 (T8.4 필요). Evidence: docs/plans.md와 docs/plans.ko.md는 plan 문서와 canonical form, chain, 변경·넓히기·거부·강제 재생성을 담은 diff, statement 열 단계, SQLite rebuild를 정한다. tests/dbspec/plans.json은 변경과 MySQL, PostgreSQL, SQLite statement를 가진 case 9개와 diagnostic을 가진 invalid case 8개를 둔다. docs-rules-check가 문서 23쌍을 통과한다.
 - [o] T8.5.2 Go engine에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요). Evidence: engine/dbspec/plan*.go의 `ParsePlan`, `EmitPlan`, `Chain`, `Diff`, `PlanStatements`. 이것 없이 plan test는 build되지 않았다(`undefined: ParsePlan`). `make dbspec-go-check`는 tests/dbspec/plans.json의 case 9개(변경, 세 dialect statement, canonical emission), invalid case 8개, chain case 4개를 통과한다. `make dbspec-plan-check`는 27 run을 통과한다. 각 case를 MySQL, PostgreSQL, SQLite에 적용하면 data step과 함께 target schema text에 이른다.
-- [ ] T8.5.3 PHP client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
+- [o] T8.5.3 PHP client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요). Evidence: `clients/php/tests/dbspec_plan_test.php`는 plan class 없이 실패하고(`Class "Orm\Dbspec\PlanStatements" not found`) `make dbspec-php-check`에서 `cases=9 invalid=8 chains=4`로 통과한다. `make dbspec-plan-php-check`는 case 9개를 MySQL, PostgreSQL, SQLite에 적용하고(`runs=27`) 각 target을 PHP introspection으로 다시 읽는다.
 - [ ] T8.5.4 TypeScript client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
 - [ ] T8.5.5 Rust client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
 - [ ] T8.5.6 `make dbspec-compare-check`에서 네 client의 plan을 비교한다 (T8.5.2-T8.5.5 필요).

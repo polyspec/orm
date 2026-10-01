@@ -22,8 +22,12 @@ final class Renderer
     private ?Table $table = null;
     private string $checkName = '';
 
-    private function __construct(private readonly string $dialect)
+    /** The dialect is one of DIALECTS; another is an InvalidArgumentException. */
+    public function __construct(public readonly string $dialect)
     {
+        if (!in_array($dialect, self::DIALECTS, true)) {
+            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
+        }
     }
 
     /**
@@ -124,19 +128,19 @@ final class Renderer
     }
 
     /** 식별자를 인용한다. */
-    private function q(string $name): string
+    public function q(string $name): string
     {
         return $this->dialect === 'mysql' ? "`$name`" : "\"$name\"";
     }
 
     /** @param list<string> $names */
-    private function list(array $names): string
+    public function list(array $names): string
     {
         return implode(', ', array_map($this->q(...), $names));
     }
 
     /** @return list<string> */
-    private function table(Table $t): array
+    public function table(Table $t): array
     {
         $parts = [];
         $identity = false;
@@ -185,7 +189,7 @@ final class Renderer
         return $out;
     }
 
-    private function column(Column $c): string
+    public function column(Column $c): string
     {
         if ($c->identity) {
             return $this->q($c->name) . match ($this->dialect) {
@@ -201,7 +205,7 @@ final class Renderer
         return $s;
     }
 
-    private function typeText(ColumnType $t): string
+    public function typeText(ColumnType $t): string
     {
         $p = $t->parameters;
         $text = match ($this->dialect) {
@@ -256,7 +260,7 @@ final class Renderer
         return $text ?? throw new \InvalidArgumentException("Unknown column type {$t->text()}");
     }
 
-    private function defaultText(ColumnType $t, string $default): string
+    public function defaultText(ColumnType $t, string $default): string
     {
         if ($default !== 'now') {
             return $this->literal($t, $default);
@@ -300,7 +304,7 @@ final class Renderer
         return ($negative ? '-' : '') . $digits;
     }
 
-    private function foreignKey(ForeignKey $f): string
+    public function foreignKey(ForeignKey $f): string
     {
         return 'CONSTRAINT ' . $this->q($f->name) . ' FOREIGN KEY (' . $this->list($f->columns) . ') REFERENCES ' . $this->q($f->table)
             . ' (' . $this->list($f->referencedColumns) . ') ON DELETE ' . self::action($f->onDelete) . ' ON UPDATE ' . self::action($f->onUpdate);
@@ -317,7 +321,7 @@ final class Renderer
     }
 
     /** 컬럼의 renderer CHECK, dialect 가 타입을 직접 지키면 "". */
-    private function typeCheck(Column $c): string
+    public function typeCheck(Column $c): string
     {
         if ($c->identity) {
             return '';
@@ -381,7 +385,7 @@ final class Renderer
      * literal 은 그것이 만나는 컬럼의 타입으로 쓴다. 정규 텍스트의 간격과
      * 괄호는 (and 안의 or 만 묶는다) 렌더링된 텍스트의 간격, 괄호와 같다.
      */
-    private function checkText(Table $t, Check $check): string
+    public function checkText(Table $t, Check $check): string
     {
         $this->table = $t;
         $this->checkName = $check->name;
@@ -547,7 +551,7 @@ final class Renderer
     }
 
     /** immutable 과 audit 설정의 trigger. @return list<string> */
-    private function triggers(Table $t): array
+    public function triggers(Table $t): array
     {
         if ($t->settings === null) {
             return [];
