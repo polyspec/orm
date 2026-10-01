@@ -45,7 +45,7 @@ $invalid = [
     rules_case('encoding-invalid-utf8', ['dbspec 1 shop', '', "# caf\xff", 'table users {', '  id i64 identity', '  Bad i64', '  primary key (id)', '}'], [['encoding', 3, 6]]),
     rules_case('encoding-bare-cr', ['dbspec 1 shop', '', 'table users {', "  id i64\ridentity", '  primary key (id)', '}'], [['encoding', 4, 9]]),
     rules_case('header-version', ['dbspec 2 shop', '', 'table Users {', '}'], [['header', 1, '2']]),
-    rules_case('header-extra-token', ['dbspec 1 shop extra', 'table Users {', '}'], [['header', 1, 'extra']]),
+    rules_case('header-extra-token', ['dbspec 1 shop extra', 'table Users {', '}'], [['header', 1, 14]]),
     rules_case('header-blank-first-line', ['', 'dbspec 1 shop'], [['header', 1, 1]]),
     rules_case('header-double-space', ['dbspec 1  shop'], [['header', 1, 10]]),
     rules_case('header-tab', ["dbspec\t1 shop"], [['header', 1, 7]]),

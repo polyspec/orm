@@ -57,7 +57,7 @@ invalid('unpaired surrogate', "dbspec 1 shop\n# \uD800\ntable Users {\n", [['enc
 invalid('final bare CR', 'dbspec 1 shop\r', [['encoding', 1, 14]]);
 invalid('version 2', ['dbspec 2 shop', 'table Users {'], [['header', 1, 8]]);
 invalid('header without name', ['dbspec 1'], [['header', 1, 9]]);
-invalid('header extra token', ['dbspec 1 shop extra'], [['header', 1, 15]]);
+invalid('header extra token', ['dbspec 1 shop extra'], [['header', 1, 14]]);
 invalid('leading blank line', ['', 'dbspec 1 shop'], [['header', 1, 1]]);
 rule('invalid 32 MiB document', () => {
   const big = 'dbspec 1 shop\n' + '#'.repeat(32 * 1024 * 1024 - 14) + '\n';

@@ -1,7 +1,6 @@
 package dbspec
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -300,6 +299,12 @@ func parseStructure(text string) *parsedDocument {
 	return p.out
 }
 
+// isHeaderNameRune reports whether r continues the document name of the
+// header: an ASCII letter, digit or underscore.
+func isHeaderNameRune(r rune) bool {
+	return r == '_' || ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') || ('0' <= r && r <= '9')
+}
+
 func (p *parser) header(lines []string) bool {
 	fail := func(line, col int, message string) bool {
 		p.stop(Diagnostic{Rule: RuleHeader, Line: line, Column: col, Message: message})
@@ -308,49 +313,25 @@ func (p *parser) header(lines []string) bool {
 	if len(lines) == 0 {
 		return fail(1, 1, "document is empty; the first line must be dbspec 1 <document>")
 	}
-	tokens, end, lexErr := lexLine(lines[0], 1)
-	expected := "the first line must be dbspec 1 <document>"
-	if len(tokens) == 0 || !tokens[0].is(tokenWord, "dbspec") {
-		if len(tokens) > 0 {
-			return fail(1, tokens[0].col, expected)
+	// The error points at the first character that departs from
+	// "dbspec 1 <name>", or one past the line end when a part is missing.
+	const expected = "the first line is exactly dbspec 1 <document>"
+	line := []rune(lines[0])
+	col := 1
+	for _, r := range "dbspec 1 " {
+		if col > len(line) || line[col-1] != r {
+			return fail(1, col, expected)
 		}
-		if lexErr != nil {
-			return fail(lexErr.Line, lexErr.Column, expected)
-		}
-		return fail(1, 1, expected)
+		col++
 	}
-	if len(tokens) < 2 {
-		if lexErr != nil {
-			return fail(lexErr.Line, lexErr.Column, expected)
-		}
-		return fail(1, end, expected)
+	start := col
+	for col <= len(line) && isHeaderNameRune(line[col-1]) {
+		col++
 	}
-	if !tokens[1].is(tokenNumber, "1") {
-		return fail(1, tokens[1].col, fmt.Sprintf("language version %s is not 1", tokens[1].describe()))
+	if col == start || col <= len(line) {
+		return fail(1, col, expected)
 	}
-	if len(tokens) < 3 {
-		if lexErr != nil {
-			return fail(lexErr.Line, lexErr.Column, expected)
-		}
-		return fail(1, end, expected)
-	}
-	if tokens[2].kind != tokenWord && tokens[2].kind != tokenNumber {
-		return fail(1, tokens[2].col, expected)
-	}
-	if len(tokens) > 3 {
-		return fail(1, tokens[3].col, expected)
-	}
-	if lexErr != nil {
-		return fail(lexErr.Line, lexErr.Column, expected)
-	}
-	if exact := "dbspec 1 " + tokens[2].text; lines[0] != exact {
-		got, want := []rune(lines[0]), []rune(exact)
-		col := 1
-		for col <= len(got) && col <= len(want) && got[col-1] == want[col-1] {
-			col++
-		}
-		return fail(1, col, "the header is exactly dbspec, a space, 1, a space and the document name")
-	}
+	tokens, _, _ := lexLine(lines[0], 1)
 	p.doc.name = tokens[2]
 	for _, d := range nameDiagnostics(tokens[2]) {
 		p.add(d)

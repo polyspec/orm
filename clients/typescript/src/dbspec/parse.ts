@@ -609,35 +609,23 @@ class DocumentParser {
     this.document.closing = comments;
   }
 
+  /**
+   * The header error points at the first character that departs from
+   * `dbspec 1 <name>`, or one past the line end when a part is missing.
+   */
   private header(): boolean {
     const text = this.lines[0]!;
-    const { toks, bad } = tokenize(text, 1);
-    if (bad >= 0 || text.startsWith(' ')) {
-      this.report('header', 1, Math.max(bad, 0), 'the first line is not dbspec 1 <document>');
+    const fail = (offset: number): boolean => {
+      this.report('header', 1, offset, 'the first line is exactly dbspec 1 <document>');
       this.stopped = true;
       return false;
-    }
-    if (!isWord(toks[0], 'dbspec')) {
-      this.report('header', 1, toks[0]?.s ?? 0, 'the first line is not dbspec 1 <document>');
-      this.stopped = true;
-      return false;
-    }
-    const version = toks[1];
-    if (version === undefined || version.k !== K.Word || version.t !== '1') {
-      this.report('header', 1, version?.s ?? toks[0]!.e, 'the language version is not 1');
-      this.stopped = true;
-      return false;
-    }
-    const name = toks[2];
-    if (name === undefined || name.k !== K.Word) {
-      this.report('header', 1, name?.s ?? version.e, 'the header names no document');
-      this.stopped = true;
-      return false;
-    }
-    if (toks.length > 3) {
-      this.stop('header', toks[3]!, 'the header has more than dbspec 1 <document>');
-      return false;
-    }
+    };
+    const prefix = 'dbspec 1 ';
+    for (let i = 0; i < prefix.length; i++) if (text[i] !== prefix[i]) return fail(i);
+    let end = prefix.length;
+    while (end < text.length && /[A-Za-z0-9_]/.test(text[end]!)) end++;
+    if (end === prefix.length || end < text.length) return fail(end);
+    const name = tokenize(text, 1).toks[2]!;
     this.name(name);
     this.document.name = name.t;
     return true;
