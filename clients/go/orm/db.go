@@ -435,7 +435,7 @@ func mapDriverErr(err error) error {
 		return nil
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return &ir.Error{Code: CodeCanceled, Msg: err.Error()}
+		return &ir.Error{Code: CodeCanceled, Msg: err.Error(), Cause: err}
 	}
 	var coded *ir.Error
 	if errors.As(err, &coded) {

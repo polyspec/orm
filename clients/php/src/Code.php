@@ -59,6 +59,8 @@ final class Code
     public const CONFIG = 'CONFIG';
     /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout) */
     public const CANCELED = 'CANCELED';
+    /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
+    public const ROLLBACK = 'ROLLBACK';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: a NOWAIT lock could not be acquired immediately */

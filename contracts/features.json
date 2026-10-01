@@ -742,6 +742,10 @@
         {
           "code": "CAPABILITY_UNSUPPORTED",
           "when": "the dialect rejects an option"
+        },
+        {
+          "code": "ROLLBACK",
+          "when": "the callback of a transaction or savepoint failed and its rollback failed too; the error keeps both errors"
         }
       ],
       "clients": {
@@ -751,7 +755,8 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "clients/php/tests/deadlock_child.php"
+        "clients/php/tests/deadlock_child.php",
+        "contracts/fixtures/rollback_schema.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -764,7 +769,11 @@
         "clients/go/model/sqlite_concurrency_test.go",
         "clients/php/tests/sqlite_concurrency_test.php",
         "clients/typescript/tests/sqlite-concurrency.mjs",
-        "clients/rust/orm/tests/sqlite_concurrency.rs"
+        "clients/rust/orm/tests/sqlite_concurrency.rs",
+        "clients/go/orm/rollback_test.go",
+        "clients/php/tests/rollback_test.php",
+        "clients/rust/orm/tests/rollback.rs",
+        "clients/typescript/tests/rollback.mjs"
       ],
       "docs": [
         "docs/config.md",

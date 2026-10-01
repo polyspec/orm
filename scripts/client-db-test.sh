@@ -24,6 +24,7 @@ case "$LANGS" in *,php,*)
   php clients/php/tests/schema_set_test.php
   php clients/php/tests/clock_test.php
   php clients/php/tests/driver_error_test.php
+  php clients/php/tests/rollback_test.php
 esac
 case "$LANGS" in *,typescript,*)
   ./scripts/typescript/sqlite-test.sh

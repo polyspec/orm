@@ -1,5 +1,20 @@
 # Changelog
 
+Report both errors when a transaction or savepoint callback fails and its
+rollback fails too (N13). The PHP client replaced the callback error with
+the rollback error, the TypeScript client dropped the rollback error, the
+Go client discarded the transaction rollback error, and the Rust client
+reported both only as `CONFIG` text. Each client now returns one error
+with the catalog code `ROLLBACK` that names both errors and keeps them. A
+checked-out TypeScript PostgreSQL connection now keeps a connection error
+that the server reports between statements instead of ending the process
+with an unhandled error event. The ORM tests end a transaction on SQLite
+with a fixture trigger that raises `ROLLBACK` while the callback runs only
+model calls, and on MySQL and PostgreSQL by ending the server session from
+a test connection. In Go, a cancelled statement inside a transaction on
+MySQL or PostgreSQL closes its connection, so the transaction reports
+`ROLLBACK`, which keeps the cancellation.
+
 Provide `utils().schema().register(manifestJson)` in the four clients
 (N3.3). Registering a schema whose tables already exist required
 constructing the engine and calling the internal `registerEngine`. Register

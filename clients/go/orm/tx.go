@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"runtime"
@@ -304,21 +305,32 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
+		// A panic or Goexit has no error result, so its rollback error
+		// cannot be returned.
 		if r := recover(); r != nil {
-			t.rollback()
+			_ = t.rollback()
 			panic(r)
 		}
 		if !returned {
-			t.rollback()
+			_ = t.rollback()
 		}
 	}()
 	err = fn()
 	returned = true
 	if err != nil {
-		t.rollback()
+		if rbErr := t.rollback(); rbErr != nil {
+			return rollbackErr(err, rbErr)
+		}
 		return err
 	}
 	return t.commit()
+}
+
+// rollbackErr reports a callback that failed and whose rollback failed too.
+// The error unwraps to both: errors.Join of the callback error and the
+// rollback error, in that order.
+func rollbackErr(callback, rollback error) error {
+	return &ir.Error{Code: CodeRollback, Msg: fmt.Sprintf("callback failed (%v) and rollback failed (%v)", callback, rollback), Cause: errors.Join(callback, rollback)}
 }
 
 func (d *DB) begin(o txOptions) (*txConn, error) {
@@ -362,36 +374,53 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	t := &txConn{db: d, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation}
 	if o.timeoutMs > 0 {
 		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)); err != nil {
-			t.abort()
+			if rbErr := t.abort(); rbErr != nil {
+				return nil, rollbackErr(mapDriverErr(err), rbErr)
+			}
 			return nil, mapDriverErr(err)
 		}
 	}
 	if d.driver == "sqlite" {
 		if err := t.beginSQLiteMode(); err != nil {
-			t.abort()
+			if rbErr := t.abort(); rbErr != nil {
+				return nil, rollbackErr(err, rbErr)
+			}
 			return nil, err
 		}
 	}
 	return t, nil
 }
 
-func (t *txConn) abort() {
+// abort rolls the transaction back and returns the rollback error. When the
+// transaction's context is cancelled, database/sql has already rolled the
+// transaction back, so the result of the second rollback is not an error.
+func (t *txConn) abort() error {
 	if !t.finished.Load() {
 		t.releaseLocks()
 		t.clearLocals()
 	}
 	t.finished.Store(true)
 	t.closeStatements()
-	_ = t.tx.Rollback()
+	canceled := t.ctx.Err() != nil
+	err := t.tx.Rollback()
 	t.cancel()
+	if err == nil || canceled {
+		return nil
+	}
+	return mapDriverErr(err)
 }
 
-func (t *txConn) rollback() {
+// rollback rolls an unfinished transaction back and returns the first error
+// of restoring the SQLite modes and of the rollback.
+func (t *txConn) rollback() error {
 	if t.finished.Load() {
-		return
+		return nil
 	}
-	_ = t.finishSQLiteMode()
-	t.abort()
+	modeErr := t.finishSQLiteMode()
+	if err := t.abort(); err != nil {
+		return err
+	}
+	return modeErr
 }
 
 func (t *txConn) commit() error {
@@ -401,17 +430,24 @@ func (t *txConn) commit() error {
 	// A cancelled context (the handle's, or the transaction timeout) has
 	// already rolled the transaction back under database/sql.
 	if err := t.ctx.Err(); err != nil {
-		t.abort()
-		return &ir.Error{Code: CodeCanceled, Msg: err.Error()}
+		canceled := &ir.Error{Code: CodeCanceled, Msg: err.Error()}
+		if rbErr := t.abort(); rbErr != nil {
+			return rollbackErr(canceled, rbErr)
+		}
+		return canceled
 	}
 	if t.contextRow {
 		if _, err := t.tx.ExecContext(t.ctx, "DELETE FROM orm__context"); err != nil {
-			t.abort()
+			if rbErr := t.abort(); rbErr != nil {
+				return rollbackErr(mapDriverErr(err), rbErr)
+			}
 			return mapDriverErr(err)
 		}
 	}
 	if err := t.finishSQLiteMode(); err != nil {
-		t.abort()
+		if rbErr := t.abort(); rbErr != nil {
+			return rollbackErr(err, rbErr)
+		}
 		return err
 	}
 	t.releaseLocks()
@@ -452,9 +488,11 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	if err != nil {
 		t.inserted = insertedBefore
 		if _, rbErr := t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name); rbErr != nil {
-			return mapDriverErr(rbErr)
+			return rollbackErr(err, mapDriverErr(rbErr))
 		}
-		_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
+		if _, rbErr := t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name); rbErr != nil {
+			return rollbackErr(err, mapDriverErr(rbErr))
+		}
 		return err
 	}
 	if _, err := t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name); err != nil {

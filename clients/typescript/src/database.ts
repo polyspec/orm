@@ -4,7 +4,7 @@ import { blindIndex, decode, hostDecode, hostEncode, parsePoint, pointText } fro
 import type { Assemble, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { offsetText, openDriver, parseDsn, zoneOffset, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
 import type { SchemaSet } from './names.js';
-import { OrmError } from './runtime_error.js';
+import { OrmError, rollbackError } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
@@ -365,7 +365,7 @@ export class Db {
     try {
       result = await flow.run([...frames(), frame], callback);
     } catch (error) {
-      await this.finish(frame, false).catch(() => undefined);
+      try { await this.finish(frame, false); } catch (rollback) { throw rollbackError(error, rollback); }
       throw error;
     }
     await this.finish(frame, true);
@@ -380,7 +380,7 @@ export class Db {
       if (this.driver === 'mysql') for (const key of frame.locals.keys()) await frame.tx.control(`SET @\`orm.${key}\` = NULL`);
       if (commit && frame.contextRow) await frame.tx.control('DELETE FROM "orm__context"');
     } catch (error) {
-      await frame.tx.rollback();
+      try { await frame.tx.rollback(); } catch (rollback) { throw rollbackError(error, rollback); }
       throw error;
     }
     if (commit) await frame.tx.commit();
@@ -396,8 +396,10 @@ export class Db {
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
-        await frame.tx.control(`ROLLBACK TO SAVEPOINT ${name}`);
-        await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+        try {
+          await frame.tx.control(`ROLLBACK TO SAVEPOINT ${name}`);
+          await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+        } catch (rollback) { throw rollbackError(error, rollback); }
         throw error;
       }
       await frame.tx.control(`RELEASE SAVEPOINT ${name}`);

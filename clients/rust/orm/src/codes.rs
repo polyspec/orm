@@ -53,6 +53,8 @@ pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 pub const CONFIG: &str = "CONFIG";
 /// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
 pub const CANCELED: &str = "CANCELED";
+/// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
+pub const ROLLBACK: &str = "ROLLBACK";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: a NOWAIT lock could not be acquired immediately

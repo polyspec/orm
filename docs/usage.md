@@ -486,6 +486,7 @@ psql … -f schema.pg.sql
 | `READ_ONLY` | A write reached a read-only server or connection: a replica, a read-only transaction, or a SQLite database opened read-only; send the write through the primary connection |
 | `CONSTRAINT` | A CHECK constraint refused the row; the error keeps the driver message and the driver error |
 | `DRIVER` | Any other driver error, such as a write that an `orm:audit` or `orm:immutable` trigger refuses; the error keeps the driver message and the driver error as its cause |
+| `ROLLBACK` | The callback of a transaction or savepoint failed and its rollback failed too, for example because the server ended the session; the error keeps both errors and is not retried |
 | `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 
 ---
