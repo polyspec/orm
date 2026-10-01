@@ -321,6 +321,7 @@ introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL)
 ### 문서
 
 - table은 이름 순, column은 catalog 위치 순, constraint와 index는 이름 순이다. 문서에는 diagram과 comment가 없다.
+- plan history table `dbspec$plans`([plans](plans.md#apply))는 빼고 보고하지 않는다.
 - database에 렌더링되는 setting만 읽는다: trigger로 알아보는 `immutable`과 `audit`. manifest setting은 문서에만 있다. 동기화하는 도구는 비교하는 문서에서 이를 유지한다.
 
 ### Type과 column

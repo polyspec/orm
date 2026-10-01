@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.1: docs/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.
+
 - T8.5.2.1: the Go plan writer keeps no dropped result and no unused renderer state.
 
 - T8.5.2: the Go engine parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-check` applies them.
