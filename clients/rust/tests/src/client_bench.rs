@@ -1,5 +1,5 @@
 //! Rust hot-path gate: generated client vs the sqlx baseline (bench/rust/src/native.rs).
-//! Usage: client_bench [iters]
+//! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> client_bench [iters]
 use std::time::Instant;
 
 orm::models!();
@@ -13,9 +13,15 @@ fn stats(name: &str, mut s: Vec<u64>) {
     println!("{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns", name, n, s.iter().sum::<u64>() as f64 / n as f64, p(0.5), p(0.9), p(0.99));
 }
 
-/// The test DSN: `ORM_BENCH_MYSQL_DSN` when set (CI), else the local socket.
-fn dsn() -> String {
-    std::env::var("ORM_BENCH_MYSQL_DSN").unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`; 없거나 비어 있으면 오류다.
+fn bench_dsn() -> Result<String, String> {
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => Ok(v),
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            Err("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the bench never skips".into())
+        }
+        Err(e) => Err(format!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}")),
+    }
 }
 
 #[tokio::main]
@@ -23,7 +29,11 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let iters: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(3000);
     let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
-    let db = orm::Db::connect(&dsn(), 1, config).await.unwrap();
+    let dsn = bench_dsn().unwrap_or_else(|e| {
+        eprintln!("{e}");
+        std::process::exit(1)
+    });
+    let db = orm::Db::connect(&dsn, 1, config).await.unwrap();
 
     for _ in 0..200 {
         Author::new().connect(&db).get_by_seq(1).await.unwrap();
