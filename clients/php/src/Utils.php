@@ -170,7 +170,9 @@ final class SchemaUtils
 
     /**
      * Installs the canonical schema manifest on the connection's database:
-     * missing tables, keys, indexes, comments, and triggers are created. The
+     * missing tables, keys, indexes, comments, and triggers are created, and
+     * the engine of the manifest is added to the connection. The manifest hash
+     * is verified against its content before any statement runs. The
      * statements run in one transaction; MySQL commits each DDL statement
      * itself, so they run outside a transaction there.
      */
@@ -178,9 +180,10 @@ final class SchemaUtils
     {
         $driver = $this->db->driver();
         try {
+            $engine = new Engine(Manifest::load($manifestJson), $driver, $this->db->config()->planCacheSize);
             $manifest = SchemaBuilder::load($manifestJson);
-        } catch (\InvalidArgumentException $e) {
-            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage());
+        } catch (\InvalidArgumentException | OrmException $e) {
+            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
         }
         try {
             $statements = SchemaDdl::createStatements($manifest, $driver);
@@ -201,12 +204,12 @@ final class SchemaUtils
         };
         if ($driver !== 'mysql') {
             $this->sql->run($apply);
-            return;
-        }
-        if (Db::activeFor($this->db) !== null) {
+        } elseif (Db::activeFor($this->db) !== null) {
             throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
+        } else {
+            $apply();
         }
-        $apply();
+        $this->db->registerEngine($engine);
     }
 
     private function bool(string $sql, array $args): bool

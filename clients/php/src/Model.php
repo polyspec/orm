@@ -613,7 +613,7 @@ abstract class Model implements \JsonSerializable
         }
         if (self::prefixed($name, 'possible')) {
             self::arity($name, $args, 1);
-            $column = Chain::columnName(null, substr($name, 8));
+            $column = Chain::schemaColumnName($meta['schema_hash'], substr($name, 8));
             if ($column === '') {
                 throw new OrmException(Code::CONFIG, "$name: no model has the column " . substr($name, 8));
             }
@@ -866,7 +866,7 @@ abstract class Model implements \JsonSerializable
 
     private function build(string $kind, Db $db): Request
     {
-        $r = new Request($kind, $db);
+        $r = new Request($kind, static::meta()['schema_hash']);
         $frame = new Frame($this, null);
         $r->ir += $this->query($r, $frame);
         return $r;
@@ -1626,7 +1626,7 @@ abstract class Model implements \JsonSerializable
 
     private function writeRequest(string $kind, Db $db): Request
     {
-        $r = new Request($kind, $db);
+        $r = new Request($kind, static::meta()['schema_hash']);
         $r->ir['entity'] = static::meta()['entity'];
         return $r;
     }
@@ -2146,9 +2146,9 @@ final class Request
     /** @var array<int, list<array>> relations with their own connection, by parent model */
     public array $external = [];
 
-    public function __construct(string $kind, Db $db)
+    public function __construct(string $kind, string $schemaHash)
     {
-        $this->ir = ['ir_version' => 1, 'schema_hash' => Registry::schemaHash(), 'kind' => $kind];
+        $this->ir = ['ir_version' => 1, 'schema_hash' => $schemaHash, 'kind' => $kind];
     }
 
     public function param(mixed $v): int

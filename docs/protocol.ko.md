@@ -153,4 +153,6 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 연결은 `schema.json`을 읽어 내용으로 `schema_hash`를 확인하고, 해시가 다른 생성 모델을 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 스키마 해시와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
 
+한 프로세스는 여러 스키마의 생성 모델을 읽을 수 있고, 연결 하나가 그 모두를 처리할 수 있다. 생성 모델마다 자기가 생성된 스키마의 `schema_hash`를 가지며, 모델이 만드는 모든 요청은 그 해시를 포함한다. 해시는 manifest 내용으로 계산하므로 서로 다른 두 스키마가 같은 해시를 가질 수 없다. 연결은 요청의 `schema_hash`에 해당하는 engine으로 요청을 계획한다. Go, PHP, TypeScript에서 연결은 열 때 지정한 스키마의 engine으로 시작한다. `utils().schema().install(manifestJson)`은 연결을 열 때와 같이 manifest 해시를 내용과 대조하고, 없는 객체를 만든 뒤 그 manifest의 engine을 연결에 추가한다. PHP와 TypeScript는 연결에 등록되지 않은 스키마의 요청을 실행 전에 `SCHEMA_HASH_MISMATCH`로 거부하며, 다른 engine이 그 요청을 계획하지 않는다. Rust 생성 모델은 자기 `schema.json`을 내장하며, 연결은 내장된 manifest로 요청을 계획한다.
+
 네 플래너는 같은 요청에서 같은 SQL과 bind slot을 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 같은 벡터를 네 클라이언트로 실행하고 문장, bind, 결과를 기록된 기대값과 비교한다.

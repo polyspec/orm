@@ -963,8 +963,8 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a manifest through a connection: every client renders the create DDL of its dialect, creates the missing tables, and registers the manifest.",
-      "description_ko": "연결로 manifest를 설치한다. 모든 client가 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록한다.",
+      "description": "Install a manifest through a connection: every client verifies the manifest hash against its content, renders the create DDL of its dialect, creates the missing tables, and registers the manifest, so one connection serves the generated models of several schemas.",
+      "description_ko": "연결로 manifest를 설치한다. 모든 client가 manifest hash를 내용과 대조하고 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록하므로, 연결 하나가 여러 schema의 생성 모델을 처리한다.",
       "inputs": {
         "type": "ManifestJson",
         "fields": [
@@ -988,6 +988,10 @@
         {
           "code": "CONFIG",
           "when": "the installation cannot run on the connection"
+        },
+        {
+          "code": "SCHEMA_HASH_MISMATCH",
+          "when": "a PHP or TypeScript model request uses a schema the connection has not registered"
         }
       ],
       "clients": {
@@ -1010,7 +1014,11 @@
         "internal/ormgen/mysql_defects_test.go",
         "internal/ormgen/rename_test.go",
         "internal/ormgen/rollback_test.go",
-        "internal/ormgen/sqlite_rebuild_test.go"
+        "internal/ormgen/sqlite_rebuild_test.go",
+        "clients/php/tests/schema_set_test.php",
+        "clients/typescript/tests/schema-set.mjs",
+        "clients/go/decimalmodel/schema_set_test.go",
+        "clients/rust/tests/src/decimal_physical.rs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1447,7 +1455,8 @@
       "fixtures": [
         "tests/schema/cases.json",
         "clients/rust/orm/tests/testdata/audit_log.json",
-        "clients/rust/orm/tests/testdata/audit_item.json", "clients/rust/orm/tests/testdata/audit_service.json"
+        "clients/rust/orm/tests/testdata/audit_item.json",
+        "clients/rust/orm/tests/testdata/audit_service.json"
       ],
       "tests": [
         "clients/go/orm/audit_test.go",

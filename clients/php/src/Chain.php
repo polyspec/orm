@@ -123,19 +123,34 @@ final class Chain
         return $out;
     }
 
-    /** The column of the entity, or of any registered entity when $meta is null, with the PascalCase name. */
-    public static function columnName(?array $meta, string $pascal): string
+    /** The column of the entity with the PascalCase name. */
+    public static function columnName(array $meta, string $pascal): string
     {
-        if ($meta !== null) {
-            return self::index($meta)[$pascal] ?? '';
-        }
-        foreach (Registry::models() as $class) {
+        return self::index($meta)[$pascal] ?? '';
+    }
+
+    /** The column with the PascalCase name of any loaded entity of the schema. */
+    public static function schemaColumnName(string $hash, string $pascal): string
+    {
+        foreach (Registry::models($hash) as $class) {
             $column = self::index($class::meta())[$pascal] ?? '';
             if ($column !== '') {
                 return $column;
             }
         }
         return '';
+    }
+
+    /** The column of $side, or of any loaded model of the schema of $other when $side is null. */
+    private static function sideColumn(?array $side, ?array $other, string $pascal): string
+    {
+        if ($side !== null) {
+            return self::columnName($side, $pascal);
+        }
+        if ($other === null) {
+            self::fail('a column pair needs the model of one side');
+        }
+        return self::schemaColumnName($other['schema_hash'], $pascal);
     }
 
     private static function parseChain(array $meta, string $name): array
@@ -212,7 +227,7 @@ final class Chain
                 continue;
             }
             $right = implode('', array_slice($ws, $i + 1));
-            $rightColumn = self::columnName(null, $right);
+            $rightColumn = self::schemaColumnName($meta['schema_hash'], $right);
             if ($rightColumn === '') {
                 $errors[] = "no model has the column $right";
                 continue;
@@ -332,7 +347,7 @@ final class Chain
 
     /**
      * Parses <L>With<R>: L is a column of $left and R of $right; a null side
-     * accepts a column of any registered model.
+     * accepts a column of any loaded model of the other side's schema.
      * @return array{0: string, 1: string}
      */
     public static function pair(?array $left, ?array $right, string $name): array
@@ -343,8 +358,8 @@ final class Chain
             if ($w !== 'With') {
                 continue;
             }
-            $l = self::columnName($left, implode('', array_slice($ws, 0, $i)));
-            $r = self::columnName($right, implode('', array_slice($ws, $i + 1)));
+            $l = self::sideColumn($left, $right, implode('', array_slice($ws, 0, $i)));
+            $r = self::sideColumn($right, $left, implode('', array_slice($ws, $i + 1)));
             if ($l !== '' && $r !== '') {
                 $found[] = [$l, $r];
             }

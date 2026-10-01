@@ -19,6 +19,7 @@ final class Author extends Model
             'auto' => 'seq',
             'updated' => 'updated_ts',
             'aes_version' => 'aes_key_version',
+            'schema_hash' => '16198b563e2e3cae',
             'columns' => [
                 'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
                 'name' => ['type' => 'string', 'nullable' => false, 'styles' => []],
