@@ -1,5 +1,10 @@
 # Changelog
 
+State the dbspec parse budgets of every client in docs/dbspec.md and fail
+the Go, TypeScript and PHP stress tests above them (T8.2.4.1). Record
+every native Go, PHP and TypeScript symbol in contracts/symbols so
+interface-check passes for those languages.
+
 Implement dbspec parse, validation and canonical emit in the TypeScript
 client (T8.2.4) with the declared interface: parseDbspec, emitDbspec and
 DbspecDiagnostic. All 44 shared cases and 45 focused cases pass, and the

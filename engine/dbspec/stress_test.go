@@ -14,6 +14,8 @@ import (
 // 10000-foreign-key document that node tests/dbspec/stress.mjs writes, and
 // logs the parse and emit times. The deadline only bounds a hang; the parse
 // budget is recorded from measurement.
+const parseBudget = 100 * time.Millisecond
+
 func TestStressDocument(t *testing.T) {
 	root := repositoryRoot(t)
 	runTimed(t, "stress", 120*time.Second, func() error {
@@ -52,6 +54,9 @@ func TestStressDocument(t *testing.T) {
 		}
 		if second != first {
 			return fmt.Errorf("two emissions of the stress document differ")
+		}
+		if parseElapsed > parseBudget {
+			return fmt.Errorf("stress parse took %s, over the %s budget (docs/dbspec.md, Verification)", parseElapsed, parseBudget)
 		}
 		return nil
 	})

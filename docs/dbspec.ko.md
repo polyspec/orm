@@ -272,4 +272,4 @@ Mermaid 언어와 manifest의 모든 기능:
 
 ## 검증
 
-공유 vector는 `tests/dbspec/`에 있다: canonical 문서와 그 출력, canonical이 아닌 문서와 그 canonical 출력, 그리고 기대하는 모든 diagnostic이 있는 잘못된 문서. 모든 client가 같게 parse하고 출력한다. 2000-table, 60000-column, 10000-foreign-key case의 parse budget은 Rust client release mode에서 300 ms다. 다른 client의 budget은 구현의 첫 측정에서 정하며, 그 뒤로 올리지 않는다.
+공유 vector는 `tests/dbspec/`에 있다: canonical 문서와 그 출력, canonical이 아닌 문서와 그 canonical 출력, 그리고 기대하는 모든 diagnostic이 있는 잘못된 문서. 모든 client가 같게 parse하고 출력한다. 2000-table, 60000-column, 10000-foreign-key case의 parse budget은 Rust client release mode에서 300 ms다. Go client budget은 100 ms, TypeScript client는 Node에서 250 ms, PHP client는 128 MiB memory limit 안에서 400 ms다. 각 client의 stress test는 parse가 budget을 넘으면 실패한다. budget은 각 구현의 첫 측정에서 정했으며 올리지 않는다.
