@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T14.2: Rust decimal과 generated-model coverage test는 workspace 실행에서 ignored이고 소유 target이 `--include-ignored`로 실행한다.
+
 - T14.1: Rust DSN coverage test는 workspace 실행에서 ignored이고 feature-check가 `--include-ignored`로 실행한다.
 
 - T16: send-savepoint SQLite file은 TEST_ENV 옆에 있어서 Rust send-savepoint test가 어느 worktree에서나 실행된다.
