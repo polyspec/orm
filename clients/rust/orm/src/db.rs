@@ -132,6 +132,31 @@ impl ParsedDsn {
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
 
 /// Parses a DSN URI.
+/// sqlite:// DSN의 path를 UTF-8로 percent-decode한다. 두 hex 자리가 없는 `%`,
+/// NUL byte, UTF-8이 아닌 결과는 다른 file을 열게 되므로 `CONFIG`다.
+fn sqlite_path(raw: &str) -> Result<String> {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'%' {
+            out.push(bytes[i]);
+            i += 1;
+            continue;
+        }
+        let digit = |at: usize| bytes.get(at).and_then(|&b| char::from(b).to_digit(16));
+        match (digit(i + 1), digit(i + 2)) {
+            (Some(high), Some(low)) => out.push((high * 16 + low) as u8),
+            _ => return Err(Error::Config("sqlite DSN path has a % without two hexadecimal digits".into())),
+        }
+        i += 3;
+    }
+    if out.contains(&0) {
+        return Err(Error::Config("sqlite DSN path must not contain a NUL byte".into()));
+    }
+    String::from_utf8(out).map_err(|_| Error::Config("sqlite DSN path must be UTF-8 after percent-decoding".into()))
+}
+
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
     let url = url::Url::parse(dsn).map_err(|_| bad("dsn must be a URI using mysql://, postgres://, or sqlite://".into()))?;
@@ -177,12 +202,12 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             ConnectOptions::Postgres(o)
         }
         "sqlite" => {
-            let path = url.path();
+            let path = sqlite_path(url.path())?;
             if !path.starts_with('/') || path.len() < 2 {
                 return Err(bad("sqlite DSN must include an absolute database path".into()));
             }
             let mut o = SqliteConnectOptions::new()
-                .filename(path)
+                .filename(&path)
                 .create_if_missing(true)
                 .foreign_keys(true)
                 .busy_timeout(std::time::Duration::from_millis(SQLITE_BUSY_TIMEOUT_MS));

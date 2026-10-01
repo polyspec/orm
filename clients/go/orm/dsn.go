@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // sqliteBusyTimeoutMs is the time in milliseconds a SQLite connection waits
@@ -79,9 +80,16 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
 		out.native = u.String()
 	case "sqlite":
+		// url.Parse는 path를 percent-decode하고 잘못된 escape를 거부한다.
 		path := u.Path
 		if !strings.HasPrefix(path, "/") {
 			return parsedDSN{}, configErr("sqlite DSN must include an absolute database path")
+		}
+		if strings.ContainsRune(path, 0) {
+			return parsedDSN{}, configErr("sqlite DSN path must not contain a NUL byte")
+		}
+		if !utf8.ValidString(path) {
+			return parsedDSN{}, configErr("sqlite DSN path must be UTF-8 after percent-decoding")
 		}
 		// A write transaction begins with BEGIN IMMEDIATE and holds the
 		// write lock from its start; a read-only transaction begins
@@ -98,7 +106,9 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if !strings.Contains(pragmas, "foreign_keys") {
 			q.Add("_pragma", "foreign_keys(1)")
 		}
-		out.native = "file:" + path + "?" + q.Encode()
+		// SQLite는 file: URI의 path를 다시 percent-decode하므로, decode한 path를
+		// escape해 %, #, ? 같은 글자가 그대로 file 이름에 남게 한다.
+		out.native = "file:" + (&url.URL{Path: path}).EscapedPath() + "?" + q.Encode()
 	default:
 		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
 	}

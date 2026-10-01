@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Db } from '../dist/index.js';
@@ -43,5 +43,37 @@ try {
   for (const name of names) if (!allowed.includes(name)) throw new Error(`files ${JSON.stringify(names)}: ${name} is not named by the path`);
 } finally {
   rmSync(directory, { recursive: true, force: true });
+}
+// tests/dsn/sqlite-paths.json: DSN path는 percent-decode한 file을 열고, 잘못된 path는
+// CONFIG다(docs/config.md "Runtime connection").
+const pathVectors = JSON.parse(readFileSync(new URL('../../../tests/dsn/sqlite-paths.json', import.meta.url), 'utf8'));
+if (pathVectors.version !== 1 || pathVectors.cases.length === 0) throw new Error('tests/dsn/sqlite-paths.json has no cases');
+for (const c of pathVectors.cases) {
+  const started = performance.now();
+  console.log(`start dsn/sqlite-path/${c.id}`);
+  const caseDirectory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-path-'));
+  let code = null;
+  let names;
+  try {
+    try {
+      const db = await Db.connect(`sqlite://${caseDirectory}/${c.path}`);
+      await db.close();
+    } catch (error) {
+      if (!(error?.code)) throw error;
+      code = error.code;
+    }
+    names = readdirSync(caseDirectory);
+  } finally {
+    rmSync(caseDirectory, { recursive: true, force: true });
+  }
+  if (c.error !== undefined) {
+    if (code !== c.error || names.length !== 0) throw new Error(`dsn/sqlite-path/${c.id}: code ${code}, files ${JSON.stringify(names)}; want ${c.error} and no file`);
+  } else {
+    if (code !== null) throw new Error(`dsn/sqlite-path/${c.id}: code ${code}`);
+    const allowed = [c.file, `${c.file}-journal`, `${c.file}-shm`, `${c.file}-wal`];
+    for (const name of names) if (!allowed.includes(name)) throw new Error(`dsn/sqlite-path/${c.id}: files ${JSON.stringify(names)}: ${name} is not ${c.file}`);
+    if (!names.includes(c.file)) throw new Error(`dsn/sqlite-path/${c.id}: files ${JSON.stringify(names)}: ${c.file} is missing`);
+  }
+  console.log(`result dsn/sqlite-path/${c.id}: PASS after ${(performance.now() - started).toFixed(1)} ms`);
 }
 console.log('typescript DSN validation passed');
