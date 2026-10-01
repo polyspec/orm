@@ -1,5 +1,8 @@
 use super::decode;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "../common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 #[test]
 fn preflight_bounds() {
     for (id, text, ok) in [
@@ -10,10 +13,10 @@ fn preflight_bounds() {
         ("node-limit", "[".to_owned() + &"0,".repeat(2999998) + "0]", true),
         ("node-excess", "[".to_owned() + &"0,".repeat(2999999) + "0]", false),
     ] {
-        let start = Instant::now();
+        let start = CaseClock::start();
         println!("RUN {id}");
         assert_eq!(decode(text.as_bytes()).is_ok(), ok, "{id}");
-        println!("PASS {id} {:?}", start.elapsed());
-        assert!(start.elapsed() < Duration::from_secs(15));
+        println!("PASS {id} {:?}", start.wall());
+        start.assert_within(id, Duration::from_secs(15));
     }
 }

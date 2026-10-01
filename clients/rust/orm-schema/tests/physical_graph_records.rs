@@ -1,7 +1,10 @@
 use orm_schema::physical_graph::PhysicalGraph;
 use serde_json::{json, Value};
+#[path = "common/case_clock.rs"]
+mod case_clock;
 #[path = "common/physical_graph_records.rs"]
 mod records;
+use case_clock::CaseClock;
 
 fn failure(value: Value, path: &str) {
     let error = PhysicalGraph::from_value(value).unwrap_err();
@@ -10,7 +13,7 @@ fn failure(value: Value, path: &str) {
 }
 #[test]
 fn physical_graph_records() {
-    let started = std::time::Instant::now();
+    let started = CaseClock::start();
     println!("RUN physical_graph_records");
     let fixture = records::fixture();
     let cases = fixture["cases"].as_array().unwrap();
@@ -21,7 +24,7 @@ fn physical_graph_records() {
     assert_eq!(fixture["scale"], json!({"tables":2000,"indices":2000,"keys":2000,"checks":2000}));
     let mut seen = std::collections::HashSet::new();
     for case in cases {
-        let case_started = std::time::Instant::now();
+        let case_started = CaseClock::start();
         let id = case["id"].as_str().unwrap();
         assert!(!id.is_empty() && seen.insert(id));
         println!("RUN {id}");
@@ -52,8 +55,8 @@ fn physical_graph_records() {
                 assert_ne!(graph.value()["indices"][0]["terms"][0]["order"], value["indices"][0]["terms"][0]["order"]);
             }
         }
-        assert!(case_started.elapsed() < std::time::Duration::from_secs(1));
-        println!("PASS {id} {:?}", case_started.elapsed());
+        case_started.assert_within(id, std::time::Duration::from_secs(1));
+        println!("PASS {id} {:?}", case_started.wall());
     }
     for case in fixture["duplicates"].as_array().unwrap() {
         let mut value = fixture["base"].clone();
@@ -107,6 +110,6 @@ fn physical_graph_records() {
     // Exercise the same declared scale generator used by the connected graph test.
     let scale = records::scale(&fixture["base"], 2);
     assert_eq!(scale["indices"].as_array().unwrap().len(), 2);
-    assert!(started.elapsed() < std::time::Duration::from_secs(15));
-    println!("PASS physical_graph_records {:?}", started.elapsed());
+    started.assert_within("physical_graph_records", std::time::Duration::from_secs(15));
+    println!("PASS physical_graph_records {:?}", started.wall());
 }

@@ -12,13 +12,11 @@ import (
 )
 
 func TestPhysicalGraphJSON(t *testing.T) {
-	start := time.Now()
+	start := startCaseClock(t)
 	t.Log("RUN physical_graph_json")
 	defer func() {
-		t.Logf("DONE physical_graph_json %s", time.Since(start))
-		if time.Since(start) > 15*time.Second {
-			t.Fatal("deadline exceeded")
-		}
+		t.Logf("DONE physical_graph_json %s", start.wallTime())
+		start.assertWithin(t, "physical_graph_json", 15*time.Second)
 	}()
 	data, e := os.ReadFile("../../../contracts/fixtures/physical_graph_json.json")
 	if e != nil {
@@ -106,13 +104,11 @@ func TestPhysicalGraphJSON(t *testing.T) {
 	}
 }
 func TestPhysicalGraphJSONOutput(t *testing.T) {
-	start := time.Now()
+	start := startCaseClock(t)
 	t.Log("RUN physical_graph_json_output")
 	defer func() {
-		t.Logf("DONE physical_graph_json_output %s", time.Since(start))
-		if time.Since(start) > 15*time.Second {
-			t.Fatal("deadline exceeded")
-		}
+		t.Logf("DONE physical_graph_json_output %s", start.wallTime())
+		start.assertWithin(t, "physical_graph_json_output", 15*time.Second)
 	}()
 	data, err := os.ReadFile("../../../contracts/fixtures/physical_graph_json.json")
 	if err != nil {

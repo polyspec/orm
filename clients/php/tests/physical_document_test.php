@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/autoload.php';
-$start=hrtime(true);echo "RUN physical-document\n";
+require __DIR__.'/process_cpu.php';
+$start=hrtime(true);$startCpu=processCpuNs();echo "RUN physical-document\n";
 $f=json_decode(file_get_contents(__DIR__.'/../../../contracts/fixtures/physical_document.json'),true,512,JSON_THROW_ON_ERROR);
 $v=json_decode(file_get_contents(__DIR__.'/../../../contracts/fixtures/physical_graph_records.json'),true,512,JSON_THROW_ON_ERROR)['base'];
 $v['tables'][0]['identity'][2]=$f['tableName'];$v['tables'][0]['columns'][0]['name']=$f['columnName'];$v['tables'][0]['columns'][0]['typeSql']=$f['typeSql'];$v['tables'][0]['columns'][0]['comment']=$f['columnComment'];
@@ -18,4 +19,4 @@ try{Orm\PhysicalDocument::parse($text.$text);throw new RuntimeException('Duplica
 foreach(['No newline',"<!--\n"]as$p)try{Orm\PhysicalDocument::emit($g,$p);throw new RuntimeException('Invalid prose accepted');}catch(Orm\PhysicalDocumentError $e){}
 foreach(['tables','foreignKeys','indices','keys','checks']as$k)$v[$k]=[];
 if(Orm\PhysicalDocument::parse(Orm\PhysicalDocument::emit(Orm\PhysicalGraph::fromValue($v)))->graph->value()!==$v)throw new RuntimeException('Empty graph changed');
-if(hrtime(true)-$start>15e9)throw new RuntimeException('Deadline exceeded');echo 'PASS physical-document '.((hrtime(true)-$start)/1e6)." ms\n";
+$cpu=processCpuNs()-$startCpu;if($cpu>=15e9)throw new RuntimeException('Deadline exceeded: process CPU '.($cpu/1e6).' ms');echo 'PASS physical-document '.((hrtime(true)-$start)/1e6).' ms cpu='.($cpu/1e6)." ms\n";

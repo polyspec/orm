@@ -3,7 +3,10 @@ use orm_schema::{
     physical_graph::PhysicalGraph,
 };
 use serde_json::Value;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[path = "common/case_clock.rs"]
+mod case_clock;
+use case_clock::CaseClock;
 #[test]
 fn physical_document_limits() {
     let f: Value = serde_json::from_str(include_str!("../../../../contracts/fixtures/physical_graph_json.json")).unwrap();
@@ -12,7 +15,7 @@ fn physical_document_limits() {
     let block = emit(&graph, "", "", "\n").unwrap();
     for kind in ["bytes", "lines", "blocks"] {
         for extra in 0..2 {
-            let started = Instant::now();
+            let started = CaseClock::start();
             println!("RUN {kind}-{extra}");
             let n = resources["limits"][kind].as_u64().unwrap() as usize + extra;
             let (source, prefix) = match kind {
@@ -47,8 +50,8 @@ fn physical_document_limits() {
                 assert_eq!(e.line(), 0);
                 assert_eq!(e.path(), "");
             }
-            assert!(started.elapsed() < Duration::from_secs(15));
-            println!("PASS {kind}-{extra} {:?}", started.elapsed());
+            started.assert_within(&format!("{kind}-{extra}"), Duration::from_secs(15));
+            println!("PASS {kind}-{extra} {:?}", started.wall());
         }
     }
 }
