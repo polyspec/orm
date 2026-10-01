@@ -1,16 +1,17 @@
-//! The parsed dbspec model. Every name keeps the position of its token so that
-//! validation can point at it; emission ignores positions.
+//! The parsed dbspec model (`docs/dbspec.md`). Every name keeps the position of
+//! its token so that validation can point at it; emission ignores positions.
+//! Tools read a parsed document, change it and emit it again.
 
-use super::literal::Value;
+pub use super::literal::Value;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Pos {
+pub struct Pos {
     pub line: usize,
     pub column: usize,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Name {
+pub struct Name {
     pub text: String,
     pub pos: Pos,
 }
@@ -19,23 +20,23 @@ pub(crate) struct Name {
 /// with their attached comments.
 #[derive(Clone, Debug)]
 pub struct Document {
-    pub(crate) name: Name,
-    pub(crate) uses: Vec<Use>,
-    pub(crate) tables: Vec<Table>,
-    pub(crate) diagrams: Vec<Diagram>,
+    pub name: Name,
+    pub uses: Vec<Use>,
+    pub tables: Vec<Table>,
+    pub diagrams: Vec<Diagram>,
     /// Comment lines after the last line of the document.
-    pub(crate) trailing: Vec<String>,
+    pub trailing: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Use {
+pub struct Use {
     pub comments: Vec<String>,
     pub document: Name,
     pub tables: Vec<Name>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Table {
+pub struct Table {
     pub comments: Vec<String>,
     pub name: Name,
     pub columns: Vec<Column>,
@@ -114,7 +115,7 @@ impl Type {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Column {
+pub struct Column {
     pub comments: Vec<String>,
     pub name: Name,
     pub ty: Type,
@@ -125,7 +126,7 @@ pub(crate) struct Column {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum DefaultValue {
+pub enum DefaultValue {
     /// `default now` of a `datetime(p)` column.
     Now,
     /// A literal in its canonical text.
@@ -133,7 +134,7 @@ pub(crate) enum DefaultValue {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PrimaryKey {
+pub struct PrimaryKey {
     pub comments: Vec<String>,
     /// The position of the `primary` keyword.
     pub pos: Pos,
@@ -141,14 +142,14 @@ pub(crate) struct PrimaryKey {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Unique {
+pub struct Unique {
     pub comments: Vec<String>,
     pub name: Name,
     pub columns: Vec<Name>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Index {
+pub struct Index {
     pub comments: Vec<String>,
     pub name: Name,
     /// Columns with their direction; `true` is `desc`.
@@ -156,7 +157,7 @@ pub(crate) struct Index {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Action {
+pub enum Action {
     Restrict,
     Cascade,
     SetNull,
@@ -173,7 +174,7 @@ impl Action {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ForeignKey {
+pub struct ForeignKey {
     pub comments: Vec<String>,
     pub name: Name,
     pub columns: Vec<Name>,
@@ -191,7 +192,7 @@ impl ForeignKey {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Check {
+pub struct Check {
     pub comments: Vec<String>,
     pub name: Name,
     pub expr: Expr,
@@ -199,7 +200,7 @@ pub(crate) struct Check {
 
 /// A check predicate (docs/dbspec.md, "Checks").
 #[derive(Clone, Debug)]
-pub(crate) enum Expr {
+pub enum Expr {
     /// `and` or `or`.
     Logic(Box<Expr>, &'static str, Box<Expr>),
     /// A comparison with its operator and the operator position.
@@ -211,7 +212,7 @@ pub(crate) enum Expr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum Operand {
+pub enum Operand {
     Column(Name),
     Literal(Literal),
 }
@@ -219,7 +220,7 @@ pub(crate) enum Operand {
 /// A check literal. `text` is its canonical text in the form of the column it
 /// meets; validation sets it, so it is empty until the document is valid.
 #[derive(Clone, Debug)]
-pub(crate) struct Literal {
+pub struct Literal {
     pub value: Value,
     pub pos: Pos,
     pub text: String,
@@ -271,14 +272,14 @@ impl Expr {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Settings {
+pub struct Settings {
     pub comments: Vec<String>,
     pub lines: Vec<SettingLine>,
     pub closing: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct SettingLine {
+pub struct SettingLine {
     pub comments: Vec<String>,
     /// The position of the setting keyword.
     pub pos: Pos,
@@ -286,7 +287,7 @@ pub(crate) struct SettingLine {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum Setting {
+pub enum Setting {
     Entity(Name),
     Updated(Name),
     SoftDelete(Name),
@@ -327,7 +328,7 @@ impl Setting {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Diagram {
+pub struct Diagram {
     pub comments: Vec<String>,
     pub name: Name,
     pub placements: Vec<Placement>,
@@ -335,7 +336,7 @@ pub(crate) struct Diagram {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Placement {
+pub struct Placement {
     pub comments: Vec<String>,
     pub table: Name,
     pub x: i32,

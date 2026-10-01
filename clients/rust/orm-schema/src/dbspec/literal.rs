@@ -4,7 +4,7 @@ use super::model::Type;
 
 /// A literal as written: a signed number, a word or a string value.
 #[derive(Clone, Debug)]
-pub(crate) enum Value {
+pub enum Value {
     Number { negative: bool, text: String },
     Word(String),
     Str(String),
