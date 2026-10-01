@@ -179,4 +179,24 @@ final class Dbspec
     {
         PlanApply::recover($connection, $dialect, $plans, $now, $events);
     }
+
+    /**
+     * Writes the document as a standard Mermaid erDiagram and lists what the
+     * diagram leaves out, as Unsupported in table, kind and name order
+     * (docs/mermaid.md "Export").
+     */
+    public static function exportMermaid(Document $document): MermaidExportResult
+    {
+        return Mermaid::export($document);
+    }
+
+    /**
+     * Reads a standard Mermaid erDiagram into a document named `$name` and
+     * lists what import leaves out (docs/mermaid.md "Import"), or the
+     * `mermaid` diagnostic of a line that does not follow the grammar.
+     */
+    public static function importMermaid(string $text, string $name): MermaidImportResult
+    {
+        return Mermaid::import($text, $name);
+    }
 }
