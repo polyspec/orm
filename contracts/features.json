@@ -616,7 +616,8 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
-        "contracts/fixtures/decimal_schema.json"
+        "contracts/fixtures/decimal_schema.json",
+        "contracts/fixtures/clock_schema.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -631,7 +632,11 @@
         "clients/rust/tests/src/decimal_physical.rs",
         "clients/typescript/tests/decimal_model.mjs",
         "clients/typescript/tests/decimal_model.test.ts",
-        "clients/typescript/tests/decimal_model_db.mjs"
+        "clients/typescript/tests/decimal_model_db.mjs",
+        "clients/go/orm/clock_test.go",
+        "clients/php/tests/clock_test.php",
+        "clients/rust/orm/tests/clock.rs",
+        "clients/typescript/tests/clock.mjs"
       ],
       "docs": [
         "docs/dsl.md",

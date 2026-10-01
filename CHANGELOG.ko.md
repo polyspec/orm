@@ -1,5 +1,12 @@
 # 변경 이력
 
+모든 클라이언트에서 클라이언트 clock을 마이크로초로 기록한다(N10).
+TypeScript 클라이언트는 `Date`로 clock을 읽어 SQLite `now` bind slot에
+`.mmm000`을 저장했다. 이제 wall clock에 맞춘 monotonic clock의 마이크로초를
+더하고, 두 clock의 차이가 1밀리초를 넘으면 기준점을 옮긴다. protocol이 모든
+클라이언트의 `now` slot 규칙을 적는다. `clock_microseconds` case가 Go, PHP,
+Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
 한 process에서 여러 schema의 생성 PHP model을 읽는다(N3.1).
 생성된 model class마다 자기 schema hash를 가지며, 연결은 등록된 schema마다
 engine 하나를 유지한다. 연결을 열 때의 schema와

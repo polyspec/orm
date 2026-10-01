@@ -90,6 +90,26 @@ export const NOW = '$NOW';
 
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
 
+/** The microseconds that wallMicros adds to the monotonic clock reading. */
+let clockAnchor = performance.timeOrigin * 1000;
+
+/**
+ * Microseconds since the epoch on the wall clock. Date has millisecond
+ * resolution, so the monotonic clock, anchored to the wall clock at process
+ * start, supplies the microseconds; when the two clocks differ by more than
+ * one millisecond, as after a wall clock adjustment, the anchor moves to the
+ * wall clock.
+ */
+function wallMicros(): number {
+  const wall = Date.now();
+  let micros = Math.floor(clockAnchor + performance.now() * 1000);
+  if (Math.abs(Math.floor(micros / 1000) - wall) > 1) {
+    clockAnchor = wall * 1000 - performance.now() * 1000;
+    micros = Math.floor(clockAnchor + performance.now() * 1000);
+  }
+  return micros;
+}
+
 /** Formats an instant in a connection time zone as stored date-time text. */
 export function formatInstant(instant: Date, zone: string): string {
   const shifted = new Date(instant.getTime() + zoneOffset(zone, instant) * 60_000);
@@ -401,10 +421,15 @@ export class Db {
     return entry;
   }
 
-  /** The executor clock in the connection zone; PostgreSQL receives the offset because its columns store instants. */
+  /**
+   * The executor clock in the connection zone with six fraction digits, the
+   * microseconds of the wall clock; PostgreSQL receives the offset because its
+   * columns store instants.
+   */
   public now(): string {
-    const instant = new Date();
-    const text = formatInstant(instant, this.zone);
+    const micros = wallMicros();
+    const instant = new Date(Math.floor(micros / 1000));
+    const text = formatInstant(instant, this.zone).slice(0, 20) + String(micros % 1_000_000).padStart(6, '0');
     return this.driver === 'postgres' ? text + offsetText(zoneOffset(this.zone, instant)) : text;
   }
 
