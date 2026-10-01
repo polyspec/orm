@@ -697,6 +697,31 @@
       ]
     },
     {
+      "id": "identity-without-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
       "id": "missing-primary-key",
       "documents": {
         "shop": [
