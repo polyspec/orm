@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.3: the PHP client applies plan chains through `Orm\Dbspec\Dbspec::apply` with a lock, history, drift checks, transactions, verification and events, and recovers an interrupted MySQL plan with `Dbspec::recover`; its introspection leaves `dbspec$plans` out.
+
 - T8.5.3: the PHP client parses, chains, diffs and writes schema plans through `Orm\Dbspec\Dbspec`; `make dbspec-plan-php-check` applies them to MySQL, PostgreSQL and SQLite.
 
 - T8.2.6.1.3: the Korean protocol page links the manifest section by its ASCII anchor.
