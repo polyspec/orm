@@ -426,6 +426,12 @@
           "fails": true
         },
         {
+          "sql": "UPDATE ledger SET amount = 7 WHERE id = 999"
+        },
+        {
+          "sql": "DELETE FROM ledger WHERE id = 999"
+        },
+        {
           "query": "SELECT amount FROM ledger",
           "want": "5"
         },
@@ -438,6 +444,9 @@
         {
           "sql": "DELETE FROM service",
           "fails": true
+        },
+        {
+          "sql": "DELETE FROM service WHERE id = 999"
         },
         {
           "query": "SELECT count(*) FROM service_history",
