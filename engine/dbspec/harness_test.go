@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// repositoryRoot is the module root, found from this file's own position so
-// the tests do not depend on the working directory.
+// repositoryRoot는 이 file의 위치로 찾은 module root이므로 test는 working directory에
+// 기대지 않는다.
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
@@ -24,9 +24,8 @@ func repositoryRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 }
 
-// runTimed runs work under its own deadline and logs its start, its result
-// and its elapsed time. work runs on its own goroutine and reports failure by
-// returning an error, so the deadline is observed even when work hangs.
+// runTimed는 work를 자기 deadline 아래에서 실행하고 시작, 결과, 경과 시간을 기록한다. work는
+// 자기 goroutine에서 실행되며 error를 돌려 실패를 알리므로, work가 멈춰도 deadline을 지킨다.
 func runTimed(t *testing.T, name string, deadline time.Duration, work func() error) {
 	t.Helper()
 	started := time.Now()

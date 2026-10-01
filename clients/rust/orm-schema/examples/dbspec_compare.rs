@@ -1,6 +1,5 @@
-//! Prints the Rust dbspec result of every shared case, of the stress
-//! document, of the statement vectors, of the plan vectors and of the Mermaid
-//! vectors in the line format of tests/dbspec/compare/check.mjs.
+//! 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Rust dbspec
+//! 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
 //!
 //! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
 
@@ -239,8 +238,7 @@ fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
     })
 }
 
-/// Writes the lines with LF, with CRLF when `crlf` is true, or with
-/// alternating CRLF and LF and no final line end when `mixed` is true.
+/// 줄을 LF로, `crlf`이면 CRLF로, `mixed`이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
 fn join(lines: &[String], crlf: bool, mixed: bool) -> String {
     let mut text = String::new();
     for (i, line) in lines.iter().enumerate() {
@@ -256,7 +254,7 @@ fn join(lines: &[String], crlf: bool, mixed: bool) -> String {
     text
 }
 
-/// Prints the diagnostics of `text`, or its emission when it has none.
+/// `text`의 diagnostic을, 없으면 그 emission을 출력한다.
 fn write(out: &mut impl Write, text: &str, set: &BTreeMap<String, String>, stress: bool) -> std::io::Result<()> {
     match orm_schema::dbspec::parse(text, set) {
         Err(diagnostics) => {
@@ -285,8 +283,7 @@ fn write_diagnostics(out: &mut impl Write, diagnostics: &[orm_schema::dbspec::Di
     Ok(())
 }
 
-/// Prints the hashes and texts of the case's document set, or the
-/// diagnostics of a document or of the set.
+/// case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
 fn write_manifest(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
     let mut documents = Vec::new();
     for (name, lines) in &case.documents {
@@ -313,8 +310,7 @@ fn write_manifest(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> 
     }
 }
 
-/// Prints the statements of the case's document set in every dialect, or the
-/// diagnostics of a document or of the set.
+/// case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을 출력한다.
 fn write_render(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
     let id = &case.id;
     let mut documents = Vec::new();
@@ -343,9 +339,8 @@ fn write_render(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Prints diagnostics; a plan or chain diagnostic ends with its message,
-/// which every client shares, and a schema diagnostic of the target or
-/// source does not.
+/// diagnostic을 출력한다. plan, chain, compare diagnostic은 모든 client가 공유하는 message로
+/// 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
 fn write_plan_diagnostics(out: &mut impl Write, diagnostics: &[Diagnostic]) -> std::io::Result<()> {
     for d in diagnostics {
         if [orm_schema::dbspec::RULE_PLAN, orm_schema::dbspec::RULE_CHAIN, orm_schema::dbspec::RULE_COMPARE].contains(&d.rule.as_str()) {
@@ -357,7 +352,7 @@ fn write_plan_diagnostics(out: &mut impl Write, diagnostics: &[Diagnostic]) -> s
     Ok(())
 }
 
-/// Prints the changes as `| kind table name`.
+/// change를 `| kind table name`으로 출력한다.
 fn write_changes(out: &mut impl Write, changes: &[Change]) -> std::io::Result<()> {
     for c in changes {
         writeln!(out, "| {} {} {}", c.kind, c.table, c.name)?;
@@ -372,8 +367,7 @@ fn write_emitted_plan(out: &mut impl Write, plan: &Plan) -> std::io::Result<()> 
     Ok(())
 }
 
-/// The source schema of a plan case, `None` for the empty schema, or `Err`
-/// after printing its diagnostics.
+/// plan case의 source schema이며, 빈 schema이면 `None`, diagnostic을 출력했으면 `Err`다.
 fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Result<Result<Option<Document>, ()>> {
     let Some(lines) = lines else {
         return Ok(Ok(None));
@@ -387,10 +381,9 @@ fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Re
     }
 }
 
-/// Prints, for every plan case, the emitted plan, the changes and the
-/// statements of each dialect; for every invalid case its diagnostics; for
-/// every chain case the chain order or its diagnostics; and for every parse
-/// case its diagnostics or the emitted plan.
+/// plan case마다 emit한 plan, change, dialect별 statement를, invalid case마다 diagnostic을,
+/// chain case마다 chain 순서나 diagnostic을, parse case마다 diagnostic이나 emit한 plan을,
+/// comparison마다 차이나 diagnostic을 출력한다.
 fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()> {
     for case in &plans.cases {
         let id = &case.id;
@@ -487,8 +480,7 @@ fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()>
     Ok(())
 }
 
-/// Prints what an export or import left out as `= kind<TAB>table<TAB>name`;
-/// reasons are not compared.
+/// export나 import가 뺀 것을 `= kind<TAB>table<TAB>name`으로 출력하며 이유는 비교하지 않는다.
 fn write_dropped(out: &mut impl Write, dropped: &[Unsupported]) -> std::io::Result<()> {
     for u in dropped {
         writeln!(out, "= {}\t{}\t{}", u.kind, u.table, u.name)?;
@@ -496,7 +488,7 @@ fn write_dropped(out: &mut impl Write, dropped: &[Unsupported]) -> std::io::Resu
     Ok(())
 }
 
-/// Prints the Mermaid text and the dropped objects of a document and returns the text.
+/// 문서의 Mermaid text와 빠진 객체를 출력하고 text를 돌려준다.
 fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<String> {
     let (text, dropped) = orm_schema::dbspec::export_mermaid(document);
     for line in text.split('\n') {
@@ -506,7 +498,7 @@ fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<St
     Ok(text)
 }
 
-/// Prints the emitted document and the dropped objects of an import, or its diagnostics.
+/// import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다.
 fn write_import(out: &mut impl Write, text: &str) -> std::io::Result<()> {
     match orm_schema::dbspec::import_mermaid(text, "imported") {
         Err(diagnostics) => write_plan_diagnostics(out, &diagnostics),
@@ -519,9 +511,8 @@ fn write_import(out: &mut impl Write, text: &str) -> std::io::Result<()> {
     }
 }
 
-/// Prints every export case, every import and invalid case, and every round
-/// trip case: the export of its document, then `<case>/import` with the
-/// import of that export.
+/// 모든 export case, import와 invalid case, round trip case를 출력한다. round trip case는
+/// 문서의 export, 그다음 `<case>/import`와 그 export의 import다.
 fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), String> {
     let io = |e: std::io::Error| e.to_string();
     for case in &mermaid.export {

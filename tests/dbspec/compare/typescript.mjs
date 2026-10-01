@@ -1,9 +1,8 @@
-// Prints the TypeScript dbspec result of every shared case, of the stress
-// document, of the statement vectors, of the plan vectors and of the Mermaid
-// vectors in the line format of tests/dbspec/compare/check.mjs.
+// 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 TypeScript
+// dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
 //
 // Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
-// (after the TypeScript build)
+// (TypeScript build 뒤)
 import { readInput } from '../input.mjs';
 import {
   chainPlans,
@@ -138,8 +137,7 @@ function checkMermaid(path, v) {
   cases(path, v, 'round_trip', (c, at) => field(path, c, at, 'path', 'string'));
 }
 
-// join writes the lines with LF, with CRLF when crlf is true, or with
-// alternating CRLF and LF and no final line end when mixed is true.
+// join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
 function join(lines, crlf, mixed) {
   if (mixed) return lines.map((line, i) => (i === lines.length - 1 ? line : line + (i % 2 === 0 ? '\r\n' : '\n'))).join('');
   const end = crlf ? '\r\n' : '\n';
@@ -148,7 +146,7 @@ function join(lines, crlf, mixed) {
 
 const out = [];
 
-// write prints the diagnostics of text, or its emission when it has none.
+// write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
 function write(text, set, stress) {
   const result = parseDbspec(text, set);
   if (result.diagnostics.length > 0) {
@@ -174,8 +172,7 @@ for (const kind of ['canonical', 'normalize', 'invalid']) {
 out.push('stress');
 write(readInput(stressPath), {}, true);
 
-// writeManifest prints the hashes and texts of the case's document set, or the
-// diagnostics of a document or of the set.
+// writeManifest는 case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
 function writeManifest(c) {
   const documents = [];
   for (const name of Object.keys(c.documents).sort()) {
@@ -205,8 +202,8 @@ for (const c of shared.hashes) {
   writeManifest(c);
 }
 
-// writeRender prints the statements of the case's document set in every
-// dialect, or the diagnostics of a document or of the set.
+// writeRender는 case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을
+// 출력한다.
 function writeRender(c) {
   const documents = [];
   for (const name of Object.keys(c.documents).sort()) {
@@ -230,17 +227,16 @@ function writeRender(c) {
 
 for (const c of readVectors(ddlPath, checkDdl).cases) writeRender(c);
 
-// writePlanDiagnostics prints diagnostics; a plan or chain diagnostic ends with
-// its message, which every client shares, and a schema diagnostic of the
-// target or source does not.
+// writePlanDiagnostics는 diagnostic을 출력한다. plan, chain, compare diagnostic은 모든
+// client가 공유하는 message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
 function writePlanDiagnostics(diagnostics) {
   for (const d of diagnostics) {
     out.push(['plan', 'chain', 'compare'].includes(d.rule) ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
   }
 }
 
-// planSource gives the source schema of a plan case, null for the empty
-// schema, or undefined after printing its diagnostics.
+// planSource는 plan case의 source schema를, 빈 schema이면 null을, diagnostic을 출력했으면
+// undefined를 돌려준다.
 function planSource(lines) {
   if (lines === null) return null;
   const result = parseDbspec(join(lines, false, false), {});
@@ -251,7 +247,7 @@ function planSource(lines) {
   return result.document;
 }
 
-// writeChanges prints the changes as "| kind table name".
+// writeChanges는 change를 "| kind table name"으로 출력한다.
 function writeChanges(changes) {
   for (const c of changes) out.push(`| ${c.kind} ${c.table} ${c.name}`);
 }
@@ -321,13 +317,13 @@ for (const c of plans.comparisons) {
   writePlanDiagnostics(result.diagnostics);
   for (const d of result.differences ?? []) out.push(`| ${d.kind} ${d.table} ${d.name}`);
 }
-// writeDropped prints what an export or import left out as
-// "= kind<TAB>table<TAB>name"; reasons are not compared.
+// writeDropped는 export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력한다.
+// 이유는 비교하지 않는다.
 function writeDropped(dropped) {
   for (const u of dropped) out.push(`= ${u.kind}\t${u.table}\t${u.name}`);
 }
 
-// writeExport prints the Mermaid text and the dropped objects of a document.
+// writeExport는 문서의 Mermaid text와 빠진 객체를 출력한다.
 function writeExport(document) {
   const { mermaid, dropped } = exportMermaid(document);
   for (const line of mermaid.split('\n')) out.push(`| ${line}`);
@@ -335,8 +331,7 @@ function writeExport(document) {
   return mermaid;
 }
 
-// writeImport prints the emitted document and the dropped objects of an
-// import, or its diagnostics.
+// writeImport는 import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다.
 function writeImport(text) {
   const result = importMermaid(text, 'imported');
   if (result.document === null) {

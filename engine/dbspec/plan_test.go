@@ -1,11 +1,8 @@
 package dbspec
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -14,65 +11,155 @@ import (
 
 // planVectors는 tests/dbspec/plans.json이다(docs/plans.md).
 type planVectors struct {
-	Version int               `json:"version"`
-	Cases   []planCase        `json:"cases"`
-	Invalid []planInvalidCase `json:"invalid"`
-	Chains  []planChainCase   `json:"chains"`
-	Parse   []planParseCase   `json:"parse"`
+	Cases   []planCase
+	Invalid []planInvalidCase
+	Chains  []planChainCase
+	Parse   []planParseCase
 	// Comparisons는 plan 없이 두 schema를 비교하는 case다(docs/plans.md "Comparison").
-	Comparisons []comparisonCase `json:"comparisons"`
+	Comparisons []comparisonCase
 }
 
-type comparisonCase struct {
-	ID          string      `json:"id"`
-	Source      []string    `json:"source"`
-	Target      []string    `json:"target"`
-	Differences [][3]string `json:"differences"`
-	Errors      [][]any     `json:"errors"`
-}
-
+// planCase의 Source가 nil이면 빈 schema다.
 type planCase struct {
-	ID         string              `json:"id"`
-	Source     []string            `json:"source"`
-	Plan       []string            `json:"plan"`
-	Changes    [][3]string         `json:"changes"`
-	Statements map[string][]string `json:"statements"`
+	ID         string
+	Source     []string
+	Plan       []string
+	Changes    [][3]string
+	Statements map[string][]string
 }
 
 type planInvalidCase struct {
-	ID     string   `json:"id"`
-	Source []string `json:"source"`
-	Plan   []string `json:"plan"`
-	Errors []string `json:"errors"`
+	ID     string
+	Source []string
+	Plan   []string
+	Errors []string
 }
 
+// planChainCase는 Order와 Errors 중 하나만 가진다.
 type planChainCase struct {
-	ID     string     `json:"id"`
-	Plans  [][]string `json:"plans"`
-	Order  []string   `json:"order"`
-	Errors []string   `json:"errors"`
+	ID     string
+	Plans  [][]string
+	Order  []string
+	Errors []string
 }
 
 type planParseCase struct {
-	ID     string   `json:"id"`
-	Plan   []string `json:"plan"`
-	Errors [][]any  `json:"errors"`
+	ID     string
+	Plan   []string
+	Errors [][]any
+}
+
+type comparisonCase struct {
+	ID          string
+	Source      []string
+	Target      []string
+	Differences [][3]string
+	Errors      [][]any
 }
 
 func loadPlanVectors(t *testing.T) planVectors {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "plans.json"))
+	r, object := readVectorFile(t, "plans.json")
+	v, err := decodePlanVectors(r, object)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var v planVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
-	if v.Version != 1 || len(v.Cases) == 0 || len(v.Invalid) == 0 {
-		t.Fatalf("tests/dbspec/plans.json has version %d, %d cases and %d invalid cases", v.Version, len(v.Cases), len(v.Invalid))
-	}
 	return v
+}
+
+// decodePlanVectors는 plans.json의 모든 section과 field를 읽고, 없거나 type이 다른
+// 값을 위치와 함께 거부한다.
+func decodePlanVectors(r vectorReader, object map[string]any) (planVectors, error) {
+	var v planVectors
+	if err := r.version(object); err != nil {
+		return v, err
+	}
+	var err error
+	if v.Cases, err = vectorCases(r, object, "cases", func(c map[string]any, location, id string) (planCase, error) {
+		p := planCase{ID: id}
+		var err error
+		if p.Source, err = r.nullableLines(c, location, "source"); err != nil {
+			return p, err
+		}
+		if p.Plan, err = r.linesField(c, location, "plan"); err != nil {
+			return p, err
+		}
+		if p.Changes, err = r.triples(c, location, "changes"); err != nil {
+			return p, err
+		}
+		p.Statements, err = r.linesMap(c, location, "statements")
+		return p, err
+	}); err != nil {
+		return v, err
+	}
+	if v.Invalid, err = vectorCases(r, object, "invalid", func(c map[string]any, location, id string) (planInvalidCase, error) {
+		p := planInvalidCase{ID: id}
+		var err error
+		if p.Source, err = r.nullableLines(c, location, "source"); err != nil {
+			return p, err
+		}
+		if p.Plan, err = r.linesField(c, location, "plan"); err != nil {
+			return p, err
+		}
+		p.Errors, err = r.linesField(c, location, "errors")
+		return p, err
+	}); err != nil {
+		return v, err
+	}
+	if v.Chains, err = vectorCases(r, object, "chains", func(c map[string]any, location, id string) (planChainCase, error) {
+		p := planChainCase{ID: id}
+		items, err := r.arrayField(c, location, "plans")
+		if err != nil {
+			return p, err
+		}
+		for i, item := range items {
+			lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "plans"), i))
+			if err != nil {
+				return p, err
+			}
+			p.Plans = append(p.Plans, lines)
+		}
+		_, hasOrder := c["order"]
+		_, hasErrors := c["errors"]
+		switch {
+		case hasOrder == hasErrors:
+			return p, r.fail(location, "has neither or both of order and errors")
+		case hasOrder:
+			p.Order, err = r.linesField(c, location, "order")
+		default:
+			p.Errors, err = r.linesField(c, location, "errors")
+		}
+		return p, err
+	}); err != nil {
+		return v, err
+	}
+	if v.Parse, err = vectorCases(r, object, "parse", func(c map[string]any, location, id string) (planParseCase, error) {
+		p := planParseCase{ID: id}
+		var err error
+		if p.Plan, err = r.linesField(c, location, "plan"); err != nil {
+			return p, err
+		}
+		p.Errors, err = r.diagnostics(c, location, "errors", 4)
+		return p, err
+	}); err != nil {
+		return v, err
+	}
+	v.Comparisons, err = vectorCases(r, object, "comparisons", func(c map[string]any, location, id string) (comparisonCase, error) {
+		p := comparisonCase{ID: id}
+		var err error
+		if p.Source, err = r.linesField(c, location, "source"); err != nil {
+			return p, err
+		}
+		if p.Target, err = r.linesField(c, location, "target"); err != nil {
+			return p, err
+		}
+		if p.Differences, err = r.triples(c, location, "differences"); err != nil {
+			return p, err
+		}
+		p.Errors, err = r.diagnostics(c, location, "errors", 4)
+		return p, err
+	})
+	return v, err
 }
 
 // planSourceOf는 plan case의 source schema이고, source가 없으면 빈 schema(nil)이다.

@@ -3,9 +3,7 @@ package dbspec
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,19 +51,7 @@ func applyTestConn(t *testing.T) *sql.Conn {
 
 func applyTestPlans(t *testing.T) []*Plan {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "plans.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		Cases []struct {
-			ID   string   `json:"id"`
-			Plan []string `json:"plan"`
-		} `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
+	v := loadPlanVectors(t)
 	for _, c := range v.Cases {
 		if c.ID == "create-from-empty" {
 			p, diagnostics := ParsePlan(strings.Join(c.Plan, "\n") + "\n")

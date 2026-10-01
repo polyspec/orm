@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.7.6.2: the Go engine tests reject a missing or mistyped dbspec vector field with its file and location, and the dbspec compare harnesses and Makefile blocks are commented in Korean.
+
 - T8.5.7: every client lists every difference between two schema texts as `[kind, table, name]` without a plan, including the type, identity, primary key and column order changes that a plan refuses.
 
 - T17.1: the 15-second graph-test deadline bounds CPU time instead of wall-clock time in Rust (the thread of the case), Go and PHP (the test process), so a loaded shared machine no longer fails it; every case reports both times.

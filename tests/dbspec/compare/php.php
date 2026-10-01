@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-// Prints the PHP dbspec result of every shared case, of the stress document,
-// of the statement vectors, of the plan vectors and of the Mermaid vectors in
-// the line format of tests/dbspec/compare/check.mjs.
+// 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 PHP dbspec
+// 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
 //
 // Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 
@@ -131,8 +130,7 @@ function dbspec_vector_cases(string $path, stdClass $object, string $key, callab
 }
 
 /**
- * Writes the lines with LF, with CRLF when $crlf is true, or with alternating
- * CRLF and LF and no final line end when $mixed is true.
+  * 줄을 LF로, $crlf이면 CRLF로, $mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
  *
  * @param list<string> $lines
  */
@@ -151,7 +149,7 @@ function dbspec_join(array $lines, bool $crlf, bool $mixed): string
     return $text;
 }
 
-/** Prints the diagnostics of $text, or its emission when it has none. @param array<string, string> $set */
+/** $text의 diagnostic을, 없으면 그 emission을 출력한다. @param array<string, string> $set */
 function dbspec_write(string $text, array $set, bool $stress): void
 {
     $result = Orm\Dbspec\Dbspec::parse($text, $set);
@@ -211,7 +209,7 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
 echo "stress\n";
 dbspec_write($stress, [], true);
 
-/** Prints the diagnostics. @param list<Orm\Dbspec\Diagnostic> $diagnostics */
+/** diagnostic을 출력한다. @param list<Orm\Dbspec\Diagnostic> $diagnostics */
 function dbspec_diagnostics(array $diagnostics): void
 {
     foreach ($diagnostics as $d) {
@@ -219,7 +217,7 @@ function dbspec_diagnostics(array $diagnostics): void
     }
 }
 
-/** Prints the hashes and texts of the case's document set, or the diagnostics of a document or of the set. */
+/** case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다. */
 function dbspec_write_manifest(array $case): void
 {
     $names = array_keys($case['documents']);
@@ -260,7 +258,7 @@ foreach ($cases['hashes'] as $case) {
     dbspec_write_manifest($case);
 }
 
-/** Prints the statements of the case's document set in every dialect, or the diagnostics of a document or of the set. */
+/** case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을 출력한다. */
 function dbspec_write_render(array $case): void
 {
     $names = array_keys($case['documents']);
@@ -302,8 +300,8 @@ foreach ($ddl as $case) {
 }
 
 /**
- * Prints diagnostics; a plan or chain diagnostic ends with its message, which
- * every client shares, and a schema diagnostic of the target or source does not.
+  * diagnostic을 출력한다. plan, chain, compare diagnostic은 모든 client가 공유하는
+  * message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
  *
  * @param list<Orm\Dbspec\Diagnostic> $diagnostics
  */
@@ -315,8 +313,7 @@ function dbspec_plan_diagnostics(array $diagnostics): void
 }
 
 /**
- * The source schema of a plan case, null for the empty schema, or false after
- * printing its diagnostics.
+  * plan case의 source schema이고, 빈 schema이면 null, diagnostic을 출력했으면 false다.
  *
  * @param ?list<string> $lines
  */
@@ -333,7 +330,7 @@ function dbspec_plan_source(?array $lines): Orm\Dbspec\Document|null|false
     return $result->document;
 }
 
-/** Prints the changes as "| kind table name". @param list<Orm\Dbspec\Change> $changes */
+/** change를 "| kind table name"으로 출력한다. @param list<Orm\Dbspec\Change> $changes */
 function dbspec_changes(array $changes): void
 {
     foreach ($changes as $c) {
@@ -341,7 +338,7 @@ function dbspec_changes(array $changes): void
     }
 }
 
-/** Prints the lines of an emitted plan. */
+/** emit한 plan의 줄을 출력한다. */
 function dbspec_emitted_plan(Orm\Dbspec\Plan $plan): void
 {
     foreach (explode("\n", Orm\Dbspec\Dbspec::emitPlan($plan)) as $line) {
@@ -462,7 +459,7 @@ foreach ($plans['comparisons'] as $case) {
     }
 }
 
-/** Prints what an export or import left out as "= kind<TAB>table<TAB>name"; reasons are not compared. @param list<Orm\Dbspec\Unsupported> $dropped */
+/** export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력하며 이유는 비교하지 않는다. @param list<Orm\Dbspec\Unsupported> $dropped */
 function dbspec_dropped(array $dropped): void
 {
     foreach ($dropped as $u) {
@@ -470,7 +467,7 @@ function dbspec_dropped(array $dropped): void
     }
 }
 
-/** Prints the Mermaid text and the dropped objects of a document and returns the text. */
+/** 문서의 Mermaid text와 빠진 객체를 출력하고 text를 돌려준다. */
 function dbspec_export(Orm\Dbspec\Document $document): string
 {
     $result = Orm\Dbspec\Dbspec::exportMermaid($document);
@@ -481,7 +478,7 @@ function dbspec_export(Orm\Dbspec\Document $document): string
     return $result->text;
 }
 
-/** Prints the emitted document and the dropped objects of an import, or its diagnostics. */
+/** import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다. */
 function dbspec_import(string $text): void
 {
     $result = Orm\Dbspec\Dbspec::importMermaid($text, 'imported');

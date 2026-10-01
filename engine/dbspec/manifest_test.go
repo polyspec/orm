@@ -8,20 +8,18 @@ import (
 	"time"
 )
 
-// hashCase is one `hashes` case of tests/dbspec/cases.json: every listed
-// document is parsed against the others, and the document set has the listed
-// manifest and schema texts and hashes.
+// hashCase는 tests/dbspec/cases.json의 `hashes` case 하나다. 나열한 각 문서를 나머지 문서에
+// 대해 parse하고, 문서 집합은 나열한 manifest text, schema text와 hash를 가진다.
 type hashCase struct {
-	ID           string              `json:"id"`
-	Documents    map[string][]string `json:"documents"`
-	ManifestText []string            `json:"manifestText"`
-	SchemaText   []string            `json:"schemaText"`
-	ManifestHash string              `json:"manifestHash"`
-	SchemaHash   string              `json:"schemaHash"`
+	ID           string
+	Documents    map[string][]string
+	ManifestText []string
+	SchemaText   []string
+	ManifestHash string
+	SchemaHash   string
 }
 
-// parseSet parses every document of the case against the others, in
-// document name order.
+// parseSet은 case의 모든 문서를 나머지 문서에 대해 문서 이름 순으로 parse한다.
 func (c hashCase) parseSet() ([]*Document, error) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
@@ -77,7 +75,7 @@ func TestManifestVectors(t *testing.T) {
 				if err := expectManifest(c, documents); err != nil {
 					return err
 				}
-				// The set is ordered by document name, not by the order given.
+				// 집합은 주어진 순서가 아니라 문서 이름 순으로 정렬된다.
 				slices.Reverse(documents)
 				return expectManifest(c, documents)
 			})
@@ -105,14 +103,13 @@ func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 	})
 }
 
-// setCase is one `sets` case of tests/dbspec/cases.json: the listed
-// documents form the set, each parsed against the other listed documents and
-// the parsing documents.
+// setCase는 tests/dbspec/cases.json의 `sets` case 하나다. 나열한 문서가 집합을 이루며, 각
+// 문서는 나열한 다른 문서와 parsing 문서에 대해 parse한다.
 type setCase struct {
-	ID        string              `json:"id"`
-	Documents [][]string          `json:"documents"`
-	Parsing   map[string][]string `json:"parsing"`
-	Errors    []vectorError       `json:"errors"`
+	ID        string
+	Documents [][]string
+	Parsing   map[string][]string
+	Errors    []vectorError
 }
 
 func expectSetErrors(want []vectorError, got []Diagnostic) error {

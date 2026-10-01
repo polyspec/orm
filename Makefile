@@ -70,122 +70,114 @@ physical-check-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 
-# dbspec-rust-check runs the shared dbspec vectors, the Rust rule cases,
-# the plan and Mermaid cases and the apply cleanup errors injected through a
-# wrapped SQLite connection twice, then measures the stress document of
-# tests/dbspec/stress.mjs in
-# release mode twice: parse within 300 ms, emit(parse(doc)) == doc and two
-# equal emissions.
+# dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
+# connection으로 주입한 apply 정리 error를 두 번 실행하고, tests/dbspec/stress.mjs의 stress
+# 문서를 release mode에서 두 번 잰다: parse는 300 ms 안, emit(parse(doc)) == doc, 두
+# emission이 같다.
 DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbspec
 .PHONY: dbspec-rust-check
-# dbspec-ddl-check applies every vector of tests/dbspec/ddl.json to MySQL,
-# PostgreSQL and SQLite of TEST_ENV and runs its behavior steps, and applies
-# the rendered statements of every schema/*.dbspec and contracts/fixtures/*.dbspec.
+# dbspec-ddl-check는 tests/dbspec/ddl.json의 모든 vector를 TEST_ENV의 MySQL, PostgreSQL,
+# SQLite에 적용해 behavior step을 실행하고, 모든 schema/*.dbspec과 contracts/fixtures/*.dbspec의
+# 렌더링한 statement를 적용한다.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1 -timeout 10m -v
 
-# dbspec-introspect-check renders and applies tests/dbspec/ddl.json and every
-# schema document on MySQL, PostgreSQL and SQLite, introspects each database
-# and requires the source schema text, and runs tests/dbspec/introspect.json.
+# dbspec-introspect-check는 tests/dbspec/ddl.json과 모든 schema 문서를 MySQL, PostgreSQL,
+# SQLite에 렌더링해 적용하고, 각 database를 introspect해 source schema text를 요구하며,
+# tests/dbspec/introspect.json을 실행한다.
 .PHONY: dbspec-introspect-check
 dbspec-introspect-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1 -timeout 10m -v
 
-# dbspec-introspect-ts-check builds the TypeScript client and runs the round
-# trips and the unsupported cases of dbspec-introspect-check through its
-# introspectDbspec on MySQL, PostgreSQL and SQLite.
+# dbspec-introspect-ts-check는 TypeScript client를 build하고 dbspec-introspect-check의 round
+# trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-introspect-ts-check
 dbspec-introspect-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-introspect.mjs
 
-# dbspec-introspect-php-check runs the same round trips and unsupported cases
-# through the PHP client's Orm\Dbspec\Dbspec::introspect.
+# dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
+# Orm\Dbspec\Dbspec::introspect로 실행한다.
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_introspect_test.php
 	php clients/php/tests/dbspec_introspect_stress_test.php
 
-# dbspec-introspect-rust-check runs the same round trips and the cases of
-# tests/dbspec/introspect.json through orm::dbspec::introspect of the Rust
-# client and asserts 8, 7 and 3 catalog queries for every set.
+# dbspec-introspect-rust-check는 같은 round trip과 tests/dbspec/introspect.json의 case를 Rust
+# client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_introspect -- --nocapture
 
-# dbspec-plan-check applies every case of tests/dbspec/plans.json to MySQL,
-# PostgreSQL and SQLite and requires the introspected schema text to equal the
-# plan's target (docs/plans.md "Verification").
+# dbspec-plan-check는 tests/dbspec/plans.json의 모든 case를 MySQL, PostgreSQL, SQLite에
+# 적용하고 introspect한 schema text가 plan의 target과 같기를 요구한다(docs/plans.md
+# "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1 -timeout 10m -v
 
-# dbspec-apply-check applies a plan chain to MySQL, PostgreSQL and SQLite with
-# history, a second apply, drift, the lock, rollback, an unlock that released
-# nothing, verification and MySQL recovery (docs/plans.md "Apply").
+# dbspec-apply-check는 plan chain을 MySQL, PostgreSQL, SQLite에 history, 두 번째 apply, drift,
+# lock, rollback, 아무것도 풀지 않은 unlock, 검증, MySQL recovery와 함께 적용한다
+# (docs/plans.md "Apply").
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1 -timeout 10m -v
 
-# dbspec-apply-pairs-check builds the TypeScript client and the Rust apply
-# runner, then, for every ordered pair of the Go, PHP, TypeScript and Rust
-# runners of tests/dbspec/apply, applies the first plan of the chain with one
-# client and the rest with the other on MySQL, PostgreSQL and SQLite, and
-# finishes on MySQL with the second client a plan the first one stopped; the
-# history rows and the introspected schema text must equal the chain's.
+# dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
+# tests/dbspec/apply의 Go, PHP, TypeScript, Rust runner의 모든 순서쌍마다 MySQL, PostgreSQL,
+# SQLite에서 chain의 첫 plan을 한 client로, 나머지를 다른 client로 적용하며, MySQL에서는 첫
+# client가 멈춘 plan을 둘째 client가 마친다. history row와 introspect한 schema text가 chain의
+# 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply go test -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1 -timeout 10m -v
 
-# dbspec-apply-rust-check applies the same chain scenarios through
-# orm::dbspec::apply and orm::dbspec::recover of the Rust client.
+# dbspec-apply-rust-check는 같은 chain scenario를 Rust client의 orm::dbspec::apply와
+# orm::dbspec::recover로 적용한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply -- --nocapture
 
-# dbspec-plan-ts-check builds the TypeScript client and applies every case of
-# tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite through its
-# renderDbspec, planStatements and introspectDbspec.
+# dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
+# 그 renderDbspec, planStatements, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
 .PHONY: dbspec-plan-ts-check
 dbspec-plan-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-plan-physical.mjs
 
-# dbspec-apply-ts-check builds the TypeScript client and applies the plan
-# chain of dbspec-apply-check through its applyPlans and recoverPlans with the
-# same history, drift, lock, rollback, verification and MySQL recovery runs.
+# dbspec-apply-ts-check는 TypeScript client를 build하고 dbspec-apply-check의 plan chain을 그
+# applyPlans와 recoverPlans로 같은 history, drift, lock, rollback, 검증, MySQL recovery run과
+# 함께 적용한다.
 .PHONY: dbspec-apply-ts-check
 dbspec-apply-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-apply-physical.mjs
 
-# dbspec-plan-rust-check applies the same cases through the plan statements,
-# the renderer and orm::dbspec::introspect of the Rust client.
+# dbspec-plan-rust-check는 같은 case를 Rust client의 plan statement, renderer,
+# orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_plan_apply -- --nocapture
 
-# dbspec-plan-php-check applies the same cases through the PHP client's
-# Orm\Dbspec\Dbspec::planStatements and Dbspec::introspect.
+# dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planStatements와
+# Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_plan_apply_test.php
 
-# dbspec-apply-php-check runs the scenarios of dbspec-apply-check through the
-# PHP client's Orm\Dbspec\Dbspec::apply and Dbspec::recover on MySQL,
-# PostgreSQL and SQLite.
+# dbspec-apply-php-check는 dbspec-apply-check의 scenario를 PHP client의
+# Orm\Dbspec\Dbspec::apply와 Dbspec::recover로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php
 
-# dbspec-introspect-compare-check applies the 2000-table stress document to
-# MySQL, PostgreSQL and SQLite, runs the Go, PHP, TypeScript and Rust
-# introspection runners of tests/dbspec/introspect on each database, and
-# requires equal outputs, the source schema text, no unsupported object and
-# each introspection within its budget.
+# dbspec-introspect-compare-check는 2000 table stress 문서를 MySQL, PostgreSQL, SQLite에
+# 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust introspection
+# runner를 실행해 같은 출력, source schema text, 미지원 객체 없음, 각 introspection의 budget
+# 준수를 요구한다.
 .PHONY: dbspec-introspect-compare-check
 dbspec-introspect-compare-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
@@ -194,13 +186,11 @@ dbspec-introspect-compare-check:
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
 	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect go test -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1 -timeout 30m -v
 
-# dbspec-compare-check runs the Go, PHP, TypeScript and Rust dbspec runners
-# twice each on tests/dbspec/cases.json, the stress document,
-# tests/dbspec/ddl.json, tests/dbspec/plans.json and tests/dbspec/mermaid.json
-# and fails on the first case whose output differs between any two runs.
-# Before that every runner must reject vectors with a section or a field
-# removed or mistyped with a located error, and the compare, apply and Rust
-# stress runners must reject a missing or directory input with its path.
+# dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
+# stress 문서, tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
+# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. 그 전에 모든 runner가
+# section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
+# apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다.
 .PHONY: dbspec-compare-check
 dbspec-compare-check:
 	node --test tests/dbspec/compare/check.test.mjs
@@ -266,13 +256,10 @@ physical-document-limits-check: physical-document-php-limits-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
 
 .PHONY: dbspec-php-check
-# dbspec-php-check runs the shared dbspec vectors, the focused PHP rules, the
-# statement vectors of tests/dbspec/ddl.json, the plan vectors of
-# tests/dbspec/plans.json, the Mermaid vectors of tests/dbspec/mermaid.json,
-# the apply cleanup errors injected through a wrapped SQLite connection
-# and the stress document of tests/dbspec/stress.mjs
-# twice each; the stress test prints its parse and
-# emit times and peak memory.
+# dbspec-php-check는 공유 dbspec vector, PHP rule, tests/dbspec/ddl.json의 statement vector,
+# tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
+# connection으로 주입한 apply 정리 error, tests/dbspec/stress.mjs의 stress 문서를 각각 두 번
+# 실행한다. stress test는 parse와 emit 시간, 최대 memory를 출력한다.
 dbspec-php-check:
 	php clients/php/tests/dbspec_test.php
 	php clients/php/tests/dbspec_test.php
@@ -448,10 +435,9 @@ ts-check:
 ts-min-check:
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
-# dbspec-ts-check builds the TypeScript client, runs the shared dbspec
-# vectors, the plan vectors, the Mermaid vectors, the apply cleanup errors
-# and the rules they do not cover yet, then parses and emits the stress document of
-# tests/dbspec/stress.mjs twice, printing both timings.
+# dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, plan vector, Mermaid
+# vector, apply 정리 error, 그것들이 아직 다루지 않는 rule을 실행한 뒤, tests/dbspec/stress.mjs의
+# stress 문서를 두 번 parse하고 emit하며 두 시간을 출력한다.
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
@@ -463,12 +449,13 @@ schema-check:
 	npm run schema:check
 	go run ./tests/schema/record -check
 
-# dbspec-go-check runs the Go dbspec parser on the shared vectors of
-# tests/dbspec/cases.json, its own rule cases, and the stress document that
-# node tests/dbspec/stress.mjs writes, and logs the parse and emit times.
+# dbspec-go-check는 Go dbspec engine으로 tests/dbspec/cases.json의 공유 vector, 자기 rule case,
+# node tests/dbspec/stress.mjs가 쓰는 stress 문서, manifest, statement, plan, comparison,
+# Mermaid vector, apply 정리 error, case harness를 실행하고, 모든 vector file의 빠지거나 type이
+# 틀린 field를 위치와 함께 거부하는지 확인하며, parse와 emit 시간을 기록한다.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
+	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
 
 schema-cross-language-check:
 	./scripts/schema/cross-language-check.sh
