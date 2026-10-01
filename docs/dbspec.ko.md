@@ -205,7 +205,7 @@ table service_history {
 manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합의 parse된 문서를 받는다. 집합은 각 문서를 한 번씩, 그리고 그 문서들이 쓰는 모든 문서를 담는다. 반복된 문서 이름은 `name.duplicate` diagnostic, 집합에 없는 쓰이는 문서는 `use` diagnostic이며, 둘 다 뒤쪽 문서나 쓰는 문서의 header 이름(1줄 10열)에 위치하고 message에 문서 이름을 담는다. 문서는 이름 순으로, 한 문서가 쓰는 이름도 이름 순으로 확인한다. diagnostic이 있는 집합에는 manifest도 statement도 없다.
 
 - 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
-- **schema text**는 manifest text에서 `immutable`과 `audit`을 뺀 모든 setting을 지운 것이다. 비게 된 `settings` block은 canonical form처럼 쓰지 않는다.
+- **schema text**는 집합의 모든 table을 table 이름 순으로 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지운다. 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄, comment, diagram이 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
 - `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
 
 생성 코드는 자신을 만든 문서 집합의 manifest text와 `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.

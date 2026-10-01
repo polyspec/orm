@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.6.1.2: `schemaHash` is taken over one document `schema` with the tables of the set in name order, so it changes only when a table changes.
+
 - T8.4: MySQL, PostgreSQL and SQLite introspect into dbspec in every client.
 
 - T8.4.6: the four clients introspect the 2000-table stress database to the same document on MySQL, PostgreSQL and SQLite within 5 seconds each.

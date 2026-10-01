@@ -3873,7 +3873,7 @@
         "}"
       ],
       "schemaText": [
-        "dbspec 1 shop",
+        "dbspec 1 schema",
         "",
         "table users {",
         "  id i64 identity",
@@ -3887,7 +3887,7 @@
         "}"
       ],
       "manifestHash": "sha256:12ce8622c5edf4718d8b93613ff0a0272022d6add42f1cd39ebc200c7d8f3aa7",
-      "schemaHash": "sha256:7bcbc977530d7fef6f70fec344c6cb51ecbe03c05ebf7389d29c74220d66e611"
+      "schemaHash": "sha256:9d0085b4842e7e857c7f1017798d7ca0384890561a9e00402ca039f36e286d55"
     },
     {
       "id": "audit-kept-in-schema",
@@ -3950,7 +3950,7 @@
         "}"
       ],
       "schemaText": [
-        "dbspec 1 shop",
+        "dbspec 1 schema",
         "",
         "table service {",
         "  id i64 identity",
@@ -3977,7 +3977,7 @@
         "}"
       ],
       "manifestHash": "sha256:c939667265fc8c9ad1f888026d20d23b56c4b55fc4d741fe6d1d0af984fa0c26",
-      "schemaHash": "sha256:7e18476f488d3d4faa4ebfb81c6f5e57927e8a1994550a647e5b0d47ad941b1c"
+      "schemaHash": "sha256:bcd63cfcf1d016672aabd58c8e7da78942472072b3c6d672f1c1d6019576d1e1"
     },
     {
       "id": "document-set-in-name-order",
@@ -4030,15 +4030,51 @@
         "}"
       ],
       "schemaText": [
-        "dbspec 1 core",
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:3baef9cbcd47dde7ab5812ef63385c74d230df2086c895d40a66b00929321ef0",
+      "schemaHash": "sha256:9d2367df806c4aba30bbb9939b1eae2e84f95dec1b2ba65c63d9d65aea14f140"
+    },
+    {
+      "id": "same-tables-in-one-document",
+      "documents": {
+        "store": [
+          "dbspec 1 store",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 store",
         "",
         "table users {",
         "  id i64 identity",
         "  primary key (id)",
         "}",
-        "dbspec 1 shop",
-        "",
-        "use core { users }",
         "",
         "table orders {",
         "  id i64 identity",
@@ -4048,8 +4084,24 @@
         "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
         "}"
       ],
-      "manifestHash": "sha256:3baef9cbcd47dde7ab5812ef63385c74d230df2086c895d40a66b00929321ef0",
-      "schemaHash": "sha256:b0f6f70bfaa4c19cb0b570b74d138b0d5f032eaa05e0319e44700ca2e7d29460"
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:a1c2006b964f3f3694899b5cbdb3903b905283340de3216e6f572d13e320745c",
+      "schemaHash": "sha256:9d2367df806c4aba30bbb9939b1eae2e84f95dec1b2ba65c63d9d65aea14f140"
     }
   ],
   "sets": [

@@ -146,16 +146,21 @@ func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
-	var manifest, schema strings.Builder
+	var manifest strings.Builder
+	schema := &Document{Name: "schema"}
 	for _, d := range ordered {
 		manifest.WriteString(emitDocument(d, viewManifest))
-		schema.WriteString(emitDocument(d, viewSchema))
+		schema.Tables = append(schema.Tables, d.Tables...)
 	}
+	// schema text는 집합의 모든 table을 이름 순으로 담은 문서 schema 하나이므로
+	// 문서를 나누는 방식과 무관하다.
+	slices.SortStableFunc(schema.Tables, func(a, b Table) int { return cmp.Compare(a.Name, b.Name) })
+	schemaText := emitDocument(schema, viewSchema)
 	return &Manifest{
 		ManifestText: manifest.String(),
-		SchemaText:   schema.String(),
+		SchemaText:   schemaText,
 		ManifestHash: textHash(manifest.String()),
-		SchemaHash:   textHash(schema.String()),
+		SchemaHash:   textHash(schemaText),
 	}, nil
 }
 

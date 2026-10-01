@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.2.6.1.2: `schemaHash`는 집합의 table을 이름 순으로 담은 문서 `schema` 하나로 계산하므로 table이 바뀔 때만 바뀐다.
+
 - T8.4: 모든 client에서 MySQL, PostgreSQL, SQLite를 dbspec으로 introspect한다.
 
 - T8.4.6: 네 client는 MySQL, PostgreSQL, SQLite에서 2000 table stress database를 각각 5초 안에 같은 문서로 introspect한다.
