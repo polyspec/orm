@@ -190,12 +190,12 @@ impl Scanner<'_> {
         match expression {
             Expr::MethodCall(call) => {
                 let name = call.method.unraw().to_string();
-                self.model_of(&call.receiver).is_some_and(|model|
-                    self.fallible_setters.contains(&(model, name.clone())))
+                self.model_of(&call.receiver).is_some_and(|model| self.fallible_setters.contains(&(model, name.clone())))
                     || (matches!(name.as_str(), "map_err" | "map") && self.result_of(&call.receiver))
             }
-            Expr::Path(path) if path.path.segments.len() == 1 => self.lookup(
-                &path.path.segments[0].ident.unraw().to_string()).is_some_and(|binding| binding.result),
+            Expr::Path(path) if path.path.segments.len() == 1 => {
+                self.lookup(&path.path.segments[0].ident.unraw().to_string()).is_some_and(|binding| binding.result)
+            }
             Expr::Reference(reference) => self.result_of(&reference.expr),
             Expr::Paren(paren) => self.result_of(&paren.expr),
             Expr::Group(group) => self.result_of(&group.expr),

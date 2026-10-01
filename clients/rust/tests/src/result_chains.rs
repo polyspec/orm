@@ -2,19 +2,16 @@ use super::Author;
 use orm::StyledValue;
 
 fn tags() -> orm::ordered_json::Value {
-    orm::ordered_json::Value::array(&[orm::ordered_json::Value::string("fixture")])
-        .expect("fixture array")
+    orm::ordered_json::Value::array(&[orm::ordered_json::Value::string("fixture")]).expect("fixture array")
 }
 
 fn mapped() -> Result<Author, std::io::Error> {
-    let row = Author::new().set_jsons_tags(StyledValue::Value(tags()))
-        .map_err(std::io::Error::other)?;
+    let row = Author::new().set_jsons_tags(StyledValue::Value(tags())).map_err(std::io::Error::other)?;
     Ok(row)
 }
 
 fn wrapped() -> Result<Option<Author>, std::io::Error> {
-    Author::new().set_jsons_tags(StyledValue::Value(tags()))
-        .map_err(std::io::Error::other).map(Some)
+    Author::new().set_jsons_tags(StyledValue::Value(tags())).map_err(std::io::Error::other).map(Some)
 }
 
 #[test]

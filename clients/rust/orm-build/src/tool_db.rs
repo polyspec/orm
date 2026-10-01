@@ -2,25 +2,25 @@
 //! values, and statements run as written.
 
 use sqlx::pool::PoolConnection;
-use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, Sqlite, SqlSafeStr, Statement, TypeInfo, ValueRef};
+use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, SqlSafeStr, Sqlite, Statement, TypeInfo, ValueRef};
 
-use orm::db::Pool;
 use futures_util::TryStreamExt;
-mod limits;
-mod result;
-mod grid;
-mod params;
+use orm::db::Pool;
 mod binds;
-pub use params::{P,ParamType};
+mod grid;
+mod limits;
+mod params;
+mod result;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
+pub use params::{ParamType, P};
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
     params::validate(values, dialect)
 }
-pub(crate) fn validate_param_refs<'a>(values:impl Iterator<Item=&'a P>,dialect:&str)->Result<(),sqlx::Error>{
-    params::validate_refs(values,dialect)
+pub(crate) fn validate_param_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &str) -> Result<(), sqlx::Error> {
+    params::validate_refs(values, dialect)
 }
 
 /// A column value as the tools read it.
@@ -84,15 +84,11 @@ pub fn s(v: &str) -> P {
 pub type Rows = Vec<Vec<Val>>;
 
 fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
-    value.map(String::from_utf8).transpose()
-        .map(|value| value.map_or(Val::Null, Val::Text))
-        .map_err(|error| sqlx::Error::Decode(Box::new(error)))
+    value.map(String::from_utf8).transpose().map(|value| value.map_or(Val::Null, Val::Text)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
 }
 
 fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
-    value.map(i64::try_from).transpose()
-        .map(|value| value.map_or(Val::Null, Val::Int))
-        .map_err(|error| sqlx::Error::Decode(Box::new(error)))
+    value.map(i64::try_from).transpose().map(|value| value.map_or(Val::Null, Val::Int)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
 }
 
 macro_rules! cell {
@@ -175,26 +171,42 @@ macro_rules! grid_cell {
         } else { $decoder!(row, i).map(GridCell::from) }
     }};
 }
-macro_rules! grid_mysql { ($row:expr, $i:expr) => {{
-    let (row,i)=($row,$i);
-    if matches!(row.columns()[i].type_info().name(), "DECIMAL"|"DECIMAL UNSIGNED") {
-        row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(GridCell::Null,|value|GridCell::Decimal(value.to_plain_string())))
-    }else if matches!(row.columns()[i].type_info().name(), "TINYINT UNSIGNED"|"SMALLINT UNSIGNED"|"MEDIUMINT UNSIGNED"|"INT UNSIGNED"|"BIGINT UNSIGNED") {
-        row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
-    } else { grid_cell!(row, i, cell, "BINARY"|"VARBINARY"|"TINYBLOB"|"BLOB"|"MEDIUMBLOB"|"LONGBLOB") }
-}}; }
-macro_rules! grid_pg { ($row:expr, $i:expr) => {{
-    let(row,i)=($row,$i);
-    if row.columns()[i].type_info().name()=="NUMERIC" {grid::postgres_decimal(row,i)}
-    else{grid_cell!(row,i,cell_pg,"BYTEA")}
-}}; }
-macro_rules! grid_sqlite { ($row:expr, $i:expr) => { grid_cell!($row, $i, cell, "BLOB") }; }
+macro_rules! grid_mysql {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        if matches!(row.columns()[i].type_info().name(), "DECIMAL" | "DECIMAL UNSIGNED") {
+            row.try_get::<Option<bigdecimal::BigDecimal>, _>(i).map(|value| value.map_or(GridCell::Null, |value| GridCell::Decimal(value.to_plain_string())))
+        } else if matches!(
+            row.columns()[i].type_info().name(),
+            "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED"
+        ) {
+            row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
+        } else {
+            grid_cell!(row, i, cell, "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB")
+        }
+    }};
+}
+macro_rules! grid_pg {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        if row.columns()[i].type_info().name() == "NUMERIC" {
+            grid::postgres_decimal(row, i)
+        } else {
+            grid_cell!(row, i, cell_pg, "BYTEA")
+        }
+    }};
+}
+macro_rules! grid_sqlite {
+    ($row:expr, $i:expr) => {
+        grid_cell!($row, $i, cell, "BLOB")
+    };
+}
 
 macro_rules! fetch_result {
     ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
-        let statement = prepare_query!($conn,$sql,$params,$bind);
+        let statement = prepare_query!($conn, $sql, $params, $bind);
         let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
-        let q = binds::$bind(statement.query(),$params)?;
+        let q = binds::$bind(statement.query(), $params)?;
         let mut stream = q.fetch(&mut **$conn);
         let mut rows = Vec::new();
         while let Some(row) = stream.try_next().await? {
@@ -208,12 +220,16 @@ macro_rules! fetch_result {
 }
 
 macro_rules! prepare_query {
-    ($conn:expr,$sql:expr,$params:expr,postgres)=>{{
-        let types=binds::postgres_types($params)?;
-        (&mut **$conn).prepare_with($sql.into_sql_str(),&types).await?
+    ($conn:expr,$sql:expr,$params:expr,postgres) => {{
+        let types = binds::postgres_types($params)?;
+        (&mut **$conn).prepare_with($sql.into_sql_str(), &types).await?
     }};
-    ($conn:expr,$sql:expr,$params:expr,mysql)=>{(&mut **$conn).prepare($sql.into_sql_str()).await?};
-    ($conn:expr,$sql:expr,$params:expr,sqlite)=>{(&mut **$conn).prepare($sql.into_sql_str()).await?};
+    ($conn:expr,$sql:expr,$params:expr,mysql) => {
+        (&mut **$conn).prepare($sql.into_sql_str()).await?
+    };
+    ($conn:expr,$sql:expr,$params:expr,sqlite) => {
+        (&mut **$conn).prepare($sql.into_sql_str()).await?
+    };
 }
 
 /// One reserved connection of a pool.
@@ -239,11 +255,22 @@ impl Conn {
         Ok((result.rows_affected(), result.last_insert_id()))
     }
     fn validate_params(&self, values: &[P]) -> Result<(), sqlx::Error> {
-        params::validate(values,match self {Self::MySql(_)=>"mysql",Self::Postgres(_)=>"postgres",Self::Sqlite(_)=>"sqlite"})
+        params::validate(
+            values,
+            match self {
+                Self::MySql(_) => "mysql",
+                Self::Postgres(_) => "postgres",
+                Self::Sqlite(_) => "sqlite",
+            },
+        )
     }
     /// Never return a scope-modified connection to the pool, including cancellation.
     pub(crate) fn discard_on_drop(&mut self) {
-        match self { Self::MySql(c)=>c.close_on_drop(),Self::Postgres(c)=>c.close_on_drop(),Self::Sqlite(c)=>c.close_on_drop() }
+        match self {
+            Self::MySql(c) => c.close_on_drop(),
+            Self::Postgres(c) => c.close_on_drop(),
+            Self::Sqlite(c) => c.close_on_drop(),
+        }
     }
     pub async fn acquire(pool: &Pool) -> Result<Conn, sqlx::Error> {
         Ok(match pool {
@@ -261,7 +288,7 @@ impl Conn {
         macro_rules! run {
             ($conn:expr,$bind:ident) => {{
                 if has_params(params) {
-                    let q = binds::$bind(sqlx::query(sql),params)?;
+                    let q = binds::$bind(sqlx::query(sql), params)?;
                     q.execute(&mut **$conn).await?.rows_affected()
                 } else {
                     sqlx::raw_sql(sql).execute(&mut **$conn).await?.rows_affected()
@@ -269,9 +296,9 @@ impl Conn {
             }};
         }
         Ok(match self {
-            Conn::MySql(c) => run!(c,mysql),
-            Conn::Postgres(c) => run!(c,postgres),
-            Conn::Sqlite(c) => run!(c,sqlite),
+            Conn::MySql(c) => run!(c, mysql),
+            Conn::Postgres(c) => run!(c, postgres),
+            Conn::Sqlite(c) => run!(c, sqlite),
         })
     }
 
@@ -294,9 +321,9 @@ impl Conn {
         }
         let sql = AssertSqlSafe(sql.to_owned());
         match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult,mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult,postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult,sqlite),
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, sqlite),
         }
     }
 
@@ -309,9 +336,9 @@ impl Conn {
         }
         let sql = AssertSqlSafe(sql.to_owned());
         match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult,mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult,postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult,sqlite),
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult, sqlite),
         }
     }
 }

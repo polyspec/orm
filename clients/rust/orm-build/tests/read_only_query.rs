@@ -24,7 +24,10 @@ async fn check() {
         };
         let (database, mut seed, _) = tool_db::open(&dsn).await.unwrap();
         for id in &cleanup_ids {
-            assert!(std::fs::symlink_metadata(std::env::temp_dir().join(format!("orm-query-readonly-{id}.sqlite"))).unwrap().is_file(), "cleanup requires an identified owned SQLite fixture, not a symlink");
+            assert!(
+                std::fs::symlink_metadata(std::env::temp_dir().join(format!("orm-query-readonly-{id}.sqlite"))).unwrap().is_file(),
+                "cleanup requires an identified owned SQLite fixture, not a symlink"
+            );
             seed.exec(&format!("DROP TABLE IF EXISTS orm_readonly_query_{id}"), &[]).await.unwrap();
             if dialect == "mysql" {
                 seed.exec(&format!("DROP FUNCTION IF EXISTS orm_readonly_function_{id}"), &[]).await.unwrap();

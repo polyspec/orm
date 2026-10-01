@@ -3,8 +3,8 @@ use orm_build::{
     tool_db::{self, P},
 };
 use std::sync::{
-    Arc, Mutex,
     atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc, Mutex,
 };
 
 #[tokio::test]
@@ -42,12 +42,10 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
                 counted.fetch_add(1, Ordering::SeqCst);
                 Err("fixture durable intent rejected".into())
             });
-            assert!(
-                catalog
-                    .update_row(&baseline, &[("missing".into(), P::I(11))], Arc::new(AtomicBool::new(false)), publish.clone(), reject.clone())
-                    .await
-                    .is_err()
-            );
+            assert!(catalog
+                .update_row(&baseline, &[("missing".into(), P::I(11))], Arc::new(AtomicBool::new(false)), publish.clone(), reject.clone())
+                .await
+                .is_err());
             assert_eq!(calls.load(Ordering::SeqCst), 0, "invalid changes cannot reach commit permission");
             for operation in 0..3 {
                 phases.lock().unwrap().clear();

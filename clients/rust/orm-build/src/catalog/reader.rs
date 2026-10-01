@@ -218,7 +218,14 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
         }
         let mut c = Column {
             name: r[1].text(),
-            typ: live::pg_type_text(&r[2].text(), &r[7].text(), r[3].opt_int().map_err(err)?, r[4].opt_int().map_err(err)?, r[5].opt_int().map_err(err)?, r[6].opt_int().map_err(err)?),
+            typ: live::pg_type_text(
+                &r[2].text(),
+                &r[7].text(),
+                r[3].opt_int().map_err(err)?,
+                r[4].opt_int().map_err(err)?,
+                r[5].opt_int().map_err(err)?,
+                r[6].opt_int().map_err(err)?,
+            ),
             nullable: r[8].text() == "YES",
             comment: r[11].text(),
             default: NO_DEFAULT.into(),

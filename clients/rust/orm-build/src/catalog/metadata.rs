@@ -115,7 +115,10 @@ pub(super) async fn describe(connection: &mut Conn, dialect: &str, table: &Table
             nullable: row[2].bool().map_err(|e| e.to_string())?,
             generated: row[3].bool().map_err(|e| e.to_string())?,
             automatic_key: row[5].bool().map_err(|e| e.to_string())?,
-            default_expression: match &row[6] { Val::Null => None, value => Some(text(value)?) },
+            default_expression: match &row[6] {
+                Val::Null => None,
+                value => Some(text(value)?),
+            },
             expression_default: row[7].bool().map_err(|e| e.to_string())?,
         };
         if columns.iter().any(|c: &TableColumnMetadata| c.name == column.name) {

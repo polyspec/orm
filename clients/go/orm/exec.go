@@ -171,13 +171,17 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 			}
 			if b.ColType == "decimal" && v != nil {
 				value, ok := v.(string)
-				if !ok { return nil, nil, codecErr(CodeCodecEncode, "decimal bind is %T, expected string", v) }
+				if !ok {
+					return nil, nil, codecErr(CodeCodecEncode, "decimal bind is %T, expected string", v)
+				}
 				if d.driver == "sqlite" {
 					v, err = DecimalScaledInt(value, b.Precision, b.Scale)
 				} else {
 					v, err = NormalizeDecimal(value, b.Precision, b.Scale)
 				}
-				if err != nil { return nil, nil, err }
+				if err != nil {
+					return nil, nil, err
+				}
 			}
 			if b.ColType == "point" && v != nil {
 				p, err := ParsePoint(v)

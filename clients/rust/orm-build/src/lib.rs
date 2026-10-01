@@ -17,16 +17,16 @@
 //! the calls the scanned source makes; an unknown column, operator, or
 //! argument count fails the build.
 
-mod generate;
-pub mod live;
-#[cfg(feature = "live-db")]
-pub mod tool_db;
 #[cfg(feature = "live-db")]
 pub mod catalog;
+mod generate;
+pub mod live;
 mod manifest;
 pub mod migration;
 mod names;
 mod scan;
+#[cfg(feature = "live-db")]
+pub mod tool_db;
 pub use orm_schema::{ddl, schema, triggers};
 
 use std::collections::HashSet;
