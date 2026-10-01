@@ -202,6 +202,8 @@ table service_history {
 
 The declared document set is the only schema source. Generators, schema tools and schema installation read dbspec documents; no other manifest file exists.
 
+The manifest and the [rendered statements](dialects.md#rendered-statements) take the parsed documents of one set. The set holds each document once and every document that its documents use. A document name that repeats is a `name.duplicate` diagnostic and a used document missing from the set is a `use` diagnostic, both at the header name (line 1, column 10) of the later or the using document, with the document named in the message; the documents are checked in name order, and the used names of a document in name order. A set with a diagnostic has no manifest and no statements.
+
 - The **manifest text** of a document is its canonical emission with every comment and every diagram removed. The manifest text of a document set is the manifest texts of its documents in document name order, concatenated; each starts with its header and ends with a line end, so the concatenation is unambiguous.
 - The **schema text** is the manifest text with every setting removed except `immutable` and `audit`; a `settings` block left empty is omitted, as in canonical form.
 - `manifestHash` is `sha256:` followed by the lower-case hexadecimal SHA-256 of the UTF-8 bytes of the manifest text; `schemaHash` is the same over the schema text.

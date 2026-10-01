@@ -254,7 +254,7 @@ Sources: [MySQL implicit commit](https://dev.mysql.com/doc/refman/8.4/en/implici
 
 ## Rendered statements
 
-The renderer turns a dbspec document set into the statements of one dialect. `tests/dbspec/ddl.json` lists the exact statements for every rendered form and is the normative text; this section states the rules behind it. Every vector of that file is applied to MySQL 8.4, PostgreSQL 17 and SQLite by `make dbspec-ddl-check`.
+The renderer turns a dbspec document set into the statements of one dialect; an invalid set returns its diagnostics instead ([manifest and hashes](dbspec.md#manifest-and-hashes)). `tests/dbspec/ddl.json` lists the exact statements for every rendered form and is the normative text; this section states the rules behind it. Every vector of that file is applied to MySQL 8.4, PostgreSQL 17 and SQLite by `make dbspec-ddl-check`.
 
 ### Statements and their order
 

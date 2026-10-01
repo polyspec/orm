@@ -34,33 +34,36 @@ final class Dbspec
     /**
      * The statements that create the tables of the document set in one
      * dialect, `mysql`, `postgres` or `sqlite` (docs/dialects.md "Rendered
-     * statements"). The documents are valid parsed documents of one declared
-     * set; an unknown dialect is an InvalidArgumentException.
+     * statements"), or the diagnostics of the set (docs/dbspec.md "Manifest
+     * and hashes"). An unknown dialect is an InvalidArgumentException.
      *
      * @param list<Document> $documents
-     * @return list<string>
      */
-    public static function render(array $documents, string $dialect): array
+    public static function render(array $documents, string $dialect): RenderResult
     {
-        return Renderer::render($documents, $dialect);
+        if (!in_array($dialect, Renderer::DIALECTS, true)) {
+            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
+        }
+        [, $diagnostics] = DocumentSet::check($documents);
+        return $diagnostics === [] ? RenderResult::valid(Renderer::render($documents, $dialect)) : RenderResult::invalid($diagnostics);
     }
 
     /**
      * The manifest of the document set, whose documents are taken in document
-     * name order. A document name that repeats in the set is a name.duplicate
-     * diagnostic at the header name of the later document.
+     * name order, or the diagnostics of the set (docs/dbspec.md "Manifest and
+     * hashes").
      *
      * @param list<Document> $documents
      */
     public static function manifest(array $documents): ManifestResult
     {
-        usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
+        [$ordered, $diagnostics] = DocumentSet::check($documents);
+        if ($diagnostics !== []) {
+            return ManifestResult::invalid($diagnostics);
+        }
         $manifestText = '';
         $schemaText = '';
-        foreach ($documents as $i => $document) {
-            if ($i > 0 && $documents[$i - 1]->name === $document->name) {
-                return ManifestResult::invalid([new Diagnostic('name.duplicate', 1, strlen('dbspec 1 ') + 1, "document {$document->name} appears twice in the document set")]);
-            }
+        foreach ($ordered as $document) {
             $manifestText .= Emitter::emit($document, View::Manifest);
             $schemaText .= Emitter::emit($document, View::Schema);
         }

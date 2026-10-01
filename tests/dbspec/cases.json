@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, or alternate LF and CRLF starting with CRLF when mixed is true; every case ends with one line end, except a mixed case, whose last line has none. Columns count Unicode code points. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order. hashes cases parse every listed document as the document set; manifestText and schemaText are the lines of the document set texts, each line followed by LF, and the hashes are taken over those texts.",
+  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, or alternate LF and CRLF starting with CRLF when mixed is true; every case ends with one line end, except a mixed case, whose last line has none. Columns count Unicode code points. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order. hashes cases parse every listed document as the document set; manifestText and schemaText are the lines of the document set texts, each line followed by LF, and the hashes are taken over those texts. sets cases give the documents of a set as a list; each is parsed against the other listed documents and the parsing documents, and the set must give exactly errors from both the manifest and the rendering of every dialect.",
   "canonical": [
     {
       "id": "minimal-table",
@@ -3794,6 +3794,100 @@
       ],
       "manifestHash": "sha256:3baef9cbcd47dde7ab5812ef63385c74d230df2086c895d40a66b00929321ef0",
       "schemaHash": "sha256:b0f6f70bfaa4c19cb0b570b74d138b0d5f032eaa05e0319e44700ca2e7d29460"
+    }
+  ],
+  "sets": [
+    {
+      "id": "repeated-document-name",
+      "documents": [
+        [
+          "dbspec 1 shop",
+          "",
+          "table a {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        [
+          "dbspec 1 shop",
+          "",
+          "table b {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      ],
+      "parsing": {},
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "used-document-missing",
+      "documents": [
+        [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      ],
+      "parsing": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "complete-set",
+      "documents": [
+        [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      ],
+      "parsing": {},
+      "errors": []
     }
   ]
 }

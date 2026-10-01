@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 // The hashes cases of tests/dbspec/cases.json and the repeated document name
-// rule through Orm\Dbspec\Dbspec::manifest.
+// rule through Orm\Dbspec\Dbspec::manifest, and the sets cases through
+// Dbspec::manifest and Dbspec::render in every dialect.
 require __DIR__ . '/autoload.php';
 
 use Orm\Dbspec\Dbspec;
@@ -13,6 +14,9 @@ $root = dirname(__DIR__, 3);
 $cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
 if (($cases['hashes'] ?? []) === []) {
     throw new RuntimeException('Missing hashes vectors');
+}
+if (($cases['sets'] ?? []) === []) {
+    throw new RuntimeException('Missing sets vectors');
 }
 
 /** @param list<string> $lines */
@@ -72,6 +76,43 @@ foreach ($cases['hashes'] as $case) {
     echo "PASS hashes/{$case['id']} elapsedMs=" . ((hrtime(true) - $caseStarted) / 1e6) . "\n";
 }
 
+foreach ($cases['sets'] as $case) {
+    $caseStarted = hrtime(true);
+    echo "RUN sets/{$case['id']}\n";
+    // 각 문서는 다른 나열 문서(헤더 이름이 키)와 parsing 문서를 집합으로 파싱한다.
+    $names = [];
+    foreach ($case['documents'] as $i => $lines) {
+        if (preg_match('/\Adbspec 1 ([A-Za-z0-9_]+)\z/', $lines[0] ?? '', $m) !== 1) {
+            throw new RuntimeException("{$case['id']}: document $i has no header name");
+        }
+        $names[$i] = $m[1];
+    }
+    $documents = [];
+    foreach ($case['documents'] as $i => $lines) {
+        $set = array_map(manifest_text(...), $case['parsing']);
+        foreach ($case['documents'] as $j => $otherLines) {
+            if ($j !== $i) {
+                $set[$names[$j]] = manifest_text($otherLines);
+            }
+        }
+        $documents[] = manifest_parsed("{$case['id']}/$i", $lines, $set);
+    }
+    $want = array_map(fn($e) => [$e['rule'], $e['line'], $e['column']], $case['errors']);
+    $result = Dbspec::manifest($documents);
+    $got = array_map(fn($d) => [$d->rule, $d->line, $d->column], $result->diagnostics);
+    if ($got !== $want || ($want === []) !== ($result->manifest !== null)) {
+        throw new RuntimeException("{$case['id']}: manifest diagnostics " . json_encode($got) . ' want ' . json_encode($want));
+    }
+    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+        $rendered = Dbspec::render($documents, $dialect);
+        $got = array_map(fn($d) => [$d->rule, $d->line, $d->column], $rendered->diagnostics);
+        if ($got !== $want || ($want === []) !== ($rendered->statements !== null)) {
+            throw new RuntimeException("{$case['id']}/$dialect: render diagnostics " . json_encode($got) . ' want ' . json_encode($want));
+        }
+    }
+    echo "PASS sets/{$case['id']} elapsedMs=" . ((hrtime(true) - $caseStarted) / 1e6) . "\n";
+}
+
 echo "RUN manifest/repeated-name\n";
 $text = ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'];
 $result = Dbspec::manifest([manifest_parsed('repeated', $text, []), manifest_parsed('repeated', $text, [])]);
@@ -85,4 +126,4 @@ $elapsed = (hrtime(true) - $started) / 1e6;
 if ($elapsed > 10000) {
     throw new RuntimeException("dbspec_manifest deadline of 10 s exceeded ($elapsed ms)");
 }
-echo 'PASS dbspec_manifest hashes=' . count($cases['hashes']) . " elapsedMs=$elapsed\n";
+echo 'PASS dbspec_manifest hashes=' . count($cases['hashes']) . ' sets=' . count($cases['sets']) . " elapsedMs=$elapsed\n";

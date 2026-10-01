@@ -248,7 +248,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ## Rendered statements
 
-renderer는 dbspec 문서 집합을 한 dialect의 statement로 바꾼다. `tests/dbspec/ddl.json`이 렌더링되는 모든 형식의 정확한 statement를 나열하며 규범 text다. 이 절은 그 뒤의 규칙을 정한다. 그 파일의 모든 vector는 `make dbspec-ddl-check`가 MySQL 8.4, PostgreSQL 17, SQLite에 적용한다.
+renderer는 dbspec 문서 집합을 한 dialect의 statement로 바꾼다. 잘못된 집합은 대신 그 diagnostic을 돌려준다([manifest와 hash](dbspec.md#manifest와-hash)). `tests/dbspec/ddl.json`이 렌더링되는 모든 형식의 정확한 statement를 나열하며 규범 text다. 이 절은 그 뒤의 규칙을 정한다. 그 파일의 모든 vector는 `make dbspec-ddl-check`가 MySQL 8.4, PostgreSQL 17, SQLite에 적용한다.
 
 ### Statement와 순서
 

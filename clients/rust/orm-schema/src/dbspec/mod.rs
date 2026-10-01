@@ -20,7 +20,7 @@ pub use model::Document;
 pub use render::{render, Dialect};
 
 use parser::Diag;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::rc::Rc;
 
@@ -88,23 +88,54 @@ fn text_hash(text: &str) -> String {
     out
 }
 
-/// Returns the manifest of the document set, whose documents are taken in
-/// document name order. A document name that repeats in the set is a
-/// `name.duplicate` diagnostic at the header name of the later document.
-pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
+/// Checks that `documents` is one document set (docs/dbspec.md, "Manifest and
+/// hashes") and returns its documents in document name order. A document name
+/// that repeats is a `name.duplicate` diagnostic and a used document missing
+/// from the set is a `use` diagnostic, both at the header name of the later or
+/// the using document; documents are checked in name order and the used names
+/// of a document in name order.
+pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Document>, Vec<Diagnostic>> {
     let mut ordered = documents.to_vec();
     ordered.sort_by(|a, b| a.name.text.cmp(&b.name.text));
-    let mut manifest_text = String::new();
-    let mut schema_text = String::new();
+    let names: BTreeSet<&str> = ordered.iter().map(|d| d.name.text.as_str()).collect();
+    let header = "dbspec 1 ".len() + 1;
+    let mut out = Vec::new();
     for (i, document) in ordered.iter().enumerate() {
-        if i > 0 && ordered[i - 1].name.text == document.name.text {
-            return Err(vec![Diagnostic {
+        let name = &document.name.text;
+        if i > 0 && ordered[i - 1].name.text == *name {
+            out.push(Diagnostic {
                 rule: "name.duplicate".to_owned(),
                 line: 1,
-                column: "dbspec 1 ".len() + 1,
-                message: format!("document {} appears twice in the document set", document.name.text),
-            }]);
+                column: header,
+                message: format!("document {name} appears twice in the document set"),
+            });
         }
+        let mut used: Vec<&str> = document.uses.iter().map(|u| u.document.text.as_str()).collect();
+        used.sort_unstable();
+        for missing in used.into_iter().filter(|u| !names.contains(u)) {
+            out.push(Diagnostic {
+                rule: "use".to_owned(),
+                line: 1,
+                column: header,
+                message: format!("document {name} uses {missing}, which is not in the document set"),
+            });
+        }
+    }
+    if out.is_empty() {
+        Ok(ordered)
+    } else {
+        Err(out)
+    }
+}
+
+/// Returns the manifest of the document set, whose documents are taken in
+/// document name order, or the diagnostics of an invalid document set:
+/// repeated document names and used documents missing from the set.
+pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
+    let ordered = check_set(documents)?;
+    let mut manifest_text = String::new();
+    let mut schema_text = String::new();
+    for document in ordered {
         manifest_text.push_str(&emit::emit(document, emit::View::Manifest));
         schema_text.push_str(&emit::emit(document, emit::View::Schema));
     }

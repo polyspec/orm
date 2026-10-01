@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { dbspecManifest, emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
@@ -51,7 +51,7 @@ function parsed(text, set) {
 }
 
 assert(cases.canonical.length > 0 && cases.normalize.length > 0 && cases.invalid.length > 0);
-const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid].map(c => c.id);
+const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid, ...cases.sets].map(c => c.id);
 assert.equal(new Set(ids).size, ids.length, 'unique case ids');
 
 for (const c of cases.canonical) {
@@ -123,3 +123,39 @@ vector('manifest rejects a repeated document name', () => {
   assert.equal(result.manifest, null);
   assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['name.duplicate', 1, 10]]);
 });
+
+// headerName is the document name of a document's header line.
+const headerName = lines => lines[0].split(' ')[2];
+
+// expectErrors asserts that a set result carries exactly the expected errors.
+function expectErrors(diagnostics, errors) {
+  assert.deepEqual(diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), errors);
+  for (const d of diagnostics) {
+    assert.deepEqual(Object.keys(d).sort(), ['column', 'line', 'message', 'rule']);
+    assert(typeof d.message === 'string' && d.message.length > 0);
+  }
+}
+
+assert(cases.sets.length > 0, 'sets cases');
+for (const c of cases.sets) {
+  vector(`sets ${c.id}`, () => {
+    // 각 문서는 나머지 나열된 문서(header 이름으로)와 parsing 문서를 집합으로 파싱한다.
+    const documents = c.documents.map((lines, i) => {
+      const set = {};
+      for (const [name, other] of Object.entries(c.parsing)) set[name] = join(other, false);
+      c.documents.forEach((other, j) => {
+        if (j !== i) set[headerName(other)] = join(other, false);
+      });
+      return parsed(join(lines, false), set);
+    });
+    const manifest = dbspecManifest(documents);
+    expectErrors(manifest.diagnostics, c.errors);
+    assert.equal(manifest.manifest === null, c.errors.length > 0);
+    for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+      const rendered = renderDbspec(documents, dialect);
+      assert(Object.isFrozen(rendered) && Object.isFrozen(rendered.diagnostics));
+      expectErrors(rendered.diagnostics, c.errors);
+      assert.equal(rendered.statements === null, c.errors.length > 0, `statements of ${dialect}`);
+    }
+  });
+}

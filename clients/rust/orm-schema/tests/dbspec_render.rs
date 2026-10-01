@@ -41,10 +41,10 @@ fn render_vectors() {
         let mut refs: Vec<&Document> = documents.iter().collect();
         for (dialect_name, dialect) in DIALECTS {
             let want = strings(&case["statements"][dialect_name]);
-            assert_eq!(dbspec::render(&refs, dialect), want, "{id}: {dialect_name}");
+            assert_eq!(dbspec::render(&refs, dialect), Ok(want.clone()), "{id}: {dialect_name}");
             // The documents are rendered in use order, not in the order given.
             refs.reverse();
-            assert_eq!(dbspec::render(&refs, dialect), want, "{id}: {dialect_name} reversed");
+            assert_eq!(dbspec::render(&refs, dialect), Ok(want.clone()), "{id}: {dialect_name} reversed");
             println!("PASS ddl/{id}/{dialect_name}");
         }
     }

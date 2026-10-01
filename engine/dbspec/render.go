@@ -17,9 +17,18 @@ const (
 )
 
 // Render writes the statements that create the tables of the document set
-// in one dialect (docs/dialects.md "Rendered statements"). The documents are
-// valid parsed documents of one declared set.
-func Render(documents []*Document, dialect Dialect) []string {
+// in one dialect (docs/dialects.md "Rendered statements"), or returns the
+// diagnostics of an invalid set. A dialect other than the three constants is
+// a programming error and panics.
+func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
+	switch dialect {
+	case DialectMySQL, DialectPostgres, DialectSQLite:
+	default:
+		panic("dbspec: unknown dialect " + string(dialect))
+	}
+	if _, diagnostics := checkSet(documents); len(diagnostics) > 0 {
+		return nil, diagnostics
+	}
 	r := renderer{d: dialect, tables: map[string]*Table{}}
 	ordered := useOrder(documents)
 	for _, document := range ordered {
@@ -47,7 +56,7 @@ func Render(documents []*Document, dialect Dialect) []string {
 			out = append(out, r.triggers(&document.Tables[i])...)
 		}
 	}
-	return out
+	return out, nil
 }
 
 // useOrder orders documents so that a used document comes before the
@@ -59,13 +68,14 @@ func useOrder(documents []*Document) []*Document {
 		byName[d.Name] = d
 		names = append(names, d.Name)
 	}
+	// checkSet has made every used document present and every name unique.
 	slices.Sort(names)
 	var out []*Document
 	done := map[string]bool{}
 	var visit func(name string)
 	visit = func(name string) {
-		d, ok := byName[name]
-		if !ok || done[name] {
+		d := byName[name]
+		if done[name] {
 			return
 		}
 		done[name] = true

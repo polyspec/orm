@@ -49,9 +49,9 @@ for (const c of ddl.cases) {
   for (const dialect of DIALECTS) {
     vector(`render ${c.id} ${dialect}`, () => {
       const documents = parseSet(c);
-      assert.deepEqual(renderDbspec(documents, dialect), c.statements[dialect]);
+      assert.deepEqual(renderDbspec(documents, dialect), { statements: c.statements[dialect], diagnostics: [] });
       // The rendered order does not depend on the order of the given documents.
-      assert.deepEqual(renderDbspec([...documents].reverse(), dialect), c.statements[dialect]);
+      assert.deepEqual(renderDbspec([...documents].reverse(), dialect), { statements: c.statements[dialect], diagnostics: [] });
     });
   }
 }

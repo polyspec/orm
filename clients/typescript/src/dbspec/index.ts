@@ -5,20 +5,13 @@
 // statements of a document set in one dialect.
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
-import type { DbspecDocument, DbspecRule } from './model.js';
+import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 import { parseDocument } from './parse.js';
+import { checkSet } from './set.js';
 
-export { renderDbspec, type DbspecDialect } from './render.js';
+export { renderDbspec, type DbspecDialect, type DbspecRenderResult } from './render.js';
 
 export type * from './model.js';
-
-/** One SCHEMA_INVALID diagnostic: the rule, the 1-based line and column of the offending token, and a message. */
-export interface DbspecDiagnostic {
-  readonly rule: DbspecRule;
-  readonly line: number;
-  readonly column: number;
-  readonly message: string;
-}
 
 /** The document and no diagnostic, or every diagnostic in source order and no document. */
 export type DbspecParseResult =
@@ -74,24 +67,16 @@ function textHash(text: string): string {
 
 /**
  * Returns the manifest of the document set, whose documents are taken in
- * document name order. A document name that repeats in the set is a
- * name.duplicate diagnostic at the header name of the later document.
+ * document name order, or the diagnostics of an invalid set (docs/dbspec.md,
+ * "Manifest and hashes").
  */
 export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult {
-  const ordered = [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  if (!Array.isArray(documents)) throw new TypeError('dbspec documents must be an array of parsed documents');
+  const { ordered, diagnostics } = checkSet(documents);
+  if (diagnostics.length > 0) return Object.freeze({ manifest: null, diagnostics });
   let manifestText = '';
   let schemaText = '';
-  for (let i = 0; i < ordered.length; i++) {
-    const document = ordered[i]!;
-    if (i > 0 && ordered[i - 1]!.name === document.name) {
-      const diagnostic = Object.freeze({
-        rule: 'name.duplicate' as const,
-        line: 1,
-        column: 'dbspec 1 '.length + 1,
-        message: `document ${document.name} appears twice in the document set`,
-      });
-      return Object.freeze({ manifest: null, diagnostics: Object.freeze([diagnostic]) });
-    }
+  for (const document of ordered) {
     manifestText += emitDocument(document, 'manifest');
     schemaText += emitDocument(document, 'schema');
   }

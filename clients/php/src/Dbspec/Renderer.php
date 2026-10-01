@@ -27,14 +27,14 @@ final class Renderer
     }
 
     /**
+     * The documents are a set that DocumentSet::check accepts and the dialect
+     * is one of DIALECTS.
+     *
      * @param list<Document> $documents
      * @return list<string>
      */
     public static function render(array $documents, string $dialect): array
     {
-        if (!in_array($dialect, self::DIALECTS, true)) {
-            throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite");
-        }
         $r = new self($dialect);
         $ordered = self::useOrder($documents);
         $out = [];
@@ -62,7 +62,6 @@ final class Renderer
 
     /**
      * 사용되는 문서가 그것을 사용하는 문서보다 먼저, 같은 순위는 문서 이름 순.
-     * 집합에 없는 문서를 사용하거나 이름이 반복되면 렌더링할 수 없다.
      *
      * @param list<Document> $documents
      * @return list<Document>
@@ -71,17 +70,7 @@ final class Renderer
     {
         $byName = [];
         foreach ($documents as $document) {
-            if (isset($byName[$document->name])) {
-                throw new \InvalidArgumentException("Document {$document->name} appears twice in the rendered set");
-            }
             $byName[$document->name] = $document;
-        }
-        foreach ($documents as $document) {
-            foreach ($document->uses as $use) {
-                if (!isset($byName[$use->document])) {
-                    throw new \InvalidArgumentException("Document {$document->name} uses document {$use->document}, which is not in the rendered set");
-                }
-            }
         }
         $names = array_keys($byName);
         usort($names, static fn($a, $b): int => strcmp((string) $a, (string) $b));

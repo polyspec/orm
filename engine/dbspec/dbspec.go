@@ -108,17 +108,46 @@ type Manifest struct {
 	SchemaHash   string
 }
 
-// ManifestOf returns the manifest of the document set, whose documents are
-// taken in document name order. A document name that repeats in the set is a
-// name.duplicate diagnostic at the header name of the later document.
-func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
+// checkSet reports a document name that repeats and a used document missing
+// from the set, at the header name of the later or the using document
+// (docs/dbspec.md, "Manifest and hashes"). It returns the documents in name
+// order.
+func checkSet(documents []*Document) ([]*Document, []Diagnostic) {
 	ordered := slices.Clone(documents)
 	slices.SortStableFunc(ordered, func(a, b *Document) int { return cmp.Compare(a.Name, b.Name) })
-	var manifest, schema strings.Builder
+	names := map[string]bool{}
+	for _, d := range ordered {
+		names[d.Name] = true
+	}
+	header := len("dbspec 1 ") + 1
+	var out []Diagnostic
 	for i, d := range ordered {
 		if i > 0 && ordered[i-1].Name == d.Name {
-			return nil, []Diagnostic{{Rule: RuleNameDuplicate, Line: 1, Column: len("dbspec 1 ") + 1, Message: "document " + d.Name + " appears twice in the document set"}}
+			out = append(out, Diagnostic{Rule: RuleNameDuplicate, Line: 1, Column: header, Message: "document " + d.Name + " appears twice in the document set"})
 		}
+		used := make([]string, 0, len(d.Uses))
+		for _, u := range d.Uses {
+			used = append(used, u.Document)
+		}
+		slices.Sort(used)
+		for _, name := range used {
+			if !names[name] {
+				out = append(out, Diagnostic{Rule: RuleUse, Line: 1, Column: header, Message: "document " + d.Name + " uses " + name + ", which is not in the document set"})
+			}
+		}
+	}
+	return ordered, out
+}
+
+// ManifestOf returns the manifest of the document set, whose documents are
+// taken in document name order, or the diagnostics of an invalid set.
+func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
+	ordered, diagnostics := checkSet(documents)
+	if len(diagnostics) > 0 {
+		return nil, diagnostics
+	}
+	var manifest, schema strings.Builder
+	for _, d := range ordered {
 		manifest.WriteString(emitDocument(d, viewManifest))
 		schema.WriteString(emitDocument(d, viewSchema))
 	}

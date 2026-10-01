@@ -1,5 +1,9 @@
 # 변경 이력
 
+모든 client의 manifest와 renderer에서 반복된 문서 이름이나 없는 쓰이는
+문서가 있는 dbspec 문서 집합을 거부하며, renderer는 이제 statement나
+diagnostic을 돌려준다(T8.2.6.2.1).
+
 Rust client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
 렌더링하고(`dbspec::render`), tests/dbspec/ddl.json과 비교한다(T8.3.5).
 
