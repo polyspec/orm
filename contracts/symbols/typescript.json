@@ -465,7 +465,7 @@
   "clients/typescript/src/dbspec/parse.ts::DocumentParser#field.stopped": "unknown",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser#field.syntaxLine": "unknown",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.at": "private at(rule: DbspecRule, tok: Tk, message: string): void",
-  "clients/typescript/src/dbspec/parse.ts::DocumentParser.audit": "private audit(table: ITable, s: Extract\u003cISetting, { kind: 'audit'; }\u003e, available: Map\u003cstring, ITable | null\u003e, actionChild: boolean, hasSoftDelete: boolean): void",
+  "clients/typescript/src/dbspec/parse.ts::DocumentParser.audit": "private audit(table: ITable, s: Extract\u003cISetting, { kind: 'audit'; }\u003e, available: Map\u003cstring, ITable | null\u003e, actionChild: boolean): void",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.blindIndex": "private blindIndex(table: ITable, s: Extract\u003cISetting, { kind: 'blind_index'; }\u003e, aesColumns: Set\u003cstring\u003e): void",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.build": "build(): DbspecDocument",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.check": "private check(table: ITable, check: ICheck, banned: Set\u003cstring\u003e): void",

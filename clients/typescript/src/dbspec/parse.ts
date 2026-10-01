@@ -1616,7 +1616,6 @@ class DocumentParser {
     const seen = new Set<string>();
     const entries = settings.entries;
     const hasAesVersion = entries.some(s => s.kind === 'aes_version');
-    const hasSoftDelete = entries.some(s => s.kind === 'soft_delete');
     const aesColumns = new Set<string>();
     for (const s of entries) if (s.kind === 'codec' && s.stages.some(stage => stage.t === 'aes')) aesColumns.add(s.column.t);
     const lookup = (tok: Tk): IColumn | null | undefined => this.lookup(table, tok, 'setting');
@@ -1682,7 +1681,7 @@ class DocumentParser {
           this.generatedName(table, s.kw, 'immutable_update', false);
           break;
         case 'audit':
-          this.audit(table, s, available, actionChild, hasSoftDelete);
+          this.audit(table, s, available, actionChild);
           this.generatedName(table, s.kw, 'audit_insert', false);
           break;
       }
@@ -1728,10 +1727,8 @@ class DocumentParser {
     s: Extract<ISetting, { kind: 'audit' }>,
     available: Map<string, ITable | null>,
     actionChild: boolean,
-    hasSoftDelete: boolean,
   ): void {
     if (actionChild) this.at('setting', s.kw, 'audit is rejected on a child of a cascade or set_null foreign key');
-    if (!hasSoftDelete) this.at('setting', s.kw, 'an audited table requires soft_delete');
     const operation = this.lookup(table, s.operation, 'setting');
     if (operation && operation.type !== null && (!['i64', 'uuid'].includes(operation.type.kind) || operation.nullable)) {
       this.at('setting', s.operation, 'the operation column is a non-null i64 or uuid column');

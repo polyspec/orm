@@ -195,7 +195,7 @@ table service_history {
 - **Operation column.** `operation <column>`은 감사 대상 table의 non-null `i64` 또는 `uuid` column의 이름이다. executor는 그 table의 모든 `INSERT`와 `UPDATE`에서 현재 operation의 id를 이 column에 쓴다. `NEW.<column>`은 변경하는 operation이고 `OLD.<column>`은 이전 version을 만든 operation이다.
 - **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 감사 대상과 다른 table이다. `i64 identity` primary key, `action` column(non-null `varchar(8)`), `previous` column(nullable, operation column의 type), 그리고 감사 대상 table의 모든 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
 - **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 모든 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 모든 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
-- **삭제.** 감사 대상 table은 `soft_delete` setting이 필요하다. 삭제는 soft delete column의 `UPDATE`이므로 이력이 그 operation과 함께 기록한다. physical `DELETE`는 실패한다.
+- **삭제.** `BEFORE DELETE` trigger 때문에 physical `DELETE`는 실패한다. `soft_delete`를 선언한 table은 soft delete column의 `UPDATE`로 삭제하며, 이력이 그 operation과 함께 기록한다. `audit`은 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, schema setting은 manifest setting에 의존하지 않는다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. operation column을 쓰지 않는 raw SQL은 이전 operation의 id를 다시 기록한다. 이 column을 쓰는 것은 executor뿐이다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.
 
 ## Manifest와 hash

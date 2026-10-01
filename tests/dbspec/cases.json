@@ -194,6 +194,35 @@
           "}"
         ]
       }
+    },
+    {
+      "id": "audit-without-soft-delete",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table ledger {",
+          "  id i64 identity",
+          "  amount i64",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  settings {",
+          "    audit into ledger_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table ledger_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  amount i64",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "main": "shop"
     }
   ],
   "normalize": [

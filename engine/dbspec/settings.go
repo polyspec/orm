@@ -62,9 +62,6 @@ func (v *validator) settings(t *tableNode) {
 	} else if len(aesCodecs) == 0 {
 		v.add(RuleSetting, aesVersion.keyword, "aes_version without a column that uses aes")
 	}
-	if s := byKind["audit"]; s != nil && byKind["soft_delete"] == nil {
-		v.add(RuleSetting, s.keyword, "an audited table requires a soft_delete setting")
-	}
 }
 
 func (v *validator) propagatedChild(t *tableNode) bool {

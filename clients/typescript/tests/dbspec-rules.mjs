@@ -473,7 +473,6 @@ const audited = [
   '}',
 ];
 invalid('audit', audited, [
-  ['setting', 8, 5], // no soft_delete
   ['setting', 8, 16], // service_history is audited itself
   ['setting', 8, 16], // name varchar(64) differs
   ['setting', 8, 16], // no operation_id copy

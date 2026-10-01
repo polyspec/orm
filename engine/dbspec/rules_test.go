@@ -141,9 +141,9 @@ var ruleCases = []ruleCase{
 	{id: "blind-index-not-indexed", lines: with(block("table users {", "  id i64 identity", "  secret bytes", "  token varchar(64)", "  v i32", "  primary key (id)", "  settings {", "    codec secret aes", "    aes_version v", "    blind_index secret token", "  }", "}")), errors: errs(12, 24, RuleSetting)},
 	{id: "navigation-unknown-key", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    navigation fk_nope Owner owned", "  }", "}")), errors: errs(7, 16, RuleSetting, 7, 24, RuleNameFormat)},
 	{id: "immutable-on-cascade-child", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i64", "  primary key (id)", "  index ix_u (user_id)", "  foreign key fk_u (user_id) references users (id) on delete cascade", "  settings {", "    immutable", "  }", "}")), errors: errs(15, 5, RuleSetting)},
-	{id: "audit-without-soft-delete-and-bad-history", lines: with(block("table service {", "  id i64 identity", "  operation_id i32", "  primary key (id)", "  settings {", "    audit into service_history operation operation_id action change previous previous_operation_id", "  }", "}", "",
+	{id: "audit-bad-history", lines: with(block("table service {", "  id i64 identity", "  operation_id i32", "  primary key (id)", "  settings {", "    audit into service_history operation operation_id action change previous previous_operation_id", "  }", "}", "",
 		"table service_history {", "  history_id i64", "  change varchar(16)", "  previous_operation_id i64", "  id i64", "  extra i32", "  primary key (history_id)", "}")),
-		errors: errs(8, 5, RuleSetting, 8, 16, RuleSetting, 8, 16, RuleSetting, 8, 16, RuleSetting, 8, 16, RuleSetting, 8, 42, RuleSetting, 8, 62, RuleSetting, 8, 78, RuleSetting)},
+		errors: errs(8, 16, RuleSetting, 8, 16, RuleSetting, 8, 16, RuleSetting, 8, 16, RuleSetting, 8, 42, RuleSetting, 8, 62, RuleSetting, 8, 78, RuleSetting)},
 	{id: "audit-history-audited", lines: with(block("table a {", "  id i64 identity", "  op i64", "  gone datetime(6) null", "  primary key (id)", "  settings {", "    soft_delete gone", "    audit into a operation op action act previous prev", "  }", "}")), errors: errs(10, 16, RuleSetting)},
 
 	// use and diagrams

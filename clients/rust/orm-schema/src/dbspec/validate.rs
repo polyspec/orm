@@ -439,7 +439,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let Some(settings) = &table.settings else { return };
         let has_aes_version = settings.lines.iter().any(|l| matches!(l.setting, Setting::AesVersion(_)));
         let has_aes = settings.lines.iter().any(|l| matches!(&l.setting, Setting::Codec(_, stages) if stages.iter().any(|s| s.text == "aes")));
-        let has_soft_delete = settings.lines.iter().any(|l| matches!(l.setting, Setting::SoftDelete(_)));
         let changes_rows = table.foreign_keys.iter().any(ForeignKey::changes_rows);
         let mut kinds = HashSet::new();
         let mut codecs = HashSet::new();
@@ -523,9 +522,6 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     self.generated_name(line.pos, "immutable_update", false);
                 }
                 Setting::Audit { into, operation, action, previous } => {
-                    if !has_soft_delete {
-                        self.report(line.pos, "setting", "audit requires the soft_delete setting");
-                    }
                     if changes_rows {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
