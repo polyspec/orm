@@ -87,8 +87,14 @@ pub enum ApplyError {
     Database(sqlx::Error),
     /// An event handler stopped apply.
     Event(ApplyEventError),
-    /// Ending the transaction or releasing the lock failed after `error`.
-    Cleanup { error: Box<ApplyError>, cleanup: sqlx::Error },
+    /// Releasing the PostgreSQL advisory lock released nothing: the session no
+    /// longer held it.
+    LockNotHeld { message: String },
+    /// Ending the transaction, releasing the lock or restoring SQLite foreign
+    /// keys failed with `cleanup` after `error`. A second cleanup failure
+    /// wraps this one again, so the chain of `error` lists the failures in
+    /// order.
+    Cleanup { error: Box<ApplyError>, cleanup: Box<ApplyError> },
 }
 
 impl ApplyError {
@@ -102,7 +108,7 @@ impl ApplyError {
             ApplyError::Chain { .. } => Some("chain"),
             ApplyError::Failed { .. } => Some("failed"),
             ApplyError::Verify { .. } => Some("verify"),
-            ApplyError::Database(_) | ApplyError::Event(_) => None,
+            ApplyError::Database(_) | ApplyError::Event(_) | ApplyError::LockNotHeld { .. } => None,
             ApplyError::Cleanup { error, .. } => error.code(),
         }
     }
@@ -121,6 +127,7 @@ impl std::fmt::Display for ApplyError {
             ApplyError::Verify { plan, message } => write!(f, "verify {plan}: {message}"),
             ApplyError::Database(e) => write!(f, "{e}"),
             ApplyError::Event(e) => write!(f, "{e}"),
+            ApplyError::LockNotHeld { message } => write!(f, "{message}"),
             ApplyError::Cleanup { error, cleanup } => write!(f, "{error}; then {cleanup}"),
         }
     }
@@ -157,7 +164,9 @@ pub type ApplyClock<'c> = dyn Fn() -> DateTime<Utc> + Sync + 'c;
 /// `connection` has not applied, one at a time; on a database that has
 /// applied the whole chain it changes nothing. `dialect` must be the
 /// database of the connection, `now` gives `applied_at` and `events` receives
-/// every event; an error it returns stops apply at that point.
+/// every event; an error it returns stops apply at that point. When ending
+/// the transaction, releasing the lock or restoring SQLite foreign keys fails
+/// after a failure, the result is [`ApplyError::Cleanup`] with both.
 pub async fn apply<C: ApplyConnection + ?Sized>(
     connection: &mut C,
     dialect: Dialect,
@@ -173,7 +182,8 @@ pub async fn apply<C: ApplyConnection + ?Sized>(
 
 /// Finishes the MySQL plan that apply left `running`, from the catalog effect
 /// of its interrupted statement, then verifies it and records it `done`.
-/// Without a `running` row it changes nothing.
+/// Without a `running` row it changes nothing. Failures are reported as for
+/// [`apply`].
 pub async fn recover<C: ApplyConnection + ?Sized>(
     connection: &mut C,
     dialect: Dialect,
@@ -263,7 +273,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     let locked = ApplyError::Locked { message: "another connection holds the SQLite write lock".to_owned(), source: Some(e) };
                     return match self.c.execute("PRAGMA foreign_keys = ON").await {
                         Ok(()) => Err(locked),
-                        Err(cleanup) => Err(ApplyError::Cleanup { error: Box::new(locked), cleanup }),
+                        Err(cleanup) => Err(ApplyError::Cleanup { error: Box::new(locked), cleanup: Box::new(ApplyError::Database(cleanup)) }),
                     };
                 }
                 Ok(())
@@ -272,18 +282,33 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     /// lock을 놓는다. SQLite는 `result`에 따라 commit하거나 rollback하고 foreign
-    /// key를 다시 켠다. 정리의 실패는 앞선 error와 함께 알린다.
+    /// key를 다시 켠다. PostgreSQL에서 아무것도 풀지 않은 unlock은 error다. 정리의
+    /// 실패는 앞선 error와 함께 알린다.
     async fn unlock(&mut self, result: Result<(), ApplyError>) -> Result<(), ApplyError> {
-        let steps: Vec<String> = match self.d {
-            Dialect::MySql => vec![format!("DO RELEASE_LOCK('{HISTORY_TABLE}')")],
-            Dialect::Postgres => vec![format!("SELECT pg_advisory_unlock(hashtext('{HISTORY_TABLE}'))")],
-            Dialect::Sqlite => vec![if result.is_ok() { "COMMIT" } else { "ROLLBACK" }.to_owned(), "PRAGMA foreign_keys = ON".to_owned()],
-        };
-        let mut result = result;
-        for step in steps {
-            result = settle(result, self.c.execute(&step).await);
+        match self.d {
+            Dialect::MySql => {
+                let released = self.c.execute(&format!("DO RELEASE_LOCK('{HISTORY_TABLE}')")).await.map_err(ApplyError::Database);
+                settle(result, released)
+            }
+            Dialect::Postgres => {
+                let released = match self.value(&format!("SELECT pg_advisory_unlock(hashtext('{HISTORY_TABLE}'))")).await {
+                    Ok(CatalogValue::Bool(true)) => Ok(()),
+                    Ok(CatalogValue::Bool(false)) => {
+                        Err(ApplyError::LockNotHeld { message: format!("the advisory lock of {HISTORY_TABLE} was not held at unlock") })
+                    }
+                    Ok(other) => Err(ApplyError::Database(protocol(format!("pg_advisory_unlock returned {other:?}")))),
+                    Err(e) => Err(e),
+                };
+                settle(result, released)
+            }
+            Dialect::Sqlite => {
+                let end = if result.is_ok() { "COMMIT" } else { "ROLLBACK" };
+                let ended = self.c.execute(end).await.map_err(ApplyError::Database);
+                let result = settle(result, ended);
+                let restored = self.c.execute("PRAGMA foreign_keys = ON").await.map_err(ApplyError::Database);
+                settle(result, restored)
+            }
         }
-        result
     }
 
     async fn apply_chain(&mut self) -> Result<(), ApplyError> {
@@ -444,7 +469,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         let mut result = self.run_plan(p, &statements, start, resume).await;
         if postgres {
             let end = if result.is_ok() { "COMMIT" } else { "ROLLBACK" };
-            result = settle(result, self.c.execute(end).await);
+            result = settle(result, self.c.execute(end).await.map_err(ApplyError::Database));
         }
         result?;
         self.emit(ApplyEventKind::Done, p, 0, statements.len(), "")
@@ -558,11 +583,11 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
 
 /// `result`에 정리 statement의 결과를 더한다. 앞선 error가 있으면 정리 실패를
 /// 그 error와 함께 돌려준다.
-fn settle(result: Result<(), ApplyError>, cleanup: Result<(), sqlx::Error>) -> Result<(), ApplyError> {
+fn settle(result: Result<(), ApplyError>, cleanup: Result<(), ApplyError>) -> Result<(), ApplyError> {
     match (result, cleanup) {
         (result, Ok(())) => result,
-        (Ok(()), Err(e)) => Err(ApplyError::Database(e)),
-        (Err(error), Err(cleanup)) => Err(ApplyError::Cleanup { error: Box::new(error), cleanup }),
+        (Ok(()), Err(e)) => Err(e),
+        (Err(error), Err(cleanup)) => Err(ApplyError::Cleanup { error: Box::new(error), cleanup: Box::new(cleanup) }),
     }
 }
 

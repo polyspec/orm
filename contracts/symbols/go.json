@@ -2293,6 +2293,7 @@
   "engine/dbspec/apply.go::historyRow#field.state": "string",
   "engine/dbspec/apply.go::historyRow#field.step": "int",
   "engine/dbspec/apply.go::historyRow#field.to": "string",
+  "engine/dbspec/apply.go::joinCleanup": "func(errs ...error) error",
   "engine/dbspec/apply.go::newApplier": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error)",
   "engine/dbspec/checks.go::checkLiteral": "func(typ Type, v token) (string, bool)",
   "engine/dbspec/checks.go::checkTyper": "type checkTyper struct { v *validator t *tableNode propagated map[string]bool out []Diagnostic }",

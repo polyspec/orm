@@ -70,8 +70,9 @@ physical-check-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 
-# dbspec-rust-check runs the shared dbspec vectors, the Rust rule cases and
-# the plan and Mermaid cases twice, then measures the stress document of
+# dbspec-rust-check runs the shared dbspec vectors, the Rust rule cases,
+# the plan and Mermaid cases and the apply cleanup errors injected through a
+# wrapped SQLite connection twice, then measures the stress document of
 # tests/dbspec/stress.mjs in
 # release mode twice: parse within 300 ms, emit(parse(doc)) == doc and two
 # equal emissions.
@@ -121,8 +122,8 @@ dbspec-plan-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1 -timeout 10m -v
 
 # dbspec-apply-check applies a plan chain to MySQL, PostgreSQL and SQLite with
-# history, a second apply, drift, the lock, rollback, verification and MySQL
-# recovery (docs/plans.md "Apply").
+# history, a second apply, drift, the lock, rollback, an unlock that released
+# nothing, verification and MySQL recovery (docs/plans.md "Apply").
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1 -timeout 10m -v
@@ -202,6 +203,8 @@ dbspec-rust-check:
 
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
@@ -431,13 +434,13 @@ ts-min-check:
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check builds the TypeScript client, runs the shared dbspec
-# vectors, the plan vectors, the Mermaid vectors and the rules they do not
-# cover yet, then parses and emits the stress document of
+# vectors, the plan vectors, the Mermaid vectors, the apply cleanup errors
+# and the rules they do not cover yet, then parses and emits the stress document of
 # tests/dbspec/stress.mjs twice, printing both timings.
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs
+	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs clients/typescript/tests/dbspec-apply-cleanup.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 
