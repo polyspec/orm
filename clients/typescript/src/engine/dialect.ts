@@ -4,22 +4,17 @@
 /** Replaced in trusted expression fragments with the advancing wall clock. */
 export const CURRENT_TIME_TOKEN = '$CURRENT_TIME';
 
-export const EARTH_RADIUS_METERS = '6370986';
-
 /** Column types each column function accepts. */
 export const columnFunctionTypes: Readonly<Record<string, readonly string[]>> = {
   day_of_week: ['date', 'datetime'],
   year: ['date', 'datetime'],
   month: ['date', 'datetime'],
   date: ['date', 'datetime'],
-  distance: ['point'],
-  point_x: ['point'],
-  point_y: ['point'],
 };
 
 /** Function arguments of each column function, not counting the compared value. */
 export const columnFunctionArity: Readonly<Record<string, number>> = {
-  day_of_week: 0, year: 0, month: 0, date: 0, distance: 2, point_x: 0, point_y: 0,
+  day_of_week: 0, year: 0, month: 0, date: 0,
 };
 
 /** Interval unit of each relative value function. */
@@ -42,17 +37,16 @@ export interface Dialect {
   like(col: string, ph: string): string;
   limit(offset: number, count: number): string;
   forceIndex(name: string): string;
-  fulltext(cols: readonly string[], ph: string, boolean: boolean): string;
   insertReturningId: boolean;
   upsert(conflict: readonly string[], assigns: string): string;
-  /** Wraps the SQL-side read stages of a style pipeline. */
-  readExpr(col: string, colType: string, styles: readonly string[]): string;
+  /** Wraps the SQL-side read stages of a codec. */
+  readExpr(col: string, stages: readonly string[]): string;
   /** Wraps a bound value with the SQL-side write stages. */
-  writeExpr(ph: () => string, colType: string, styles: readonly string[]): string;
+  writeExpr(ph: string, stages: readonly string[]): string;
   now(): string;
   currentTime(): string;
-  supports(op: string): boolean;
-  handlesStyle(style: string): boolean;
+  /** The codec stage runs in SQL; every other stage runs in the executor. */
+  handlesStage(stage: string): boolean;
   /** The database has no sub-second clock; the executor binds the time. */
   hostNow: boolean;
   /** A row lock suffix; undefined when the mode is unknown. */
@@ -78,12 +72,6 @@ function lockSuffix(mode: string): string | undefined {
   return undefined;
 }
 
-/** The great-circle distance; x2 and y2 are called once per occurrence. */
-function haversine(x1: string, y1: string, x2: () => string, y2: () => string): string {
-  const rad = (v: string) => `RADIANS(${v})`;
-  return `(2 * ${EARTH_RADIUS_METERS} * ASIN(SQRT(POWER(SIN((${rad(y2())} - ${rad(y1)}) / 2), 2) + COS(${rad(y1)}) * COS(${rad(y2())}) * POWER(SIN((${rad(x2())} - ${rad(x1)}) / 2), 2))))`;
-}
-
 function tupleIn(cols: readonly string[], rows: readonly (readonly string[])[], negate: boolean, values: boolean): string {
   let list = rows.map(row => `(${row.join(', ')})`).join(', ');
   if (values) list = `VALUES ${list}`;
@@ -102,21 +90,19 @@ export const mysql: Dialect = {
   like: (col, ph) => `${col} LIKE ${ph}`,
   limit: (offset, count) => ` LIMIT ${offset}, ${count}`,
   forceIndex: name => ` FORCE INDEX (${quoteWith('`', name)})`,
-  fulltext: (cols, ph, boolean) => `MATCH(${cols.join(', ')}) AGAINST (${ph}${boolean ? ' IN BOOLEAN MODE' : ' IN NATURAL LANGUAGE MODE'})`,
   insertReturningId: false,
   upsert: (_, assigns) => ` ON DUPLICATE KEY UPDATE ${assigns}`,
-  readExpr(col, colType, styles) {
-    let expr = colType === 'point' ? `ST_AsText(${col})` : col;
-    for (let i = styles.length - 1; i >= 0; i--) {
-      if (styles[i] === 'hex') expr = `UNHEX(${expr})`;
-      else if (styles[i] === 'ip') expr = `INET6_NTOA(${expr})`;
+  readExpr(col, stages) {
+    let expr = col;
+    for (let i = stages.length - 1; i >= 0; i--) {
+      if (stages[i] === 'hex') expr = `UNHEX(${expr})`;
+      else if (stages[i] === 'ip') expr = `INET6_NTOA(${expr})`;
     }
     return expr;
   },
-  writeExpr(ph, colType, styles) {
-    let expr = ph();
-    if (colType === 'point') expr = `ST_PointFromText(${expr})`;
-    for (const s of styles) {
+  writeExpr(ph, stages) {
+    let expr = ph;
+    for (const s of stages) {
       if (s === 'hex') expr = `HEX(${expr})`;
       else if (s === 'ip') expr = `INET6_ATON(${expr})`;
     }
@@ -124,8 +110,7 @@ export const mysql: Dialect = {
   },
   now: () => 'CURRENT_TIMESTAMP',
   currentTime: () => 'CURRENT_TIMESTAMP',
-  supports: () => true,
-  handlesStyle: s => s === 'hex' || s === 'ip',
+  handlesStage: s => s === 'hex' || s === 'ip',
   hostNow: false,
   rowLock: lockSuffix,
   columnFunction(name, col, arg) {
@@ -134,9 +119,6 @@ export const mysql: Dialect = {
       case 'year': return `YEAR(${col})`;
       case 'month': return `MONTH(${col})`;
       case 'date': return `DATE(${col})`;
-      case 'distance': return `ST_Distance_Sphere(${col}, POINT(${arg(0)}, ${arg(1)}))`;
-      case 'point_x': return `ST_X(${col})`;
-      case 'point_y': return `ST_Y(${col})`;
     }
     return undefined;
   },
@@ -152,7 +134,7 @@ export const mysql: Dialect = {
   random: () => 'RAND()',
 };
 
-/** AES and hex stay host-side; ip is SQL-side. */
+/** Every codec stage is host-side: an ip value is stored as bytes in a bytea column. */
 export const postgres: Dialect = {
   name: 'postgres',
   quote: ident => quoteWith('"', ident),
@@ -160,26 +142,13 @@ export const postgres: Dialect = {
   like: (col, ph) => `${col} ILIKE ${ph}`,
   limit: (offset, count) => ` LIMIT ${count} OFFSET ${offset}`,
   forceIndex: () => '',
-  fulltext(cols, ph, boolean) {
-    const doc = cols.length > 1 ? `coalesce(${cols.join(", '') || ' ' || coalesce(")}, '')` : cols.join(" || ' ' || ");
-    return `to_tsvector('simple', ${doc}) @@ ${boolean ? 'websearch_to_tsquery' : 'plainto_tsquery'}('simple', ${ph})`;
-  },
   insertReturningId: true,
   upsert: conflictUpsert,
-  readExpr(col, colType, styles) {
-    if (colType === 'point') col = `(${col})::text`;
-    return styles.includes('ip') ? `host(${col})` : col;
-  },
-  writeExpr(ph, colType, styles) {
-    let expr = ph();
-    if (colType === 'point') expr = `CAST(${expr} AS text)::point`;
-    for (const s of styles) if (s === 'ip') expr = `(${expr})::inet`;
-    return expr;
-  },
+  readExpr: col => col,
+  writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
   currentTime: () => 'clock_timestamp()',
-  supports: () => true,
-  handlesStyle: s => s === 'ip',
+  handlesStage: () => false,
   hostNow: false,
   rowLock: lockSuffix,
   columnFunction(name, col, arg) {
@@ -188,9 +157,6 @@ export const postgres: Dialect = {
       case 'year': return `EXTRACT(YEAR FROM ${col})::int`;
       case 'month': return `EXTRACT(MONTH FROM ${col})::int`;
       case 'date': return `CAST(${col} AS date)`;
-      case 'distance': return haversine(`${col}[0]`, `${col}[1]`, () => `CAST(${arg(0)} AS double precision)`, () => `CAST(${arg(1)} AS double precision)`);
-      case 'point_x': return `${col}[0]`;
-      case 'point_y': return `${col}[1]`;
     }
     return undefined;
   },
@@ -208,14 +174,7 @@ export const postgres: Dialect = {
   random: () => 'random()',
 };
 
-/** One coordinate of the stored `POINT(x y)` text. */
-function sqlitePointCoordinate(col: string, second: boolean): string {
-  const space = `instr(${col}, ' ')`;
-  if (second) return `CAST(substr(${col}, ${space} + 1, length(${col}) - ${space} - 1) AS REAL)`;
-  return `CAST(substr(${col}, 7, ${space} - 7) AS REAL)`;
-}
-
-/** Every style stage is host-side; full-text search is not available. */
+/** Every codec stage is host-side. */
 export const sqlite: Dialect = {
   name: 'sqlite',
   quote(ident) {
@@ -226,15 +185,13 @@ export const sqlite: Dialect = {
   like: (col, ph) => `${col} LIKE ${ph} ESCAPE '\\'`,
   limit: (offset, count) => ` LIMIT ${count} OFFSET ${offset}`,
   forceIndex: name => ` INDEXED BY ${quoteWith('"', name)}`,
-  fulltext() { throw new Error('sqlite: fulltext is rejected by supports'); },
   insertReturningId: true,
   upsert: conflictUpsert,
   readExpr: col => col,
-  writeExpr: ph => ph(),
+  writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
   currentTime: () => 'CURRENT_TIMESTAMP',
-  supports: op => op !== 'match' && op !== 'match_boolean',
-  handlesStyle: () => false,
+  handlesStage: () => false,
   hostNow: true,
   // The executor takes an ORM-owned lock row; the SQL suffix stays empty.
   rowLock: mode => lockSuffix(mode) === undefined ? undefined : '',
@@ -244,9 +201,6 @@ export const sqlite: Dialect = {
       case 'year': return `CAST(strftime('%Y', ${col}) AS INTEGER)`;
       case 'month': return `CAST(strftime('%m', ${col}) AS INTEGER)`;
       case 'date': return `date(${col})`;
-      case 'distance': return haversine(sqlitePointCoordinate(col, false), sqlitePointCoordinate(col, true), () => arg(0), () => arg(1));
-      case 'point_x': return sqlitePointCoordinate(col, false);
-      case 'point_y': return sqlitePointCoordinate(col, true);
     }
     return undefined;
   },

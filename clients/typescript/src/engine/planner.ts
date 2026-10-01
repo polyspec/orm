@@ -4,7 +4,7 @@
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { CURRENT_TIME_TOKEN, type Dialect } from './dialect.js';
-import { columnOf, entityOf, type Column, type Entity, type Manifest } from './manifest.js';
+import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
 interface Scope {
@@ -54,8 +54,12 @@ class Builder {
   public param(i: number, transform = ''): string { return this.push(slot({ from: 'param', param: i, transform })); }
   public secret(name: string): string { return this.push(slot({ from: 'secret', name })); }
   public config(name: string): string { return this.push(slot({ from: 'config', name })); }
-  /** A timestamp the executor supplies (dialects without a sub-second clock). */
-  public now(): string { return this.push(slot({ from: 'now' })); }
+  /** A timestamp the executor supplies (dialects without a sub-second clock) with p fraction digits. */
+  public now(precision: number): string { return this.push(slot({ from: 'now', precision })); }
+  /** The operation id of the unit of work, written to the operation column of an audited table. */
+  public operation(ent: Entity, col: Column): string {
+    return this.push(slot({ from: 'operation', name: ent.table, column: col.name, col_type: col.type }));
+  }
   /** The one placeholder an executor expands to the parent values. */
   public parentList(step: number): string { return this.push(slot({ from: 'parent', step })); }
   public last(): BindSlot { return this.binds[this.binds.length - 1]!; }
@@ -95,11 +99,9 @@ function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0 || (q.group_by_expr ?? []).length > 0;
 }
 
-function styles(c: Column): readonly string[] { return c.styles ?? []; }
+function styles(c: Column): readonly string[] { return c.stages; }
 
-function aesVersionColumn(ent: Entity): string {
-  return ent.columns.some(c => styles(c).includes('aes')) ? 'aes_key_version' : '';
-}
+function aesVersionColumn(ent: Entity): string { return ent.aesVersion; }
 
 function assignsAES(ent: Entity, set: readonly Assignment[]): boolean {
   return set.some(a => { const c = columnOf(ent, a.column); return c !== undefined && styles(c).includes('aes'); });
@@ -113,20 +115,20 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
   if (version === '') return;
   if (assigned(set, version)) fail('IR_INVALID', `${version} is managed by the AES writer`);
   if (!requireComplete || !assignsAES(ent, set)) return;
-  for (const col of ent.columns) {
+  for (const col of ent.fields) {
     if (styles(col).includes('aes') && !assigned(set, col.name)) fail('IR_INVALID', `AES update must assign every AES column; missing ${col.name}`);
   }
 }
 
 /**
- * An insert assigns every required column: a NOT NULL column without a default
- * that is neither automatic nor the AES key version the planner writes. MySQL
- * fills an omitted NOT NULL ENUM column with its first value.
+ * An insert assigns every required column: a NOT NULL column without a
+ * default that is neither the identity column nor a column the planner writes
+ * (the AES key version and the audit operation). An omitted column with a
+ * default takes the database default.
  */
 function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void {
-  const version = aesVersionColumn(ent);
-  for (const col of ent.columns) {
-    if (col.nullable || col.default !== undefined || col.auto || col.name === version || assigned(set, col.name)) continue;
+  for (const col of ent.fields) {
+    if (col.nullable || col.hasDefault || col.identity || col.name === ent.aesVersion || col.name === ent.auditOperation || assigned(set, col.name)) continue;
     fail('IR_INVALID', `required column ${ent.name}.${col.name} is not set`);
   }
 }
@@ -134,27 +136,27 @@ function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): v
 function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[] {
   for (const a of [...set]) {
     const col = columnOf(ent, a.column);
-    if (!col || !styles(col).includes('aes') || !col.blind_index || assigned(set, col.blind_index)) continue;
-    set.push({ column: col.blind_index, p: a.p, null: a.null });
+    if (!col || col.blindIndex === '' || assigned(set, col.blindIndex)) continue;
+    set.push({ column: col.blindIndex, p: a.p, null: a.null });
   }
   return set;
 }
 
 function blindIndexSource(ent: Entity, target: string): Column | undefined {
-  return ent.columns.find(c => c.blind_index === target);
+  return ent.fields.find(c => c.blindIndex === target);
 }
 
 /** The unique key an upsert conflicts on: the first unique key fully inserted, else the primary key. */
 function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly string[] {
   const inserted = new Set(set.map(a => a.column));
-  for (const uk of ent.unique ?? []) if (uk.every(c => inserted.has(c))) return uk;
-  return ent.pk;
+  for (const uk of ent.uniques) if (uk.every(c => inserted.has(c))) return uk;
+  return ent.primaryKey;
 }
 
 /** Normalized bind type for executors without a date type. */
 function bindType(col: Column | undefined): string {
   switch (col?.type) {
-    case 'date': case 'time': case 'datetime': case 'point': case 'decimal': return col.type;
+    case 'date': case 'time': case 'datetime': case 'decimal': return col.type;
   }
   return '';
 }
@@ -163,7 +165,6 @@ function functionType(name: string, col: Column | undefined): string {
   switch (name) {
     case 'day_of_week': case 'year': case 'month': return 'i64';
     case 'date': return 'date';
-    case 'distance': case 'point_x': case 'point_y': return 'f64';
   }
   return col?.type ?? 'string';
 }
@@ -176,7 +177,7 @@ function placedJoins(g: Group, out: Set<string>): void {
 }
 
 export class Planner {
-  public constructor(public readonly m: Manifest, public readonly d: Dialect) {}
+  public constructor(public readonly m: RuntimeModel, public readonly d: Dialect) {}
 
   private entity(name: string): Entity { return entityOf(this.m, name)!; }
 
@@ -200,7 +201,7 @@ export class Planner {
       case 'update': add(this.updateStep(r)); break;
       case 'delete': add(this.deleteStep(r)); break;
     }
-    return { schema_hash: this.m.schema_hash, kind: r.kind, steps };
+    return { manifest_hash: this.m.manifestHash, kind: r.kind, steps };
   }
 
   /** Deterministic aliases: root "a", joins by name (nested joins prefixed by the parent alias). */
@@ -217,9 +218,9 @@ export class Planner {
 
   private qualified(s: Scope, columns: readonly string[]): string[] { return columns.map(c => this.qcol(s, c)); }
 
-  private sqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.handlesStyle(s)); }
+  private sqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.handlesStage(s)); }
 
-  private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.handlesStyle(s)); }
+  private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.handlesStage(s)); }
 
   private selectStep(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined): PlanStep {
     const b = new Builder(this.d);
@@ -251,7 +252,7 @@ export class Planner {
       }
       default:
         sql += this.selectList(b, root, asm, idx, outNames);
-        asm.key = keyRefs(asm, root.ent.pk);
+        asm.key = keyRefs(asm, root.ent.primaryKey);
     }
     // Rows per parent: ROW_NUMBER() over the match columns. A one relation
     // with an order is the same with n = 1.
@@ -262,7 +263,7 @@ export class Planner {
     }
     if (perParent > 0) {
       let order = this.renderOrder(b, root, q);
-      if (order === '') order = ` ORDER BY ${this.qcol(root, root.ent.pk[0]!)} ASC`;
+      if (order === '') order = ` ORDER BY ${this.qcol(root, root.ent.primaryKey[0]!)} ASC`;
       sql += `, ROW_NUMBER() OVER (PARTITION BY ${this.qualified(root, rc!.childKeys).join(', ')}${order}) AS ${this.d.quote('orm_rn')}`;
     }
     sql += ` FROM ${this.d.quote(root.ent.table)} AS ${this.d.quote(root.alias)}`;
@@ -273,7 +274,7 @@ export class Planner {
       if (rc.childKeys.length === 1) where.push(`${this.qcol(root, rc.childKeys[0]!)} IN (${b.parentList(rc.parentStep)})`);
       else where.push(`(${this.qualified(root, rc.childKeys).join(', ')}) IN ((${b.parentList(rc.parentStep)}))`);
     }
-    if (root.ent.soft_delete) where.push(`${this.qcol(root, root.ent.soft_delete)} IS NULL`);
+    if (root.ent.softDelete) where.push(`${this.qcol(root, root.ent.softDelete)} IS NULL`);
     if (q.where && q.where.items.length > 0) where.push(this.renderGroup(b, root, q.where, rc === undefined));
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
@@ -320,16 +321,8 @@ export class Planner {
   /** A step per relation of s (and of its joins); records how rows attach. */
   private relationSteps(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], s: Scope, asm: Assemble, stepId: number): void {
     for (const r of s.q.relations ?? []) {
-      let rc: RelationContext;
-      let target: Entity;
-      if ((r.left ?? '') !== '') {
-        rc = { parentStep: stepId, parentAsm: asm, parentKeys: [r.left!], childKeys: [r.right!], kind: r.kind! };
-        target = this.entity(r.query.entity);
-      } else {
-        const rel = s.ent.relations[r.rel]!;
-        rc = { parentStep: stepId, parentAsm: asm, parentKeys: rel.keys.map(k => k.local), childKeys: rel.keys.map(k => k.target), kind: rel.kind };
-        target = this.entity(rel.target);
-      }
+      const rc: RelationContext = { parentStep: stepId, parentAsm: asm, parentKeys: [r.left!], childKeys: [r.right!], kind: r.kind! };
+      const target = this.entity(r.query.entity);
       const st = this.selectStep(add, steps, r.query, 'all', '', rc);
       const child: Child = {
         rel: r.rel, kind: rc.kind, step: st.id,
@@ -338,9 +331,9 @@ export class Planner {
         key: [],
         flatten: r.query.flatten ?? false,
         // owned when the child holds the foreign key to this row's primary key
-        cascade: !(r.query.no_cascade_delete ?? false) && sameList(rc.parentKeys, s.ent.pk) && !sameList(rc.childKeys, target.pk),
+        cascade: !(r.query.no_cascade_delete ?? false) && sameList(rc.parentKeys, s.ent.primaryKey) && !sameList(rc.childKeys, target.primaryKey),
       };
-      child.key = keyRefs(st.assemble!, (r.query.key_by ?? '') !== '' ? [r.query.key_by!] : this.entity(st.assemble!.entity).pk);
+      child.key = keyRefs(st.assemble!, (r.query.key_by ?? '') !== '' ? [r.query.key_by!] : this.entity(st.assemble!.entity).primaryKey);
       asm.children.push(child);
     }
     for (const j of s.q.joins ?? []) {
@@ -377,7 +370,7 @@ export class Planner {
     for (const name of s.q.group_by ?? []) {
       const col = columnOf(s.ent, name) ?? fail('COLUMN_UNKNOWN', `${s.ent.name}.${name}`);
       const out = `${s.alias}__${name}`;
-      parts.push(`${this.d.readExpr(this.qcol(s, name), col.type, this.sqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
+      parts.push(`${this.d.readExpr(this.qcol(s, name), this.sqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
       outNames.push(out);
       asm.columns.push({ index: idx.n++, name, column: name, type: col.type, styles: this.clientStyles(styles(col)), hidden: false });
     }
@@ -385,7 +378,7 @@ export class Planner {
       const out = `${s.alias}__${g.as}`;
       parts.push(`${this.renderExpr(s, g.expr)} AS ${this.d.quote(out)}`);
       outNames.push(out);
-      asm.columns.push({ index: idx.n++, name: g.as, column: '', type: columnOf(s.ent, g.as)?.type ?? 'string', styles: [], hidden: false });
+      asm.columns.push({ index: idx.n++, name: g.as, column: '', type: 'string', styles: [], hidden: false });
     }
     const out = `${s.alias}__row_count`;
     parts.push(`COUNT(*) AS ${this.d.quote(out)}`);
@@ -414,7 +407,7 @@ export class Planner {
       } else if (c.expr) {
         expr = this.fillPlaceholders(b, this.renderExpr(s, c.expr.sql), c.expr.ps ?? []);
       } else {
-        expr = this.d.readExpr(this.qcol(s, c.column), col!.type, this.sqlStyles(styles(col!)));
+        expr = this.d.readExpr(this.qcol(s, c.column), this.sqlStyles(styles(col!)));
         colStyles = this.clientStyles(styles(col!));
       }
       const out = `${s.alias}__${c.name}`;
@@ -424,7 +417,7 @@ export class Planner {
       asm.columns.push({ index: idx.n++, name: c.name, column: c.column, type, styles: colStyles, hidden: false });
     }
     if (hasAES) {
-      const version = s.ent.columns.find(c => c.name === 'aes_key_version') ?? fail('SCHEMA_INVALID', `${s.ent.name}: AES column requires aes_key_version`);
+      const version = columnOf(s.ent, s.ent.aesVersion) ?? fail('SCHEMA_INVALID', `${s.ent.name}: AES column requires an aes_version column`);
       const out = `${s.alias}__${version.name}`;
       parts.push(`${this.qcol(s, version.name)} AS ${this.d.quote(out)}`);
       outNames.push(out);
@@ -438,7 +431,7 @@ export class Planner {
       if (joined !== '') sql += (sql === '' ? '' : ', ') + joined;
       asm.children.push(child);
     }
-    asm.key = keyRefs(asm, s.ent.pk);
+    asm.key = keyRefs(asm, s.ent.primaryKey);
     return sql;
   }
 
@@ -447,25 +440,24 @@ export class Planner {
     const c = s.q.columns;
     const mode = c?.mode ?? '';
     let base: string[] = [];
-    for (const col of s.ent.columns) {
+    for (const col of s.ent.fields) {
       if (mode === 'all') base.push(col.name);
-      else if (mode === 'none') { if (col.pk || col.fk) base.push(col.name); }
-      else if (!col.lazy) base.push(col.name);
+      else if (mode === 'none') { if (col.primary || col.foreign) base.push(col.name); }
+      else if (col.selected) base.push(col.name);
     }
     const push = (name: string) => { if (!base.includes(name)) base.push(name); };
     if (c) {
       for (const a of c.add ?? []) push(a);
-      if ((c.remove ?? []).length > 0) base = base.filter(x => !c.remove!.includes(x) || columnOf(s.ent, x)!.pk === true);
+      if ((c.remove ?? []).length > 0) base = base.filter(x => !c.remove!.includes(x) || columnOf(s.ent, x)!.primary);
     }
     // Columns relation steps bind or key on are always selected.
     for (const x of s.extra) push(x);
     for (const r of s.q.relations ?? []) {
-      if ((r.left ?? '') !== '') push(r.left!);
-      else for (const key of s.ent.relations[r.rel]!.keys) push(key.local);
+      push(r.left!);
       if (r.query.if_parent) push(r.query.if_parent.column);
     }
     // The primary key is always selected.
-    for (const pk of s.ent.pk) if (!base.includes(pk)) base = [pk, ...base];
+    for (const pk of s.ent.primaryKey) if (!base.includes(pk)) base = [pk, ...base];
     const out: OutColumn[] = base.map(x => ({ name: x, column: x }));
     if (c) {
       for (const name of sortedKeys(c.expr)) out.push({ name, column: '', expr: c.expr![name] });
@@ -479,12 +471,7 @@ export class Planner {
     let sql = '';
     for (const j of s.q.joins ?? []) {
       const js = s.joins.get(j.rel)!;
-      let conditions: string[];
-      if ((j.left ?? '') !== '') {
-        conditions = [`${this.qcol(s, j.left!)} = ${this.qcol(js, j.right!)}`];
-      } else {
-        conditions = s.ent.relations[j.rel]!.keys.map(key => `${this.qcol(s, key.local)} = ${this.qcol(js, key.target)}`);
-      }
+      const conditions = [`${this.qcol(s, j.left!)} = ${this.qcol(js, j.right!)}`];
       sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${this.d.quote(js.ent.table)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
       if (j.query.on && j.query.on.items.length > 0) sql += ` AND ${this.renderGroup(b, js, j.query.on, true)}`;
       sql += this.renderJoins(b, js);
@@ -529,12 +516,7 @@ export class Planner {
 
   private renderPred(b: Builder, s: Scope, pr: Predicate): string {
     const op = pr.op ?? '';
-    if (op !== '' && !this.d.supports(op)) fail('OPERATOR_NOT_ALLOWED', `${op} is not available on ${this.d.name}`);
     if ((pr.expr ?? '') !== '') return `(${this.fillPlaceholders(b, this.renderExpr(s, pr.expr!), pr.ps ?? [])})`;
-    if (op === 'match' || op === 'match_boolean') {
-      const boolean = op === 'match_boolean';
-      return this.d.fulltext(this.qualified(s, pr.match!), b.param(pr.p!, boolean ? 'fulltext_boolean' : ''), boolean);
-    }
     if (op === 'tuple_in' || op === 'tuple_not_in') {
       const cols = pr.cols!;
       const ps = pr.ps!;
@@ -549,7 +531,7 @@ export class Planner {
     if (pr.sub) return `${lhs}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${this.subSelect(b, s, pr.sub)})`;
     if (pr.value) {
       const fn = pr.value;
-      const value = this.d.valueFunction(fn.name, () => b.param(fn.ps![0]!), () => b.now());
+      const value = this.d.valueFunction(fn.name, () => b.param(fn.ps![0]!), () => b.now(col.type === 'datetime' ? col.precision : 6));
       if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
       return `${lhs} ${cmp(op)} ${value}`;
     }
@@ -568,8 +550,8 @@ export class Planner {
       case 'eq': case 'not_eq': case 'gt': case 'gte': case 'lt': case 'lte': {
         if (aes) {
           if (op !== 'eq' && op !== 'not_eq') fail('OPERATOR_NOT_ALLOWED', 'AES columns support only equality through a declared blind index');
-          if (!col.blind_index) fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
-          lhs = this.qcol(s, col.blind_index);
+          if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
+          lhs = this.qcol(s, col.blindIndex);
           return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, pr.p!)}`;
         }
         return `${lhs} ${cmp(op)} ${this.renderValue(b, col, pr.p!)}`;
@@ -582,8 +564,8 @@ export class Planner {
       case 'in': case 'not_in': {
         let values: string[];
         if (aes) {
-          if (!col.blind_index) fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
-          lhs = this.qcol(s, col.blind_index);
+          if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
+          lhs = this.qcol(s, col.blindIndex);
           values = pr.ps!.map(i => this.renderBlindIndexValue(b, i));
         } else {
           values = pr.ps!.map(i => this.renderValue(b, col, i));
@@ -604,26 +586,15 @@ export class Planner {
     return fail('OPERATOR_UNKNOWN', op);
   }
 
-  /** Binds one value; SQL-side styles wrap it, host-side styles are recorded on the slot. */
+  /** Binds one value; SQL-side stages wrap it, host-side stages are recorded on the slot. */
   private renderValue(b: Builder, col: Column, i: number): string {
-    const sqlStyles = this.sqlStyles(styles(col));
-    const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStyle(st));
-    const bind = () => {
-      const ph = b.param(i);
-      b.last().host_styles = host;
-      b.last().col_type = bindType(col);
-      if (col.type === 'decimal') {
-        b.last().precision = col.precision;
-        b.last().scale = col.scale;
-      }
-      return ph;
-    };
-    if (sqlStyles.length === 0 && col.type !== 'point') return bind();
-    let first = true;
-    return this.d.writeExpr(() => {
-      if (first) { first = false; return bind(); }
-      return b.secret('aes');
-    }, col.type, sqlStyles);
+    const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
+    const ph = b.param(i);
+    b.last().host_styles = host;
+    b.last().col_type = bindType(col);
+    if (col.type === 'decimal' || col.type === 'time' || col.type === 'datetime') b.last().precision = col.precision;
+    if (col.type === 'decimal') b.last().scale = col.scale;
+    return this.d.writeExpr(ph, this.sqlStyles(styles(col)));
   }
 
   /** Binds plaintext that the executor hashes with the blind index key. */
@@ -688,7 +659,7 @@ export class Planner {
     sql += ` FROM ${this.d.quote(root.ent.table)} AS ${this.d.quote(root.alias)}`;
     sql += this.renderJoins(b, root);
     const where: string[] = [];
-    if (root.ent.soft_delete) where.push(`${this.qcol(root, root.ent.soft_delete)} IS NULL`);
+    if (root.ent.softDelete) where.push(`${this.qcol(root, root.ent.softDelete)} IS NULL`);
     if (sub.query.where && sub.query.where.items.length > 0) where.push(this.renderGroup(b, root, sub.query.where, true));
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
@@ -725,6 +696,19 @@ export class Planner {
     return this.renderValue(b, col, a.p!);
   }
 
+  /** The clock of a datetime column: the dialect clock, or the executor clock where the database has none. */
+  private clock(b: Builder, col: Column): string {
+    if (this.d.hostNow) return b.now(col.precision);
+    if (col.precision > 0 && this.d.name === 'mysql') return `CURRENT_TIMESTAMP(${col.precision})`;
+    return this.d.now();
+  }
+
+  /** The assignment of the audit operation column of an audited table, or undefined. */
+  private operationAssignment(b: Builder, ent: Entity): string | undefined {
+    if (ent.auditOperation === '') return undefined;
+    return `${this.d.quote(ent.auditOperation)} = ${b.operation(ent, columnOf(ent, ent.auditOperation)!)}`;
+  }
+
   private insertStep(r: Request): Omit<PlanStep, 'id'> {
     const b = new Builder(this.d);
     const ent = this.entity(r.entity);
@@ -733,11 +717,12 @@ export class Planner {
     validateAESAssignments(ent, set, false);
     validateRequiredAssignments(ent, set);
     const version = aesVersionColumn(ent);
+    const operation = ent.auditOperation === '' ? undefined : columnOf(ent, ent.auditOperation)!;
     const cols: string[] = [];
     const vals: string[] = [];
     for (const a of set) {
       const col = columnOf(ent, a.column)!;
-      if (col.auto) fail('IR_INVALID', `cannot set auto column ${a.column}`);
+      if (col.identity) fail('IR_INVALID', `cannot set identity column ${a.column}`);
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
@@ -745,12 +730,9 @@ export class Planner {
       cols.push(this.d.quote(version));
       vals.push(b.config('aes_version'));
     }
-    // A dialect without a session time zone stores the executor clock, which
-    // is in the connection time zone, instead of its UTC column default.
-    const nowCols = this.d.hostNow ? ent.columns.filter(c => c.default === 'now' && !assigned(set, c.name)).map(c => c.name) : [];
-    for (const c of nowCols) {
-      cols.push(this.d.quote(c));
-      vals.push(b.now());
+    if (operation) {
+      cols.push(this.d.quote(operation.name));
+      vals.push(b.operation(ent, operation));
     }
     let sql = `INSERT INTO ${this.d.quote(ent.table)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
     if ((r.rows ?? []).length > 0) {
@@ -759,7 +741,7 @@ export class Planner {
       for (const row of r.rows!) {
         const more = set.map((a, i) => this.renderAssign(b, ent, columnOf(ent, a.column)!, { column: a.column, p: row[source[i]!] }));
         if (version !== '' && !assigned(set, version)) more.push(b.config('aes_version'));
-        for (const _ of nowCols) more.push(b.now());
+        if (operation) more.push(b.operation(ent, operation));
         sql += `, (${more.join(', ')})`;
       }
       return { role: 'main', sql, bind_slots: b.binds };
@@ -769,13 +751,15 @@ export class Planner {
       validateAESAssignments(ent, duplicate, true);
       const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
       if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
-      if (ent.auto && !this.d.insertReturningId) {
+      const op = this.operationAssignment(b, ent);
+      if (op !== undefined) sets.push(op);
+      if (ent.identity !== '' && !this.d.insertReturningId) {
         // make the last insert id report the existing row on update
-        sets.push(`${this.d.quote(ent.auto)} = LAST_INSERT_ID(${this.d.quote(ent.auto)})`);
+        sets.push(`${this.d.quote(ent.identity)} = LAST_INSERT_ID(${this.d.quote(ent.identity)})`);
       }
       sql += this.d.upsert(conflictTarget(ent, set), sets.join(', '));
     }
-    if (this.d.insertReturningId && ent.auto) sql += ` RETURNING ${this.d.quote(ent.auto)}`;
+    if (this.d.insertReturningId && ent.identity !== '') sql += ` RETURNING ${this.d.quote(ent.identity)}`;
     return { role: 'main', sql, bind_slots: b.binds };
   }
 
@@ -788,25 +772,18 @@ export class Planner {
     const sets: string[] = [];
     for (const a of set) {
       const col = columnOf(ent, a.column)!;
-      if (col.pk || col.auto) fail('IR_INVALID', `cannot update ${a.column}`);
+      if (col.primary || col.identity) fail('IR_INVALID', `cannot update ${a.column}`);
       sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
     }
     const version = aesVersionColumn(ent);
     if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
     // The update time is always assigned: optimistic locking needs the same behavior on every dialect.
-    const updated = ent.timestamps?.updated ?? '';
-    if (updated !== '' && !assigned(r.set ?? [], updated)) {
-      const col = columnOf(ent, updated);
-      if (col) {
-        let now = this.d.now();
-        if (this.d.hostNow) now = b.now();
-        else if ((col.precision ?? 0) > 0 && this.d.name === 'mysql') now = `CURRENT_TIMESTAMP(${col.precision})`;
-        sets.push(`${this.d.quote(updated)} = ${now}`);
-      }
-    }
+    if (ent.updated !== '' && !assigned(r.set ?? [], ent.updated)) sets.push(`${this.d.quote(ent.updated)} = ${this.clock(b, columnOf(ent, ent.updated)!)}`);
+    const op = this.operationAssignment(b, ent);
+    if (op !== undefined) sets.push(op);
     let where = this.renderGroup(b, root, r.where!, true);
     if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.param(r.optimistic.p)}`;
-    if (ent.soft_delete) where += ` AND ${this.qcol(root, ent.soft_delete)} IS NULL`;
+    if (ent.softDelete !== '') where += ` AND ${this.qcol(root, ent.softDelete)} IS NULL`;
     return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
   }
 
@@ -814,13 +791,14 @@ export class Planner {
     const b = new Builder(this.d);
     const ent = this.entity(r.entity);
     const root = this.buildScopes(r, ent.table, undefined);
-    let now = '';
-    if (ent.soft_delete) now = this.d.hostNow ? b.now() : this.d.now();
-    let where = this.renderGroup(b, root, r.where!, true);
-    if (ent.soft_delete) {
-      where += ` AND ${this.qcol(root, ent.soft_delete)} IS NULL`;
-      return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${this.d.quote(ent.soft_delete)} = ${now} WHERE ${where}`, bind_slots: b.binds };
+    if (ent.softDelete === '') {
+      return { role: 'main', sql: `DELETE FROM ${this.d.quote(ent.table)} WHERE ${this.renderGroup(b, root, r.where!, true)}`, bind_slots: b.binds };
     }
-    return { role: 'main', sql: `DELETE FROM ${this.d.quote(ent.table)} WHERE ${where}`, bind_slots: b.binds };
+    // A soft delete is an update: it stamps the column and, on an audited table, the operation.
+    const sets = [`${this.d.quote(ent.softDelete)} = ${this.clock(b, columnOf(ent, ent.softDelete)!)}`];
+    const op = this.operationAssignment(b, ent);
+    if (op !== undefined) sets.push(op);
+    const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NULL`;
+    return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
   }
 }

@@ -24,7 +24,7 @@ export interface RequestQuery {
 
 export interface Request extends RequestQuery {
   ir_version: 1;
-  schema_hash: string;
+  manifest_hash: string;
   kind: QueryKind;
   set?: Assignment[];
   on_duplicate?: Assignment[];
@@ -60,7 +60,6 @@ export interface Predicate {
   ps?: number[];
   ref?: ColumnReferenceIR;
   expr?: string;
-  match?: string[];
   fn?: OrmFunction;
   value?: OrmFunction;
   cols?: string[];
@@ -92,7 +91,7 @@ export interface Join {
 }
 
 export interface Plan {
-  schema_hash: string;
+  manifest_hash: string;
   kind: QueryKind;
   steps: PlanStep[];
 }

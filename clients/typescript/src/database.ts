@@ -1,13 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { readFile } from 'node:fs/promises';
-import { blindIndex, decode, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
-import type { Assemble, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
-import { offsetText, openDriver, parseDsn, zoneOffset, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
-import type { SchemaSet } from './names.js';
+import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
+import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
+import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
 import { OrmError } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
+import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
 
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
@@ -31,20 +30,39 @@ export interface ConnectOptions {
   statementTimeoutMs?: number;
 }
 
+/** An operation id: a safe integer for an i64 operation column, a string for a uuid one. */
+export type OperationId = number | string;
+
 export interface TransactionOptions {
   isolation?: Isolation;
   readOnly?: boolean;
   timeoutMs?: number;
   /** Deadlock retries; the default is 3 and 0 disables retry. */
   retry?: number;
+  /**
+   * The operation id of the unit of work: every insert and update of an
+   * audited table inside the transaction writes it into the operation column.
+   */
+  operation?: OperationId;
 }
 
-const schemas = new Map<string, SchemaSet>();
+const models = new Map<string, RuntimeModel>();
 
-/** Called by generated model modules. */
-export function registerSchema(set: SchemaSet): void { schemas.set(set.hash, set); }
-
-export function registeredSchema(hash: string): SchemaSet | undefined { return schemas.get(hash); }
+/**
+ * Builds and registers the runtime model of a manifest text; generated model
+ * modules call it once when they are imported. Registering the same manifest
+ * again returns the registered model.
+ */
+export function registerModel(manifestText: string, manifestHash: string): RuntimeModel {
+  const registered = models.get(manifestHash);
+  if (registered !== undefined) {
+    if (registered.manifestText !== manifestText) throw new OrmError('SCHEMA_INVALID', `manifest ${manifestHash} is registered with another text`);
+    return registered;
+  }
+  const model = modelOfManifest(manifestText, manifestHash);
+  models.set(manifestHash, model);
+  return model;
+}
 
 /** One active transaction. */
 export class TxFrame {
@@ -53,8 +71,7 @@ export class TxFrame {
   public savepoints = 0;
   public readonly locals = new Map<string, string>();
   public readonly locks: string[] = [];
-  public contextRow = false;
-  public constructor(public readonly db: Db, public readonly tx: DriverTransaction) {}
+  public constructor(public readonly db: Db, public readonly tx: DriverTransaction, public readonly operation: OperationId | undefined) {}
 }
 
 const flow = new AsyncLocalStorage<readonly TxFrame[]>();
@@ -90,64 +107,84 @@ export const NOW = '$NOW';
 
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
 
-/** Formats an instant in a connection time zone as stored date-time text. */
+/** Formats an instant in a connection time zone as date-time text with six fraction digits. */
 export function formatInstant(instant: Date, zone: string): string {
   const shifted = new Date(instant.getTime() + zoneOffset(zone, instant) * 60_000);
   const micro = String(shifted.getUTCMilliseconds()).padStart(3, '0') + '000';
   return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())} ${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}:${pad2(shifted.getUTCSeconds())}.${micro}`;
 }
 
-/** Normalizes stored date or time text to `YYYY-MM-DD HH:MM:SS.ffffff` in the connection zone. */
-export function normalizeTime(value: unknown, zone: string): string {
-  if (value instanceof Date) return formatInstant(value, zone);
-  const text = String(value);
-  const match = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/.exec(text);
-  if (!match) throw new OrmError('CODEC_DECODE', `invalid date-time value ${text}`);
-  if (match[4] !== undefined) {
-    const offset = match[4] === 'Z' ? 'Z' : match[4].length === 3 ? `${match[4]}:00` : match[4].replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
-    const instant = new Date(`${match[1]}T${match[2] ?? '00:00:00'}${match[3] ? `.${match[3].slice(0, 3)}` : ''}${offset}`);
-    const base = formatInstant(instant, zone);
-    return base.slice(0, 20) + (match[3] ?? '').padEnd(6, '0').slice(0, 6);
-  }
-  return `${match[1]} ${match[2] ?? '00:00:00'}.${(match[3] ?? '').padEnd(6, '0').slice(0, 6)}`;
-}
-
-const sqliteDateTimeText = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?$/;
-const sqliteDateText = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-function invalidTimeText(value: string, colType: string): OrmError {
-  const form = colType === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:MM:SS[.ffffff][Z|±HH:MM]';
-  return new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${form}`);
-}
+const dateText = /^(\d{4})-(\d{2})-(\d{2})$/;
+const timeText = /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/;
+const dateTimeText = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/;
 
 function validDate(y: string, m: string, d: string, h = '00', mi = '00', sec = '00'): boolean {
   const t = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(h), Number(mi), Number(sec)));
+  t.setUTCFullYear(Number(y));
   return t.getUTCFullYear() === Number(y) && t.getUTCMonth() + 1 === Number(m) && t.getUTCDate() === Number(d)
     && t.getUTCHours() === Number(h) && t.getUTCMinutes() === Number(mi) && t.getUTCSeconds() === Number(sec);
 }
 
+/** The fraction digits of a value cut to p digits; undefined when a cut digit is not zero. */
+function fraction(digits: string | undefined, precision: number): string | undefined {
+  const all = (digits ?? '').padEnd(precision, '0');
+  if (/[1-9]/.test(all.slice(precision))) return undefined;
+  return precision === 0 ? '' : `.${all.slice(0, precision)}`;
+}
+
 /**
- * Writes a datetime or date value in the text form SQLite stores, so a string
- * value compares equal to the stored value. A datetime string with an offset
- * is converted to the connection time zone.
+ * Reads a date, time or datetime text in its value form (docs/dbspec.md
+ * "Runtime model"): `YYYY-MM-DD`, `HH:MM:SS` and `YYYY-MM-DD HH:MM:SS` with
+ * p fraction digits. A datetime with an offset is converted to the connection
+ * time zone. Returns undefined for any other value.
  */
-export function sqliteTimeValue(value: unknown, colType: string, zone: string): unknown {
-  if (value instanceof Date) return colType === 'date' ? formatInstant(value, zone).slice(0, 10) : value;
-  if (typeof value !== 'string') return value;
-  if (colType === 'date') {
-    const m = sqliteDateText.exec(value);
-    if (!m || !validDate(m[1]!, m[2]!, m[3]!)) throw invalidTimeText(value, colType);
-    return value;
+function timeForm(value: unknown, colType: string, zone: string, precision: number): string | undefined {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime()) || colType === 'time') return undefined;
+    const text = formatInstant(value, zone);
+    return colType === 'date' ? text.slice(0, 10) : timeForm(text, colType, zone, precision);
   }
-  const m = sqliteDateTimeText.exec(value);
-  if (!m || !validDate(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[6]!)) throw invalidTimeText(value, colType);
-  const fraction = (m[7] ?? '').padEnd(6, '0');
-  const wall = `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
-  if (m[8] === undefined) return `${wall}.${fraction}`;
-  const sign = m[8] === 'Z' || m[8].startsWith('+') ? 1 : -1;
-  const offset = m[8] === 'Z' ? 0 : sign * (Number(m[8].slice(1, 3)) * 60 + Number(m[8].slice(4, 6)));
+  if (typeof value !== 'string') return undefined;
+  if (colType === 'date') {
+    const m = dateText.exec(value);
+    return m && validDate(m[1]!, m[2]!, m[3]!) ? value : undefined;
+  }
+  if (colType === 'time') {
+    const m = timeText.exec(value);
+    if (!m || Number(m[1]) > 23 || Number(m[2]) > 59 || Number(m[3]) > 59) return undefined;
+    const f = fraction(m[4], precision);
+    return f === undefined ? undefined : `${m[1]}:${m[2]}:${m[3]}${f}`;
+  }
+  const m = dateTimeText.exec(value);
+  if (!m || !validDate(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[6]!)) return undefined;
+  const f = fraction(m[7], precision);
+  if (f === undefined) return undefined;
+  if (m[8] === undefined) return `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}${f}`;
+  const digits = m[8].slice(1).replace(':', '');
+  const offset = m[8] === 'Z' ? 0 : (m[8].startsWith('-') ? -1 : 1) * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2) || '0'));
   const instant = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6])) - offset * 60_000);
-  return `${formatInstant(instant, zone).slice(0, 19)}.${fraction}`;
+  return `${formatInstant(instant, zone).slice(0, 19)}${f}`;
+}
+
+function timeShape(colType: string, precision: number): string {
+  const f = precision > 0 ? `.${'f'.repeat(precision)}` : '';
+  if (colType === 'date') return 'YYYY-MM-DD';
+  if (colType === 'time') return `HH:MM:SS${f}`;
+  return `YYYY-MM-DD HH:MM:SS${f}[Z|±HH:MM]`;
+}
+
+/** Writes a date, time or datetime bind in its stored text form; any other value is CODEC_ENCODE. */
+export function timeValue(value: unknown, colType: string, zone: string, precision: number): string {
+  const text = timeForm(value, colType, zone, precision);
+  if (text === undefined) throw new OrmError('CODEC_ENCODE', `${colType} value ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  return text;
+}
+
+/** Reads a stored date, time or datetime cell in its value form; any other cell is CODEC_DECODE. */
+export function readTime(value: unknown, colType: string, zone: string, precision: number): string {
+  const text = timeForm(value, colType, zone, precision);
+  if (text === undefined) throw new OrmError('CODEC_DECODE', `${colType} cell ${JSON.stringify(value)} is not ${timeShape(colType, precision)}`);
+  return text;
 }
 
 interface Cached { plan: Plan; id: string; }
@@ -210,7 +247,7 @@ export function keyValue(value: unknown): Key {
   return scalarKey(value);
 }
 
-/** A database connection with its schemas, plan cache, and statement cache. */
+/** A database connection with its plan cache and statement cache. */
 export class Db {
   // State every handle of one connection shares.
   private readonly shared = { closed: false };
@@ -224,8 +261,7 @@ export class Db {
   public onQuery: ((event: QueryEvent) => void) | undefined;
   private readonly planCacheSize: number;
 
-  private constructor(public readonly pool: DriverPool, public readonly zone: string, engine: Engine, options: ConnectOptions) {
-    this.engines.set(engine.schemaHash, engine);
+  private constructor(public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions) {
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
@@ -242,19 +278,14 @@ export class Db {
   }
 
   /**
-   * Opens the database selected by the DSN URI scheme with the schema.json
-   * the imported models were generated from.
+   * Opens the database selected by the DSN URI scheme. A request names the
+   * manifest its models were generated from; the imported models register it.
    */
-  public static async connect(dsn: string, schemaPath: string, options: ConnectOptions = {}): Promise<Db> {
+  public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
+    if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError('CONFIG', 'connect takes the DSN and an options object');
     const parsed = parseDsn(dsn);
     const statementCacheSize = options.statementCacheSize ?? 256;
     if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
-    let text: string;
-    try { text = await readFile(schemaPath, 'utf8'); } catch (error) { throw new OrmError('CONFIG', `read schema ${schemaPath}: ${(error as Error).message}`); }
-    const engine = Engine.load(text, parsed.driver);
-    if (!schemas.has(engine.schemaHash)) {
-      throw new OrmError('SCHEMA_HASH_MISMATCH', `no imported models were generated from schema ${engine.schemaHash}: generate the models again`);
-    }
     if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
     if ((options.statementTimeoutMs ?? 0) < 0) throw new OrmError('CONFIG', 'statement timeout must not be negative');
     // Zero or unset takes the default of every client, 10 connections.
@@ -263,18 +294,12 @@ export class Db {
     if (idleSize < 0 || idleSize > size) throw new OrmError('CONFIG', `pool idle size must be between 0 and the pool size ${size}`);
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
     const pool = openDriver(dsn, parsed, { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 }, statementCacheSize, options.statementTimeoutMs ?? 0);
-    const db = new Db(pool, parsed.zone, engine, options);
+    const db = new Db(pool, parsed.zone, options);
     try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
     return db;
   }
 
-  /** Adds an installed schema to the connection. */
-  public registerEngine(engine: Engine): void {
-    if (engine.dialect !== this.driver) throw new OrmError('CONFIG', `schema compiled for ${engine.dialect} on a ${this.driver} connection`);
-    this.engines.set(engine.schemaHash, engine);
-  }
-
-  public get driver(): string { return this.pool.name; }
+  public get driver(): DriverName { return this.pool.name; }
 
   public get closed(): boolean { return this.shared.closed; }
 
@@ -320,16 +345,20 @@ export class Db {
     if (!Number.isSafeInteger(retry) || retry < 0) throw new OrmError('CONFIG', 'transaction retry must be a non-negative integer');
     const timeoutMs = options.timeoutMs ?? 0;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
+    const operation = options.operation;
+    if (operation !== undefined && !Number.isSafeInteger(operation) && (typeof operation !== 'string' || operation === '')) {
+      throw new OrmError('CONFIG', 'transaction operation must be a safe integer or a non-empty string');
+    }
     const outer = activeFor(this);
     if (outer) {
-      if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined) {
+      if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || operation !== undefined) {
         throw new OrmError('CONFIG', 'a nested transaction of the same connection accepts only the retry option');
       }
       return this.savepoint(outer, callback);
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs });
+        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs }, operation);
       } catch (error) {
         if (!(error instanceof OrmError) || error.code !== 'DEADLOCK' || attempt >= retry) throw error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
@@ -337,10 +366,10 @@ export class Db {
     }
   }
 
-  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }): Promise<T> {
+  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, operation: OperationId | undefined): Promise<T> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     const tx = await this.pool.begin(options);
-    const frame = new TxFrame(this, tx);
+    const frame = new TxFrame(this, tx, operation);
     let result: T;
     try {
       result = await flow.run([...frames(), frame], callback);
@@ -358,7 +387,6 @@ export class Db {
     try {
       for (const key of frame.locks) await frame.tx.control('SELECT RELEASE_LOCK(?)', [key]);
       if (this.driver === 'mysql') for (const key of frame.locals.keys()) await frame.tx.control(`SET @\`orm.${key}\` = NULL`);
-      if (commit && frame.contextRow) await frame.tx.control('DELETE FROM "orm__context"');
     } catch (error) {
       await frame.tx.rollback();
       throw error;
@@ -392,8 +420,13 @@ export class Db {
     const key = canonical(request);
     const cached = this.plans.get(key);
     if (cached) return cached;
-    const engine = this.engines.get(request.schema_hash);
-    if (engine === undefined) throw new OrmError('SCHEMA_HASH_MISMATCH', `the models use schema ${request.schema_hash}, which the connection has not loaded`);
+    let engine = this.engines.get(request.manifest_hash);
+    if (engine === undefined) {
+      const model = models.get(request.manifest_hash);
+      if (model === undefined) throw new OrmError('SCHEMA_HASH_MISMATCH', `no imported models were generated from manifest ${request.manifest_hash}`);
+      engine = new Engine(model, this.driver);
+      this.engines.set(request.manifest_hash, engine);
+    }
     const plan = engine.compile(request);
     const entry = { plan, id: planId(key) };
     this.plans.set(key, entry);
@@ -401,25 +434,24 @@ export class Db {
     return entry;
   }
 
-  /** The executor clock in the connection zone; PostgreSQL receives the offset because its columns store instants. */
-  public now(): string {
-    const instant = new Date();
+  /** The executor clock in the connection zone with p fraction digits. */
+  public now(instant: Date, precision: number): string {
     const text = formatInstant(instant, this.zone);
-    return this.driver === 'postgres' ? text + offsetText(zoneOffset(this.zone, instant)) : text;
+    return precision === 0 ? text.slice(0, 19) : text.slice(0, 20 + precision);
   }
 
   /** Resolves the bind slots of a step; masked marks secret and clock positions. */
-  public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): { values: unknown[]; masked: unknown[] } {
+  public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = [], operation?: OperationId): { values: unknown[]; masked: unknown[] } {
     const values: unknown[] = [];
     const masked: unknown[] = [];
     const push = (value: unknown, mask?: string) => { values.push(value); masked.push(mask ?? value); };
-    let clock: string | undefined;
+    let clock: Date | undefined;
     for (const slot of step.bind_slots) {
       switch (slot.from) {
         case 'param': {
           let value = params[slot.param];
-          if (this.driver === 'sqlite' && (slot.col_type === 'datetime' || slot.col_type === 'date') && value !== null) {
-            value = sqliteTimeValue(value, slot.col_type, this.zone);
+          if ((slot.col_type === 'datetime' || slot.col_type === 'date' || slot.col_type === 'time') && value !== null) {
+            value = timeValue(value, slot.col_type, this.zone, slot.precision ?? 0);
           }
           if (slot.col_type === 'decimal' && value !== null) {
             if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', 'decimal bind requires exact text');
@@ -434,14 +466,13 @@ export class Db {
           if (slot.host_styles.includes('blind_index')) {
             if (value !== null) value = blindIndex(value, this.blindIndexKey);
           } else if (slot.host_styles.length > 0) value = hostEncode(value, slot.host_styles, this.aesKey);
-          if (slot.col_type === 'point' && value !== null) {
-            const [x, y] = parsePoint(value as string);
-            value = this.driver === 'postgres' ? `(${pointText([x, y]).slice(6, -1).replace(' ', ',')})` : pointText([x, y]);
-          }
           if (value instanceof Date) value = formatInstant(value, this.zone);
           push(value);
           break;
         }
+        case 'operation':
+          push(operationValue(slot, operation));
+          break;
         case 'secret':
           if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError('CONFIG', `secret ${slot.name} is not configured`);
           push(this.aesKey, SECRET);
@@ -455,8 +486,8 @@ export class Db {
           break;
         case 'now':
           // One statement reads the clock once, so its clock columns are equal.
-          clock ??= this.now();
-          push(clock, NOW);
+          clock ??= new Date();
+          push(this.now(clock, slot.precision ?? 6), NOW);
           break;
         default:
           throw new OrmError('INTERNAL', `bind from ${slot.from}`);
@@ -466,7 +497,7 @@ export class Db {
   }
 
   public async execute(ex: Executor, cached: Cached, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
-    const { values, masked } = this.args(step, params, parents);
+    const { values, masked } = this.args(step, params, parents, ex.frame?.operation);
     const started = performance.now();
     const connection = ex.frame?.tx ?? this.pool;
     try {
@@ -490,8 +521,22 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
   try { return await work(); } finally { frame.busy = false; }
 }
 
+/**
+ * The operation id bound to the operation column of an audited table; a write
+ * without an operation id, or with one of another type than the column, is
+ * CONFIG.
+ */
+function operationValue(slot: BindSlot, operation: OperationId | undefined): OperationId {
+  if (operation === undefined) {
+    throw new OrmError('CONFIG', `${slot.name} is audited: run the write in a transaction with an operation id`);
+  }
+  if (slot.col_type === 'uuid' ? typeof operation !== 'string' : !Number.isSafeInteger(operation)) {
+    throw new OrmError('CONFIG', `the operation column ${slot.name}.${slot.column} (${slot.col_type}) does not take the operation id ${JSON.stringify(operation)}`);
+  }
+  return operation;
+}
+
 function transform(kind: string, value: string): string {
-  if (kind === 'fulltext_boolean') return value.trim() === '' ? '' : `+${value.trim().replaceAll(' ', ' +')}*`;
   const escaped = value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
   if (kind === 'like_contains') return `%${escaped}%`;
   if (kind === 'like_starts') return `${escaped}%`;
@@ -564,7 +609,8 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
 
 function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
   let version = db.aesKeyring?.currentVersion ?? 1;
-  for (const column of assemble.columns) if (column.hidden && column.column === 'aes_key_version' && row[column.index] !== null) version = Number(row[column.index]);
+  // 숨긴 column은 AES key version뿐이다.
+  for (const column of assemble.columns) if (column.hidden && row[column.index] !== null) version = Number(row[column.index]);
   for (const column of assemble.columns) {
     let value = row[column.index];
     if (value === undefined || column.styles.length === 0) continue;

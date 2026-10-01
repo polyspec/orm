@@ -21,7 +21,8 @@ try {
   const calls = ['getsByNotAColumn(1)', 'orderByNotAColumnAsc()', 'gtIsClose(1)', 'lkReadCount(1)', 'getsByServiceSeqAndLtStartDt(1, 2)', 'andNeUuid(null)', 'joinServiceSeqWithSeq(s)'];
   await writeFile(usage, `${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
   const out = join(work, 'models');
-  const result = run('gen', '--schema', join(root, 'schema/schema.json'), '--out', out, '--scan', usage);
+  const bench = join(root, 'schema/bench.dbspec');
+  const result = run('gen', '--schema', bench, '--out', out, '--scan', usage);
   check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
   const text = await readFile(join(out, 'models.ts'), 'utf8');
   for (const invalid of ['NotAColumn', 'gtIsClose', 'lkReadCount', 'notCalled']) check(!text.includes(invalid), `declared invalid name ${invalid}`);
@@ -29,22 +30,49 @@ try {
   check(text.includes('andNeUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;'), 'nullable condition declaration');
   check(text.includes('joinServiceSeqWithSeq(child: '), 'join declaration');
   check(text.includes("from '@polyspec/orm-typescript'"), 'generated output outside the repository imports the package');
+  check(text.includes('export const MANIFEST_TEXT = `dbspec 1 bench\n') && /export const MANIFEST_HASH = 'sha256:[0-9a-f]{64}';/.test(text), 'the manifest text and hash are embedded');
+  // The value type of each codec: a styled value for ordered_json and gz, a string for aes hex and ip.
+  for (const declaration of [
+    'getJsonSetting(): StyledValue<JsonValue>',
+    'setJsonSetting(value: StyledValue<JsonValue | CodecValue>): this',
+    'getGzExtend(): StyledValue<CodecValue>',
+    'getBase64Extra(): StyledValue<CodecValue>',
+    'getAesHexEmail(): string | null',
+    'setAesHexEmail(value: string | null): this',
+    'getIp(): string | null',
+    'getDescription(): string | null',
+  ]) check(text.includes(`public ${declaration} {`), `declaration ${declaration}`);
+  // The value type of each dbspec type.
+  const types = join(work, 'types.dbspec');
+  await writeFile(types, 'dbspec 1 types\n\ntable typed {\n  seq i64\n  small i16\n  day date null\n  clock time(3)\n  stamp datetime(0)\n  id uuid\n  body text\n  blob bytes\n  ratio f64\n  primary key (seq)\n}\n');
+  const typed = join(work, 'typed');
+  check(run('gen', '--schema', types, '--out', typed).status === 0, 'generation of the type document');
+  const typedText = await readFile(join(typed, 'models.ts'), 'utf8');
+  for (const declaration of [
+    'getSmall(): number', 'setSmall(value: number): this', 'getDay(): string | null', 'setDay(value: string | Date | null): this',
+    'getClock(): string', 'setClock(value: string): this', 'getStamp(): string', 'getId(): string', 'getBody(): string',
+    'getBlob(): Uint8Array', 'getRatio(): number', 'plusSmall(n: number): this',
+  ]) check(typedText.includes(`public ${declaration} {`), `declaration ${declaration}`);
   const nested = await mkdtemp(join(root, 'clients/typescript/src/models/decimal-test-'));
   try {
-    const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.json'), '--out', nested, '--scan', usage);
+    const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.dbspec'), '--out', nested, '--scan', usage);
     check(nestedResult.status === 0, `nested generated model exit ${nestedResult.status}: ${nestedResult.stderr}`);
     const nestedText = await readFile(join(nested, 'models.ts'), 'utf8');
     check(nestedText.includes("from '../../index.js'"), 'nested model imports its client runtime');
-    check(nestedText.includes("amount: { type: 'decimal', precision: 13, scale: 4 }"), 'nested model keeps decimal metadata');
+    check(nestedText.includes('  amount decimal(13,4)\n'), 'nested model keeps decimal metadata');
   } finally {
     await rm(nested, { recursive: true, force: true });
   }
   check(run('gen', '--out', out).status === 2, 'missing --schema is a usage error');
-  check(run('--schema', join(root, 'schema/schema.json'), '--out', out).status === 2, 'a missing command is a usage error');
-  check(run('gen', '--schema', join(work, 'missing.json'), '--out', out).status === 1, 'missing schema fails');
+  check(run('--schema', bench, '--out', out).status === 2, 'a missing command is a usage error');
+  check(run('gen', '--schema', join(work, 'missing.dbspec'), '--out', out).status === 1, 'missing schema fails');
+  const invalid = join(work, 'invalid.dbspec');
+  await writeFile(invalid, 'dbspec 1 invalid\n\ntable t {\n  seq i64\n}\n');
+  const rejected = run('gen', '--schema', invalid, '--out', out);
+  check(rejected.status === 1 && rejected.stderr.includes('SCHEMA_INVALID'), `an invalid document fails: ${rejected.stderr}`);
 
-  // --check compares models.ts and schema.json without writing.
-  const genCheck = ['gen', '--schema', join(root, 'schema/schema.json'), '--out', out, '--scan', usage, '--check'];
+  // --check compares models.ts and the dbspec documents without writing.
+  const genCheck = ['gen', '--schema', bench, '--out', out, '--scan', usage, '--check'];
   let checked = run(...genCheck);
   check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `gen --check on current models: ${checked.status} ${checked.stdout}${checked.stderr}`);
   await writeFile(join(out, 'models.ts'), '// changed\n');
