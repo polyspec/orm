@@ -850,6 +850,82 @@
       ]
     },
     {
+      "id": "immutable-on-cascade-child",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete cascade",
+          "  settings {",
+          "    immutable",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 15,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-on-set-null-child",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  user_id i64 null",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  index ix_service_user (user_id)",
+          "  index ix_service_operation (operation_id)",
+          "  foreign key fk_service_user (user_id) references users (id) on update set_null",
+          "  settings {",
+          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  user_id i64 null",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 17,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
       "id": "unknown-setting",
       "documents": {
         "shop": [
