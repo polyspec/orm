@@ -1,7 +1,7 @@
 <?php
 // A complex statement in every client language, one JSON document. Run:
 //
-//   php examples/complex/php/main.php /abs/schema/schema.json
+//   php examples/complex/php/main.php
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
@@ -15,7 +15,7 @@ use Orm\Orm;
 
 $db = Orm::connect(
     getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock',
-    new Config(schemaPath: $argv[1], aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
+    new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
 );
 
 // A join child with its own ON conditions whose WHERE conditions are placed

@@ -374,7 +374,8 @@ impl ToolDsn {
             }
             "sqlite" if !url.path().starts_with('/') || !host.is_empty() => return Err("MIGRATION_CONFIG: sqlite DSN must be sqlite://<absolute path>".into()),
             "mysql" | "postgres" | "sqlite" => {}
-            _ => return Err(format!("MIGRATION_CONFIG: unsupported DSN scheme {}; want mysql, postgres, or sqlite", crate::schema::quote_text(&dialect))),
+            // url scheme은 ASCII 문자, 숫자, `+`, `-`, `.`만 가지므로 따옴표로만 감싼다.
+            _ => return Err(format!("MIGRATION_CONFIG: unsupported DSN scheme \"{dialect}\"; want mysql, postgres, or sqlite")),
         }
         Ok(ToolDsn { dialect, url })
     }

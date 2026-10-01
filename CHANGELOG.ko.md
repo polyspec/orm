@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.2.6.4: dbspec 문서 집합이 유일한 schema source다. Mermaid schema source, 그 manifest와 `orm-schema-v1` SQL, 그것을 읽던 모든 schema CLI 명령과 PhysicalGraph record를 모든 client에서 제거했고, CLI는 Go, PHP, TypeScript에서 `orm-gen`이다.
+
+- T8.2.6.3: 모든 generator, runtime, schema tool, schema 설치가 dbspec 문서 집합을 읽는다.
+
 - T8.7: 모든 client가 표준 Mermaid erDiagram을 export하고 import하며 각각 빼는 것을 나열하고, 네 client가 byte 단위로 일치한다.
 
 - T8.7.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 Mermaid export, import, round trip 결과를 비교한다.

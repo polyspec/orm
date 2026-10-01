@@ -82,18 +82,6 @@ try {
   await rm(join(out, 'models.ts'));
   checked = run(...genCheck);
   check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-  const mmd = join(work, 's.mmd');
-  const json = join(work, 'schema.json');
-  await writeFile(mmd, 'erDiagram\n  item {\n    bigint seq PK\n    varchar(32) name\n  }\n');
-  checked = run('build', mmd, '--out', json, '--check');
-  check(checked.status === 1 && checked.stdout === `missing: ${json}\n`, `build --check on a missing file: ${checked.status} ${checked.stdout}${checked.stderr}`);
-  check(run('build', mmd, '--out', json).status === 0, 'build');
-  checked = run('build', '--check', mmd, '--out', json);
-  check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `build --check on a current file: ${checked.status} ${checked.stdout}${checked.stderr}`);
-  await writeFile(json, '{}\n');
-  checked = run('build', mmd, '--out', json, '--check');
-  check(checked.status === 1 && checked.stdout === `differs: ${json}\n`, `build --check on a changed file: ${checked.status} ${checked.stdout}${checked.stderr}`);
-  check(await readFile(json, 'utf8') === '{}\n', 'build --check wrote schema.json');
 } finally {
   await rm(work, { recursive: true, force: true });
 }

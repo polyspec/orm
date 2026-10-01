@@ -34,7 +34,7 @@
 | 클라이언트 | PK 한도 | 100행 한도 | 검사 |
 |---|---:|---:|---|
 | Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `bench/go` `TestHotPathGate` |
-| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php <schema.json>` |
+| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php` |
 
 두 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드된 벤치 데이터베이스를 읽는다. Go 검사는 `ORM_RUN_PERF_GATE=1`일 때 실행된다. `ORM_BENCH_MYSQL_DSN` 없이 실행한 검사는 그 변수 명칭을 출력하고 실패하며, 어떤 벤치 테스트도 로컬 서버로 대신하지 않는다.
 

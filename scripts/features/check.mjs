@@ -103,7 +103,7 @@ for (const feature of manifest.features ?? []) {
 // covers all clients because the conformance comparator fails when one
 // language does not run the declared vectors.
 const languageTests = {
-  go: { roots: ['clients/go', 'engine', 'internal', 'cmd', 'bench/go'], match: file => file.endsWith('_test.go') },
+  go: { roots: ['clients/go', 'engine', 'generator', 'cmd', 'bench/go'], match: file => file.endsWith('_test.go') },
   php: { roots: ['clients/php/tests', 'tests/interfaces/php.php'], match: () => true },
   rust: { roots: ['clients/rust/orm/tests', 'clients/rust/orm-build/tests', 'clients/rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
   typescript: { roots: ['clients/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('clients/typescript/tests/') && file.endsWith('.mjs')) },

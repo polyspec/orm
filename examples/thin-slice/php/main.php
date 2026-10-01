@@ -3,7 +3,7 @@
 // stdout: the result as JSON. stderr: p50 of the generated client and of the
 // same SQL through PDO directly.
 //
-//   php examples/thin-slice/php/main.php /abs/schema/schema.json
+//   php examples/thin-slice/php/main.php
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
@@ -19,7 +19,6 @@ const AES_KEY = 'bench-salt';
 $lastSql = '';
 $lastArgs = [];
 $db = Orm::connect(dsn(), new Config(
-    schemaPath: $argv[1],
     aesKey: AES_KEY,
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {

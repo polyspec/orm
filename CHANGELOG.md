@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.2.6.4: the dbspec document set is the only schema source; the Mermaid schema source, its manifest and `orm-schema-v1` SQL, every schema CLI command that read them and the PhysicalGraph records are removed from every client, and the CLI is `orm-gen` in Go, PHP and TypeScript.
+
+- T8.2.6.3: every generator, runtime, schema tool and schema installation reads the dbspec document set.
+
 - T8.7: every client exports and imports standard Mermaid erDiagrams with the list of what each leaves out, and the four clients agree byte for byte.
 
 - T8.7.6: `make dbspec-compare-check` compares the Mermaid export, import and round trip results of the Go, PHP, TypeScript and Rust clients.

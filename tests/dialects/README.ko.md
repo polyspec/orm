@@ -52,7 +52,7 @@ binary는 `-timeout 0`으로 실행한다. 연결할 수 없는 서버의 probe�
 ## 언어
 
 Probe는 공통 `tests/`의 Go test다. 적합성 검사기(`tests/conformance/check`)
-와 schema recorder(`tests/schema/record`)도 같은 방식이다. 이 사실은
+도 같은 방식이다. 이 사실은
 클라이언트가 아니라 데이터베이스의 성질이므로 실행기 하나가 한 번
 기록한다. 모듈은 이미 MySQL(`go-sql-driver/mysql`), PostgreSQL(`pgx`),
 SQLite(`modernc.org/sqlite`) driver를 링크하며 Go 오류 타입은 확인에 쓰는

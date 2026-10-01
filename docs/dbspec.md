@@ -238,8 +238,6 @@ A client builds one runtime model from the document set, and generated code is p
 | `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | `string` | `String` |
 | `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` |
 
-The Mermaid manifest fields map to this model as follows: `auto` is the identity column; `lazy` is `select explicit`; `styles` are codec stages, with `json` and `jsons` both `ordered_json`; `timestamps.updated` is `updated`, and `timestamps.created` is a `default now` column; `relations` and `ref` are foreign keys; `unique`, `indexes`, `pk`, `nullable`, `default`, `precision` and `scale` keep their meaning; `fulltext`, `unsigned`, `enum`, `point`, `inet`, `on_update`, `uk`, `raw` and `len` have no runtime counterpart, so the fulltext condition and point values leave the clients.
-
 ## Diagrams
 
 `diagram <name> { <table> at <x> <y> ... }` places tables for a view. Coordinates are integers from −2147483648 to 2147483647 in diagram units; a table appears in a diagram at most once, and a diagram may leave tables out. Diagrams change no hash and no rendering. A document may hold several diagrams.
