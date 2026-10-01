@@ -81,7 +81,7 @@
 - [ ] T8.5.6 `make dbspec-compare-check`에서 네 client의 plan을 비교한다 (T8.5.2-T8.5.5 필요).
 - [~] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
 - [o] T8.6.1 plan 적용을 docs/plans.md "Apply"와 Korean pair에 정한다: lock, introspection이 빼는 history table `dbspec$plans`, state와 drift 검사, dialect별 transaction, 검증, event, statement 효과에 따른 MySQL recovery (T8.5.1 필요). Evidence: docs/plans.md "Apply"와 docs/plans.ko.md는 MySQL과 PostgreSQL lock과 SQLite transaction, history table과 column, state·drift·chain error, dialect별 transaction, 미지원 객체 없는 검증, event 다섯 가지, 멱등한 apply와 recover, 중단된 MySQL statement의 catalog 효과에 따른 recovery를 정한다. docs/dialects.md는 introspection에서 `dbspec$plans`를 뺀다. docs-rules-check가 통과한다.
-- [ ] T8.6.2 Go engine에서 plan을 적용하고 복구한다 (T8.6.1 필요).
+- [o] T8.6.2 Go engine에서 plan을 적용하고 복구한다 (T8.6.1 필요). Evidence: engine/dbspec/apply.go의 `Apply`, `Recover`, `ApplyEvent`, `ApplyError`. 이것 없이 apply test는 build되지 않았다(`undefined: dbspec.ApplyError`). `make dbspec-apply-check`는 16 run을 통과한다: MySQL, PostgreSQL, SQLite에서 두 plan chain과 `done` history row 두 개, 맞는 event, event 없는 두 번째 apply; 세 database의 drift, lock, verify error; PostgreSQL과 SQLite의 실패 뒤 rollback; statement 앞과 뒤에서 멈춘 뒤의 MySQL recovery이며, 효과 확인을 끄면 실패한다. introspection은 `dbspec$plans`를 빼며 `make dbspec-introspect-check`, `dbspec-plan-check`, `dbspec-ddl-check`가 통과한다.
 - [ ] T8.6.3 PHP client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
 - [ ] T8.6.4 TypeScript client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
 - [ ] T8.6.5 Rust client에서 plan을 적용하고 복구한다 (T8.6.1 필요).

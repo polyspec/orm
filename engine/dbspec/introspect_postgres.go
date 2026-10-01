@@ -11,7 +11,7 @@ import (
 // PostgreSQL catalog query. 모두 현재 schema 전체를 한 번에 읽는다.
 const (
 	postgresTablesQuery = `SELECT c.relname, c.relkind::text, c.relispartition FROM pg_class c
-WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') ORDER BY c.relname`
+WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname <> 'dbspec$plans' ORDER BY c.relname`
 	postgresSequencesQuery = `SELECT c.relname FROM pg_class c WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'S'
 AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.deptype = 'i') ORDER BY c.relname`
 	postgresColumnsQuery = `SELECT c.relname, a.attname, quote_ident(a.attname), format_type(a.atttypid, a.atttypmod), a.attnotnull,

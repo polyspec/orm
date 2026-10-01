@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.2: Go engine은 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용한다.
+
 - T8.6.1: docs/plans.md가 plan 적용을 정한다: lock, history, drift, 검증, event, MySQL recovery.
 
 - T8.5.2.1: Go plan writer는 버리는 결과와 쓰지 않는 renderer 상태를 두지 않는다.
