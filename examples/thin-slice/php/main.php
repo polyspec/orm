@@ -3,7 +3,7 @@
 // stdout: the result as JSON. stderr: p50 of the generated client and of the
 // same SQL through PDO directly.
 //
-//   php examples/thin-slice/php/main.php /abs/schema/schema.json
+//   php examples/thin-slice/php/main.php
 declare(strict_types=1);
 
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
@@ -19,7 +19,6 @@ const AES_KEY = 'bench-salt';
 $lastSql = '';
 $lastArgs = [];
 $db = Orm::connect(dsn(), new Config(
-    schemaPath: $argv[1],
     aesKey: AES_KEY,
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {
@@ -54,9 +53,15 @@ $native = p50(static function () use ($stmt, $lastArgs): void {
 });
 fwrite(STDERR, sprintf("php: client p50 %dµs, native p50 %dµs (%d iterations)\n", $client, $native, ITERATIONS));
 
+/** 시드된 bench database 를 가리키는 ORM_BENCH_MYSQL_DSN 이다. 없거나 비어 있으면 연결하지 않고 끝난다. */
 function dsn(): string
 {
-    return getenv('ORM_BENCH_MYSQL_DSN') ?: 'mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock';
+    $dsn = getenv('ORM_BENCH_MYSQL_DSN');
+    if ($dsn === false || $dsn === '') {
+        fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database\n");
+        exit(1);
+    }
+    return $dsn;
 }
 
 function p50(Closure $f): int
