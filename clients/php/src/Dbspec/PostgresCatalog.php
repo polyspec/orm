@@ -23,7 +23,7 @@ LEFT JOIN pg_collation co ON co.oid = a.attcollation
 WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY c.relname, a.attnum";
     private const CONSTRAINTS = "SELECT c.relname, con.conname, con.contype::text, pg_get_constraintdef(con.oid), con.condeferrable,
-con.convalidated, con.confmatchtype::text, con.confdeltype::text, con.confupdtype::text, coalesce(r.relname, ''),
+con.convalidated, con.confmatchtype::text, con.confdeltype::text, con.confupdtype::text, CASE WHEN r.relnamespace = c.relnamespace THEN r.relname ELSE '' END,
 array_to_string(ARRAY(SELECT a.attname FROM unnest(con.conkey) WITH ORDINALITY k(n, o)
   JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.n ORDER BY k.o), ','),
 array_to_string(ARRAY(SELECT a.attname FROM unnest(con.confkey) WITH ORDINALITY k(n, o)
@@ -125,6 +125,9 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                     continue;
                 }
                 $t->uniques[] = ['name' => $name, 'columns' => $list, 'desc' => array_fill(0, count($list), false)];
+            } elseif ($kind === 'f' && $refTable === '') {
+                // 다른 schema 의 table 을 가리키는 foreign key 는 이 문서 밖의 table 을 가리킨다.
+                $c->report('foreign_key', $table, $name, 'the referenced table is outside the current schema');
             } elseif ($kind === 'f') {
                 $delete = self::action($onDelete);
                 $update = self::action($onUpdate);

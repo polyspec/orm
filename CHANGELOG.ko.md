@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.1: PostgreSQL introspection은 참조 table이 다른 schema에 있는 foreign key를 같은 이름의 table을 가리키는 key로 읽지 않고 미지원으로 보고한다.
+
 - T8.5.2: Go engine은 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-check`가 이를 적용한다.
 
 - T8.5.1: docs/plans.md가 schema plan을 정한다: plan 문서, 빈 database에서의 chain, diff, dialect별 statement와 공유 case.
