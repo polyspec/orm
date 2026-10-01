@@ -274,7 +274,7 @@ normalize('check expression form', [
   '  status varchar(8)',
   '  qty i32 null',
   '  primary key (id)',
-  "  check ck_t ((qty>=-007 and qty<>0)or status not in('a','it''s') or qty is not null or not qty between 1 and 2.50)",
+  "  check ck_t ((qty>=-007 and qty<>0)or status not in('a','it''s') or qty is not null or not qty between 1 and 2)",
   '}',
 ], [
   'dbspec 1 shop',
@@ -284,7 +284,7 @@ normalize('check expression form', [
   '  status varchar(8)',
   '  qty i32 null',
   '  primary key (id)',
-  "  check ck_t ((qty >= -7 and qty <> 0) or status not in ('a', 'it''s') or qty is not null or not qty between 1 and 2.50)",
+  "  check ck_t ((qty >= -7 and qty <> 0) or status not in ('a', 'it''s') or qty is not null or not qty between 1 and 2)",
   '}',
 ]);
 invalid('check outside the neutral set', [
@@ -302,6 +302,67 @@ invalid('check outside the neutral set', [
   ['check', 6, 18],
   ['syntax', 7, 20],
   ['check', 8, 22],
+]);
+
+const typed = [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  qty i32',
+  '  small i16',
+  '  price decimal(13,2)',
+  '  active bool',
+  '  name varchar(4)',
+  '  note text',
+  '  t0 time(0)',
+  '  t3 time(3)',
+  '  primary key (id)',
+];
+normalize('check literal on the left takes the column form', [
+  ...typed,
+  "  check ck_t (0 < qty and 007 >= small and 0 <= price and small <= qty and note = name and note <> 'longer than four')",
+  '}',
+], [
+  'dbspec 1 shop',
+  '',
+  'table t {',
+  '  id i64 identity',
+  '  qty i32',
+  '  small i16',
+  '  price decimal(13,2)',
+  '  active bool',
+  '  name varchar(4)',
+  '  note text',
+  '  t0 time(0)',
+  '  t3 time(3)',
+  '  primary key (id)',
+  "  check ck_t (0 < qty and 7 >= small and 0.00 <= price and small <= qty and note = name and note <> 'longer than four')",
+  '}',
+]);
+invalid('check typed predicates', [
+  ...typed,
+  '  check ck_a (active between false and true)',
+  '  check ck_b (active not between false and true)',
+  '  check ck_c (t0 < t3)',
+  "  check ck_d ('a' = qty)",
+  '  check ck_e (qty < 1.5 or qty + 1 > 2)',
+  '  check ck_f (1 in (1, 2))',
+  '  check ck_g (true)',
+  '  check ck_h (active <> 1 and active in (true, 0))',
+  "  check ck_i (name in ('abcde'))",
+  '  check ck_j (not t0)',
+  '}',
+], [
+  ['check', 13, 22],
+  ['check', 14, 26],
+  ['check', 15, 20],
+  ['check', 16, 15],
+  ['check', 17, 32],
+  ['check', 18, 15],
+  ['check', 19, 15],
+  ['check', 20, 25],
+  ['check', 21, 24],
+  ['check', 22, 19],
 ]);
 
 // settings

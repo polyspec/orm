@@ -7,6 +7,7 @@
 //! `emit(parse(s)) == s` for canonical input.
 
 mod check;
+mod check_type;
 mod emit;
 mod lexer;
 mod literal;
@@ -48,9 +49,11 @@ pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Documen
     let mut session = Session { documents, parsed: HashMap::new(), valid: HashMap::new(), validating: Vec::new() };
     let parsed = parser::parse(text).map_err(stopped)?;
     let name = parsed.document.name.text.clone();
-    let diags = session.validate(&name, &parsed);
+    let (diags, literals) = session.validate(&name, &parsed);
     if diags.is_empty() {
-        Ok(parsed.document)
+        let mut document = parsed.document;
+        check_type::set_literals(&mut document, literals);
+        Ok(document)
     } else {
         Err(diagnostics(diags))
     }
@@ -187,14 +190,15 @@ impl<'s> Session<'s> {
             return result.clone();
         }
         let parsed = self.parsed(name)?;
-        let diags = self.validate(name, &parsed);
+        let (diags, _) = self.validate(name, &parsed);
         let result = if diags.is_empty() { Ok(()) } else { Err(invalid(name, diags)) };
         self.valid.insert(name.to_owned(), result.clone());
         result
     }
 
-    /// The line errors of `parsed` and its validation errors, unsorted.
-    fn validate(&mut self, name: &str, parsed: &parser::Parsed) -> Vec<Diag> {
+    /// The line errors of `parsed` and its validation errors, unsorted, with
+    /// the canonical literal texts of its checks.
+    fn validate(&mut self, name: &str, parsed: &parser::Parsed) -> (Vec<Diag>, Vec<check_type::CheckLiterals>) {
         self.validating.push(name.to_owned());
         let mut diags = parsed.diags.clone();
         let mut used = Vec::with_capacity(parsed.document.uses.len());
@@ -220,9 +224,10 @@ impl<'s> Session<'s> {
             }
         }
         let used: Vec<Option<&Document>> = used.iter().map(|u| u.as_ref().map(|p| &p.document)).collect();
-        validate::validate(&parsed.document, &parsed.unresolved, &parsed.failed_keys, &used, &mut diags);
+        let mut literals = Vec::new();
+        validate::validate(&parsed.document, &parsed.unresolved, &parsed.failed_keys, &used, &mut diags, &mut literals);
         self.validating.pop();
-        diags
+        (diags, literals)
     }
 }
 

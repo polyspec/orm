@@ -117,6 +117,18 @@ $invalid = [
     rules_case('check-set-null-column', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
         '  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update set_null',
         '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is']]),
+    rules_case('check-typed-rules', users(['  qty i32', '  active bool', '  at_a time(0)', '  at_b time(3)', '  name varchar(8)'], [
+        '  check ck_users_between_bool (active not between false and true)',
+        '  check ck_users_time_precision (at_a < at_b)',
+        '  check ck_users_read_first (name = 1 + 2)',
+        '  check ck_users_in_literal (1 in (1, 2))',
+        '  check ck_users_literal_alone (qty > 0 or (true))',
+        '  check ck_users_spaced_minus (qty > - 1)',
+        '  check ck_users_column_minus (-qty < 0)',
+        '  check ck_users_bool_literal_ordering (qty < true)',
+        '  check ck_users_first_type (name = 1 and qty = 1.5)',
+        "  check ck_users_type_before_unknown (qty = 'x' or zzz > 0)",
+    ]), [['check', 11, 'between false'], ['check', 12, 'at_b'], ['check', 13, '+'], ['check', 14, '1 in'], ['check', 15, 'true'], ['check', 16, '-'], ['check', 17, '-'], ['check', 18, '<'], ['check', 19, '1 and'], ['check', 20, "'x'"]]),
     rules_case('setting-rules', users(['  name varchar(8)', '  secret bytes', '  stamp datetime(6)', '  version i32 null'], [
         '  settings {',
         '    updated name',
@@ -250,6 +262,21 @@ $normalize[] = [
     'documents' => ['shop' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.100000000000000005551', '  b f64 default 100.0', '  primary key (id)', '}']],
     'main' => 'shop',
     'canonical' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.1', '  b f64 default 100', '  primary key (id)', '}'],
+];
+
+$normalize[] = [
+    'id' => 'check-typed-operands',
+    'documents' => ['shop' => users(['  small i16', '  big i64', '  price decimal(13,2)', '  cost decimal(8,2)', '  ratio f64', '  name varchar(8)', '  note text', '  at_a datetime(6)', '  at_b datetime(6)'], [
+        "  check ck_users_columns (small <= big and cost <= price and name <> note and at_a < at_b)",
+        "  check ck_users_left_literal (0 < price and -007 < small and '2100-01-01 00:00:00' > at_a)",
+        "  check ck_users_ranges (ratio between 0.0 and 1.50 and note in ('a', 'it''s'))",
+    ])],
+    'main' => 'shop',
+    'canonical' => users(['  small i16', '  big i64', '  price decimal(13,2)', '  cost decimal(8,2)', '  ratio f64', '  name varchar(8)', '  note text', '  at_a datetime(6)', '  at_b datetime(6)'], [
+        "  check ck_users_columns (small <= big and cost <= price and name <> note and at_a < at_b)",
+        "  check ck_users_left_literal (0.00 < price and -7 < small and '2100-01-01 00:00:00.000000' > at_a)",
+        "  check ck_users_ranges (ratio between 0 and 1.5 and note in ('a', 'it''s'))",
+    ]),
 ];
 
 $canonical = [

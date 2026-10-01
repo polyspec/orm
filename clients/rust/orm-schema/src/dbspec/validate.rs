@@ -1,6 +1,7 @@
 //! Rules that relate lines to each other: names, keys, foreign keys, checks,
 //! settings, `use` and diagrams.
 
+use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
 use super::parser::{name_problem, well_formed, Diag, FailedKeys};
 use std::collections::{HashMap, HashSet};
@@ -74,7 +75,15 @@ impl<'d> Scope<'d> {
 
 /// Validates `document`. `used` holds, for each `use` line, the used document
 /// when it was found and is valid; a missing or invalid one is already reported.
-pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], failed_keys: &[FailedKeys], used: &[Option<&Document>], diags: &mut Vec<Diag>) {
+/// `literals` receives the canonical literal texts of each check that types.
+pub(crate) fn validate(
+    document: &Document,
+    unresolved: &[Vec<String>],
+    failed_keys: &[FailedKeys],
+    used: &[Option<&Document>],
+    diags: &mut Vec<Diag>,
+    literals: &mut Vec<CheckLiterals>,
+) {
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
     let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
@@ -118,7 +127,7 @@ pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], failed_k
     }
     constraint_names(document, &used_documents, diags);
     for index in 0..document.tables.len() {
-        TableRules { scope: &scope, own: scope.own(index), diags: &mut *diags }.run();
+        TableRules { scope: &scope, index, own: scope.own(index), diags: &mut *diags, literals: &mut *literals }.run();
     }
     diagrams(document, &scope, diags);
 }
@@ -187,8 +196,10 @@ fn diagrams(document: &Document, scope: &Scope, diags: &mut Vec<Diag>) {
 
 struct TableRules<'s, 'd> {
     scope: &'s Scope<'d>,
+    index: usize,
     own: TableScope<'s, 'd>,
     diags: &'s mut Vec<Diag>,
+    literals: &'s mut Vec<CheckLiterals>,
 }
 
 impl<'s, 'd> TableRules<'s, 'd> {
@@ -350,15 +361,18 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
+    /// The column rules of each check, then its types; a check expression
+    /// reports only its first diagnostic in source order.
     fn checks(&mut self) {
         let table = self.own.table;
+        let own = self.own;
         let changed: HashSet<&str> = table.foreign_keys.iter().filter(|k| k.changes_rows()).flat_map(|k| k.columns.iter().map(|n| n.text.as_str())).collect();
-        for check in &table.checks {
+        for (index, check) in table.checks.iter().enumerate() {
             let mut columns = Vec::new();
             check.expr.columns(&mut columns);
-            // A check expression reports only its first diagnostic.
+            let mut first = None;
             for name in columns {
-                let problem = match (name_problem(&name.text), self.own.column(&name.text)) {
+                let problem = match (name_problem(&name.text), own.column(&name.text)) {
                     (Some(problem), _) => Some(problem),
                     (None, Lookup::Missing) => Some(("check", format!("unknown column '{}'", name.text))),
                     (None, Lookup::Found(_)) if changed.contains(name.text.as_str()) => {
@@ -367,9 +381,21 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     _ => None,
                 };
                 if let Some((rule, message)) = problem {
-                    self.report(name.pos, rule, message);
+                    first = Some((name.pos, rule, message));
                     break;
                 }
+            }
+            let column_type = |name: &Name| match (name_problem(&name.text), own.column(&name.text)) {
+                (None, Lookup::Found(column)) => Some(column.ty),
+                _ => None,
+            };
+            match type_check(&check.expr, &column_type) {
+                Err((pos, message)) if first.as_ref().is_none_or(|(at, _, _)| pos < *at) => first = Some((pos, "check", message)),
+                Ok(texts) if first.is_none() => self.literals.push(CheckLiterals { table: self.index, check: index, texts }),
+                _ => {}
+            }
+            if let Some((pos, rule, message)) = first {
+                self.report(pos, rule, message);
             }
         }
     }

@@ -53,6 +53,8 @@ const ACTIONS = new Set<string>(['restrict', 'cascade', 'set_null']);
 const CONSTRAINT_WORDS = new Set(['primary', 'unique', 'index', 'foreign', 'check']);
 const EXPRESSION_WORDS = new Set(['and', 'or', 'not', 'in', 'between', 'is', 'null', 'true', 'false']);
 const COMPARISONS = new Set(['=', '<>', '<', '<=', '>', '>=']);
+const ORDERINGS = new Set(['<', '<=', '>', '>=']);
+const ARITHMETIC = new Set(['+', '-', '*', '/']);
 
 const enum K {
   Word,
@@ -381,7 +383,10 @@ function shortestDecimal(value: number): string {
   return (negative ? '-' : '') + plain;
 }
 
-/** The canonical default of a column type, or the reason the literal does not fit. */
+/**
+ * The canonical default of a column type, or the reason the literal does not fit.
+ * A check literal takes the same form; a text column takes the varchar form without a length.
+ */
 function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
   const word = tok.k === K.Word ? tok.t : null;
   const text = tok.k === K.Str ? stringValue(tok) : null;
@@ -419,9 +424,10 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
       return literal(shortestDecimal(value));
     }
     case 'varchar':
+    case 'text':
       if (text === null) return `default of ${typeText(type)} must be a string`;
       if (text.includes('\0')) return 'default contains U+0000';
-      if (codePoints(text) > type.length) return `default is longer than ${type.length} characters`;
+      if (type.kind === 'varchar' && codePoints(text) > type.length) return `default is longer than ${type.length} characters`;
       return literal(quote(text));
     case 'uuid':
       if (text === null || !UUID.test(text)) return 'default of uuid must be a canonical uuid string';
@@ -448,10 +454,37 @@ function defaultOf(type: DbspecType, tok: Tk): DbspecDefault | string {
       if (f === null) return `default has more than ${type.precision} fraction digits`;
       return literal(quote(`${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}${f}`));
     }
-    case 'text':
     case 'bytes':
-      return `a ${type.kind} column has no default`;
+      return 'a bytes column has no default';
   }
+}
+
+/** The kind of value a column holds in a check: two columns meet when their kinds are equal. */
+function meetKind(type: DbspecType): string {
+  switch (type.kind) {
+    case 'i16':
+    case 'i32':
+    case 'i64':
+      return 'integer';
+    case 'varchar':
+    case 'text':
+      return 'string';
+    case 'decimal':
+      return `decimal scale ${type.scale}`;
+    case 'time':
+    case 'datetime':
+      return `${type.kind} precision ${type.precision}`;
+    default:
+      return type.kind;
+  }
+}
+
+/** A check operand: a column (column set) or a literal at its slot of the canonical text. */
+interface Operand {
+  readonly column: IColumn | null;
+  readonly tok: Tk;
+  readonly type: DbspecType | null;
+  readonly slot: number;
 }
 
 class ExpressionSyntax {
@@ -1313,12 +1346,17 @@ class DocumentParser {
   private check(table: ITable, check: ICheck, banned: Set<string>): void {
     const toks = check.expr;
     const out: string[] = [];
-    // An expression reports only its first diagnostic.
+    // 술어를 먼저 읽는다. 읽기 진단은 처음 하나만 보고하고, 그 경우 타입은 검사하지 않는다.
     let flagged = false;
     const flag = (rule: DbspecRule, tok: Tk, message: string): void => {
       if (flagged) return;
       flagged = true;
       this.at(rule, tok, message);
+    };
+    // 끝까지 읽힌 술어의 열과 타입 진단: 원본 순서로 첫 번째만 보고한다.
+    const issues: { readonly tok: Tk; readonly message: string }[] = [];
+    const issue = (tok: Tk, message: string): void => {
+      issues.push({ tok, message });
     };
     let i = 0;
     const peek = (): Tk | undefined => toks[i];
@@ -1339,97 +1377,129 @@ class DocumentParser {
       out.push(text);
     };
     const isNumber = (tok: Tk | undefined): boolean => tok !== undefined && tok.k === K.Word && UNSIGNED_NUMBER.test(tok.t);
-    const negative = (): boolean => {
-      const t = peek();
-      if (t === undefined || t.k !== K.Op || t.t !== '-' || !isNumber(toks[i + 1])) return false;
-      i++;
-      out.push(numberText('-' + take().t));
-      return true;
+    const literalOperand = (tok: Tk, text: string): Operand => {
+      out.push(text);
+      return { column: null, tok, type: null, slot: out.length - 1 };
     };
-    const literal = (): void => {
-      if (negative()) return;
+    const negative = (): Operand | null => {
+      const t = peek();
+      if (t === undefined || t.k !== K.Op || t.t !== '-' || !isNumber(toks[i + 1])) return null;
+      i++;
+      const number = take();
+      const tok: Tk = { k: K.Word, t: '-' + number.t, s: t.s, e: number.e, line: t.line };
+      return literalOperand(tok, numberText(tok.t));
+    };
+    // in 목록과 between 경계의 리터럴. null은 진단 뒤의 알 수 없는 피연산자다.
+    const literal = (): Operand | null => {
+      const signed = negative();
+      if (signed !== null) return signed;
       const t = take();
-      if (t.k === K.Str) out.push(t.t);
-      else if (isNumber(t)) out.push(numberText(t.t));
-      else if (t.k === K.Word && (t.t === 'true' || t.t === 'false' || t.t === 'null')) out.push(t.t);
+      if (t.k === K.Str) return literalOperand(t, t.t);
+      if (isNumber(t)) return literalOperand(t, numberText(t.t));
+      if (isWord(t, 'true') || isWord(t, 'false')) return literalOperand(t, t.t);
+      if (isWord(t, 'null')) flag('check', t, 'the null literal is not part of a predicate');
       else if (t.k === K.Word && !EXPRESSION_WORDS.has(t.t)) flag('check', t, `${t.t} is not a literal`);
       else throw new ExpressionSyntax(t);
+      out.push(t.t);
+      return null;
     };
-    const primary = (): void => {
-      if (negative()) return;
+    const term = (): Operand | null => {
+      const signed = negative();
+      if (signed !== null) return signed;
       const t = take();
-      if (isPunct(t, '(')) {
-        out.push('(');
+      if (t.k === K.Str) return literalOperand(t, t.t);
+      if (t.k === K.Op && t.t === '-') {
+        flag('check', t, 'unary minus applies only to a number literal');
+        out.push('-');
+        term();
+        return null;
+      }
+      if (t.k !== K.Word) throw new ExpressionSyntax(t);
+      if (isNumber(t)) return literalOperand(t, numberText(t.t));
+      if (t.t === 'true' || t.t === 'false') return literalOperand(t, t.t);
+      if (t.t === 'null') {
+        flag('check', t, 'the null literal is not part of a predicate');
+        return null;
+      }
+      if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
+      if (isPunct(peek(), '(')) {
+        flag('check', t, `function ${t.t} is not part of a predicate`);
+        // 진단이 이미 보고되었으므로 인자는 괄호 짝만 맞춰 건너뛴다.
+        let depth = 0;
+        do {
+          const u = take();
+          if (isPunct(u, '(')) depth++;
+          else if (isPunct(u, ')')) depth--;
+        } while (depth > 0);
+        return null;
+      }
+      if (!wellFormed(t.t)) {
+        flag('check', t, `${t.t} is not part of a predicate`);
+        return null;
+      }
+      out.push(t.t);
+      const column = table.colMap.get(t.t);
+      // 자기 줄이 실패한 열은 그 줄에서 보고되었다.
+      if (column === undefined && table.failed.has(t.t)) return null;
+      // 열의 진단은 타입 진단과 함께 원본 순서로 고른다.
+      if (column === undefined) issue(t, `${t.t} is not a column of table ${table.name.t}`);
+      else if (banned.has(t.t)) issue(t, `column ${t.t} belongs to a cascade or set_null foreign key`);
+      else if (column.type !== null && column.type.kind === 'bytes') issue(t, `bytes column ${t.t} is not part of a predicate`);
+      else return { column, tok: t, type: column.type, slot: -1 };
+      return null;
+    };
+    const operand = (): Operand | null => {
+      let result = term();
+      for (let t = peek(); t !== undefined && t.k === K.Op && ARITHMETIC.has(t.t); t = peek()) {
+        flag('check', t, `arithmetic ${t.t} is not part of a predicate`);
+        out.push(take().t);
+        term();
+        result = null;
+      }
+      return result;
+    };
+    const isBool = (o: Operand): boolean =>
+      o.column !== null ? o.type !== null && o.type.kind === 'bool' : o.tok.t === 'true' || o.tok.t === 'false';
+    // 리터럴을 열의 default 형식으로 검사하고 정규형으로 바꾼다. 진단은 리터럴에 둔다.
+    const fit = (column: Operand, value: Operand): void => {
+      if (column.type === null) return;
+      const fitted = defaultOf(column.type, value.tok);
+      if (typeof fitted === 'string') issue(value.tok, `${value.tok.t} does not meet column ${column.tok.t}: ${fitted}`);
+      else if (fitted.kind === 'literal') out[value.slot] = fitted.text;
+      else issue(value.tok, `${value.tok.t} is not a literal`);
+    };
+    const compare = (left: Operand, op: Tk, right: Operand): void => {
+      if (ORDERINGS.has(op.t) && (isBool(left) || isBool(right))) issue(op, `${op.t} does not compare bool values`);
+      if (left.column !== null && right.column !== null) {
+        if (left.type !== null && right.type !== null && meetKind(left.type) !== meetKind(right.type)) {
+          issue(right.tok, `column ${right.tok.t} (${typeText(right.type)}) does not meet column ${left.tok.t} (${typeText(left.type)})`);
+        }
+      } else if (left.column !== null) fit(left, right);
+      else if (right.column !== null) fit(right, left);
+    };
+    // in, between, is 앞의 피연산자는 열이다.
+    const subject = (left: Operand | null, word: Tk): Operand | null => {
+      if (left !== null && left.column === null) {
+        flag('check', left.tok, `${word.t} takes a column, not a literal`);
+        return null;
+      }
+      return left;
+    };
+    const predicate = (): void => {
+      if (isPunct(peek(), '(')) {
+        out.push(take().t);
         or();
         expectPunct(')');
         return;
       }
-      if (t.k === K.Str) {
-        out.push(t.t);
-        return;
-      }
-      if (t.k === K.Op && t.t === '-') {
-        flag('check', t, 'unary minus applies only to a number literal');
-        primary();
-        return;
-      }
-      if (t.k !== K.Word) throw new ExpressionSyntax(t);
-      if (isNumber(t)) {
-        out.push(numberText(t.t));
-        return;
-      }
-      if (t.t === 'true' || t.t === 'false' || t.t === 'null') {
-        out.push(t.t);
-        return;
-      }
-      if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
-      if (isPunct(peek(), '(')) {
-        flag('check', t, `function ${t.t} is not in the neutral expression set`);
-        i++;
-        if (!isPunct(peek(), ')')) {
-          or();
-          while (isPunct(peek(), ',')) {
-            i++;
-            or();
-          }
-        }
-        if (!isPunct(take(), ')')) throw new ExpressionSyntax(toks[i - 1]!);
-        return;
-      }
-      if (!wellFormed(t.t)) {
-        flag('check', t, `${t.t} is not in the neutral expression set`);
-        return;
-      }
-      const column = table.colMap.get(t.t);
-      if (column === undefined && table.failed.has(t.t)) {
-        // The column's own line failed and was reported there.
-      } else if (column === undefined) flag('check', t, `${t.t} is not a column of table ${table.name.t}`);
-      else if (banned.has(t.t)) flag('check', t, `column ${t.t} belongs to a cascade or set_null foreign key`);
-      out.push(t.t);
-    };
-    const operator = (tok: Tk | undefined, set: readonly string[]): boolean =>
-      tok !== undefined && tok.k === K.Op && set.includes(tok.t);
-    const mul = (): void => {
-      primary();
-      while (operator(peek(), ['*', '/'])) {
-        out.push(take().t);
-        primary();
-      }
-    };
-    const add = (): void => {
-      mul();
-      while (operator(peek(), ['+', '-'])) {
-        out.push(take().t);
-        mul();
-      }
-    };
-    const predicate = (): void => {
-      add();
+      const left = operand();
       const t = peek();
-      if (t === undefined) return;
-      if (t.k === K.Op && COMPARISONS.has(t.t)) {
+      if (t !== undefined && t.k === K.Op && COMPARISONS.has(t.t)) {
         out.push(take().t);
-        add();
+        const right = operand();
+        if (left !== null && right !== null && left.column === null && right.column === null) {
+          flag('check', left.tok, 'a comparison has at least one column operand');
+        } else if (left !== null && right !== null) compare(left, t, right);
         return;
       }
       let negated = false;
@@ -1439,26 +1509,39 @@ class DocumentParser {
       }
       const u = peek();
       if (isWord(u, 'in')) {
+        const column = subject(left, u!);
         out.push(take().t);
         expectPunct('(');
-        literal();
+        const values = [literal()];
         while (isPunct(peek(), ',')) {
           out.push(take().t);
-          literal();
+          values.push(literal());
         }
         expectPunct(')');
+        if (column !== null) for (const value of values) if (value !== null) fit(column, value);
       } else if (isWord(u, 'between')) {
+        const column = subject(left, u!);
         out.push(take().t);
-        add();
+        const low = literal();
         expectWord('and');
-        add();
+        const high = literal();
+        if (column !== null) {
+          if (isBool(column)) issue(u!, 'between does not compare bool values');
+          if (low !== null) fit(column, low);
+          if (high !== null) fit(column, high);
+        }
       } else if (!negated && isWord(u, 'is')) {
+        subject(left, u!);
         out.push(take().t);
         if (isWord(peek(), 'not')) out.push(take().t);
         expectWord('null');
       } else if (u !== undefined && u.k === K.Word && !EXPRESSION_WORDS.has(u.t)) {
-        flag('check', u, `${u.t} is not in the neutral expression set`);
+        flag('check', u, `${u.t} is not part of a predicate`);
         throw new ExpressionSyntax(null);
+      } else if (left !== null && left.column === null) {
+        flag('check', left.tok, 'a literal alone is not a predicate');
+      } else if (left !== null && left.type !== null && left.type.kind !== 'bool') {
+        issue(left.tok, `column ${left.tok.t} alone is not bool`);
       }
     };
     const not = (): void => {
@@ -1491,6 +1574,13 @@ class DocumentParser {
       if (error.at === null && i < toks.length) return;
       const at = error.at ?? check.close;
       flag('syntax', at, 'the check expression is malformed here');
+      return;
+    }
+    if (flagged) return;
+    let first: { readonly tok: Tk; readonly message: string } | undefined;
+    for (const found of issues) if (first === undefined || found.tok.s < first.tok.s) first = found;
+    if (first !== undefined) {
+      this.at('check', first.tok, first.message);
       return;
     }
     let text = '';

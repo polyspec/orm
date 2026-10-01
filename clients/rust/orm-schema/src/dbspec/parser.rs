@@ -1,7 +1,7 @@
 //! Reads dbspec text line by line into the model and reports the errors that a
 //! single line shows. Cross references are checked by `validate`.
 
-use super::check::CheckParser;
+use super::check::{not_allowed, CheckParser};
 use super::lexer::{tokenize, Kind, Token};
 use super::literal::{default_literal, Value};
 use super::model::*;
@@ -635,11 +635,11 @@ impl Parser {
             let value_pos = cursor.here();
             let value = match cursor.next() {
                 Some(t) if t.is("-") => match cursor.next() {
-                    Some(n) if n.kind == Kind::Number => Some(Value::Number { negative: true, text: n.text }),
+                    Some(n) if n.kind == Kind::Number => Some(Value::Number { negative: true, text: n.text.to_owned() }),
                     _ => None,
                 },
-                Some(t) if t.kind == Kind::Number => Some(Value::Number { negative: false, text: t.text }),
-                Some(t) if t.kind == Kind::Word => Some(Value::Word(t.text)),
+                Some(t) if t.kind == Kind::Number => Some(Value::Number { negative: false, text: t.text.to_owned() }),
+                Some(t) if t.kind == Kind::Word => Some(Value::Word(t.text.to_owned())),
                 Some(t) if t.kind == Kind::Str => Some(Value::Str(t.string_value())),
                 Some(_) => None,
                 None => {
@@ -911,7 +911,7 @@ impl Parser {
             match rest.get(at) {
                 Some(t) if t.is(")") && at + 1 == rest.len() => Ok(expr),
                 Some(t) if t.is(")") => Err((rest[at + 1].pos, format!("'{}' is not allowed after the check expression", rest[at + 1].text))),
-                Some(t) => Err((t.pos, format!("'{}' is not allowed in a check expression", t.text))),
+                Some(t) => Err(not_allowed(t)),
                 None => Err((cursor.end, "check expression has no closing ')'".into())),
             }
         });

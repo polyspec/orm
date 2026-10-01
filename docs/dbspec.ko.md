@@ -111,17 +111,34 @@ key나 index는 자기 table의 서로 다른 column을 1~16개 나열한다. `t
 
 ### Check
 
-`check <name> (<expression>)`
+`check <name> (<predicate>)`
 
-식에는 다음만 쓸 수 있다.
+predicate는 다음 중 하나다.
 
-- 같은 table의 column 참조
-- literal: 정수, 소수, 작은따옴표 문자열(`''`가 따옴표), `true`, `false`, `null`
-- `=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`
-- `and`, `or`, `not`, 괄호
-- `<expr> [not] in (<literal>, ...)`, `<expr> [not] between <a> and <b>`, `<expr> is [not] null`
+- `=`, `<>`, `<`, `<=`, `>`, `>=`를 쓰는 `<operand> <비교> <operand>`. operand 중 적어도 하나는 column이다
+- `<column> [not] in (<literal>, ...)`
+- `<column> [not] between <literal> and <literal>`
+- `<column> is [not] null`
+- `bool` column 하나. column이 true일 때 참이다
+- `not <predicate>`, `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`
 
-단항 minus는 숫자 literal에만 쓴다. 함수가 없으므로 시각, 난수, session 값도 없다. MySQL이 거부하므로(3823) `cascade`나 `set_null` foreign key의 column은 check에 쓸 수 없다.
+operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 값의 종류가 같을 때에만 이 predicate를 같게 평가하므로, type이 만날 수 있는 operand를 정한다. column과 만나는 literal은 그 column type의 유효한 `default` literal이어야 하고(`text` column은 `varchar` 형식), canonical form은 그 default처럼 쓴다. 그래서 `decimal(13,2)`에 대한 `0`은 `0.00`이다. 두 column은 다음일 때 만난다.
+
+| Column type | 다른 column |
+| --- | --- |
+| `i16`, `i32`, `i64` | 다른 정수 column |
+| `decimal(p,s)` | scale s가 같은 `decimal` column |
+| `f64` | `f64` column |
+| `bool` | `bool` column |
+| `varchar(n)`, `text` | `varchar`나 `text` column |
+| `uuid` | `uuid` column |
+| `date` | `date` column |
+| `time(p)` | p가 같은 `time` column |
+| `datetime(p)` | p가 같은 `datetime` column |
+
+`bool` operand에는 `=`, `<>`, `in`만 쓴다.
+
+`bytes` column, 산술, 함수, `null` literal은 predicate에 쓸 수 없다. 정수 나눗셈, overflow, scale을 곱한 SQLite decimal이 세 database에서 다른 결과를 내기 때문이다. 단항 minus는 숫자 literal에만 쓴다. MySQL이 거부하므로(3823) `cascade`나 `set_null` foreign key의 column은 check에 쓸 수 없다.
 
 ## Settings
 
@@ -206,7 +223,7 @@ table service_history {
 - literal은 한 형식으로 쓴다: 정수는 0의 부호나 앞자리 0 없이, decimal은 column scale만큼의 소수 자리로(`decimal(13,2)`이면 `0.00`), 문자열은 작은따옴표 안에 따옴표를 `''`로, `true`와 `false`, `date`는 `'YYYY-MM-DD'`, `time(p)`와 `datetime(p)`는 정확히 p자리 소수로(`datetime(6)`이면 `'2026-01-01 00:00:00.000000'`), `uuid`는 소문자로
 - table과 diagram은 문서 순서, diagram 줄도 문서 순서
 - `select explicit` column과 `use` 줄 안의 table은 적힌 순서로
-- `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 decimal의 소수 자릿수를 적힌 대로 두고 정수의 앞자리 0을 뺀다
+- `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 만나는 column의 canonical default 형식을 따른다
 - comment 줄은 바로 다음 줄에 붙고 그 줄의 들여쓰기를 따른다. 닫는 `}` 앞의 comment는 그 block 안 줄의 들여쓰기를 따른다. 마지막 block 뒤의 comment는 빈 줄 하나 뒤에 온다. comment는 `#`부터 줄 끝까지의 text를 바꾸지 않는다
 
 ## 한도와 error
@@ -220,6 +237,7 @@ table service_history {
 - 실패한 쓰는 문서는 그 이름에서 `use` diagnostic 하나를 보고하고 message에 첫 error를 담는다. 두 쓰는 문서가 constraint 이름을 반복하면 뒤 문서 이름에서 `name.duplicate`를 보고한다. `use` 줄에서 문서나 table을 반복하면 `name.duplicate`다. use 순환이나 쓰는 이름과 다른 header 이름은 `use`다
 - `header` error의 위치는 줄이 `dbspec 1 <name>`에서 처음 벗어나는 문자이고(`<name>`은 ASCII 문자, 숫자, `_`의 연속), 빠진 부분이 있으면 줄 끝 다음 열이다
 - 32 MiB 한도의 위치는 1줄 1열이다. column이 1000개를 넘는 table은 1001번째 column 이름에서 `limit` error다
+- check: predicate는 먼저 읽는다. 읽기는 산술 연산자, 함수, `null` literal 같은 predicate 형식 밖의 token과, 형식이 column을 요구하는 자리의 literal(`in`, `between`, `is`의 대상, 단독 literal, 두 literal 비교의 첫 literal)을 그 token에서 보고한다. 읽기 diagnostic이 있는 predicate는 더 확인하지 않는다. 끝까지 읽힌 predicate는 column과 type을 확인하고, 그중 source 순서의 첫 diagnostic을 보고한다. 모르는 column, `cascade`나 `set_null` foreign key의 column, `bytes` column은 그 column, 비교에서 상대 column과 만나지 않는 column은 뒤쪽 column, 만나는 column의 default가 아닌 literal은 그 literal, `bool` operand에 쓴 `<`, `<=`, `>`, `>=`, `between`은 그 연산자, `bool`이 아닌 column 하나는 그 column이 위치다
 - 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 diagnostic만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다. 실패한 줄은 첫 단어가 정하는 종류와 선언하려던 이름을 유지하며, 이를 알기 위해서만 tab을 공백으로 읽는다. 그래서 실패한 key나 index 줄도 column을 모르는 key나 index를 선언한 것으로 보므로, 그 column에 기대는 규칙은 보고하지 않는다. 실패한 `primary key` 줄은 그 table의 primary key 없음과 identity 규칙을 가리고, 실패한 `primary key`, `unique`, `index` 줄은 그 table foreign key의 선두 index 규칙과 그 table을 참조하는 foreign key의 참조 key 규칙을 가린다
 - 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함), 그리고 정확히 `dbspec`, 공백, `1`, 공백, 이름이 아닌 header 줄(예: tab이 있는 줄)은 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
 
@@ -235,7 +253,7 @@ table service_history {
 | `column` | column의 `null`, `identity`, `default` 조합이 규칙에 어긋나거나 default가 type에 맞지 않는다 |
 | `key` | primary key가 없거나 둘 이상이거나, key column이 nullable이거나, key나 index가 모르는·반복된·`text`·`bytes` column, 16개 넘는 column, 640자 넘는 `varchar`를 나열한다 |
 | `foreign_key` | foreign key의 대상, column type, index, column 수, `set_null` nullability가 규칙에 어긋난다 |
-| `check` | check 식이 neutral 집합 밖의 것, 모르는 column, `cascade`나 `set_null` foreign key의 column을 쓴다 |
+| `check` | check predicate가 predicate 형식 밖의 것, 모르는 column, type이 만나지 않는 operand, column type 밖의 literal, `cascade`나 `set_null` foreign key의 column을 쓴다 |
 | `setting` | setting을 모르거나, 반복되거나, 모르는 column을 가리키거나, column type이나 함께 필요한 setting이 틀렸다 |
 | `use` | 쓰는 문서가 선언된 집합에 없거나 쓰는 table이 거기 정의되지 않았다 |
 | `diagram` | diagram이 모르는 table을 가리키거나, table을 반복하거나, 좌표가 정수가 아니다 |
