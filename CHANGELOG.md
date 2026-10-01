@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.2.1: Go reports the identity rule for a table without a primary key line, as the other clients do.
+
 - T8.2.1.1: the Rust client exposes the parsed dbspec model in `orm_schema::dbspec::model`, as Go, PHP and TypeScript expose theirs.
 
 - T8.5.3: the PHP client parses, chains, diffs and writes schema plans through `Orm\Dbspec\Dbspec`; `make dbspec-plan-php-check` applies them to MySQL, PostgreSQL and SQLite.
