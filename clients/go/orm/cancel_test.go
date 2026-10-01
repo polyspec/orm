@@ -2,15 +2,12 @@ package orm_test
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 // TestWithContextCancels cancels the context of a connection handle while a
@@ -27,28 +24,14 @@ func TestWithContextCancels(t *testing.T) {
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "zone")
+	manifest := s.Text
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{})
+			db, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -56,7 +39,7 @@ func TestWithContextCancels(t *testing.T) {
 			if err := db.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			ent := zoneEntity(m.SchemaHash)
+			ent := zoneEntity(s)
 			row := orm.NewCore(ent)
 			ent.New(row)
 			row.Connect(db)
@@ -102,28 +85,14 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "zone")
+	manifest := s.Text
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{})
+			db, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +100,7 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 			if err := db.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			ent := zoneEntity(m.SchemaHash)
+			ent := zoneEntity(s)
 			ctx, cancel := context.WithCancel(context.Background())
 			handle := db.WithContext(ctx)
 			err = handle.Transaction(func() error {
@@ -166,33 +135,19 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "zone")
+	manifest := s.Text
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			holder, err := orm.Open(dsn, eng, orm.Config{})
+			holder, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer holder.Close()
-			waiter, err := orm.Open(dsn, eng, orm.Config{})
+			waiter, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -200,7 +155,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 			if err := holder.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			ent := zoneEntity(m.SchemaHash)
+			ent := zoneEntity(s)
 			seed := orm.NewCore(ent)
 			ent.New(seed)
 			seed.Connect(holder)
@@ -260,19 +215,8 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 // TestRootIdentifiesTheConnection checks that handles derived from one
 // connection report the same connection, so callers can compare them.
 func TestRootIdentifiesTheConnection(t *testing.T) {
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.Open("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), eng, orm.Config{})
+	s := fixtureSchema(t, "zone")
+	db, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +226,7 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	if db.Root() != db || first.Root() != db || second.Root() != db {
 		t.Fatal("a derived handle reports another connection")
 	}
-	other, err := orm.Open("sqlite://"+filepath.Join(t.TempDir(), "other.sqlite"), eng, orm.Config{})
+	other, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "other.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -25,7 +25,7 @@ use Orm\OrmException;
 use Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
-$schema = "$root/schema/schema.json";
+$documents = [(string) file_get_contents("$root/schema/bench.dbspec")];
 $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 @mkdir($work, 0o700, true);
 $tables = ['account_project', 'composite_membership', 'composite_account', 'author', 'service_member', 'service_region', 'soft_record', 'account', 'project', 'user', 'service', 'task'];
@@ -75,10 +75,10 @@ function dropTables(string $driver, string $dsn): void
 
 function database(string $driver, string $dsn): Db
 {
-    global $schema;
+    global $documents;
     dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-    $db->utils()->schema()->install((string) file_get_contents($schema));
+    $db = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $db->utils()->schema()->install($documents);
     return $db;
 }
 
@@ -88,9 +88,9 @@ function database(string $driver, string $dsn): Db
  */
 function schemaEmpty(string $driver, string $dsn): void
 {
-    global $schema;
+    global $documents;
     dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config(schemaPath: $schema));
+    $db = Orm::connect($dsn, new Config());
     check($db->utils()->schema()->empty() === true, 'a database without tables');
     if ($driver === 'postgres') {
         $db->pdo()->exec('CREATE SCHEMA unowned_empty');
@@ -101,12 +101,12 @@ function schemaEmpty(string $driver, string $dsn): void
         }
         check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
     }
-    $db->utils()->schema()->install((string) file_get_contents($schema));
+    $db->utils()->schema()->install($documents);
     check($db->utils()->schema()->empty() === false, 'installed tables');
     $db->close();
 }
 
-$targets = ['sqlite' => "sqlite://$work/model.sqlite?timezone=%2B00:00"];
+$targets = ['sqlite' => "sqlite://$work/model.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
     if ($v === false || $v === '') {
@@ -189,7 +189,6 @@ $tests['conditions'] = function (Db $db, string $dsn): void {
 };
 
 $tests['joins and relations'] = function (Db $db, string $dsn): void {
-    global $schema;
     $f = seed($db);
     $author = (new User)->on(fn(User $u) => $u->neName('nobody'))->name('kim');
     $rows = (new Author)($db)->leftJoinUserSeqWithSeq($author)
@@ -334,6 +333,22 @@ $tests['styled value states'] = function (Db $db, string $dsn): void {
     }
 };
 
+// ip, gz, base64 codec column은 저장한 값을 읽고, ip column은 같음으로 찾는다.
+$tests['codec columns'] = function (Db $db, string $dsn): void {
+    $f = seed($db);
+    $seq = $f['authors'][0]->getSeq();
+    (new Author)($db)->getBySeq($seq)->setIp('10.0.0.1')->setGzExtend(StyledValue::value('compressed text'))
+        ->setBase64Extra(StyledValue::value('plain'))->update();
+    $row = (new Author)($db)->addAllColumns()->getBySeq($seq);
+    check($row->getIp() === '10.0.0.1', 'ip ' . var_export($row->getIp(), true));
+    check($row->getGzExtend()->payload() === 'compressed text', 'gz styled value');
+    check($row->getBase64Extra()->payload() === 'plain', 'base64 styled value');
+    check((new Author)($db)->ip('10.0.0.1')->getCount() === 1, 'ip condition');
+    check((new Author)($db)->addAllColumns()->getBySeq($f['authors'][1]->getSeq())->getGzExtend()->kind === 'sql-null', 'gz SQL NULL');
+    $stored = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = ' . $seq)->fetchColumn();
+    check($stored === base64_encode('plain'), 'base64 storage');
+};
+
 $tests['transactions'] = function (Db $db, string $dsn): void {
     $boom = new RuntimeException('boom');
     try {
@@ -381,12 +396,14 @@ $tests['transactions'] = function (Db $db, string $dsn): void {
 };
 
 $tests['utilities'] = function (Db $db, string $dsn): void {
-    $manifest = (string) file_get_contents($GLOBALS['schema']);
+    $documents = $GLOBALS['documents'];
     $schema = $db->utils()->schema();
-    check(code(fn() => $schema->install('{}')) === Code::CONFIG, 'install invalid manifest');
+    check(code(fn() => $schema->install(["dbspec 1 broken\n\ntable t {\n}\n"])) === Code::SCHEMA_INVALID, 'install an invalid document');
     $user = (new User)($db)->setName('kept')->create();
-    $schema->install($manifest);
-    check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install keeps rows');
+    $schema->install($documents);
+    check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
+    $db->pdo()->exec($db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : ($db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'));
+    check(code(fn() => $schema->install($documents)) === Code::CONFIG, 'install over some tables of the set');
     check(code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
     $privileges = $db->utils()->privileges();
     switch ($db->driver()) {
@@ -409,7 +426,6 @@ $tests['utilities'] = function (Db $db, string $dsn): void {
 };
 
 $tests['deadlock retry'] =function (Db $db, string $dsn): void {
-    global $schema;
     $driver = $db->driver();
     if ($driver === 'sqlite') {
         return; // one writer: two transactions cannot hold row locks at the same time
@@ -418,7 +434,7 @@ $tests['deadlock retry'] =function (Db $db, string $dsn): void {
     [$a, $b] = [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()];
     $children = [];
     foreach ([[$a, $b, 'one'], [$b, $a, 'two']] as [$first, $second, $tag]) {
-        $p = proc_open([PHP_BINARY, __DIR__ . '/deadlock_child.php', $dsn, $schema, (string) $first, (string) $second, $tag],
+        $p = proc_open([PHP_BINARY, __DIR__ . '/deadlock_child.php', $dsn, (string) $first, (string) $second, $tag],
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         $children[] = [$p, $pipes];
     }
@@ -453,11 +469,11 @@ $tests['aes rotation'] =function (Db $db, string $dsn): void {
     check($db->utils()->aes()->status(new Author, $keyring)->pending === 0, 'after rotation');
     global $schema;
     // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-    $versioned = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
+    $versioned = Orm::connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
     (new Author)($versioned)->getBySeq($f['authors'][1]->getSeq())->setAesHexEmail('second@example.com')->update();
-    $current = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
+    $current = Orm::connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
     check((new Author)($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(code(fn() => new Config(schemaPath: $schema, aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
+    check(code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
 };
 
 // Inserts and reads more values than SQLite binds in one statement: the inserts
@@ -485,13 +501,13 @@ $tests['bind limit splitting'] = function (Db $db, string $dsn): void {
 };
 
 /**
- * Writes a wall-clock value and reads it back in the connection time zone, and
- * checks that the clock default and an equality filter use the same zone.
+ * 다른 zone의 값을 UTC wall clock으로 쓰고 UTC로 읽으며, clock default와
+ * text 같음 filter가 같은 UTC 규칙을 쓰는지 확인한다.
  */
-function connectionTimeZone(Db $db, DateTimeZone $zone): void
+function connectionUtc(Db $db): void
 {
     $f = seed($db);
-    $midnight = new DateTimeImmutable('2026-01-02 00:00:00', $zone);
+    $midnight = new DateTimeImmutable('2026-01-02 09:00:00', new DateTimeZone('+09:00'));
     $before = new DateTimeImmutable('now');
     $created = (new Author)($db)
         ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
@@ -500,10 +516,10 @@ function connectionTimeZone(Db $db, DateTimeZone $zone): void
     $row = (new Author)($db)->getBySeq($created->getSeq());
     check($row !== null, 'row');
     $start = $row->getStartDt();
-    check($start == $midnight && $start->format('H:i') === '00:00', 'start_dt ' . $start->format(DATE_ATOM));
+    check($start == $midnight && $start->format('H:i P') === '00:00 +00:00', 'start_dt ' . $start->format(DATE_ATOM));
     $ts = $row->getCreatedTs();
     check(abs($ts->getTimestamp() - $before->getTimestamp()) < 60, 'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM));
-    check($ts->getOffset() === $zone->getOffset($before), 'created_ts zone ' . $ts->format(DATE_ATOM));
+    check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
     check((new Author)($db)->startDt($midnight)->getCount() === 1, 'equality filter');
     check((new Author)($db)->startDt('2026-01-02 00:00:00')->getCount() === 1, 'equality filter by text');
     check((new Author)($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1, 'equality filter by text with fraction');
@@ -517,69 +533,6 @@ function connectionTimeZone(Db $db, DateTimeZone $zone): void
             check($e->code_ === Code::CODEC_ENCODE, 'date-only datetime text: ' . $e->getMessage());
         }
     }
-}
-
-/**
- * Installs log tables and, from a second manifest, audited tables, and writes
- * inside a transaction that names its operation with setLocal; PostgreSQL and
- * SQLite use schema-qualified tables.
- */
-function auditTriggers(string $driver, string $dsn): void
-{
-    $db = database($driver, $dsn);
-    $prefix = $driver === 'mysql' ? '' : 'ormtest.';
-    $logSource = "erDiagram\n"
-        . "  audit_operation {\n    bigint seq PK \"auto\"\n    varchar(36) operation_uuid UK\n  }\n"
-        . "  audit_change {\n    bigint seq PK \"auto\"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref \"?\"\n"
-        . "    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n"
-        . ($prefix === '' ? '' : "  %% orm:table entity=audit_operation name=ormtest.audit_operation\n  %% orm:table entity=audit_change name=ormtest.audit_change\n");
-    // The audited manifest writes into log tables that only the first manifest declares.
-    $itemSource = "erDiagram\n"
-        . "  audit_item {\n    bigint seq PK \"auto\"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n"
-        . ($prefix === '' ? '' : "  %% orm:table entity=audit_item name=ormtest.audit_item\n")
-        . "  %% orm:audit_log operation={$prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change={$prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"
-        . "  %% orm:audit entity=audit_item mode=changes service=service_ref\n";
-    $table = static fn(string $name): string => match ($driver) {
-        'sqlite' => "\"ormtest__$name\"",
-        'postgres' => "ormtest.$name",
-        default => $name,
-    };
-    $pdo = $db->pdo();
-    match ($driver) {
-        'postgres' => $pdo->exec('DROP SCHEMA IF EXISTS ormtest CASCADE'),
-        default => array_map(static fn(string $n) => $pdo->exec('DROP TABLE IF EXISTS ' . $table($n)), ['audit_item', 'audit_change', 'audit_operation']),
-    };
-    $logs = \Orm\SchemaBuilder::json(\Orm\SchemaBuilder::fromSources([$logSource]));
-    $items = \Orm\SchemaBuilder::json(\Orm\SchemaBuilder::fromSources([$itemSource]));
-    foreach ([$logs, $items, $items] as $manifest) {
-        $db->utils()->schema()->install($manifest);
-    }
-    $message = '';
-    try {
-        $db->transaction(fn() => $db->pdo()->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')"), retry: 0);
-    } catch (Throwable $e) {
-        $message = $e->getMessage();
-    }
-    check(str_contains($message, 'audit operation context is required'), "write without an operation: $message");
-    $db->transaction(function () use ($db, $table): void {
-        $pdo = $db->pdo();
-        $pdo->exec('INSERT INTO ' . $table('audit_operation') . " (operation_uuid) VALUES ('op-1')");
-        $db->utils()->setLocal('ormtest.operation_id', 'op-1');
-        $pdo->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')");
-        $pdo->exec('UPDATE ' . $table('audit_item') . " SET title = 'b'");
-    }, retry: 0);
-    $item = (int) $db->pdo()->query('SELECT seq FROM ' . $table('audit_item'))->fetchColumn();
-    $rows = $db->pdo()->query('SELECT operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value FROM ' . $table('audit_change') . ' ORDER BY seq')->fetchAll(PDO::FETCH_ASSOC);
-    check(array_column($rows, 'change_kind') === ['INSERT', 'UPDATE'], 'change kinds ' . json_encode(array_column($rows, 'change_kind')));
-    foreach ($rows as $row) {
-        check((int) $row['operation_seq'] === 1 && $row['service_ref'] === 's1' && $row['table_label'] === $prefix . 'audit_item', 'change row ' . json_encode($row));
-        check(json_decode($row['entity_ref'], true) === ['seq' => $item], 'entity key ' . $row['entity_ref']);
-    }
-    check(json_decode($rows[1]['before_value'] ?? 'null', true) === ['title' => 'a'] && json_decode($rows[1]['after_value'] ?? 'null', true) === ['title' => 'b'], 'update values');
-    match ($driver) {
-        'postgres' => $pdo->exec('DROP SCHEMA IF EXISTS ormtest CASCADE'),
-        default => array_map(static fn(string $n) => $pdo->exec('DROP TABLE IF EXISTS ' . $table($n)), ['audit_item', 'audit_change', 'audit_operation']),
-    };
 }
 
 foreach ($targets as $driver => $dsn) {
@@ -596,12 +549,12 @@ foreach ($targets as $driver => $dsn) {
 foreach ($targets as $driver => $dsn) {
     $current = "pool size/$driver";
     try {
-        $db = Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: 3));
+        $db = Orm::connect($dsn, new Config(poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: -1))) === Code::CONFIG, 'negative pool size');
+        check(code(fn() => Orm::connect($dsn, new Config(poolSize: -1))) === Code::CONFIG, 'negative pool size');
         // The PHP client has no pool, so the pool idle size and lifetime are rejected.
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
+        check(code(fn() => Orm::connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
+        check(code(fn() => Orm::connect($dsn, new Config(poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
@@ -612,7 +565,7 @@ foreach ($targets as $driver => $dsn) {
 foreach ($targets as $driver => $dsn) {
     $current = "statement timeout/$driver";
     try {
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
+        check(code(fn() => Orm::connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
         // bounds every statement, and SQLite has no session timeout.
         $slow = ['mysql' => 'SLEEP(5) = 0', 'postgres' => 'pg_sleep(5) IS NULL'][$driver] ?? null;
@@ -620,7 +573,7 @@ foreach ($targets as $driver => $dsn) {
             $db = database($driver, $dsn);
             seed($db);
             $db->close();
-            $bounded = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
+            $bounded = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
             // The condition is evaluated per row, so the table holds rows.
             check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'a statement past the timeout');
             $bounded->close();
@@ -647,9 +600,9 @@ try {
     $db->close();
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     $slow = 'pg_sleep(0.1) IS NOT NULL';
-    $bounded = Orm::connect($single, new Config(schemaPath: $schema, statementTimeoutMs: 200));
+    $bounded = Orm::connect($single, new Config(statementTimeoutMs: 200));
     check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
-    $plain = Orm::connect($single, new Config(schemaPath: $schema));
+    $plain = Orm::connect($single, new Config());
     check((new Author)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
     check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
     $bounded->close();
@@ -660,25 +613,14 @@ try {
 }
 echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 
-foreach ($targets as $driver => $dsn) {
-    $current = "audit triggers/$driver";
-    try {
-        auditTriggers($driver, $dsn);
-    } catch (Throwable $e) {
-        $failures++;
-        fwrite(STDERR, "FAIL $current: $e\n");
-    }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
-}
-
 if (isset($targets['mysql'])) {
     $current = 'install inside a transaction/mysql';
     try {
         $db = database('mysql', $targets['mysql']);
         $inside = null;
-        $db->transaction(function () use ($db, $schema, &$inside): void {
+        $db->transaction(function () use ($db, $documents, &$inside): void {
             try {
-                $db->utils()->schema()->install((string) file_get_contents($schema));
+                $db->utils()->schema()->install($documents);
             } catch (OrmException $e) {
                 $inside = $e;
             }
@@ -692,12 +634,16 @@ if (isset($targets['mysql'])) {
 }
 
 foreach ($targets as $driver => $base) {
-    foreach (['+00:00', '+09:00', '-05:30', 'Asia/Seoul'] as $zoneName) {
+    foreach (['', '+00:00', 'UTC', '+09:00', 'Asia/Seoul'] as $zoneName) {
         $current = "connection time zone $zoneName/$driver";
         try {
             $base = preg_replace('/[?&]timezone=[^&]*/', '', $base);
-            $dsn = $base . (str_contains($base, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
-            connectionTimeZone(database($driver, $dsn), new DateTimeZone($zoneName));
+            $dsn = $zoneName === '' ? $base : $base . (str_contains($base, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
+            if (in_array($zoneName, ['', '+00:00', 'UTC'], true)) {
+                connectionUtc(database($driver, $dsn));
+            } else {
+                check(code(fn() => Orm::connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
+            }
         } catch (Throwable $e) {
             $failures++;
             fwrite(STDERR, "FAIL $current: $e\n");
@@ -767,7 +713,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         $name = 'replica-' . hrtime(true);
         (new User)($master)->setName($name)->create();
         awaitReplica($driver, $targets[$driver], $replica);
-        $slave1 = Orm::connect($replica, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        $slave1 = Orm::connect($replica, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
         check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
         check(code(fn() => (new User)($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
         check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
@@ -798,7 +744,7 @@ try {
     (new User)($writable)->setName('read-only')->create();
     $writable->close();
     chmod($path, 0o444);
-    $readOnly = Orm::connect("sqlite://$path", new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $readOnly = Orm::connect("sqlite://$path", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
     check((new User)($readOnly)->name('read-only')->getCount() === 1, 'the read-only database reads the row');
     check(code(fn() => (new User)($readOnly)->setName('rejected')->create()) === Code::READ_ONLY, 'a write to the read-only database');
     $readOnly->close();

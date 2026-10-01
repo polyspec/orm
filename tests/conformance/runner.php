@@ -1,6 +1,6 @@
 <?php
 // Conformance runner (PHP). Runs the chains of runner_go/main.go and prints the same document.
-// Usage: php tests/conformance/runner.php <schema.json> --dsn URI
+// Usage: php tests/conformance/runner.php --dsn URI
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
@@ -21,9 +21,8 @@ use Orm\Orm;
 use Orm\OrmException;
 use Orm\StyledValue;
 
-$schema = $argv[1] ?? throw new RuntimeException('schema.json required');
 $dsn = null;
-for ($i = 2; $i < $argc; $i++) {
+for ($i = 1; $i < $argc; $i++) {
     match ($argv[$i]) {
         '--dsn' => $dsn = $argv[++$i],
         default => throw new RuntimeException("unknown argument {$argv[$i]}"),
@@ -117,7 +116,6 @@ function picks(Collection $c, string ...$names): array
 }
 
 $db = Orm::connect($dsn, new Config(
-    schemaPath: $schema,
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$log): void {

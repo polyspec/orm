@@ -36,9 +36,9 @@ type Entity struct {
 // ChainKey is one key of a generated chain method.
 type ChainKey struct {
 	Conn    string   // connector before this key; empty for the first key
-	Op      string   // "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple
+	Op      string   // "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple
 	Column  string   // compared column
-	Columns []string // fulltext and tuple columns
+	Columns []string // tuple columns
 	Compare string   // column of the passed model for a column comparison
 }
 
@@ -56,19 +56,18 @@ type condGroup struct {
 }
 
 type predSpec struct {
-	column   string
-	op       string
-	value    any
-	fn       *Func
-	cols     []string
-	ref      *Core
-	refCol   string
-	sub      *Core
-	list     bool
-	isNull   bool
-	between  bool
-	tuple    bool
-	fulltext bool
+	column  string
+	op      string
+	value   any
+	fn      *Func
+	cols    []string
+	ref     *Core
+	refCol  string
+	sub     *Core
+	list    bool
+	isNull  bool
+	between bool
+	tuple   bool
 }
 
 type rawSpec struct {
@@ -381,16 +380,6 @@ var operators = map[string]string{"": "eq", "ne": "not_eq", "gt": "gt", "lt": "l
 func (c *Core) predicate(key ChainKey, value any, rest []any, single bool) (*predSpec, int, error) {
 	p := &predSpec{column: key.Column}
 	switch key.Op {
-	case "fulltext", "fulltext_boolean":
-		s, ok := value.(string)
-		if !ok {
-			return nil, 0, configErr("full-text value for %s must be a string", key.Column)
-		}
-		p.op, p.cols, p.value, p.fulltext = "match", key.Columns, s, true
-		if key.Op == "fulltext_boolean" {
-			p.op = "match_boolean"
-		}
-		return p, 0, nil
 	case "tuple", "ne_tuple":
 		rows, err := tupleRows(value, len(key.Columns))
 		if err != nil {

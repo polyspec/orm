@@ -1,0 +1,148 @@
+<?php
+declare(strict_types=1);
+// The runtime model of schema/bench.dbspec (docs/dbspec.md "Runtime model"):
+// entities, the default select set, codec value types, the generated models
+// and their manifest hash, i16 fields, and a connection configuration without
+// a schema path. Database behavior is in runtime_db_test.php.
+// Usage: php clients/php/tests/runtime_model_test.php
+require __DIR__ . '/autoload.php';
+
+use Polyspec\Orm\Tests\Model\Author;
+use Orm\Code;
+use Orm\Config;
+use Orm\Dbspec\Dbspec;
+use Orm\Engine;
+use Orm\Generator;
+use Orm\OrmException;
+use Orm\Registry;
+use Orm\RuntimeModel;
+
+$started = hrtime(true);
+echo "RUN runtime_model\n";
+$root = dirname(__DIR__, 3);
+$failures = 0;
+
+/** 한 case를 실행하고 시작, 결과, 경과 시간을 보고한다. */
+function runCase(string $name, Closure $fn): void
+{
+    global $failures;
+    $t = hrtime(true);
+    echo "RUN $name\n";
+    try {
+        $fn();
+        echo "PASS $name elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
+    } catch (Throwable $e) {
+        $failures++;
+        echo "FAIL $name elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
+        fwrite(STDERR, "FAIL $name: $e\n");
+    }
+}
+
+function want(bool $ok, string $message): void
+{
+    if (!$ok) {
+        throw new RuntimeException($message);
+    }
+}
+
+function errorCode(Closure $fn): string
+{
+    try {
+        $fn();
+    } catch (OrmException $e) {
+        return $e->code_;
+    }
+    return 'no error';
+}
+
+$bench = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbspec"]));
+
+runCase('entities in document order', function () use ($bench): void {
+    $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task'];
+    want(array_keys($bench->entities) === $want, 'entities ' . implode(',', array_keys($bench->entities)));
+    $author = $bench->entities['author'];
+    want($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');
+    want($author['updated'] === 'updated_ts' && $author['aes_version'] === 'aes_key_version', 'author settings');
+    want($bench->entities['soft_record']['soft_delete'] === 'deleted_at', 'soft delete setting');
+    want($author['columns']['aes_hex_email']['blind_index'] === 'email_blind_index', 'blind index setting');
+    want($author['columns']['json_setting']['codec'] === ['ordered_json'], 'ordered_json codec');
+});
+
+runCase('default select set excludes only select explicit', function () use ($bench): void {
+    $selected = [];
+    foreach ($bench->entities['author']['columns'] as $name => $c) {
+        if ($c['select']) {
+            $selected[] = $name;
+        }
+    }
+    $explicit = ['description', 'email_blind_index', 'phone_blind_index', 'ip', 'gz_extend', 'json_setting', 'jsons_tags', 'base64_extra', 'serialize_data', 'aes_key_version'];
+    $want = array_values(array_diff(array_keys($bench->entities['author']['columns']), $explicit));
+    want($selected === $want, 'selected ' . implode(',', $selected));
+});
+
+runCase('generated models carry the manifest hash and the model', function () use ($root, $bench): void {
+    $manifest = Dbspec::manifest(RuntimeModel::files(["$root/schema/bench.dbspec"]))->manifest;
+    want(Registry::manifestHash() === $manifest->manifestHash, 'manifest hash ' . Registry::manifestHash());
+    want(str_starts_with(Registry::manifestHash(), 'sha256:'), 'manifest hash form');
+    want(Registry::manifestText() === $manifest->manifestText, 'manifest text');
+    want(Registry::model()->entities === $bench->entities, 'generated model differs from the document model');
+});
+
+runCase('generated files are current', function () use ($root, $bench): void {
+    $lines = Generator::check($bench, "$root/clients/php/gen", 'Polyspec\\Orm\\Tests\\Model');
+    want($lines === [], implode("\n", $lines));
+});
+
+runCase('codec value types', function (): void {
+    $type = static fn(string $method): string => (string) (new ReflectionMethod(Author::class, $method))->getReturnType();
+    foreach (['getJsonSetting', 'getJsonsTags', 'getSerializeData', 'getGzExtend', 'getBase64Extra'] as $m) {
+        want($type($m) === 'Orm\\StyledValue', "$m returns " . $type($m));
+    }
+    foreach (['getAesHexEmail', 'getIp', 'getPrice', 'getDescription'] as $m) {
+        want($type($m) === '?string', "$m returns " . $type($m));
+    }
+    want($type('getTargetClubReaderCount') === 'int' && $type('getIsClose') === 'bool', 'scalar types');
+    want($type('getCreatedTs') === 'DateTimeImmutable', 'datetime type');
+});
+
+runCase('i16 field', function () use ($root): void {
+    $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary key (seq)\n}\n";
+    $model = RuntimeModel::build(RuntimeModel::parse(['small.dbspec' => $doc]));
+    want($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
+    $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
+    Generator::generate($model, $out, 'Small\\Orm');
+    $body = (string) file_get_contents("$out/SmallValue.php");
+    array_map('unlink', glob("$out/*.php"));
+    rmdir($out);
+    want(str_contains($body, 'public function getLevel(): int') && str_contains($body, 'public function getRank(): ?int'), 'i16 accessors');
+    $engine = new Engine($model, 'postgres', 4);
+    $ir = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash, 'kind' => 'all', 'entity' => 'small_value',
+        'where' => ['items' => [['pred' => ['column' => 'level', 'op' => 'between', 'ps' => [0, 1]]]]], 'n_params' => 2];
+    want(str_contains($engine->compile($ir)['steps'][0]['sql'], '"a"."level" BETWEEN $1 AND $2'), 'i16 condition');
+});
+
+runCase('configuration without a schema path', function (): void {
+    $config = new Config(aesKey: 'k');
+    want($config->aesKey === 'k', 'config');
+    want(!property_exists($config, 'schemaPath'), 'schemaPath property');
+    want(errorCode(fn() => new Config(aesVersion: 0)) === Code::CONFIG, 'invalid config');
+});
+
+runCase('requests carry the manifest hash', function () use ($bench): void {
+    $engine = new Engine($bench, 'sqlite', 4);
+    $ir = ['ir_version' => 1, 'manifest_hash' => 'sha256:00', 'kind' => 'all', 'entity' => 'service', 'n_params' => 0];
+    want(errorCode(fn() => $engine->compile($ir)) === Code::SCHEMA_HASH_MISMATCH, 'other manifest hash');
+    $ir['manifest_hash'] = $bench->manifestHash;
+    want($engine->compile($ir)['manifest_hash'] === $bench->manifestHash, 'plan manifest hash');
+});
+
+$elapsed = (hrtime(true) - $started) / 1e6;
+if ($elapsed > 30000) {
+    fwrite(STDERR, "runtime_model deadline of 30 s exceeded ($elapsed ms)\n");
+    exit(1);
+}
+if ($failures > 0) {
+    echo "FAIL runtime_model failures=$failures elapsedMs=$elapsed\n";
+    exit(1);
+}
+echo "PASS runtime_model elapsedMs=$elapsed\n";

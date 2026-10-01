@@ -5,7 +5,7 @@ use chrono::{NaiveDate, NaiveDateTime};
 
 use crate::core::Core;
 use crate::model::Model;
-use crate::value::{Param, Point};
+use crate::value::Param;
 
 /// The null condition value: `IS NULL`, or `IS NOT NULL` with `ne`. It is
 /// accepted only by nullable columns.
@@ -94,18 +94,6 @@ pub fn month() -> Func {
 pub fn date() -> Func {
     column_func("date", vec![])
 }
-/// The distance in meters from a point column to the point.
-pub fn distance(longitude: f64, latitude: f64) -> Func {
-    column_func("distance", vec![Param::F64(longitude), Param::F64(latitude)])
-}
-/// The longitude of a point column.
-pub fn point_x() -> Func {
-    column_func("point_x", vec![])
-}
-/// The latitude of a point column.
-pub fn point_y() -> Func {
-    column_func("point_y", vec![])
-}
 
 /// Column value kinds. A generated chain method bounds each argument with the
 /// kind of its column; the `*Null` kinds also accept [`Null`].
@@ -113,26 +101,7 @@ pub mod kind {
     macro_rules! kinds {
         ($($name:ident),*) => { $( #[doc(hidden)] pub struct $name; )* };
     }
-    kinds!(
-        Int,
-        IntNull,
-        Float,
-        FloatNull,
-        Decimal,
-        DecimalNull,
-        Text,
-        TextNull,
-        Bool,
-        BoolNull,
-        Time,
-        TimeNull,
-        Bytes,
-        BytesNull,
-        Point,
-        PointNull,
-        Styled,
-        StyledNull
-    );
+    kinds!(Int, IntNull, Float, FloatNull, Decimal, DecimalNull, Text, TextNull, Bool, BoolNull, Time, TimeNull, Bytes, BytesNull, Styled, StyledNull);
 }
 
 /// One condition value as the runtime records it.
@@ -236,7 +205,7 @@ macro_rules! nullable {
         )*
     };
 }
-nullable!(IntNull, FloatNull, DecimalNull, TextNull, BoolNull, TimeNull, BytesNull, PointNull, StyledNull);
+nullable!(IntNull, FloatNull, DecimalNull, TextNull, BoolNull, TimeNull, BytesNull, StyledNull);
 
 macro_rules! funcs {
     ($($k:ident),*) => {
@@ -250,7 +219,7 @@ macro_rules! funcs {
         )*
     };
 }
-funcs!(Int, IntNull, Float, FloatNull, Decimal, DecimalNull, Text, TextNull, Bool, BoolNull, Time, TimeNull, Bytes, BytesNull, Point, PointNull);
+funcs!(Int, IntNull, Float, FloatNull, Decimal, DecimalNull, Text, TextNull, Bool, BoolNull, Time, TimeNull, Bytes, BytesNull);
 
 impl<K, M: Model> EqArg<K> for M {
     fn into_value(self) -> Value {
@@ -268,7 +237,7 @@ macro_rules! compared {
         $( impl Compared for $t { fn into_param(self) -> Param { ($conv)(self) } } )*
     };
 }
-compared!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), u32 => |v: u32| Param::I64(v as i64),
+compared!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), i16 => |v: i16| Param::I64(v as i64), u32 => |v: u32| Param::I64(v as i64),
     f64 => Param::F64, f32 => |v: f32| Param::F64(v as f64), bool => Param::Bool, String => Param::Str,
     &str => |v: &str| Param::Str(v.to_owned()), NaiveDateTime => Param::DateTime, NaiveDate => Param::Date);
 
@@ -282,9 +251,8 @@ macro_rules! set_arg {
         $( impl SetArg for $t { fn into_param(self) -> Param { ($conv)(self) } } )*
     };
 }
-set_arg!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), f64 => Param::F64, bool => Param::Bool,
-    String => Param::Str, NaiveDateTime => Param::DateTime, NaiveDate => Param::Date, Vec<u8> => Param::Bytes,
-    Point => Param::Point);
+set_arg!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), i16 => |v: i16| Param::I64(v as i64), f64 => Param::F64, bool => Param::Bool,
+    String => Param::Str, NaiveDateTime => Param::DateTime, NaiveDate => Param::Date, Vec<u8> => Param::Bytes);
 
 /// Anything a raw fragment binds.
 pub fn bind(v: impl Into<Param>) -> Param {
@@ -369,8 +337,8 @@ macro_rules! nullable_values {
         $( impl IntoNullable<$to> for $from { fn into_nullable(self) -> Option<$to> { Some(self.into()) } } )*
     };
 }
-nullable_values!(i32 => i32, i32 => i64, i64 => i64, f64 => f64, f32 => f64, i32 => f64, bool => bool, String => String,
-    &str => String, NaiveDateTime => NaiveDateTime, NaiveDate => NaiveDate, Vec<u8> => Vec<u8>, &[u8] => Vec<u8>, Point => Point);
+nullable_values!(i16 => i16, i16 => i32, i16 => i64, i32 => i32, i32 => i64, i64 => i64, f64 => f64, f32 => f64, i32 => f64, bool => bool, String => String,
+    &str => String, NaiveDateTime => NaiveDateTime, NaiveDate => NaiveDate, Vec<u8> => Vec<u8>, &[u8] => Vec<u8>);
 
 /// The output of `add_column_<col>_alias_<name>`: a format with `%s` for the
 /// column, or a column function.

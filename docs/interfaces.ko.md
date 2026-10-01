@@ -101,7 +101,7 @@ classDiagram
 
 | 클라이언트 | 공개 연결 호출 | 결과 |
 |---|---|---|
-| Go | `model.Connect(dsn, schemaPath, config)` | `(*orm.DB, error)` |
+| Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
 | PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
 | Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
 | TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |

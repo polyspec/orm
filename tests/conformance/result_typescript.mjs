@@ -43,6 +43,6 @@ export function resultValue(value) {
     if (Object.getOwnPropertyNames(value).length !== Object.keys(value).length) throw new Error('non-enumerable conformance result');
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, resultValue(item)]));
   }
-  if (value !== null && typeof value === 'object') throw new Error('unsupported conformance result object');
+  if (value !== null && typeof value === 'object') throw new Error(`unsupported conformance result object ${Object.getPrototypeOf(value)?.constructor?.name}`);
   return value;
 }

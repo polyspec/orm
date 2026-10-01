@@ -186,15 +186,14 @@ func buildRunners(root string) error {
 }
 
 func runOne(root, output, language string) error {
-	schema := filepath.Join(root, "schema", "schema.json")
 	flags := []string{"--dsn", dsn}
 	switch language {
 	case "go":
-		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-driver", driver, "-dsn", dsn, schema)
+		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-dsn", dsn)
 	case "php":
-		return runCommand(root, output, 10*time.Minute, "php", append([]string{"tests/conformance/runner.php", schema}, flags...)...)
+		return runCommand(root, output, 10*time.Minute, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
 	case "typescript":
-		return runCommand(root, output, 10*time.Minute, "node", append(append([]string{"tests/conformance/runner_typescript.mjs"}, flags...), schema)...)
+		return runCommand(root, output, 10*time.Minute, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
 	case "rust":
 		target := os.Getenv("CARGO_TARGET_DIR")
 		if target == "" {
@@ -202,7 +201,7 @@ func runOne(root, output, language string) error {
 		} else if !filepath.IsAbs(target) {
 			target = filepath.Join(root, target)
 		}
-		return runCommand(root, output, 10*time.Minute, filepath.Join(target, "release", "conformance"), append(flags, schema)...)
+		return runCommand(root, output, 10*time.Minute, filepath.Join(target, "release", "conformance"), flags...)
 	default:
 		return fmt.Errorf("unsupported language %q", language)
 	}

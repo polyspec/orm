@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Db, OrmError, Service } from '../dist/index.js';
 
-const schemaPath = fileURLToPath(new URL('../../../schema/schema.json', import.meta.url));
+const benchPath = fileURLToPath(new URL('../../../schema/bench.dbspec', import.meta.url));
 
 /** Runs count transactions that read the service count and then insert one service. */
 async function writeServices(db, name, count) {
@@ -26,7 +26,7 @@ async function writeServices(db, name, count) {
 
 if (process.argv[2] === 'writer') {
   const [, , , dsn, name, count] = process.argv;
-  const db = await Db.connect(dsn, schemaPath);
+  const db = await Db.connect(dsn);
   try {
     await writeServices(db, name, Number(count));
   } catch (error) {
@@ -37,7 +37,7 @@ if (process.argv[2] === 'writer') {
 }
 
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-sqlite-lock-'));
-const manifestJson = await readFile(schemaPath, 'utf8');
+const bench = await readFile(benchPath, 'utf8');
 let failures = 0;
 let current = '';
 function check(cond, message) {
@@ -47,13 +47,13 @@ function check(cond, message) {
 /** A new SQLite file with the schema installed and its DSN. */
 async function database(name) {
   const dsn = `sqlite://${join(work, `${name}.sqlite`)}`;
-  const db = await Db.connect(dsn, schemaPath);
-  try { await db.utils().schema().install(manifestJson); } finally { await db.close(); }
+  const db = await Db.connect(dsn);
+  try { await db.utils().schema().install([bench]); } finally { await db.close(); }
   return dsn;
 }
 
 async function count(dsn) {
-  const db = await Db.connect(dsn, schemaPath);
+  const db = await Db.connect(dsn);
   try { return await new Service().connect(db).getCount(); } finally { await db.close(); }
 }
 
@@ -78,8 +78,8 @@ const tests = {
   },
   async readsDuringWrite() {
     const dsn = await database('reads');
-    const writer = await Db.connect(dsn, schemaPath);
-    const reader = await Db.connect(dsn, schemaPath);
+    const writer = await Db.connect(dsn);
+    const reader = await Db.connect(dsn);
     try {
       await writer.transaction(async () => {
         await new Service().setName('pending').create();
@@ -97,8 +97,8 @@ const tests = {
   },
   async lockWaitExpires() {
     const dsn = await database('expiry');
-    const holder = await Db.connect(dsn, schemaPath);
-    const waiter = await Db.connect(`${dsn}?_pragma=busy_timeout(200)`, schemaPath);
+    const holder = await Db.connect(dsn);
+    const waiter = await Db.connect(`${dsn}?_pragma=busy_timeout(200)`);
     try {
       await holder.transaction(async () => {
         await new Service().setName('holder').create();

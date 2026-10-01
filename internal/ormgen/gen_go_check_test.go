@@ -7,7 +7,17 @@ import (
 	"os/exec"
 	"slices"
 	"testing"
+
+	"github.com/polyspec/orm/engine/schema"
 )
+
+// buildDiagram은 ormgen build --check가 읽는 Mermaid source다.
+const buildDiagram = `erDiagram
+  product {
+    bigint        seq          PK "auto"
+    varchar(50)   name
+  }
+`
 
 // requireCheck runs a Go generation check with the ./... scan and checks the
 // reported lines and that the output directory and its parent are unchanged.
@@ -75,9 +85,19 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // status of ormgen build --check and ormgen gen --check.
 func TestGoGenerationCheckCommandsReportDifferences(t *testing.T) {
 	bin := ormgenBinary(t)
-	write, m := generatedScannedModule(t)
-	write("schema.mmd", namesDiagram)
-	js, err := m.MarshalIndent()
+	write, _ := generatedScannedModule(t)
+	write("names.dbspec", namesDiagram)
+	// build는 Mermaid schema tool이며 gen과 별개의 source를 쓴다.
+	write("schema.mmd", buildDiagram)
+	d, err := schema.Parse(buildDiagram)
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := schema.Build(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	js, err := built.MarshalIndent()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +115,7 @@ func TestGoGenerationCheckCommandsReportDifferences(t *testing.T) {
 		return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
 	}
 	build := []string{"build", "schema.mmd", "--out", "schema.json", "--check"}
-	gen := []string{"gen", "--schema", "schema.json", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
+	gen := []string{"gen", "--document", "names.dbspec", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
 	for _, args := range [][]string{build, gen, {"build", "--check", "schema.mmd", "--out", "schema.json"}} {
 		if code, stdout, stderr := run(args...); code != 0 || stdout != "" || stderr != "" {
 			t.Fatalf("%v on current files: exit %d\nstdout: %s\nstderr: %s", args, code, stdout, stderr)

@@ -1,6 +1,6 @@
 // ormgen ddl: manifest → CREATE TABLE statements for one dialect (docs/dialects.md).
 //
-//	ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out bench/sql/author.pg.sql
+//	ormgen ddl --schema schema/schema.json --dialect mysql|postgres|sqlite --out schema.sql
 //
 // Types come from the canonical manifest types (plus the raw MySQL type where it
 // carries precision); indexes, unique keys and fulltext indexes are emitted as the

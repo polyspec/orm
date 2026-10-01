@@ -3,16 +3,26 @@ package ir
 import (
 	"testing"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 func TestStringAndTextSupportOrderedCursorPredicates(t *testing.T) {
-	for _, typ := range []string{"string", "text"} {
-		column := &schema.Col{Type: typ}
+	for _, typ := range []string{"varchar", "text"} {
+		column := &runtimemodel.Field{Type: typ}
 		for _, op := range []string{"gt", "gte", "lt", "lte"} {
 			if !OpAllowed(column, op) {
 				t.Fatalf("%s column does not allow %s", typ, op)
 			}
+		}
+	}
+}
+
+// uuid column은 equality와 목록 비교만 받는다. PostgreSQL uuid에는 LIKE가 없다.
+func TestUUIDAllowsEqualityOnly(t *testing.T) {
+	column := &runtimemodel.Field{Type: "uuid"}
+	for op, want := range map[string]bool{"eq": true, "in": true, "is_null": true, "contains": false, "gt": false} {
+		if got := OpAllowed(column, op); got != want {
+			t.Errorf("uuid %s = %v, want %v", op, got, want)
 		}
 	}
 }

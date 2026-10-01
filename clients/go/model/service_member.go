@@ -423,6 +423,15 @@ func (x *ServiceMemberModel) AvgUserSeq() *ServiceMemberModel {
 	return x
 }
 
+func (x *ServiceMemberModel) ForceIndexIxServiceMemberService() *ServiceMemberModel {
+	x.m.ForceIndex("ix_service_member_service")
+	return x
+}
+func (x *ServiceMemberModel) ForceIndexIxServiceMemberUser() *ServiceMemberModel {
+	x.m.ForceIndex("ix_service_member_user")
+	return x
+}
+
 func (x *ServiceMemberModel) AliasMembers() *ServiceMemberModel { x.m.Alias("Members"); return x }
 
 func (x *ServiceMemberModel) GetCountByServiceSeq[T0 argIntEq](v0 T0) (int64, error) {

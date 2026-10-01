@@ -118,7 +118,7 @@ func hotPathGate(t *testing.T) {
 	t.Helper()
 	sqlDB := open(t)
 	ctx := context.Background()
-	db, err := model.Connect(dsn(t), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	db, err := model.Connect(dsn(t), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		t.Fatal(err)
 	}

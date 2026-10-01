@@ -12,7 +12,8 @@ for (const entry of fixture.cases) {
     continue;
   }
   tested++;
-  const styles = [entry.style];
+  // The fixture names the Mermaid styles; json and jsons are both the ordered_json stage.
+  const styles = [entry.style === 'json' || entry.style === 'jsons' ? 'ordered_json' : entry.style];
   if (Object.hasOwn(entry, 'stored_text')) {
     try {
       const decoded = decode(styles, entry.stored_text);
@@ -32,10 +33,10 @@ for (const entry of fixture.cases) {
 }
 
 const cases = Object.fromEntries(fixture.cases.map(entry => [entry.id, entry]));
-const schema = { name: 'styled_probe', table: 'styled_probe', pk: [], columns: {
-  payload: { type: 'jsontext', nullable: false, styles: ['json'] },
-}, fulltext: [] };
-const probe = new orm.Core({ schema, set: { hash: '', entities: new Map() }, create: () => { throw new Error('not used'); } });
+const probeText = 'dbspec 1 styled_probe\n\ntable styled_probe {\n  seq i64\n  payload text\n  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n';
+const { manifest } = orm.dbspecManifest([orm.parseDbspec(probeText, {}).document]);
+const model = orm.registerModel(manifest.manifestText, manifest.manifestHash);
+const probe = new orm.Core({ model, entity: model.entities.get('styled_probe'), create: () => { throw new Error('not used'); } });
 try { probe.column('payload'); throw new Error('unselected getter was accepted'); }
 catch (error) { if (error.code !== cases.unselected.getter_error) throw error; }
 try { probe.setValue('payload', orm.StyledValue.sqlNull()); throw new Error('non-null column accepted SQL NULL'); }
@@ -69,10 +70,10 @@ rejectsLostOutput('setter before assignment', () => rejected.setJsonSetting(orm.
 try { rejected.getJsonSetting(); throw new Error('a rejected setter changed the model'); }
 catch (error) { if (error.code !== 'COLUMN_UNSELECTED') throw error; }
 const document = { present: 1 };
-const model = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
+const author = new orm.Author().setJsonSetting(orm.StyledValue.value(document));
 document.missing = undefined;
-rejectsLostOutput('model array', () => model.toArray());
-rejectsLostOutput('model JSON value', () => model.toJSON());
-rejectsLostOutput('model JSON text', () => model.toJSONText());
+rejectsLostOutput('model array', () => author.toArray());
+rejectsLostOutput('model JSON value', () => author.toJSON());
+rejectsLostOutput('model JSON text', () => author.toJSONText());
 
 console.log(`styled value fixture: ${tested} codec cases and 3 model states passed`);

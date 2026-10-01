@@ -2,7 +2,7 @@
 <?php
 // Model generation and schema tools (docs/schema.md §4):
 //
-//   vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace Example\\Model
+//   vendor/bin/orm-gen gen --out src/Model --namespace Example\\Model schema/example.dbspec
 //   vendor/bin/orm-gen build schema/*.mmd --out schema/schema.json
 declare(strict_types=1);
 

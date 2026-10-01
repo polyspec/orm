@@ -6,7 +6,7 @@ namespace Orm;
 /**
  * The orm-gen commands: model generation and the schema tools.
  *
- *   orm-gen gen      --schema schema.json --out <dir> --namespace <Php\Namespace> [--check]
+ *   orm-gen gen      --out <dir> --namespace <Php\Namespace> [--check] <files.dbspec...>
  *   orm-gen build    <files.mmd...> --out schema.json [--check]
  *   orm-gen ddl      --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
  *   orm-gen diff     --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
@@ -20,7 +20,7 @@ namespace Orm;
 final class SchemaTool
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --schema schema.json --out <dir> --namespace <Php\\Namespace> [--check]',
+        'gen' => 'orm-gen gen --out <dir> --namespace <Php\\Namespace> [--check] <files.dbspec...>',
         'build' => 'orm-gen build <files.mmd...> --out schema/schema.json [--check]',
         'ddl' => 'orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>',
         'diff' => 'orm-gen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]',
@@ -192,16 +192,16 @@ final class SchemaTool
 
     private static function gen(array $args): int
     {
-        [$o] = self::flags($args, ['schema' => '', 'out' => '', 'namespace' => '', 'check' => false]);
-        if ($o['schema'] === '' || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
+        [$o, $files] = self::flags($args, ['out' => '', 'namespace' => '', 'check' => false], true);
+        if ($files === [] || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
             throw new UsageError('');
         }
-        $manifest = Manifest::file($o['schema']);
+        $model = RuntimeModel::build(RuntimeModel::files($files));
         if ($o['check']) {
-            return self::report(Generator::check($manifest, $o['out'], $o['namespace']));
+            return self::report(Generator::check($model, $o['out'], $o['namespace']));
         }
-        Generator::generate($manifest, $o['out'], $o['namespace']);
-        printf("orm-gen: %d entities → %s\n", count($manifest->order), $o['out']);
+        Generator::generate($model, $o['out'], $o['namespace']);
+        printf("orm-gen: %d entities → %s (%s)\n", count($model->entities), $o['out'], $model->manifestHash);
         return 0;
     }
 

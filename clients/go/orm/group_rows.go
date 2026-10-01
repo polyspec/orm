@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 type groupValue struct {
@@ -115,15 +115,15 @@ func (r *GroupRows) All() func(yield func(GroupRow) bool) {
 	}
 }
 
-func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *schema.Col, raw any) (any, error) {
+func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *runtimemodel.Field, raw any) (any, error) {
 	if raw == nil {
-		if declared != nil && !declared.Nullable {
+		if declared != nil && !declared.Null {
 			return nil, codecErr(CodeCodecDecode, "group column %s is SQL NULL", column.Name)
 		}
 		return nil, nil
 	}
-	if declared != nil && len(declared.Styles) > 0 {
-		return AsStyledValue(raw, declared.Nullable)
+	if declared != nil && declared.Styled() {
+		return AsStyledValue(raw, declared.Null)
 	}
 	if column.Name == "row_count" {
 		if _, ok := raw.(bool); ok {
@@ -138,6 +138,8 @@ func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *schema.Col,
 		return AsInt64(raw)
 	case "i32":
 		return AsInt32(raw)
+	case "i16":
+		return AsInt16(raw)
 	case "bool":
 		return AsBool(raw)
 	case "f64":
@@ -153,12 +155,18 @@ func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *schema.Col,
 			return t, nil
 		}
 		return AsTime(value)
-	case "string", "text", "enum", "inet", "time", "json":
+	case "time":
+		if declared == nil {
+			return nil, codecErr(CodeInternal, "time group column %s has no declaration", column.Name)
+		}
+		return AsTimeText(raw, declared.Precision)
+	case "varchar", "text", "uuid":
 		return AsString(raw)
 	case "bytes":
+		if declared != nil && len(declared.Codec) > 0 {
+			return AsString(raw)
+		}
 		return AsBytes(raw)
-	case "point":
-		return AsPoint(raw)
 	default:
 		return nil, codecErr(CodeInternal, "group column %s has unsupported type %s", column.Name, column.Type)
 	}

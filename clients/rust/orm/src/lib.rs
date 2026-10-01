@@ -22,8 +22,8 @@ pub mod utils;
 pub mod value;
 
 pub use args::{
-    date, day_of_week, days_ago, days_later, distance, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, point_x,
-    point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
+    date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
+    seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
 };
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
@@ -32,12 +32,13 @@ pub use db::{Config, Db, DbStats, OnQuery, Statement};
 pub use engine::Dialect;
 pub use model::{AnyModel, Entity, Model};
 pub use ordered_json;
+pub use orm_schema::dbspec;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;
-pub use tx::{transaction_conflict, Isolation, SendTransaction, Transaction, TransactionOnceError};
+pub use tx::{transaction_conflict, Isolation, OperationId, SendTransaction, Transaction, TransactionOnceError};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
-pub use value::{parse_point, point_text, Param, Point, StyledValue, Val};
+pub use value::{Param, StyledValue, Val};
 
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]

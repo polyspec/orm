@@ -1,10 +1,9 @@
 import { Db } from '../dist/index.js';
 import { openDriver, parseDsn, postgresZone } from '../dist/driver.js';
 
-const schemaPath = new URL('../../../schema/schema.json', import.meta.url).pathname;
 for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/orm_example?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate', 'sqlite:///tmp/x.sqlite?_txlock=deferred', 'sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {
   let failed = false;
-  try { await Db.connect(dsn, schemaPath); } catch (error) { failed = error?.code === 'CONFIG'; }
+  try { await Db.connect(dsn); } catch (error) { failed = error?.code === 'CONFIG'; }
   if (!failed) throw new Error(`invalid DSN was accepted: ${dsn}`);
 }
 for (const [zone, posix] of [['+09:00', '<+09:00>-09:00'], ['-05:30', '<-05:30>+05:30'], ['+00:00', '<+00:00>-00:00'], ['Asia/Seoul', 'Asia/Seoul']]) {
@@ -12,7 +11,7 @@ for (const [zone, posix] of [['+09:00', '<+09:00>-09:00'], ['-05:30', '<-05:30>+
 }
 for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolIdleSize: 11 }, { poolLifetimeMs: -1 }]) {
   let failed = false;
-  try { await Db.connect('sqlite:///tmp/orm-pool-options.sqlite', schemaPath, options); } catch (error) { failed = error?.code === 'CONFIG'; }
+  try { await Db.connect('sqlite:///tmp/orm-pool-options.sqlite', options); } catch (error) { failed = error?.code === 'CONFIG'; }
   if (!failed) throw new Error(`invalid pool options were accepted: ${JSON.stringify(options)}`);
 }
 // The pool bounds reach the driver pools, which open no connection before the first statement.

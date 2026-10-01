@@ -381,6 +381,60 @@ func AsInt32(v any) (int32, error) {
 	return int32(n), nil
 }
 
+// AsInt16은 database 값을 넘침 없이 int16으로 바꾼다.
+func AsInt16(v any) (int16, error) {
+	n, err := AsInt64(v)
+	if err != nil {
+		return 0, err
+	}
+	if n < math.MinInt16 || n > math.MaxInt16 {
+		return 0, codecErr(CodeCodecDecode, "integer %d overflows int16", n)
+	}
+	return int16(n), nil
+}
+
+// AsTimeText는 time(p) 값을 소수 자릿수가 정확히 p인 HH:MM:SS text로 바꾼다.
+// 시각은 00:00:00 이상 24:00:00 미만이며, p보다 긴 소수는 값을 잃으므로
+// CODEC_DECODE다.
+func AsTimeText(v any, precision int) (string, error) {
+	var s string
+	switch x := v.(type) {
+	case string:
+		s = x
+	case []byte:
+		s = string(x)
+	case time.Time:
+		s = x.Format("15:04:05.999999999")
+	default:
+		return "", codecErr(CodeCodecDecode, "cannot convert %T to time", v)
+	}
+	clock, fraction, hasFraction := strings.Cut(s, ".")
+	if len(clock) != 8 || clock[2] != ':' || clock[5] != ':' || hasFraction && fraction == "" {
+		return "", codecErr(CodeCodecDecode, "time %q is not HH:MM:SS with an optional fraction", s)
+	}
+	for i, c := range clock {
+		if i != 2 && i != 5 && (c < '0' || c > '9') {
+			return "", codecErr(CodeCodecDecode, "time %q is not HH:MM:SS with an optional fraction", s)
+		}
+	}
+	if clock[0:2] > "23" || clock[3:5] > "59" || clock[6:8] > "59" {
+		return "", codecErr(CodeCodecDecode, "time %q is out of range", s)
+	}
+	for _, c := range fraction {
+		if c < '0' || c > '9' {
+			return "", codecErr(CodeCodecDecode, "time %q has a non-digit fraction", s)
+		}
+	}
+	trimmed := strings.TrimRight(fraction, "0")
+	if len(trimmed) > precision {
+		return "", codecErr(CodeCodecDecode, "time %q has more than %d fraction digits", s, precision)
+	}
+	if precision == 0 {
+		return clock, nil
+	}
+	return clock + "." + trimmed + strings.Repeat("0", precision-len(trimmed)), nil
+}
+
 // AsFloat64 converts a database value to float64.
 func AsFloat64(v any) (float64, error) {
 	var f float64

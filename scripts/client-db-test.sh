@@ -18,7 +18,7 @@ esac
 case "$LANGS" in *,php,*)
   php clients/php/tests/model_test.php
   php clients/php/tests/aes_json_test.php
-  php clients/php/tests/audit_service_test.php
+  php clients/php/tests/runtime_db_test.php
   php clients/php/tests/schema_db_test.php
   php clients/php/tests/sqlite_concurrency_test.php
 esac
@@ -29,5 +29,5 @@ case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked --workspace)
   (cd clients/rust && cargo test --locked -p orm-build --features cli)
   (cd clients/rust && cargo build --locked --release -p orm-tests --bin integration)
-  clients/rust/target/release/integration "$ROOT/schema/schema.json"
+  clients/rust/target/release/integration "$ROOT/schema/bench.dbspec"
 esac

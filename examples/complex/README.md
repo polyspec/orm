@@ -10,7 +10,7 @@ One statement with the main parts of the grammar, in three languages, printing t
 The programs read the seeded MySQL bench database. Every program takes the DSN from `ORM_BENCH_MYSQL_DSN`; the default is `mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock`.
 
 ```sh
-go run ./examples/complex/go schema/schema.json > go.json
+go run ./examples/complex/go > go.json
 php examples/complex/php/main.php "$PWD/schema/schema.json" > php.json
 (cd clients/rust && cargo build --release -p orm-tests) && clients/rust/target/release/complex > rust.json
 diff go.json php.json && diff go.json rust.json                      # identical

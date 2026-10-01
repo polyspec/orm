@@ -3,14 +3,17 @@
 import type { Assignment, Group, Join, Predicate, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { columnFunctionArity, columnFunctionTypes, isValueFunction, valueFunctionUnits } from './dialect.js';
-import { columnOf, entityOf, type Column, type Entity, type Manifest } from './manifest.js';
+import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
 export const IR_VERSION = 1;
 
 const comparable = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'];
 
-/** Operators by column type. Full-text search is checked against the indexes. */
+const equality = ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'];
+
+/** Operators by dbspec column type. */
 const opsByType: Readonly<Record<string, readonly string[]>> = {
+  i16: comparable,
   i32: comparable,
   i64: comparable,
   f64: comparable,
@@ -18,35 +21,38 @@ const opsByType: Readonly<Record<string, readonly string[]>> = {
   date: comparable,
   time: comparable,
   datetime: comparable,
-  string: ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
+  uuid: comparable,
+  varchar: ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
   text: ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
-  enum: ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
   bool: ['eq', 'not_eq', 'is_null', 'is_not_null'],
-  inet: ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-  bytes: ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-  json: ['is_null', 'is_not_null'],
-  point: ['is_null', 'is_not_null'],
+  bytes: equality,
 };
+
+/** Codec stages whose stored value is compared through the encoded bind value. */
+const hostStages = new Set(['aes', 'hex', 'ip']);
 
 export const columnOps = new Set(['eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col']);
 
-const numericTypes = new Set(['i32', 'i64', 'f64', 'decimal']);
+const numericTypes = new Set(['i16', 'i32', 'i64', 'f64', 'decimal']);
 
 function fail(code: string, message: string): never { throw new OrmError(code, message); }
 
-/** Reports whether op is valid for a column of the given type and styles. */
+/**
+ * Reports whether op is valid for a column of the given type and codec
+ * stages: an AES column compares through its blind index, a column of host
+ * stages only by equality, and any other codec only by NULL.
+ */
 export function opAllowed(c: Column, op: string): boolean {
-  if (columnOps.has(op) || op === 'expr' || op === 'match' || op === 'match_boolean') return true;
-  const styles = c.styles ?? [];
-  if (styles.length > 0 && c.type !== 'inet') {
-    if (styles[0] === 'aes') return ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'].includes(op);
+  if (columnOps.has(op) || op === 'expr') return true;
+  if (c.stages.length > 0) {
+    if (c.stages.every(s => hostStages.has(s))) return equality.includes(op);
     return op === 'is_null' || op === 'is_not_null';
   }
   return opsByType[c.type]?.includes(op) ?? false;
 }
 
 class Validator {
-  public constructor(private readonly m: Manifest, private readonly n: number) {}
+  public constructor(private readonly m: RuntimeModel, private readonly n: number) {}
 
   public params(ps: readonly number[] | undefined): void {
     for (const i of ps ?? []) {
@@ -63,6 +69,7 @@ class Validator {
     const n = [a.p !== undefined, a.null === true, (a.expr ?? '') !== '', a.plus_p !== undefined, a.minus_p !== undefined].filter(Boolean).length;
     if (n !== 1) fail('IR_INVALID', `set ${a.column}: exactly one of p/null/expr/plus_p/minus_p`);
     if (a.null && !c.nullable) fail('IR_INVALID', `set ${r.entity}.${a.column} to null but column is NOT NULL`);
+    if (a.column === ent.auditOperation) fail('IR_INVALID', `${r.entity}.${a.column} is the audit operation column, which the executor writes`);
     if ((a.plus_p !== undefined || a.minus_p !== undefined) && !numericTypes.has(c.type)) {
       fail('OPERATOR_NOT_ALLOWED', `plus/minus on ${r.entity}.${a.column} (${c.type})`);
     }
@@ -100,15 +107,10 @@ class Validator {
     for (const j of q.joins ?? []) {
       if (j.kind !== 'inner' && j.kind !== 'left') fail('IR_INVALID', `join kind "${j.kind}"`);
       if (j.rel === '' || joined.has(j.rel)) fail('IR_INVALID', `join name "${j.rel}" is empty or used twice`);
-      if ((j.left ?? '') !== '' || (j.right ?? '') !== '') {
-        if (!j.left || !j.right || !j.query) fail('IR_INVALID', `join ${j.rel}: left, right and query are required`);
-        const target = this.entity(j.query.entity);
-        if (!columnOf(ent, j.left)) fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
-        if (!columnOf(target, j.right)) fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
-      } else {
-        const rel = ent.relations[j.rel] ?? fail('RELATION_UNKNOWN', `${q.entity}.${j.rel}`);
-        if (!j.query || j.query.entity !== rel.target) fail('IR_INVALID', `join ${j.rel}: query entity must be ${rel.target}`);
-      }
+      if (!j.left || !j.right || !j.query) fail('IR_INVALID', `join ${j.rel}: left, right and query are required`);
+      const target = this.entity(j.query.entity);
+      if (!columnOf(ent, j.left)) fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
+      if (!columnOf(target, j.right)) fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
       joined.set(j.rel, j);
       this.query(j.query, true, false);
     }
@@ -124,18 +126,11 @@ class Validator {
       relationNames.add(r.rel);
       if (columnOf(ent, r.rel)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${r.rel} is already a column`);
       if (!r.query) fail('IR_INVALID', `relation ${r.rel} needs a query`);
-      let kind = r.kind ?? '';
-      if ((r.left ?? '') !== '' || (r.right ?? '') !== '') {
-        if (!r.left || !r.right || (kind !== 'one' && kind !== 'many')) fail('IR_INVALID', `relation ${r.rel}: left, right and kind one|many are required`);
-        const target = this.entity(r.query.entity);
-        if (!columnOf(ent, r.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.left}`);
-        if (!columnOf(target, r.right)) fail('COLUMN_UNKNOWN', `${target.name}.${r.right}`);
-      } else {
-        const rel = ent.relations[r.rel] ?? fail('RELATION_UNKNOWN', `${q.entity}.${r.rel}`);
-        if (r.query.entity !== rel.target) fail('IR_INVALID', `relation ${r.rel}: query entity must be ${rel.target}`);
-        if (kind !== '') fail('IR_INVALID', `relation ${r.rel}: kind needs left and right`);
-        kind = rel.kind as typeof kind;
-      }
+      const kind = r.kind ?? '';
+      if (!r.left || !r.right || (kind !== 'one' && kind !== 'many')) fail('IR_INVALID', `relation ${r.rel}: left, right and kind one|many are required`);
+      const target = this.entity(r.query.entity);
+      if (!columnOf(ent, r.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.left}`);
+      if (!columnOf(target, r.right)) fail('COLUMN_UNKNOWN', `${target.name}.${r.right}`);
       if (r.query.limit) fail('LIMIT_IN_RELATION', `${r.rel}: use limit_per_parent`);
       if (r.query.flatten && kind !== 'one') fail('IR_INVALID', `relation ${r.rel}: flatten needs a one relation`);
       if ((r.query.key_by ?? '') !== '' && kind !== 'many') fail('IR_INVALID', `relation ${r.rel}: key_by needs a many relation`);
@@ -173,7 +168,7 @@ class Validator {
     if (lock !== '' && (isJoin || isRelation || q.group_by !== undefined || q.group_by_expr !== undefined || (q.limit_per_parent ?? 0) > 0)) {
       fail('IR_INVALID', 'row lock is only valid on a root row select');
     }
-    if ((q.force_index ?? '') !== '' && !Object.hasOwn(ent.indexes ?? {}, q.force_index!)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
+    if ((q.force_index ?? '') !== '' && !ent.indexes.includes(q.force_index!)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
   }
 
   private group(ent: Entity, g: Group, joined: ReadonlyMap<string, Join>): void {
@@ -208,7 +203,7 @@ class Validator {
       if (cols.length < 2) fail('IR_INVALID', `${p.op} needs at least two columns`);
       for (const name of cols) {
         const c = columnOf(ent, name) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${name}`);
-        if ((c.styles ?? []).length > 0 || c.type === 'jsontext' || c.type === 'point') fail('OPERATOR_NOT_ALLOWED', `${p.op} on ${ent.name}.${name}`);
+        if (c.stages.length > 0) fail('OPERATOR_NOT_ALLOWED', `${p.op} on ${ent.name}.${name}`);
       }
       if (ps.length === 0) fail('EMPTY_IN', `${ent.name}(${cols.join(',')})`);
       if (ps.length % cols.length !== 0) fail('IR_INVALID', `${p.op}: ${ps.length} values for ${cols.length} columns`);
@@ -251,15 +246,6 @@ class Validator {
       if (p.p !== undefined || ps.length > 0) fail('IR_INVALID', 'value function pred may not carry p or ps');
       if (!['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte'].includes(p.op ?? '')) fail('OPERATOR_NOT_ALLOWED', `${p.op} with a value function`);
       this.params(value.ps);
-      return;
-    }
-    if (p.op === 'match' || p.op === 'match_boolean') {
-      const match = p.match ?? [];
-      if (match.length === 0) fail('IR_INVALID', 'match needs columns');
-      if (!(ent.fulltext ?? []).some(ft => ft.length === match.length && ft.every((c, i) => c === match[i]))) {
-        fail('INDEX_UNKNOWN', `no fulltext index on ${ent.name}(${match.join(',')})`);
-      }
-      if (p.p === undefined) fail('IR_INVALID', 'match needs a value (p)');
       return;
     }
     const c = columnOf(ent, column) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${column}`);
@@ -335,9 +321,9 @@ function hasGroupBy(q: RequestQuery): boolean {
 }
 
 /** Checks a request against the manifest. */
-export function validate(m: Manifest, r: Request): void {
+export function validate(m: RuntimeModel, r: Request): void {
   if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${r.ir_version}, engine ${IR_VERSION}`);
-  if (r.schema_hash !== m.schema_hash) fail('SCHEMA_HASH_MISMATCH', `client ${r.schema_hash}, engine ${m.schema_hash}`);
+  if (r.manifest_hash !== m.manifestHash) fail('SCHEMA_HASH_MISMATCH', `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail('IR_INVALID', `unknown kind "${r.kind}"`);
   const v = new Validator(m, r.n_params);
   v.query(r, false, false);
@@ -365,7 +351,7 @@ export function validate(m: Manifest, r: Request): void {
     for (const a of r.on_duplicate!) {
       v.assign(ent, r, a);
       const c = columnOf(ent, a.column)!;
-      if (c.pk || c.auto) fail('IR_INVALID', `on_duplicate cannot assign ${r.entity}.${a.column}`);
+      if (c.primary || c.identity) fail('IR_INVALID', `on_duplicate cannot assign ${r.entity}.${a.column}`);
     }
   }
   if (r.optimistic) {

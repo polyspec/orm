@@ -195,15 +195,15 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 Each language generates its models with its own build tool. The generator reads `schema.json`, verifies its hash, and writes one model per entity with typed column getters and setters.
 
 ```sh
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
-npx orm-gen gen --schema schema/schema.json --out src/models --scan src
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
+npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
 }
 ```
 
@@ -220,23 +220,10 @@ fn main() {
 
 ```sh
 go run ./cmd/ormgen build schema/example.mmd --out schema/schema.json --check
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A mismatch between the generated `schema_hash` and the loaded `schema.json` stops startup with `SCHEMA_HASH_MISMATCH`.
-
-The Rust `build.rs` can also build `schema.json` from the diagrams before it generates the models:
-
-```rust
-// build.rs
-fn main() {
-    let files = vec!["schema/example.mmd".into()];
-    let manifest = orm_build::schema::build_files(&files).expect("schema");
-    std::fs::write("schema/schema.json", manifest.marshal_indent() + "\n").unwrap();
-    println!("cargo:rerun-if-changed=schema/example.mmd");
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
-}
-```
 
 ---
 
@@ -255,32 +242,65 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 ### Go
 
 ```go
-master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
+master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`model.Connect` loads `schemaPath`, checks it against the generated models, and calls `orm.Open(dsn, engine, config)`.
+`ormgen gen --document <file.dbspec>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
 
 ### PHP
 
 ```php
-$master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $aesKey));
+$master = Orm::connect($masterDsn, new Config(aesKey: $aesKey));
 ```
+
+`Orm::connect` takes no schema path: `bootstrap.php` of the generated models registers the runtime model, the manifest text and `manifestHash`, and every request carries that hash. `$db->utils()->schema()->install($documents)` takes the text of every dbspec document of the set.
+
+An audited table (`audit` setting, [dbspec](dbspec.md#audit)) is written inside a transaction that names its operation id; the executor writes the id into the operation column of every audited row the transaction inserts or updates, a soft delete included:
+
+```php
+$master->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+    (new Service)->getBySeq(42)->delete();
+}, operation: $operationId);
+```
+
+The id is an `int` for an `i64` operation column and a lower-case canonical UUID `string` for a `uuid` one. An insert or update of an audited table outside such a transaction, or with an id of the other type, fails with `CONFIG`; assigning the operation column with its setter fails with `IR_INVALID`. A nested transaction uses the id of the outer one and does not take `operation`.
 
 ### Rust
 
 ```rust
 let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-The generated module embeds its schema, so the connection does not take a schema path.
+`orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`, so the connection does not take a schema path; the runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database and applies the statements. It does nothing when every table of the set exists and returns `CONFIG` when only some exist; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
+
+An audited table (`audit` setting) takes the operation id of its unit of work from the transaction. `operation(id)` sets it on the outermost transaction; the executor writes it into the operation column of every audited row the transaction inserts or updates, including the update of a soft delete:
+
+```rust
+db.transaction(async || {
+    service.set_name("renamed").update(false).await
+})
+.operation(operation_id) // i64 for an i64 operation column, &str or String for a uuid column
+.await?;
+```
+
+An insert or update of an audited table without an operation id, outside a transaction or with an id that does not fit the operation column type, fails with `CONFIG`. A nested transaction accepts no `operation`, and a request that assigns the operation column itself fails with `IR_INVALID`.
 
 ### TypeScript
 
 ```typescript
 import { Db } from '@polyspec/orm-typescript';
+import { Item } from './models/models.js';
 
-const master = await Db.connect(masterDsn, schemaPath, { aesKey });
+const master = await Db.connect(masterDsn, { aesKey });
+await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.transaction(async () => {
+  await new Item().setTitle('first').create();
+}, { operation: 42 });
 ```
+
+`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT` and its hash as `MANIFEST_HASH` and registers the model when it is imported; `Db.connect(dsn, options)` takes no schema path, and a request of models that the process did not import fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(texts)` takes the dbspec texts of one document set and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
 
 Each client caches plans by request shape. `connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of a manifest on every database; existing tables are kept.
 
@@ -421,6 +441,19 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
+### Go operation id
+
+A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that names its unit of work with `orm.Operation(id)`. Every insert, update, soft delete and duplicate update of an audited table in the transaction writes `id` into the table's operation column, and the database triggers copy each version into the history table. `id` is an `int64` for an `i64` operation column and a lower-case UUID string for a `uuid` operation column. A nested transaction uses the id of the outer transaction and accepts only `orm.Retry`.
+
+```go
+err := master.Transaction(func() error {
+    _, err := model.Item().SetTitle("draft").Create()
+    return err
+}, orm.Operation(int64(42)))
+```
+
+A write of an audited table outside such a transaction, or with an id that does not fit the operation column, fails with `CONFIG` before it reaches the database; `orm.Operation` with a value that is neither `int64` nor `string` fails the transaction with `CONFIG` before it begins. A request that assigns the operation column itself fails with `IR_INVALID`.
+
 ---
 
 ## 8. Styled columns
@@ -445,10 +478,10 @@ The same statement produces the same result on all three databases, although sta
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out schema.pg.sql
 psql … -f schema.pg.sql
 ```
-- Go: `model.Connect(url, schemaPath, config)`; the DSN scheme selects the driver.
+- Go: `model.Connect(url, config)`; the DSN scheme selects the driver.
 - PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
-- TypeScript: `Db.connect(url, schemaPath, options)`; the DSN scheme selects the driver package.
+- TypeScript: `Db.connect(url, options)`; the DSN scheme selects the driver package.
 - Several connections can be open at once, and `connect` selects one per model, for example reads on `slave1` and writes on `master`.
 - SQLite rejects `Lb` and fulltext operators (`OPERATOR_NOT_ALLOWED`).
 

@@ -18,7 +18,7 @@ import (
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Config is the connection configuration. Paths and secrets are declared,
@@ -52,9 +52,32 @@ const Secret = "$SECRET"
 // NowBind replaces an executor clock bind wherever binds are shown.
 const NowBind = "$NOW"
 
-// Schema identifies the schema a generated package was built from.
+// Schema은 generated package가 품은 manifest다: document set의 manifest
+// text와 그 manifestHash. runtime model은 처음 쓸 때 한 번 만든다.
 type Schema struct {
 	Hash string
+	Text string
+
+	once  sync.Once
+	model *runtimemodel.Model
+	err   error
+}
+
+// Model은 manifest text의 runtime model을 반환한다. text가 잘못되면
+// SCHEMA_INVALID, text의 hash가 Hash와 다르면 SCHEMA_HASH_MISMATCH다.
+func (s *Schema) Model() (*runtimemodel.Model, error) {
+	s.once.Do(func() {
+		m, diagnostics := runtimemodel.Load(s.Text)
+		switch {
+		case len(diagnostics) > 0:
+			s.err = &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+		case m.ManifestHash != s.Hash:
+			s.err = &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated code declares manifest %s, its manifest text hashes to %s: generate the models again", s.Hash, m.ManifestHash)}
+		default:
+			s.model = m
+		}
+	})
+	return s.model, s.err
 }
 
 // DB is a database connection with its schema engine, plan cache, and statement
@@ -62,11 +85,9 @@ type Schema struct {
 // every copy shares one connection through dbMutable.
 type DB struct {
 	sql      *sql.DB
-	eng      *engine.Engine
 	ctx      context.Context
 	root     *DB
 	m        *dbMutable
-	engines  map[string]*engine.Engine
 	cfg      Config
 	driver   string
 	location *time.Location
@@ -77,7 +98,9 @@ type DB struct {
 
 // dbMutable is the state every handle of one connection shares.
 type dbMutable struct {
+	// engines는 manifestHash마다 이 연결 dialect의 engine이다.
 	engineMu sync.RWMutex
+	engines  map[string]*engine.Engine
 
 	planMu    sync.RWMutex
 	planOrder []uint64
@@ -97,45 +120,32 @@ type dbMutable struct {
 	keyringErr  error
 }
 
-var processSchemas = struct {
-	sync.RWMutex
-	byDriver map[string]map[string]*engine.Engine
-}{byDriver: map[string]map[string]*engine.Engine{}}
-
-// RegisterEngine makes a generated schema available to every connection of
-// its dialect. Generated Connect calls it.
-func RegisterEngine(eng *engine.Engine) error {
-	if eng == nil || eng.P == nil || eng.M == nil {
-		return configErr("schema engine is required")
+// engineFor는 schema의 engine을 반환하고, 없으면 이 연결의 dialect로 만든다.
+func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
+	if s == nil {
+		return nil, configErr("the model has no schema")
 	}
-	driver := eng.P.D.Name()
-	processSchemas.Lock()
-	defer processSchemas.Unlock()
-	if processSchemas.byDriver[driver] == nil {
-		processSchemas.byDriver[driver] = map[string]*engine.Engine{}
-	}
-	processSchemas.byDriver[driver][eng.M.SchemaHash] = eng
-	return nil
-}
-
-// CheckSchemaHash compares the generated schema hash with the loaded manifest.
-func CheckSchemaHash(eng *engine.Engine, generated string) error {
-	if eng.M.SchemaHash != generated {
-		return &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated models are from schema %s, the engine loaded %s: generate the models again", generated, eng.M.SchemaHash)}
-	}
-	return nil
-}
-
-func (d *DB) engineFor(hash string) *engine.Engine {
 	d.m.engineMu.RLock()
-	local := d.engines[hash]
+	eng := d.m.engines[s.Hash]
 	d.m.engineMu.RUnlock()
-	if local != nil {
-		return local
+	if eng != nil {
+		return eng, nil
 	}
-	processSchemas.RLock()
-	defer processSchemas.RUnlock()
-	return processSchemas.byDriver[d.driver][hash]
+	m, err := s.Model()
+	if err != nil {
+		return nil, err
+	}
+	eng, err = engine.New(m, d.driver)
+	if err != nil {
+		return nil, err
+	}
+	d.m.engineMu.Lock()
+	defer d.m.engineMu.Unlock()
+	if existing := d.m.engines[s.Hash]; existing != nil {
+		return existing, nil
+	}
+	d.m.engines[s.Hash] = eng
+	return eng, nil
 }
 
 // BackendWaitingForLock reports whether another backend of this PostgreSQL
@@ -161,10 +171,10 @@ func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	return waiting, mapDriverErr(err)
 }
 
-func (d *DB) compile(r *ir.Request) (*plan.Plan, error) {
-	eng := d.engineFor(r.SchemaHash)
-	if eng == nil {
-		return nil, configErr("schema %s is not registered for %s", r.SchemaHash, d.driver)
+func (d *DB) compile(s *Schema, r *ir.Request) (*plan.Plan, error) {
+	eng, err := d.engineFor(s)
+	if err != nil {
+		return nil, err
 	}
 	if err := ir.Validate(eng.M, r); err != nil {
 		return nil, err
@@ -186,9 +196,9 @@ const defaultCacheSize = 256
 // zero; the TypeScript and Rust clients use the same value.
 const defaultPoolSize = 10
 
-// Open connects to the database selected by the DSN URI scheme. The schema
-// engine plans every statement in this process.
-func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+// Connect는 DSN URI scheme이 고른 database에 연결한다. schema는 generated
+// package의 manifest이며, 이 process에서 모든 statement를 plan한다.
+func Connect(dsn string, s *Schema, cfg Config) (*DB, error) {
 	if cfg.StatementTimeoutMs < 0 {
 		return nil, configErr("statement timeout must not be negative")
 	}
@@ -196,16 +206,24 @@ func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if eng == nil || eng.M == nil || eng.P == nil {
-		return nil, configErr("schema engine is required")
+	if s == nil {
+		return nil, configErr("schema is required")
 	}
-	if name := eng.P.D.Name(); name != parsed.driver {
-		return nil, configErr("driver %s but the schema engine uses %s", parsed.driver, name)
+	if _, err := s.Model(); err != nil {
+		return nil, err
 	}
-	return open(context.Background(), parsed, eng, cfg)
+	d, err := open(context.Background(), parsed, cfg)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := d.engineFor(s); err != nil {
+		d.Close()
+		return nil, err
+	}
+	return d, nil
 }
 
-func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*DB, error) {
+func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	if cfg.PlanCacheSize == 0 {
 		cfg.PlanCacheSize = defaultCacheSize
 	}
@@ -272,11 +290,7 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 		s.Close()
 		return nil, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
 	}
-	if err := RegisterEngine(eng); err != nil {
-		s.Close()
-		return nil, err
-	}
-	return &DB{sql: s, eng: eng, ctx: ctx, m: &dbMutable{}, engines: map[string]*engine.Engine{eng.M.SchemaHash: eng}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // checkSQLite rejects SQLite builds older than the supported minimum.
@@ -511,13 +525,6 @@ func IsNoRows(err error) bool { return ErrorCode(err) == CodeNoRows }
 
 func configErr(format string, a ...any) error {
 	return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf(format, a...)}
-}
-
-func manifestEntity(eng *engine.Engine, name string) *schema.Entity {
-	if eng == nil || eng.M == nil {
-		return nil
-	}
-	return eng.M.Entities[name]
 }
 
 func quoteText(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }

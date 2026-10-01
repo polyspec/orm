@@ -271,18 +271,13 @@ start() {
   start_postgres
 
   mysql_tzinfo_to_sql /usr/share/zoneinfo 2>"$DIR/mysql-tzinfo.log" | mysql_cli mysql
-  mysql_cli -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools; CREATE DATABASE orm_bench'
-  psql_cli postgres -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools' -c 'CREATE DATABASE orm_bench'
+  mysql_cli -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'
+  psql_cli postgres -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools'
 
-  mysql_cli --init-command="SET time_zone='+00:00'" orm_bench < "$ROOT/bench/sql/author.sql"
-  mysql_cli --init-command="SET time_zone='+00:00'" orm_bench < "$ROOT/bench/sql/seed.mysql.sql"
-  psql_cli orm_bench -f "$ROOT/bench/sql/author.pg.sql"
-  psql_cli orm_bench -f "$ROOT/bench/sql/seed.pg.sql"
-  sqlite3 "$DIR/orm_bench.sqlite" < "$ROOT/bench/sql/author.sqlite.sql"
-  sqlite3 "$DIR/orm_bench.sqlite" < "$ROOT/bench/sql/seed.sqlite.sql"
-  (cd "$ROOT" && go run ./bench/seedaes -driver mysql -dsn "root@tcp(127.0.0.1:$MYSQL_PORT)/orm_bench?parseTime=true")
-  (cd "$ROOT" && go run ./bench/seedaes -driver postgres -dsn "postgres://orm@127.0.0.1:$POSTGRES_PORT/orm_bench?sslmode=disable")
-  (cd "$ROOT" && go run ./bench/seedaes -driver sqlite -dsn "file:$DIR/orm_bench.sqlite")
+  BENCH_MYSQL_DSN="mysql://root@127.0.0.1:$MYSQL_PORT/orm_bench?timezone=%2B00:00" \
+    BENCH_POSTGRES_DSN="postgres://orm@127.0.0.1:$POSTGRES_PORT/orm_bench?sslmode=disable&timezone=%2B00:00" \
+    BENCH_SQLITE_DSN="sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00" \
+    "$ROOT/scripts/bench-db.sh"
 
   start_proxysql
   start_pgbouncer

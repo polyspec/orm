@@ -2,7 +2,7 @@
 
 #[derive(Debug, Clone, Default)]
 pub struct Plan {
-    pub schema_hash: String,
+    pub manifest_hash: String,
     pub kind: String,
     pub steps: Vec<Step>,
 }
@@ -64,6 +64,8 @@ pub struct Assemble {
     pub columns: Vec<OutCol>,
     pub key: Vec<KeyRef>,
     pub children: Vec<Child>,
+    /// AES column을 읽는 node에서 key version을 담은 `columns`의 위치다.
+    pub aes_version: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default)]

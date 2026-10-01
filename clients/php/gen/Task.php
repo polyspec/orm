@@ -11,20 +11,21 @@ final class Task extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'task',
             'table' => 'task',
             'pk' => ['seq'],
-            'auto' => 'seq',
+            'identity' => 'seq',
             'updated' => '',
+            'soft_delete' => '',
             'aes_version' => '',
+            'audit' => '',
             'columns' => [
-                'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'title' => ['type' => 'string', 'nullable' => false, 'styles' => []],
-                'state' => ['type' => 'enum', 'nullable' => false, 'styles' => []],
+                'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
+                'title' => ['name' => 'title', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'state' => ['name' => 'state', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
             ],
-            'fulltext' => [],
+            'unique' => [],
             'indexes' => [],
         ];
     }

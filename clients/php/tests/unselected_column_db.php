@@ -26,8 +26,7 @@ function requireUnselected(callable $read, string $column): void
     throw new RuntimeException("unselected $column returned a value");
 }
 
-$schema = dirname(__DIR__, 3) . '/schema/schema.json';
-$db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+$db = Orm::connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 try {
     if ($db->driver() !== $driver) throw new RuntimeException('DSN selected the wrong database');
     $row = (new Author)($db)->removeAllColumns()->addColumnSeq()->getBySeq(1);

@@ -33,7 +33,7 @@ The ORM does not route statements between servers. Reads from replicas use one c
 | Language | Connections | Read through a replica | Write through the primary |
 |---|---|---|---|
 | PHP | `$master = Orm::connect($primaryDsn, $config);` `$slave1 = Orm::connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
-| Go | `master, err := model.Connect(primaryDSN, schemaPath, cfg)` `slave1, err := model.Connect(replicaDSN, schemaPath, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
+| Go | `master, err := model.Connect(primaryDSN, cfg)` `slave1, err := model.Connect(replicaDSN, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
 | Rust | `let master = Db::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = Db::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
 | TypeScript | `const master = await Db.connect(primaryDsn, schemaPath, options);` `const slave1 = await Db.connect(replicaDsn, schemaPath, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
 

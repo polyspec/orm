@@ -11,21 +11,22 @@ final class ServiceMember extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'service_member',
             'table' => 'service_member',
             'pk' => ['seq'],
-            'auto' => 'seq',
+            'identity' => 'seq',
             'updated' => '',
+            'soft_delete' => '',
             'aes_version' => '',
+            'audit' => '',
             'columns' => [
-                'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'service_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'user_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
+                'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
+                'service_seq' => ['name' => 'service_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => true],
+                'user_seq' => ['name' => 'user_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => true],
             ],
-            'fulltext' => [],
-            'indexes' => [],
+            'unique' => [],
+            'indexes' => ['ix_service_member_service' => ['service_seq'], 'ix_service_member_user' => ['user_seq']],
         ];
     }
 

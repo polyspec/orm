@@ -7,8 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 func TestCoverageDSNConnection(t *testing.T) {
@@ -23,19 +22,11 @@ func TestCoverageDSNConnection(t *testing.T) {
 	if _, err := DriverFromDSN("invalid://database"); err == nil {
 		t.Fatal("unsupported DSN scheme was accepted")
 	}
-	bytes, err := os.ReadFile(filepath.Join("..", "..", "..", "schema", "schema.json"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbspec"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := schema.Load(bytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	planner, err := engine.New(manifest, driver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := Open(dsn, planner, Config{})
+	db, err := Connect(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

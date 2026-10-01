@@ -1,7 +1,7 @@
 <?php
 // Hot-path gate: the model client against the same statement through PDO with the same cell
 // decoding and the same typed row conversion, measured in alternating pairs.
-// Usage: php clients/php/tests/perf_gate.php /abs/schema.json
+// Usage: php clients/php/tests/perf_gate.php
 // ORM_BENCH_MYSQL_DSN names the seeded bench database; the gate fails without it.
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
@@ -9,15 +9,14 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Chain;
 use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
 use Orm\PendingTime;
 
-if ($argc < 2) {
-    fwrite(STDERR, "usage: perf_gate.php /abs/schema.json\n");
+if ($argc !== 1) {
+    fwrite(STDERR, "usage: perf_gate.php\n");
     exit(2);
 }
 
@@ -27,7 +26,6 @@ if ($benchDsn === false || $benchDsn === '') {
     exit(1);
 }
 $db = Orm::connect($benchDsn, new Config(
-    schemaPath: $argv[1],
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
 ));
@@ -107,7 +105,7 @@ function native(Db $db, Author $query): Closure
     $binds = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v), $q['binds']);
     $cells = [];
     $columns = null;
-    foreach ((new ReflectionProperty(\Orm\Engine::class, 'plans'))->getValue((new ReflectionProperty(Db::class, 'engine'))->getValue($db)) as $plan) {
+    foreach ((new ReflectionProperty(\Orm\Engine::class, 'plans'))->getValue(\Orm\Engine::for($db->driver(), $db->config()->planCacheSize)) as $plan) {
         if ($plan['steps'][0]['sql'] === $q['sql']) {
             $cells = $plan['steps'][0]['decode'];
             $columns = $plan['steps'][0]['assemble']['columns'];
@@ -118,20 +116,20 @@ function native(Db $db, Author $query): Closure
         exit(2);
     }
     $meta = Author::meta()['columns'];
-    $groups = ['int' => [], 'float' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => []];
+    $groups = ['int' => [], 'float' => [], 'bool' => [], 'date' => [], 'string' => [], 'codec' => []];
     foreach ($columns as $col) {
         $mc = $meta[$col['name']] ?? null;
         if ($mc === null || ($col['column'] ?? $col['name']) !== $col['name']) {
             fwrite(STDERR, "gate: selected {$col['name']} is not a plain author column\n");
             exit(2);
         }
-        $kind = Chain::clientStyled($mc) ? 'json' : $mc['type'];
+        $kind = $mc['codec'] !== [] ? 'codec' : $mc['type'];
         $groups[match ($kind) {
-            'i32', 'i64' => 'int',
+            'i16', 'i32', 'i64' => 'int',
             'f64', 'decimal' => 'float',
             'bool' => 'bool',
             'date', 'datetime' => 'date',
-            'point', 'json', 'jsontext' => 'other',
+            'codec' => 'codec',
             default => 'string',
         }][] = [$col['index'], $col['name'], $kind];
     }
@@ -164,12 +162,8 @@ function native(Db $db, Author $query): Closure
                 $v = $vals[$index];
                 $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
             }
-            foreach ($groups['other'] as [$index, $name, $kind]) {
-                $v = $vals[$index];
-                if (is_resource($v)) {
-                    $v = stream_get_contents($v);
-                }
-                $values[$name] = $v === null || $kind === 'json' ? $v : Codec::point($v);
+            foreach ($groups['codec'] as [$index, $name]) {
+                $values[$name] = $vals[$index];
             }
             $out[] = $values;
         }

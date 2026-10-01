@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:7a815af3c216f77ef80635cf186ded53b1d711bee7b4449a602855ba1b5a29a9",
-    "php": "sha256:504417d337ae1f97432bdd4f6f5d53af2b2955cd46ecce5268a8ced2d61ed103",
-    "rust": "sha256:687b60c1b37fe43aaff42a4e01308a38deb9f4532bc9477d15bf604bef6c4eb2",
-    "typescript": "sha256:c7d746a18d9dc37f82a3c3b450a30876ebe9092a1dae2f728a3f962267266ee5"
+    "go": "sha256:9d0dcc88015c3cca4b5fb25dd91d91d843cb842d4adbc67dce13442f280fdd3f",
+    "php": "sha256:6f0ce2c94c2bf94cf41236cbf69239526c66719bcdf1c1f05c85d9eab7de00f6",
+    "rust": "sha256:13a42529c1661bab71892c563e4857f79201534ac58a981e1b6cdaa5fd3fbffa",
+    "typescript": "sha256:a97fd60e9cfd5992cf01ede15f7d5fff1aa7211ccda85f3d0a004b9289231565"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1048,7 +1048,7 @@
       "native": {
         "go": {
           "symbol": "clients/go/model/orm.go::Connect",
-          "signature": "func(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error)"
+          "signature": "func(dsn string, cfg orm.Config) (*orm.DB, error)"
         },
         "php": {
           "symbol": "clients/php/src/Orm.php::Orm\\Orm::connect",
@@ -1060,7 +1060,7 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.connect",
-          "signature": "public static async connect(dsn: string, schemaPath: string, options: ConnectOptions = {}): Promise<Db>"
+          "signature": "public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db>"
         }
       }
     },
@@ -1084,7 +1084,7 @@
         },
         "php": {
           "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
-          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3): mixed"
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, string|int|null $operation=null): mixed"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/tx.rs::Db::transaction",
@@ -1195,19 +1195,19 @@
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",
-          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) error"
+          "signature": "receiver=*SchemaUtils func(manifestText string) error"
         },
         "php": {
           "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
-          "signature": "public function install(string $manifestJson): void"
+          "signature": "public function install(array $documents): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
-          "signature": "pub async fn install(&self, manifest_json: &[u8]) -> Result<()>"
+          "signature": "pub async fn install(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
-          "signature": "public async install(manifestJson: string): Promise<void>"
+          "signature": "public async install(texts: readonly string[]): Promise<void>"
         }
       }
     },
@@ -1678,7 +1678,7 @@
       },
       "fields": {
         "ir_version": "integer",
-        "schema_hash": "text",
+        "manifest_hash": "text",
         "kind": "text",
         "set": "list<IRAssign>",
         "on_duplicate": "list<IRAssign>",
@@ -1859,7 +1859,6 @@
         "ps": "list<integer>",
         "ref": "IRColRef",
         "expr": "text",
-        "match": "list<text>",
         "fn": "IRFunc",
         "value": "IRFunc",
         "cols": "list<text>",
@@ -1871,7 +1870,6 @@
         "conn",
         "expr",
         "fn",
-        "match",
         "op",
         "p",
         "ps",

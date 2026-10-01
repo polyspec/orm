@@ -15,10 +15,11 @@ use crate::driver::{child_keys, first_cell, parent_values, positional, relation_
 use crate::ir;
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
-use crate::schema::{EntitySchema, Schema};
+use crate::schema::Schema;
 use crate::tx::resolve;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
+use orm_schema::dbspec;
 
 /// Implemented by every generated model.
 pub trait Model: Clone + Send + Sync + 'static {
@@ -78,8 +79,8 @@ pub struct Entity {
 }
 
 impl Entity {
-    /// The manifest entry of the model.
-    pub fn entity_schema(&self) -> Result<EntitySchema> {
+    /// runtime model의 entity.
+    pub fn entity_schema(&self) -> Result<dbspec::Entity> {
         Ok(self.schema.manifest()?.entity(self.name)?.clone())
     }
 }
@@ -153,7 +154,6 @@ pub(crate) fn val_param(v: &Val) -> Param {
         Val::DateTime(t) => Param::DateTime(*t),
         Val::Date(d) => Param::Date(*d),
         Val::Bool(b) => Param::Bool(*b),
-        Val::Point(point) => Param::Point(*point),
         Val::Json(j) => Param::Str(j.to_string()),
         Val::Ordered(j) => Param::Str(j.compact()),
     }
@@ -169,7 +169,6 @@ pub(crate) fn param_val(p: &Param) -> Val {
         Param::Bytes(b) => Val::Bytes(b.clone()),
         Param::DateTime(t) => Val::DateTime(*t),
         Param::Date(d) => Val::Date(*d),
-        Param::Point(p) => Val::Point(*p),
     }
 }
 
@@ -384,7 +383,7 @@ impl<'a> Assembler<'a> {
             st.original.insert(name, val_param(&value));
         }
         let ent = b.ent.entity_schema()?;
-        let updated = ent.updated_column();
+        let updated = ent.updated.as_deref().unwrap_or("");
         if !updated.is_empty() && st.names.iter().any(|n| n == updated) {
             let value = m
                 .value_dyn(updated)
@@ -767,17 +766,17 @@ fn write_req(c: &Core, kind: &str) -> Req {
     Req::new(c.ent.schema, kind, c.ent.name)
 }
 
-fn encode(ent: &EntitySchema, column: &str, v: &serde_json::Value) -> Result<Param> {
-    let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode(&col.codec_styles(), crate::StyledValue::Value(v))
+fn encode(ent: &dbspec::Entity, column: &str, v: &serde_json::Value) -> Result<Param> {
+    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    crate::codec::encode(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
-fn encode_ordered(ent: &EntitySchema, column: &str, v: &ordered_json::Value) -> Result<Param> {
-    let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode_ordered(&col.codec_styles(), crate::StyledValue::Value(v))
+fn encode_ordered(ent: &dbspec::Entity, column: &str, v: &ordered_json::Value) -> Result<Param> {
+    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    crate::codec::encode_ordered(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
-fn assign(r: &mut Req, ent: &EntitySchema, s: &SetSpec) -> Result<ir::Assign> {
+fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> {
     let mut a = ir::Assign { column: s.column.clone(), ..Default::default() };
     match &s.value {
         SetValue::Null => a.null = true,
@@ -859,13 +858,13 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    if !ent.auto.is_empty() {
-        st.add_name(&ent.auto);
+    if let Some(identity) = &ent.identity {
+        st.add_name(identity);
         let id = i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?;
-        assign_model(&mut out, &ent.auto, Val::I64(id))?;
+        assign_model(&mut out, identity, Val::I64(id))?;
     }
     st.loaded = true;
-    for pk in &ent.pk {
+    for pk in &ent.primary_key {
         match out.value(pk) {
             Some(v) if !matches!(v, Val::Null) && !(matches!(v, Val::I64(0))) && !(matches!(&v, Val::Str(s) if s.is_empty())) => {
                 st.original.insert(pk.clone(), val_param(&v));
@@ -942,10 +941,10 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
     .await
 }
 
-fn key_values(c: &Core, ent: &EntitySchema) -> Result<HashMap<String, Param>> {
+fn key_values(c: &Core, ent: &dbspec::Entity) -> Result<HashMap<String, Param>> {
     let mut keys = HashMap::new();
     let loaded = c.row.as_ref().map(|r| r.loaded).unwrap_or(false);
-    for pk in &ent.pk {
+    for pk in &ent.primary_key {
         if loaded {
             if let Some(v) = c.row.as_ref().unwrap().original.get(pk) {
                 keys.insert(pk.clone(), v.clone());
@@ -966,9 +965,9 @@ fn key_values(c: &Core, ent: &EntitySchema) -> Result<HashMap<String, Param>> {
     Ok(keys)
 }
 
-fn key_where(req: &mut Req, ent: &EntitySchema, keys: &HashMap<String, Param>) {
+fn key_where(req: &mut Req, ent: &dbspec::Entity, keys: &HashMap<String, Param>) {
     let mut g = ir::Group::default();
-    for (i, pk) in ent.pk.iter().enumerate() {
+    for (i, pk) in ent.primary_key.iter().enumerate() {
         let p = req.p(keys[pk].clone());
         g.items.push(ir::Item::Pred {
             pred: Box::new(ir::Pred {
@@ -985,18 +984,18 @@ fn key_where(req: &mut Req, ent: &EntitySchema, keys: &HashMap<String, Param>) {
 
 /// The sets of an update plus the other AES columns of the row when one AES
 /// column changes, so every AES column is written with the same key version.
-fn with_aes_columns<M: Model>(m: &M, ent: &EntitySchema) -> Result<Vec<SetSpec>> {
+fn with_aes_columns<M: Model>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec>> {
     let c = m.core();
     let mut sets = c.sets.clone();
-    if ent.aes_version.is_empty() {
+    if ent.aes_version.is_none() {
         return Ok(sets);
     }
-    let changed = c.sets.iter().any(|s| ent.column(&s.column).map(|col| col.is_aes()).unwrap_or(false));
+    let changed = c.sets.iter().any(|s| ent.field(&s.column).map(|col| col.aes()).unwrap_or(false));
     if !changed {
         return Ok(sets);
     }
-    for col in &ent.columns {
-        if !col.is_aes() || c.sets.iter().any(|s| s.column == col.name) {
+    for col in &ent.fields {
+        if !col.aes() || c.sets.iter().any(|s| s.column == col.name) {
             continue;
         }
         let loaded = c.row.as_ref().map(|r| r.names.iter().any(|n| n == &col.name)).unwrap_or(false);
@@ -1025,7 +1024,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
     let keys = key_values(c, &ent)?;
     let loaded = c.row.as_ref().map(|r| r.loaded).unwrap_or(false);
     for s in with_aes_columns(m, &ent)? {
-        if !loaded && ent.pk.contains(&s.column) {
+        if !loaded && ent.primary_key.contains(&s.column) {
             continue;
         }
         let a = assign(&mut req, &ent, &s)?;
@@ -1035,7 +1034,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         return Ok(());
     }
     key_where(&mut req, &ent, &keys);
-    let column = ent.updated_column().to_owned();
+    let column = ent.updated.clone().unwrap_or_default();
     if optimistic {
         let version = c.row.as_ref().filter(|_| loaded && !column.is_empty()).and_then(|r| r.original.get(&column)).cloned();
         let Some(version) = version else {
@@ -1051,7 +1050,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         let changes: Vec<(String, Param)> = c
             .sets
             .iter()
-            .filter(|s| ent.pk.contains(&s.column))
+            .filter(|s| ent.primary_key.contains(&s.column))
             .filter_map(|s| match &s.value {
                 SetValue::Value(v) => Some((s.column.clone(), v.clone())),
                 _ => None,
@@ -1254,10 +1253,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
 }
 
 fn styled_column(c: &Core, name: &str) -> Result<bool> {
-    Ok(c.ent
-        .entity_schema()?
-        .column(name)
-        .is_some_and(|column| column.typ == "jsontext" || column.styles.iter().any(|style| matches!(style.as_str(), "json" | "jsons" | "serialize" | "yaml"))))
+    Ok(c.ent.entity_schema()?.field(name).is_some_and(|column| column.styled_value()))
 }
 
 fn missing_output_column(c: &Core, name: &str) -> Error {

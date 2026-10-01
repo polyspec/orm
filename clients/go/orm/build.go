@@ -10,9 +10,13 @@ import (
 
 // request is one statement under construction: the value-free IR plus values.
 type request struct {
-	ir     ir.Request
+	ir ir.Request
+	// schema은 request를 plan할 manifest다.
+	schema *Schema
 	params []any
-	err    error
+	// operation은 write가 실행되는 transaction의 operation id다.
+	operation any
+	err       error
 	// nodes maps each model of the statement to the IR node it produced;
 	// assembly uses it to create child models.
 	joins     map[string]*Core
@@ -91,9 +95,9 @@ func snake(s string) string {
 
 // build renders the model as a request of kind.
 func (c *Core) build(kind string) *request {
-	r := &request{joins: map[string]*Core{}, relations: map[*ir.Relation]*Core{}}
+	r := &request{schema: c.ent.Schema, joins: map[string]*Core{}, relations: map[*ir.Relation]*Core{}}
 	r.ir.IRVersion = ir.Version
-	r.ir.SchemaHash = c.ent.Schema.Hash
+	r.ir.ManifestHash = c.ent.Schema.Hash
 	r.ir.Kind = kind
 	if c.err != nil {
 		r.fail(c.err)
@@ -312,11 +316,6 @@ func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
 func (r *request) pred(p *predSpec, owner *Core, f *frame) *ir.Pred {
 	out := &ir.Pred{Column: p.column, Op: p.op}
 	switch {
-	case p.fulltext:
-		out.Column = ""
-		out.Match = p.cols
-		i := r.param(p.value)
-		out.P = &i
 	case p.tuple:
 		out.Column = ""
 		out.Cols = p.cols

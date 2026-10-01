@@ -24,61 +24,6 @@ final class Codec
         $plain = $v instanceof Bytes ? $v->bytes : (is_string($v) ? $v : (string) $v);
         return hash_hmac('sha256', $plain, $key);
     }
-    /** @return array{float, float} */
-    public static function point(mixed $value): array
-    {
-        if (is_array($value) && array_is_list($value) && count($value) === 2) {
-            $parts = $value;
-        } elseif (is_string($value)) {
-            $text = trim($value);
-            if (preg_match('/^POINT\s*\(([^()]*)\)$/i', $text, $m) === 1 || preg_match('/^\(([^()]*)\)$/', $text, $m) === 1) {
-                $parts = preg_split('/[\s,]+/', trim($m[1]));
-            } else {
-                $parts = [];
-            }
-        } else {
-            $parts = [];
-        }
-        if (count($parts) !== 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])) {
-            throw new OrmException(Code::CODEC_DECODE, 'point requires two numeric coordinates');
-        }
-        $point = [(float) $parts[0], (float) $parts[1]];
-        if (!is_finite($point[0]) || !is_finite($point[1])) {
-            throw new OrmException(Code::CODEC_DECODE, 'point coordinates must be finite');
-        }
-        return $point;
-    }
-
-    /** @param array{float|int, float|int} $point */
-    public static function pointText(array $point): string
-    {
-        try {
-            [$x, $y] = self::point($point);
-        } catch (OrmException $e) {
-            throw new OrmException(Code::CODEC_ENCODE, $e->getMessage());
-        }
-        return 'POINT(' . self::pointNumber($x) . ' ' . self::pointNumber($y) . ')';
-    }
-
-    /** @param array{float|int, float|int} $point */
-    public static function postgresPointText(array $point): string
-    {
-        try {
-            [$x, $y] = self::point($point);
-        } catch (OrmException $e) {
-            throw new OrmException(Code::CODEC_ENCODE, $e->getMessage());
-        }
-        return '(' . self::pointNumber($x) . ',' . self::pointNumber($y) . ')';
-    }
-
-    private static function pointNumber(float $value): string
-    {
-        if ($value === 0.0) {
-            return '0';
-        }
-        $text = json_encode($value, JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR);
-        return str_ends_with($text, '.0') ? substr($text, 0, -2) : $text;
-    }
     /** @param list<string> $styles */
     public static function decode(array $styles, mixed $raw): StyledValue
     {
@@ -128,8 +73,7 @@ final class Codec
                         throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage());
                     }
                     break;
-                case 'json':
-                case 'jsons':
+                case 'ordered_json':
                     // The ordered-json value keeps the member order, the number text, and {} apart from [].
                     try {
                         $v = orderedJsonParse($v);
@@ -147,6 +91,7 @@ final class Codec
     /**
      * Encodes a value with the column's styles in write order. A gz result is binary and comes back as Bytes
      * so the executor binds it as a blob (bytea on PostgreSQL rejects it as text); everything else is text.
+     * gz나 base64가 첫 stage면 StyledValue의 값은 그 stage가 encode하는 string이다.
      * @param list<string> $styles
      */
     public static function encode(array $styles, StyledValue $v): string|Bytes|null
@@ -154,8 +99,11 @@ final class Codec
         if ($v->kind === 'sql-null') {
             return null;
         }
-        $cur = null;
         $value = $v->payload();
+        $cur = $value;
+        if (in_array($styles[0], ['gz', 'base64'], true) && !is_string($value)) {
+            throw new OrmException(Code::CODEC_ENCODE, "{$styles[0]}: the value is " . get_debug_type($value) . ', not a string');
+        }
         foreach ($styles as $i => $st) {
             switch ($st) {
                 case 'serialize':
@@ -172,8 +120,7 @@ final class Codec
                         throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage());
                     }
                     break;
-                case 'json':
-                case 'jsons':
+                case 'ordered_json':
                     try {
                         $cur = orderedJsonStringify(orderedJsonParse(self::jsonText($value)));
                     } catch (\JsonException | \InvalidArgumentException $e) {

@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../dist/index.js';
+import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
@@ -14,19 +14,21 @@ const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical
 const shown = value => JSON.stringify(canonical(value));
 const output = {};
 let failures = 0;
+// The vectors name the Mermaid styles; json and jsons are both the ordered_json stage.
+const stagesOf = styles => styles.map(style => (style === 'json' || style === 'jsons' ? 'ordered_json' : style));
 if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') failures++;
 
 for (const vector of vectors) {
   const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');
   let decoded;
   try {
-    decoded = decodeCodec(vector.styles, raw);
+    decoded = decodeCodec(stagesOf(vector.styles), raw);
   } catch (error) {
     console.error(`${vector.name}: decode ${String(error)}`);
     failures++;
     continue;
   }
-  const jsonStage = vector.styles.includes('json') || vector.styles.includes('jsons');
+  const jsonStage = stagesOf(vector.styles).includes('ordered_json');
   const kind = raw === null ? 'sql-null' : 'value';
   if (!(decoded instanceof StyledValue) || decoded.kind !== kind) {
     console.error(`${vector.name}: decoded state ${shown(decoded)} want ${kind}`);
@@ -42,7 +44,7 @@ for (const vector of vectors) {
     console.error(`${vector.name}: decoded ${shown(payload)} want ${JSON.stringify(vector.value)}`);
     failures++;
   }
-  const encoded = encodeCodec(vector.styles, decoded);
+  const encoded = encodeCodec(stagesOf(vector.styles), decoded);
   const encodedBase64 = encoded === null ? null : Buffer.from(encoded).toString('base64');
   output[vector.name] = encodedBase64;
   const integralFloat = vector.name.endsWith('/integral_float') && vector.styles.includes('serialize');
@@ -50,7 +52,7 @@ for (const vector of vectors) {
     console.error(`${vector.name}: encoded ${encodedBase64} want ${vector.encoded_b64}`);
     failures++;
   }
-  const roundTrip = decodeCodec(vector.styles, encoded);
+  const roundTrip = decodeCodec(stagesOf(vector.styles), encoded);
   if (!(roundTrip instanceof StyledValue) || roundTrip.kind !== kind || !same(kind === 'value' ? roundTrip.payload() : null, vector.value)) {
     console.error(`${vector.name}: round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
     failures++;
@@ -58,7 +60,7 @@ for (const vector of vectors) {
 }
 
 for (const [name, operation, code] of [
-  ['bad JSON', () => decodeCodec(['json'], '{bad'), 'CODEC_DECODE'],
+  ['bad JSON', () => decodeCodec(['ordered_json'], '{bad'), 'CODEC_DECODE'],
   ['bad base64', () => decodeCodec(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
   ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
   ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
@@ -108,18 +110,18 @@ for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
 }
 
 const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
-const orderedRead = decodeCodec(['json'], orderedText);
+const orderedRead = decodeCodec(['ordered_json'], orderedText);
 if (!(orderedRead instanceof StyledValue) || orderedRead.kind !== 'value' || !(orderedRead.payload() instanceof JsonValue) || stringifyJson(orderedRead.payload()) !== orderedText) {
   console.error(`json read: ${orderedRead instanceof StyledValue && orderedRead.kind === 'value' ? stringifyJson(orderedRead.payload()) : String(orderedRead)}`);
   failures++;
 }
 for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
-  const written = encodeCodec(['json'], StyledValue.value(value));
+  const written = encodeCodec(['ordered_json'], StyledValue.value(value));
   if (written !== orderedText) { console.error(`json write of ${name}: ${written}`); failures++; }
 }
 for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
-  try { encodeCodec(['json'], StyledValue.value(value)); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
-  catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
+  try { encodeCodec(['ordered_json'], StyledValue.value(value)); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
+  catch (error) { if (error?.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
 }
 try { encodeCodec(['serialize'], StyledValue.value(parseJson('{}'))); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
 catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`serialize of an ordered-json value: ${String(error)}`); failures++; } }
@@ -127,17 +129,12 @@ if (!same(decodeCodec(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
   console.error('YAML integer map key: expected string key');
   failures++;
 }
-if (!same(parsePoint('POINT(1.25 -2)'), [1.25, -2]) || !same(parsePoint('(1.25,-2)'), [1.25, -2]) || pointText([1.25, -2]) !== 'POINT(1.25 -2)') {
-  console.error('point conversion failed');
-  failures++;
-}
-if (pointText([-0, 0]) !== 'POINT(0 0)') { console.error('point negative zero normalization failed'); failures++; }
-for (const [name, operation, code] of [
-  ['invalid point text', () => parsePoint('POINT(1)'), 'CODEC_DECODE'],
-  ['non-finite point', () => pointText([1, Number.NaN]), 'CODEC_ENCODE'],
-]) {
-  try { operation(); console.error(`${name}: expected ${code}`); failures++; }
-  catch (error) { if (!(error instanceof CodecError) || error.code !== code) { console.error(`${name}: ${String(error)} want ${code}`); failures++; } }
+for (const [name, stage] of [['gz', 'gz'], ['base64', 'base64']]) {
+  const written = encodeCodec([stage], StyledValue.value('stored text'));
+  const read = decodeCodec([stage], written);
+  if (read.kind !== 'value' || read.payload() !== 'stored text') { console.error(`${name} of a string: ${String(read.payload())}`); failures++; }
+  try { encodeCodec([stage], StyledValue.value({ a: 1 })); console.error(`${name} of a map: expected CODEC_ENCODE`); failures++; }
+  catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`${name} of a map: ${String(error)}`); failures++; } }
 }
 
 await mkdir('tests/codec/out', { recursive: true });

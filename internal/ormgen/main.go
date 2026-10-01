@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/polyspec/orm/engine/runtimemodel"
 	"github.com/polyspec/orm/engine/schema"
 )
 
@@ -54,7 +55,7 @@ func Main() {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: ormgen build <files.mmd...> --out schema/schema.json [--check]")
-	fmt.Fprintln(os.Stderr, "       ormgen gen --schema schema/schema.json --lang go --out <directory> [--scan <package pattern>...] [--check]")
+	fmt.Fprintln(os.Stderr, "       ormgen gen --document <file.dbspec>... --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       ormgen import --dsn <dsn> --out schema/example.mmd [--tables a,b]")
 	fmt.Fprintln(os.Stderr, "       ormgen validate --dsn <dsn> --schema schema/schema.json")
 	fmt.Fprintln(os.Stderr, "       ormgen errors --lang go|php|rust --out <file>")
@@ -72,24 +73,21 @@ func usage() {
 
 func gen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
-	schemaPath := fs.String("schema", "", "schema.json (required)")
+	var documents stringList
+	fs.Var(&documents, "document", "dbspec document of the document set (repeatable, required)")
 	lang := fs.String("lang", "go", "go")
 	out := fs.String("out", "", "output directory (required)")
 	var scan stringList
 	fs.Var(&scan, "scan", "Go package pattern whose model calls are generated (repeatable)")
 	check := fs.Bool("check", false, "compare the generated files with --out without writing")
 	fs.Parse(args)
-	if *schemaPath == "" || *out == "" {
+	if len(documents) == 0 || *out == "" {
 		usage()
 	}
 	if *lang != "go" {
 		fail(fmt.Errorf("lang %q: ormgen generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
 	}
-	js, err := os.ReadFile(*schemaPath)
-	if err != nil {
-		fail(err)
-	}
-	m, err := schema.Load(js)
+	m, err := runtimemodel.LoadFiles(documents...)
 	if err != nil {
 		fail(err)
 	}

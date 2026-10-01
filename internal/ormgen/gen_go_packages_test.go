@@ -5,11 +5,13 @@ import (
 	"testing"
 )
 
-const secondModelDiagram = `erDiagram
-  note {
-    bigint        seq          PK "auto"
-    bigint        product_seq
-  }
+const secondModelDiagram = `dbspec 1 second
+
+table note {
+  seq i64 identity
+  product_seq i64
+  primary key (seq)
+}
 `
 
 // TestGoGenerationOfTwoModelPackagesSettlesInOneRun generates the two model

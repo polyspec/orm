@@ -1,5 +1,5 @@
 -- Seed for MySQL: the same 100k author rows as the PostgreSQL and SQLite seeds.
--- Run after bench/sql/author.sql. AES and blind-index columns are filled by seedaes.
+-- Run after scripts/bench-db.sh installs schema/bench.dbspec. AES and blind-index columns are filled by seedaes.
 SET SESSION cte_max_recursion_depth = 100000;
 
 INSERT INTO `user` (`seq`, `name`)

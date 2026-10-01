@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Go generator. Every model gets its fixed column methods; the methods named
@@ -21,7 +21,7 @@ import (
 
 // goModel is one entity with the usage-derived methods found so far.
 type goModel struct {
-	e       *schema.Entity
+	e       *runtimemodel.Entity
 	typ     string // ProductModel
 	ctor    string // Product
 	static  map[string]bool
@@ -37,7 +37,7 @@ type getter struct {
 }
 
 type goGen struct {
-	m       *schema.Manifest
+	m       *runtimemodel.Model
 	out     string // output directory as given
 	outDir  string // absolute output directory
 	tmp     string // temporary directory that holds the generated files
@@ -51,19 +51,21 @@ type goGen struct {
 	pending bool
 }
 
-// GenerateGo writes the Go models of m to outDir. pkg is the package name
+// GenerateGo writes the Go models of the runtime model m to outDir. pkg is the package name
 // (the directory name when empty); scan lists the package patterns whose model
 // calls are generated. The generated files of outDir are replaced after the
 // scan converges; any other error leaves outDir unchanged. A *ScannedSourceError
 // reports scanned packages that do not compile with the complete models
 // written to outDir.
-func GenerateGo(m *schema.Manifest, outDir, pkg string, scan []string) error {
+func GenerateGo(m *runtimemodel.Model, outDir, pkg string, scan []string) error {
 	return generateGo(m, outDir, pkg, scan)
 }
 
-func genGo(m *schema.Manifest, out string, scan []string) error { return generateGo(m, out, "", scan) }
+func genGo(m *runtimemodel.Model, out string, scan []string) error {
+	return generateGo(m, out, "", scan)
+}
 
-func generateGo(m *schema.Manifest, out, pkg string, scan []string) error {
+func generateGo(m *runtimemodel.Model, out, pkg string, scan []string) error {
 	return runGo(m, out, pkg, scan, false, (*goGen).replace)
 }
 
@@ -71,7 +73,7 @@ func generateGo(m *schema.Manifest, out, pkg string, scan []string) error {
 // parent directory and returns one line for each generated file of out that
 // differs, is missing, or is extra, ordered by path. A *ScannedSourceError reports
 // scanned packages that do not compile with the generated models.
-func checkGo(m *schema.Manifest, out string, scan []string) ([]string, error) {
+func checkGo(m *runtimemodel.Model, out string, scan []string) ([]string, error) {
 	var lines []string
 	err := runGo(m, out, "", scan, true, func(g *goGen) error {
 		var err error
@@ -85,7 +87,7 @@ func checkGo(m *schema.Manifest, out string, scan []string) ([]string, error) {
 // calls finish, which moves or compares the written files. The temporary
 // directory is beside out when the files move into out, and in the system
 // temporary directory for a check.
-func runGo(m *schema.Manifest, out, pkg string, scan []string, check bool, finish func(*goGen) error) (err error) {
+func runGo(m *runtimemodel.Model, out, pkg string, scan []string, check bool, finish func(*goGen) error) (err error) {
 	g, err := newGoGen(m, out, pkg)
 	if err != nil {
 		return unchanged(out, err)
@@ -124,8 +126,8 @@ func runGo(m *schema.Manifest, out, pkg string, scan []string, check bool, finis
 	return nil
 }
 
-func newGoGen(m *schema.Manifest, out, pkg string) (*goGen, error) {
-	if err := checkColumnNames(m); err != nil {
+func newGoGen(m *runtimemodel.Model, out, pkg string) (*goGen, error) {
+	if err := checkNames(m); err != nil {
 		return nil, err
 	}
 	outDir, err := filepath.Abs(out)
@@ -143,7 +145,7 @@ func newGoGen(m *schema.Manifest, out, pkg string) (*goGen, error) {
 		e := m.Entities[name]
 		gm := &goModel{e: e, typ: pascal(name) + "Model", ctor: pascal(name), methods: map[string]string{}, getters: map[string]getter{}}
 		gm.static = g.staticNames(gm)
-		for _, c := range e.Columns {
+		for _, c := range e.Fields {
 			if gm.static[pascal(c.Name)] {
 				return nil, fmt.Errorf("%s.%s: the condition method %s is also a fixed method of %s", name, c.Name, pascal(c.Name), gm.typ)
 			}
@@ -176,8 +178,9 @@ var fixedMethods = []string{"Orm_", "MarshalJSON", "ToArray", "Connect", "And", 
 	"Duplication", "Limit", "OrderByRandom", "OrderByRaw", "GroupByRaw", "RemoveAllColumns", "AddAllColumns", "ParentNode", "GroupLimit",
 	"DeleteLock", "FetchKey", "FetchValue", "ForUpdate", "ForShare", "ForUpdateNoWait", "ForShareNoWait", "AddRawColumn"}
 
-func numeric(c *schema.Col) bool {
-	return len(clientStyles(c)) == 0 && (c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal")
+// numeric은 plus, minus, sum, avg method를 받는 field다.
+func numeric(c *runtimemodel.Field) bool {
+	return len(c.Codec) == 0 && (c.Type == "i16" || c.Type == "i32" || c.Type == "i64" || c.Type == "f64" || c.Type == "decimal")
 }
 
 func (g *goGen) staticNames(gm *goModel) map[string]bool {
@@ -185,7 +188,7 @@ func (g *goGen) staticNames(gm *goModel) map[string]bool {
 	for _, n := range fixedMethods {
 		out[n] = true
 	}
-	for _, c := range gm.e.Columns {
+	for _, c := range gm.e.Fields {
 		p := pascal(c.Name)
 		for _, prefix := range []string{"Get", "Set", "SetRaw", "AddColumn", "RemoveColumn", "GroupBy", "KeyName"} {
 			out[prefix+p] = true
@@ -204,12 +207,18 @@ func (g *goGen) staticNames(gm *goModel) map[string]bool {
 	return out
 }
 
-// goType is the Go field type of a column.
-func goType(c *schema.Col) string {
-	if len(clientStyles(c)) > 0 || c.Type == "jsontext" {
+// goType은 field의 Go type이다 (docs/dbspec.md "Runtime model"). styled
+// value codec은 orm.StyledValue, aes, hex, ip만 있는 codec은 string이다.
+func goType(c *runtimemodel.Field) string {
+	if c.Styled() {
 		return "orm.StyledValue"
 	}
+	if len(c.Codec) > 0 {
+		return "string"
+	}
 	switch c.Type {
+	case "i16":
+		return "int16"
 	case "i32":
 		return "int32"
 	case "i64":
@@ -222,15 +231,13 @@ func goType(c *schema.Col) string {
 		return "time.Time"
 	case "bytes":
 		return "[]byte"
-	case "point":
-		return "orm.Point"
 	}
 	return "string"
 }
 
-func fieldType(c *schema.Col) string {
+func fieldType(c *runtimemodel.Field) string {
 	t := goType(c)
-	if c.Nullable && t != "orm.StyledValue" && t != "[]byte" {
+	if c.Null && t != "orm.StyledValue" && t != "[]byte" {
 		return "*" + t
 	}
 	return t
@@ -238,6 +245,8 @@ func fieldType(c *schema.Col) string {
 
 func convert(t string) string {
 	switch t {
+	case "int16":
+		return "orm.AsInt16(v)"
 	case "int32":
 		return "orm.AsInt32(v)"
 	case "int64":
@@ -248,15 +257,13 @@ func convert(t string) string {
 		return "orm.AsBool(v)"
 	case "time.Time":
 		return "orm.AsTime(v)"
-	case "orm.Point":
-		return "orm.AsPoint(v)"
 	case "[]byte":
 		return "orm.AsBytes(v)"
 	}
 	return "orm.AsString(v)"
 }
 
-func field(c *schema.Col) string {
+func field(c *runtimemodel.Field) string {
 	name := "f" + pascal(c.Name)
 	return name
 }
@@ -264,33 +271,15 @@ func field(c *schema.Col) string {
 func (g *goGen) write() error {
 	var b bytes.Buffer
 	b.WriteString(generatedHeader)
-	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"os\"\n\t\"time\"\n\n\t\"github.com/polyspec/orm/clients/go/orm\"\n\t\"github.com/polyspec/orm/engine\"\n\t\"github.com/polyspec/orm/engine/schema\"\n)\n\n", g.pkg)
+	fmt.Fprintf(&b, "\npackage %s\n\nimport (\n\t\"time\"\n\n\t\"github.com/polyspec/orm/clients/go/orm\"\n)\n\n", g.pkg)
 	b.WriteString("var _ time.Time\n\n")
-	fmt.Fprintf(&b, "// SchemaHash is the hash of the schema the models were generated from.\nconst SchemaHash = %q\n\nvar ormSchema = &orm.Schema{Hash: SchemaHash}\n\n", g.m.SchemaHash)
-	b.WriteString(`// Connect opens the database selected by the DSN URI with the schema at
-// schemaPath, which must be the schema the models were generated from.
-func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
-	js, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return nil, err
-	}
-	m, err := schema.Load(js)
-	if err != nil {
-		return nil, err
-	}
-	driver, err := orm.DriverFromDSN(dsn)
-	if err != nil {
-		return nil, err
-	}
-	e, err := engine.New(m, driver)
-	if err != nil {
-		return nil, err
-	}
-	if err := orm.CheckSchemaHash(e, SchemaHash); err != nil {
-		return nil, err
-	}
-	return orm.Open(dsn, e, cfg)
-}
+	fmt.Fprintf(&b, "// ManifestHash is the manifestHash of the document set the models were generated from.\nconst ManifestHash = %q\n\n", g.m.ManifestHash)
+	fmt.Fprintf(&b, "// ManifestText is the manifest text of the document set the models were generated from.\nconst ManifestText = %s\n\n", goStringLiteral(g.m.ManifestText))
+	b.WriteString("var ormSchema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}\n\n")
+	b.WriteString(`// Connect opens the database selected by the DSN URI. The models plan
+// their statements with the manifest they were generated from.
+func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.Connect(dsn, ormSchema, cfg) }
+
 `)
 	g.writeConstraints(&b)
 	if err := writeFormatted(filepath.Join(g.tmp, "orm.go"), b.Bytes()); err != nil {
@@ -322,16 +311,18 @@ var scalarTerms = map[string][]string{
 	"bool":    {"~bool"},
 	"time":    {"time.Time", "~string"},
 	"bytes":   {"~[]byte"},
-	"point":   nil,
 	"none":    nil,
 }
 
-func category(c *schema.Col) string {
-	if len(clientStyles(c)) > 0 || c.Type == "jsontext" {
+func category(c *runtimemodel.Field) string {
+	if c.Styled() {
 		return "none"
 	}
+	if len(c.Codec) > 0 {
+		return "string"
+	}
 	switch c.Type {
-	case "i32", "i64":
+	case "i16", "i32", "i64":
 		return "int"
 	case "f64":
 		return "float"
@@ -343,8 +334,6 @@ func category(c *schema.Col) string {
 		return "time"
 	case "bytes":
 		return "bytes"
-	case "point":
-		return "point"
 	}
 	return "string"
 }
@@ -362,10 +351,10 @@ func listTerms(terms []string) []string {
 }
 
 // constraint returns the constraint name for a key shape of a column.
-func (g *goGen) constraint(c *schema.Col, shape string) string {
+func (g *goGen) constraint(c *runtimemodel.Field, shape string) string {
 	cat := category(c)
 	name := "arg" + pascal(cat) + pascal(shape)
-	if c.Nullable && shape == "eq" {
+	if c.Null && shape == "eq" {
 		name += "Null"
 	}
 	if _, ok := g.constr[name]; ok {
@@ -378,10 +367,10 @@ func (g *goGen) constraint(c *schema.Col, shape string) string {
 		terms = append(terms, scalar...)
 		terms = append(terms, listTerms(scalar)...)
 		terms = append(terms, "orm.Func")
-		if cat != "point" && cat != "none" {
+		if cat != "none" {
 			terms = append(terms, "ormModel")
 		}
-		if c.Nullable {
+		if c.Null {
 			terms = append(terms, "orm.NullType")
 		}
 	case "cmp":
@@ -430,7 +419,7 @@ func (g *goGen) writeConstraints(b *bytes.Buffer) {
 	for _, c := range owners {
 		var terms []string
 		for _, name := range g.m.Order {
-			if g.m.Entities[name].Column(c) != nil {
+			if g.m.Entities[name].Field(c) != nil {
 				terms = append(terms, "*"+g.models[name].typ)
 			}
 		}
@@ -462,7 +451,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 	b.WriteString("\t\"time\"\n\n\t\"github.com/polyspec/orm/clients/go/orm\"\n)\n\nvar _ time.Time\n\n")
 	ent := lowerFirst(gm.ctor) + "Entity"
 	fmt.Fprintf(&b, "// %s is a %s model or row.\ntype %s struct {\n\tm *orm.Core\n", t, e.Name, t)
-	for _, c := range e.Columns {
+	for _, c := range e.Fields {
 		fmt.Fprintf(&b, "\t%s %s\n", field(c), fieldType(c))
 	}
 	b.WriteString("}\n\n")
@@ -476,20 +465,24 @@ func (g *goGen) writeModel(gm *goModel) error {
 	fmt.Fprintf(&b, "// ToArray returns the row values.\nfunc (x *%s) ToArray() map[string]any { return x.m.ToArray() }\n\n", t)
 
 	b.WriteString("func (x *" + t + ") assign(name string, v any) (bool, error) {\n\tswitch name {\n")
-	for _, c := range e.Columns {
+	for _, c := range e.Fields {
 		gt := goType(c)
 		fmt.Fprintf(&b, "\tcase %q:\n", c.Name)
-		if c.Nullable && gt != "orm.StyledValue" {
+		if c.Null && gt != "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tif v == nil { x.%s = nil; break }\n", field(c))
-		} else if !c.Nullable && gt != "orm.StyledValue" {
+		} else if !c.Null && gt != "orm.StyledValue" {
 			fmt.Fprintf(&b, "\t\tif v == nil { return true, fmt.Errorf(\"column %s: %%w\", orm.ErrNullColumn) }\n", c.Name)
 		}
 		if gt == "orm.StyledValue" {
-			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n\t\tx.%s = t\n", c.Nullable, c.Name, field(c))
+			fmt.Fprintf(&b, "\t\tt, err := orm.AsStyledValue(v, %t)\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n\t\tx.%s = t\n", c.Null, c.Name, field(c))
 		} else {
 			conversion := convert(gt)
-			if c.Type == "decimal" {
+			switch {
+			case len(c.Codec) > 0:
+			case c.Type == "decimal":
 				conversion = fmt.Sprintf("x.m.DecodeDecimal(v, %d, %d)", c.Precision, c.Scale)
+			case c.Type == "time":
+				conversion = fmt.Sprintf("orm.AsTimeText(v, %d)", c.Precision)
 			}
 			fmt.Fprintf(&b, "\t\tt, err := %s\n\t\tif err != nil { return true, fmt.Errorf(\"column %s: %%w\", err) }\n", conversion, c.Name)
 			if fieldType(c) != gt {
@@ -501,7 +494,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 	}
 	b.WriteString("\tdefault:\n\t\treturn false, nil\n\t}\n\treturn true, nil\n}\n\n")
 	b.WriteString("func (x *" + t + ") value(name string) (any, bool) {\n\tswitch name {\n")
-	for _, c := range e.Columns {
+	for _, c := range e.Fields {
 		fmt.Fprintf(&b, "\tcase %q:\n", c.Name)
 		if fieldType(c) != goType(c) {
 			fmt.Fprintf(&b, "\t\tif x.%s == nil {\n\t\t\treturn nil, true\n\t\t}\n\t\treturn *x.%s, true\n", field(c), field(c))
@@ -677,19 +670,23 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 	b.WriteString(fixed)
 	b.WriteString("\n")
 
-	for _, c := range e.Columns {
+	for _, c := range e.Fields {
 		p, f, gt, ft := pascal(c.Name), field(c), goType(c), fieldType(c)
 		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (orm.StyledValue, error) {\n\tif !x.m.Selected(%q) { return orm.StyledValue{}, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, c.Name, c.Name, f)
-			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Nullable, f, c.Name)
-		} else if c.Type == "decimal" {
+			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Null, f, c.Name)
+		} else if (c.Type == "decimal" || c.Type == "time") && len(c.Codec) == 0 {
+			normalize := fmt.Sprintf("orm.NormalizeDecimal(%%s, %d, %d)", c.Precision, c.Scale)
+			if c.Type == "time" {
+				normalize = fmt.Sprintf("orm.AsTimeText(%%s, %d)", c.Precision)
+			}
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
-			fmt.Fprintf(&b, "// Set%s sets %s after exact decimal validation.\nfunc (x *%s) Set%s(v %s) (*%s, error) {\n", p, c.Name, t, p, ft, t)
+			fmt.Fprintf(&b, "// Set%s sets %s after exact %s validation.\nfunc (x *%s) Set%s(v %s) (*%s, error) {\n", p, c.Name, c.Type, t, p, ft, t)
 			if ft != gt {
 				fmt.Fprintf(&b, "\tif v == nil {\n\t\tx.%s = nil\n\t\tx.m.SetNull(%q)\n\t\treturn x, nil\n\t}\n", f, c.Name)
-				fmt.Fprintf(&b, "\tvalue, err := orm.NormalizeDecimal(*v, %d, %d)\n\tif err != nil { return nil, err }\n\tx.%s = &value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", c.Precision, c.Scale, f, c.Name)
+				fmt.Fprintf(&b, "\tvalue, err := %s\n\tif err != nil { return nil, err }\n\tx.%s = &value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", fmt.Sprintf(normalize, "*v"), f, c.Name)
 			} else {
-				fmt.Fprintf(&b, "\tvalue, err := orm.NormalizeDecimal(v, %d, %d)\n\tif err != nil { return nil, err }\n\tx.%s = value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", c.Precision, c.Scale, f, c.Name)
+				fmt.Fprintf(&b, "\tvalue, err := %s\n\tif err != nil { return nil, err }\n\tx.%s = value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", fmt.Sprintf(normalize, "v"), f, c.Name)
 			}
 		} else {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
@@ -999,13 +996,11 @@ func (g *goGen) chainParams(pos string, gm *goModel, name string, keys []chainKe
 	for i, k := range keys {
 		p := fmt.Sprintf("v%d", i)
 		switch k.op {
-		case "fulltext", "fulltext_boolean":
-			params = append(params, p+" string")
 		case "tuple", "ne_tuple":
 			tt := g.tupleType(gm, k.columns)
 			params = append(params, p+" []"+tt)
 		default:
-			c := gm.e.Column(k.column)
+			c := gm.e.Field(k.column)
 			var cons string
 			switch {
 			case k.compare != "":
@@ -1058,7 +1053,7 @@ func (g *goGen) tupleType(gm *goModel, columns []string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// %s is one value group of %s.\ntype %s struct {\n", name, strings.Join(columns, ", "), name)
 	for _, c := range columns {
-		fmt.Fprintf(&b, "\t%s %s\n", pascal(c), goType(gm.e.Column(c)))
+		fmt.Fprintf(&b, "\t%s %s\n", pascal(c), goType(gm.e.Field(c)))
 	}
 	b.WriteString("}\n")
 	g.tuples[name] = b.String()
@@ -1082,4 +1077,18 @@ func (g *goGen) relationGetter(pos string, parent, child *goModel, many bool, al
 	expr := fmt.Sprintf("v, _ := x.m.Related(%q).(%s)\n\treturn v", key, result)
 	origin := "the " + child.e.Name + " relation result"
 	g.addGetter(pos, parent, name, getter{result: result, expr: expr, origin: origin})
+}
+
+// goStringLiteral은 text를 줄마다 하나의 quoted string으로 이어 붙인 Go
+// 상수식으로 쓴다. generated code에서 manifest text를 줄 단위로 읽을 수 있다.
+func goStringLiteral(text string) string {
+	lines := strings.SplitAfter(text, "\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	parts := make([]string, len(lines))
+	for i, line := range lines {
+		parts[i] = strconv.Quote(line)
+	}
+	return strings.Join(parts, " +\n\t")
 }

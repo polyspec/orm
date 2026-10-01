@@ -8,7 +8,8 @@ use std::collections::BTreeMap;
 use orm::{Core, Entity, Model, Schema, Val};
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
-static SCHEMA: Schema = Schema::new(include_bytes!("testdata/aes_json.json"), "e10e4baa11dd59da");
+static SCHEMA: Schema =
+    Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbspec"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
 static SECRET: Entity = Entity { name: "secret_config", schema: &SCHEMA, new: orm::model::new_boxed::<Secret>, collect: orm::model::collect_boxed::<Secret> };
 const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
