@@ -12,7 +12,7 @@ namespace Orm\Dbspec;
 final class Renderer
 {
     public const DIALECTS = ['mysql', 'postgres', 'sqlite'];
-    private const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+    public const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
     private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
     private const KEYWORDS = ['and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true, 'null' => true, 'true' => true, 'false' => true];
 
@@ -58,6 +58,24 @@ final class Renderer
             }
         }
         return $out;
+    }
+
+    /** table 의 immutable 과 audit trigger statement; introspection 이 catalog trigger 와 비교한다. @return list<string> */
+    public static function tableTriggers(Table $t, string $dialect): array
+    {
+        return (new self($dialect))->triggers($t);
+    }
+
+    /** column 의 renderer CHECK 식, 없으면 ""; introspection 이 catalog CHECK 와 비교한다. */
+    public static function columnCheck(Column $c, string $dialect): string
+    {
+        return (new self($dialect))->typeCheck($c);
+    }
+
+    /** column type 의 default 를 dialect 형태로 쓴다; introspection 이 catalog default 와 비교한다. */
+    public static function columnDefault(ColumnType $t, string $default, string $dialect): string
+    {
+        return (new self($dialect))->defaultText($t, $default);
     }
 
     /**

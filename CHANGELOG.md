@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.3: the PHP client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-php-check` runs the round trips and the unsupported cases.
+
 - T8.4.4: the TypeScript client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `introspectDbspec` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-ts-check` runs the round trips and the unsupported cases.
 
 - T8.2.6.3.7: the bench databases are installed from schema/bench.dbspec, the conformance runners take only a DSN, and the conformance vectors are recorded from the four dbspec clients on MySQL, PostgreSQL and SQLite.
