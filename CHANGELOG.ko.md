@@ -1,5 +1,8 @@
 # 변경 이력
 
+Go engine에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
+렌더링하고(`dbspec.Render`), tests/dbspec/ddl.json과 비교한다(T8.3.2).
+
 dbspec이 MySQL, PostgreSQL, SQLite에 렌더링하는 statement를
 docs/dialects.md에 정하고, 모든 vector를 세 database에 적용해 behavior
 step을 실행하는 `make dbspec-ddl-check`와 tests/dbspec/ddl.json을
