@@ -3,7 +3,7 @@
 // Go와 같은 바이트다. 정규식의 공백은 Go의 \s([\t\n\f\r ])로 쓴다.
 import { typeText } from './emit.js';
 import { byteOrder, Catalog, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
-import type { DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecType } from './model.js';
+import type { DbspecDiagnostic, DbspecDocument, DbspecSettings, DbspecTable, DbspecType } from './model.js';
 import { validName } from './parse.js';
 import { sortedBy } from './plan.js';
 
@@ -33,12 +33,21 @@ export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
   };
   for (const u of document.uses) {
     report('use', '', u.document, 'export writes the tables of one document; used tables appear only as relationship ends');
+    if (u.comments.length > 0) report('comment', '', u.document, 'Mermaid has no comments on use lines');
   }
-  for (const g of document.diagrams) report('diagram', '', g.name, 'a dbspec diagram has no Mermaid form');
+  for (const g of document.diagrams) {
+    report('diagram', '', g.name, 'a dbspec diagram has no Mermaid form');
+    if (g.comments.length > 0 || g.closingComments.length > 0 || g.placements.some(p => p.comments.length > 0)) {
+      report('comment', '', g.name, 'Mermaid has no diagram comments');
+    }
+  }
+  if (document.closingComments.length > 0) report('comment', '', document.name, 'Mermaid has no comments after the last block');
   const tables: DbspecTable[] = [...document.tables].sort((a, b) => byteOrder(a.name, b.name));
   let out = 'erDiagram\n';
   for (const t of tables) {
-    if (t.comments.length > 0 || t.closingComments.length > 0) report('comment', t.name, t.name, 'Mermaid has no table comments');
+    if (t.comments.length > 0 || t.closingComments.length > 0 || t.primaryKey.comments.length > 0 || settingsCommented(t.settings)) {
+      report('comment', t.name, t.name, 'Mermaid has no comments on the table, primary key and settings lines');
+    }
     out += `    ${t.name} {\n`;
     for (const c of t.columns) {
       if (c.comments.length > 0) report('comment', t.name, c.name, 'Mermaid has no column comments');
@@ -63,11 +72,24 @@ export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
       out += line + '\n';
     }
     out += '    }\n';
-    for (const u of t.uniques) report('unique', t.name, u.name, 'Mermaid marks the columns of a unique key with UK but has no key');
-    for (const x of t.indexes) report('index', t.name, x.name, 'Mermaid has no indexes');
-    for (const k of t.checks) report('check', t.name, k.name, 'Mermaid has no checks');
+    const keyComment = (name: string, comments: readonly string[]): void => {
+      if (comments.length > 0) report('comment', t.name, name, 'Mermaid has no key comments');
+    };
+    for (const u of t.uniques) {
+      report('unique', t.name, u.name, 'Mermaid marks the columns of a unique key with UK but has no key');
+      keyComment(u.name, u.comments);
+    }
+    for (const x of t.indexes) {
+      report('index', t.name, x.name, 'Mermaid has no indexes');
+      keyComment(x.name, x.comments);
+    }
+    for (const k of t.checks) {
+      report('check', t.name, k.name, 'Mermaid has no checks');
+      keyComment(k.name, k.comments);
+    }
     for (const f of t.foreignKeys) {
       if (f.onDelete !== 'restrict' || f.onUpdate !== 'restrict') report('foreign_key', t.name, f.name, 'Mermaid has no foreign key actions');
+      keyComment(f.name, f.comments);
     }
     if (t.settings !== null) report('settings', t.name, t.name, 'Mermaid has no settings');
   }
@@ -81,6 +103,11 @@ export function exportMermaid(document: DbspecDocument): DbspecMermaidExport {
   const key = (u: DbspecUnsupported): string => `${u.table}\x00${u.kind}\x00${u.name}`;
   dropped.sort((a, b) => byteOrder(key(a), key(b)));
   return Object.freeze({ mermaid: out, dropped: Object.freeze(dropped) });
+}
+
+/** settings block의 여는 줄, setting 줄, 닫는 줄 중 하나에 comment가 있는지 알려준다. */
+function settingsCommented(s: DbspecSettings | null): boolean {
+  return s !== null && (s.comments.length > 0 || s.closingComments.length > 0 || s.settings.some(x => x.comments.length > 0));
 }
 
 /** Mermaid type에는 쉼표가 없으므로 decimal(p,s)를 decimal(p-s)로 쓴다. */
@@ -99,8 +126,9 @@ const RELATION = new RegExp(
   `^${ENTITY_NAME}${S}+(\\|o|\\|\\||\\}o|\\}\\|)(--|\\.\\.)(o\\||\\|\\||o\\{|\\|\\{)${S}+${ENTITY_NAME}${S}*:${S}*("[^"]*"|[^\\t\\n\\f\\r "]+)$`,
 );
 const LABEL = /^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$/;
-// Go의 .은 \n 말고 모든 문자다.
-const SUFFIX = /^(null)?(?: ?(identity))?(?: ?default ([^\n]+))?$/;
+// comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
+// 부분 사이에 공백이 정확히 하나 있다. Go의 .은 \n 말고 모든 문자다.
+const SUFFIX = /^(?:(null) )?(?:(identity) )?(?:default ([^\n]+) )?$/;
 const KNOWN_TYPE = /^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$/;
 // Go strings.TrimSpace가 지우는 Unicode 공백이다.
 const GO_SPACE = '[\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]';
@@ -216,7 +244,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
       }
       const column = { name: a.name, type, nullable: false, identity: false, dflt: '' };
       if (a.comment !== '') {
-        const m = SUFFIX.exec(a.comment);
+        const m = SUFFIX.exec(a.comment + ' ');
         if (m !== null) {
           column.nullable = m[1] !== undefined;
           column.identity = m[2] !== undefined;
@@ -283,8 +311,10 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
     if (used === undefined) usedFK.set(child, (used = new Set()));
     for (const col of cols) used.add(col);
     const prefix = ct.primary.slice(0, Math.min(cols.length, ct.primary.length));
-    if (prefix.length !== cols.length || prefix.some((p, i) => p !== cols[i])) {
-      const ix = `ix_${child}_${cols.join('_')}`;
+    const ix = `ix_${child}_${cols.join('_')}`;
+    // 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+    const indexed = ct.indexes.some(x => x.name === ix);
+    if ((prefix.length !== cols.length || prefix.some((p, i) => p !== cols[i])) && !indexed) {
       ct.indexes.push({ name: ix, columns: cols, desc: cols.map(() => false) });
       c.report('index', child, ix, 'Mermaid has no indexes; the foreign key needs one');
     }
@@ -314,23 +344,32 @@ function splitNames(s: string): string[] {
   return s.split(',').map(p => trimSpace(p));
 }
 
-/** 숫자 text다. JavaScript의 안전한 정수가 아니면 null이다. */
-function count(digits: string): number | null {
-  const n = Number(digits);
-  return Number.isSafeInteger(n) ? n : null;
+/** 숫자 text가 lo 이상 hi 이하인 값이면 그 값을, 아니면 null을 돌려준다. 9자리를 넘는 수는 범위 밖이다. */
+function within(digits: string, lo: number, hi: number): number | null {
+  const significant = digits.replace(/^0+/, '');
+  if (significant.length > 9) return null;
+  const n = Number(significant);
+  return n >= lo && n <= hi ? n : null;
 }
 
-/** Mermaid type이 dbspec type이면 그 type을, 아니면 null을 돌려준다. */
+/**
+ * Mermaid type이 dbspec type이면 그 type을, 아니면 null을 돌려준다. 수가 dbspec 범위
+ * (varchar 1-16383, time과 datetime 0-6, decimal p 1-18과 s 0-p)를 벗어나면 dbspec
+ * type이 아니다. 범위를 여기서 정하므로 key column도 모든 client에서 같은 지점에서 빠진다.
+ */
 function importType(s: string): DbspecType | null {
   const m = KNOWN_TYPE.exec(s);
   if (m === null) return null;
   if (m[1] !== undefined) return { kind: m[1] as 'i16' };
   if (m[2] !== undefined) {
-    const length = count(m[2]);
+    const length = within(m[2], 1, 16383);
     return length === null ? null : { kind: 'varchar', length };
   }
-  if (m[3] !== undefined) return { kind: m[3] as 'time' | 'datetime', precision: Number(m[4]) };
-  const precision = count(m[5]!);
-  const scale = count(m[6]!);
+  if (m[3] !== undefined) {
+    const precision = within(m[4]!, 0, 6);
+    return precision === null ? null : { kind: m[3] as 'time' | 'datetime', precision };
+  }
+  const precision = within(m[5]!, 1, 18);
+  const scale = precision === null ? null : within(m[6]!, 0, precision);
   return precision === null || scale === null ? null : { kind: 'decimal', precision, scale };
 }

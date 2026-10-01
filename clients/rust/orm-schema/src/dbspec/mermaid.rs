@@ -24,17 +24,28 @@ pub fn export_mermaid(document: &Document) -> (String, Vec<Unsupported>) {
     let mut dropped = Vec::new();
     for u in &document.uses {
         report(&mut dropped, "use", "", &u.document.text, "export writes the tables of one document; used tables appear only as relationship ends");
+        if !u.comments.is_empty() {
+            report(&mut dropped, "comment", "", &u.document.text, "Mermaid has no comments on use lines");
+        }
     }
     for g in &document.diagrams {
         report(&mut dropped, "diagram", "", &g.name.text, "a dbspec diagram has no Mermaid form");
+        if !g.comments.is_empty() || !g.closing.is_empty() || g.placements.iter().any(|p| !p.comments.is_empty()) {
+            report(&mut dropped, "comment", "", &g.name.text, "Mermaid has no diagram comments");
+        }
+    }
+    if !document.trailing.is_empty() {
+        report(&mut dropped, "comment", "", &document.name.text, "Mermaid has no comments after the last block");
     }
     let mut tables: Vec<&Table> = document.tables.iter().collect();
     tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
     let mut out = String::from("erDiagram\n");
     for t in &tables {
         let table = t.name.text.as_str();
-        if !t.comments.is_empty() || !t.closing.is_empty() {
-            report(&mut dropped, "comment", table, table, "Mermaid has no table comments");
+        let settings_commented =
+            t.settings.as_ref().is_some_and(|s| !s.comments.is_empty() || !s.closing.is_empty() || s.lines.iter().any(|l| !l.comments.is_empty()));
+        if !t.comments.is_empty() || !t.closing.is_empty() || t.primary.iter().any(|p| !p.comments.is_empty()) || settings_commented {
+            report(&mut dropped, "comment", table, table, "Mermaid has no comments on the table, primary key and settings lines");
         }
         out.push_str(&format!("    {table} {{\n"));
         for c in &t.columns {
@@ -82,19 +93,28 @@ pub fn export_mermaid(document: &Document) -> (String, Vec<Unsupported>) {
             out.push('\n');
         }
         out.push_str("    }\n");
+        let key_comment = |dropped: &mut Vec<Unsupported>, name: &str, comments: &[String]| {
+            if !comments.is_empty() {
+                report(dropped, "comment", table, name, "Mermaid has no key comments");
+            }
+        };
         for u in &t.uniques {
             report(&mut dropped, "unique", table, &u.name.text, "Mermaid marks the columns of a unique key with UK but has no key");
+            key_comment(&mut dropped, &u.name.text, &u.comments);
         }
         for x in &t.indexes {
             report(&mut dropped, "index", table, &x.name.text, "Mermaid has no indexes");
+            key_comment(&mut dropped, &x.name.text, &x.comments);
         }
         for k in &t.checks {
             report(&mut dropped, "check", table, &k.name.text, "Mermaid has no checks");
+            key_comment(&mut dropped, &k.name.text, &k.comments);
         }
         for f in &t.foreign_keys {
             if f.on_delete != Action::Restrict || f.on_update != Action::Restrict {
                 report(&mut dropped, "foreign_key", table, &f.name.text, "Mermaid has no foreign key actions");
             }
+            key_comment(&mut dropped, &f.name.text, &f.comments);
         }
         if t.settings.is_some() {
             report(&mut dropped, "settings", table, table, "Mermaid has no settings");
@@ -148,7 +168,9 @@ static RELATION: LazyLock<Regex> = LazyLock::new(|| {
     pattern(&format!(r#"^{ENTITY_NAME}{WS}+(\|o|\|\||\}}o|\}}\|)(--|\.\.)(o\||\|\||o\{{|\|\{{){WS}+{ENTITY_NAME}{WS}*:{WS}*("[^"]*"|[^\t\n\f\r "]+)$"#))
 });
 static LABEL: LazyLock<Regex> = LazyLock::new(|| pattern(r"^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$"));
-static SUFFIX: LazyLock<Regex> = LazyLock::new(|| pattern(r"^(null)?(?: ?(identity))?(?: ?default (.+))?$"));
+// comment 뒤에 공백 하나를 붙인 text에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로
+// 부분 사이에 공백이 정확히 하나 있다.
+static SUFFIX: LazyLock<Regex> = LazyLock::new(|| pattern(r"^(?:(null) )?(?:(identity) )?(?:default (.+) )?$"));
 static KNOWN_TYPE: LazyLock<Regex> = LazyLock::new(|| {
     pattern(r"^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\(([0-9]+)\)$|^(time|datetime)\(([0-9])\)$|^decimal\(([0-9]+)-([0-9]+)\)$")
 });
@@ -279,7 +301,7 @@ pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupport
             };
             let mut col = IColumn { name: a.name.clone(), typ, null: false, identity: false, dflt: String::new() };
             if !a.comment.is_empty() {
-                match SUFFIX.captures(&a.comment) {
+                match SUFFIX.captures(&format!("{} ", a.comment)) {
                     Some(m) => {
                         col.null = !group(&m, 1).is_empty();
                         col.identity = !group(&m, 2).is_empty();
@@ -351,7 +373,10 @@ pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupport
         }
         let cardinality_differs = parent_card != want_parent || (child_card != "o{" && child_card != "}o");
         let primary_begins = child_table.primary.len() >= cols.len() && child_table.primary[..cols.len()] == cols[..];
-        let index = (!primary_begins).then(|| format!("ix_{child}_{}", cols.join("_")));
+        let ix = format!("ix_{child}_{}", cols.join("_"));
+        // 같은 column의 foreign key가 이미 더한 index는 다시 더하지 않는다.
+        let indexed = child_table.indexes.iter().any(|x| x.name == ix);
+        let index = (!primary_begins && !indexed).then_some(ix);
         child_table.fks.push(IForeignKey {
             name: fk_name.clone(),
             columns: cols.clone(),
@@ -388,8 +413,20 @@ fn split_names(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_owned()).collect()
 }
 
+/// 숫자 text가 lo 이상 hi 이하인 값이면 그 값. 9자리를 넘는 수는 범위 밖이다.
+fn within(digits: &str, lo: u32, hi: u32) -> Option<u32> {
+    let significant = digits.trim_start_matches('0');
+    if significant.len() > 9 {
+        return None;
+    }
+    let n = if significant.is_empty() { 0 } else { significant.parse::<u32>().ok()? };
+    (lo..=hi).contains(&n).then_some(n)
+}
+
 /// Mermaid type이 dbspec type이면 그 Type. `decimal(p-s)`는 `decimal(p,s)`다.
-/// 수가 Type의 범위를 넘으면 dbspec type이 아니다.
+/// 수가 dbspec 범위(varchar 1-16383, time과 datetime 0-6, decimal p 1-18과 s
+/// 0-p)를 벗어나면 dbspec type이 아니다. 범위를 여기서 정하므로 key column도
+/// 모든 client에서 같은 지점에서 빠진다.
 fn import_type(s: &str) -> Option<Type> {
     let m = KNOWN_TYPE.captures(s)?;
     if let Some(kind) = m.get(1) {
@@ -406,11 +443,13 @@ fn import_type(s: &str) -> Option<Type> {
         });
     }
     if let Some(length) = m.get(2) {
-        return length.as_str().parse().ok().map(Type::Varchar);
+        return within(length.as_str(), 1, 16383).map(|n| Type::Varchar(n as u16));
     }
     if let Some(kind) = m.get(3) {
-        let precision = m[4].parse().ok()?;
+        let precision = within(&m[4], 0, 6)? as u8;
         return Some(if kind.as_str() == "time" { Type::Time(precision) } else { Type::DateTime(precision) });
     }
-    Some(Type::Decimal(m[5].parse().ok()?, m[6].parse().ok()?))
+    let precision = within(&m[5], 1, 18)?;
+    let scale = within(&m[6], 0, precision)?;
+    Some(Type::Decimal(precision as u8, scale as u8))
 }

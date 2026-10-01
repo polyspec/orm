@@ -1,9 +1,12 @@
 //! The cases of tests/dbspec/mermaid.json through `export_mermaid` and
 //! `import_mermaid` of `orm_schema::dbspec` (docs/mermaid.md): every export
 //! case writes its Mermaid text and its dropped objects, every import case
-//! reads its document and its dropped objects, and every invalid case
-//! reports exactly its `[rule, line, column]` diagnostics.
+//! reads its document and its dropped objects, every invalid case reports
+//! exactly its `[rule, line, column]` diagnostics, and every round trip case
+//! exports its document and imports the export with exactly its dropped
+//! objects and gets back its tables, columns, primary keys and foreign keys.
 
+use orm_schema::dbspec::model::{DefaultValue, Document};
 use orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -35,6 +38,35 @@ fn drops(dropped: &[Unsupported]) -> Value {
     Value::Array(dropped.iter().map(|u| json!([u.kind, u.table, u.name])).collect())
 }
 
+/// Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름 순서의
+/// 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+fn skeleton(document: &Document) -> Vec<String> {
+    let names = |list: &[orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
+    let mut tables: Vec<_> = document.tables.iter().collect();
+    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let mut out = Vec::new();
+    for t in tables {
+        out.push(format!("table {}", t.name.text));
+        for c in &t.columns {
+            let default = match &c.default {
+                None => "-".to_owned(),
+                Some(DefaultValue::Now) => "now".to_owned(),
+                Some(DefaultValue::Literal(text)) => text.clone(),
+            };
+            out.push(format!("column {} {:?} null={} identity={} default={default}", c.name.text, c.ty, c.nullable, c.identity.is_some()));
+        }
+        for p in &t.primary {
+            out.push(format!("primary key {}", names(&p.columns)));
+        }
+        let mut keys: Vec<_> = t.foreign_keys.iter().collect();
+        keys.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+        for f in keys {
+            out.push(format!("foreign key {} ({}) references {} ({})", f.name.text, names(&f.columns), f.table.text, names(&f.references)));
+        }
+    }
+    out
+}
+
 /// case 하나를 실행하고 시작, 결과, 경과 시간을 쓴다.
 fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), String>) {
     let started = Instant::now();
@@ -62,7 +94,9 @@ fn mermaid_vectors() {
         let id = format!("export/{}", case["id"].as_str().expect("id"));
         count += 1;
         run(&id, &mut failures, || {
-            let document = dbspec::parse(&lines(&case["document"]), &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
+            let set: BTreeMap<String, String> =
+                case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
+            let document = dbspec::parse(&lines(&case["document"]), &set).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);
             let want = lines(&case["mermaid"]);
             if text != want {
@@ -101,6 +135,29 @@ fn mermaid_vectors() {
             if got != case["errors"] {
                 return Err(format!("errors\nwant {}\ngot  {}", case["errors"], got));
             }
+            Ok(())
+        });
+    }
+    for case in cases(&vectors, "round_trip") {
+        let id = format!("round_trip/{}", case["id"].as_str().expect("id"));
+        count += 1;
+        run(&id, &mut failures, || {
+            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(case["path"].as_str().expect("path"));
+            let source = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let document = dbspec::parse(&source, &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
+            let (text, dropped) = export_mermaid(&document);
+            if drops(&dropped) != case["dropped"] {
+                return Err(format!("export dropped {}\nwant {}\ngot  {}", dropped.len(), case["dropped"], drops(&dropped)));
+            }
+            let (imported, reported) = import_mermaid(&text, &document.name.text).map_err(|e| format!("diagnostics: {e:?}"))?;
+            if drops(&reported) != case["imported"] {
+                return Err(format!("import dropped {}\nwant {}\ngot  {}", reported.len(), case["imported"], drops(&reported)));
+            }
+            let (want, got) = (skeleton(&document), skeleton(&imported));
+            if got != want {
+                return Err(format!("tables, columns, primary keys and foreign keys\n--- want\n{}\n--- got\n{}", want.join("\n"), got.join("\n")));
+            }
+            println!("round_trip exported={} imported={}", dropped.len(), reported.len());
             Ok(())
         });
     }

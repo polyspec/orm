@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.7.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 Mermaid export, import, round trip 결과를 비교한다.
+
+- T8.7.2.1: 모든 client의 Mermaid import는 column 수가 다른 label을 보고하고, key보다 먼저 dbspec type 범위를 판정하고, comment 부분 사이에 공백 하나를 요구하고, 함께 쓰는 foreign key index를 한 번 더한다. export는 빼는 모든 comment를 보고한다.
+
 - T8.6.3.1: 실패한 PHP apply는 정리 error를 실패와 함께 `Orm\Dbspec\ApplyCleanupError`로 보고하고, 아무것도 풀지 않은 advisory unlock은 error이며, row 없는 MySQL 효과 query와 닫을 수 없는 result는 error다.
 
 - T8.0.9: `datetime(p)`는 세 데이터베이스에서 local date-time으로 생성되고, 모든 client 연결이 이를 UTC로 읽고 쓰며, introspection은 time zone 컬럼을 미지원으로 보고한다.

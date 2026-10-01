@@ -1,8 +1,8 @@
 // Prints the TypeScript dbspec result of every shared case, of the stress
-// document, of the statement vectors and of the plan vectors in the line
-// format of tests/dbspec/compare/check.mjs.
+// document, of the statement vectors, of the plan vectors and of the Mermaid
+// vectors in the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json>
+// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
 import {
@@ -11,15 +11,17 @@ import {
   diffPlan,
   emitDbspec,
   emitPlan,
+  exportMermaid,
+  importMermaid,
   parseDbspec,
   parsePlan,
   planStatements,
   renderDbspec,
 } from '../../../clients/typescript/dist/dbspec/index.js';
 
-const [casesPath, stressPath, ddlPath, plansPath] = process.argv.slice(2);
-if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined) {
-  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json>');
+const [casesPath, stressPath, ddlPath, plansPath, mermaidPath] = process.argv.slice(2);
+if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined) {
+  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>');
   process.exit(2);
 }
 
@@ -194,5 +196,56 @@ for (const c of plans.parse) {
   const parsed = parsePlan(join(c.plan, false, false));
   if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
   else writeEmittedPlan(parsed.plan);
+}
+// writeDropped prints what an export or import left out as
+// "= kind<TAB>table<TAB>name"; reasons are not compared.
+function writeDropped(dropped) {
+  for (const u of dropped) out.push(`= ${u.kind}\t${u.table}\t${u.name}`);
+}
+
+// writeExport prints the Mermaid text and the dropped objects of a document.
+function writeExport(document) {
+  const { mermaid, dropped } = exportMermaid(document);
+  for (const line of mermaid.split('\n')) out.push(`| ${line}`);
+  writeDropped(dropped);
+  return mermaid;
+}
+
+// writeImport prints the emitted document and the dropped objects of an
+// import, or its diagnostics.
+function writeImport(text) {
+  const result = importMermaid(text, 'imported');
+  if (result.document === null) {
+    writePlanDiagnostics(result.diagnostics);
+    return;
+  }
+  for (const line of emitDbspec(result.document).split('\n')) out.push(`| ${line}`);
+  writeDropped(result.dropped);
+}
+
+const mermaid = JSON.parse(readFileSync(mermaidPath, 'utf8'));
+for (const c of mermaid.export) {
+  out.push(`mermaid/export/${c.id}`);
+  const set = Object.fromEntries(Object.entries(c.documents).map(([name, lines]) => [name, join(lines, false, false)]));
+  const parsed = parseDbspec(join(c.document, false, false), set);
+  if (parsed.document === null) writePlanDiagnostics(parsed.diagnostics);
+  else writeExport(parsed.document);
+}
+for (const kind of ['import', 'invalid']) {
+  for (const c of mermaid[kind]) {
+    out.push(`mermaid/${kind}/${c.id}`);
+    writeImport(join(c.mermaid, false, false));
+  }
+}
+for (const c of mermaid.round_trip) {
+  out.push(`mermaid/round_trip/${c.id}`);
+  const parsed = parseDbspec(readFileSync(c.path, 'utf8'), {});
+  if (parsed.document === null) {
+    writePlanDiagnostics(parsed.diagnostics);
+    continue;
+  }
+  const text = writeExport(parsed.document);
+  out.push(`mermaid/round_trip/${c.id}/import`);
+  writeImport(text);
 }
 process.stdout.write(out.join('\n') + '\n');
