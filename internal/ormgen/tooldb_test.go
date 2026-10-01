@@ -2,7 +2,10 @@ package ormgen
 
 import (
 	"database/sql"
+	"errors"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -67,5 +70,37 @@ func TestReadTablesFiltersSQLite(t *testing.T) {
 	defer opened.Close()
 	if dsn.dialect != "sqlite" {
 		t.Fatalf("dialect=%s", dsn.dialect)
+	}
+}
+
+// TestToolSQLiteFileNameIsThePath는 schema tool이 query가 붙은 SQLite DSN을
+// path만으로 여는지 확인한다(docs/dialects.md "Probe environment").
+func TestToolSQLiteFileNameIsThePath(t *testing.T) {
+	dir := t.TempDir()
+	db, _, err := openToolDB("sqlite://" + filepath.Join(dir, "named.sqlite") + "?_pragma=busy_timeout(5000)&timezone=%2B00:00")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("CREATE TABLE t (a INTEGER)"); err != nil {
+		t.Fatal(errors.Join(err, db.Close()))
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	if !slices.Contains(names, "named.sqlite") {
+		t.Fatalf("files %q: named.sqlite is missing", names)
+	}
+	for _, name := range names {
+		if !slices.Contains([]string{"named.sqlite", "named.sqlite-journal", "named.sqlite-shm", "named.sqlite-wal"}, name) {
+			t.Fatalf("files %q: %q is not named by the path", names, name)
+		}
 	}
 }

@@ -1,3 +1,6 @@
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Db } from '../dist/index.js';
 import { openDriver, parseDsn, postgresZone } from '../dist/driver.js';
 
@@ -22,4 +25,17 @@ await postgres.close();
 const mysql = openDriver('mysql://orm@127.0.0.1:1/orm', parseDsn('mysql://orm@127.0.0.1:1/orm'), bounds, 16);
 if (mysql.pool.pool.config.connectionLimit !== 3 || mysql.pool.pool.listenerCount('release') !== 1 || mysql.pool.pool.listenerCount('connection') !== 2) throw new Error('mysql pool bounds were not applied');
 await mysql.close();
+// query가 붙은 SQLite DSN은 path만으로 file을 만든다. query를 file 이름에 둔 opener는
+// `named.sqlite?_pragma=…` 같은 file을 만든다(docs/dialects.md "Probe environment").
+const directory = mkdtempSync(join(tmpdir(), 'orm-ts-sqlite-name-'));
+try {
+  const named = await Db.connect(`sqlite://${directory}/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00`);
+  await named.close();
+  const names = readdirSync(directory);
+  const allowed = ['named.sqlite', 'named.sqlite-journal', 'named.sqlite-shm', 'named.sqlite-wal'];
+  if (!names.includes('named.sqlite')) throw new Error(`files ${JSON.stringify(names)}: named.sqlite is missing`);
+  for (const name of names) if (!allowed.includes(name)) throw new Error(`files ${JSON.stringify(names)}: ${name} is not named by the path`);
+} finally {
+  rmSync(directory, { recursive: true, force: true });
+}
 console.log('typescript DSN validation passed');

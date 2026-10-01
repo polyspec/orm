@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.13: Every client and schema tool asserts that a SQLite DSN with a query creates only the file named by its path.
+
 - T8.0.11: Introspection cases assert that PostgreSQL time zone, padded, single-precision and JSON types, MySQL `TIMESTAMP`, `char` and `float`, and `NO ACTION` and `SET DEFAULT` keys are reported as unsupported in every client.
 
 - T8.0.10: An introspection case asserts that a SQLite primary key column keeps its declared nullability in every client.
