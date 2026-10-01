@@ -48,7 +48,7 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 `dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true`, `false`는 예약어이며 어떤 이름에도 쓸 수 없다.
 
-index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와 이 문서가 직접 쓰는 문서 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다.
+index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다.
 
 ## 문서와 `use`
 
@@ -125,9 +125,9 @@ key나 index는 자기 table의 서로 다른 column을 1~16개 나열한다. `t
 
 ## Settings
 
-`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다 한 번씩 반복하고, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다.
+`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다 한 번씩 반복하고, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
 
-codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이나 `bytes` column이고, AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
+codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이고(`bytes` column은 index에 넣을 수 없다), AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
 
 | Setting | 의미 | Hash |
 | --- | --- | --- |
@@ -209,8 +209,8 @@ table service_history {
 - column이 없는 table은 table 이름에서 `column`과 `key`를 보고한다. `null identity`는 `identity`에서 `column`을, primary key에서 `key`를 보고한다
 - 실패한 쓰는 문서는 그 이름에서 `use` diagnostic 하나를 보고하고 message에 첫 error를 담는다. 두 쓰는 문서가 constraint 이름을 반복하면 뒤 문서 이름에서 `name.duplicate`를 보고한다. `use` 줄에서 문서나 table을 반복하면 `name.duplicate`다. use 순환이나 쓰는 이름과 다른 header 이름은 `use`다
 - 32 MiB 한도의 위치는 1줄 1열이다. column이 1000개를 넘는 table은 1001번째 column 이름에서 `limit` error다
-- 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 `check` syntax error만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다
-- 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함)는 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
+- 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 diagnostic만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다
+- 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함), 그리고 정확히 `dbspec`, 공백, `1`, 공백, 이름이 아닌 header 줄(예: tab이 있는 줄)은 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
 
 | 규칙 | 의미 |
 | --- | --- |

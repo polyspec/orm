@@ -48,7 +48,7 @@ Every name of a document, table, column, index, key, foreign key, check, setting
 
 The words `dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true` and `false` are reserved and are not valid names.
 
-Index, unique key, foreign key and check names are unique in the whole schema, across all four kinds, against every table name, and across this document and the documents it uses directly, because MySQL, PostgreSQL and SQLite scope these names differently and PostgreSQL keeps index and table names in one namespace. `primary` is not a valid name. Names are physical names: the renderer writes them unchanged and adds no prefix or suffix.
+Index, unique key, foreign key and check names are unique in the whole schema, across all four kinds, against every table name, and across this document and every table and constraint of the documents it uses directly, because MySQL, PostgreSQL and SQLite scope these names differently and PostgreSQL keeps index and table names in one namespace. `primary` is not a valid name. Names are physical names: the renderer writes them unchanged and adds no prefix or suffix.
 
 ## Documents and `use`
 
@@ -125,9 +125,9 @@ A unary minus applies only to a number literal. There are no functions, so no cl
 
 ## Settings
 
-`settings { ... }` holds one setting per line. A setting names the columns it applies to; a column's name never selects a behavior. `codec` repeats once per column, `navigation` once per foreign key and `blind_index` once per AES column; every other setting appears at most once, and a repeat is a `setting` error. An empty `settings {}` block has no meaning, and canonical form omits it.
+`settings { ... }` holds one setting per line. A setting names the columns it applies to; a column's name never selects a behavior. `codec` repeats once per column, `navigation` once per foreign key and `blind_index` once per AES column; every other setting appears at most once, and a repeat is a `setting` error. An empty `settings {}` block has no meaning, and canonical form omits it; a comment inside it moves before the table's closing `}` with the indentation of the table's lines.
 
-Codec stages run in the written order on write. The storage type follows the last stage: `hex`, `base64`, `ordered_json`, `yaml` and `serialize` produce text and need a `varchar` or `text` column; `aes`, `gz` and `ip` produce bytes and need a `bytes` column. `ordered_json` is the first stage when it appears. `aes_version` is required when a column uses `aes`, and an `aes_version` setting without such a column is a `setting` error. The `blind_index` index column is a `varchar(n)` with n ≥ 64 or a `bytes` column, has the same nullability as the AES column, is not itself AES-encoded, and is the only column of a declared index or unique key.
+Codec stages run in the written order on write. The storage type follows the last stage: `hex`, `base64`, `ordered_json`, `yaml` and `serialize` produce text and need a `varchar` or `text` column; `aes`, `gz` and `ip` produce bytes and need a `bytes` column. `ordered_json` is the first stage when it appears. `aes_version` is required when a column uses `aes`, and an `aes_version` setting without such a column is a `setting` error. The `blind_index` index column is a `varchar(n)` with n ≥ 64 (a `bytes` column cannot be indexed), has the same nullability as the AES column, is not itself AES-encoded, and is the only column of a declared index or unique key.
 
 | Setting | Meaning | Hash |
 | --- | --- | --- |
@@ -209,8 +209,8 @@ A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign key
 - a table without columns reports `column` and `key` at the table name; `null identity` reports `column` at `identity` and `key` at the primary key;
 - a used document that fails reports one `use` diagnostic at its name with its first error in the message; two used documents that repeat a constraint name report `name.duplicate` at the later document name; a document or table repeated in `use` lines is `name.duplicate`; a use cycle or a header name that differs from the used name is `use`;
 - the 32 MiB limit points at line 1, column 1; a table with more than 1000 columns is a `limit` error at its 1001st column name;
-- a line has at most one `syntax` diagnostic; a check expression reports only its first `check` syntax error; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more;
-- a header that is not the first line, including a comment or blank line before it, is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
+- a line has at most one `syntax` diagnostic; a check expression reports only its first diagnostic; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more;
+- a header that is not the first line, including a comment or blank line before it, and a header line that is not exactly `dbspec`, a space, `1`, a space and a name (for example one with a tab) is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
 
 | Rule | Meaning |
 | --- | --- |
