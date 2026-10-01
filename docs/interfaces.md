@@ -97,7 +97,7 @@ A terminal does not change the stored request, so repeated terminals produce the
 
 ### 5.0 Connection input
 
-Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. The optional `timezone` parameter sets the connection time zone; without it the server environment time zone is used. The caller does not pass a second driver value.
+Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. Every connection reads and writes datetime values in UTC; the optional `timezone` parameter accepts only `UTC` or `+00:00`. The caller does not pass a second driver value.
 
 | Client | Public connection call | Result |
 |---|---|---|

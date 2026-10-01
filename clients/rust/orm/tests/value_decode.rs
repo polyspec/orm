@@ -22,7 +22,7 @@ async fn invalid_database_cells_return_decode_errors() {
         let postgres = Db::connect(&required_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
         let Pool::Postgres(pool) = postgres.pool() else { panic!("PostgreSQL DSN selected another engine") };
         let row = sqlx::query("SELECT 'NaN'::float8").fetch_one(pool).await.unwrap();
-        let value = read_cell_pg(&row, 0, orm::db::Zone::Local).unwrap();
+        let value = read_cell_pg(&row, 0, orm::db::Zone).unwrap();
         assert_eq!(value.as_f64().unwrap_err().code(), orm::codes::CODEC_DECODE);
         postgres.close().await;
 

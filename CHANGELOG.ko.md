@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.9.1: Go, TypeScript, Rust connection은 PHP처럼 datetime 값을 UTC로 읽고 쓰며, `timezone`은 `UTC`나 `+00:00`만 받는다.
+
 - T8.0.14: transaction 끝에서 실패한 MySQL `setLocal` reset은 모든 client에서 보고되고, callback 실패와 정리 실패가 겹치면 두 오류를 `CONFIG`로 함께 보고한다.
 
 - T8.0.13: 모든 client와 schema tool은 query가 붙은 SQLite DSN이 path로 정한 file만 만드는지 검사한다.

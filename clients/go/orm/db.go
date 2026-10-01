@@ -482,8 +482,6 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
-	case me.Number == 1298:
-		return configErr("dsn timezone: %s; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", me.Message)
 	}
 	return err
 }

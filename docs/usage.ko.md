@@ -232,7 +232,7 @@ go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec -
 연결은 DSN URI 하나를 인자로 받으며, 클라이언트는 환경이나 비밀 저장소를 스스로 읽지 않는다. URI scheme이 데이터베이스를 선택하며 호출자는 별도 드라이버 값을 전달하지 않는다.
 
 ```text
-mysql://user:password@host:3306/orm_example?timezone=%2B09:00
+mysql://user:password@host:3306/orm_example
 postgres://user:password@host:5432/orm_example?sslmode=disable
 sqlite:///var/lib/orm_example.sqlite
 ```

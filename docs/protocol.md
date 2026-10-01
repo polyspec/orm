@@ -125,7 +125,7 @@ An `insert` that omits a column with a default leaves it to the database default
 }
 ```
 
-- `bind_slots.from` is `param` (a request parameter, with `transform` for contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), `now` (the client clock in the connection time zone), or `operation` (the operation id of the unit of work, with `col_type` `i64` or `uuid` of the operation column). A write that has an `operation` slot and runs without an operation id, or with one that does not fit `col_type`, fails with `CONFIG` before it reaches the database.
+- `bind_slots.from` is `param` (a request parameter, with `transform` for contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), `now` (the client clock in UTC), or `operation` (the operation id of the unit of work, with `col_type` `i64` or `uuid` of the operation column). A write that has an `operation` slot and runs without an operation id, or with one that does not fit `col_type`, fails with `CONFIG` before it reaches the database.
 - Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.
 - `assemble.key` is the collection identity: every primary-key component, or the group columns of a `group_count` row.
 - A `group_count` row retains the declared types of its selected group columns; a boolean group value is a JSON boolean, and an invalid database boolean fails decoding.

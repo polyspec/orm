@@ -134,7 +134,6 @@ interface SessionSetup { error?: unknown; }
 function sessionError(setup: SessionSetup): OrmError | undefined {
   const error = setup.error as { errno?: number; sqlMessage?: string; message?: string } | undefined;
   if (error === undefined) return undefined;
-  if (error.errno === 1298) return new OrmError('CONFIG', `dsn timezone: ${error.sqlMessage ?? error.message}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)`, error);
   return driverError('mysql', error);
 }
 
@@ -461,12 +460,17 @@ class SqliteTx implements DriverTransaction {
 
 export interface ParsedDsn { driver: DriverName; zone: string; }
 
-/** Splits a DSN URI into the dialect and the connection time zone. */
+/**
+ * Splits a DSN URI into the dialect and the connection time zone. Every
+ * connection reads and writes datetime values in UTC (docs/dialects.md "Date
+ * and time"), so the timezone parameter accepts only UTC or +00:00.
+ */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
   try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
-  const zone = url.searchParams.get('timezone') ?? '';
-  if (zone !== '') zoneOffset(zone, new Date());
+  const requested = url.searchParams.get('timezone');
+  if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError('CONFIG', `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
+  const zone = '+00:00';
   switch (url.protocol) {
     case 'mysql:':
       if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
@@ -482,32 +486,11 @@ export function parseDsn(dsn: string): ParsedDsn {
   throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
 }
 
-/** Returns the offset of zone at instant in minutes east of UTC. */
-export function zoneOffset(zone: string, instant: Date): number {
+/** Returns the offset of a fixed zone such as +00:00 in minutes east of UTC. */
+export function zoneOffset(zone: string): number {
   const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone);
-  if (fixed) return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
-  if (zone === '') return -instant.getTimezoneOffset();
-  let parts: Intl.DateTimeFormatPart[];
-  try {
-    parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(instant);
-  } catch { throw new OrmError('CONFIG', `dsn timezone ${zone} is unknown`); }
-  const get = (type: string) => Number(parts.find(part => part.type === type)!.value);
-  const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
-  return Math.round((wall - Math.floor(instant.getTime() / 1000) * 1000) / 60_000);
-}
-
-/**
- * Writes a fixed offset in the POSIX form PostgreSQL expects, where the sign
- * after the name is inverted: +09:00 becomes <+09:00>-09:00.
- */
-export function postgresZone(zone: string): string {
-  const fixed = /^([+-])(\d{2}:\d{2})$/.exec(zone);
-  return fixed ? `<${zone}>${fixed[1] === '-' ? '+' : '-'}${fixed[2]}` : zone;
-}
-
-export function offsetText(minutes: number): string {
-  const abs = Math.abs(minutes);
-  return `${minutes < 0 ? '-' : '+'}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+  if (!fixed) throw new OrmError('INTERNAL', `connection zone ${zone} is not a fixed offset`);
+  return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
 }
 
 /**
@@ -576,13 +559,11 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
         jsonStrings: true,
         maxPreparedStatements: statementCacheSize,
       });
-      // Without a timezone parameter the session uses the offset of the process time zone.
-      const zone = () => `'${(parsed.zone !== '' ? parsed.zone : offsetText(zoneOffset('', new Date()))).replaceAll("'", "''")}'`;
       const setup: SessionSetup = {};
       const core = (created as unknown as { pool: MySqlCorePool }).pool;
       core.on('connection', connection => {
         // MySQL bounds SELECT statements with max_execution_time.
-        const session = statementTimeoutMs > 0 ? `SET time_zone = ${zone()}, SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = ${zone()}`;
+        const session = statementTimeoutMs > 0 ? `SET time_zone = '+00:00', SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = '+00:00'`;
         connection.query(session, error => { if (error) setup.error = error; });
       });
       boundMySqlPool(core, bounds);
@@ -592,8 +573,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
       const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
-      // Without a timezone parameter the session uses the process time zone.
-      config.options = `-c TimeZone=${parsed.zone !== '' ? postgresZone(parsed.zone) : Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+      config.options = '-c TimeZone=UTC';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
     }
