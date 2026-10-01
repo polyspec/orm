@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T17.6: test가 자기 계산에 두는 모든 시간 한도가 CPU 시간(Rust, Go, TypeScript의 case thread, PHP process)을 제한하고 CPU와 wall-clock 시간을 출력한다. `make timing-check`는 stress, Rust vector, PHP dbspec test를 그 process group이 wall-clock 시간의 10분의 1만 받는 상태로 실행한다.
+
 - T17.5: Rust native benchmark `native`와 `driver_compare`가 bench schema 형을 decode해 모든 workload의 row를 읽고, `make rust-driver-check`가 시드된 bench database에서 이들을 실행한다.
 
 - T17.4: examples/complex의 Go, PHP, Rust 프로그램이 같은 compact JSON byte를 출력하고, `make example-check`가 시드된 bench database에서 examples/complex와 examples/thin-slice의 출력을 byte 단위로 비교한다.

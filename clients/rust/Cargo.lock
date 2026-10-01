@@ -1076,6 +1076,7 @@ dependencies = [
  "bigdecimal",
  "futures-util",
  "orm",
+ "orm-case-clock",
  "orm-schema",
  "proc-macro2",
  "regex",
@@ -1090,9 +1091,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "orm-case-clock"
+version = "0.0.1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "orm-schema"
 version = "0.0.1"
 dependencies = [
+ "orm-case-clock",
  "regex",
  "serde_json",
  "sha2 0.10.9",

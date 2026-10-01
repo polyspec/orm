@@ -7,6 +7,7 @@
 //! diagnostic; every comparison lists its differences or `compare`
 //! diagnostics.
 
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_statements, Dialect, Document, Plan};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -43,12 +44,14 @@ fn source(id: &str, value: &Value) -> Option<Document> {
 
 /// case 하나를 시작, 결과, 경과 시간 줄과 기한으로 감싼다.
 fn run(id: &str, body: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN plan/{id} deadline={DEADLINE:?}");
-    let result = body().and_then(|()| if started.elapsed() > DEADLINE { Err(format!("took {:?}", started.elapsed())) } else { Ok(()) });
+    let result = body();
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    let result = result.and_then(|()| if cpu > DEADLINE { Err(format!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})")) } else { Ok(()) });
     match &result {
-        Ok(()) => println!("PASS plan/{id} elapsed={:?}", started.elapsed()),
-        Err(e) => println!("FAIL plan/{id} elapsed={:?}: {e}", started.elapsed()),
+        Ok(()) => println!("PASS plan/{id} cpu={cpu:?} wall={wall:?}"),
+        Err(e) => println!("FAIL plan/{id} cpu={cpu:?} wall={wall:?}: {e}"),
     }
     result.map_err(|e| format!("plan/{id}: {e}"))
 }

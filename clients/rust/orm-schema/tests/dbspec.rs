@@ -1,8 +1,9 @@
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 const SUITE_DEADLINE: Duration = Duration::from_secs(5);
@@ -68,7 +69,7 @@ fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
 }
 
 fn run(case: &Value, kind: &str) {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     let id = case["id"].as_str().unwrap();
     println!("RUN {kind} {id}");
     let (text, set) = declared(case);
@@ -106,14 +107,14 @@ fn run(case: &Value, kind: &str) {
         }
         _ => unreachable!("unknown case kind {kind}"),
     }
-    let elapsed = started.elapsed();
-    assert!(elapsed < CASE_DEADLINE, "{id}: {elapsed:?} exceeds {CASE_DEADLINE:?}");
-    println!("PASS {kind} {id} {elapsed:?}");
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < CASE_DEADLINE, "{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})");
+    println!("PASS {kind} {id} cpu={cpu:?} wall={wall:?}");
 }
 
 #[test]
 fn shared_dbspec_vectors() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     let path = cases_path();
     println!("RUN dbspec vectors {}", path.display());
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
@@ -130,7 +131,7 @@ fn shared_dbspec_vectors() {
             count += 1;
         }
     }
-    let elapsed = started.elapsed();
-    assert!(elapsed < SUITE_DEADLINE, "dbspec vectors: {elapsed:?} exceeds {SUITE_DEADLINE:?}");
-    println!("PASS dbspec vectors {count} cases {elapsed:?}");
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < SUITE_DEADLINE, "dbspec vectors: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})");
+    println!("PASS dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}");
 }

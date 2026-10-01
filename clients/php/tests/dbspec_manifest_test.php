@@ -4,11 +4,12 @@ declare(strict_types=1);
 // rule through Orm\Dbspec\Dbspec::manifest, and the sets cases through
 // Dbspec::manifest and Dbspec::render in every dialect.
 require __DIR__ . '/autoload.php';
+require_once __DIR__ . '/case_clock.php';
 
 use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Document;
 
-$started = hrtime(true);
+$started = caseClockStart();
 echo "RUN dbspec_manifest\n";
 $root = dirname(__DIR__, 3);
 $cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
@@ -122,8 +123,8 @@ if ($result->manifest !== null || $got !== [['name.duplicate', 1, 10]]) {
 }
 echo "PASS manifest/repeated-name\n";
 
-$elapsed = (hrtime(true) - $started) / 1e6;
-if ($elapsed > 10000) {
-    throw new RuntimeException("dbspec_manifest deadline of 10 s exceeded ($elapsed ms)");
+[$cpuMs, $wallMs] = caseClockElapsed($started);
+if ($cpuMs > 10000) {
+    throw new RuntimeException("dbspec_manifest CPU deadline of 10 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
 }
-echo 'PASS dbspec_manifest hashes=' . count($cases['hashes']) . ' sets=' . count($cases['sets']) . " elapsedMs=$elapsed\n";
+echo 'PASS dbspec_manifest hashes=' . count($cases['hashes']) . ' sets=' . count($cases['sets']) . " cpuMs=$cpuMs wallMs=$wallMs\n";

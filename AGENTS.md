@@ -32,7 +32,10 @@
   item is marked `[o]`. Every test reports its own running, completion, success or failure with
   its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
   operation gets detailed step logs instead of a timeout, so its process and result stay
-  observable.
+  observable. A time limit on a test's own computation measures the CPU time of the thread or
+  process that runs it, because wall-clock time on a shared machine includes the time other
+  processes hold the processors; a timer that stops a stuck case, a limit on work that a database
+  or another process does, and a test of timing behavior measure wall-clock time.
 - Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
 - Define a criterion. Reproduce an observed defect with a tracked RED test, or first write a deterministic RED case whose input and required result would expose a plausible defect. Confirm failure for the intended reason before implementation, correct the cause, and run the same case and relevant use-path tests to GREEN. Investigate a case that cannot expose the problem; do not weaken a correct criterion to pass a test.
 - Go, PHP, Rust, and TypeScript share one behavior contract. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.

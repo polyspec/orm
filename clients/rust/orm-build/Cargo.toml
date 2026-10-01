@@ -30,6 +30,9 @@ sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 # catalog과 tool_db의 database connection은 driver가 필요하다.
 live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
 
+[dev-dependencies]
+orm-case-clock = { path = "../case-clock" }
+
 [[test]]
 name = "catalog"
 required-features = ["live-db"]
