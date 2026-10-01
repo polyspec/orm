@@ -1154,13 +1154,7 @@ impl<'m> Planner<'m> {
         let updated = ent.updated_column();
         if !updated.is_empty() && !assigned(&r.set, updated) {
             if let Some(col) = ent.column(updated) {
-                let now = if self.d.host_now() {
-                    b.now()
-                } else if col.precision > 0 && self.d == Dialect::MySql {
-                    format!("CURRENT_TIMESTAMP({})", col.precision)
-                } else {
-                    self.d.now().to_owned()
-                };
+                let now = self.clock(&mut b, col);
                 sets.push(format!("{} = {now}", self.d.quote(updated)));
             }
         }
@@ -1177,16 +1171,27 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }
 
+    /// The clock assigned to a column by the update time and soft deletion:
+    /// the executor's microsecond `now` slot when the dialect has no
+    /// sub-second clock function, otherwise the database clock with the
+    /// declared fraction digits of the column.
+    fn clock(&self, b: &mut Builder, col: &ColumnSchema) -> String {
+        if self.d.host_now() {
+            b.now()
+        } else {
+            self.d.now(col.precision)
+        }
+    }
+
     fn delete_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
         let root = self.table_scope(ent, &r.query)?;
         let now = if ent.soft_delete.is_empty() {
             String::new()
-        } else if self.d.host_now() {
-            b.now()
         } else {
-            self.d.now().to_owned()
+            let col = ent.column(&ent.soft_delete).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", ent.name, ent.soft_delete)))?;
+            self.clock(&mut b, col)
         };
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "delete without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;

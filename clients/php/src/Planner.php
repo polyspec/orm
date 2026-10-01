@@ -930,13 +930,7 @@ final class Planner
         // the updated time is always assigned: optimistic locking needs the same behavior everywhere
         $updated = $ent['timestamps']['updated'] ?? '';
         if ($updated !== '' && !self::assigned($r['set'], $updated) && ($col = Manifest::column($ent, $updated)) !== null) {
-            $now = $this->d->now();
-            if ($this->d->hostNow()) {
-                $now = $b->now();
-            } elseif (($col['precision'] ?? 0) > 0 && $this->d->name === 'mysql') {
-                $now = "CURRENT_TIMESTAMP({$col['precision']})";
-            }
-            $sets[] = $this->d->quote($updated) . ' = ' . $now;
+            $sets[] = $this->d->quote($updated) . ' = ' . $this->clock($b, $col);
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if (isset($r['optimistic'])) {
@@ -948,6 +942,17 @@ final class Planner
         return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
     }
 
+    /**
+     * The clock assigned to a column by the update time and soft deletion: the
+     * executor's microsecond `now` slot when the dialect has no sub-second
+     * clock function, otherwise the database clock with the declared fraction
+     * digits of the column.
+     */
+    private function clock(PlanBinds $b, array $col): string
+    {
+        return $this->d->hostNow() ? $b->now() : $this->d->now($col['precision'] ?? 0);
+    }
+
     private function deleteStep(array $r): PlanStep
     {
         $b = new PlanBinds($this->d);
@@ -956,7 +961,8 @@ final class Planner
         $soft = $ent['soft_delete'] ?? '';
         $now = '';
         if ($soft !== '') {
-            $now = $this->d->hostNow() ? $b->now() : $this->d->now();
+            $col = Manifest::column($ent, $soft) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['name']}.$soft");
+            $now = $this->clock($b, $col);
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if ($soft !== '') {

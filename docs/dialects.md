@@ -21,7 +21,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | `aes`/`hex` styles | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present | client-side authenticated AES-256-GCM v2 ciphertext, then hex text when `hex` is present |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | client-side (16-byte packed) |
 | `point` type | `POINT(x y)` bind; `ST_PointFromText(?)` / `ST_AsText(col)` | `(x,y)` bind; `CAST(? AS text)::point` / `(col)::text` | `POINT(x y)` text |
-| `NOW` | `CURRENT_TIMESTAMP` | same | same |
+| clock written by the update time and soft deletion | `CURRENT_TIMESTAMP(p)` for a `datetime(p)` column with `p > 0`, otherwise `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | executor-bound microsecond text (`now` bind slot) |
 
 Executor consequences: a `$n` renumbering step when expanding relation IN lists on
 PostgreSQL, host-side AES/inet codecs where the table says "client-side", one DSN/driver per database
@@ -42,7 +42,7 @@ Without it `orm.Open` returns `CONFIG` naming the import. The split keeps a MySQ
 same with sqlx features, PHP with the PDO extension that is installed.
 
 ## Rules that keep the three databases identical
-- `UPDATE` always assigns the entity's updated timestamp explicitly (`updated_ts = CURRENT_TIMESTAMP(6)` on MySQL, `CURRENT_TIMESTAMP` on PostgreSQL, an executor-bound microsecond text on SQLite via a `now` bind slot) — MySQL's `ON UPDATE` has no counterpart elsewhere and optimistic locking relies on it.
+- `UPDATE` always assigns the entity's updated timestamp explicitly (`updated_ts = CURRENT_TIMESTAMP(6)` on MySQL, `CURRENT_TIMESTAMP` on PostgreSQL, an executor-bound microsecond text on SQLite via a `now` bind slot; soft deletion assigns its column the same way) — MySQL's `ON UPDATE` has no counterpart elsewhere and optimistic locking relies on it.
 - `plus`/`minus` reference the column table-qualified (`"author"."read_count" + $9`): inside `ON CONFLICT DO UPDATE` a bare name is ambiguous on PostgreSQL.
 - `?` in raw fragments (`raw`, `setRaw<Col>`, `addRawColumn<Alias>`) is rewritten to the dialect placeholder in bind order; the count must equal the binds (`IR_INVALID` otherwise). Fragments are otherwise raw SQL: write them portably (`LENGTH(x)`, `TRUE`/`FALSE`, not `DAYOFMONTH` or `= 0` against booleans).
 - SQLite datetimes are text with six fraction digits (`YYYY-MM-DD HH:MM:SS.ffffff`) in the connection time zone; the executor binds `time` values in that form and supplies the clock for `=now` columns on insert, so a value read back compares equal. A string compared with or assigned to a datetime column is written in the same form: `YYYY-MM-DD[ T]HH:MM:SS[.f]` gets six fraction digits, and a string with `Z` or `±HH:MM` is converted to the connection time zone. A date column takes `YYYY-MM-DD`. Any other string returns `CODEC_ENCODE`.

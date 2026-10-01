@@ -207,9 +207,9 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 	  {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}},
 	  {"pred":{"conn":"and","column":"created_ts","op":"lt","value":{"name":"months_later","ps":[1]}}}]}`
 	for driver, parts := range map[string][]string{
-		"mysql":    {"`a`.`created_ts` > DATE_SUB(NOW(), INTERVAL ? DAY)", "`a`.`created_ts` <= NOW()", "DATE_ADD(NOW(), INTERVAL ? MONTH)"},
+		"mysql":    {"`a`.`created_ts` > DATE_SUB(NOW(6), INTERVAL ? DAY)", "`a`.`created_ts` <= NOW(6)", "DATE_ADD(NOW(6), INTERVAL ? MONTH)"},
 		"postgres": {`"a"."created_ts" > (now() - make_interval(days => CAST($1 AS integer)))`, `"a"."created_ts" <= now()`, `(now() + make_interval(months => CAST($2 AS integer)))`},
-		"sqlite":   {`"a"."created_ts" > datetime(?, '-' || CAST(? AS TEXT) || ' days')`, `"a"."created_ts" <= ?`, `datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor')`},
+		"sqlite":   {`"a"."created_ts" > (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20))`, `"a"."created_ts" <= ?`, `(datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20))`},
 	} {
 		p := formsCompile(t, formsEngine(t, driver), body)
 		requireSQL(t, p.Steps[0].SQL, parts...)
@@ -220,8 +220,8 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 					nows++
 				}
 			}
-			if nows != 3 {
-				t.Errorf("sqlite now slots %d, want 3", nows)
+			if nows != 5 {
+				t.Errorf("sqlite now slots %d, want 5", nows)
 			}
 		}
 	}

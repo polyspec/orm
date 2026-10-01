@@ -16,10 +16,15 @@ func (MySQL) Placeholder(int) string         { return "?" }
 func (MySQL) Limit(offset, count int) string { return fmt.Sprintf(" LIMIT %d, %d", offset, count) }
 func (MySQL) ForceIndex(name string) string  { return " FORCE INDEX (" + QuoteWith("`", name) + ")" }
 func (MySQL) InsertReturningID() bool        { return false }
-func (MySQL) Now() string                    { return "CURRENT_TIMESTAMP" }
-func (MySQL) CurrentTime() string            { return "CURRENT_TIMESTAMP" }
-func (MySQL) Supports(string) bool           { return true }
-func (MySQL) HostNow() bool                  { return false }
+func (MySQL) Now(precision int) string {
+	if precision > 0 {
+		return fmt.Sprintf("CURRENT_TIMESTAMP(%d)", precision)
+	}
+	return "CURRENT_TIMESTAMP"
+}
+func (MySQL) CurrentTime() string  { return "CURRENT_TIMESTAMP" }
+func (MySQL) Supports(string) bool { return true }
+func (MySQL) HostNow() bool        { return false }
 func (MySQL) RowLock(mode string) (string, bool) {
 	switch mode {
 	case "update":

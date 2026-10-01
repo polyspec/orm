@@ -1,5 +1,17 @@
 # 변경 이력
 
+MySQL에서 database clock을 마이크로초로 기록하고, SQLite 상대 value
+function에서 클라이언트 clock의 소수부를 유지한다(N14). MySQL dialect는 soft
+delete를 `CURRENT_TIMESTAMP`로, `now` value function과 그 상대 형식을
+`NOW()`로 렌더링했으므로 soft delete가 `datetime(6)` column에 초 단위 값을
+저장했고, `created_ts <= now()`가 같은 초에 먼저 만든 row를 놓쳤다. SQLite
+상대 형식은 `datetime(clock, modifier)`를 렌더링하여 bind한 clock의 소수부를
+버렸다. 이제 soft delete는 update 시각처럼 column이 선언한 소수 자릿수로
+clock을 대입한다(MySQL `CURRENT_TIMESTAMP(p)`). MySQL value function은
+`NOW(6)`을 쓰고, SQLite 상대 형식은 `datetime` 결과에 clock의 소수 여섯
+자리를 붙인다. `clock_soft_delete_microseconds`와 `clock_now_condition`
+case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 두 오류를
 모두 보고한다(N13). PHP 클라이언트는 callback 오류를 rollback 오류로 바꾸었고,
 TypeScript 클라이언트는 rollback 오류를 버렸으며, Go 클라이언트는 트랜잭션

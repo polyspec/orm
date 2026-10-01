@@ -362,10 +362,10 @@ Go uses `orm.Distance(…)`, Rust uses `orm::distance(…)`, and TypeScript uses
 
 | Function | MySQL | PostgreSQL | SQLite |
 |---|---|---|---|
-| `now()` | `NOW()` | `now()` | value computed by the client in the connection time zone and bound |
+| `now()` | `NOW(6)` | `now()` | value computed by the client in the connection time zone and bound |
 | `today()` | `CURDATE()` | `CURRENT_DATE` | value computed by the client and bound |
-| `secondsAgo(n)`, `minutesAgo(n)`, `hoursAgo(n)`, `daysAgo(n)`, `monthsAgo(n)` | `DATE_SUB(NOW(), INTERVAL ? unit)` | `now() - make_interval(unit => ?)` | value computed by the client and bound |
-| `secondsLater(n)`, `minutesLater(n)`, `hoursLater(n)`, `daysLater(n)`, `monthsLater(n)` | `DATE_ADD(NOW(), INTERVAL ? unit)` | `now() + make_interval(unit => ?)` | value computed by the client and bound |
+| `secondsAgo(n)`, `minutesAgo(n)`, `hoursAgo(n)`, `daysAgo(n)`, `monthsAgo(n)` | `DATE_SUB(NOW(6), INTERVAL ? unit)` | `now() - make_interval(unit => ?)` | `datetime(clock, '-n units')` over the bound client clock, followed by the six fraction digits of the clock |
+| `secondsLater(n)`, `minutesLater(n)`, `hoursLater(n)`, `daysLater(n)`, `monthsLater(n)` | `DATE_ADD(NOW(6), INTERVAL ? unit)` | `now() + make_interval(unit => ?)` | `datetime(clock, '+n units')` over the bound client clock, followed by the six fraction digits of the clock |
 
 - The connection time zone comes from the DSN `timezone` parameter; without it the server environment time zone is used. MySQL and PostgreSQL connections set the session time zone.
 - Month arithmetic keeps the last valid day of the target month, as MySQL and PostgreSQL do.

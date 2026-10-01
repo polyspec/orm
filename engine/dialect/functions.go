@@ -66,7 +66,7 @@ func (MySQL) ColumnFunction(name, col string, arg func(int) string) (string, boo
 func (MySQL) ValueFunction(name string, arg, _ func() string) (string, bool) {
 	switch name {
 	case "now":
-		return "NOW()", true
+		return "NOW(6)", true
 	case "today":
 		return "CURDATE()", true
 	}
@@ -78,7 +78,7 @@ func (MySQL) ValueFunction(name string, arg, _ func() string) (string, bool) {
 	if strings.HasSuffix(name, "_later") {
 		fn = "DATE_ADD"
 	}
-	return fn + "(NOW(), INTERVAL " + arg() + " " + strings.ToUpper(unit) + ")", true
+	return fn + "(NOW(6), INTERVAL " + arg() + " " + strings.ToUpper(unit) + ")", true
 }
 
 func (MySQL) TupleIn(cols []string, rows [][]string, negate bool) string {
@@ -176,6 +176,8 @@ func (SQLite) ColumnFunction(name, col string, arg func(int) string) (string, bo
 
 // ValueFunction binds the executor clock on SQLite and applies the interval
 // with datetime modifiers; `floor` keeps the last valid day of the month.
+// datetime returns whole seconds, so a relative form appends the six fraction
+// digits of a second clock slot, which equals the first in one statement.
 func (SQLite) ValueFunction(name string, arg, now func() string) (string, bool) {
 	switch name {
 	case "now":
@@ -194,9 +196,9 @@ func (SQLite) ValueFunction(name string, arg, now func() string) (string, bool) 
 	clock := now()
 	modifier := sign + " || CAST(" + arg() + " AS TEXT) || ' " + unit + "s'"
 	if unit == "month" {
-		return "datetime(" + clock + ", " + modifier + ", 'floor')", true
+		modifier += ", 'floor'"
 	}
-	return "datetime(" + clock + ", " + modifier + ")", true
+	return "(datetime(" + clock + ", " + modifier + ") || substr(" + now() + ", 20))", true
 }
 
 func (SQLite) TupleIn(cols []string, rows [][]string, negate bool) string {

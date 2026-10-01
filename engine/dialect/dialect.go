@@ -34,8 +34,10 @@ type Dialect interface {
 	ReadExpr(col, colType string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
 	WriteExpr(ph func() string, colType string, styles []string) (string, int)
-	// Now renders CURRENT_TIMESTAMP.
-	Now() string
+	// Now renders the database clock assigned to a column with the given
+	// fraction digits: CURRENT_TIMESTAMP(p) on MySQL for p > 0, otherwise
+	// CURRENT_TIMESTAMP.
+	Now(precision int) string
 	// CurrentTime renders a wall-clock expression that advances during a transaction.
 	CurrentTime() string
 	// Supports reports whether a predicate operator exists in this dialect (false → OPERATOR_NOT_ALLOWED).

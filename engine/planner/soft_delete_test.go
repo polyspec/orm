@@ -52,3 +52,39 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 		t.Fatalf("delete plan bind slots differ: %#v", plan.Steps[0].BindSlots)
 	}
 }
+
+// TestSoftDeleteClockPrecision checks that a soft deletion assigns the
+// database clock with the declared fraction digits of the column.
+func TestSoftDeleteClockPrecision(t *testing.T) {
+	for _, tc := range []struct {
+		column  string
+		dialect dialect.Dialect
+		want    string
+	}{
+		{"datetime(6)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE"},
+		{"datetime", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP WHERE"},
+		{"datetime(6)", dialect.Postgres{}, `UPDATE "account" SET "deleted_at" = CURRENT_TIMESTAMP WHERE`},
+		{"datetime(6)", dialect.SQLite{}, `UPDATE "account" SET "deleted_at" = ? WHERE`},
+	} {
+		d, err := schema.Parse("erDiagram\n account {\n bigint id PK\n " + tc.column + " deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, err := schema.Build(d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		param := 0
+		plan, err := (&Planner{M: m, D: tc.dialect}).Compile(&ir.Request{
+			Kind:    "delete",
+			Query:   ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "eq", P: &param}}}}},
+			NParams: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sql := plan.Steps[0].SQL; !strings.HasPrefix(sql, tc.want) {
+			t.Errorf("%s %s: %s, want prefix %s", tc.dialect.Name(), tc.column, sql, tc.want)
+		}
+	}
+}

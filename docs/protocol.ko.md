@@ -125,6 +125,7 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 - `bind_slots.from`은 `param`(요청 매개변수. 전문 검색과 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각) 중 하나다.
 - `now` slot은 마이크로초 해상도의 wall clock을 소수 여섯 자리로 자른 연결 시간대의 시각이고, PostgreSQL 텍스트에는 offset이 붙는다. statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같다. SQLite dialect는 clock 기본값, 갱신 시각, soft delete, `now` 함수에 이 slot을 bind하고, MySQL과 PostgreSQL은 SQL에서 데이터베이스 clock을 사용한다.
+- ORM이 쓰거나 비교하는 database clock은 마이크로초를 유지한다. update 시각과 soft delete는 column이 선언한 소수 자릿수로 clock을 대입한다. MySQL은 `p > 0`인 `datetime(p)` column에 `CURRENT_TIMESTAMP(p)`, PostgreSQL은 `CURRENT_TIMESTAMP`, SQLite는 `now` slot을 쓴다. MySQL `now` value function과 그 상대 형식은 `NOW(6)`을 쓴다. SQLite 상대 형식은 `now` slot에 `datetime`으로 간격을 적용하고 같은 statement의 두 번째 `now` slot에서 소수 여섯 자리를 붙인다.
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
 - `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.

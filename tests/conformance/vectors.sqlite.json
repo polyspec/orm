@@ -792,17 +792,19 @@
             "binds": [
               7,
               "$NOW",
-              36500
+              36500,
+              "$NOW"
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e datetime(?, '-' || CAST(? AS TEXT) || ' days')"
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20))"
           },
           {
             "binds": [
               7,
               "$NOW",
-              1200
+              1200,
+              "$NOW"
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor')"
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20))"
           },
           {
             "binds": [

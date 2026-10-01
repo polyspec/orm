@@ -1385,14 +1385,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	// (updated_ts as the version) needs identical behaviour everywhere.
 	if ts := ent.Timestamps; ts != nil && ts.Updated != "" && !assigned(r.Set, ts.Updated) {
 		if col := ent.Column(ts.Updated); col != nil {
-			now := p.D.Now()
-			switch {
-			case p.D.HostNow():
-				now = b.now() // no sub-second clock in SQL: the executor binds its own microsecond timestamp
-			case col.Precision > 0 && p.D.Name() == "mysql":
-				now = fmt.Sprintf("CURRENT_TIMESTAMP(%d)", col.Precision)
-			}
-			sets = append(sets, p.D.Quote(ts.Updated)+" = "+now)
+			sets = append(sets, p.D.Quote(ts.Updated)+" = "+p.clock(b, col))
 		}
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
@@ -1407,6 +1400,17 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	}
 	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+}
+
+// clock renders the clock assigned to a column by the update time and soft
+// deletion: the executor's microsecond `now` slot when the dialect has no
+// sub-second clock function, otherwise the database clock with the declared
+// fraction digits of the column.
+func (p *Planner) clock(b *builder, col *schema.Col) string {
+	if p.D.HostNow() {
+		return b.now()
+	}
+	return p.D.Now(col.Precision)
 }
 
 // hostNowColumns lists the unassigned columns with a clock default when the
@@ -1430,10 +1434,11 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	root := p.buildScopes(&r.Query, ent.Table, nil)
 	var now string
 	if ent.SoftDelete != "" {
-		now = p.D.Now()
-		if p.D.HostNow() {
-			now = b.now()
+		col := ent.Column(ent.SoftDelete)
+		if col == nil {
+			return nil, &ir.Error{Code: "COLUMN_UNKNOWN", Msg: ent.Name + "." + ent.SoftDelete}
 		}
+		now = p.clock(b, col)
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {
