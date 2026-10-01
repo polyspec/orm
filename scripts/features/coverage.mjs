@@ -339,7 +339,7 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
               const entry = command[index];
               let output = '';
               for (const symbol of spec.format === 'cargo' ? spec.symbols : [null]) {
-                const args = spec.format === 'cargo' ? [...spec.args, symbol, '--', '--exact'] : spec.args;
+                const args = spec.format === 'cargo' ? [...spec.args, symbol, '--', '--exact', '--include-ignored'] : spec.args;
                 const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs, testEnv);
                 if (result.error) throw new Error(result.error);
                 output += result.value + '\n';

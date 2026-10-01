@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T14.1: Rust DSN coverage test는 workspace 실행에서 ignored이고 feature-check가 `--include-ignored`로 실행한다.
+
 - T16: send-savepoint SQLite file은 TEST_ENV 옆에 있어서 Rust send-savepoint test가 어느 worktree에서나 실행된다.
 
 - T14: decimal과 feature-coverage Go test는 build tag 뒤에서 `decimal-physical-check`와 `feature-check`에서만 실행된다. 그래서 `client-db-check`는 DSN을 주지 않는 test를 더 이상 실행하지 않는다.
