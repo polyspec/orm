@@ -425,6 +425,35 @@
         "}"
       ],
       "unsupported": []
+    },
+    {
+      "id": "mysql-time-precision-after-alter",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table slots {",
+          "  id i64 identity",
+          "  at time(3)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `slots` ADD INDEX `ix_slots_at` (`at`)"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table slots {",
+        "  id i64 identity",
+        "  at time(3)",
+        "  primary key (id)",
+        "  index ix_slots_at (at)",
+        "}"
+      ],
+      "unsupported": []
     }
   ]
 }

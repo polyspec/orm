@@ -187,7 +187,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
      */
     private static function withoutIntroducers(string $clause): string
     {
-        return preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
+        // ALTER TABLE 은 time(p) column 과 만나는 time literal 에 0 으로 된 p 자리 소수도
+        // 붙이므로(probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
+        $clause = preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
+        return preg_replace("/\\\\'(\\d\\d:\\d\\d:\\d\\d)\\.0+\\\\'/", "\\'\$1\\'", $clause) ?? throw new \RuntimeException('time fraction pattern failed');
     }
 
     /** renderer CHECK 이 CHECK_CLAUSE 에 남는 형식 (docs/dialects.md "Introspection", "Checks"). */
