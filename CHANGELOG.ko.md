@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.5: Rust client는 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect한다. `orm::dbspec::introspect`가 sqlx connection에서 `orm_schema::dbspec`의 catalog query를 실행하고 문서와 미지원 객체를 돌려준다. `make dbspec-introspect-rust-check`가 round trip과 미지원 case를 실행한다.
+
 - T8.4.3: PHP client는 `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)`로 Go engine과 같은 catalog query를 써서 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-php-check`가 round trip과 미지원 case를 실행한다.
 
 - T8.4.4: TypeScript client는 Go engine과 같은 catalog query로 `introspectDbspec`을 통해 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-ts-check`가 round trip과 미지원 case를 실행한다.

@@ -73,11 +73,11 @@ fn sorted_by<T>(items: &[T], key: impl Fn(&T) -> &String) -> Vec<&T> {
     sorted
 }
 
-struct Renderer {
-    d: Dialect,
+pub(crate) struct Renderer {
+    pub d: Dialect,
 }
 
-const UUID_PATTERN: &str = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+pub(crate) const UUID_PATTERN: &str = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
 impl Renderer {
     /// Quotes an identifier.
@@ -214,7 +214,7 @@ impl Renderer {
     }
 
     /// The `default now` of a `datetime(p)` column.
-    fn now(&self, p: u8) -> String {
+    pub fn now(&self, p: u8) -> String {
         match (self.d, p) {
             (Dialect::MySql, _) => format!("CURRENT_TIMESTAMP({p})"),
             (Dialect::Postgres, _) => "statement_timestamp()".into(),
@@ -256,7 +256,7 @@ impl Renderer {
 
     /// The renderer CHECK of a column, or `None` when the dialect enforces
     /// the type itself.
-    fn type_check(&self, c: &Column) -> Option<String> {
+    pub fn type_check(&self, c: &Column) -> Option<String> {
         if c.identity.is_some() {
             return None;
         }
@@ -324,7 +324,7 @@ impl Renderer {
     }
 
     /// Writes the triggers of the `immutable` and `audit` settings.
-    fn triggers(&self, t: &Table) -> Vec<String> {
+    pub fn triggers(&self, t: &Table) -> Vec<String> {
         let Some(settings) = &t.settings else { return Vec::new() };
         let mut out = Vec::new();
         if settings.lines.iter().any(|l| matches!(l.setting, Setting::Immutable)) {
