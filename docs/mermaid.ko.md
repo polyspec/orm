@@ -25,6 +25,7 @@ erDiagram
 - column은 `<type> <name>` 뒤에 key와, 있으면 comment를 쓴다. type은 dbspec type이며, Mermaid type에는 쉼표가 없으므로 `decimal(p,s)`를 `decimal(p-s)`로 쓴다. key는 primary key column이면 `PK`, foreign key column이면 `FK`, unique key column이면 `UK`이고, 이 순서로 `, `로 구분한다. comment는 dbspec column 줄의 뒷부분, 곧 dbspec이 쓰는 대로의 `null`, `identity`, `default <literal>`을 담으며, 뒷부분이 비면 쓰지 않는다. `"`를 담은 default는 Mermaid comment에 쓸 수 없으므로 export는 그 default 없이 column을 쓰고 default를 보고한다.
 - foreign key는 참조되는 table에서 table로 가는 relationship이며, table 순, 그다음 foreign key 이름 순이다. key의 모든 column이 non-null이면 `<parent> ||--o{ <child>`, 아니면 `<parent> |o--o{ <child>`이고, label은 `"<name> (<columns>) references (<referenced columns>)"`다.
 - export는 comment, unique key(column만 표시한다), index, check, `restrict`가 아닌 foreign key action, settings, diagram, `use` 줄을 빼고 각각 보고한다. export는 text와, 뺀 것을 table, kind, 이름 순의 `[kind, table, name]` 목록으로 돌려준다.
+- comment는 그 comment가 달린 줄의 객체와 함께 `comment`로 보고한다. column 줄은 `[comment, <table>, <column>]`, unique key, index, foreign key, check 줄은 `[comment, <table>, <key 이름>]`이다. table 자신의 줄, 곧 table 줄, primary key 줄, setting 줄을 포함한 settings block, 닫는 괄호는 한 번 `[comment, <table>, <table>]`이다. 그 문서의 `use` 줄은 `[comment, "", <document>]`, diagram의 줄은 한 번 `[comment, "", <diagram>]`, 마지막 block 뒤의 comment는 `[comment, "", <export한 문서 이름>]`이다.
 
 ## Import
 
@@ -33,9 +34,9 @@ import는 표준 `erDiagram`을 호출자가 이름을 준 문서로 읽는다. 
 import가 옮기는 것과 `[kind, entity, name, reason]`으로 보고하는 것은 다음과 같다.
 
 - **Table.** entity는 이름이 dbspec 이름이고 primary key가 있으면 table이 된다. 아니면 `table`로 보고하고 그 relationship과 함께 뺀다.
-- **Column.** attribute는 이름이 dbspec 이름이고 type이 dbspec type(`decimal(p-s)` 포함)이면 column이 된다. 아니면 `column`으로 보고하고 뺀다. `[null] [identity] [default <literal>]` 형식의 comment는 그 부분들을 주고, 다른 comment는 `comment`로 보고하며 column은 default 없는 non-null이 된다.
+- **Column.** attribute는 이름이 dbspec 이름이고 type이 parameter가 dbspec 범위 안인 dbspec type(`decimal(p-s)` 포함)이면 column이 된다. 아니면 key를 읽기 전에 `column`으로 보고하고 빼므로, 그런 type의 key attribute는 key column이 아니다. 부분 사이에 공백이 하나씩 있는 `[null] [identity] [default <literal>]` 형식의 comment는 그 부분들을 주고, 다른 comment는 `comment`로 보고하며 column은 default 없는 non-null이 된다.
 - **Key.** attribute 순서의 `PK` attribute가 primary key다. `UK` attribute는 Mermaid가 어느 것이 한 key를 이루는지 말하지 않으므로 `unique`로 보고한다.
-- **Foreign key.** label이 `"<name> (<columns>) references (<referenced columns>)"`이고, column이 many 쪽의 `FK` attribute이며, 참조 column이 one 쪽에 있는 relationship은 action이 `restrict`인 foreign key `<name>`이 된다. 다른 relationship은 두 entity와 label과 함께 `relationship`으로 보고한다. 어떤 relationship도 쓰지 않는 `FK` attribute는 `foreign_key`로 보고한다. table의 primary key가 foreign key의 column으로 시작하지 않으면, import는 dbspec이 요구하는 index `ix_<table>_<_로 이은 columns>`를 더하고, Mermaid에는 index가 없으므로 `index`로 보고한다.
+- **Foreign key.** label이 `"<name> (<columns>) references (<referenced columns>)"`이고 column 수가 참조 column 수와 같으며, column이 many 쪽의 `FK` attribute이며, 참조 column이 one 쪽에 있는 relationship은 action이 `restrict`인 foreign key `<name>`이 된다. 다른 relationship은 두 entity와 label과 함께 `relationship`으로 보고한다. 어떤 relationship도 쓰지 않는 `FK` attribute는 `foreign_key`로 보고한다. table의 primary key가 foreign key의 column으로 시작하지 않으면, import는 dbspec이 요구하는 index `ix_<table>_<_로 이은 columns>`를 더하고, Mermaid에는 index가 없으므로 `index`로 보고한다. 같은 column의 foreign key들은 그런 index 하나를 함께 쓰며, 그 index는 한 번 더하고 한 번 보고한다.
 - **Cardinality.** dbspec은 cardinality를 foreign key에서 얻는다. cardinality가 export가 그 nullability에 쓰는 것과 다른 relationship은 `cardinality`로 보고한다.
 
 import한 문서는 parse되며, introspection처럼 parse가 거부한 줄의 객체는 그 dbspec diagnostic과 함께 보고되고 빠진다. 문서가 parse될 때까지 반복한다. export를 import하면 export가 보고한 것을 뺀 원래 문서에 보고한 index를 더한 문서가 나온다.

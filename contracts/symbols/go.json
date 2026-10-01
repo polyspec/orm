@@ -2564,6 +2564,7 @@
   "engine/dbspec/mermaid.go::mermaidRel#field.right": "string",
   "engine/dbspec/mermaid.go::mermaidRel#field.rightCard": "string",
   "engine/dbspec/mermaid.go::mermaidType": "func(t Type) string",
+  "engine/dbspec/mermaid.go::settingsCommented": "func(s *Settings) bool",
   "engine/dbspec/mermaid.go::splitNames": "func(s string) []string",
   "engine/dbspec/model.go::Action": "type Action string",
   "engine/dbspec/model.go::AuditSetting": "type AuditSetting struct { Comments []string History string Operation string Action string Previous string }",

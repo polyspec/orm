@@ -20,7 +20,8 @@ final class Mermaid
     private const ATTRIBUTE = '/^([A-Za-z][A-Za-z0-9_()\[\]-]*)[\t\n\f\r ]+([A-Za-z_*][A-Za-z0-9_-]*)((?:[\t\n\f\r ]+(?:PK|FK|UK)(?:[\t\n\f\r ]*,[\t\n\f\r ]*(?:PK|FK|UK))*)?)(?:[\t\n\f\r ]+"([^"]*)")?$/D';
     private const RELATION = '/^' . self::ENTITY_NAME . '[\t\n\f\r ]+(\|o|\|\||\}o|\}\|)(--|\.\.)(o\||\|\||o\{|\|\{)[\t\n\f\r ]+' . self::ENTITY_NAME . '[\t\n\f\r ]*:[\t\n\f\r ]*("[^"]*"|[^\t\n\f\r "]+)$/D';
     private const LABEL = '/^([a-z][a-z0-9_]*) \(([a-z0-9_, ]+)\) references \(([a-z0-9_, ]+)\)$/D';
-    private const SUFFIX = '/^(null)?(?: ?(identity))?(?: ?default (.+))?$/D';
+    // comment 뒤에 공백 하나를 붙인 text 에 맞춘다. 각 부분이 공백 하나로 끝나야 하므로 부분 사이에 공백이 정확히 하나 있다.
+    private const SUFFIX = '/^(?:(null) )?(?:(identity) )?(?:default (.+) )?$/D';
     private const KNOWN_TYPE = '/^(i16|i32|i64|bool|f64|text|bytes|uuid|date)$|^varchar\((\d+)\)$|^(time|datetime)\((\d)\)$|^decimal\((\d+)-(\d+)\)$/D';
     /** Go strings.TrimSpace 가 지우는 Unicode White_Space 의 UTF-8 byte 열. */
     private const SPACE = '(?:[\t\n\v\f\r ]|\xC2[\x85\xA0]|\xE1\x9A\x80|\xE2\x80[\x80-\x8A\xA8\xA9\xAF]|\xE2\x81\x9F|\xE3\x80\x80)';
@@ -33,16 +34,25 @@ final class Mermaid
         };
         foreach ($d->uses as $u) {
             $report('use', '', $u->document, 'export writes the tables of one document; used tables appear only as relationship ends');
+            if ($u->comments !== []) {
+                $report('comment', '', $u->document, 'Mermaid has no comments on use lines');
+            }
         }
         foreach ($d->diagrams as $g) {
             $report('diagram', '', $g->name, 'a dbspec diagram has no Mermaid form');
+            if ($g->comments !== [] || $g->closingComments !== [] || array_any($g->placements, static fn(Placement $p): bool => $p->comments !== [])) {
+                $report('comment', '', $g->name, 'Mermaid has no diagram comments');
+            }
+        }
+        if ($d->trailingComments !== []) {
+            $report('comment', '', $d->name, 'Mermaid has no comments after the last block');
         }
         $tables = $d->tables;
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
         $out = "erDiagram\n";
         foreach ($tables as $t) {
-            if ($t->comments !== [] || $t->closingComments !== []) {
-                $report('comment', $t->name, $t->name, 'Mermaid has no table comments');
+            if ($t->comments !== [] || $t->closingComments !== [] || ($t->primaryKey?->comments ?? []) !== [] || self::settingsCommented($t->settings)) {
+                $report('comment', $t->name, $t->name, 'Mermaid has no comments on the table, primary key and settings lines');
             }
             $out .= "    {$t->name} {\n";
             foreach ($t->columns as $c) {
@@ -83,19 +93,28 @@ final class Mermaid
                 $out .= "$line\n";
             }
             $out .= "    }\n";
+            $keyComment = static function (string $name, array $comments) use ($report, $t): void {
+                if ($comments !== []) {
+                    $report('comment', $t->name, $name, 'Mermaid has no key comments');
+                }
+            };
             foreach ($t->uniqueKeys as $u) {
                 $report('unique', $t->name, $u->name, 'Mermaid marks the columns of a unique key with UK but has no key');
+                $keyComment($u->name, $u->comments);
             }
             foreach ($t->indexes as $x) {
                 $report('index', $t->name, $x->name, 'Mermaid has no indexes');
+                $keyComment($x->name, $x->comments);
             }
             foreach ($t->checks as $k) {
                 $report('check', $t->name, $k->name, 'Mermaid has no checks');
+                $keyComment($k->name, $k->comments);
             }
             foreach ($t->foreignKeys as $f) {
                 if ($f->onDelete !== 'restrict' || $f->onUpdate !== 'restrict') {
                     $report('foreign_key', $t->name, $f->name, 'Mermaid has no foreign key actions');
                 }
+                $keyComment($f->name, $f->comments);
             }
             if ($t->settings !== null) {
                 $report('settings', $t->name, $t->name, 'Mermaid has no settings');
@@ -118,6 +137,12 @@ final class Mermaid
         }
         usort($dropped, static fn(Unsupported $a, Unsupported $b): int => strcmp("{$a->table}\0{$a->kind}\0{$a->name}", "{$b->table}\0{$b->kind}\0{$b->name}"));
         return new MermaidExportResult($out, $dropped);
+    }
+
+    /** settings block 의 여는 줄, setting 줄, 닫는 줄 중 하나에 comment 가 있는지 알려준다. */
+    private static function settingsCommented(?Settings $s): bool
+    {
+        return $s !== null && ($s->comments !== [] || $s->closingComments !== [] || array_any($s->settings, static fn(Setting $x): bool => $x->comments !== []));
     }
 
     /** Mermaid type 에는 쉼표가 없으므로 decimal(p,s) 를 decimal(p-s) 로 쓴다. */
@@ -201,7 +226,7 @@ final class Mermaid
                 }
                 $column = ['name' => $a['name'], 'type' => $type, 'null' => false, 'identity' => false, 'default' => ''];
                 if ($a['comment'] !== '') {
-                    if (preg_match(self::SUFFIX, $a['comment'], $s) === 1) {
+                    if (preg_match(self::SUFFIX, $a['comment'] . ' ', $s) === 1) {
                         [$column['null'], $column['identity'], $column['default']] = [($s[1] ?? '') !== '', ($s[2] ?? '') !== '', $s[3] ?? ''];
                     } else {
                         $c->report('comment', $e['name'], $a['name'], 'the comment ' . self::quoted($a['comment']) . ' is not a dbspec column suffix');
@@ -252,9 +277,10 @@ final class Mermaid
             }
             $columns = self::splitNames($m[2]);
             $refs = self::splitNames($m[3]);
+            // column 수가 참조 column 수와 다르면 foreign key 가 아니므로 column 을 보지 않는다.
             $ok = count($columns) === count($refs);
             $nullable = false;
-            foreach ($columns as $i => $column) {
+            foreach ($ok ? $columns : [] as $i => $column) {
                 $cc = $columnIn($ct, $column);
                 if ($cc === null || !$isForeignKey($child, $column) || $columnIn($pt, $refs[$i]) === null) {
                     $ok = false;
@@ -277,8 +303,10 @@ final class Mermaid
             foreach ($columns as $column) {
                 $usedForeignKeys[$child][$column] = true;
             }
-            if (array_slice($ct->primary, 0, count($columns)) !== $columns) {
-                $index = "ix_{$child}_" . implode('_', $columns);
+            $index = "ix_{$child}_" . implode('_', $columns);
+            // 같은 column 의 foreign key 가 이미 더한 index 는 다시 더하지 않는다.
+            $indexed = array_any($ct->indexes, static fn(array $x): bool => $x['name'] === $index);
+            if (array_slice($ct->primary, 0, count($columns)) !== $columns && !$indexed) {
                 $ct->indexes[] = ['name' => $index, 'columns' => $columns, 'desc' => array_fill(0, count($columns), false)];
                 $c->report('index', $child, $index, 'Mermaid has no indexes; the foreign key needs one');
             }
@@ -304,18 +332,41 @@ final class Mermaid
         return array_map(static fn(string $p): string => trim($p, " \t\n\v\f\r"), explode(',', $s));
     }
 
-    /** Mermaid type 이 dbspec type 이면 그 ColumnType, 아니면 null. */
+    /**
+     * Mermaid type 이 dbspec type 이면 그 ColumnType, 아니면 null. 수가 dbspec 범위
+     * (varchar 1-16383, time 과 datetime 0-6, decimal p 1-18 과 s 0-p)를 벗어나면 dbspec
+     * type 이 아니다. 범위를 여기서 정하므로 key column 도 모든 client 에서 같은 지점에서 빠진다.
+     */
     private static function importType(string $s): ?ColumnType
     {
         if (preg_match(self::KNOWN_TYPE, $s, $m) !== 1) {
             return null;
         }
-        return match (true) {
-            ($m[1] ?? '') !== '' => new ColumnType($m[1]),
-            ($m[2] ?? '') !== '' => new ColumnType('varchar', [(int) $m[2]]),
-            ($m[3] ?? '') !== '' => new ColumnType($m[3], [(int) $m[4]]),
-            default => new ColumnType('decimal', [(int) $m[5], (int) $m[6]]),
-        };
+        if (($m[1] ?? '') !== '') {
+            return new ColumnType($m[1]);
+        }
+        if (($m[2] ?? '') !== '') {
+            $length = self::within($m[2], 1, 16383);
+            return $length === null ? null : new ColumnType('varchar', [$length]);
+        }
+        if (($m[3] ?? '') !== '') {
+            $precision = self::within($m[4], 0, 6);
+            return $precision === null ? null : new ColumnType($m[3], [$precision]);
+        }
+        $precision = self::within($m[5], 1, 18);
+        $scale = $precision === null ? null : self::within($m[6], 0, $precision);
+        return $scale === null ? null : new ColumnType('decimal', [$precision, $scale]);
+    }
+
+    /** 숫자 text 가 lo 이상 hi 이하인 값이면 그 값, 아니면 null. 9자리를 넘는 수는 범위 밖이다. */
+    private static function within(string $digits, int $lo, int $hi): ?int
+    {
+        $digits = ltrim($digits, '0');
+        if (strlen($digits) > 9) {
+            return null;
+        }
+        $n = (int) $digits;
+        return $n >= $lo && $n <= $hi ? $n : null;
     }
 
     /**
