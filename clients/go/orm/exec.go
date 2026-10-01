@@ -707,8 +707,9 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
 	version := int32(1)
+	// 숨은 column은 entity의 aes_version setting column뿐이다.
 	for _, col := range st.Assemble.Columns {
-		if col.Hidden && col.Column == "aes_key_version" {
+		if col.Hidden {
 			var err error
 			if version, err = rowVersion(vals[col.Index]); err != nil {
 				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, col.Name, err)
@@ -725,10 +726,15 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 			continue
 		}
 		var err error
-		if len(sc.host) > 0 {
-			if v, err = HostDecodeVersioned(v, sc.host, version, keyring); err != nil {
-				return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
-			}
+		// aes가 없는 host stage(hex, ip)는 key 없이 decode한다.
+		switch {
+		case slices.Contains(sc.host, "aes"):
+			v, err = HostDecodeVersioned(v, sc.host, version, keyring)
+		case len(sc.host) > 0:
+			v, err = hostDecode(v, sc.host, "")
+		}
+		if err != nil {
+			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
 		}
 		if len(sc.codec) > 0 {
 			if v, err = Decode(sc.codec, v); err != nil {
