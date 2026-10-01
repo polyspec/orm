@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.1.1: the Rust client exposes the parsed dbspec model in `orm_schema::dbspec::model`, as Go, PHP and TypeScript expose theirs.
+
 - T8.5.3: the PHP client parses, chains, diffs and writes schema plans through `Orm\Dbspec\Dbspec`; `make dbspec-plan-php-check` applies them to MySQL, PostgreSQL and SQLite.
 
 - T8.2.6.1.3: the Korean protocol page links the manifest section by its ASCII anchor.

@@ -12,7 +12,7 @@ mod emit;
 mod introspect;
 mod lexer;
 mod literal;
-mod model;
+pub mod model;
 mod parser;
 mod plan;
 mod plan_diff;
