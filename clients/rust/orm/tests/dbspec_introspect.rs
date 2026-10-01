@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 const PROBE_DEADLINE: Duration = Duration::from_secs(60);
 
 /// Go가 단언하는 dialect별 catalog query 수.
-const QUERY_COUNTS: [(&str, usize); 3] = [("mysql", 8), ("postgres", 7), ("sqlite", 3)];
+const QUERY_COUNTS: [(&str, usize); 3] = [("mysql", 9), ("postgres", 7), ("sqlite", 3)];
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
