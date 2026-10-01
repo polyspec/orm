@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.2.6.4.1: clients/rust/Cargo.lock이 다시 workspace manifest와 일치해 `make rust-check`를 비롯한 `--locked` cargo 명령이 실행된다.
+
 - T8.2, T8.2.6, T8.3, T8.5: 끝난 하위 항목과 함께 닫는다. T7.17.2.10.3과 T7.17.2.10.3.1은 dbspec으로 대체되어 닫는다.
 
 - T8.2.6.4: dbspec 문서 집합이 유일한 schema source다. Mermaid schema source, 그 manifest와 `orm-schema-v1` SQL, 그것을 읽던 모든 schema CLI 명령과 PhysicalGraph record를 모든 client에서 제거했고, CLI는 Go, PHP, TypeScript에서 `orm-gen`이다.
