@@ -15,7 +15,7 @@ TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check
+check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check
 	$(WITH_TEST_ENV) go test ./...
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -140,6 +140,14 @@ dbspec-apply-rust-check:
 dbspec-plan-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-plan-physical.mjs
+
+# dbspec-apply-ts-check builds the TypeScript client and applies the plan
+# chain of dbspec-apply-check through its applyPlans and recoverPlans with the
+# same history, drift, lock, rollback, verification and MySQL recovery runs.
+.PHONY: dbspec-apply-ts-check
+dbspec-apply-ts-check:
+	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-apply-physical.mjs
 
 # dbspec-plan-rust-check applies the same cases through the plan statements,
 # the renderer and orm::dbspec::introspect of the Rust client.
@@ -420,13 +428,13 @@ ts-min-check:
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check builds the TypeScript client, runs the shared dbspec
-# vectors, the plan vectors and the rules they do not cover yet, then parses
-# and emits the stress document of tests/dbspec/stress.mjs twice, printing
-# both timings.
+# vectors, the plan vectors, the Mermaid vectors and the rules they do not
+# cover yet, then parses and emits the stress document of
+# tests/dbspec/stress.mjs twice, printing both timings.
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs
+	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 
