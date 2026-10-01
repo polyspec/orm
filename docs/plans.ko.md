@@ -75,6 +75,20 @@ MySQL은 column을 렌더링한 전체 정의의 `MODIFY COLUMN`으로 바꾸고
 
 SQLite는 맞춘 table의 이름, column, foreign key, check 중 하나라도 바뀌면 table을 다시 만든다. target table을 `"$rebuild"`로 만들고, 맞춘 column을 `INSERT … SELECT` 하나로 옮기고, table을 지우고, `"$rebuild"`에 원래 table 이름을 주고, index를 만들고 trigger를 다시 만든다. rename이 먼저 실행되므로 다른 table의 foreign key가 따라온다. 정밀도가 커지는 `time(p)`나 `datetime(p)` column은 0인 소수 자리를 덧붙여 옮긴다. index와 unique key만, 또는 trigger만 바뀌면 다시 만들지 않는다. SQLite는 foreign key를 끄고 plan을 실행한 뒤 검사한다(`PRAGMA foreign_key_check`가 row를 돌려주지 않는다).
 
+## Apply
+
+apply는 database가 아직 적용하지 않은 chain의 plan을 connection 하나에서 plan 하나씩 실행한다.
+
+1. **Lock.** MySQL은 `GET_LOCK('dbspec$plans', 0)`, PostgreSQL은 `pg_try_advisory_lock(hashtext('dbspec$plans'))`를 잡는다. SQLite는 foreign key를 끄고 apply 전체를 `BEGIN IMMEDIATE` transaction 하나에서 실행한다. 다른 session이 잡은 lock은 `locked` error이며 아무것도 바뀌지 않는다.
+2. **History.** table `dbspec$plans`는 plan마다 row 하나를 기록한다: `name`, `from_hash`, `to_hash`, `state`(`running`이나 `done`), `step`(끝난 statement 수), `steps`, `applied_at`(UTC, `YYYY-MM-DDTHH:MM:SSZ`). apply는 이 table이 없으면 만든다. 이름에 dbspec 이름에는 없는 `$`가 있고, introspection은 이 table을 보고하지 않고 뺀다.
+3. **State.** database는 chain 순서에서 마지막 `done` row의 `to_hash`에 있거나 비어 있다. `running` row는 plan과 step을 적은 `interrupted` error다. apply는 database를 introspect해 `schemaHash`가 그 state이고 미지원 객체가 없기를 요구하며, 빈 state에는 table이 없어야 한다. 그렇지 않으면 두 hash를 적은 `drift` error다. state를 담지 않은 chain은 `chain` error다.
+4. **Statement.** 다음 plan마다 apply는 `running` row를 쓰고 statement를 실행하며, 각 statement 뒤에 `step`을 기록한다. PostgreSQL은 plan 하나를 row와 함께 transaction 하나에서 실행한다. SQLite는 plan마다 `PRAGMA foreign_key_check`가 row를 돌려주지 않기를 요구한다. MySQL은 statement마다 따로 commit한다.
+5. **검증.** apply는 database를 introspect한다. `schemaHash`가 plan의 `to` hash와 같고 미지원 객체가 없어야 하며, 아니면 `verify` error이고 PostgreSQL은 plan을, SQLite는 apply 전체를 되돌린다. 그다음 row가 `done`이 된다.
+
+apply는 일어난 일을 event로 알린다: plan이 시작할 때 statement 수와 함께 `plan`, 각 statement 앞뒤로 index와 text와 함께 `statement`와 `applied`, 그리고 `verified`, `done`이다. error를 돌려주는 event handler는 그 지점에서 apply를 멈춘다.
+
+**Recovery.** `running` row를 남길 수 있는 것은 MySQL뿐이다. statement가 commit된 뒤 다음 statement 전에 connection이 끝난 경우다. recover는 row를 읽는다. `step`이 `k`이면 `k` 앞의 statement는 끝났고 statement `k`는 실행됐을 수 있다. plan의 MySQL statement는 각각 catalog가 보여 주는 효과 하나를 가진다: 있거나 없는 table, column, index, constraint, trigger이며, `MODIFY COLUMN`은 다시 실행해도 된다. recover는 statement `k`의 효과를 확인해 있으면 `k + 1`부터, 없으면 `k`부터 이어 가고, 검증한 뒤 row를 `done`으로 바꾼다. 실패한 statement는 index와 database error와 함께 보고하며, MySQL에서는 그 row가 `running`으로 남는다. `running` row가 없으면 recover는 아무것도 바꾸지 않고, chain 전체를 적용한 database에서 apply는 아무것도 바꾸지 않는다.
+
 ## 검증
 
-`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다.
+`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-apply-check`는 history, lock, drift, 검증, recovery와 함께 chain을 세 database에 적용한다.

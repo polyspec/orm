@@ -79,7 +79,13 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [ ] T8.5.4 Parse, chain, diff and write plans in the TypeScript client (requires T8.5.1).
 - [ ] T8.5.5 Parse, chain, diff and write plans in the Rust client (requires T8.5.1).
 - [ ] T8.5.6 Compare the plans of the four clients in `make dbspec-compare-check` (requires T8.5.2-T8.5.5).
-- [ ] T8.6 Apply plans with lock, step journal, step events, verification and recovery in every client (requires T8.5). Acceptance: apply then introspect then diff is empty on all three databases; an interrupted non-transactional step is detected from the catalog.
+- [~] T8.6 Apply plans with lock, step journal, step events, verification and recovery in every client (requires T8.5). Acceptance: apply then introspect then diff is empty on all three databases; an interrupted non-transactional step is detected from the catalog.
+- [o] T8.6.1 Specify applying plans in docs/plans.md "Apply" and its Korean pair: the lock, the history table `dbspec$plans` that introspection leaves out, the state and drift checks, the transactions of each dialect, verification, events and MySQL recovery from statement effects (requires T8.5.1). Evidence: docs/plans.md "Apply" and docs/plans.ko.md state the MySQL and PostgreSQL locks and the SQLite transaction, the history table and its columns, the state, drift and chain errors, the transactions of each dialect, verification with nothing unsupported, the five events, idempotent apply and recover, and recovery from the catalog effect of the interrupted MySQL statement; docs/dialects.md leaves `dbspec$plans` out of introspection; docs-rules-check passes.
+- [ ] T8.6.2 Apply and recover plans in the Go engine (requires T8.6.1).
+- [ ] T8.6.3 Apply and recover plans in the PHP client (requires T8.6.1).
+- [ ] T8.6.4 Apply and recover plans in the TypeScript client (requires T8.6.1).
+- [ ] T8.6.5 Apply and recover plans in the Rust client (requires T8.6.1).
+- [ ] T8.6.6 Continue a chain that another client applied, in every pair of clients (requires T8.6.2-T8.6.5).
 - [ ] T8.7 Export standard Mermaid `erDiagram` and import it with a complete list of dropped information (requires T8.2).
 - [ ] T8.8 Merge `feat/dbspec-T8` into `main` and remove the worktree (requires T8.0–T8.7). Acceptance: obsolete development rules (`auto`, `COLUMN_UNSELECTED`, Mermaid as source, full-suite timing) are rewritten.
 - [ ] T9 Implement the dbspec interface in a PHP extension as a fifth implementation of the same interface (requires T8.2.5). Cause: a native PHP extension is planned; it must satisfy `Dbspec.parse`, `Dbspec.emit` and `DbspecDiagnostic` and every shared case like the other clients.

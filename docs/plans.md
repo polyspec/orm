@@ -75,6 +75,20 @@ MySQL alters a column with `MODIFY COLUMN` and its full rendered definition; Pos
 
 SQLite rebuilds a matched table when its name, a column, a foreign key or a check changes: it creates the target table as `"$rebuild"`, copies the matched columns with one `INSERT … SELECT`, drops the table, renames `"$rebuild"` to the table's name, creates its indexes and recreates its triggers. Renames run first, so other tables' foreign keys follow them. A `time(p)` or `datetime(p)` column whose precision grows is copied with zero fraction digits appended. Index and unique key changes alone, and trigger changes alone, do not rebuild. SQLite runs a plan with foreign keys off and checks them afterwards (`PRAGMA foreign_key_check` returns no row).
 
+## Apply
+
+Apply runs, one plan at a time, the plans of a chain that a database has not applied, on one connection.
+
+1. **Lock.** MySQL takes `GET_LOCK('dbspec$plans', 0)` and PostgreSQL `pg_try_advisory_lock(hashtext('dbspec$plans'))`; SQLite turns foreign keys off and runs the whole apply in one `BEGIN IMMEDIATE` transaction. A lock that another session holds is a `locked` error; nothing changes.
+2. **History.** The table `dbspec$plans` records one row per plan: `name`, `from_hash`, `to_hash`, `state` (`running` or `done`), `step` (the statements done), `steps` and `applied_at` (UTC, `YYYY-MM-DDTHH:MM:SSZ`). Apply creates it when it is missing. Its name has a `$`, which no dbspec name has, and introspection leaves it out without reporting it.
+3. **State.** The database is at the `to_hash` of the last `done` row in chain order, or empty. A `running` row is an `interrupted` error naming the plan and step. Apply introspects the database and requires its `schemaHash` to be that state; otherwise it is a `drift` error naming both hashes. A chain that does not contain the state is a `chain` error.
+4. **Statements.** For each later plan, apply writes its `running` row and runs its statements, recording `step` after each. PostgreSQL runs a plan, with its row, in one transaction; SQLite requires `PRAGMA foreign_key_check` to return no row after each plan; MySQL commits every statement on its own.
+5. **Verification.** Apply introspects the database; its `schemaHash` must equal the plan's `to` hash, and nothing unsupported; otherwise it is a `verify` error, PostgreSQL rolls the plan back and SQLite the whole apply. Then the row becomes `done`. A state, too, is checked with nothing unsupported, and the empty state has no table.
+
+Apply reports each occurrence as an event: `plan` when a plan starts (with its number of statements), `statement` before and `applied` after each statement (with its index and text), `verified` and `done`. An event handler that returns an error stops apply at that point.
+
+**Recovery.** Only MySQL can leave a `running` row: a statement committed, but the connection ended before the next. Recover reads the row; `step` is `k` when statements before `k` are done and statement `k` may have run. Each MySQL statement of a plan has one effect that the catalog shows: a table, column, index, constraint or trigger that is present or absent, and `MODIFY COLUMN`, which can run again. Recover checks the effect of statement `k`, continues from `k + 1` when it is there and from `k` when it is not, then verifies and marks the row `done`. A failed statement is reported with its index and the database error, and on MySQL its row stays `running`. Recover with no `running` row changes nothing, and apply on a database that has applied the whole chain changes nothing.
+
 ## Verification
 
-`make dbspec-go-check` runs the cases of `tests/dbspec/plans.json` through the Go engine; `make dbspec-plan-check` applies every case to MySQL, PostgreSQL and SQLite: it renders the source, runs the `before` steps, applies the statements, runs the `after` steps, and requires the introspected schema text to equal the plan's target.
+`make dbspec-go-check` runs the cases of `tests/dbspec/plans.json` through the Go engine; `make dbspec-plan-check` applies every case to MySQL, PostgreSQL and SQLite: it renders the source, runs the `before` steps, applies the statements, runs the `after` steps, and requires the introspected schema text to equal the plan's target. `make dbspec-apply-check` applies chains with history, lock, drift, verification and recovery on the three databases.

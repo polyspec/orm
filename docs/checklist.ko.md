@@ -79,7 +79,13 @@
 - [ ] T8.5.4 TypeScript client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
 - [ ] T8.5.5 Rust client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
 - [ ] T8.5.6 `make dbspec-compare-check`에서 네 client의 plan을 비교한다 (T8.5.2-T8.5.5 필요).
-- [ ] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
+- [~] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
+- [o] T8.6.1 plan 적용을 docs/plans.md "Apply"와 Korean pair에 정한다: lock, introspection이 빼는 history table `dbspec$plans`, state와 drift 검사, dialect별 transaction, 검증, event, statement 효과에 따른 MySQL recovery (T8.5.1 필요). Evidence: docs/plans.md "Apply"와 docs/plans.ko.md는 MySQL과 PostgreSQL lock과 SQLite transaction, history table과 column, state·drift·chain error, dialect별 transaction, 미지원 객체 없는 검증, event 다섯 가지, 멱등한 apply와 recover, 중단된 MySQL statement의 catalog 효과에 따른 recovery를 정한다. docs/dialects.md는 introspection에서 `dbspec$plans`를 뺀다. docs-rules-check가 통과한다.
+- [ ] T8.6.2 Go engine에서 plan을 적용하고 복구한다 (T8.6.1 필요).
+- [ ] T8.6.3 PHP client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
+- [ ] T8.6.4 TypeScript client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
+- [ ] T8.6.5 Rust client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
+- [ ] T8.6.6 다른 client가 적용한 chain을 모든 client 쌍에서 이어 적용한다 (T8.6.2-T8.6.5 필요).
 - [ ] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
 - [ ] T8.8 `feat/dbspec-T8`을 `main`에 merge하고 worktree를 제거한다(T8.0–T8.7 선행). 완료 기준: 낡은 개발 규칙(`auto`, `COLUMN_UNSELECTED`, Mermaid가 source라는 규칙, full suite 실행 시점)을 다시 쓴다.
 - [ ] T9 dbspec 인터페이스를 PHP 확장으로, 같은 contract의 다섯 번째 구현으로 만든다(T8.2.5 선행). 원인: native PHP 확장을 계획한다. 다른 client처럼 `Dbspec.parse`, `Dbspec.emit`, `DbspecDiagnostic`과 모든 공유 case를 만족해야 한다.
