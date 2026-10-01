@@ -17,7 +17,7 @@ func PlanStatements(source *Document, p *Plan, dialect Dialect) ([]string, []Dia
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
-	w := &planWriter{d: d, r: renderer{d: dialect, tables: d.target}, rs: renderer{d: dialect, tables: d.source}}
+	w := &planWriter{d: d, r: renderer{d: dialect}}
 	return w.statements(), nil
 }
 
@@ -78,7 +78,7 @@ func (w *planWriter) statements() []string {
 	if !sqlite {
 		for _, name := range d.matched {
 			src := d.source[d.tableOf[name]]
-			before, after := w.rendererChecks(w.rs, src), w.rendererChecks(w.r, d.target[name])
+			before, after := w.rendererChecks(src), w.rendererChecks(d.target[name])
 			rendererChecks[name] = [2]map[string]string{before, after}
 			for _, n := range sortedKeys(before) {
 				if after[n] != before[n] {
@@ -274,7 +274,7 @@ func (w *planWriter) alterColumn(table string, from, to Column) {
 }
 
 func (w *planWriter) dropTriggers(t *Table) {
-	for _, s := range w.rs.triggers(t) {
+	for _, s := range w.r.triggers(t) {
 		if !strings.HasPrefix(s, "CREATE TRIGGER ") {
 			continue
 		}
@@ -344,10 +344,10 @@ func (w *planWriter) addObject(table string, o objectRef) {
 }
 
 // rendererChecks는 table의 renderer CHECK 이름과 식이다.
-func (w *planWriter) rendererChecks(r renderer, t *Table) map[string]string {
+func (w *planWriter) rendererChecks(t *Table) map[string]string {
 	out := map[string]string{}
 	for _, c := range t.Columns {
-		if check := r.typeCheck(c); check != "" {
+		if check := w.r.typeCheck(c); check != "" {
 			out[t.Name+"$"+c.Name] = check
 		}
 	}

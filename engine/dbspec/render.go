@@ -29,13 +29,8 @@ func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
 	if _, diagnostics := checkSet(documents); len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
-	r := renderer{d: dialect, tables: map[string]*Table{}}
+	r := renderer{d: dialect}
 	ordered := useOrder(documents)
-	for _, document := range ordered {
-		for i := range document.Tables {
-			r.tables[document.Tables[i].Name] = &document.Tables[i]
-		}
-	}
 	var out []string
 	for _, document := range ordered {
 		for i := range document.Tables {
@@ -96,8 +91,7 @@ func useOrder(documents []*Document) []*Document {
 }
 
 type renderer struct {
-	d      Dialect
-	tables map[string]*Table
+	d Dialect
 }
 
 // q quotes an identifier.

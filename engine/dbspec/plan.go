@@ -25,6 +25,8 @@ type Plan struct {
 	// Schema는 target schema text를 parse한 문서이고 To는 그 schemaHash다.
 	Schema *Document
 	To     string
+	// schemaText는 parse한 target schema text이며 EmitPlan이 그대로 쓴다.
+	schemaText string
 }
 
 // TableRename은 `rename table <old> <new>`다.
@@ -138,7 +140,7 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 	if manifest.SchemaHash == p.From {
 		return fail(2, "the plan starts from its own target schema")
 	}
-	p.Schema, p.To = document, manifest.SchemaHash
+	p.Schema, p.To, p.schemaText = document, manifest.SchemaHash, schemaText
 	return p, nil
 }
 
@@ -178,8 +180,7 @@ func EmitPlan(p *Plan) string {
 		b.WriteString(h + "\n")
 	}
 	b.WriteString("\n")
-	manifest, _ := ManifestOf([]*Document{p.Schema})
-	b.WriteString(manifest.SchemaText)
+	b.WriteString(p.schemaText)
 	return b.String()
 }
 
