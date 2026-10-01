@@ -110,7 +110,12 @@ invalid('syntax and order', [
   ['order', 13, 1],
   ['syntax', 17, 1],
 ]);
-invalid('unclosed block', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)'], [['syntax', 5, 1]]);
+invalid('unclosed block', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)'], [['syntax', 2, 13]]);
+invalid('unclosed settings and diagram blocks', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)', '  settings {'], [
+  ['syntax', 2, 13],
+  ['syntax', 5, 12],
+]);
+invalid('unclosed diagram', ['dbspec 1 shop', ...users, 'diagram main {', '  users at 0 0'], [['syntax', 6, 14]]);
 invalid('unterminated string', ['dbspec 1 shop', 'table users {', "  id varchar(8) default 'x", '  primary key (id)', '}'], [['syntax', 3, 25]]);
 
 // names
@@ -334,7 +339,9 @@ invalid('settings', [
   ['setting', 19, 17],
   ['setting', 20, 22],
   ['setting', 21, 17],
-  ['setting', 22, 17],
+  ['setting', 22, 17], // name has no aes stage
+  ['setting', 22, 22], // the index column is aes-encoded
+  ['setting', 22, 22], // and is not the only column of an index
   ['setting', 23, 16],
   ['setting', 24, 26],
   ['setting', 25, 5],
@@ -446,7 +453,7 @@ normalize('settings order and comments move with their lines', [
   '    codec b gz',
   '    aes_version v',
   '    immutable',
-  '  # closing the settings',
+  '    # closing the settings',
   '  }',
   '}',
   '',
@@ -552,3 +559,157 @@ rule('inputs are strings and documents are frozen', () => {
   assert.equal(api.parseDbspec, parseDbspec);
   assert.equal(api.emitDbspec, emitDbspec);
 });
+
+// settled rules (T8.1.1)
+invalid('codec storage and stage order', [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  doc text',
+  '  blob bytes',
+  '  note varchar(64)',
+  '  packed text',
+  '  primary key (id)',
+  '  settings {',
+  '    codec doc gz ordered_json',
+  '    codec blob base64',
+  '    codec note serialize',
+  '    codec packed ordered_json gz',
+  '  }',
+  '}',
+], [
+  ['setting', 10, 18], // ordered_json is not first (the last stage stores text, so doc fits)
+  ['setting', 11, 11], // base64 stores text in a bytes column
+  ['setting', 13, 11], // gz stores bytes in a text column
+]);
+invalid('blind index shape', [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  version i32',
+  '  email bytes',
+  '  short varchar(63)',
+  '  loose varchar(64) null',
+  '  hash varchar(64)',
+  '  primary key (id)',
+  '  index ix_t_hash (hash)',
+  '  index ix_t_pair (short, loose)',
+  '  settings {',
+  '    codec email aes',
+  '    aes_version version',
+  '    blind_index email short',
+  '    blind_index email loose',
+  '  }',
+  '}',
+], [
+  ['setting', 15, 23], // varchar(63) is too short
+  ['setting', 15, 23], // and not the only column of an index
+  ['setting', 16, 5], // a second blind_index for email repeats
+]);
+normalize('blind index accepted', [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  version i32',
+  '  email bytes null',
+  '  hash varchar(64) null',
+  '  primary key (id)',
+  '  unique uq_t_hash (hash)',
+  '  settings {',
+  '    blind_index email hash',
+  '    aes_version version',
+  '    codec email ordered_json aes',
+  '  }',
+  '}',
+], [
+  'dbspec 1 shop',
+  '',
+  'table t {',
+  '  id i64 identity',
+  '  version i32',
+  '  email bytes null',
+  '  hash varchar(64) null',
+  '  primary key (id)',
+  '  unique uq_t_hash (hash)',
+  '  settings {',
+  '    codec email ordered_json aes',
+  '    aes_version version',
+  '    blind_index email hash',
+  '  }',
+  '}',
+]);
+invalid('tabs, reserved words and table-named constraints', [
+  'dbspec 1 shop',
+  '\ttable users {',
+  '  id i64 identity',
+  '  null i64',
+  '  primary key (id)',
+  '  unique orders (id)',
+  '}',
+  'table orders {',
+  '  id i64 identity',
+  '  primary key (id)',
+  '}',
+], [
+  ['syntax', 2, 1], // the tab is reported and the line is still read
+  ['name.format', 4, 3],
+  ['name.duplicate', 8, 7], // the later of the constraint and the table
+]);
+invalid('constraint named like a used table', ['dbspec 1 shop', 'use core { users }', 'table orders {', '  id i64 identity', '  primary key (id)', '  index teams (id)', '}'], [
+  ['name.duplicate', 6, 9],
+], { core });
+invalid('references to failed lines report nothing more', [
+  'dbspec 1 shop',
+  'use core { users users2',
+  'table orders {',
+  '  id i64 identity',
+  '  user_id (i64',
+  '  primary key (id)',
+  '  index ix_orders_user (user_id)',
+  '  foreign key fk_orders_user (user_id) references users (id)',
+  '  check ck_orders_user (user_id > 0)',
+  '}',
+], [
+  ['syntax', 2, 18],
+  ['syntax', 5, 11],
+]);
+normalize('empty settings block keeps its comments', [
+  'dbspec 1 shop',
+  'table users {',
+  '  id i64 identity',
+  '  primary key (id)',
+  '  # no settings yet',
+  '  settings {',
+  '    # inside',
+  '  }',
+  '}',
+], [
+  'dbspec 1 shop',
+  '',
+  'table users {',
+  '  id i64 identity',
+  '  primary key (id)',
+  '  # no settings yet',
+  '  # inside',
+  '}',
+]);
+normalize('f64 shortest decimal without exponent', [
+  'dbspec 1 shop',
+  'table t {',
+  '  id i64 identity',
+  '  big f64 default 1000000000000000000000000',
+  '  tiny f64 default 0.0000001',
+  '  third f64 default 0.33333333333333333333',
+  '  primary key (id)',
+  '}',
+], [
+  'dbspec 1 shop',
+  '',
+  'table t {',
+  '  id i64 identity',
+  '  big f64 default 1000000000000000000000000',
+  '  tiny f64 default 0.0000001',
+  '  third f64 default 0.3333333333333333',
+  '  primary key (id)',
+  '}',
+]);

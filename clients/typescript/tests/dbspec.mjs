@@ -29,14 +29,17 @@ export function vector(name, body) {
   });
 }
 
-function join(lines, crlf) {
+// join writes the lines with LF, with CRLF when crlf is true, or with
+// alternating CRLF and LF and no final line end when mixed is true.
+function join(lines, crlf, mixed = false) {
+  if (mixed) return lines.map((line, i) => (i === lines.length - 1 ? line : line + (i % 2 === 0 ? '\r\n' : '\n'))).join('');
   const end = crlf ? '\r\n' : '\n';
   return lines.join(end) + end;
 }
 
 function documentSet(c) {
   const set = {};
-  for (const [name, lines] of Object.entries(c.documents)) if (name !== c.main) set[name] = join(lines, c.crlf === true);
+  for (const [name, lines] of Object.entries(c.documents)) if (name !== c.main) set[name] = join(lines, c.crlf === true, c.mixed === true);
   return set;
 }
 
@@ -53,7 +56,7 @@ assert.equal(new Set(ids).size, ids.length, 'unique case ids');
 
 for (const c of cases.canonical) {
   vector(`canonical ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true);
+    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const set = documentSet(c);
     const emitted = emitDbspec(parsed(text, set));
     assert.equal(emitted, text);
@@ -63,7 +66,7 @@ for (const c of cases.canonical) {
 
 for (const c of cases.normalize) {
   vector(`normalize ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true);
+    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const set = documentSet(c);
     const canonical = join(c.canonical, false);
     const emitted = emitDbspec(parsed(text, set));
@@ -74,7 +77,7 @@ for (const c of cases.normalize) {
 
 for (const c of cases.invalid) {
   vector(`invalid ${c.id}`, () => {
-    const text = join(c.documents[c.main], c.crlf === true);
+    const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
     const result = parseDbspec(text, documentSet(c));
     assert.equal(result.document, null);
     assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
