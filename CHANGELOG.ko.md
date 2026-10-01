@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.2: Go engine은 일정한 수의 catalog query로 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-check`가 round trip과 미지원 case를 실행한다.
+
 - T8.4.1: docs/dialects.md는 MySQL, PostgreSQL, SQLite를 dbspec 문서 하나로 introspect하는 방법과 미지원으로 보고하는 객체를 정한다. tests/dbspec/introspect.json이 미지원 case를 가진다.
 
 - T13: `make git-check`는 commit 제목을 AGENTS.md로 검사한다. `type(scope): Subject (#id)`, type feat, fix, docs, style, refactor, test, chore, 대문자로 시작하고 끝 마침표가 없는 50자 이내 제목이다. merge commit은 git이 쓰는 제목을 둔다.
