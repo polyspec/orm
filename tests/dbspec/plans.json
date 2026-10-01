@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. docs/plans.md.",
+  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. chains cases parse their plans and order them into one chain, or report exactly the listed chain diagnostics. docs/plans.md.",
   "cases": [
     {
       "id": "create-from-empty",
@@ -1315,6 +1315,207 @@
       ],
       "errors": [
         "table t changes its primary key; it needs a new table"
+      ]
+    }
+  ],
+  "chains": [
+    {
+      "id": "ordered",
+      "plans": [
+        [
+          "dbplan 1 rename_table_and_column",
+          "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+          "rename table users clients",
+          "rename column clients.mail email",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table clients {",
+          "  id i64 identity",
+          "  email varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (email)",
+          "  check ck_users_age (age >= 0)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+          "}"
+        ],
+        [
+          "dbplan 1 create_from_empty",
+          "from empty",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  mail varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (mail)",
+          "  check ck_users_age (age >= 0)",
+          "}"
+        ]
+      ],
+      "order": [
+        "create_from_empty",
+        "rename_table_and_column"
+      ]
+    },
+    {
+      "id": "no-plan-from-empty",
+      "plans": [
+        [
+          "dbplan 1 rename_table_and_column",
+          "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+          "rename table users clients",
+          "rename column clients.mail email",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table clients {",
+          "  id i64 identity",
+          "  email varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (email)",
+          "  check ck_users_age (age >= 0)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+          "}"
+        ]
+      ],
+      "errors": [
+        "no plan starts from empty"
+      ]
+    },
+    {
+      "id": "same-from",
+      "plans": [
+        [
+          "dbplan 1 create_from_empty",
+          "from empty",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  mail varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (mail)",
+          "  check ck_users_age (age >= 0)",
+          "}"
+        ],
+        [
+          "dbplan 1 create_again",
+          "from empty",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  mail varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (mail)",
+          "  check ck_users_age (age >= 0)",
+          "}"
+        ]
+      ],
+      "errors": [
+        "plans create_again, create_from_empty start from the same schema"
+      ]
+    },
+    {
+      "id": "unreached-plan",
+      "plans": [
+        [
+          "dbplan 1 create_from_empty",
+          "from empty",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(10,2) default 0.00",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  mail varchar(64)",
+          "  age i32 null",
+          "  primary key (id)",
+          "  unique uq_users_mail (mail)",
+          "  check ck_users_age (age >= 0)",
+          "}"
+        ],
+        [
+          "dbplan 1 widen_columns",
+          "from sha256:1fdce82a8c4793a93724a7516051950aa2652570c05307b670e3840b0bbe633d",
+          "",
+          "dbspec 1 schema",
+          "",
+          "table w {",
+          "  id i64 identity",
+          "  small i64",
+          "  name varchar(20)",
+          "  note text",
+          "  price decimal(8,2) default 1.50",
+          "  at time(3)",
+          "  stamp datetime(6)",
+          "  flag bool",
+          "  primary key (id)",
+          "}"
+        ]
+      ],
+      "errors": [
+        "no chain reaches plans widen_columns"
       ]
     }
   ]
