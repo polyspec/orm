@@ -63,7 +63,8 @@ func TestCodecVectors(t *testing.T) {
 			}
 			raw = string(b)
 		}
-		got, err := Decode(v.Styles, raw)
+		styles := codecStages(v.Styles)
+		got, err := Decode(styles, raw)
 		if err != nil {
 			t.Errorf("%s: decode: %v", v.Name, err)
 			continue
@@ -75,7 +76,7 @@ func TestCodecVectors(t *testing.T) {
 		if g := canon(t, value); g != want {
 			t.Errorf("%s: decoded %s want %s", v.Name, g, want)
 		}
-		enc, err := Encode(v.Styles, got)
+		enc, err := Encode(styles, got)
 		if err != nil {
 			t.Errorf("%s: encode: %v", v.Name, err)
 			continue
@@ -94,7 +95,7 @@ func TestCodecVectors(t *testing.T) {
 			t.Errorf("%s: encoded %v want %v", v.Name, deref(encB64), deref(v.EncodedB64))
 		}
 		// round trip through our own decoder
-		back, err := Decode(v.Styles, enc)
+		back, err := Decode(styles, enc)
 		backValue, _ := back.Data()
 		if err != nil || canon(t, backValue) != want {
 			t.Errorf("%s: round trip %s (%v)", v.Name, canon(t, backValue), err)
@@ -145,17 +146,17 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
-	if encoded, err := Encode([]string{"json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
+	if encoded, err := Encode([]string{"ordered_json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
 	}
-	if _, err := Encode([]string{"json"}, Value([]byte(`{"value":1}`))); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
+	if _, err := Encode([]string{"ordered_json"}, Value([]byte(`{"value":1}`))); err == nil || !strings.HasPrefix(err.Error(), "CODEC_ENCODE") {
 		t.Fatalf("json []byte input must be rejected as a non-portable value: %v", err)
 	}
 	for _, c := range []struct {
 		styles    []string
 		raw, code string
 	}{
-		{[]string{"json"}, "{bad", "CODEC_DECODE"},
+		{[]string{"ordered_json"}, "{bad", "CODEC_DECODE"},
 		{[]string{"serialize"}, "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"},
 		{[]string{"serialize"}, "a:1:{i:0;", "CODEC_DECODE"},
 		{[]string{"serialize", "gz"}, "not zlib", "CODEC_DECODE"},
@@ -192,7 +193,7 @@ func TestCodecErrors(t *testing.T) {
 
 func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1}}`
-	decoded, err := Decode([]string{"json"}, source)
+	decoded, err := Decode([]string{"ordered_json"}, source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +225,7 @@ func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 	if value.Get("z").Kind() != orderedjson.ObjectKind || value.Get("a").Kind() != orderedjson.ArrayKind {
 		t.Fatal("empty object and array kinds were not preserved")
 	}
-	encoded, err := Encode([]string{"json"}, Value(value))
+	encoded, err := Encode([]string{"ordered_json"}, Value(value))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +242,7 @@ func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
 		Raw     jsontext.Value `json:"raw"`
 		Ignored string         `json:"-"`
 	}
-	encoded, err := Encode([]string{"json"}, Value(value{
+	encoded, err := Encode([]string{"ordered_json"}, Value(value{
 		ID:      "module.example",
 		Items:   []int{1, 2},
 		Raw:     jsontext.Value(`{"enabled":true}`),
@@ -260,7 +261,7 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 	type value struct {
 		Config json.RawMessage `json:"config"`
 	}
-	encoded, err := Encode([]string{"json"}, Value(value{Config: json.RawMessage(`{"enabled":true,"items":[]}`)}))
+	encoded, err := Encode([]string{"ordered_json"}, Value(value{Config: json.RawMessage(`{"enabled":true,"items":[]}`)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +274,7 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 	type value struct {
 		Body customJSONValue `json:"body"`
 	}
-	encoded, err := Encode([]string{"json"}, Value(value{Body: customJSONValue{body: []byte(`{"number":900719925474099312345678901234567890}`)}}))
+	encoded, err := Encode([]string{"ordered_json"}, Value(value{Body: customJSONValue{body: []byte(`{"number":900719925474099312345678901234567890}`)}}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +289,7 @@ func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
 		Body    string     `json:"body"`
 		Revoked *time.Time `json:"revokedAt"`
 	}
-	encoded, err := Encode([]string{"json"}, Value(value{Body: "kept"}))
+	encoded, err := Encode([]string{"ordered_json"}, Value(value{Body: "kept"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +307,7 @@ func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
 		Details
 		Name string `json:"name"`
 	}
-	encoded, err := Encode([]string{"json"}, Value(value{Details: Details{ID: "1"}, Name: "test"}))
+	encoded, err := Encode([]string{"ordered_json"}, Value(value{Details: Details{ID: "1"}, Name: "test"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,3 +319,19 @@ func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
 type customJSONValue struct{ body []byte }
 
 func (v customJSONValue) MarshalJSON() ([]byte, error) { return v.body, nil }
+
+// codecStages는 tests/codec와 contracts/fixtures의 공유 vector가 쓰는 stage
+// 이름을 dbspec codec stage 이름으로 바꾼다. 공유 vector는 json과 jsons를
+// 아직 쓰며, dbspec에서는 둘 다 ordered_json이다.
+func codecStages(styles []string) []string {
+	out := make([]string, len(styles))
+	for i, style := range styles {
+		switch style {
+		case "json", "jsons":
+			out[i] = "ordered_json"
+		default:
+			out[i] = style
+		}
+	}
+	return out
+}

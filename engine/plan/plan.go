@@ -3,9 +3,9 @@
 package plan
 
 type Plan struct {
-	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"`
-	Steps      []Step `json:"steps"`
+	ManifestHash string `json:"manifest_hash"`
+	Kind         string `json:"kind"`
+	Steps        []Step `json:"steps"`
 }
 
 type Step struct {
@@ -45,9 +45,9 @@ type IfParent struct {
 //   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
+//   - operation: 현재 unit of work의 operation id. audit table의 insert와 update가 operation column에 쓴다.
 //
-// Transform (executor-side, value-level): "" | "fulltext_boolean" (
-// "+w1 +w2*") | "like_contains" (escape % _ \ then wrap in %).
+// Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %).
 type BindSlot struct {
 	From      string `json:"from"`
 	Param     int    `json:"param"`

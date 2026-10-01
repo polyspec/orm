@@ -7,7 +7,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 ```json
 {
   "ir_version": 1,
-  "schema_hash": "cd21c76a45bcb2dd",
+  "manifest_hash": "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
   "entity": "author",
   "columns": Columns,
@@ -33,6 +33,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 
 | Field | Rule |
 |---|---|
+| `manifest_hash` | the `manifestHash` of the document set the generated code carries: `sha256:` followed by 64 lower-case hexadecimal digits ([manifest and hashes](dbspec.md#manifest-and-hashes)). A request whose hash differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`. The field replaces `schema_hash`; the error code keeps its name |
 | `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows |
 | `set` | assignments of `insert` and `update` |
 | `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
@@ -50,12 +51,12 @@ Columns = {
   "add": ["name"],
   "remove": ["description"],
   "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
-  "fn": {"distance": {"column": "location", "fn": Func}},
+  "fn": {"created_date": {"column": "created_ts", "fn": Func}},
   "sub": {"read_total": Sub}
 }
 ```
 
-- `mode` `""` selects the non-lazy columns, `all` selects every column, and `none` keeps primary and foreign keys.
+- `mode` `""` selects the default select set, every column except those of `select explicit` ([runtime model](dbspec.md#runtime-model)); `all` selects every column, and `none` keeps primary and foreign keys.
 - `expr`, `fn`, and `sub` add named outputs. An output name must not be a column of the entity.
 - The primary key and the keys that relations bind are always selected.
 
@@ -68,7 +69,7 @@ Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": 
             "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
 ```
 
-- `rel` is the result name. `left` is a column of the parent and `right` a column of the child.
+- `rel` is the result name. `left` is a column of the parent and `right` a column of the child; both are required, and a relation also requires `kind`. The client never infers keys from names or foreign keys.
 - A join child's `on` group is added to the `ON` clause. Its `where` group is placed where a `joined` item names it, otherwise it is appended to the parent `WHERE` with `AND`.
 - A relation runs as a separate statement. `limit_per_parent` limits child rows per parent key, `if_parent` loads the child only for parents whose column equals the parameter, `flatten` merges the child columns into the parent row, `key_by` keys the child collection, and `no_cascade_delete` excludes the relation from recursive delete.
 
@@ -81,13 +82,12 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
       | {"conn", "column", "op": "is_null | is_not_null"}
       | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
-      | {"conn", "op": "match | match_boolean", "match": ["name", "description"], "p"}
       | {"conn", "op": "tuple_in | tuple_not_in", "cols": ["tenant_id", "account_id"], "ps": [0, 1, 2, 3]}
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
       | {"conn", "expr": "{read_count} > ?", "ps": [0]}
-Func  = {"name": "day_of_week | year | month | date | distance | point_x | point_y | now | today | days_ago | …", "ps": [0, 1]}
+Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 ```
 
@@ -106,11 +106,13 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 A raw order expression carries its own direction. `minus_p` never stores a negative value.
 
+An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the operation column of every `insert`, `update`, soft delete and duplicate update; a request that assigns the AES key version or the operation column fails with `IR_INVALID`.
+
 ## 2. Plan
 
 ```json
 {
-  "schema_hash": "…", "kind": "all",
+  "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
     {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20",
      "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
@@ -123,7 +125,7 @@ A raw order expression carries its own direction. `minus_p` never stores a negat
 }
 ```
 
-- `bind_slots.from` is `param` (a request parameter, with `transform` for full-text and contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), or `now` (the client clock in the connection time zone).
+- `bind_slots.from` is `param` (a request parameter, with `transform` for contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), `now` (the client clock in the connection time zone), or `operation` (the operation id of the unit of work, with `col_type` `i64` or `uuid` of the operation column). A write that has an `operation` slot and runs without an operation id, or with one that does not fit `col_type`, fails with `CONFIG` before it reaches the database.
 - Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.
 - `assemble.key` is the collection identity: every primary-key component, or the group columns of a `group_count` row.
 - A `group_count` row retains the declared types of its selected group columns; a boolean group value is a JSON boolean, and an invalid database boolean fails decoding.
@@ -151,6 +153,6 @@ Every client validates and plans requests in the calling process. No compiler se
 | Rust | `clients/rust/orm/src/engine/` |
 | TypeScript | `clients/typescript/src/engine/` |
 
-A connection loads `schema.json`, verifies its `schema_hash` against its content, and rejects generated models with a different hash (`SCHEMA_HASH_MISMATCH`). The plan cache key is the schema hash and the request shape. Parameter values are not part of the key.
+Generated code carries the manifest text of its document set and its `manifestHash`. The client builds the runtime model from that text once, rejects text whose hash differs from the declared one (`SCHEMA_HASH_MISMATCH`), and plans every request against the model of the request's `manifest_hash`. The plan cache key is the manifest hash and the request shape. Parameter values are not part of the key.
 
 The four planners produce the same SQL and bind slots for the same request. `tests/conformance` runs the same vectors in the four clients on MySQL, PostgreSQL, and SQLite and compares the statements, binds, and results with the recorded expectations.

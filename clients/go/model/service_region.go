@@ -404,6 +404,11 @@ func (x *ServiceRegionModel) OrderByNameDesc(fn ...orm.Func) *ServiceRegionModel
 	return x
 }
 
+func (x *ServiceRegionModel) ForceIndexIxServiceRegionService() *ServiceRegionModel {
+	x.m.ForceIndex("ix_service_region_service")
+	return x
+}
+
 func (x *ServiceRegionModel) AliasModule() *ServiceRegionModel { x.m.Alias("Module"); return x }
 
 func (x *ServiceRegionModel) MatchServiceRegionSeqWithSeq() *ServiceRegionModel {

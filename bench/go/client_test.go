@@ -10,7 +10,7 @@ import (
 // BenchmarkClientList100 reads the 100-row list of TestHotPathGate through the
 // generated client; compare its B/op and allocs/op with BenchmarkList100.
 func BenchmarkClientList100(b *testing.B) {
-	db, err := model.Connect(dsn(b), "../../schema/schema.json", orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	db, err := model.Connect(dsn(b), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		b.Fatal(err)
 	}

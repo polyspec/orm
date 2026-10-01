@@ -28,7 +28,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 	t.Helper()
 	out := make([]*orm.DB, count)
 	for i := range out {
-		db, err := model.Connect(dsn, schemaPath, orm.Config{})
+		db, err := model.Connect(dsn, orm.Config{})
 		if err != nil {
 			t.Fatalf("connection %d: %v", i, err)
 		}
@@ -36,10 +36,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 		out[i] = db
 	}
 	if install {
-		manifest, err := os.ReadFile(schemaPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		manifest := model.ManifestText
 		if err := out[0].Utils().Schema().Install(manifest); err != nil {
 			t.Fatalf("install: %v", err)
 		}

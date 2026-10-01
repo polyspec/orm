@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
@@ -53,7 +53,7 @@ func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
 
 func TestGroupColumnValueChecksDeclaredType(t *testing.T) {
 	column := plan.OutCol{Name: "is_close", Column: "is_close", Type: "bool"}
-	declared := &schema.Col{Name: "is_close", Type: "bool"}
+	declared := &runtimemodel.Field{Name: "is_close", Type: "bool"}
 	for raw, want := range map[any]bool{int64(0): false, int64(1): true} {
 		got, err := groupColumnValue(nil, nil, column, declared, raw)
 		if err != nil || got != want {

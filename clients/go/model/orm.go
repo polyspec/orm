@@ -3,45 +3,180 @@
 package model
 
 import (
-	"os"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 var _ time.Time
 
-// SchemaHash is the hash of the schema the models were generated from.
-const SchemaHash = "16198b563e2e3cae"
+// ManifestHash is the manifestHash of the document set the models were generated from.
+const ManifestHash = "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa"
 
-var ormSchema = &orm.Schema{Hash: SchemaHash}
+// ManifestText is the manifest text of the document set the models were generated from.
+const ManifestText = "dbspec 1 bench\n" +
+	"\n" +
+	"table author {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  description text null\n" +
+	"  created_ts datetime(6) default now\n" +
+	"  updated_ts datetime(6) default now\n" +
+	"  is_close bool default false\n" +
+	"  is_display bool default false\n" +
+	"  display_start_dt datetime(6) null\n" +
+	"  display_end_dt datetime(6) null\n" +
+	"  is_allday bool default false\n" +
+	"  target_club_reader_count i32 default 0\n" +
+	"  success_count i32 default 0\n" +
+	"  reader_count i32 default 0\n" +
+	"  read_count i32 default 0\n" +
+	"  photo_url varchar(191) null\n" +
+	"  user_seq i64\n" +
+	"  service_seq i64\n" +
+	"  service_region_seq i64\n" +
+	"  service_member_seq i64\n" +
+	"  start_dt datetime(6)\n" +
+	"  end_dt datetime(6)\n" +
+	"  uuid varchar(36) null\n" +
+	"  is_single_work bool default false\n" +
+	"  like_count i32 default 0\n" +
+	"  aes_key_version i32 default 1\n" +
+	"  aes_hex_email varchar(255) null\n" +
+	"  email_blind_index varchar(64) null\n" +
+	"  aes_hex_phone varchar(255) null\n" +
+	"  phone_blind_index varchar(64) null\n" +
+	"  price decimal(13,3) null\n" +
+	"  ip bytes null\n" +
+	"  gz_extend bytes null\n" +
+	"  json_setting text null\n" +
+	"  jsons_tags text null\n" +
+	"  base64_extra text null\n" +
+	"  serialize_data text null\n" +
+	"  primary key (seq)\n" +
+	"  unique uq_author_uuid (uuid)\n" +
+	"  index ik (service_region_seq, is_close, is_display, is_allday)\n" +
+	"  index ix_author_service_member (service_member_seq)\n" +
+	"  index ix_email_blind_index (email_blind_index)\n" +
+	"  index ix_phone_blind_index (phone_blind_index)\n" +
+	"  index ix_service (service_seq, is_close)\n" +
+	"  index ix_user (user_seq, is_close)\n" +
+	"  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict\n" +
+	"  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict\n" +
+	"  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict\n" +
+	"  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict\n" +
+	"  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)\n" +
+	"  settings {\n" +
+	"    updated updated_ts\n" +
+	"    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version\n" +
+	"    codec aes_hex_email aes hex\n" +
+	"    codec aes_hex_phone aes hex\n" +
+	"    codec base64_extra base64\n" +
+	"    codec gz_extend gz\n" +
+	"    codec ip ip\n" +
+	"    codec json_setting ordered_json\n" +
+	"    codec jsons_tags ordered_json\n" +
+	"    codec serialize_data serialize\n" +
+	"    aes_version aes_key_version\n" +
+	"    blind_index aes_hex_email email_blind_index\n" +
+	"    blind_index aes_hex_phone phone_blind_index\n" +
+	"  }\n" +
+	"}\n" +
+	"\n" +
+	"table user {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table service {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table service_region {\n" +
+	"  seq i64 identity\n" +
+	"  service_seq i64\n" +
+	"  name varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"  index ix_service_region_service (service_seq)\n" +
+	"  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict\n" +
+	"}\n" +
+	"\n" +
+	"table service_member {\n" +
+	"  seq i64 identity\n" +
+	"  service_seq i64\n" +
+	"  user_seq i64\n" +
+	"  primary key (seq)\n" +
+	"  index ix_service_member_service (service_seq)\n" +
+	"  index ix_service_member_user (user_seq)\n" +
+	"  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict\n" +
+	"  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict\n" +
+	"}\n" +
+	"\n" +
+	"table composite_account {\n" +
+	"  tenant_id i64\n" +
+	"  account_id i64\n" +
+	"  name varchar(191)\n" +
+	"  primary key (tenant_id, account_id)\n" +
+	"}\n" +
+	"\n" +
+	"table composite_membership {\n" +
+	"  tenant_id i64\n" +
+	"  account_id i64\n" +
+	"  role varchar(191)\n" +
+	"  primary key (tenant_id, account_id)\n" +
+	"  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict\n" +
+	"  settings {\n" +
+	"    navigation fk_composite_membership_account account memberships\n" +
+	"  }\n" +
+	"}\n" +
+	"\n" +
+	"table soft_record {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  deleted_at datetime(6) null\n" +
+	"  primary key (seq)\n" +
+	"  settings {\n" +
+	"    soft_delete deleted_at\n" +
+	"  }\n" +
+	"}\n" +
+	"\n" +
+	"table account {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table project {\n" +
+	"  seq i64 identity\n" +
+	"  name varchar(191)\n" +
+	"  primary key (seq)\n" +
+	"}\n" +
+	"\n" +
+	"table account_project {\n" +
+	"  account_seq i64\n" +
+	"  project_seq i64\n" +
+	"  primary key (account_seq, project_seq)\n" +
+	"  index ix_account_project_project (project_seq)\n" +
+	"  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict\n" +
+	"  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict\n" +
+	"}\n" +
+	"\n" +
+	"table task {\n" +
+	"  seq i64 identity\n" +
+	"  title varchar(191)\n" +
+	"  state varchar(8)\n" +
+	"  primary key (seq)\n" +
+	"  check ck_task_state (state in ('open', 'done'))\n" +
+	"}\n"
 
-// Connect opens the database selected by the DSN URI with the schema at
-// schemaPath, which must be the schema the models were generated from.
-func Connect(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error) {
-	js, err := os.ReadFile(schemaPath)
-	if err != nil {
-		return nil, err
-	}
-	m, err := schema.Load(js)
-	if err != nil {
-		return nil, err
-	}
-	driver, err := orm.DriverFromDSN(dsn)
-	if err != nil {
-		return nil, err
-	}
-	e, err := engine.New(m, driver)
-	if err != nil {
-		return nil, err
-	}
-	if err := orm.CheckSchemaHash(e, SchemaHash); err != nil {
-		return nil, err
-	}
-	return orm.Open(dsn, e, cfg)
-}
+var ormSchema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}
+
+// Connect opens the database selected by the DSN URI. The models plan
+// their statements with the manifest they were generated from.
+func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.Connect(dsn, ormSchema, cfg) }
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {

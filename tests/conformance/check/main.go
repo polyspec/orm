@@ -190,7 +190,7 @@ func runOne(root, output, language string) error {
 	flags := []string{"--dsn", dsn}
 	switch language {
 	case "go":
-		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-driver", driver, "-dsn", dsn, schema)
+		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-dsn", dsn)
 	case "php":
 		return runCommand(root, output, 10*time.Minute, "php", append([]string{"tests/conformance/runner.php", schema}, flags...)...)
 	case "typescript":

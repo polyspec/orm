@@ -6,24 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
-	document, err := schema.Parse(`erDiagram
-  sample {
-    bigint seq PK "auto"
-  }
-`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := schema.Build(document)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := sampleModel(t)
 	out := filepath.Join(t.TempDir(), "model")
-	if err := Generate(Options{Manifest: manifest, OutputDir: out}); err != nil {
+	if err := Generate(Options{Model: manifest, OutputDir: out}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "sample.go")); err != nil {
@@ -32,16 +21,9 @@ func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 }
 
 func TestGenerateUsesRequestedGoPackageName(t *testing.T) {
-	document, err := schema.Parse("erDiagram\n  sample {\n    bigint seq PK \"auto\"\n  }\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := schema.Build(document)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := sampleModel(t)
 	out := t.TempDir()
-	if err := Generate(Options{Manifest: manifest, OutputDir: out, PackageName: "storage"}); err != nil {
+	if err := Generate(Options{Model: manifest, OutputDir: out, PackageName: "storage"}); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(filepath.Join(out, "sample.go"))
@@ -58,4 +40,14 @@ func TestGenerateUsesRequestedGoPackageName(t *testing.T) {
 	if !strings.Contains(string(init), "package storage") {
 		t.Fatal("generated initializer does not use requested package")
 	}
+}
+
+// sampleModel은 identity column 하나인 table의 runtime model이다.
+func sampleModel(t *testing.T) *runtimemodel.Model {
+	t.Helper()
+	m, diagnostics := runtimemodel.LoadDocuments([]string{"dbspec 1 sample\n\ntable sample {\n  seq i64 identity\n  primary key (seq)\n}\n"})
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	}
+	return m
 }

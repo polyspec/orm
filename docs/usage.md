@@ -195,7 +195,7 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 Each language generates its models with its own build tool. The generator reads `schema.json`, verifies its hash, and writes one model per entity with typed column getters and setters.
 
 ```sh
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
 npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```
@@ -220,7 +220,7 @@ fn main() {
 
 ```sh
 go run ./cmd/ormgen build schema/example.mmd --out schema/schema.json --check
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A mismatch between the generated `schema_hash` and the loaded `schema.json` stops startup with `SCHEMA_HASH_MISMATCH`.
@@ -255,10 +255,10 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 ### Go
 
 ```go
-master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
+master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`model.Connect` loads `schemaPath`, checks it against the generated models, and calls `orm.Open(dsn, engine, config)`.
+`ormgen gen --document <file.dbspec>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
 
 ### PHP
 
@@ -421,6 +421,19 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
+### Go operation id
+
+A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that names its unit of work with `orm.Operation(id)`. Every insert, update, soft delete and duplicate update of an audited table in the transaction writes `id` into the table's operation column, and the database triggers copy each version into the history table. `id` is an `int64` for an `i64` operation column and a lower-case UUID string for a `uuid` operation column. A nested transaction uses the id of the outer transaction and accepts only `orm.Retry`.
+
+```go
+err := master.Transaction(func() error {
+    _, err := model.Item().SetTitle("draft").Create()
+    return err
+}, orm.Operation(int64(42)))
+```
+
+A write of an audited table outside such a transaction, or with an id that does not fit the operation column, fails with `CONFIG` before it reaches the database; `orm.Operation` with a value that is neither `int64` nor `string` fails the transaction with `CONFIG` before it begins. A request that assigns the operation column itself fails with `IR_INVALID`.
+
 ---
 
 ## 8. Styled columns
@@ -445,7 +458,7 @@ The same statement produces the same result on all three databases, although sta
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out schema.pg.sql
 psql … -f schema.pg.sql
 ```
-- Go: `model.Connect(url, schemaPath, config)`; the DSN scheme selects the driver.
+- Go: `model.Connect(url, config)`; the DSN scheme selects the driver.
 - PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
 - TypeScript: `Db.connect(url, schemaPath, options)`; the DSN scheme selects the driver package.

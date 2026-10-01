@@ -2,7 +2,7 @@
 // prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 // other runners print the same document for the same chains.
 //
-// Usage: runner_go [-driver mysql|postgres|sqlite] -dsn URI <schema.json>
+// Usage: runner_go -dsn URI
 package main
 
 import (
@@ -22,8 +22,6 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 type stmt struct {
@@ -123,10 +121,7 @@ func code(err error) any {
 	return err.Error()
 }
 
-var (
-	driver = "mysql"
-	dsn    = ""
-)
+var dsn = ""
 
 // pick keeps the named values of a row.
 func pick(m orm.Model, names ...string) map[string]any {
@@ -184,31 +179,12 @@ func executeVector(name string, fn func() (any, error), transaction func(func() 
 
 func main() {
 	args := os.Args[1:]
-	var rest []string
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-driver":
-			driver = args[i+1]
-			i++
-		case "-dsn":
-			dsn = args[i+1]
-			i++
-		default:
-			rest = append(rest, args[i])
-		}
-	}
-	if len(rest) != 1 || dsn == "" {
-		fmt.Fprintln(os.Stderr, "usage: runner_go [-driver mysql|postgres|sqlite] -dsn URI <schema.json>")
+	if len(args) != 2 || args[0] != "-dsn" || args[1] == "" {
+		fmt.Fprintln(os.Stderr, "usage: runner_go -dsn URI")
 		os.Exit(2)
 	}
-	js, err := os.ReadFile(rest[0])
-	check(err)
-	m, err := schema.Load(js)
-	check(err)
-	eng, err := engine.New(m, driver)
-	check(err)
-	check(orm.CheckSchemaHash(eng, model.SchemaHash))
-	db, err := orm.Open(dsn, eng, orm.Config{
+	dsn = args[1]
+	db, err := model.Connect(dsn, orm.Config{
 		AESKey:        "bench-salt",
 		BlindIndexKey: "bench-blind-index",
 		OnQuery: func(e orm.Event) {

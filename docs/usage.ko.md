@@ -195,7 +195,7 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 `schema.json`을 읽어 해시를 확인하고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
 npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```
@@ -220,7 +220,7 @@ fn main() {
 
 ```sh
 go run ./cmd/ormgen build schema/example.mmd --out schema/schema.json --check
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 생성물의 `schema_hash`와 읽은 `schema.json`이 다르면 기동 시 `SCHEMA_HASH_MISMATCH`로 멈춘다.
@@ -255,10 +255,10 @@ sqlite:///var/lib/orm_example.sqlite
 ### Go
 
 ```go
-master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
+master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`model.Connect`는 `schemaPath`를 읽어 생성된 모델과 비교한 뒤 `orm.Open(dsn, engine, config)`를 호출한다.
+`ormgen gen --document <file.dbspec>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`와 `ManifestHash`를 쓴다. `model.Connect(dsn, config)`는 그 manifest로 `orm.Connect(dsn, schema, config)`를 호출한다. runtime은 process마다 한 번 text로 모델을 만들고, text의 hash가 `ManifestHash`와 다르면 `SCHEMA_HASH_MISMATCH`로 거부하며, 모든 문장을 process 안에서 계획한다. `master.Utils().Schema().Install(model.ManifestText)`는 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다.
 
 ### PHP
 
@@ -421,6 +421,19 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
+### Go operation id
+
+`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 `orm.Operation(id)`로 unit of work를 정한 트랜잭션 안에서만 쓴다. 그 트랜잭션에서 audit 테이블의 모든 insert, update, soft delete, duplicate update는 `id`를 테이블의 operation 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. `id`는 `i64` operation 컬럼이면 `int64`, `uuid` operation 컬럼이면 소문자 UUID string이다. 중첩 트랜잭션은 바깥 트랜잭션의 id를 쓰며 `orm.Retry`만 받는다.
+
+```go
+err := master.Transaction(func() error {
+    _, err := model.Item().SetTitle("draft").Create()
+    return err
+}, orm.Operation(int64(42)))
+```
+
+그런 트랜잭션 밖에서 audit 테이블을 쓰거나 operation 컬럼에 맞지 않는 id로 쓰면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다. `int64`나 `string`이 아닌 값을 준 `orm.Operation`은 트랜잭션을 시작하기 전에 `CONFIG`로 실패한다. operation 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
+
 ---
 
 ## 8. 스타일 컬럼
@@ -445,7 +458,7 @@ $b->getJsonSetting()['a'];
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out schema.pg.sql
 psql … -f schema.pg.sql
 ```
-- Go: `model.Connect(url, schemaPath, config)`. DSN scheme이 드라이버를 선택한다.
+- Go: `model.Connect(url, config)`. DSN scheme이 드라이버를 선택한다.
 - PHP: `Orm::connect(url, config)`. DSN scheme이 PDO 드라이버를 선택한다.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`. DSN scheme이 sqlx 드라이버를 선택한다.
 - TypeScript: `Db.connect(url, schemaPath, options)`. DSN scheme이 드라이버 패키지를 선택한다.

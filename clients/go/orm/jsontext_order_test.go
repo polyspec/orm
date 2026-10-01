@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"encoding/json"
 	"encoding/json/jsontext"
 	"os"
 	"path/filepath"
@@ -11,8 +10,6 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
 )
 
 // jsonTextRow is a model for a table with a jsontext column.
@@ -25,10 +22,10 @@ func (r *jsonTextRow) Orm_() *orm.Core { return r.m }
 
 var jsonTextColumns = []string{"seq", "data"}
 
-func jsonTextEntity(hash string) *orm.Entity {
+func jsonTextEntity(s *orm.Schema) *orm.Entity {
 	return &orm.Entity{
 		Name:   "json_data",
-		Schema: &orm.Schema{Hash: hash},
+		Schema: s,
 		New: func(c *orm.Core) orm.Model {
 			r := &jsonTextRow{m: c, vals: map[string]any{}}
 			c.Bind(r)
@@ -53,11 +50,16 @@ func jsonTextEntity(hash string) *orm.Entity {
 	}
 }
 
-const jsonTextSchema = `erDiagram
-  json_data {
-    bigint       seq     PK "auto"
-    jsontext     data
+const jsonTextSchema = `dbspec 1 json_text
+
+table json_data {
+  seq i64 identity
+  data text
+  primary key (seq)
+  settings {
+    codec data ordered_json
   }
+}
 `
 
 // TestJsonTextOrderPreservation writes a jsontext value with a specific key
@@ -65,18 +67,8 @@ const jsonTextSchema = `erDiagram
 // back, ensuring that {"b":1,"a":2} stays as {"b":1,"a":2} and not reordered
 // to {"a":2,"b":1}.
 func TestJsonTextOrderPreservation(t *testing.T) {
-	d, err := schema.Parse(jsonTextSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := documentSchema(t, jsonTextSchema)
+	manifest := s.Text
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "jsontext.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -87,11 +79,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "json_data")
 			defer dropTable(t, driver, dsn, "json_data")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{})
+			db, err := orm.Connect(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +88,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			entity := jsonTextEntity(m.SchemaHash)
+			entity := jsonTextEntity(s)
 			model := func() *orm.Core {
 				c := orm.NewCore(entity)
 				entity.New(c)
