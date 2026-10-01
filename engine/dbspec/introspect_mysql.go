@@ -129,7 +129,7 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		}
 		if owner, column, generated := strings.Cut(name, "$"); generated {
 			col, known := columns[table][column]
-			if owner != table || !known || clause != mysqlRendererCheck(col) {
+			if owner != table || !known || withoutIntroducers(clause) != withoutIntroducers(mysqlRendererCheck(col)) {
 				c.report("check", table, name, "the check %s is not the renderer CHECK", clause)
 				return nil
 			}
@@ -241,6 +241,17 @@ func mysqlRendererCheck(col icolumn) string {
 		return "((" + c + " >= _utf8mb4\\'00:00:00\\') and (" + c + " < _utf8mb4\\'24:00:00\\'))"
 	}
 	return ""
+}
+
+// mysqlIntroducer는 CHECK_CLAUSE의 문자열 literal 앞 character set introducer다.
+var mysqlIntroducer = regexp.MustCompile(`_[a-z0-9]+\\'`)
+
+// withoutIntroducers는 character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은
+// CHECK_CLAUSE를 다시 쓰며 introducer를 바꾸거나 빼므로(probe
+// mysql.check.alter_rewrites_introducers) renderer CHECK은 introducer 없이
+// 비교한다. 이 template의 literal은 ASCII이므로 의미가 같다.
+func withoutIntroducers(clause string) string {
+	return mysqlIntroducer.ReplaceAllString(clause, `\'`)
 }
 
 // mysqlNow는 DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지

@@ -104,7 +104,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if (str_contains($name, '$')) {
                 [$owner, $column] = explode('$', $name, 2);
                 $known = $columns[$table][$column] ?? null;
-                if ($owner !== $table || $known === null || $clause !== self::rendererCheck($known)) {
+                if ($owner !== $table || $known === null || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
                 }
@@ -169,6 +169,17 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             'datetime' => [new ColumnType('datetime', [$precision]), '', true],
         };
         return $ok ? [$type, $needsCheck] : null;
+    }
+
+    /**
+     * character set introducer 를 뺀 CHECK_CLAUSE 다. ALTER TABLE 은 CHECK_CLAUSE 를 다시
+     * 쓰며 introducer 를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
+     * renderer CHECK 은 introducer 없이 비교한다. 이 template 의 literal 은 ASCII 이므로
+     * 의미가 같다.
+     */
+    private static function withoutIntroducers(string $clause): string
+    {
+        return preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
     }
 
     /** renderer CHECK 이 CHECK_CLAUSE 에 남는 형식 (docs/dialects.md "Introspection", "Checks"). */

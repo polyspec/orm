@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.2.2: MySQL introspection은 네 client에서 `ALTER TABLE`이 character set introducer를 다시 쓴 뒤의 renderer CHECK도 알아본다.
+
 - T8.4.2.1: introspection은 Go, PHP, TypeScript, Rust에서 각 미지원 객체를 한 번만 보고하고, 거부된 table의 객체를 table과 함께 빼며, renderer 형식의 SQLite table 항목만 읽는다.
 
 - T8.4.5: Rust client는 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect한다. `orm::dbspec::introspect`가 sqlx connection에서 `orm_schema::dbspec`의 catalog query를 실행하고 문서와 미지원 객체를 돌려준다. `make dbspec-introspect-rust-check`가 round trip과 미지원 case를 실행한다.

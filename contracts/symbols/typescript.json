@@ -493,6 +493,7 @@
   "clients/typescript/src/dbspec/introspect_mysql.ts::readMySQL": "export async function readMySQL(query: CatalogQuery): Promise\u003cCatalog\u003e",
   "clients/typescript/src/dbspec/introspect_mysql.ts::readTriggers": "async function readTriggers(query: CatalogQuery, c: Catalog): Promise\u003cvoid\u003e",
   "clients/typescript/src/dbspec/introspect_mysql.ts::rendererCheck": "function rendererCheck(col: IColumn): string",
+  "clients/typescript/src/dbspec/introspect_mysql.ts::withoutIntroducers": "function withoutIntroducers(clause: string): string",
   "clients/typescript/src/dbspec/introspect_postgres.ts::postgresAction": "function postgresAction(code: string): DbspecAction | null",
   "clients/typescript/src/dbspec/introspect_postgres.ts::postgresDefault": "function postgresDefault(text: string, type: DbspecType): string | null",
   "clients/typescript/src/dbspec/introspect_postgres.ts::postgresKind": "function postgresKind(contype: string): string",
