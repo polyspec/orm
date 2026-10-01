@@ -59,10 +59,10 @@ type BindSlot struct {
 	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
 	// the bound value before sending it (write order). Empty on MySQL.
 	HostStyles []string `json:"host_styles,omitempty"`
-	// ColType is the canonical type of the column this value is compared with
-	// or assigned to (only date/time/datetime are carried): executors whose
-	// language has no datetime type normalise exactly these, never a bare string
-	// that merely looks like a timestamp.
+	// ColType은 값이 비교되거나 할당되는 column의 dbspec type이다. param
+	// slot은 date, time, datetime, decimal만 싣고(datetime type이 없는 언어의
+	// executor는 정확히 이 값만 정규화한다), operation slot은 operation
+	// column의 i64 또는 uuid를 싣는다.
 	ColType   string `json:"col_type,omitempty"`
 	Precision int    `json:"precision,omitempty"`
 	Scale     int    `json:"scale,omitempty"`
