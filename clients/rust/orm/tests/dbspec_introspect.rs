@@ -198,10 +198,19 @@ impl Servers {
                 }
             }
             "postgres" => {
+                // 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+                if let Err(e) = self.admin(db, format!("DROP SCHEMA IF EXISTS \"{name}_b\" CASCADE")).await {
+                    errors.push(e);
+                }
                 if let Err(e) = self.admin(db, format!("DROP SCHEMA IF EXISTS \"{name}\" CASCADE")).await {
                     errors.push(e);
                 }
-                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM pg_namespace WHERE nspname = $1").bind(name).fetch_one(&mut self.postgres).await {
+                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM pg_namespace WHERE nspname IN ($1, $2)")
+                    .bind(name)
+                    .bind(format!("{name}_b"))
+                    .fetch_one(&mut self.postgres)
+                    .await
+                {
                     Ok(0) => {}
                     Ok(_) => errors.push(format!("schema {name} remains after cleanup")),
                     Err(e) => errors.push(e.to_string()),
@@ -435,7 +444,9 @@ async fn introspect_unsupported() {
         let documents = parse_set(case_id, &documents_text);
         let refs: Vec<&Document> = documents.iter().collect();
         let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
-        let extra = strings(&case["statements"]);
+        // {schema}는 이 case의 database 또는 schema 이름이다.
+        let schema = servers.name(index);
+        let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
         let want_document = lines(&case["document"]);
         let want_unsupported: Vec<Vec<String>> = case["unsupported"].as_array().expect("unsupported").iter().map(strings).collect();
         let id = format!("{db}.introspect.{case_id}");

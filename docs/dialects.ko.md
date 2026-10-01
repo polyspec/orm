@@ -316,7 +316,7 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 
 ## Introspection
 
-introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤, introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust client로 실행한다. `make dbspec-introspect-compare-check`는 2000 table stress 문서를 각 dialect에 적용하고 `tests/dbspec/introspect`의 runner 네 개를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없고, 각 introspection이 5초 안에 끝나기를 요구한다.
+introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust client로 실행한다. `make dbspec-introspect-compare-check`는 2000 table stress 문서를 각 dialect에 적용하고 `tests/dbspec/introspect`의 runner 네 개를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없고, 각 introspection이 5초 안에 끝나기를 요구한다.
 
 ### 문서
 
@@ -349,7 +349,7 @@ MySQL은 precision 0을 괄호 없이 쓴다(`time`, `datetime`). type, collatio
 
 - primary key는 column 순서를 유지한다. MySQL `UNIQUE` index, PostgreSQL `UNIQUE` constraint, origin이 `c`인 SQLite unique index는 unique key이고, 그 밖의 index는 index이며 `DESC`는 `COLLATION`, `indoption`, `pragma_index_xinfo.desc`에서 읽는다.
 - prefix, partial, expression, full-text index, constraint 없는 PostgreSQL unique index, primary key가 아닌 SQLite `sqlite_autoindex`, 이름에 `$`가 있는 index는 미지원이다.
-- foreign key는 이름, column, 참조 table과 column, 두 action을 읽는다. `NO ACTION`, `SET DEFAULT`, deferrable key, `MATCH FULL`은 미지원이다. SQLite foreign key 이름은 `sqlite_master`의 `CREATE TABLE` text에서 온다.
+- foreign key는 이름, column, 참조 table과 column, 두 action을 읽는다. `NO ACTION`, `SET DEFAULT`, deferrable key, `MATCH FULL`, 참조 table이 다른 schema에 있는 PostgreSQL key는 미지원이다. SQLite foreign key 이름은 `sqlite_master`의 `CREATE TABLE` text에서 온다.
 
 ### Check
 

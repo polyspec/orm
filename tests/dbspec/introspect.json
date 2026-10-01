@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; reasons are not compared. docs/dialects.md \"Introspection\".",
+  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; reasons are not compared. docs/dialects.md \"Introspection\".",
   "cases": [
     {
       "id": "mysql-unsupported",
@@ -226,6 +226,51 @@
           "view",
           "v_orders",
           "v_orders"
+        ]
+      ]
+    },
+    {
+      "id": "postgres-other-schema",
+      "dialect": "postgres",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "CREATE SCHEMA \"{schema}_b\"",
+        "CREATE TABLE \"{schema}_b\".\"orders\" (\"id\" bigint NOT NULL, \"name\" varchar(64) COLLATE \"C\" NOT NULL, \"extra\" integer NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"ck_extra\" CHECK (\"extra\" > 0), CONSTRAINT \"uq_extra\" UNIQUE (\"extra\"))",
+        "CREATE INDEX \"ix_orders_name\" ON \"{schema}_b\".\"orders\" (\"name\")",
+        "CREATE TABLE \"lines\" (\"id\" bigint NOT NULL, \"order_id\" bigint NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"fk_lines_order\" FOREIGN KEY (\"order_id\") REFERENCES \"{schema}_b\".\"orders\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT)",
+        "CREATE INDEX \"ix_lines_order\" ON \"lines\" (\"order_id\")"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table lines {",
+        "  id i64",
+        "  order_id i64",
+        "  primary key (id)",
+        "  index ix_lines_order (order_id)",
+        "}",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "foreign_key",
+          "lines",
+          "fk_lines_order"
         ]
       ]
     },

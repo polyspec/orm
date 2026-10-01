@@ -48,10 +48,10 @@ $run = 'dbspec_php_' . getmypid();
 $caseIndex = 0;
 
 /**
- * case 마다 새 database, schema 또는 file 을 만들고 그곳을 가리키는 connection 과
- * 그것을 지우는 함수를 돌려준다.
+ * case 마다 새 database, schema 또는 file 을 만들고 그곳을 가리키는 connection,
+ * 그것을 지우는 함수와 그 이름을 돌려준다.
  *
- * @return array{0: CountingPdo, 1: Closure(): void}
+ * @return array{0: CountingPdo, 1: Closure(): void, 2: string}
  */
 function open_database(string $dialect): array
 {
@@ -72,7 +72,7 @@ function open_database(string $dialect): array
                     throw new RuntimeException("$path$suffix cannot be removed");
                 }
             }
-        }];
+        }, $name];
     }
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsns[$dialect]);
     $admin = new PDO($pdoDsn, $user, $password, $options);
@@ -82,15 +82,19 @@ function open_database(string $dialect): array
     $pdo->exec($dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted");
     return [$pdo, static function () use (&$pdo, $admin, $dialect, $quoted, $name): void {
         $pdo = null;
+        if ($dialect === 'postgres') {
+            // 두 번째 schema 가 필요한 case 는 그것을 <schema>_b 로 만든다.
+            $admin->exec("DROP SCHEMA IF EXISTS \"{$name}_b\" CASCADE");
+        }
         $admin->exec(($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE'));
         $left = $dialect === 'mysql'
-            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
-            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?');
-        $left->execute([$name]);
+            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)')
+            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname IN (?, ?)');
+        $left->execute([$name, $name . '_b']);
         if ((int) $left->fetchColumn() !== 0) {
             throw new RuntimeException("$dialect $name remains after cleanup");
         }
-    }];
+    }, $name];
 }
 
 /**
@@ -142,16 +146,17 @@ function expected_schema_text(array $documents): string
 
 /**
  * 새 database 에 statement 를 적용하고 introspect 한다. 결과와 query 수를 돌려준다.
+ * statement 의 {schema} 는 그 database 또는 schema 의 이름이다.
  *
  * @param list<string> $statements
  * @return array{0: Orm\Dbspec\IntrospectResult, 1: int}
  */
 function introspect_applied(string $dialect, array $statements): array
 {
-    [$pdo, $drop] = open_database($dialect);
+    [$pdo, $drop, $name] = open_database($dialect);
     try {
         foreach ([...CONNECTION_RULES[$dialect], ...$statements] as $statement) {
-            $pdo->exec($statement);
+            $pdo->exec(str_replace('{schema}', $name, $statement));
         }
         $pdo->queries = 0;
         $result = Dbspec::introspect($pdo, $dialect, 'introspected');
