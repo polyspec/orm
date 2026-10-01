@@ -5,7 +5,8 @@
 // statements of a document set in one dialect; introspectDbspec reads a
 // database into a document and the objects it cannot read. parsePlan,
 // emitPlan, chainPlans, diffPlan and planStatements read, write, order, diff
-// and render schema plans (docs/plans.md).
+// and render schema plans, and applyPlans and recoverPlans apply them to a
+// database (docs/plans.md).
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
@@ -33,6 +34,18 @@ export {
   type DbspecPlanResult,
   type DbspecTableRename,
 } from './plan.js';
+export {
+  applyPlans,
+  DbspecApplyError,
+  recoverPlans,
+  type DbspecApplyErrorCode,
+  type DbspecApplyEvent,
+  type DbspecApplyEventKind,
+  type DbspecApplyHandler,
+  type DbspecApplyMySqlConnection,
+  type DbspecApplyPostgresConnection,
+  type DbspecApplySqliteConnection,
+} from './apply.js';
 export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
 export { planStatements, type DbspecPlanStatementsResult } from './plan_statements.js';
 
