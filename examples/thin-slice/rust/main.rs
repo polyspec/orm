@@ -106,7 +106,6 @@ async fn main() -> orm::Result<()> {
                 Param::Bytes(b) => q.bind(b.as_slice()),
                 Param::DateTime(t) => q.bind(*t),
                 Param::Date(d) => q.bind(*d),
-                Param::Point(point) => q.bind(orm::point_text(*point).expect("valid point")),
             };
         }
         let _rows: Vec<sqlx::mysql::MySqlRow> = q.fetch_all(pool).await.expect("native");

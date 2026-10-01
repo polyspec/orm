@@ -67,7 +67,7 @@ var inputs = map[string]map[string]string{
 	"ConnectionOptions":   {"go": "dsn,schemaPathstring,cfgorm.Config", "php": "string$dsn,Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,schemaPath:string,options:ConnectOptions={}"},
 	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
 	"LockKey":             {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string"},
-	"ManifestJson":        {"go": "manifestJSON[]byte", "php": "string$manifestJson", "rust": "manifest_json:&[u8]", "typescript": "manifestJson:string"},
+	"ManifestJson":        {"go": "manifestJSON[]byte", "php": "string$manifestJson", "rust": "schema:&Schema", "typescript": "manifestJson:string"},
 	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},
 	"DbspecSource":        {"go": "textstring,documentsmap[string]string", "php": "string$text,array$documents", "rust": "text:&str,documents:&BTreeMap<String,String>", "typescript": "text:string,documents:Readonly<Record<string,string>>"},
 	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument"},

@@ -8,8 +8,9 @@ use super::err;
 use crate::codes;
 use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
-use crate::schema::{ColumnSchema, EntitySchema, Manifest, Relation};
+use crate::schema::Manifest;
 use crate::Result;
+use orm_schema::dbspec::{Entity, Field, Type};
 
 pub(crate) struct Planner<'m> {
     pub m: &'m Manifest,
@@ -18,7 +19,7 @@ pub(crate) struct Planner<'m> {
 
 /// One entity occurrence in a statement (the root or a join) with its alias.
 struct Scope<'a> {
-    ent: &'a EntitySchema,
+    ent: &'a Entity,
     alias: String,
     q: &'a ir::Query,
     joins: Vec<(String, Scope<'a>)>,
@@ -121,9 +122,15 @@ impl Builder {
         self.slot(BindSlot { from: "config".into(), name: name.into(), ..Default::default() })
     }
 
-    /// A timestamp the executor supplies.
-    fn now(&mut self) -> String {
-        self.slot(BindSlot { from: "now".into(), ..Default::default() })
+    /// executor가 주는 시각. `precision`은 값을 쓰는 `datetime(p)` column의 p다.
+    fn now(&mut self, precision: u8) -> String {
+        self.slot(BindSlot { from: "now".into(), precision: precision.into(), ..Default::default() })
+    }
+
+    /// executor가 주는 현재 unit of work의 operation id를 operation column `col`에 쓴다.
+    fn operation(&mut self, col: &Field) -> String {
+        let ph = self.slot(BindSlot { from: "operation".into(), column: col.name.clone(), col_type: col.ty.name().into(), ..Default::default() });
+        self.d.write_expr(ph, col.ty, &[])
     }
 
     fn parent_list(&mut self, step: usize) -> String {
@@ -162,30 +169,44 @@ fn cmp(op: &str) -> &'static str {
     }
 }
 
-fn is_aes(col: &ColumnSchema) -> bool {
-    col.styles.iter().any(|s| s == "aes")
+/// AES 값과 함께 쓰는 key version column (`aes_version` setting).
+fn aes_version_column(ent: &Entity) -> &str {
+    ent.aes_version.as_deref().unwrap_or("")
 }
 
-/// The version column written with AES values.
-fn aes_version_column(ent: &EntitySchema) -> &'static str {
-    if ent.columns.iter().any(is_aes) {
-        "aes_key_version"
-    } else {
-        ""
-    }
+/// executor가 operation id를 쓰는 audit operation column.
+fn operation_column(ent: &Entity) -> &str {
+    ent.audit.as_ref().map(|a| a.operation.as_str()).unwrap_or("")
 }
 
 fn assigned(set: &[ir::Assign], col: &str) -> bool {
     set.iter().any(|a| a.column == col)
 }
 
-fn assigns_aes(ent: &EntitySchema, set: &[ir::Assign]) -> bool {
-    set.iter().any(|a| ent.column(&a.column).map(is_aes).unwrap_or(false))
+fn assigns_aes(ent: &Entity, set: &[ir::Assign]) -> bool {
+    set.iter().any(|a| ent.field(&a.column).map(Field::aes).unwrap_or(false))
+}
+
+/// executor만 쓰는 audit operation column을 request가 직접 쓰면 거부한다.
+fn validate_operation_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
+    let operation = operation_column(ent);
+    if !operation.is_empty() && assigned(set, operation) {
+        return Err(err(codes::IR_INVALID, format!("{}.{operation} is written by the executor from the operation id", ent.name)));
+    }
+    Ok(())
+}
+
+/// `datetime(p)` column의 p.
+fn datetime_precision(col: &Field) -> u8 {
+    match col.ty {
+        Type::DateTime(p) => p,
+        _ => 0,
+    }
 }
 
 /// Keeps the row-level key-version invariant: the version is managed by the
 /// planner, and an update of encrypted data replaces every AES column.
-fn validate_aes_assignments(ent: &EntitySchema, set: &[ir::Assign], require_complete: bool) -> Result<()> {
+fn validate_aes_assignments(ent: &Entity, set: &[ir::Assign], require_complete: bool) -> Result<()> {
     let version = aes_version_column(ent);
     if version.is_empty() {
         return Ok(());
@@ -196,21 +217,22 @@ fn validate_aes_assignments(ent: &EntitySchema, set: &[ir::Assign], require_comp
     if !require_complete || !assigns_aes(ent, set) {
         return Ok(());
     }
-    for col in &ent.columns {
-        if is_aes(col) && !assigned(set, &col.name) {
+    for col in &ent.fields {
+        if col.aes() && !assigned(set, &col.name) {
             return Err(err(codes::IR_INVALID, format!("AES update must assign every AES column; missing {}", col.name)));
         }
     }
     Ok(())
 }
 
-/// An insert assigns every required column: a NOT NULL column without a
-/// default that is neither automatic nor the AES key version the planner
-/// writes. MySQL fills an omitted NOT NULL ENUM column with its first value.
-fn validate_required_assignments(ent: &EntitySchema, set: &[ir::Assign]) -> Result<()> {
+/// insert는 필요한 column을 모두 쓴다: default가 없는 NOT NULL column 중 identity,
+/// planner가 쓰는 AES key version, executor가 쓰는 audit operation column이 아닌 것.
+/// default가 있는 column을 빼면 database default를 쓴다.
+fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     let version = aes_version_column(ent);
-    for col in &ent.columns {
-        if col.nullable || col.default.is_some() || col.auto || col.name == version || assigned(set, &col.name) {
+    let operation = operation_column(ent);
+    for col in &ent.fields {
+        if col.nullable || col.default.is_some() || col.identity || col.name == version || col.name == operation || assigned(set, &col.name) {
             continue;
         }
         return Err(err(codes::IR_INVALID, format!("required column {}.{} is not set", ent.name, col.name)));
@@ -218,51 +240,50 @@ fn validate_required_assignments(ent: &EntitySchema, set: &[ir::Assign]) -> Resu
     Ok(())
 }
 
-fn add_blind_index_assignments(ent: &EntitySchema, mut set: Vec<ir::Assign>) -> Vec<ir::Assign> {
+fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Vec<ir::Assign> {
     for a in set.clone() {
-        let Some(col) = ent.column(&a.column) else { continue };
-        if !is_aes(col) || col.blind_index.is_empty() || assigned(&set, &col.blind_index) {
+        let Some(col) = ent.field(&a.column) else { continue };
+        let Some(index) = col.blind_index.as_ref().filter(|_| col.aes()) else { continue };
+        if assigned(&set, index) {
             continue;
         }
-        set.push(ir::Assign { column: col.blind_index.clone(), p: a.p, null: a.null, ..Default::default() });
+        set.push(ir::Assign { column: index.clone(), p: a.p, null: a.null, ..Default::default() });
     }
     set
 }
 
-fn blind_index_source<'e>(ent: &'e EntitySchema, target: &str) -> Option<&'e ColumnSchema> {
-    ent.columns.iter().find(|c| c.blind_index == target)
+fn blind_index_source<'e>(ent: &'e Entity, target: &str) -> Option<&'e Field> {
+    ent.fields.iter().find(|c| c.blind_index.as_deref() == Some(target))
 }
 
 /// The unique key an upsert conflicts on: the first declared unique key whose
 /// columns are all inserted, else the primary key.
-fn conflict_target(ent: &EntitySchema, set: &[ir::Assign]) -> Vec<String> {
-    for uk in &ent.unique {
-        if uk.iter().all(|c| assigned(set, c)) {
-            return uk.clone();
+fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Vec<String> {
+    for uk in &ent.uniques {
+        if uk.columns.iter().all(|c| assigned(set, c)) {
+            return uk.columns.clone();
         }
     }
-    ent.pk.clone()
+    ent.primary_key.clone()
 }
 
-/// The types executors normalize before binding.
-fn bind_type(col: &ColumnSchema) -> String {
-    match col.typ.as_str() {
-        "date" | "time" | "datetime" | "point" | "decimal" => col.typ.clone(),
-        _ => String::new(),
+/// executor가 bind 전에 정규화하는 type과 그 precision, scale.
+fn bind_type(col: &Field) -> (String, i64, i64) {
+    match col.ty {
+        Type::Decimal(p, s) => ("decimal".into(), p.into(), s.into()),
+        Type::Time(p) => ("time".into(), p.into(), 0),
+        Type::DateTime(p) => ("datetime".into(), p.into(), 0),
+        Type::Date => ("date".into(), 0, 0),
+        _ => (String::new(), 0, 0),
     }
 }
 
-fn function_type(name: &str, col: Option<&ColumnSchema>) -> String {
+fn function_type(name: &str, col: Option<&Field>) -> String {
     match name {
         "day_of_week" | "year" | "month" => "i64".into(),
         "date" => "date".into(),
-        "distance" | "point_x" | "point_y" => "f64".into(),
-        _ => col.map(|c| c.typ.clone()).unwrap_or_else(|| "string".into()),
+        _ => col.map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into()),
     }
-}
-
-fn relation_columns(rel: &Relation) -> (Vec<String>, Vec<String>) {
-    rel.keys.iter().map(|k| (k.local.clone(), k.target.clone())).unzip()
 }
 
 fn placed_joins(g: &ir::Group, out: &mut Vec<String>) {
@@ -280,7 +301,7 @@ fn has_where(g: &Option<ir::Group>) -> bool {
 }
 
 impl<'m> Planner<'m> {
-    fn entity(&self, name: &str) -> Result<&'m EntitySchema> {
+    fn entity(&self, name: &str) -> Result<&'m Entity> {
         self.m.entity(name)
     }
 
@@ -302,7 +323,7 @@ impl<'m> Planner<'m> {
         for (i, st) in steps.iter_mut().enumerate() {
             st.id = i as u32;
         }
-        Ok(Plan { schema_hash: self.m.schema_hash.clone(), kind: r.kind.clone(), steps })
+        Ok(Plan { manifest_hash: self.m.manifest_hash.clone(), kind: r.kind.clone(), steps })
     }
 
     /// Assigns aliases: root "a", joins by result name, nested joins and the
@@ -362,7 +383,7 @@ impl<'m> Planner<'m> {
             }
             _ => {
                 self.select_list(&mut b, root, &mut sb, &mut asm, &mut out_names)?;
-                asm.key = asm.key_refs(&root.ent.pk)?;
+                asm.key = asm.key_refs(&root.ent.primary_key)?;
             }
         }
         // Rows per parent: ROW_NUMBER() over the match columns. A one-relation
@@ -375,9 +396,9 @@ impl<'m> Planner<'m> {
             }
         }
         if let (true, Some(rc)) = (per_parent > 0, rc) {
-            let mut order = self.render_order(&mut b, root, q)?;
+            let mut order = self.render_order(root, q)?;
             if order.is_empty() {
-                order = format!(" ORDER BY {} ASC", self.qcol(root, &root.ent.pk[0]));
+                order = format!(" ORDER BY {} ASC", self.qcol(root, &root.ent.primary_key[0]));
             }
             sb.push_str(&format!(
                 ", ROW_NUMBER() OVER (PARTITION BY {}{order}) AS {}",
@@ -399,8 +420,8 @@ impl<'m> Planner<'m> {
                 where_.push(format!("({}) IN (({list}))", self.qualified(root, &rc.child_keys).join(", ")));
             }
         }
-        if !root.ent.soft_delete.is_empty() {
-            where_.push(format!("{} IS NULL", self.qcol(root, &root.ent.soft_delete)));
+        if let Some(soft_delete) = &root.ent.soft_delete {
+            where_.push(format!("{} IS NULL", self.qcol(root, soft_delete)));
         }
         if let Some(g) = q.where_.as_ref().filter(|g| !g.items.is_empty()) {
             where_.push(self.render_group(&mut b, root, root, g, rc.is_none())?);
@@ -426,7 +447,7 @@ impl<'m> Planner<'m> {
                 let rn = self.d.quote("orm_rn");
                 sb = format!("SELECT {} FROM ({sb}) AS {w} WHERE {w}.{rn} <= {per_parent} ORDER BY {}, {w}.{rn}", cols.join(", "), keys.join(", "));
             } else {
-                sb.push_str(&self.render_order(&mut b, root, q)?);
+                sb.push_str(&self.render_order(root, q)?);
                 if kind == "one" && rc.is_none() {
                     sb.push_str(&self.d.limit(0, 1));
                 } else if let Some(l) = &q.limit {
@@ -461,13 +482,7 @@ impl<'m> Planner<'m> {
     /// rows attach.
     fn relation_steps(&self, steps: &mut Vec<Step>, s: &Scope<'_>, asm: &mut Asm, step_id: usize) -> Result<()> {
         for r in &s.q.relations {
-            let (parent_keys, child_keys, kind, target) = if !r.left.is_empty() {
-                (vec![r.left.clone()], vec![r.right.clone()], r.kind.clone(), self.entity(&r.query.entity)?)
-            } else {
-                let rel = s.ent.relations.get(&r.rel).ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, r.rel)))?;
-                let (l, t) = relation_columns(rel);
-                (l, t, rel.kind.clone(), self.entity(&rel.target)?)
-            };
+            let (parent_keys, child_keys, kind, target) = (vec![r.left.clone()], vec![r.right.clone()], r.kind.clone(), self.entity(&r.query.entity)?);
             let if_parent = match &r.query.if_parent {
                 Some(ip) => Some(IfParent { column: ip.column.clone(), index: asm.index_of(&ip.column)?, param: ip.p }),
                 None => None,
@@ -478,7 +493,7 @@ impl<'m> Planner<'m> {
             let key = if !r.query.key_by.is_empty() {
                 key_refs_of(&child_asm, std::slice::from_ref(&r.query.key_by))?
             } else {
-                key_refs_of(&child_asm, &self.entity(&child_asm.entity)?.pk)?
+                key_refs_of(&child_asm, &self.entity(&child_asm.entity)?.primary_key)?
             };
             asm.children.push(Ch {
                 child: Child {
@@ -490,7 +505,7 @@ impl<'m> Planner<'m> {
                     key,
                     flatten: r.query.flatten,
                     // owned when the target holds the foreign key
-                    cascade: !r.query.no_cascade_delete && parent_keys == s.ent.pk && child_keys != target.pk,
+                    cascade: !r.query.no_cascade_delete && parent_keys == s.ent.primary_key && child_keys != target.primary_key,
                     assemble: None,
                 },
                 asm: None,
@@ -509,7 +524,7 @@ impl<'m> Planner<'m> {
         Ok(())
     }
 
-    fn render_order(&self, b: &mut Builder, s: &Scope<'_>, q: &ir::Query) -> Result<String> {
+    fn render_order(&self, s: &Scope<'_>, q: &ir::Query) -> Result<String> {
         if q.order.is_empty() {
             return Ok(String::new());
         }
@@ -525,7 +540,7 @@ impl<'m> Planner<'m> {
                 continue;
             }
             let col = match &o.r#fn {
-                Some(f) => self.column_function(b, s, &o.column, f)?,
+                Some(f) => self.column_function(s, &o.column, f)?,
                 None => self.qcol(s, &o.column),
             };
             parts.push(format!("{col} {}", if o.desc { "DESC" } else { "ASC" }));
@@ -553,14 +568,15 @@ impl<'m> Planner<'m> {
             asm.columns.push(OutCol { index: asm.columns.len(), ..col });
         };
         for name in &s.q.group_by {
-            let col = s.ent.column(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
-            let expr = self.d.read_expr(&self.qcol(s, name), &col.typ, &self.sql_styles(&col.styles));
-            let out = OutCol { name: name.clone(), column: name.clone(), typ: col.typ.clone(), styles: self.client_styles(&col.styles), ..Default::default() };
+            let col = s.ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
+            let expr = self.d.read_expr(&self.qcol(s, name), col.ty, &self.sql_styles(&col.codec));
+            let out =
+                OutCol { name: name.clone(), column: name.clone(), typ: col.ty.name().into(), styles: self.client_styles(&col.codec), ..Default::default() };
             push(sb, expr, name, out, asm);
         }
         for g in &s.q.group_by_expr {
             let expr = self.render_expr(s, &g.expr)?;
-            let typ = s.ent.column(&g.as_).map(|c| c.typ.clone()).unwrap_or_else(|| "string".into());
+            let typ = s.ent.field(&g.as_).map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into());
             push(sb, expr, &g.as_, OutCol { name: g.as_.clone(), typ, ..Default::default() }, asm);
         }
         push(sb, "COUNT(*)".into(), "row_count", OutCol { name: "row_count".into(), typ: "i64".into(), ..Default::default() }, asm);
@@ -579,16 +595,16 @@ impl<'m> Planner<'m> {
             first = false;
         };
         for c in cols {
-            let mut col = s.ent.column(&c.column);
-            if col.map(is_aes).unwrap_or(false) {
+            let mut col = s.ent.field(&c.column);
+            if col.map(Field::aes).unwrap_or(false) {
                 has_aes = true;
             }
             sep(sb);
             let mut styles = Vec::new();
-            let mut typ = "string".to_owned();
+            let mut typ = "varchar".to_owned();
             let expr = match c.kind {
                 OutKind::Fn(f) => {
-                    let e = self.column_function(b, s, &c.column, f)?;
+                    let e = self.column_function(s, &c.column, f)?;
                     typ = function_type(&f.name, col);
                     col = None;
                     e
@@ -604,21 +620,25 @@ impl<'m> Planner<'m> {
                 }
                 OutKind::Column => {
                     let col = col.ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, c.column)))?;
-                    styles = self.client_styles(&col.styles);
-                    self.d.read_expr(&self.qcol(s, &c.column), &col.typ, &self.sql_styles(&col.styles))
+                    styles = self.client_styles(&col.codec);
+                    self.d.read_expr(&self.qcol(s, &c.column), col.ty, &self.sql_styles(&col.codec))
                 }
             };
             let out = format!("{}__{}", s.alias, c.name);
             sb.push_str(&format!("{expr} AS {}", self.d.quote(&out)));
             out_names.push(out);
             if let Some(col) = col {
-                typ = col.typ.clone();
+                typ = col.ty.name().to_owned();
             }
             asm.columns.push(OutCol { index: out_names.len() - 1, name: c.name, column: c.column, typ, styles, hidden: false });
         }
         if has_aes {
-            let version =
-                s.ent.column("aes_key_version").ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires aes_key_version", s.ent.name)))?;
+            let version = s
+                .ent
+                .aes_version
+                .as_deref()
+                .and_then(|name| s.ent.field(name))
+                .ok_or_else(|| err(codes::SCHEMA_INVALID, format!("{}: AES column requires the aes_version setting", s.ent.name)))?;
             sep(sb);
             let out = format!("{}__{}", s.alias, version.name);
             sb.push_str(&format!("{} AS {}", self.qcol(s, &version.name), self.d.quote(&out)));
@@ -627,7 +647,7 @@ impl<'m> Planner<'m> {
                 index: out_names.len() - 1,
                 name: version.name.clone(),
                 column: version.name.clone(),
-                typ: version.typ.clone(),
+                typ: version.ty.name().into(),
                 styles: Vec::new(),
                 hidden: true,
             });
@@ -638,7 +658,7 @@ impl<'m> Planner<'m> {
             self.select_list(b, js, sb, &mut child, out_names)?;
             asm.children.push(Ch { child: Child { rel: j.rel.clone(), kind: "join".into(), ..Default::default() }, asm: Some(child) });
         }
-        asm.key = asm.key_refs(&s.ent.pk)?;
+        asm.key = asm.key_refs(&s.ent.primary_key)?;
         Ok(())
     }
 
@@ -648,12 +668,12 @@ impl<'m> Planner<'m> {
         let mode = c.map(|c| c.mode.as_str()).unwrap_or("");
         let mut base: Vec<String> = s
             .ent
-            .columns
+            .fields
             .iter()
             .filter(|col| match mode {
                 "all" => true,
-                "none" => col.pk || col.fk,
-                _ => !col.lazy,
+                "none" => col.primary_key || col.foreign_key,
+                _ => !col.select_explicit,
             })
             .map(|col| col.name.clone())
             .collect();
@@ -667,25 +687,19 @@ impl<'m> Planner<'m> {
                 add(&mut base, a);
             }
             if !c.remove.is_empty() {
-                base.retain(|x| !c.remove.contains(x) || s.ent.column(x).map(|col| col.pk).unwrap_or(false));
+                base.retain(|x| !c.remove.contains(x) || s.ent.field(x).map(|col| col.primary_key).unwrap_or(false));
             }
         }
         for x in &s.extra {
             add(&mut base, x);
         }
         for r in &s.q.relations {
-            if !r.left.is_empty() {
-                add(&mut base, &r.left);
-            } else if let Some(rel) = s.ent.relations.get(&r.rel) {
-                for k in &rel.keys {
-                    add(&mut base, &k.local);
-                }
-            }
+            add(&mut base, &r.left);
             if let Some(ip) = &r.query.if_parent {
                 add(&mut base, &ip.column);
             }
         }
-        for pk in &s.ent.pk {
+        for pk in &s.ent.primary_key {
             if !base.contains(pk) {
                 base.insert(0, pk.clone());
             }
@@ -709,13 +723,8 @@ impl<'m> Planner<'m> {
         for j in &s.q.joins {
             let js = s.join(&j.rel).expect("scoped join");
             let kw = if j.kind == "left" { " LEFT JOIN " } else { " INNER JOIN " };
-            let conditions: Vec<String> = if !j.left.is_empty() {
-                vec![format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right))]
-            } else {
-                let rel = s.ent.relations.get(&j.rel).ok_or_else(|| err(codes::RELATION_UNKNOWN, format!("{}.{}", s.ent.name, j.rel)))?;
-                rel.keys.iter().map(|k| format!("{} = {}", self.qcol(s, &k.local), self.qcol(js, &k.target))).collect()
-            };
-            sb.push_str(&format!("{kw}{} AS {} ON {}", self.d.quote(&js.ent.table), self.d.quote(&js.alias), conditions.join(" AND ")));
+            let condition = format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right));
+            sb.push_str(&format!("{kw}{} AS {} ON {condition}", self.d.quote(&js.ent.table), self.d.quote(&js.alias)));
             if let Some(on) = j.query.on.as_ref().filter(|g| !g.items.is_empty()) {
                 let on = self.render_group(b, root, js, on, true)?;
                 sb.push_str(" AND ");
@@ -765,28 +774,19 @@ impl<'m> Planner<'m> {
     }
 
     fn render_pred(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, pr: &ir::Pred) -> Result<String> {
-        if !pr.op.is_empty() && !self.d.supports(&pr.op) {
-            return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{} is not available on {}", pr.op, self.d.name())));
-        }
         if !pr.expr.is_empty() {
             let e = self.render_expr(s, &pr.expr)?;
             return Ok(format!("({})", b.fill(&e, &pr.ps)?));
         }
         let p = || pr.p.ok_or_else(|| err(codes::IR_INVALID, format!("{} {}.{} needs a value (p)", pr.op, s.ent.name, pr.column)));
         match pr.op.as_str() {
-            "match" | "match_boolean" => {
-                let cols: Vec<String> = pr.match_.iter().map(|c| self.qcol(s, c)).collect();
-                let boolean = pr.op == "match_boolean";
-                let ph = b.param_t(p()?, if boolean { "fulltext_boolean" } else { "" });
-                return Ok(self.d.fulltext(&cols, &ph, boolean));
-            }
             "tuple_in" | "tuple_not_in" => {
                 let cols = self.qualified(s, &pr.cols);
                 let mut rows = Vec::new();
                 for chunk in pr.ps.chunks(pr.cols.len()) {
                     let mut row = Vec::with_capacity(chunk.len());
                     for (k, name) in pr.cols.iter().enumerate() {
-                        let col = s.ent.column(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
+                        let col = s.ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
                         row.push(self.render_value(b, col, chunk[k]));
                     }
                     rows.push(row);
@@ -795,7 +795,7 @@ impl<'m> Planner<'m> {
             }
             _ => {}
         }
-        let col = s.ent.column(&pr.column).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, pr.column)))?;
+        let col = s.ent.field(&pr.column).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, pr.column)))?;
         let mut lhs = self.qcol(s, &pr.column);
         if let Some(sub) = &pr.sub {
             let inner = self.sub_select(b, s, sub)?;
@@ -809,7 +809,8 @@ impl<'m> Planner<'m> {
                 Some(i) => cell.borrow_mut().param(i),
                 None => String::new(),
             };
-            let mut now = || cell.borrow_mut().now();
+            let precision = datetime_precision(col);
+            let mut now = || cell.borrow_mut().now(precision);
             let value = self
                 .d
                 .value_function(&v.name, &mut arg, &mut now)
@@ -817,7 +818,7 @@ impl<'m> Planner<'m> {
             return Ok(format!("{lhs} {} {value}", cmp(&pr.op)));
         }
         if let Some(f) = &pr.r#fn {
-            let fcol = self.column_function(b, s, &pr.column, f)?;
+            let fcol = self.column_function(s, &pr.column, f)?;
             return Ok(match pr.op.as_str() {
                 "in" | "not_in" => {
                     let phs: Vec<String> = pr.ps.iter().map(|i| b.param(*i)).collect();
@@ -835,7 +836,7 @@ impl<'m> Planner<'m> {
         let op = pr.op.as_str();
         Ok(match op {
             "eq" | "not_eq" | "gt" | "gte" | "lt" | "lte" => {
-                if is_aes(col) {
+                if col.aes() {
                     if op != "eq" && op != "not_eq" {
                         return Err(err(codes::OPERATOR_NOT_ALLOWED, "AES columns support only equality through a declared blind index"));
                     }
@@ -849,13 +850,13 @@ impl<'m> Planner<'m> {
             "eq_col" | "not_eq_col" | "gt_col" | "gte_col" | "lt_col" | "lte_col" => {
                 let r = pr.r#ref.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("{op} needs ref")))?;
                 let rs = self.resolve_path(root, &r.path)?;
-                if rs.ent.column(&r.column).is_none() {
+                if rs.ent.field(&r.column).is_none() {
                     return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{}", rs.ent.name, r.column)));
                 }
                 format!("{lhs} {} {}", cmp(op.trim_end_matches("_col")), self.qcol(rs, &r.column))
             }
             "in" | "not_in" => {
-                let aes = is_aes(col);
+                let aes = col.aes();
                 if aes {
                     lhs = self.blind_lhs(s, col)?;
                 }
@@ -881,11 +882,12 @@ impl<'m> Planner<'m> {
         })
     }
 
-    fn blind_lhs(&self, s: &Scope<'_>, col: &ColumnSchema) -> Result<String> {
-        if col.blind_index.is_empty() {
-            return Err(err(codes::IR_INVALID, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)));
-        }
-        Ok(self.qcol(s, &col.blind_index))
+    fn blind_lhs(&self, s: &Scope<'_>, col: &Field) -> Result<String> {
+        let index = col
+            .blind_index
+            .as_ref()
+            .ok_or_else(|| err(codes::IR_INVALID, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
+        Ok(self.qcol(s, index))
     }
 
     /// Binds plaintext for executor-side keyed hashing.
@@ -895,22 +897,12 @@ impl<'m> Planner<'m> {
 
     /// Binds one value, wrapped in the SQL-side stages of the column; the
     /// stages the dialect leaves to the executor are recorded on the slot.
-    fn render_value(&self, b: &mut Builder, col: &ColumnSchema, i: usize) -> String {
-        let styles = self.sql_styles(&col.styles);
-        let host: Vec<String> = col.styles.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
-        let ph = b.slot(BindSlot {
-            from: "param".into(),
-            param: i,
-            host_styles: host,
-            col_type: bind_type(col),
-            precision: col.precision,
-            scale: col.scale,
-            ..Default::default()
-        });
-        if styles.is_empty() && col.typ != "point" {
-            return ph;
-        }
-        self.d.write_expr(ph, &col.typ, &styles)
+    fn render_value(&self, b: &mut Builder, col: &Field, i: usize) -> String {
+        let styles = self.sql_styles(&col.codec);
+        let host: Vec<String> = col.codec.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
+        let (col_type, precision, scale) = bind_type(col);
+        let ph = b.slot(BindSlot { from: "param".into(), param: i, host_styles: host, col_type, precision, scale, ..Default::default() });
+        self.d.write_expr(ph, col.ty, &styles)
     }
 
     fn resolve_path<'s>(&self, root: &'s Scope<'s>, path: &str) -> Result<&'s Scope<'s>> {
@@ -939,7 +931,7 @@ impl<'m> Planner<'m> {
             let after = &rest[i + 1..];
             let j = after.find(close).ok_or_else(|| err(codes::IR_INVALID, format!("unterminated {} in expr", &rest[i..i + 1])))?;
             let name = &after[..j];
-            if s.ent.column(name).is_none() {
+            if s.ent.field(name).is_none() {
                 return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{name} in expr", s.ent.name)));
             }
             out.push_str(&self.qcol(s, name));
@@ -949,9 +941,9 @@ impl<'m> Planner<'m> {
         Ok(out)
     }
 
-    fn column_function(&self, b: &mut Builder, s: &Scope<'_>, column: &str, f: &ir::Func) -> Result<String> {
+    fn column_function(&self, s: &Scope<'_>, column: &str, f: &ir::Func) -> Result<String> {
         self.d
-            .column_function(&f.name, &self.qcol(s, column), &mut |i| b.param(f.ps[i]))
+            .column_function(&f.name, &self.qcol(s, column))
             .ok_or_else(|| err(codes::CAPABILITY_UNSUPPORTED, format!("{} is not available on {}", f.name, self.d.name())))
     }
 
@@ -974,8 +966,8 @@ impl<'m> Planner<'m> {
         sb.push_str(&format!(" FROM {} AS {}", self.d.quote(&root.ent.table), self.d.quote(&root.alias)));
         self.render_joins(b, root, root, &mut sb)?;
         let mut where_ = Vec::new();
-        if !root.ent.soft_delete.is_empty() {
-            where_.push(format!("{} IS NULL", self.qcol(root, &root.ent.soft_delete)));
+        if let Some(soft_delete) = &root.ent.soft_delete {
+            where_.push(format!("{} IS NULL", self.qcol(root, soft_delete)));
         }
         if let Some(w) = sub.query.where_.as_ref().filter(|g| !g.items.is_empty()) {
             where_.push(self.render_group(b, root, root, w, true)?);
@@ -996,18 +988,18 @@ impl<'m> Planner<'m> {
         Ok(match sub.agg.as_str() {
             "count" => "i64".into(),
             "avg" => "f64".into(),
-            _ => self.entity(&sub.query.entity)?.column(&sub.column).map(|c| c.typ.clone()).unwrap_or_else(|| "string".into()),
+            _ => self.entity(&sub.query.entity)?.field(&sub.column).map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into()),
         })
     }
 
-    fn table_scope<'a>(&self, ent: &'a EntitySchema, q: &'a ir::Query) -> Result<Scope<'a>>
+    fn table_scope<'a>(&self, ent: &'a Entity, q: &'a ir::Query) -> Result<Scope<'a>>
     where
         'm: 'a,
     {
         self.scopes(q, ent.table.clone(), false)
     }
 
-    fn render_assign(&self, b: &mut Builder, ent: &EntitySchema, col: &ColumnSchema, a: &ir::Assign) -> Result<String> {
+    fn render_assign(&self, b: &mut Builder, ent: &Entity, col: &Field, a: &ir::Assign) -> Result<String> {
         if blind_index_source(ent, &col.name).is_some() {
             if !a.expr.is_empty() || a.plus_p.is_some() || a.minus_p.is_some() {
                 return Err(err(codes::IR_INVALID, "blind index assignment must use its AES source value"));
@@ -1041,8 +1033,8 @@ impl<'m> Planner<'m> {
         Ok(self.render_value(b, col, p))
     }
 
-    fn column_of<'e>(&self, ent: &'e EntitySchema, name: &str) -> Result<&'e ColumnSchema> {
-        ent.column(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", ent.name)))
+    fn column_of<'e>(&self, ent: &'e Entity, name: &str) -> Result<&'e Field> {
+        ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", ent.name)))
     }
 
     fn insert_step(&self, r: &ir::Request) -> Result<Step> {
@@ -1050,14 +1042,16 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, false)?;
+        validate_operation_assignment(ent, &set)?;
         validate_required_assignments(ent, &set)?;
         let version = aes_version_column(ent);
+        let operation = operation_column(ent);
         let mut cols = Vec::new();
         let mut vals = Vec::new();
         for a in &set {
             let col = self.column_of(ent, &a.column)?;
-            if col.auto {
-                return Err(err(codes::IR_INVALID, format!("cannot set auto column {}", a.column)));
+            if col.identity {
+                return Err(err(codes::IR_INVALID, format!("cannot set identity column {}", a.column)));
             }
             cols.push(self.d.quote(&a.column));
             vals.push(self.render_assign(&mut b, ent, col, a)?);
@@ -1066,21 +1060,13 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(version));
             vals.push(b.config("aes_version"));
         }
-        // A dialect without a session time zone stores the executor clock,
-        // which is in the connection time zone, instead of its UTC default.
-        let now_cols: Vec<&str> = if self.d.host_now() {
-            ent.columns.iter().filter(|c| c.default.as_deref() == Some("now") && !assigned(&set, &c.name)).map(|c| c.name.as_str()).collect()
-        } else {
-            Vec::new()
-        };
-        for c in &now_cols {
-            cols.push(self.d.quote(c));
-            vals.push(b.now());
+        if !operation.is_empty() {
+            cols.push(self.d.quote(operation));
+            vals.push(b.operation(self.column_of(ent, operation)?));
         }
         let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", self.d.quote(&ent.table), cols.join(", "), vals.join(", "));
         if !r.rows.is_empty() {
-            // each rendered column maps to its value in r.set; a derived blind
-            // index takes the value of its AES source column
+            // 그려진 column은 r.set의 값에 대응한다. 파생된 blind index는 AES source column의 값을 쓴다.
             let mut source = Vec::with_capacity(set.len());
             for (i, a) in set.iter().enumerate() {
                 if i < r.set.len() {
@@ -1091,7 +1077,7 @@ impl<'m> Planner<'m> {
                 }
             }
             for row in &r.rows {
-                let mut more = Vec::with_capacity(set.len() + 1);
+                let mut more = Vec::with_capacity(set.len() + 2);
                 for (i, a) in set.iter().enumerate() {
                     let assign = ir::Assign { column: a.column.clone(), p: Some(row[source[i]]), ..Default::default() };
                     more.push(self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, &assign)?);
@@ -1099,8 +1085,8 @@ impl<'m> Planner<'m> {
                 if !version.is_empty() && !assigned(&set, version) {
                     more.push(b.config("aes_version"));
                 }
-                for _ in &now_cols {
-                    more.push(b.now());
+                if !operation.is_empty() {
+                    more.push(b.operation(self.column_of(ent, operation)?));
                 }
                 sql.push_str(&format!(", ({})", more.join(", ")));
             }
@@ -1109,6 +1095,7 @@ impl<'m> Planner<'m> {
         if !r.on_duplicate.is_empty() {
             let duplicate = add_blind_index_assignments(ent, r.on_duplicate.clone());
             validate_aes_assignments(ent, &duplicate, true)?;
+            validate_operation_assignment(ent, &duplicate)?;
             let mut sets = Vec::new();
             for a in &duplicate {
                 let v = self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, a)?;
@@ -1117,17 +1104,32 @@ impl<'m> Planner<'m> {
             if !version.is_empty() && assigns_aes(ent, &duplicate) && !assigned(&duplicate, version) {
                 sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
             }
-            if !ent.auto.is_empty() && !self.d.insert_returning_id() {
-                // MySQL: make the last insert id report the existing row
-                let auto = self.d.quote(&ent.auto);
-                sets.push(format!("{auto} = LAST_INSERT_ID({auto})"));
+            if !operation.is_empty() {
+                sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+            }
+            if let Some(identity) = ent.identity.as_deref().filter(|_| !self.d.insert_returning_id()) {
+                // MySQL: last insert id가 이미 있는 row를 가리키게 한다
+                let identity = self.d.quote(identity);
+                sets.push(format!("{identity} = LAST_INSERT_ID({identity})"));
             }
             sql.push_str(&self.d.upsert(&conflict_target(ent, &set), &sets.join(", ")));
         }
-        if self.d.insert_returning_id() && !ent.auto.is_empty() {
-            sql.push_str(&format!(" RETURNING {}", self.d.quote(&ent.auto)));
+        if let Some(identity) = ent.identity.as_deref().filter(|_| self.d.insert_returning_id()) {
+            sql.push_str(&format!(" RETURNING {}", self.d.quote(identity)));
         }
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+    }
+
+    /// `datetime(p)` column에 쓰는 statement 시각.
+    fn statement_time(&self, b: &mut Builder, col: &Field) -> String {
+        let precision = datetime_precision(col);
+        if self.d.host_now() {
+            b.now(precision)
+        } else if precision > 0 && self.d == Dialect::MySql {
+            format!("CURRENT_TIMESTAMP({precision})")
+        } else {
+            self.d.now().to_owned()
+        }
     }
 
     fn update_step(&self, r: &ir::Request) -> Result<Step> {
@@ -1135,11 +1137,12 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, true)?;
+        validate_operation_assignment(ent, &set)?;
         let root = self.table_scope(ent, &r.query)?;
         let mut sets = Vec::new();
         for a in &set {
             let col = self.column_of(ent, &a.column)?;
-            if col.pk || col.auto {
+            if col.primary_key || col.identity {
                 return Err(err(codes::IR_INVALID, format!("cannot update {}", a.column)));
             }
             let v = self.render_assign(&mut b, ent, col, a)?;
@@ -1149,20 +1152,14 @@ impl<'m> Planner<'m> {
         if !version.is_empty() && assigns_aes(ent, &set) && !assigned(&set, version) {
             sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
         }
-        // The updated timestamp is always assigned explicitly, so every
-        // dialect and optimistic locking behave the same.
-        let updated = ent.updated_column();
-        if !updated.is_empty() && !assigned(&r.set, updated) {
-            if let Some(col) = ent.column(updated) {
-                let now = if self.d.host_now() {
-                    b.now()
-                } else if col.precision > 0 && self.d == Dialect::MySql {
-                    format!("CURRENT_TIMESTAMP({})", col.precision)
-                } else {
-                    self.d.now().to_owned()
-                };
-                sets.push(format!("{} = {now}", self.d.quote(updated)));
-            }
+        // updated 시각은 항상 명시적으로 쓰므로 모든 dialect와 optimistic locking이 같게 동작한다.
+        if let Some(updated) = ent.updated.as_deref().filter(|u| !assigned(&r.set, u)) {
+            let now = self.statement_time(&mut b, self.column_of(ent, updated)?);
+            sets.push(format!("{} = {now}", self.d.quote(updated)));
+        }
+        let operation = operation_column(ent);
+        if !operation.is_empty() {
+            sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
         }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "update without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
@@ -1170,31 +1167,36 @@ impl<'m> Planner<'m> {
             let ph = b.param(o.p);
             where_.push_str(&format!(" AND {} = {ph}", self.qcol(&root, &o.column)));
         }
-        if !ent.soft_delete.is_empty() {
-            where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, &ent.soft_delete)));
+        if let Some(soft_delete) = &ent.soft_delete {
+            where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
         }
         let sql = format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "));
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }
 
+    /// soft delete column이 있으면 delete는 그 column을 statement 시각으로 쓰는 update다.
+    /// audit 대상 table의 soft delete도 operation column을 쓴다.
     fn delete_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
         let root = self.table_scope(ent, &r.query)?;
-        let now = if ent.soft_delete.is_empty() {
-            String::new()
-        } else if self.d.host_now() {
-            b.now()
-        } else {
-            self.d.now().to_owned()
-        };
+        let mut sets = Vec::new();
+        if let Some(soft_delete) = &ent.soft_delete {
+            let now = self.statement_time(&mut b, self.column_of(ent, soft_delete)?);
+            sets.push(format!("{} = {now}", self.d.quote(soft_delete)));
+            let operation = operation_column(ent);
+            if !operation.is_empty() {
+                sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+            }
+        }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "delete without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
-        let sql = if !ent.soft_delete.is_empty() {
-            where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, &ent.soft_delete)));
-            format!("UPDATE {} SET {} = {now} WHERE {where_}", self.d.quote(&ent.table), self.d.quote(&ent.soft_delete))
-        } else {
-            format!("DELETE FROM {} WHERE {where_}", self.d.quote(&ent.table))
+        let sql = match &ent.soft_delete {
+            Some(soft_delete) => {
+                where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
+                format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "))
+            }
+            None => format!("DELETE FROM {} WHERE {where_}", self.d.quote(&ent.table)),
         };
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }

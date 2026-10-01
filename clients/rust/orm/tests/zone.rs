@@ -1,6 +1,7 @@
 //! Connection time zones: a wall-clock value is written and read back in the
-//! connection zone, and the clock default of a created row is in the same
-//! zone, on SQLite, MySQL and PostgreSQL. A test fails when
+//! connection zone on SQLite, MySQL and PostgreSQL. `default now` writes the UTC
+//! statement time (docs/dbspec.md, "Columns"); the executor never fills it, so
+//! the clock default is checked on a UTC connection. A test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
@@ -16,7 +17,8 @@ fn require_dsn(var: &str) -> String {
     }
 }
 
-static SCHEMA: Schema = Schema::new(include_bytes!("testdata/zone_schema.json"), "61829838dcc62cf6");
+static SCHEMA: Schema =
+    Schema::new(include_str!("../../../../contracts/fixtures/zone.dbspec"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
 
 /// Both tests create and drop zone_event in the same database, so they run
 /// one at a time.
@@ -118,15 +120,19 @@ async fn connection_time_zone() {
             let label = format!("{driver}/{zone}");
             let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             drop_table(&db).await;
-            db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
+            db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
             let before = wall_clock(zone);
             let mut row = event(&db);
             row.core_mut().set("start_dt", Param::DateTime(start));
             orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
             let got = orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
-            let skew = (got.created_ts - before).num_seconds().abs();
-            assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
+            // `default now`는 database default이고 UTC statement 시각이다. 연결 zone이 UTC일 때
+            // 세 database의 값이 같으므로 그 연결에서 확인한다.
+            if zone == "+00:00" {
+                let skew = (got.created_ts - before).num_seconds().abs();
+                assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
+            }
             const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
             let filter = event(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(Param::DateTime(start)))]);
             let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: count: {e}"));
@@ -164,9 +170,9 @@ async fn mysql_install_inside_transaction() {
     let dsn = require_dsn("ORM_TEST_MYSQL_DSN");
     let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     drop_table(&db).await;
-    let inside: orm::Result<()> = db.transaction(async || db.utils().schema().install(SCHEMA.json()).await).await;
+    let inside: orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
     assert_eq!(inside.as_ref().map_err(|e| e.code().to_owned()), Err(orm::codes::CONFIG.to_owned()), "install inside a transaction: {inside:?}");
-    db.utils().schema().install(SCHEMA.json()).await.unwrap();
+    db.utils().schema().install(&SCHEMA).await.unwrap();
     drop_table(&db).await;
     db.close().await;
 }
@@ -302,7 +308,7 @@ async fn statement_timeout() {
         let cfg = orm::Config { statement_timeout_ms: 200, ..orm::Config::default() };
         let db = Db::connect(&dsn, 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         drop_table(&db).await;
-        db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         // The condition is evaluated per row, so the table holds one row.
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
@@ -323,7 +329,7 @@ async fn statement_timeout_through_a_pooler() {
     let _serial = SERIAL.lock().await;
     let setup = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
     drop_table(&setup).await;
-    setup.utils().schema().install(SCHEMA.json()).await.unwrap();
+    setup.utils().schema().install(&SCHEMA).await.unwrap();
     // Three rows sleep 0.1 s each, so the statement runs past 200 ms.
     for _ in 0..3 {
         let mut row = event(&setup);
@@ -372,7 +378,7 @@ async fn dropping_a_query_cancels_it() {
         let dsn = require_dsn(var);
         let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         drop_table(&db).await;
-        db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
@@ -408,7 +414,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
     for (driver, dsn) in targets {
         let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         drop_table(&db).await;
-        db.utils().schema().install(SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let tx_db = db.clone();
         let dropped = tokio::time::timeout(
             std::time::Duration::from_millis(300),

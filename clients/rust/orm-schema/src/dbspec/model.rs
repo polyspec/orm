@@ -55,7 +55,7 @@ impl Table {
     }
 }
 
-/// A column type (docs/dbspec.md, "Types").
+/// column type (docs/dbspec.md, "Types").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Type {
     I16,
@@ -74,7 +74,7 @@ pub enum Type {
 }
 
 impl Type {
-    /// The type name without its parameters: `decimal(13,2)` is `decimal`.
+    /// parameter를 뺀 type 이름: `decimal(13,2)`는 `decimal`이다.
     pub fn name(&self) -> &'static str {
         match self {
             Type::I16 => "i16",
@@ -93,7 +93,7 @@ impl Type {
         }
     }
 
-    /// The type as dbspec writes it.
+    /// dbspec이 쓰는 type text.
     pub fn render(&self) -> String {
         match self {
             Type::I16 => "i16".into(),
