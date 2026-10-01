@@ -42,7 +42,7 @@ function useOrder(documents: readonly DbspecDocument[]): DbspecDocument[] {
   return out;
 }
 
-class Renderer {
+export class Renderer {
   constructor(readonly d: DbspecDialect) {}
 
   /** Quotes an identifier. */
@@ -385,7 +385,7 @@ class Renderer {
   }
 }
 
-const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+export const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
 
 function actionText(a: DbspecAction): string {
   switch (a) {
