@@ -1,7 +1,7 @@
 // Command go prints the Go dbspec result of every shared case and of the
 // stress document in the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document>
+// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json>
 package main
 
 import (
@@ -117,9 +117,47 @@ func writeManifest(out *bufio.Writer, c hashCase) {
 	}
 }
 
+// writeRender prints the statements of the case's document set in every
+// dialect, or the diagnostics of a document or of the set.
+func writeRender(out *bufio.Writer, c hashCase) {
+	names := make([]string, 0, len(c.Documents))
+	for name := range c.Documents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var documents []*dbspec.Document
+	for _, name := range names {
+		set := map[string]string{}
+		for other, lines := range c.Documents {
+			if other != name {
+				set[other] = join(lines, false, false)
+			}
+		}
+		document, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
+		if len(diagnostics) > 0 {
+			fmt.Fprintf(out, "render/%s\n", c.ID)
+			for _, d := range diagnostics {
+				fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			}
+			return
+		}
+		documents = append(documents, document)
+	}
+	for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
+		fmt.Fprintf(out, "render/%s/%s\n", c.ID, dialect)
+		statements, diagnostics := dbspec.Render(documents, dialect)
+		for _, d := range diagnostics {
+			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		}
+		for _, s := range statements {
+			fmt.Fprintf(out, "| %s\n", s)
+		}
+	}
+}
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document>")
+	if len(os.Args) != 4 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json>")
 		os.Exit(2)
 	}
 	raw, err := os.ReadFile(os.Args[1])
@@ -158,6 +196,21 @@ func main() {
 	for _, c := range all.Hashes {
 		fmt.Fprintf(out, "hashes/%s\n", c.ID)
 		writeManifest(out, c)
+	}
+	rawDDL, err := os.ReadFile(os.Args[3])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	var ddl struct {
+		Cases []hashCase `json:"cases"`
+	}
+	if err := json.Unmarshal(rawDDL, &ddl); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	for _, c := range ddl.Cases {
+		writeRender(out, c)
 	}
 	if err := out.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

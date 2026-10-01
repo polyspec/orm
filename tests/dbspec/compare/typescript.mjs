@@ -1,14 +1,14 @@
 // Prints the TypeScript dbspec result of every shared case and of the stress
 // document in the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document>
+// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
-import { dbspecManifest, emitDbspec, parseDbspec } from '../../../clients/typescript/dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec, renderDbspec } from '../../../clients/typescript/dist/dbspec/index.js';
 
-const [casesPath, stressPath] = process.argv.slice(2);
-if (casesPath === undefined || stressPath === undefined) {
-  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document>');
+const [casesPath, stressPath, ddlPath] = process.argv.slice(2);
+if (casesPath === undefined || stressPath === undefined || ddlPath === undefined) {
+  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json>');
   process.exit(2);
 }
 
@@ -78,4 +78,29 @@ for (const c of cases.hashes) {
   out.push(`hashes/${c.id}`);
   writeManifest(c);
 }
+
+// writeRender prints the statements of the case's document set in every
+// dialect, or the diagnostics of a document or of the set.
+function writeRender(c) {
+  const documents = [];
+  for (const name of Object.keys(c.documents).sort()) {
+    const set = {};
+    for (const [other, lines] of Object.entries(c.documents)) if (other !== name) set[other] = join(lines, false, false);
+    const result = parseDbspec(join(c.documents[name], false, false), set);
+    if (result.diagnostics.length > 0) {
+      out.push(`render/${c.id}`);
+      for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      return;
+    }
+    documents.push(result.document);
+  }
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    out.push(`render/${c.id}/${dialect}`);
+    const result = renderDbspec(documents, dialect);
+    for (const d of result.diagnostics) out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    for (const s of result.statements ?? []) out.push(`| ${s}`);
+  }
+}
+
+for (const c of JSON.parse(readFileSync(ddlPath, 'utf8')).cases) writeRender(c);
 process.stdout.write(out.join('\n') + '\n');

@@ -5,12 +5,12 @@ declare(strict_types=1);
 // Prints the PHP dbspec result of every shared case and of the stress
 // document in the line format of tests/dbspec/compare/check.mjs.
 //
-// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document>
+// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json>
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 
-if ($argc !== 3) {
-    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document>\n");
+if ($argc !== 4) {
+    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json>\n");
     exit(2);
 }
 
@@ -125,4 +125,40 @@ function dbspec_write_manifest(array $case): void
 foreach ($cases['hashes'] as $case) {
     echo "hashes/{$case['id']}\n";
     dbspec_write_manifest($case);
+}
+
+/** Prints the statements of the case's document set in every dialect, or the diagnostics of a document or of the set. */
+function dbspec_write_render(array $case): void
+{
+    $names = array_keys($case['documents']);
+    sort($names, SORT_STRING);
+    $documents = [];
+    foreach ($names as $name) {
+        $set = [];
+        foreach ($case['documents'] as $other => $lines) {
+            if ($other !== $name) {
+                $set[$other] = dbspec_join($lines, false, false);
+            }
+        }
+        $result = Orm\Dbspec\Dbspec::parse(dbspec_join($case['documents'][$name], false, false), $set);
+        if ($result->document === null) {
+            echo "render/{$case['id']}\n";
+            dbspec_diagnostics($result->diagnostics);
+            return;
+        }
+        $documents[] = $result->document;
+    }
+    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+        echo "render/{$case['id']}/$dialect\n";
+        $result = Orm\Dbspec\Dbspec::render($documents, $dialect);
+        dbspec_diagnostics($result->diagnostics);
+        foreach ($result->statements ?? [] as $statement) {
+            echo "| $statement\n";
+        }
+    }
+}
+
+$ddl = json_decode((string) file_get_contents($argv[3]), true, 512, JSON_THROW_ON_ERROR);
+foreach ($ddl['cases'] as $case) {
+    dbspec_write_render($case);
 }

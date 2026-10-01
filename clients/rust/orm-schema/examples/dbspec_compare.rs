@@ -1,8 +1,9 @@
 //! Prints the Rust dbspec result of every shared case and of the stress
 //! document in the line format of tests/dbspec/compare/check.mjs.
 //!
-//! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document>`
+//! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json>`
 
+use orm_schema::dbspec::Dialect;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -84,7 +85,38 @@ fn write_manifest(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
     }
 }
 
-fn run(cases_path: &str, stress_path: &str) -> Result<(), String> {
+/// Prints the statements of the case's document set in every dialect, or the
+/// diagnostics of a document or of the set.
+fn write_render(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
+    let id = case["id"].as_str().unwrap_or_default();
+    let documents_value = case["documents"].as_object().into_iter().flatten().collect::<BTreeMap<_, _>>();
+    let mut documents = Vec::new();
+    for (name, lines) in &documents_value {
+        let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| ((*other).clone(), join(l, false, false))).collect();
+        match orm_schema::dbspec::parse(&join(lines, false, false), &set) {
+            Ok(document) => documents.push(document),
+            Err(diagnostics) => {
+                writeln!(out, "render/{id}")?;
+                return write_diagnostics(out, &diagnostics);
+            }
+        }
+    }
+    let refs: Vec<&orm_schema::dbspec::Document> = documents.iter().collect();
+    for (name, dialect) in [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)] {
+        writeln!(out, "render/{id}/{name}")?;
+        match orm_schema::dbspec::render(&refs, dialect) {
+            Ok(statements) => {
+                for statement in statements {
+                    writeln!(out, "| {statement}")?;
+                }
+            }
+            Err(diagnostics) => write_diagnostics(out, &diagnostics)?,
+        }
+    }
+    Ok(())
+}
+
+fn run(cases_path: &str, stress_path: &str, ddl_path: &str) -> Result<(), String> {
     let cases: Value =
         serde_json::from_str(&std::fs::read_to_string(cases_path).map_err(|e| format!("{cases_path}: {e}"))?).map_err(|e| format!("{cases_path}: {e}"))?;
     let stress = std::fs::read_to_string(stress_path).map_err(|e| format!("{stress_path}: {e}"))?;
@@ -112,16 +144,21 @@ fn run(cases_path: &str, stress_path: &str) -> Result<(), String> {
         writeln!(out, "hashes/{}", case["id"].as_str().unwrap_or_default()).map_err(io)?;
         write_manifest(&mut out, case).map_err(io)?;
     }
+    let ddl: Value =
+        serde_json::from_str(&std::fs::read_to_string(ddl_path).map_err(|e| format!("{ddl_path}: {e}"))?).map_err(|e| format!("{ddl_path}: {e}"))?;
+    for case in ddl["cases"].as_array().into_iter().flatten() {
+        write_render(&mut out, case).map_err(io)?;
+    }
     out.flush().map_err(io)
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [cases, stress] = args.as_slice() else {
-        eprintln!("usage: dbspec_compare <cases.json> <stress document>");
+    let [cases, stress, ddl] = args.as_slice() else {
+        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json>");
         return ExitCode::from(2);
     };
-    match run(cases, stress) {
+    match run(cases, stress, ddl) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");

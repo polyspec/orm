@@ -1,5 +1,8 @@
 # 변경 이력
 
+contracts/interfaces.json에 `Dbspec.render`를 선언하고, `make
+dbspec-compare-check`에서 네 client의 렌더링 statement를 비교한다(T8.3.6).
+
 모든 client의 manifest와 renderer에서 반복된 문서 이름이나 없는 쓰이는
 문서가 있는 dbspec 문서 집합을 거부하며, renderer는 이제 statement나
 diagnostic을 돌려준다(T8.2.6.2.1).

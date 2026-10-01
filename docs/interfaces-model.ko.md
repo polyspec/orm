@@ -179,6 +179,7 @@ classDiagram
         parse()
         emit()
         manifest()
+        render()
     }
     class DbspecDocument {
     }
@@ -228,7 +229,7 @@ classDiagram
 | AESRotationStatus | key version별 행 수다. |
 | Generator | 언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
 | Error | docs/errors.yaml의 안정적인 code다. |
-| Dbspec | 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만든다(docs/dbspec.md). |
+| Dbspec | 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md). |
 | DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |
 
 | 시작 | 대상 | 관계 |
