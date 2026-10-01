@@ -93,7 +93,7 @@ final class Generator
         $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Registry;\n\nRegistry::generated(" . self::str($m->schemaHash) . ");\n";
         foreach ($m->order as $name) {
             $class = self::pascal($name);
-            $files["$class.php"] = self::model($m->entities[$name], $class, $namespace);
+            $files["$class.php"] = self::model($m->entities[$name], $class, $namespace, $m->schemaHash);
             $boot .= "Registry::register($class::class);\n";
         }
         $files['bootstrap.php'] = $boot;
@@ -107,7 +107,7 @@ final class Generator
         }
     }
 
-    private static function model(array $e, string $class, string $namespace): string
+    private static function model(array $e, string $class, string $namespace, string $hash): string
     {
         $name = $e['name'];
         $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
@@ -117,7 +117,8 @@ final class Generator
             . '            \'pk\' => ' . self::list($e['pk']) . ",\n"
             . '            \'auto\' => ' . self::str($e['auto'] ?? '') . ",\n"
             . '            \'updated\' => ' . self::str($e['timestamps']['updated'] ?? '') . ",\n"
-            . '            \'aes_version\' => ' . self::str($e['aes_version'] ?? '') . ",\n";
+            . '            \'aes_version\' => ' . self::str($e['aes_version'] ?? '') . ",\n"
+            . '            \'schema_hash\' => ' . self::str($hash) . ",\n";
         $b .= "            'columns' => [\n";
         foreach ($e['columns'] as $c) {
             $b .= '                ' . self::str($c['name']) . ' => [\'type\' => ' . self::str($c['type']) . ', \'nullable\' => ' . (!empty($c['nullable']) ? 'true' : 'false') . ', \'styles\' => ' . self::list($c['styles'] ?? []);

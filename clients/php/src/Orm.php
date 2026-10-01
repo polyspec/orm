@@ -19,9 +19,8 @@ final class Orm
         [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = $parsed = self::parseDsn($dsn);
         $pragmas = $parsed[6] ?? [];
         $engine = Engine::for($config->schemaPath, $driver, $config->planCacheSize);
-        $generated = Registry::schemaHash();
-        if ($engine->manifest->schemaHash !== $generated) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated models are from schema $generated, {$config->schemaPath} is {$engine->manifest->schemaHash}");
+        if (!Registry::loaded($engine->manifest->schemaHash)) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "no loaded models were generated from schema {$engine->manifest->schemaHash} of {$config->schemaPath}: generate the models again");
         }
         if ($config->poolSize < 0) {
             throw new OrmException(Code::CONFIG, 'pool size must not be negative');

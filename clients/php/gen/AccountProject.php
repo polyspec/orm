@@ -19,6 +19,7 @@ final class AccountProject extends Model
             'auto' => '',
             'updated' => '',
             'aes_version' => '',
+            'schema_hash' => '16198b563e2e3cae',
             'columns' => [
                 'account_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
                 'project_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],

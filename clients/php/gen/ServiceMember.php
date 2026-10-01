@@ -19,6 +19,7 @@ final class ServiceMember extends Model
             'auto' => 'seq',
             'updated' => '',
             'aes_version' => '',
+            'schema_hash' => '16198b563e2e3cae',
             'columns' => [
                 'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
                 'service_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],

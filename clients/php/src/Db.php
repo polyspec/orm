@@ -24,15 +24,18 @@ final class Db
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
+    /** @var array<string, Engine> the engines of the registered schemas by schema hash */
+    private array $engines = [];
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
         private readonly \PDO $pdo,
         private readonly string $driver,
         private readonly Config $config,
-        private readonly Engine $engine,
+        Engine $engine,
         private readonly \DateTimeZone $zone,
     ) {
+        $this->engines[$engine->manifest->schemaHash] = $engine;
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
@@ -347,8 +350,22 @@ final class Db
 
     private function plan(Request $r): array
     {
-        return $this->engine->plan($r->shape());
+        return $this->engine($r)->plan($r->shape());
     }
+
+    /** The engine of the request's schema; a schema the connection has not registered fails. */
+    private function engine(Request $r): Engine
+    {
+        $hash = (string) $r->ir['schema_hash'];
+        return $this->engines[$hash] ?? throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "the models use schema $hash, which the connection has not loaded");
+    }
+
+    /** @internal adds an installed schema to the connection */
+    public function registerEngine(Engine $engine): void
+    {
+        $this->engines[$engine->manifest->schemaHash] = $engine;
+    }
+
 
     /** @internal @return array{0: array, 1: array} the plan and its positional result */
     public function select(?TxFrame $frame, Request $r): array
@@ -428,7 +445,7 @@ final class Db
                 $affected = 1;
             } else {
                 $affected = $st->rowCount();
-                $entity = $this->engine->manifest->entity($r->ir['entity']);
+                $entity = $this->engine($r)->manifest->entity($r->ir['entity']);
                 $id = $insert && !isset($r->ir['rows']) && ($entity['auto'] ?? '') !== ''
                     ? $this->pdo->lastInsertId() : null;
             }

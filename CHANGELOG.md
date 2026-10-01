@@ -1,5 +1,14 @@
 # Changelog
 
+Load the generated PHP models of several schemas in one process (N3.1).
+Each generated model class carries its schema hash, and a connection keeps
+one engine per registered schema: the schema it opened with and every
+manifest installed through `utils()->schema()->install()`. Install verifies
+the manifest hash against its content before any statement runs, and a
+request of a schema the connection has not registered fails with
+`SCHEMA_HASH_MISMATCH`. Owner cases in Go, PHP, Rust and TypeScript use two
+schemas on one connection on MySQL, PostgreSQL and SQLite.
+
 Verify physical document input bounds through all four parsers
 (T7.17.2.10.3.4). Keep 64 MiB, 200000 lines and 4096 blocks unchanged;
 execute each upper bound and excess twice per owner with exact retention
