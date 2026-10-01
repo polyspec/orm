@@ -101,7 +101,7 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 
 | Client | Public connection call | Result |
 |---|---|---|
-| Go | `model.Connect(dsn, schemaPath, config)` | `(*orm.DB, error)` |
+| Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
 | PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
 | Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
 | TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |
