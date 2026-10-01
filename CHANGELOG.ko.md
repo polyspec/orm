@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.2.6.1.1.1: 같은 link를 고친 T8.2.6.1.3으로 닫는다.
+
 - T8.6: 모든 client가 lock, history, 검증, event와 함께 plan chain을 적용하고 recover하며, 어느 client든 다른 client가 적용한 chain을 이어 간다.
 
 - T8.7.5.1: `make dbspec-rust-check`가 모든 Rust dbspec test를 두 번 실행한다.

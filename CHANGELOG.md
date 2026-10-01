@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.6.1.1.1: closed with T8.2.6.1.3, which corrected the same links.
+
 - T8.6: every client applies and recovers plan chains with lock, history, verification and events, and any client continues a chain that another applied.
 
 - T8.7.5.1: `make dbspec-rust-check` runs every Rust dbspec test twice.
