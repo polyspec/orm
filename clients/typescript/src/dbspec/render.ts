@@ -1,6 +1,5 @@
-// Writes a dbspec document set as the statements of one dialect (docs/dialects.md
-// "Rendered statements"); the bytes equal tests/dbspec/ddl.json and the Go engine
-// (engine/dbspec/render.go).
+// dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered statements").
+// 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
 import { readCheck, type CheckExpr } from './check.js';
 import { checkSet } from './set.js';
 import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
