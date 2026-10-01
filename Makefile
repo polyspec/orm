@@ -70,6 +70,20 @@ physical-check-check: physical-column-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 
+# dbspec-rust-check runs the shared dbspec vectors and the Rust rule cases
+# twice, then measures the stress document of tests/dbspec/stress.mjs in
+# release mode twice: parse within 300 ms, emit(parse(doc)) == doc and two
+# equal emissions.
+DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbspec
+.PHONY: dbspec-rust-check
+dbspec-rust-check:
+	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
+	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
+
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check:
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
