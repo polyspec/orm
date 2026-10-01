@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__);
+require "$root/clients/php/tests/autoload.php";
 $runtime = "$root/.runtime";
 if (!is_dir($runtime) && !mkdir($runtime, 0700, true) && !is_dir($runtime)) {
     throw new RuntimeException('cannot create decimal test runtime directory');
@@ -37,13 +38,24 @@ function databaseUri(string $uri, string $database): string
     return substr_replace($uri, '/' . $database, (int) strpos($uri, $u['path']), strlen($u['path']));
 }
 
-function install(PDO $pdo, string $file): void
+// decimal fixture document를 dialect의 문장으로 렌더링해 설치한다.
+function install(PDO $pdo, string $dialect): void
 {
-    $sql = preg_replace('/^--.*$/m', '', (string) file_get_contents($file));
-    foreach (explode(';', $sql) as $statement) {
-        if (trim($statement) !== '') {
-            $pdo->exec($statement);
-        }
+    $file = dirname(__DIR__) . '/contracts/fixtures/decimal_schema.dbspec';
+    $text = file_get_contents($file);
+    if ($text === false) {
+        throw new RuntimeException("cannot read $file");
+    }
+    $parsed = Orm\Dbspec\Dbspec::parse($text, ['decimal_schema' => $text]);
+    if ($parsed->document === null) {
+        throw new RuntimeException("$file: " . json_encode($parsed->diagnostics));
+    }
+    $rendered = Orm\Dbspec\Dbspec::render([$parsed->document], $dialect);
+    if ($rendered->statements === null) {
+        throw new RuntimeException("$file ($dialect): " . json_encode($rendered->diagnostics));
+    }
+    foreach ($rendered->statements as $statement) {
+        $pdo->exec($statement);
     }
 }
 
@@ -84,7 +96,7 @@ foreach ($sources as $dialect => $source) {
         ? $target->query("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'decimal_case'")->fetchColumn()
         : $target->query("SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'decimal_case'")->fetchColumn();
     if ($table === false) {
-        install($target, "$root/contracts/fixtures/decimal_schema.$dialect.sql");
+        install($target, $dialect);
     }
     $type = $dialect === 'mysql'
         ? $target->query("SELECT column_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'decimal_case' AND column_name = 'amount'")->fetchColumn()
@@ -99,7 +111,7 @@ foreach ($sources as $dialect => $source) {
 $sqlite = "$runtime/decimal-case.sqlite";
 if (!is_file($sqlite)) {
     $pdo = new PDO("sqlite:$sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    install($pdo, "$root/contracts/fixtures/decimal_schema.sqlite.sql");
+    install($pdo, 'sqlite');
 }
 $pdo = new PDO("sqlite:$sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $type = $pdo->query("SELECT type FROM pragma_table_info('decimal_case') WHERE name = 'amount'")->fetchColumn();

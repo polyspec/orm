@@ -53,8 +53,8 @@ per database.
 
 ## Language
 
-The probes are Go tests in shared `tests/`, as are the conformance checker
-(`tests/conformance/check`) and the schema recorder (`tests/schema/record`).
+The probes are Go tests in shared `tests/`, as is the conformance checker
+(`tests/conformance/check`).
 The facts belong to the databases, not to a client, so one runner states
 them once. The module already links the MySQL (`go-sql-driver/mysql`),
 PostgreSQL (`pgx`) and SQLite (`modernc.org/sqlite`) drivers, and Go's

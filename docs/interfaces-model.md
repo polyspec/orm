@@ -227,7 +227,7 @@ classDiagram
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |
-| Generator | One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call. |
+| Generator | One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call. |
 | Error | A stable code from docs/errors.yaml. |
 | Dbspec | Parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md). |
 | DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |

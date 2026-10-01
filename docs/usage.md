@@ -1,11 +1,11 @@
 # Usage
 
-Generate Go, PHP, Rust, and TypeScript clients from one Mermaid schema and execute the same statement as the same SQL in each client.
+Generate Go, PHP, Rust, and TypeScript clients from one dbspec document set and execute the same statement as the same SQL in each client.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.46+.
 
 A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.
 
-The complete syntax is in [dsl.md](dsl.md), diagram syntax is in [schema.md](schema.md), and the IR/Plan format is in [protocol.md](protocol.md).
+The complete syntax is in [dsl.md](dsl.md), the schema language is in [dbspec.md](dbspec.md), schema tools are in [schema.md](schema.md), and the IR/Plan format is in [protocol.md](protocol.md).
 Dialect differences are in [dialects.md](dialects.md), configuration is in [config.md](config.md), and error codes are in [errors.yaml](errors.yaml).
 
 ---
@@ -27,175 +27,54 @@ go build ./...
 
 ---
 
-## 2. Schema to manifest
+## 2. Schema
 
-The human-maintained definition is one Mermaid `erDiagram` (`schema/bench.mmd` is an example).
+The human-maintained definition is a set of dbspec documents ([dbspec.md](dbspec.md)); `schema/bench.dbspec` is an example.
 
-```mermaid
-erDiagram
-  author {
-    bigint        seq            PK  "auto unsigned"
-    varchar(191)  name
-    text          description        "?"
-    datetime(6)   created_ts         "=now"
-    datetime(6)   updated_ts         "=now onupdate"
-    tinyint       is_close           "=0"
-    bigint        user_seq       FK  "unsigned"
-    varchar(255)  aes_hex_email      "?"
+```text
+dbspec 1 example
+
+table users {
+  id i64 identity
+  name varchar(191)
+  email bytes null
+  key_version i32
+  created_at datetime(6) default now
+  updated_at datetime(6) default now
+  primary key (id)
+  settings {
+    updated updated_at
+    codec email aes
+    aes_version key_version
   }
-  user { bigint seq PK "auto unsigned"  varchar(191) name }
+}
 
-  user ||--o{ author : user_seq
-
-  %% index author (user_seq, is_close) ix_user
+table authors {
+  id i64 identity
+  user_id i64
+  closed bool default false
+  primary key (id)
+  index ix_authors_user (user_id, closed)
+  foreign key fk_authors_user (user_id) references users (id) on delete restrict on update restrict
+}
 ```
 
-- Comment attributes define nullability, defaults, update timestamps, auto increment, unsigned values, lazy loading, and booleans.
-- Column names can imply styles: `aes_hex_*`, `gz_*`, `json_*`, `jsons_*`, `base64_*`, `serialize_*`, and `ip` ([codec.md](codec.md)).
-- A relation line `parent ||--o{ child : fk_column` declares the foreign key; queries name relation keys with `match<L>With<R>`.
+- Columns state their type, `null`, `identity` and `default`; keys, indexes, foreign keys and checks are named lines of the table.
+- Settings give the ORM and the database their behavior: `updated`, `soft_delete`, `aes_version`, `blind_index`, `codec`, `select explicit`, `immutable` and `audit` ([dbspec.md](dbspec.md#settings), [codec.md](codec.md)). A column name never selects behavior.
+- A foreign key is named; queries name relation keys with `match<L>With<R>`.
 
-```sh
-go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
-```
+[mermaid.md](mermaid.md) exports a document to a Mermaid `erDiagram` and imports a diagram into a document with the list of what the diagram cannot express.
 
-When starting from an existing database, import creates the same file deterministically and preserves declared attributes:
+## 2.1 Create tables and migrate
 
-```sh
-go run ./cmd/ormgen import --dsn "root@unix(/tmp/mysql.sock)/mydb" --out schema/example.mmd
-go run ./cmd/ormgen import --dsn "postgres://user@localhost:5432/mydb" --out schema/example.mmd   # PostgreSQL도 동일
-```
-
-## 2.1 Create tables and generate migrations
-
-Generate database-specific `CREATE TABLE` statements from the manifest:
-
-```sh
-go run ./cmd/ormgen ddl --schema schema/schema.json --dialect mysql --out create.mysql.sql
-go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out create.postgres.sql
-go run ./cmd/ormgen ddl --schema schema/schema.json --dialect sqlite --out create.sqlite.sql
-```
-
-Apply the selected SQL file with the database's migration tool or client. `ormgen ddl` writes SQL and does not connect to a database. For idempotent database execution, use `ormgen migrate` against a physical database.
-
-To create a migration, keep the previous manifest, update the Mermaid schema, build the new manifest, and generate a diff:
-
-```sh
-cp schema/schema.json schema/schema.previous.json
-go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
-go run ./cmd/ormgen diff --from schema/schema.previous.json --to schema/schema.json \
-  --dialect mysql --out migration.mysql.sql
-```
-
-Review the generated SQL before applying it. Table removal, column removal, and column definition changes require `--allow-destructive` with `ormgen diff`; the migration command rejects these changes. Renames require an explicit migration because the tool cannot infer whether a rename is safe.
-
-The diff orders foreign-key removal before dependent index removal, applies column changes next, and creates indexes before foreign keys. It compares named indexes, unique constraints, full-text indexes, foreign-key targets and delete actions, column types, nullability, defaults, and comments. PostgreSQL emits separate `TYPE`, `SET|DROP NOT NULL`, and `SET|DROP DEFAULT` operations. Foreign keys use deterministic `fk_<table>_<column>` names and explicitly use `RESTRICT`, `CASCADE`, or `SET NULL`.
-
-SQLite rebuilds a table for column removal or definition changes and for primary-key, unique, or foreign-key changes. The transaction creates a reserved temporary table, copies matching and explicitly renamed columns, replaces the source table, recreates indexes and comments, and verifies foreign keys. Every rebuild requires `--allow-destructive`. A new required column without a default, an existing temporary object, an existing foreign-key violation, or a dependent trigger or view fails before the first rebuild operation. Copy, constraint, or verification failure rolls back the transaction. SQLite evaluates full-text conditions without an index, so full-text declarations create no SQLite objects and do not trigger a rebuild. Adding a nullable column or a column with a default is an `ADD COLUMN` without a rebuild.
-
-`ormgen migrate` reads the live schema, creates `orm_schema_migrations`, computes a plan, applies supported non-destructive changes, verifies the live schema, and records the result. Verification compares tables and columns by name; column order is not a schema property, and a database appends an added column wherever the declaration places it. A column added with a comment receives the comment in the same migration.
-
-The update-time attribute (`onupdate`) is a column property only on MySQL; PostgreSQL and SQLite have no such property, and the ORM assigns the column in each update, so the attribute alone is no PostgreSQL or SQLite change. MySQL and PostgreSQL store CHECK expressions in their own normalized form. The comparison creates the declared expression on a temporary table in the same database, reads it back, and treats equal forms as unchanged. Repeating the same `migration-id` is a no-op only when the recorded migration and live schema match. Use `--dry-run` to print the plan without changing the database.
-
-### 2.2 Schema source matrix
-
-The commands below use one schema source loader. `<source>` accepts `schema.mmd`, `schema.json`, an SQL file created by `ormgen ddl` or `ormgen diff`, or `db:<dsn>`. `--dialect` selects the SQL of `ddl`, `diff`, and `plan`; a `db:` source must use the same dialect.
-
-Every DSN is the URI the clients accept: `mysql://`, `postgres://`, or `sqlite:///<absolute path>`. The scheme selects the database; the tools have no driver option. `import` and `validate` read MySQL, PostgreSQL, and SQLite.
-
-| Input | DDL | diff SQL | structured plan | database migration |
-|---|---|---|---|---|
-| Mermaid `.mmd` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
-| manifest `.json` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
-| ORM `.sql` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
-| live `db:<dsn>` | `ddl --schema` | `diff --from/--to` | `plan --from/--to` | `migrate --schema` |
-
-```sh
-go run ./cmd/ormgen diff --from 'db:sqlite:///var/lib/orm_example.sqlite' --to schema/example.mmd \
-  --dialect sqlite --out migrations/20260912-example.sql
-go run ./cmd/ormgen plan --from schema/previous.json --to migrations/20260912-example.sql \
-  --dialect sqlite --migration-id 20260912-example --out migrations/20260912-example.json
-go run ./cmd/ormgen migrate --dsn sqlite:///var/lib/orm_example.sqlite \
-  --schema migrations/20260912-example.sql --migration-id 20260912-example
-```
-
-`ormgen ddl` and `ormgen diff` include `orm-schema-v1` metadata with the target manifest and hash. This metadata preserves codec styles and relation options when SQL is used as a later schema source. SQL without this metadata fails with `MIGRATION_SOURCE_LOSS`; the command does not infer missing ORM metadata. A `db:<dsn>` source is read-only. Database writes still require `migrate` or `apply` and use migration locks, history records, file logs, source checks, and post-apply verification.
-
-Create a structured plan and apply that exact plan after review:
-
-Migration plan files use `YYYYMMDD-name.json`. The filename without `.json` is the migration ID. If `--migration-id` is present, it must match that value. An invalid date, a missing name, or a different ID returns `MIGRATION_FILE_NAME`.
-
-```sh
-go run ./cmd/ormgen plan --from schema/previous.json --to schema/schema.json \
-  --dialect postgres --out migrations/20260912-schema.json
-go run ./cmd/ormgen apply --plan migrations/20260912-schema.json \
-  --dsn "$ORM_DSN" --schema schema/schema.json
-go run ./cmd/ormgen verify --dsn "$ORM_DSN" --schema schema/schema.json
-go run ./cmd/ormgen rollback --plan migrations/20260912-schema.json \
-  --dsn "$ORM_DSN" --allow-destructive
-```
-
-The plan stores the source and target manifests, ordered forward and rollback operations, destructive flags, and separate checksums. `apply` checks the live source schema before execution and rejects destructive operations unless `--allow-destructive` is explicit. `rollback` requires the same reviewed plan, an `applied` history row, and a live schema that matches the plan target. It executes the stored rollback operations, verifies the source schema, and changes the history status to `rolled_back`. Repeating the command returns `noop` only when the source schema and rollback file log match.
-
-Rollback restores the schema structure described by the source manifest. It does not restore rows removed by a forward operation or values removed by a rollback operation. A plan containing a destructive operation in either direction sets `rollback_data_loss_risk`; `rollback` then requires `--allow-destructive`. The command rejects modified SQL, checksums, destructive flags, and risk flags before opening the database.
-
-Rollback changes the history state from `applied` to `rolling_back`, then to `rolled_back` after schema verification. An operation or verification failure changes the claimed migration to `rollback_failed` and records the operation number, SQL statement, driver error, and final schema mismatch. A state-claim failure does not replace a state written by another migration process.
-
-Comments are included in the manifest and migration comparison. Use `%% table_comment` and `%% column_comment` in the Mermaid source. The importer reads database comments, and the DDL generator emits dialect-specific comment statements.
-
-Migration statements execute inside one database transaction. On statement failure,
-the runner records the statement number, SQL text, driver error, and whether rollback was issued.
-Database engines that implicitly commit DDL retain their engine-specific DDL behavior.
-
-Migration execution uses one reserved database connection. MySQL acquires a database-specific
-`GET_LOCK`, PostgreSQL acquires a transaction advisory lock, and SQLite starts with
-`BEGIN IMMEDIATE`. A competing migration fails with `MIGRATION_LOCK_BUSY` before executing
-the first planned statement. Locks are released on commit, rollback, or connection close.
-
-The SQL statement parser recognizes single-quoted strings, quoted identifiers, line comments,
-block comments, and PostgreSQL dollar-quoted blocks. Semicolons inside these regions do not end
-a statement. Execution errors report the one-based operation number and complete statement text.
-
-Each apply, recovery, and rollback execution also writes a JSON audit file under `migrations/logs` by default. The filename is `<UTC timestamp>__<migration-id>.json`; it contains the driver, schema hashes, plan checksum, status, operation count, start time, finish time, and error detail. Use `--log-dir` to select another directory. An applied or rolled-back migration fails repeat verification if no file log matches its database record and direction.
-
-If execution stops while the database history status is `applying` or `failed`, run an explicit
-recovery before retrying. Use the exact reviewed plan for `ormgen apply`, or use the recorded
-migration ID for `ormgen migrate`:
-
-```sh
-go run ./cmd/ormgen recover --plan migrations/20260912-schema.json \
-  --dsn "$ORM_DSN" --schema schema/schema.json
-go run ./cmd/ormgen recover --migration-id 20260912-initial \
-  --dsn "$ORM_DSN" --schema schema/schema.json
-```
-
-Recovery acquires the same database migration lock and compares the live schema with the recorded
-source and target. A target match changes the history status to `applied`. A source match changes it
-to `retryable`; the same `apply` or `migrate` command can then execute the verified plan. An
-`applied` or `retryable` record with a matching file log returns `noop`. Any other schema state fails
-with `MIGRATION_RECOVERY_UNSAFE` and reports the migration ID, prior status, source hash, target
-hash, and live hash. This failure does not update database history or create a file log.
-
-| Input | Required verification | Result |
-|---|---|---|
-| Structured plan | Plan checksum, ID, source hash, target hash, operation count, target manifest | `applied`, `retryable`, or `noop` |
-| Migration ID | Recorded source hash, recorded target hash, target manifest | `applied`, `retryable`, or `noop` |
-| Partial or externally changed schema | Neither source nor target matches | `MIGRATION_RECOVERY_UNSAFE`; no state change |
-
-```sh
-go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
-  --schema schema/schema.json --migration-id 20260912-initial --dry-run
-go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
-  --schema schema/schema.json --migration-id 20260912-initial
-```
-
----
+Each client renders the `CREATE` statements of a document set for one dialect, introspects a database into a document, and applies a chain of migration plans with a lock, history, verification and MySQL recovery. [schema.md](schema.md#_2-schema-operations) lists the functions of each language, [dialects.md](dialects.md#rendered-statements) the rendered statements, and [plans.md](plans.md) the plan documents, the diff and the apply. A rename and the permission to drop are declared in the plan; the diff never infers them.
 
 ## 3. Code generation
 
-Each language generates its models with its own build tool. The generator reads `schema.json`, verifies its hash, and writes one model per entity with typed column getters and setters.
+Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
 ```sh
-go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./...
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
 npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
 ```
@@ -209,21 +88,20 @@ fn main() {
 
 | Language | Tool | When it runs |
 |---|---|---|
-| Go | `ormgen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
+| Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
 | TypeScript | `orm-gen gen` of `@polyspec/orm-typescript` | the `build` script before `tsc` |
 | Rust | the `orm-build` crate | `build.rs` on every `cargo build`; `orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.
-- `ormgen gen --lang go` writes each scan round into a temporary directory beside `--out` and replaces the generated files of `--out` only after the scan converges; files without the generated header stay. A generation failure leaves `--out` unchanged, and `ormgen` exits with status 1; the failures include an invalid chain call, a scan that does not converge, a scanned package that cannot be loaded, and generated code that does not compile. When the scan converges but the scanned packages do not compile for another reason, `--out` holds the complete models, and `ormgen` exits with status 3.
-- `--check` compares the output with the existing files without writing: `build` of Go `ormgen` and of the PHP, Rust, and TypeScript `orm-gen`, and `gen` of Go `ormgen` and of the PHP and TypeScript `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
+- `orm-gen gen --lang go` writes each scan round into a temporary directory beside `--out` and replaces the generated files of `--out` only after the scan converges; files without the generated header stay. A generation failure leaves `--out` unchanged, and `orm-gen` exits with status 1; the failures include an invalid chain call, a scan that does not converge, a scanned package that cannot be loaded, and generated code that does not compile. When the scan converges but the scanned packages do not compile for another reason, `--out` holds the complete models, and `orm-gen` exits with status 3.
+- `--check` compares the output with the existing files without writing: `gen` of the Go, PHP, and TypeScript `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run ./cmd/ormgen build schema/example.mmd --out schema/schema.json --check
-go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
-- After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A mismatch between the generated `schema_hash` and the loaded `schema.json` stops startup with `SCHEMA_HASH_MISMATCH`.
+- After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.
 
 ---
 
@@ -245,7 +123,7 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`ormgen gen --document <file.dbspec>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
+`orm-gen gen --document <file.dbspec>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
 
 ### PHP
 
@@ -302,7 +180,7 @@ await master.transaction(async () => {
 
 `orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT` and its hash as `MANIFEST_HASH` and registers the model when it is imported; `Db.connect(dsn, options)` takes no schema path, and a request of models that the process did not import fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(texts)` takes the dbspec texts of one document set and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
 
-Each client caches plans by request shape. `connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of a manifest on every database; existing tables are kept.
+Each client caches plans by request shape. `connection.utils().schema().install(texts)` installs the document set ([schema.md](schema.md#_4-schema-installation)).
 
 ---
 
@@ -474,10 +352,8 @@ $b->getJsonSetting()['a'];
 
 The same statement produces the same result on all three databases, although statement text differs by dialect. Rules and exceptions are in [dialects.md](dialects.md).
 
-```sh
-go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out schema.pg.sql
-psql … -f schema.pg.sql
-```
+`connection.utils().schema().install(...)` renders the document set with the dialect of the connection ([schema.md](schema.md#_4-schema-installation)).
+
 - Go: `model.Connect(url, config)`; the DSN scheme selects the driver.
 - PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
@@ -491,12 +367,12 @@ psql … -f schema.pg.sql
 
 | Operation | Command |
 |---|---|
-| Compare schema with the live database | `ormgen validate --dsn … --schema schema/schema.json` (exit 1 when different) |
+| Compare schema with the live database | introspect the database and compare its schema text with the document set ([schema.md](schema.md#_2-schema-operations)) |
 | Check generated files | `git diff --exit-code` after the language generator runs |
 | Statement log | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, duration, plan_id, err)`; secrets are masked as `$SECRET` |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
-| Error constants | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
-| Install a schema | `connection.utils().schema().install(manifestJson)` |
+| Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
+| Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
 
 ---
 
@@ -504,9 +380,9 @@ psql … -f schema.pg.sql
 
 | Code | Cause and action |
 |---|---|
-| `SCHEMA_HASH_MISMATCH` | Generated files and the engine read different `schema.json` files; regenerate and deploy together |
+| `SCHEMA_HASH_MISMATCH` | The generated models carry another `manifestHash` than the model the client loaded; regenerate and deploy together |
 | `OPERATOR_NOT_ALLOWED` | Operator is unavailable for the type or style, such as styled columns or SQLite fulltext |
-| `COLUMN_UNKNOWN` / `RELATION_UNKNOWN` | Name is absent from the schema; correct the diagram and regenerate |
+| `COLUMN_UNKNOWN` / `RELATION_UNKNOWN` | Name is absent from the schema; correct the document and regenerate |
 | `EMPTY_IN` | A condition received an empty list; validate before calling |
 | `CONFIG` | Missing `connect` outside a transaction, a missing or misplaced connector, `connect` on a join child, or a configuration, path, or driver mismatch |
 | `LIMIT_IN_RELATION` | Relation child uses `limit`; use `groupLimit(n)` |

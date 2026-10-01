@@ -14,21 +14,6 @@ export { Utils, SchemaUtils, PrivilegeUtils, AesUtils } from './utils.js';
 export type { AesRotationStatus, TablePrivileges } from './utils.js';
 export { Model, Collection } from './model.js';
 export { GroupRow, GroupRows } from './group_rows.js';
-export { createPhysicalIdentity } from './physical.js';
-export type { PhysicalIdentity, PhysicalParts } from './physical.js';
-export { createPhysicalColumn } from './physical_column.js';
-export { createPhysicalCheck } from './physical_check.js';
-export { createPhysicalIndex } from './physical_index.js';
-export { createPhysicalKey } from './physical_key.js';
-export type { PhysicalKey } from './physical_key.js';
-export type { PhysicalIndex, PhysicalIndexSource, PhysicalIndexTerm } from './physical_index.js';
-export type { PhysicalCheck } from './physical_check.js';
-export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './physical_column.js';
-export { createPhysicalForeignKey } from './physical_foreign_key.js';
-export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physical_foreign_key.js';
-export { createPhysicalGraph, PhysicalGraphError } from './physical_graph.js';
-export { parsePhysicalGraphJSON, emitPhysicalGraphJSON } from './physical_graph_json.js';
-export type { PhysicalGraph, PhysicalTable } from './physical_graph.js';
 export {
   chainPlans,
   dbspecManifest,
