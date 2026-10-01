@@ -6,7 +6,8 @@
 // database into a document and the objects it cannot read. parsePlan,
 // emitPlan, chainPlans, diffPlan and planStatements read, write, order, diff
 // and render schema plans, and applyPlans and recoverPlans apply them to a
-// database (docs/plans.md).
+// database (docs/plans.md). exportMermaid and importMermaid write and read
+// standard Mermaid erDiagrams (docs/mermaid.md).
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
@@ -46,6 +47,7 @@ export {
   type DbspecApplyPostgresConnection,
   type DbspecApplySqliteConnection,
 } from './apply.js';
+export { exportMermaid, importMermaid, type DbspecMermaidExport, type DbspecMermaidImport } from './mermaid.js';
 export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
 export { planStatements, type DbspecPlanStatementsResult } from './plan_statements.js';
 

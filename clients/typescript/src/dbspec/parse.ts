@@ -210,6 +210,11 @@ function wellFormed(name: string): boolean {
   return NAME.test(name) && !RESERVED.has(name);
 }
 
+/** Whether a name is a dbspec name: its form and at most 63 bytes. */
+export function validName(name: string): boolean {
+  return wellFormed(name) && utf8Length(name) <= MAX_NAME_BYTES;
+}
+
 function utf8Length(text: string): number {
   let n = 0;
   for (let i = 0; i < text.length; i++) {

@@ -21,7 +21,8 @@ export type DbspecRule =
   | 'limit'
   | 'encoding'
   | 'plan'
-  | 'chain';
+  | 'chain'
+  | 'mermaid';
 
 /** One SCHEMA_INVALID diagnostic: the rule, the 1-based line and column of the offending token, and a message. */
 export interface DbspecDiagnostic {
