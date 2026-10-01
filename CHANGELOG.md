@@ -1,5 +1,9 @@
 # Changelog
 
+Specify the runtime model and generated code that clients build from a
+dbspec document set, and map every Mermaid manifest field to it
+(T8.2.6.3.1).
+
 Reserve `and`, `or`, `not`, `in`, `between` and `is` as dbspec names in
 every client, so a check predicate never reads a column named like a
 keyword (T8.1.6).

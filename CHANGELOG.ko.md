@@ -1,5 +1,8 @@
 # 변경 이력
 
+client가 dbspec 문서 집합으로 만드는 runtime model과 생성 코드를 정하고,
+Mermaid manifest의 모든 field를 그에 대응시킨다(T8.2.6.3.1).
+
 모든 client에서 `and`, `or`, `not`, `in`, `between`, `is`를 dbspec
 예약어로 해 check predicate가 keyword 이름의 column을 읽지 않게
 한다(T8.1.6).

@@ -155,7 +155,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `codec <column> <stage> ...` | 쓸 때 stage 순서로 encode하고 읽을 때 역순으로 decode한다: `ordered_json`, `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)) | manifest |
 | `aes_version <column>` | row의 AES key version을 저장하는 non-null 정수 column. `aes`를 쓰는 column이 있으면 필요하다 | manifest |
 | `blind_index <aes column> <index column>` | executor가 AES column 평문의 HMAC을 index column에 쓰고 같음 조건에 쓴다 | manifest |
-| `navigation <foreign key> <child name> <parent name>` | 생성 코드가 foreign key에 쓰는 관계 이름(자식 쪽, 부모 쪽) | manifest |
+| `navigation <foreign key> <child name> <parent name>` | 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 | manifest |
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
 | `audit into <history table> operation <column> action <history column> previous <history column>` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`를 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
 
@@ -209,6 +209,36 @@ manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합
 - `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
 
 생성 코드는 자신을 만든 문서 집합의 manifest text와 `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.
+
+## Runtime model
+
+client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드도 같은 model에서 만든다.
+
+- **Entity.** 집합의 모든 문서의 table마다 entity 하나다. 문서는 이름 순, table은 문서 순서다. entity 이름은 `entity` setting이나 table 이름이다. 생성 type 이름은 snake_case 조각의 첫 글자를 대문자로 쓴 것이다(`service_member` → `ServiceMember`).
+- **Field.** column마다 field 하나이며 이름은 column 이름, 순서는 column 순서, 값 type은 아래 표를 따른다. `null` column은 언어의 없음 값을 쓴다: Go는 pointer(`[]byte`와 styled 값은 감싸지 않음), PHP는 `?T`, TypeScript는 `T | null`, Rust는 `Option<T>`.
+- **Key.** primary key column이 row를 식별한다. identity column은 insert가 쓰지 않으며 생성된 key를 돌려준다. upsert는 호출이 지정한 primary key나 unique key에서 충돌한다.
+- **기본 select 집합.** `select explicit`에 없는 모든 column이다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다. type이나 codec이 스스로 column을 빼지는 않는다.
+- **Default.** default가 있는 column을 생략한 insert는 database default를 받으며 executor는 채우지 않는다. default 없는 non-null column을 생략한 insert는 database에 닿기 전에 `IR_INVALID`로 실패한다.
+- **Codec.** `codec` setting이 있는 column은 첫 stage가 encode하는 값을 담는다. stage 중 `ordered_json`, `serialize`, `yaml`, `gz`, `base64`가 있으면 공통 값 model([codecs](codec.md))의 styled 값이며 SQL NULL과 저장된 null을 구분한다. 모든 stage가 `aes`, `hex`, `ip`이면 문자열이다(`ip`는 주소 text).
+- **Setting.** `updated`는 executor가 계획하는 모든 `UPDATE`에서 UTC statement 시각을 받는다. `soft_delete`는 읽기를 거르고 delete를 update로 바꾼다. `aes_version`은 row의 key version을 저장한다. `blind_index`는 HMAC column을 쓰고 AES column에 대한 같음 조건을 바꾼다. `audit`에서는 호출한 code가 작업 단위의 operation id를 주고, executor는 자신이 insert하거나 update하는 모든 감사 row의 operation column에 그것을 쓴다. operation id 없는 감사 table의 insert나 update는 `CONFIG`로 실패한다. `immutable`은 runtime 동작이 없다: database가 변경을 거부한다. `navigation`도 runtime 동작이 없다.
+- **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
+- **Connection.** connection은 DSN URI와 설정을 받으며 schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고 첫 connection 전에 model을 등록한다. request는 `manifestHash`를 담는다.
+
+| dbspec | Go | PHP | TypeScript | Rust |
+| --- | --- | --- | --- | --- |
+| `i16` | `int16` | `int` | `number` | `i16` |
+| `i32` | `int32` | `int` | `number` | `i32` |
+| `i64` | `int64` | `int` | `number`(safe integer) | `i64` |
+| `bool` | `bool` | `bool` | `boolean` | `bool` |
+| `decimal(p,s)` | 소수 자릿수가 정확히 s인 `string` | `string` | `string` | `String` |
+| `f64` | `float64` | `float` | `number` | `f64` |
+| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` |
+| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` |
+| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` |
+| `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | `string` | `String` |
+| `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` |
+
+Mermaid manifest field는 이 model에 다음처럼 대응한다: `auto`는 identity column, `lazy`는 `select explicit`, `styles`는 codec stage이며 `json`과 `jsons`는 둘 다 `ordered_json`이다. `timestamps.updated`는 `updated`이고 `timestamps.created`는 `default now` column이다. `relations`와 `ref`는 foreign key다. `unique`, `indexes`, `pk`, `nullable`, `default`, `precision`, `scale`은 뜻이 같다. `fulltext`, `unsigned`, `enum`, `point`, `inet`, `on_update`, `uk`, `raw`, `len`은 runtime 대응이 없으므로 fulltext 조건과 point 값은 client에서 사라진다.
 
 ## Diagram
 
