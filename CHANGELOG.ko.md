@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.2.1: 실패한 Go apply는 정리 error를 실패와 함께 보고하고, row 없는 MySQL 효과 query는 error다.
+
 - T8.7.4: TypeScript client가 dbspec 문서를 표준 Mermaid erDiagram으로 export하고, 각각이 빼는 것의 목록과 함께 import한다.
 
 - T8.6.4: TypeScript client가 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용하며, introspection은 `dbspec$plans`를 뺀다.
