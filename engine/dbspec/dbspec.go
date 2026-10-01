@@ -45,25 +45,44 @@ type Diagnostic struct {
 // Parse parses and validates text. documents is the declared document set:
 // each document name that a `use` line may name, mapped to its text. Parse
 // returns the document and nil diagnostics, or nil and every diagnostic of
-// the document in source order; never both. An encoding, header or limit
-// error stops parsing, so later lines are not diagnosed.
+// the document ordered by line, column and rule; never both. An encoding,
+// header or limit error stops parsing: it follows the diagnostics found
+// before it, and later lines are not diagnosed.
 func Parse(text string, documents map[string]string) (*Document, []Diagnostic) {
 	s := &session{set: documents, parsed: map[string]*parsedDocument{}}
 	parsed := parseStructure(text)
 	diagnostics := parsed.diagnostics
 	if !parsed.stopped {
-		diagnostics = append(diagnostics, s.validate(parsed.document, true)...)
+		diagnostics = append(diagnostics, s.validate(parsed.document, []string{parsed.document.name.text})...)
 	}
 	if len(diagnostics) > 0 {
-		sort.SliceStable(diagnostics, func(i, j int) bool {
-			if diagnostics[i].Line != diagnostics[j].Line {
-				return diagnostics[i].Line < diagnostics[j].Line
-			}
-			return diagnostics[i].Column < diagnostics[j].Column
-		})
+		sortDiagnostics(diagnostics)
 		return nil, diagnostics
 	}
 	return parsed.document.model(), nil
+}
+
+// ruleOrder is the order of the rule table, which breaks ties between
+// diagnostics at one position.
+var ruleOrder = map[string]int{
+	RuleHeader: 0, RuleSyntax: 1, RuleOrder: 2, RuleNameFormat: 3, RuleNameLength: 4,
+	RuleNameDuplicate: 5, RuleType: 6, RuleColumn: 7, RuleKey: 8, RuleForeignKey: 9,
+	RuleCheck: 10, RuleSetting: 11, RuleUse: 12, RuleDiagram: 13, RuleLimit: 14, RuleEncoding: 15,
+}
+
+// sortDiagnostics orders diagnostics by line, column and rule table order,
+// keeping the order of equal diagnostics.
+func sortDiagnostics(diagnostics []Diagnostic) {
+	sort.SliceStable(diagnostics, func(i, j int) bool {
+		a, b := diagnostics[i], diagnostics[j]
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		if a.Column != b.Column {
+			return a.Column < b.Column
+		}
+		return ruleOrder[a.Rule] < ruleOrder[b.Rule]
+	})
 }
 
 // Emit writes document in canonical form (docs/dbspec.md "Canonical form").

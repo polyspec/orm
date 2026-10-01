@@ -10,6 +10,8 @@ import (
 // point at the token that breaks a rule. A line with a syntax error is
 // dropped and contributes only that error, except that a `table`, `diagram`
 // or `settings` line still opens its block and a `}` line still closes it.
+// The names on a dropped line are remembered, so references to them report
+// nothing more.
 
 type documentNode struct {
 	name        token
@@ -31,6 +33,12 @@ type tableNode struct {
 	comments    []string
 	keyword     token
 	name        token
+	brace       token
+	failed      bool // the table line had a syntax error
+	failedNames map[string]bool
+	failedLines int // column lines with a syntax error
+	failedKey   bool
+	failedPK    bool
 	columns     []*columnNode
 	byName      map[string]*columnNode
 	primaryKeys []*keyNode
@@ -50,6 +58,20 @@ func (t *tableNode) anchor() token {
 		return t.name
 	}
 	return t.keyword
+}
+
+// failedName reports whether a column or foreign key line with this name had
+// a syntax error.
+func (t *tableNode) failedName(name string) bool { return t.failedNames[name] }
+
+func (t *tableNode) markFailed(name token) {
+	if name.line == 0 {
+		return
+	}
+	if t.failedNames == nil {
+		t.failedNames = map[string]bool{}
+	}
+	t.failedNames[name.text] = true
 }
 
 // column returns the first column with the given name.
@@ -149,6 +171,7 @@ type diagramNode struct {
 	comments []string
 	keyword  token
 	name     token
+	failed   bool
 	entries  []*entryNode
 	closing  []string
 }
@@ -196,11 +219,17 @@ type parser struct {
 
 func (p *parser) add(d Diagnostic) { p.out.diagnostics = append(p.out.diagnostics, d) }
 
-// stop records an encoding, header or limit error. It stops parsing and is
-// reported alone, because the lines before it are not validated.
+// stop records an encoding, header or limit error. It stops parsing; the
+// diagnostics found before it stay, and whole-document validation does not
+// run.
 func (p *parser) stop(d Diagnostic) {
-	p.out.diagnostics = []Diagnostic{d}
+	p.add(d)
 	p.out.stopped = true
+}
+
+// names checks a defining name on a line that parsed.
+func (p *parser) names(t token) {
+	p.out.diagnostics = append(p.out.diagnostics, nameDiagnostics(t)...)
 }
 
 func (p *parser) takeComments() []string {
@@ -216,13 +245,18 @@ func parseStructure(text string) *parsedDocument {
 	p := &parser{out: &parsedDocument{document: &documentNode{}}}
 	p.doc = p.out.document
 	lines, bad := splitSource(text)
-	if bad != nil {
+	if bad != nil && len(lines) == 0 {
 		p.stop(*bad)
 		return p.out
 	}
 	if !p.header(lines) {
 		return p.out
 	}
+	defer func() {
+		if bad != nil && !p.out.stopped {
+			p.stop(*bad)
+		}
+	}()
 	for i := 1; i < len(lines) && !p.out.stopped; i++ {
 		raw := lines[i]
 		trimmed := strings.TrimLeft(raw, " ")
@@ -234,6 +268,9 @@ func parseStructure(text string) *parsedDocument {
 			continue
 		}
 		tokens, end, lexErr := lexLine(raw, i+1)
+		if lexErr != nil {
+			tokens = lexRecover(raw, i+1)
+		}
 		c := &cursor{p: p, tokens: tokens, line: i + 1, end: end, lexErr: lexErr}
 		if len(tokens) == 0 {
 			c.fail("a statement")
@@ -253,8 +290,11 @@ func parseStructure(text string) *parsedDocument {
 	if p.out.stopped {
 		return p.out
 	}
+	if bad != nil {
+		return p.out
+	}
 	if p.state != stateTop {
-		p.add(diagnosticAt(RuleSyntax, p.open, "block opened by %s is not closed", p.open.describe()))
+		p.add(diagnosticAt(RuleSyntax, p.open, "block opened at this %s is not closed", p.open.describe()))
 	}
 	p.doc.trailing = p.takeComments()
 	return p.out
@@ -303,6 +343,14 @@ func (p *parser) header(lines []string) bool {
 	if lexErr != nil {
 		return fail(lexErr.Line, lexErr.Column, expected)
 	}
+	if exact := "dbspec 1 " + tokens[2].text; lines[0] != exact {
+		got, want := []rune(lines[0]), []rune(exact)
+		col := 1
+		for col <= len(got) && col <= len(want) && got[col-1] == want[col-1] {
+			col++
+		}
+		return fail(1, col, "the header is exactly dbspec, a space, 1, a space and the document name")
+	}
 	p.doc.name = tokens[2]
 	for _, d := range nameDiagnostics(tokens[2]) {
 		p.add(d)
@@ -319,6 +367,7 @@ type cursor struct {
 	line   int
 	end    int
 	lexErr *Diagnostic
+	failed bool
 }
 
 func (c *cursor) more() bool { return c.i < len(c.tokens) }
@@ -328,12 +377,13 @@ func (c *cursor) peekIs(kind tokenKind, text string) bool {
 }
 
 func (c *cursor) fail(expected string) bool {
+	c.failed = true
 	switch {
+	case c.lexErr != nil:
+		c.p.add(*c.lexErr)
 	case c.more():
 		t := c.tokens[c.i]
 		c.p.add(diagnosticAt(RuleSyntax, t, "unexpected %s, expected %s", t.describe(), expected))
-	case c.lexErr != nil:
-		c.p.add(*c.lexErr)
 	default:
 		c.p.add(Diagnostic{Rule: RuleSyntax, Line: c.line, Column: c.end, Message: "line ends, expected " + expected})
 	}
@@ -502,10 +552,20 @@ func (p *parser) openTable(c *cursor) {
 	outOfOrder := p.topPhase > topTables
 	p.topPhase = max(p.topPhase, topTables)
 	name, ok := c.name("a table name")
-	if !ok || !c.punct("{") || !c.done() {
+	if ok {
+		t.name = name
+	}
+	if !ok || !c.punct("{") {
+		t.failed = true
 		return
 	}
-	t.name = name
+	t.brace = c.tokens[c.i-1]
+	p.open = t.brace
+	if !c.done() {
+		t.failed = true
+		return
+	}
+	p.names(name)
 	if outOfOrder {
 		p.add(diagnosticAt(RuleOrder, keyword, "table blocks come before diagram blocks"))
 	}
@@ -518,10 +578,19 @@ func (p *parser) openDiagram(c *cursor) {
 	p.state, p.diagram, p.open = stateDiagram, d, keyword
 	p.topPhase = topDiagrams
 	name, ok := c.name("a diagram name")
-	if !ok || !c.punct("{") || !c.done() {
+	if ok {
+		d.name = name
+	}
+	if !ok || !c.punct("{") {
+		d.failed = true
 		return
 	}
-	d.name = name
+	p.open = c.tokens[c.i-1]
+	if !c.done() {
+		d.failed = true
+		return
+	}
+	p.names(name)
 }
 
 func (p *parser) tableLine(c *cursor) {
@@ -541,7 +610,10 @@ func (p *parser) tableLine(c *cursor) {
 			t.settings = s
 		}
 		p.state, p.settings, p.open = stateSettings, s, keyword
-		if c.punct("{") && c.done() && duplicate {
+		if c.punct("{") {
+			p.open = c.tokens[c.i-1]
+		}
+		if !c.failed && c.done() && duplicate {
 			p.add(diagnosticAt(RuleOrder, keyword, "a table has at most one settings block, after its other lines"))
 		}
 	case first.is(tokenWord, "primary"), first.is(tokenWord, "unique"), first.is(tokenWord, "index"),
@@ -563,6 +635,20 @@ func (p *parser) constraintOrder(t *tableNode, keyword token) {
 func (p *parser) constraintLine(c *cursor) {
 	t := p.table
 	keyword := c.next()
+	var name token
+	defer func() {
+		if !c.failed {
+			return
+		}
+		switch keyword.text {
+		case "primary":
+			t.failedPK = true
+		case "unique", "index":
+			t.failedKey = true
+		case "foreign":
+			t.markFailed(name)
+		}
+	}()
 	switch keyword.text {
 	case "primary":
 		if !c.keyword("key") {
@@ -575,7 +661,8 @@ func (p *parser) constraintLine(c *cursor) {
 		p.constraintOrder(t, keyword)
 		t.primaryKeys = append(t.primaryKeys, &keyNode{comments: p.takeComments(), keyword: keyword, columns: columns})
 	case "unique", "index":
-		name, ok := c.name("a " + keyword.text + " name")
+		var ok bool
+		name, ok = c.name("a " + keyword.text + " name")
 		if !ok {
 			return
 		}
@@ -584,6 +671,7 @@ func (p *parser) constraintLine(c *cursor) {
 			return
 		}
 		p.constraintOrder(t, keyword)
+		p.names(name)
 		k := &keyNode{comments: p.takeComments(), keyword: keyword, name: name, columns: columns, descending: descending}
 		if keyword.text == "unique" {
 			t.uniques = append(t.uniques, k)
@@ -605,6 +693,7 @@ func (p *parser) constraintLine(c *cursor) {
 		if f.name, ok = c.name("a foreign key name"); !ok {
 			return
 		}
+		name = f.name
 		if f.columns, _, ok = c.names(false); !ok || !c.keyword("references") {
 			return
 		}
@@ -636,11 +725,13 @@ func (p *parser) constraintLine(c *cursor) {
 			return
 		}
 		p.constraintOrder(t, keyword)
+		p.names(f.name)
 		f.comments = p.takeComments()
 		t.foreignKeys = append(t.foreignKeys, f)
 		p.doc.constraints = append(p.doc.constraints, f.name)
 	case "check":
-		name, ok := c.name("a check name")
+		var ok bool
+		name, ok = c.name("a check name")
 		if !ok || !c.punct("(") {
 			return
 		}
@@ -656,6 +747,7 @@ func (p *parser) constraintLine(c *cursor) {
 			return
 		}
 		p.constraintOrder(t, keyword)
+		p.names(name)
 		k := &checkNode{comments: p.takeComments(), keyword: keyword, name: name}
 		expr, refs, bad := parseExpression(rest[:len(rest)-1], rest[len(rest)-1])
 		if bad != nil {
@@ -682,6 +774,12 @@ func (p *parser) columnLine(c *cursor) {
 		return
 	}
 	col := &columnNode{}
+	defer func() {
+		if c.failed {
+			t.failedLines++
+			t.markFailed(col.name)
+		}
+	}()
 	var ok bool
 	if col.name, ok = c.name("a column name, key, index, foreign key, check, settings or '}'"); !ok {
 		return
@@ -726,6 +824,7 @@ func (p *parser) columnLine(c *cursor) {
 	if t.phase != phaseColumns {
 		p.add(diagnosticAt(RuleOrder, col.name, "column lines come before key, index, foreign key, check and settings lines"))
 	}
+	p.names(col.name)
 	col.comments = p.takeComments()
 	var bad *Diagnostic
 	col.typ.typ, bad = resolveType(col.typ.word, params)
@@ -793,7 +892,10 @@ func (p *parser) settingsLine(c *cursor) {
 	if first.is(tokenPunct, "}") {
 		c.i++
 		s.closing = p.takeComments()
-		p.state, p.settings, p.open = stateTable, nil, p.table.keyword
+		p.state, p.settings, p.open = stateTable, nil, p.table.brace
+		if p.table.brace.line == 0 {
+			p.open = p.table.keyword
+		}
 		p.table.phase = phaseAfterSettings
 		c.done()
 		return
@@ -843,11 +945,22 @@ func (p *parser) settingsLine(c *cursor) {
 			c.keyword("action") && arg("the action column") &&
 			c.keyword("previous") && arg("the previous column")
 	default:
+		if c.lexErr != nil {
+			c.fail("a setting")
+			return
+		}
 		p.add(diagnosticAt(RuleSetting, keyword, "setting %q is unknown", keyword.text))
 		return
 	}
 	if !ok || !c.done() {
 		return
+	}
+	switch keyword.text {
+	case "entity":
+		p.names(line.args[0])
+	case "navigation":
+		p.names(line.args[1])
+		p.names(line.args[2])
 	}
 	line.comments = p.takeComments()
 	s.lines = append(s.lines, line)

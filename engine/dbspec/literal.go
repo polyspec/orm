@@ -42,17 +42,14 @@ func canonicalDefault(t Type, v token) (string, bool) {
 		if v.kind != tokenNumber {
 			return "", false
 		}
-		if _, err := strconv.ParseFloat(v.text, 64); err != nil {
+		f, err := strconv.ParseFloat(v.text, 64)
+		if err != nil {
 			return "", false
 		}
-		text := canonicalNumber(v.text)
-		if strings.Contains(text, ".") {
-			text = strings.TrimRight(strings.TrimRight(text, "0"), ".")
+		if f == 0 {
+			return "0", true
 		}
-		if text == "-0" {
-			text = "0"
-		}
-		return text, true
+		return strconv.FormatFloat(f, 'f', -1, 64), true
 	case TypeVarchar:
 		if v.kind != tokenString || strings.ContainsRune(v.text, 0) || utf8.RuneCountInString(v.text) > t.Length {
 			return "", false
@@ -84,18 +81,14 @@ func canonicalDefault(t Type, v token) (string, bool) {
 	return "", false
 }
 
-// canonicalDecimal writes a decimal with exactly scale fraction digits. Extra
-// fraction digits are accepted only when they are zeros, because the value
-// must fit the type exactly.
+// canonicalDecimal writes a decimal with exactly scale fraction digits; more
+// fraction digits than the scale are an error, even when they are zeros.
 func canonicalDecimal(s string, precision, scale int) (string, bool) {
 	negative := strings.HasPrefix(s, "-")
 	integer, fraction, _ := strings.Cut(strings.TrimPrefix(s, "-"), ".")
 	integer = strings.TrimLeft(integer, "0")
 	if len(fraction) > scale {
-		if strings.Trim(fraction[scale:], "0") != "" {
-			return "", false
-		}
-		fraction = fraction[:scale]
+		return "", false
 	}
 	fraction += strings.Repeat("0", scale-len(fraction))
 	if len(integer) > precision-scale {
@@ -162,7 +155,7 @@ func isDate(s string) bool {
 }
 
 // canonicalTime checks HH:MM:SS[.fraction] below 24:00:00 and writes it with
-// exactly precision fraction digits; extra fraction digits must be zeros.
+// exactly precision fraction digits; more fraction digits are an error.
 func canonicalTime(s string, precision int) (string, bool) {
 	clock, fraction, hasFraction := strings.Cut(s, ".")
 	if len(clock) != 8 || clock[2] != ':' || clock[5] != ':' || !digits(clock[:2]) || !digits(clock[3:5]) || !digits(clock[6:]) {
@@ -178,10 +171,7 @@ func canonicalTime(s string, precision int) (string, bool) {
 		return "", false
 	}
 	if len(fraction) > precision {
-		if strings.Trim(fraction[precision:], "0") != "" {
-			return "", false
-		}
-		fraction = fraction[:precision]
+		return "", false
 	}
 	fraction += strings.Repeat("0", precision-len(fraction))
 	if precision > 0 {
