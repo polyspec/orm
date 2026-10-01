@@ -758,6 +758,7 @@
         "clients/rust/orm/tests/zone.rs",
         "clients/rust/tests/src/integration.rs",
         "clients/go/orm/goexit_test.go",
+        "clients/go/orm/context_reset_test.go",
         "clients/go/model/sqlite_concurrency_test.go",
         "clients/php/tests/sqlite_concurrency_test.php",
         "clients/typescript/tests/sqlite-concurrency.mjs",

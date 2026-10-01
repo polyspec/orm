@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.14: A failed MySQL `setLocal` reset at the end of a transaction is reported in every client, and a callback failure with a failed cleanup reports both errors as `CONFIG`.
+
 - T8.0.13: Every client and schema tool asserts that a SQLite DSN with a query creates only the file named by its path.
 
 - T8.0.11: Introspection cases assert that PostgreSQL time zone, padded, single-precision and JSON types, MySQL `TIMESTAMP`, `char` and `float`, and `NO ACTION` and `SET DEFAULT` keys are reported as unsupported in every client.

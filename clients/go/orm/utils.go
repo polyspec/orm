@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -135,14 +136,23 @@ func (u *Utils) SetLocal(key, value string) error {
 	return nil
 }
 
-// clearLocals resets MySQL session variables before the transaction ends.
-func (t *txConn) clearLocals() {
+// clearLocals는 transaction이 끝나기 전에 MySQL session variable을 지운다.
+// MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로
+// (mysql.context.user_variable_session_scope) 실패한 reset은 오류로 돌려준다.
+// 한 번 시도한 값은 다시 지우지 않는다.
+func (t *txConn) clearLocals() error {
+	locals := t.locals
+	t.locals = nil
 	if t.db.driver != "mysql" {
-		return
+		return nil
 	}
-	for key := range t.locals {
-		_, _ = t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = NULL")
+	var errs []error
+	for key := range locals {
+		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = NULL"); err != nil {
+			errs = append(errs, mapDriverErr(err))
+		}
 	}
+	return errors.Join(errs...)
 }
 
 // Local returns a value set with SetLocal; NO_ROWS when it is missing.

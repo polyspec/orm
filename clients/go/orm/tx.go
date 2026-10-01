@@ -320,18 +320,23 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
+		// callback이 반환하지 않고 떠났으므로 rollback 오류를 받을 호출자가 없다
+		// (T8.0.14.1).
 		if r := recover(); r != nil {
-			t.rollback()
+			_ = t.rollback()
 			panic(r)
 		}
 		if !returned {
-			t.rollback()
+			_ = t.rollback()
 		}
 	}()
 	err = fn()
 	returned = true
 	if err != nil {
-		t.rollback()
+		if rollbackErr := t.rollback(); rollbackErr != nil {
+			// callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+			return configErr("transaction failed (%v) and rollback failed (%v)", err, rollbackErr)
+		}
 		return err
 	}
 	return t.commit()
@@ -394,7 +399,9 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 func (t *txConn) abort() {
 	if !t.finished.Load() {
 		t.releaseLocks()
-		t.clearLocals()
+		// rollback과 commit은 abort 전에 local 값을 지우고 그 오류를 돌려준다.
+		// 여기서는 begin이 실패해 지울 값이 없거나 이미 지운 뒤다.
+		_ = t.clearLocals()
 	}
 	t.finished.Store(true)
 	t.closeStatements()
@@ -402,12 +409,14 @@ func (t *txConn) abort() {
 	t.cancel()
 }
 
-func (t *txConn) rollback() {
+func (t *txConn) rollback() error {
 	if t.finished.Load() {
-		return
+		return nil
 	}
 	_ = t.finishSQLiteMode()
+	err := t.clearLocals()
 	t.abort()
+	return err
 }
 
 func (t *txConn) commit() error {
@@ -425,7 +434,10 @@ func (t *txConn) commit() error {
 		return err
 	}
 	t.releaseLocks()
-	t.clearLocals()
+	if err := t.clearLocals(); err != nil {
+		t.abort()
+		return err
+	}
 	t.closeStatements()
 	err := mapDriverErr(t.tx.Commit())
 	t.finished.Store(true)
