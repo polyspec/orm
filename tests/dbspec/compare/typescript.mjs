@@ -1,14 +1,25 @@
-// Prints the TypeScript dbspec result of every shared case and of the stress
-// document in the line format of tests/dbspec/compare/check.mjs.
+// Prints the TypeScript dbspec result of every shared case, of the stress
+// document, of the statement vectors and of the plan vectors in the line
+// format of tests/dbspec/compare/check.mjs.
 //
-// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json>
+// Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json>
 // (after the TypeScript build)
 import { readFileSync } from 'node:fs';
-import { dbspecManifest, emitDbspec, parseDbspec, renderDbspec } from '../../../clients/typescript/dist/dbspec/index.js';
+import {
+  chainPlans,
+  dbspecManifest,
+  diffPlan,
+  emitDbspec,
+  emitPlan,
+  parseDbspec,
+  parsePlan,
+  planStatements,
+  renderDbspec,
+} from '../../../clients/typescript/dist/dbspec/index.js';
 
-const [casesPath, stressPath, ddlPath] = process.argv.slice(2);
-if (casesPath === undefined || stressPath === undefined || ddlPath === undefined) {
-  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json>');
+const [casesPath, stressPath, ddlPath, plansPath] = process.argv.slice(2);
+if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined) {
+  console.error('usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json>');
   process.exit(2);
 }
 
@@ -103,4 +114,85 @@ function writeRender(c) {
 }
 
 for (const c of JSON.parse(readFileSync(ddlPath, 'utf8')).cases) writeRender(c);
+
+// writePlanDiagnostics prints diagnostics; a plan or chain diagnostic ends with
+// its message, which every client shares, and a schema diagnostic of the
+// target or source does not.
+function writePlanDiagnostics(diagnostics) {
+  for (const d of diagnostics) {
+    out.push(d.rule === 'plan' || d.rule === 'chain' ? `! ${d.rule} ${d.line} ${d.column} ${d.message}` : `! ${d.rule} ${d.line} ${d.column}`);
+  }
+}
+
+// planSource gives the source schema of a plan case, null for the empty
+// schema, or undefined after printing its diagnostics.
+function planSource(lines) {
+  if (lines === null) return null;
+  const result = parseDbspec(join(lines, false, false), {});
+  if (result.document === null) {
+    writePlanDiagnostics(result.diagnostics);
+    return undefined;
+  }
+  return result.document;
+}
+
+// writeChanges prints the changes as "| kind table name".
+function writeChanges(changes) {
+  for (const c of changes) out.push(`| ${c.kind} ${c.table} ${c.name}`);
+}
+
+function writeEmittedPlan(plan) {
+  for (const line of emitPlan(plan).split('\n')) out.push(`| ${line}`);
+}
+
+const plans = JSON.parse(readFileSync(plansPath, 'utf8'));
+for (const c of plans.cases) {
+  out.push(`plans/cases/${c.id}`);
+  const source = planSource(c.source);
+  if (source === undefined) continue;
+  const parsed = parsePlan(join(c.plan, false, false));
+  if (parsed.plan === null) {
+    writePlanDiagnostics(parsed.diagnostics);
+    continue;
+  }
+  writeEmittedPlan(parsed.plan);
+  out.push(`plans/cases/${c.id}/changes`);
+  const diff = diffPlan(source, parsed.plan);
+  writePlanDiagnostics(diff.diagnostics);
+  writeChanges(diff.changes ?? []);
+  for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+    out.push(`plans/cases/${c.id}/${dialect}`);
+    const result = planStatements(source, parsed.plan, dialect);
+    writePlanDiagnostics(result.diagnostics);
+    for (const s of result.statements ?? []) out.push(`| ${s}`);
+  }
+}
+for (const c of plans.invalid) {
+  out.push(`plans/invalid/${c.id}`);
+  const source = planSource(c.source);
+  if (source === undefined) continue;
+  const parsed = parsePlan(join(c.plan, false, false));
+  if (parsed.plan === null) {
+    writePlanDiagnostics(parsed.diagnostics);
+    continue;
+  }
+  const diff = diffPlan(source, parsed.plan);
+  writePlanDiagnostics(diff.diagnostics);
+  writeChanges(diff.changes ?? []);
+}
+for (const c of plans.chains) {
+  out.push(`plans/chains/${c.id}`);
+  const parsed = c.plans.map(lines => parsePlan(join(lines, false, false)));
+  for (const p of parsed) writePlanDiagnostics(p.diagnostics);
+  if (parsed.some(p => p.plan === null)) continue;
+  const chain = chainPlans(parsed.map(p => p.plan));
+  writePlanDiagnostics(chain.diagnostics);
+  for (const p of chain.plans ?? []) out.push(`| ${p.name}`);
+}
+for (const c of plans.parse) {
+  out.push(`plans/parse/${c.id}`);
+  const parsed = parsePlan(join(c.plan, false, false));
+  if (parsed.plan === null) writePlanDiagnostics(parsed.diagnostics);
+  else writeEmittedPlan(parsed.plan);
+}
 process.stdout.write(out.join('\n') + '\n');

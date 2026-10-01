@@ -2,7 +2,9 @@
 //! `orm_schema::dbspec` (docs/plans.md): every case diffs to its changes,
 //! writes its statements for MySQL, PostgreSQL and SQLite and emits its plan
 //! text again; every invalid case reports its `plan` diagnostics; every chain
-//! case orders its plans or reports its `chain` diagnostics.
+//! case orders its plans or reports its `chain` diagnostics; every parse case
+//! reports its diagnostics with rule, line, column and the message of a `plan`
+//! diagnostic.
 
 use orm_schema::dbspec::{self, chain, diff, emit_plan, parse_plan, plan_statements, Dialect, Document, Plan};
 use serde_json::Value;
@@ -148,4 +150,36 @@ fn plan_chains() {
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     println!("PASS plan chains: {} cases in {:?}", chains.len(), started.elapsed());
+}
+
+#[test]
+fn plan_parse_errors() {
+    let started = Instant::now();
+    let vectors = vectors();
+    let parse = vectors["parse"].as_array().expect("parse");
+    assert!(!parse.is_empty(), "tests/dbspec/plans.json has no parse cases");
+    let mut failures = Vec::new();
+    for case in parse {
+        let id = format!("parse/{}", case["id"].as_str().expect("id"));
+        let result = run(&id, || {
+            let diagnostics = parse_plan(&lines(&case["plan"])).err().unwrap_or_default();
+            // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
+            let got = Value::from(
+                diagnostics
+                    .into_iter()
+                    .map(|d| {
+                        let message = if d.rule == "plan" { Value::from(d.message) } else { Value::Null };
+                        Value::from(vec![Value::from(d.rule), Value::from(d.line), Value::from(d.column), message])
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            if got != case["errors"] {
+                return Err(format!("errors\nwant {}\ngot  {got}", case["errors"]));
+            }
+            Ok(())
+        });
+        failures.extend(result.err());
+    }
+    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    println!("PASS plan parse errors: {} cases in {:?}", parse.len(), started.elapsed());
 }
