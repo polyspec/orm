@@ -4,9 +4,10 @@
 //! text again; every invalid case reports its `plan` diagnostics; every chain
 //! case orders its plans or reports its `chain` diagnostics; every parse case
 //! reports its diagnostics with rule, line, column and the message of a `plan`
-//! diagnostic.
+//! diagnostic; every comparison lists its differences or `compare`
+//! diagnostics.
 
-use orm_schema::dbspec::{self, chain, diff, emit_plan, parse_plan, plan_statements, Dialect, Document, Plan};
+use orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_statements, Dialect, Document, Plan};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -182,4 +183,38 @@ fn plan_parse_errors() {
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     println!("PASS plan parse errors: {} cases in {:?}", parse.len(), started.elapsed());
+}
+
+#[test]
+fn plan_comparisons() {
+    let started = Instant::now();
+    let vectors = vectors();
+    let comparisons = vectors["comparisons"].as_array().expect("comparisons");
+    assert!(!comparisons.is_empty(), "tests/dbspec/plans.json has no comparisons");
+    let mut failures = Vec::new();
+    for case in comparisons {
+        let id = format!("comparison/{}", case["id"].as_str().expect("id"));
+        let result = run(&id, || {
+            let from = source(&id, &case["source"]).ok_or("the source is null")?;
+            let to = source(&id, &case["target"]).ok_or("the target is null")?;
+            let (differences, errors) = match compare_schemas(&from, &to) {
+                Ok(differences) => (differences.into_iter().map(|d| Value::from(vec![d.kind, d.table, d.name])).collect(), Vec::new()),
+                Err(diagnostics) => (
+                    Vec::new(),
+                    diagnostics
+                        .into_iter()
+                        .map(|d| Value::from(vec![Value::from(d.rule), Value::from(d.line), Value::from(d.column), Value::from(d.message)]))
+                        .collect(),
+                ),
+            };
+            let (differences, errors) = (Value::from(differences), Value::from(errors));
+            if differences != case["differences"] || errors != case["errors"] {
+                return Err(format!("want differences {} errors {}\ngot  differences {differences} errors {errors}", case["differences"], case["errors"]));
+            }
+            Ok(())
+        });
+        failures.extend(result.err());
+    }
+    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    println!("PASS plan comparisons: {} cases in {:?}", comparisons.len(), started.elapsed());
 }

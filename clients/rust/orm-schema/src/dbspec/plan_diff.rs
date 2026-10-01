@@ -73,7 +73,7 @@ pub(crate) fn column_of<'t>(t: &'t Table, name: &str) -> Option<&'t Column> {
 }
 
 /// table의 primary key column 이름.
-fn primary_key(t: &Table) -> Vec<&str> {
+pub(crate) fn primary_key(t: &Table) -> Vec<&str> {
     t.primary.iter().flat_map(|k| k.columns.iter().map(|n| n.text.as_str())).collect()
 }
 
@@ -262,7 +262,7 @@ pub(crate) fn diff_plan<'d>(source: Option<&'d Document>, plan: &'d Plan) -> Res
 }
 
 /// 세 database에서 모든 값을 지키는 type 변경인지 알려 준다.
-fn widens(from: Type, to: Type) -> bool {
+pub(crate) fn widens(from: Type, to: Type) -> bool {
     match (from, to) {
         (Type::I16, Type::I32 | Type::I64) | (Type::I32, Type::I64) | (Type::Varchar(_), Type::Text) => true,
         (Type::Varchar(n), Type::Varchar(m)) => m >= n,

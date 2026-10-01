@@ -22,6 +22,7 @@ export type DbspecRule =
   | 'encoding'
   | 'plan'
   | 'chain'
+  | 'compare'
   | 'mermaid';
 
 /** One SCHEMA_INVALID diagnostic: the rule, the 1-based line and column of the offending token, and a message. */

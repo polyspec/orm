@@ -267,6 +267,18 @@ func readPlans(path string) (planVectors, error) {
 		plan, err := r.linesField(c, location, "plan")
 		return parseCase{ID: id, Plan: plan}, err
 	})
+	if err != nil {
+		return plans, err
+	}
+	plans.Comparisons, err = cases(r, v, "comparisons", func(c map[string]any, location, id string) (comparisonCase, error) {
+		comparison := comparisonCase{ID: id}
+		var err error
+		if comparison.Source, err = r.linesField(c, location, "source"); err != nil {
+			return comparison, err
+		}
+		comparison.Target, err = r.linesField(c, location, "target")
+		return comparison, err
+	})
 	return plans, err
 }
 

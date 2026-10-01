@@ -73,6 +73,7 @@ func failingCaseNames(t *testing.T) []string {
 		"plan/invalid/" + p.Invalid[0].ID,
 		"plan/chain/" + p.Chains[0].ID,
 		"plan/parse/" + p.Parse[0].ID,
+		"plan/comparison/" + p.Comparisons[1].ID,
 	}
 }
 
@@ -100,6 +101,9 @@ func TestFailingCaseFixture(t *testing.T) {
 	chain.Order = []string{"wrong"}
 	parse := p.Parse[0]
 	parse.Errors = nil
+	// 첫 comparison은 차이가 없으므로 차이가 있는 둘째 case를 비운다.
+	comparison := p.Comparisons[1]
+	comparison.Differences = nil
 	t.Run("export", func(t *testing.T) { checkMermaidExport(t, export) })
 	t.Run("import", func(t *testing.T) { checkMermaidImport(t, imported) })
 	t.Run("invalid", func(t *testing.T) { checkMermaidInvalid(t, invalid) })
@@ -108,6 +112,7 @@ func TestFailingCaseFixture(t *testing.T) {
 	t.Run("plan_invalid", func(t *testing.T) { checkPlanInvalid(t, planInvalid) })
 	t.Run("chain", func(t *testing.T) { checkPlanChain(t, chain) })
 	t.Run("parse", func(t *testing.T) { checkPlanParse(t, parse) })
+	t.Run("comparison", func(t *testing.T) { checkComparison(t, comparison) })
 }
 
 // TestCaseHarnessReportsOnlyFailure는 실패한 case가 FAIL 줄만 출력하고 PASS 줄은

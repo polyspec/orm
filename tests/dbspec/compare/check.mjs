@@ -7,7 +7,8 @@
 // prints its emitted plan, then "<name>/changes" with "| kind table name"
 // lines and "<name>/<dialect>" with its statements; an invalid plan case its
 // diagnostics or changes; a chain case its order ("| name") or diagnostics;
-// a parse case its diagnostics or emitted plan. A plan or chain diagnostic
+// a parse case its diagnostics or emitted plan; a comparison its differences
+// ("| kind table name") or diagnostics. A plan, chain or compare diagnostic
 // ends with its message, which the clients share. A Mermaid export case
 // prints its Mermaid text and its dropped objects ("= kind<TAB>table<TAB>name",
 // without reasons) or the diagnostics of its document; an import or invalid

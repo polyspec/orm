@@ -230,7 +230,7 @@ final class PlanDiff
     }
 
     /** 세 database 에서 모든 값을 지키는 type 변경인지 알려 준다. */
-    private static function widens(ColumnType $from, ColumnType $to): bool
+    public static function widens(ColumnType $from, ColumnType $to): bool
     {
         $f = $from->parameters;
         $t = $to->parameters;

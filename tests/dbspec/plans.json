@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. chains cases parse their plans and order them into one chain, or report exactly the listed chain diagnostics. docs/plans.md. parse cases report exactly the listed [rule, line, column, message] diagnostics, with the message only for the rule plan.",
+  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. chains cases parse their plans and order them into one chain, or report exactly the listed chain diagnostics. docs/plans.md. parse cases report exactly the listed [rule, line, column, message] diagnostics, with the message only for the rule plan. comparisons compare the source and target documents without a plan and list exactly the differences as [kind, table, name], or exactly the listed [rule, line, column, message] diagnostics (docs/plans.md \"Comparison\").",
   "cases": [
     {
       "id": "create-from-empty",
@@ -1786,6 +1786,719 @@
         "table t {",
         "  id i64 identity",
         "}"
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "same-schema",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "differences": [],
+      "errors": []
+    },
+    {
+      "id": "tables-from-empty",
+      "source": [
+        "dbspec 1 schema"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "differences": [
+        [
+          "create_table",
+          "orders",
+          ""
+        ],
+        [
+          "create_table",
+          "users",
+          ""
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "tables-on-one-side",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table legacy {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "differences": [
+        [
+          "drop_table",
+          "legacy",
+          ""
+        ],
+        [
+          "create_table",
+          "orders",
+          ""
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "columns",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  a i32",
+        "  b varchar(10)",
+        "  c i64",
+        "  d text null",
+        "  e i32 default 0",
+        "  gone i32",
+        "  primary key (id)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  a i64",
+        "  b varchar(10) null",
+        "  c i32 null",
+        "  d i32 null",
+        "  e i32 default 1",
+        "  added i32 null",
+        "  primary key (id)",
+        "}"
+      ],
+      "differences": [
+        [
+          "drop_column",
+          "t",
+          "gone"
+        ],
+        [
+          "add_column",
+          "t",
+          "added"
+        ],
+        [
+          "alter_column",
+          "t",
+          "a"
+        ],
+        [
+          "alter_column",
+          "t",
+          "b"
+        ],
+        [
+          "alter_column",
+          "t",
+          "c"
+        ],
+        [
+          "alter_column",
+          "t",
+          "e"
+        ],
+        [
+          "change_column_type",
+          "t",
+          "c"
+        ],
+        [
+          "change_column_type",
+          "t",
+          "d"
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "identity-and-primary-key",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table k {",
+        "  id i64 identity",
+        "  code varchar(8)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table p {",
+        "  a i32",
+        "  b i32",
+        "  primary key (a, b)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table k {",
+        "  id i64",
+        "  code varchar(8)",
+        "  primary key (code)",
+        "}",
+        "",
+        "table p {",
+        "  a i32",
+        "  b i32",
+        "  primary key (b, a)",
+        "}"
+      ],
+      "differences": [
+        [
+          "change_column_identity",
+          "k",
+          "id"
+        ],
+        [
+          "change_primary_key",
+          "k",
+          ""
+        ],
+        [
+          "change_primary_key",
+          "p",
+          ""
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "column-order",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table o1 {",
+        "  a i32",
+        "  b i32",
+        "  c i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o2 {",
+        "  a i32",
+        "  b i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o3 {",
+        "  a i32",
+        "  b i32",
+        "  c i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o4 {",
+        "  a i32",
+        "  b i32",
+        "  primary key (a)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table o1 {",
+        "  a i32",
+        "  c i32",
+        "  b i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o2 {",
+        "  a i32",
+        "  x i32 null",
+        "  b i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o3 {",
+        "  a i32",
+        "  c i32",
+        "  primary key (a)",
+        "}",
+        "",
+        "table o4 {",
+        "  a i32",
+        "  b i32",
+        "  x i32 null",
+        "  primary key (a)",
+        "}"
+      ],
+      "differences": [
+        [
+          "reorder_columns",
+          "o1",
+          ""
+        ],
+        [
+          "add_column",
+          "o2",
+          "x"
+        ],
+        [
+          "reorder_columns",
+          "o2",
+          ""
+        ],
+        [
+          "drop_column",
+          "o3",
+          "b"
+        ],
+        [
+          "add_column",
+          "o4",
+          "x"
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "objects",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table c {",
+        "  id i64 identity",
+        "  p_id i64",
+        "  n i32",
+        "  code varchar(8)",
+        "  primary key (id)",
+        "  unique uq_c_code (code)",
+        "  index ix_c_n (n)",
+        "  index ix_c_p (p_id)",
+        "  foreign key fk_c_p (p_id) references p (id) on delete restrict on update restrict",
+        "  check ck_c_n (n >= 0)",
+        "  check ck_c_code (code <> '')",
+        "}",
+        "",
+        "table p {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table c {",
+        "  id i64 identity",
+        "  p_id i64",
+        "  n i64",
+        "  code varchar(8)",
+        "  primary key (id)",
+        "  unique uq_c_code (code, n)",
+        "  unique uq_c_p (p_id)",
+        "  index ix_c_n (n desc)",
+        "  foreign key fk_c_p (p_id) references p (id) on delete cascade on update restrict",
+        "  check ck_c_n (n >= 0)",
+        "  check ck_c_code (code <> 'x')",
+        "}",
+        "",
+        "table p {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "differences": [
+        [
+          "alter_column",
+          "c",
+          "n"
+        ],
+        [
+          "drop_unique",
+          "c",
+          "uq_c_code"
+        ],
+        [
+          "add_unique",
+          "c",
+          "uq_c_code"
+        ],
+        [
+          "add_unique",
+          "c",
+          "uq_c_p"
+        ],
+        [
+          "drop_index",
+          "c",
+          "ix_c_n"
+        ],
+        [
+          "drop_index",
+          "c",
+          "ix_c_p"
+        ],
+        [
+          "add_index",
+          "c",
+          "ix_c_n"
+        ],
+        [
+          "drop_foreign_key",
+          "c",
+          "fk_c_p"
+        ],
+        [
+          "add_foreign_key",
+          "c",
+          "fk_c_p"
+        ],
+        [
+          "drop_check",
+          "c",
+          "ck_c_code"
+        ],
+        [
+          "add_check",
+          "c",
+          "ck_c_code"
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "settings",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table frozen {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "  settings {",
+        "    immutable",
+        "  }",
+        "}",
+        "",
+        "table h1 {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}",
+        "",
+        "table h2 {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}",
+        "",
+        "table locked {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "",
+        "table logged {",
+        "  id i64 identity",
+        "  operation_id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table moved {",
+        "  id i64 identity",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into h1 operation operation_id action change previous previous_operation_id",
+        "  }",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table frozen {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "",
+        "table h1 {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}",
+        "",
+        "table h2 {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}",
+        "",
+        "table locked {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "  settings {",
+        "    immutable",
+        "  }",
+        "}",
+        "",
+        "table logged {",
+        "  id i64 identity",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into h2 operation operation_id action change previous previous_operation_id",
+        "  }",
+        "}",
+        "",
+        "table moved {",
+        "  id i64 identity",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into h2 operation operation_id action change previous previous_operation_id",
+        "  }",
+        "}"
+      ],
+      "differences": [
+        [
+          "drop_immutable",
+          "frozen",
+          ""
+        ],
+        [
+          "add_immutable",
+          "locked",
+          ""
+        ],
+        [
+          "add_audit",
+          "logged",
+          ""
+        ],
+        [
+          "drop_audit",
+          "moved",
+          ""
+        ],
+        [
+          "add_audit",
+          "moved",
+          ""
+        ]
+      ],
+      "errors": []
+    },
+    {
+      "id": "source-not-schema-text",
+      "source": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "differences": [],
+      "errors": [
+        [
+          "compare",
+          1,
+          1,
+          "the source is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ]
+      ]
+    },
+    {
+      "id": "target-not-schema-text",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "  settings {",
+        "    entity user",
+        "  }",
+        "}"
+      ],
+      "differences": [],
+      "errors": [
+        [
+          "compare",
+          1,
+          1,
+          "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ]
+      ]
+    },
+    {
+      "id": "both-not-schema-text",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "# users of the shop",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "target": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "}"
+      ],
+      "differences": [],
+      "errors": [
+        [
+          "compare",
+          1,
+          1,
+          "the source is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ],
+        [
+          "compare",
+          1,
+          1,
+          "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ]
       ]
     }
   ]

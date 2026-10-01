@@ -49,11 +49,19 @@ struct ParseCase {
     plan: Vec<String>,
 }
 
+/// plan 없이 비교하는 두 schema.
+struct ComparisonCase {
+    id: String,
+    source: Vec<String>,
+    target: Vec<String>,
+}
+
 struct PlanVectors {
     cases: Vec<PlanCase>,
     invalid: Vec<PlanCase>,
     chains: Vec<ChainCase>,
     parse: Vec<ParseCase>,
+    comparisons: Vec<ComparisonCase>,
 }
 
 struct ExportCase {
@@ -211,6 +219,9 @@ fn read_plans(path: &str) -> Result<PlanVectors, String> {
             Ok(ChainCase { id, plans })
         })?,
         parse: r.cases(&v, "parse", |case, location, id| Ok(ParseCase { id, plan: r.lines_field(case, location, "plan")? }))?,
+        comparisons: r.cases(&v, "comparisons", |case, location, id| {
+            Ok(ComparisonCase { id, source: r.lines_field(case, location, "source")?, target: r.lines_field(case, location, "target")? })
+        })?,
     })
 }
 
@@ -337,7 +348,7 @@ fn write_render(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
 /// source does not.
 fn write_plan_diagnostics(out: &mut impl Write, diagnostics: &[Diagnostic]) -> std::io::Result<()> {
     for d in diagnostics {
-        if d.rule == orm_schema::dbspec::RULE_PLAN || d.rule == orm_schema::dbspec::RULE_CHAIN {
+        if [orm_schema::dbspec::RULE_PLAN, orm_schema::dbspec::RULE_CHAIN, orm_schema::dbspec::RULE_COMPARE].contains(&d.rule.as_str()) {
             writeln!(out, "! {} {} {} {}", d.rule, d.line, d.column, d.message)?;
         } else {
             writeln!(out, "! {} {} {}", d.rule, d.line, d.column)?;
@@ -450,6 +461,26 @@ fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()>
         writeln!(out, "plans/parse/{}", case.id)?;
         match orm_schema::dbspec::parse_plan(&join(&case.plan, false, false)) {
             Ok(plan) => write_emitted_plan(out, &plan)?,
+            Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
+        }
+    }
+    for case in &plans.comparisons {
+        writeln!(out, "plans/comparisons/{}", case.id)?;
+        let source = orm_schema::dbspec::parse(&join(&case.source, false, false), &BTreeMap::new());
+        if let Err(diagnostics) = &source {
+            write_plan_diagnostics(out, diagnostics)?;
+        }
+        let target = orm_schema::dbspec::parse(&join(&case.target, false, false), &BTreeMap::new());
+        if let Err(diagnostics) = &target {
+            write_plan_diagnostics(out, diagnostics)?;
+        }
+        let (Ok(source), Ok(target)) = (source, target) else { continue };
+        match orm_schema::dbspec::compare_schemas(&source, &target) {
+            Ok(differences) => {
+                for d in differences {
+                    writeln!(out, "| {} {} {}", d.kind, d.table, d.name)?;
+                }
+            }
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
         }
     }

@@ -4,13 +4,15 @@ declare(strict_types=1);
 // (docs/plans.md): every case's canonical emission, changes and statements
 // of three dialects, every invalid case's `plan` diagnostics, every chain
 // case's order or `chain` diagnostics, every parse case's diagnostics with
-// rule, line, column and the message of a `plan` diagnostic, and the unknown
-// dialect rule.
+// rule, line, column and the message of a `plan` diagnostic, every
+// comparison's differences or `compare` diagnostics, and the unknown dialect
+// rule.
 require __DIR__ . '/autoload.php';
 
 use Orm\Dbspec\Change;
 use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Diagnostic;
+use Orm\Dbspec\Difference;
 use Orm\Dbspec\Document;
 use Orm\Dbspec\Plan;
 
@@ -20,8 +22,8 @@ $started = hrtime(true);
 echo "RUN dbspec_plan\n";
 $root = dirname(__DIR__, 3);
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/plans.json"), true, 512, JSON_THROW_ON_ERROR);
-if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || ($vectors['invalid'] ?? []) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === []) {
-    throw new RuntimeException('tests/dbspec/plans.json has no version 1 cases, invalid cases, chains and parse cases');
+if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || ($vectors['invalid'] ?? []) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || ($vectors['comparisons'] ?? []) === []) {
+    throw new RuntimeException('tests/dbspec/plans.json has no version 1 cases, invalid cases, chains, parse cases and comparisons');
 }
 
 /** @param list<string> $lines */
@@ -154,6 +156,24 @@ foreach ($vectors['parse'] as $case) {
     finish_plan_case($id, $caseStarted);
 }
 
+foreach ($vectors['comparisons'] as $case) {
+    $id = "plan/comparison/{$case['id']}";
+    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
+    $caseStarted = hrtime(true);
+    $source = plan_source("$id/source", $case['source']);
+    $target = plan_source("$id/target", $case['target']);
+    $result = Dbspec::compareSchemas($source, $target);
+    $got = array_map(static fn(Difference $d): array => [$d->kind, $d->table, $d->name], $result->differences ?? []);
+    if ($got !== $case['differences']) {
+        throw new RuntimeException("$id: differences\nwant " . json_encode($case['differences']) . "\ngot  " . json_encode($got));
+    }
+    $errors = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $result->diagnostics);
+    if ($errors !== $case['errors']) {
+        throw new RuntimeException("$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($errors));
+    }
+    finish_plan_case($id, $caseStarted);
+}
+
 echo "RUN plan/unknown-dialect\n";
 try {
     Dbspec::planStatements(null, plan_of('plan/unknown-dialect', $vectors['cases'][0]['plan']), 'oracle');
@@ -165,4 +185,4 @@ try {
 }
 echo "PASS plan/unknown-dialect\n";
 
-echo 'PASS dbspec_plan cases=' . count($vectors['cases']) . ' invalid=' . count($vectors['invalid']) . ' chains=' . count($vectors['chains']) . ' parse=' . count($vectors['parse']) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";
+echo 'PASS dbspec_plan cases=' . count($vectors['cases']) . ' invalid=' . count($vectors['invalid']) . ' chains=' . count($vectors['chains']) . ' parse=' . count($vectors['parse']) . ' comparisons=' . count($vectors['comparisons']) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";

@@ -3,14 +3,15 @@
 // writes exactly the listed statements in every dialect; every invalid case
 // reports exactly its plan diagnostics; every chain case orders its plans or
 // reports exactly its chain diagnostics; every parse case reports exactly its
-// diagnostics with rule, line, column and the message of a plan diagnostic.
+// diagnostics with rule, line, column and the message of a plan diagnostic;
+// every comparison lists exactly its differences or compare diagnostics.
 //
 // Usage: node --test clients/typescript/tests/dbspec-plan.mjs (after the build)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { chainPlans, diffPlan, emitPlan, parseDbspec, parsePlan, planStatements } from '../dist/dbspec/index.js';
+import { chainPlans, compareSchemas, diffPlan, emitPlan, parseDbspec, parsePlan, planStatements } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'));
@@ -50,7 +51,7 @@ function plan(lines) {
 }
 
 assert.equal(vectors.version, 1, 'plans.json version');
-assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0 && vectors.parse.length > 0, 'plans.json cases');
+assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0 && vectors.parse.length > 0 && vectors.comparisons.length > 0, 'plans.json cases');
 
 for (const c of vectors.cases) {
   vector(`plan ${c.id}`, () => {
@@ -91,6 +92,14 @@ for (const c of vectors.parse) {
     const { diagnostics } = parsePlan(text(c.plan));
     // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
     assert.deepEqual(diagnostics.map(d => [d.rule, d.line, d.column, d.rule === 'plan' ? d.message : null]), c.errors);
+  });
+}
+
+for (const c of vectors.comparisons) {
+  vector(`plan comparison ${c.id}`, () => {
+    const result = compareSchemas(source(c.source), source(c.target));
+    assert.deepEqual((result.differences ?? []).map(d => [d.kind, d.table, d.name]), c.differences);
+    assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column, d.message]), c.errors);
   });
 }
 

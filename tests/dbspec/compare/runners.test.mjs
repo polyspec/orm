@@ -46,6 +46,8 @@ const mutations = [
   { file: 'plans', location: 'invalid[0].plan', problem: 'is not an array', change: v => (v.invalid[0].plan = 'dbplan 1 a') },
   { file: 'plans', location: 'chains[0].plans[0]', problem: 'is not an array', change: v => (v.chains[0].plans[0] = null) },
   { file: 'plans', location: 'parse[0].id', problem: 'is missing', change: v => delete v.parse[0].id },
+  { file: 'plans', location: 'comparisons', problem: 'is missing', change: v => delete v.comparisons },
+  { file: 'plans', location: 'comparisons[0].target', problem: 'is not an array', change: v => (v.comparisons[0].target = 'dbspec 1 schema') },
   { file: 'mermaid', location: 'round_trip', problem: 'is missing', change: v => delete v.round_trip },
   { file: 'mermaid', location: 'export[0].documents', problem: 'is missing', change: v => delete v.export[0].documents },
   { file: 'mermaid', location: 'import[0].mermaid', problem: 'is missing', change: v => delete v.import[0].mermaid },

@@ -56,6 +56,29 @@ plan의 diff는 source(앞 plan의 target이나 빈 schema)와 target을 비교�
 
 정의가 그대로여도 다시 만드는 객체가 있다. 이름이 바뀌거나 바뀐 column을 쓰는 check, 양쪽 어느 column이든 바뀐 foreign key, 그리고 column이 지우는 index나 unique key의 앞부분인 foreign key다. 마지막은 MySQL이 그렇지 않으면 그 index를 지우지 않기 때문이다. `<table>$<column>` 이름의 renderer CHECK은 이름이나 text가 바뀌면 지우고 더한다. 같은 schema끼리의 diff는 비어 있다.
 
+## 비교
+
+비교는 plan 없이 두 schema의 모든 차이를 나열한다. database가 model과 어떻게 다른지 보여 주는 도구를 위한 것이다. rename과 허가가 없으므로 table과 column은 같은 이름끼리만 맞춘다. 양쪽은 [schema text](dbspec.ko.md#manifest-and-hashes)의 문서다. canonical emission이 그 문서 하나의 schema text가 아닌 쪽은 그쪽을 밝히는 `compare` diagnostic(1줄 1칸)이며 source가 target보다 먼저 오고, 그때 비교에는 차이가 없다. 차이는 `[kind, table, name]`이다. `name`은 column이나 객체의 이름이고, table, key, 순서, setting kind에서는 비어 있다.
+
+| Kind | 조건 |
+| --- | --- |
+| `create_table` | target에만 있는 table |
+| `drop_table` | source에만 있는 table |
+| `drop_column` | source에만 있는 column |
+| `add_column` | target에만 있는 column |
+| `alter_column` | type이 넓어지거나 `null`이나 default가 바뀌는 양쪽의 column |
+| `change_column_type` | type이 넓어지지 않고 바뀌는 양쪽의 column |
+| `change_column_identity` | `identity`가 바뀌는 양쪽의 column |
+| `reorder_columns` | 양쪽의 column이 다른 순서로 오거나, target에만 있는 column이 양쪽의 column 앞에 온다 |
+| `change_primary_key` | primary key의 column이나 column 순서가 다르다 |
+| `drop_unique`, `add_unique`, `drop_index`, `add_index`, `drop_foreign_key`, `add_foreign_key`, `drop_check`, `add_check` | source에만 또는 target에만 있는 객체. 정의가 다르면 둘 다 |
+| `drop_immutable`, `add_immutable` | source에만 또는 target에만 있는 `immutable` setting |
+| `drop_audit`, `add_audit` | source에만 또는 target에만 있는 `audit` setting. 다르면 둘 다 |
+
+plan diff에도 있는 kind는 뜻이 같고, 넓히기는 "Diff"의 것이다. `change_column_type`, `change_column_identity`, `reorder_columns`, `change_primary_key`는 plan이 거부하는 변경이다. column 하나가 여러 kind를 가질 수 있다. 예를 들어 `null`과 type이 함께 바뀌면 `alter_column`과 `change_column_type`이다. 정의는 쓰인 그대로 비교하므로 정의가 그대로인 객체를 지우고 다시 더하지 않으며, setting은 렌더링한 trigger 대신 setting 자체를 비교한다. 만들거나 지우는 table은 그 밖의 차이를 나열하지 않는다. 차이는 table 이름 순으로, table 안에서는 위 표의 순서(행 순, 행 안에서 왼쪽부터)로, kind 안에서는 이름 순으로 온다. 비교는 두 schema text가, 따라서 `schemaHash`가 같을 때에만 비어 있다.
+
+Go는 `CompareSchemas`, PHP는 `Dbspec::compareSchemas`, TypeScript는 `compareSchemas`, Rust는 `compare_schemas`를 가진다. 각각 source와 target 문서를 받아 차이나 diagnostic을 돌려준다.
+
 ## Statement
 
 statement는 이 순서로 오며, 각 단계 안에서 table과 객체는 이름 순이다.
@@ -100,4 +123,4 @@ apply는 일어난 일을 event로 알린다: plan이 시작할 때 statement �
 
 `make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-apply-check`는 history, lock, drift, 검증, recovery와 함께 chain을 세 database에 적용한다. `make dbspec-ts-check`와 `make dbspec-plan-ts-check`는 TypeScript client의 `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planStatements`로 같은 일을 한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-apply-ts-check`는 `make dbspec-apply-check`의 chain을 TypeScript client의 `applyPlans`와 `recoverPlans`로 적용한다. 각 apply check는 PostgreSQL에서 event가 advisory lock을 먼저 푼 apply도 실행해, 아무것도 풀지 않은 unlock이 실패하기를 요구한다. `make dbspec-go-check`, `make dbspec-php-check`, `make dbspec-ts-check`, `make dbspec-rust-check`는 감싼 SQLite connection과 script한 MySQL connection으로 실패를 주입하고, 각 client가 정리 error가 없는 실패는 그대로, 실패한 `ROLLBACK`, 실패한 `BEGIN IMMEDIATE` 뒤 실패한 foreign key 복원, row가 없는 효과 query의 error는 "Apply"의 형식으로 보고하기를 요구한다. `make dbspec-apply-pairs-check`는 `tests/dbspec/apply`의 Go, PHP, TypeScript, Rust client apply runner를 실행한다: MySQL, PostgreSQL, SQLite에서 서로 다른 두 client의 모든 순서쌍마다 첫 client가 chain의 첫 plan을, 둘째 client가 나머지를 적용하고, MySQL에서는 첫 client가 statement 뒤에 멈춘 plan을 둘째 client가 `interrupted`로 거부한 뒤 recover한다. 48 run 각각에서 history row와 introspect한 schema text가 chain의 것과 같아야 한다.
 
-`make dbspec-rust-check`는 같은 case를 Rust client로 실행하고, `make dbspec-plan-rust-check`는 Rust renderer, plan statement, introspection으로 적용한다. `make dbspec-php-check`는 같은 case를 PHP client의 `Orm\Dbspec\Dbspec`(`parsePlan`, `emitPlan`, `chain`, `diff`, `planStatements`)으로 실행하고, `make dbspec-plan-php-check`는 이를 통해 세 database에 적용한다. `make dbspec-apply-php-check`는 `make dbspec-apply-check`의 scenario를 그 `apply`와 `recover`로 실행한다. 각 client의 plan test는 parse case도 실행하며, 그 diagnostic은 rule, 줄, 칸과 `plan` diagnostic의 message를 가진다. `make dbspec-compare-check`는 `tests/dbspec/plans.json`의 모든 항목을 Go, PHP, TypeScript, Rust client로 각각 두 번 실행하고 모든 출력이 첫 Go 출력과 같기를 요구한다: 모든 case의 emit한 plan, change, dialect별 statement, 모든 invalid case와 parse case의 diagnostic, 모든 chain의 순서나 diagnostic이며, `plan`과 `chain` diagnostic은 message까지 비교한다. `make dbspec-apply-rust-check`는 `make dbspec-apply-check`의 chain을 Rust client의 `orm::dbspec::apply`와 `orm::dbspec::recover`로 적용한다.
+`make dbspec-rust-check`는 같은 case를 Rust client로 실행하고, `make dbspec-plan-rust-check`는 Rust renderer, plan statement, introspection으로 적용한다. `make dbspec-php-check`는 같은 case를 PHP client의 `Orm\Dbspec\Dbspec`(`parsePlan`, `emitPlan`, `chain`, `diff`, `planStatements`)으로 실행하고, `make dbspec-plan-php-check`는 이를 통해 세 database에 적용한다. `make dbspec-apply-php-check`는 `make dbspec-apply-check`의 scenario를 그 `apply`와 `recover`로 실행한다. 각 client의 plan test는 parse case도 실행하며, 그 diagnostic은 rule, 줄, 칸과 `plan` diagnostic의 message를 가진다. `comparisons` case도 실행하며, 그 차이나 message를 포함한 `compare` diagnostic은 나열된 것과 정확히 같아야 한다. `make dbspec-compare-check`는 `tests/dbspec/plans.json`의 모든 항목을 Go, PHP, TypeScript, Rust client로 각각 두 번 실행하고 모든 출력이 첫 Go 출력과 같기를 요구한다: 모든 case의 emit한 plan, change, dialect별 statement, 모든 invalid case와 parse case의 diagnostic, 모든 chain의 순서나 diagnostic, 모든 comparison의 차이나 diagnostic이며, `plan`, `chain`, `compare` diagnostic은 message까지 비교한다. `make dbspec-apply-rust-check`는 `make dbspec-apply-check`의 chain을 Rust client의 `orm::dbspec::apply`와 `orm::dbspec::recover`로 적용한다.

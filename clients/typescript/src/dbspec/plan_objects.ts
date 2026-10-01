@@ -164,11 +164,11 @@ export function hasTriggers(t: DbspecTable): boolean {
   return t.settings !== null && t.settings.settings.some(s => s.kind === 'immutable' || s.kind === 'audit');
 }
 
-function indexDef(x: DbspecIndex, f: Rename): string {
+export function indexDef(x: DbspecIndex, f: Rename): string {
   return x.columns.map(c => f(c.name) + (c.descending ? ' desc' : '') + ',').join('');
 }
 
-function foreignKeyDef(cols: readonly string[], parent: string, refs: readonly string[], f: DbspecForeignKey): string {
+export function foreignKeyDef(cols: readonly string[], parent: string, refs: readonly string[], f: DbspecForeignKey): string {
   return `${cols.join(',')}>${parent}(${refs.join(',')})${f.onDelete}/${f.onUpdate}`;
 }
 
