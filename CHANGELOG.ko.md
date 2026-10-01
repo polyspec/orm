@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.5: Rust client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-rust-check`가 이를 적용한다.
+
 - T8.5.2: Go engine은 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-check`가 이를 적용한다.
 
 - T8.5.1: docs/plans.md가 schema plan을 정한다: plan 문서, 빈 database에서의 chain, diff, dialect별 statement와 공유 case.

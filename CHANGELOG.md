@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.5.5: the Rust client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-rust-check` applies them.
+
 - T8.5.2: the Go engine parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-check` applies them.
 
 - T8.5.1: docs/plans.md specifies schema plans: the plan document, the chain from an empty database, the diff and the statements of each dialect, with shared cases.

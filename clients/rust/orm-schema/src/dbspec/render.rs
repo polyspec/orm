@@ -81,18 +81,18 @@ pub(crate) const UUID_PATTERN: &str = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 
 impl Renderer {
     /// Quotes an identifier.
-    fn q(&self, name: &str) -> String {
+    pub fn q(&self, name: &str) -> String {
         match self.d {
             Dialect::MySql => format!("`{name}`"),
             Dialect::Postgres | Dialect::Sqlite => format!("\"{name}\""),
         }
     }
 
-    fn list<'n>(&self, names: impl IntoIterator<Item = &'n String>) -> String {
+    pub fn list<'n>(&self, names: impl IntoIterator<Item = &'n String>) -> String {
         names.into_iter().map(|n| self.q(n)).collect::<Vec<_>>().join(", ")
     }
 
-    fn table(&self, t: &Table) -> Vec<String> {
+    pub fn table(&self, t: &Table) -> Vec<String> {
         let mut parts: Vec<String> = t.columns.iter().map(|c| self.column(c)).collect();
         let identity_inline = self.d == Dialect::Sqlite && t.columns.iter().any(|c| c.identity.is_some());
         if !identity_inline {
@@ -142,7 +142,7 @@ impl Renderer {
         out
     }
 
-    fn column(&self, c: &Column) -> String {
+    pub fn column(&self, c: &Column) -> String {
         let name = self.q(&c.name.text);
         if c.identity.is_some() {
             return match self.d {
@@ -152,19 +152,25 @@ impl Renderer {
             };
         }
         let mut s = format!("{name} {} {}", self.type_text(c.ty), if c.nullable { "NULL" } else { "NOT NULL" });
-        match &c.default {
-            None => {}
-            Some(DefaultValue::Literal(text)) => s.push_str(&format!(" DEFAULT {}", self.literal(Some(c.ty), text))),
-            Some(DefaultValue::Now) => {
-                // Validation allows `default now` only on a datetime(p) column.
-                let Type::DateTime(p) = c.ty else { unreachable!("default now on a {} column", c.ty.render()) };
-                s.push_str(&format!(" DEFAULT {}", self.now(p)));
-            }
+        if let Some(default) = &c.default {
+            s.push_str(&format!(" DEFAULT {}", self.default_text(c.ty, default)));
         }
         s
     }
 
-    fn type_text(&self, t: Type) -> String {
+    /// The default `d` of a column of type `t` in the dialect.
+    pub fn default_text(&self, t: Type, d: &DefaultValue) -> String {
+        match d {
+            DefaultValue::Literal(text) => self.literal(Some(t), text),
+            DefaultValue::Now => {
+                // Validation allows `default now` only on a datetime(p) column.
+                let Type::DateTime(p) = t else { unreachable!("default now on a {} column", t.render()) };
+                self.now(p)
+            }
+        }
+    }
+
+    pub fn type_text(&self, t: Type) -> String {
         match self.d {
             Dialect::MySql => match t {
                 Type::I16 => "SMALLINT".into(),
@@ -242,7 +248,7 @@ impl Renderer {
         text.to_owned()
     }
 
-    fn foreign_key(&self, f: &ForeignKey) -> String {
+    pub fn foreign_key(&self, f: &ForeignKey) -> String {
         format!(
             "CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {} ({}) ON DELETE {} ON UPDATE {}",
             self.q(&f.name.text),
@@ -277,7 +283,7 @@ impl Renderer {
     }
 
     /// Writes a typed check predicate of table `t` in the dialect.
-    fn predicate(&self, b: &mut String, t: &Table, e: &Expr) {
+    pub fn predicate(&self, b: &mut String, t: &Table, e: &Expr) {
         match e {
             Expr::Logic(left, op, right) => {
                 for (index, side) in [left, right].into_iter().enumerate() {

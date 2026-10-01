@@ -76,7 +76,7 @@
 - [o] T8.5.2 Go engine에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요). Evidence: engine/dbspec/plan*.go의 `ParsePlan`, `EmitPlan`, `Chain`, `Diff`, `PlanStatements`. 이것 없이 plan test는 build되지 않았다(`undefined: ParsePlan`). `make dbspec-go-check`는 tests/dbspec/plans.json의 case 9개(변경, 세 dialect statement, canonical emission), invalid case 8개, chain case 4개를 통과한다. `make dbspec-plan-check`는 27 run을 통과한다. 각 case를 MySQL, PostgreSQL, SQLite에 적용하면 data step과 함께 target schema text에 이른다.
 - [ ] T8.5.3 PHP client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
 - [ ] T8.5.4 TypeScript client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
-- [ ] T8.5.5 Rust client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요).
+- [o] T8.5.5 Rust client에서 plan을 parse, chain, diff하고 쓴다 (T8.5.1 필요). Evidence: clients/rust/orm-schema/src/dbspec/plan*.rs의 orm_schema::dbspec `parse_plan`, `emit_plan`, `chain`, `diff`, `plan_statements`. 이것 없이 plan test는 build되지 않았다(unresolved imports). `make dbspec-rust-check`는 tests/dbspec/plans.json의 case 9개(변경, 세 dialect statement, canonical emission), invalid case 8개, chain case 4개를 두 번 통과한다. `make dbspec-plan-rust-check`는 27 run을 통과한다. 각 case를 Rust renderer, plan statement, `orm::dbspec::introspect`로 MySQL, PostgreSQL, SQLite에 적용하면 data step과 함께 target schema text에 이른다.
 - [ ] T8.5.6 `make dbspec-compare-check`에서 네 client의 plan을 비교한다 (T8.5.2-T8.5.5 필요).
 - [ ] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
 - [ ] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
