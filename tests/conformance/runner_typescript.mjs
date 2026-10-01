@@ -2,23 +2,19 @@
 // database and prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}
 // with the same chains, result shapes, and masking as runner_go.
 //
-// Usage: node runner_typescript.mjs --dsn URI <schema.json>
+// Usage: node runner_typescript.mjs --dsn URI
+// The models embed the manifest of schema/bench.dbspec.
 import {
   AesKeyring, Author, CompositeAccount, Db, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, orm,
 } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
 const args = process.argv.slice(2);
-let dsn = '';
-const rest = [];
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--dsn') dsn = args[++i];
-  else rest.push(args[i]);
-}
-if (rest.length !== 1 || !dsn) {
-  console.error('usage: runner_typescript.mjs --dsn URI <schema.json>');
+if (args.length !== 2 || args[0] !== '--dsn' || !args[1]) {
+  console.error('usage: runner_typescript.mjs --dsn URI');
   process.exit(2);
 }
+const dsn = args[1];
 
 let log = [];
 let maskSeqs = new Set();
@@ -98,7 +94,7 @@ const picks = (rows, ...names) => rows.values().map(m => pick(m, ...names));
 const keysOf = rows => rows.keys();
 
 async function main() {
-  const db = await Db.connect(dsn, rest[0], {
+  const db = await Db.connect(dsn, {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },

@@ -1,32 +1,8 @@
 // Method names of models follow the chain grammar of docs/dsl.md. A name is
 // split into PascalCase words; column names never contain connector or
 // operator segments, so the split is unambiguous.
+import type { Entity, RuntimeModel } from './engine/model.js';
 import { OrmError } from './runtime_error.js';
-
-export interface ColumnSchema {
-  readonly type: string;
-  readonly precision?: number;
-  readonly scale?: number;
-  readonly nullable?: boolean;
-  readonly styles?: readonly string[];
-}
-
-export interface EntitySchema {
-  readonly name: string;
-  readonly table: string;
-  readonly pk: readonly string[];
-  readonly auto?: string;
-  readonly updated?: string;
-  readonly aesVersion?: string;
-  readonly columns: Readonly<Record<string, ColumnSchema>>;
-  readonly fulltext: readonly (readonly string[])[];
-}
-
-/** All entities of one generated schema. */
-export interface SchemaSet {
-  readonly hash: string;
-  readonly entities: ReadonlyMap<string, EntitySchema>;
-}
 
 export interface ChainKey {
   conn: string;
@@ -60,21 +36,21 @@ export function words(name: string): string[] {
   return out;
 }
 
-const indexes = new WeakMap<EntitySchema, Map<string, string>>();
+const indexes = new WeakMap<Entity, Map<string, string>>();
 
-function columnIndex(e: EntitySchema): Map<string, string> {
+function columnIndex(e: Entity): Map<string, string> {
   let index = indexes.get(e);
   if (index === undefined) {
-    index = new Map(Object.keys(e.columns).map(name => [pascal(name), name]));
+    index = new Map(e.fields.map(f => [pascal(f.name), f.name]));
     indexes.set(e, index);
   }
   return index;
 }
 
 /** Returns the column of e (or of any entity when e is undefined) named by a PascalCase name. */
-export function columnName(set: SchemaSet, e: EntitySchema | undefined, name: string): string {
+export function columnName(model: RuntimeModel, e: Entity | undefined, name: string): string {
   if (e !== undefined) return columnIndex(e).get(name) ?? '';
-  for (const entity of set.entities.values()) {
+  for (const entity of model.entities.values()) {
     const found = columnIndex(entity).get(name);
     if (found !== undefined) return found;
   }
@@ -88,7 +64,7 @@ function key(fields: Partial<ChainKey>): ChainKey {
   return { conn: '', op: '', column: '', columns: [], compare: '', ...fields };
 }
 
-function splitWith(e: EntitySchema, ws: readonly string[]): string[] | undefined {
+function splitWith(e: Entity, ws: readonly string[]): string[] | undefined {
   const out: string[] = [];
   let start = 0;
   for (let i = 0; i <= ws.length; i++) {
@@ -101,7 +77,7 @@ function splitWith(e: EntitySchema, ws: readonly string[]): string[] | undefined
   return out;
 }
 
-function parseKey(set: SchemaSet, e: EntitySchema, ws: readonly string[]): ChainKey {
+function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainKey {
   if (ws.length === 0) throw new OrmError('CONFIG', 'a condition key is empty');
   const text = ws.join('');
   const candidates: ChainKey[] = [];
@@ -124,22 +100,12 @@ function parseKey(set: SchemaSet, e: EntitySchema, ws: readonly string[]): Chain
     if (cols && cols.length >= 2) candidates.push(key({ op: 'tuple', columns: cols }));
     else errors.push(`a tuple needs two or more columns of ${e.name} joined by With`);
   }
-  if (ws[0] === 'Fulltext') {
-    const forms: Array<[string, readonly string[]]> = [['fulltext', ws.slice(1)]];
-    if (ws[1] === 'Boolean') forms.push(['fulltext_boolean', ws.slice(2)]);
-    for (const [kind, rest] of forms) {
-      const cols = splitWith(e, rest);
-      if (!cols || cols.length === 0) continue;
-      if (e.fulltext.some(index => index.length === cols.length && index.every((c, i) => c === cols[i]))) candidates.push(key({ op: kind, columns: cols }));
-      else errors.push(`${e.name} has no full-text index on ${cols.join(', ')}`);
-    }
-  }
   for (let i = 1; i < ws.length - 1; i++) {
     const cmp = compareOps[ws[i]!];
     if (cmp === undefined) continue;
     const left = columnIndex(e).get(ws.slice(0, i).join(''));
     if (left === undefined) continue;
-    const right = columnName(set, undefined, ws.slice(i + 1).join(''));
+    const right = columnName(model, undefined, ws.slice(i + 1).join(''));
     if (right === '') {
       errors.push(`no model has the column ${ws.slice(i + 1).join('')}`);
       continue;
@@ -152,14 +118,14 @@ function parseKey(set: SchemaSet, e: EntitySchema, ws: readonly string[]): Chain
 }
 
 /** Parses the chain part of a method name (PascalCase) for entity e. */
-export function parseChain(set: SchemaSet, e: EntitySchema, name: string): ChainKey[] {
+export function parseChain(model: RuntimeModel, e: Entity, name: string): ChainKey[] {
   const ws = words(name);
   if (ws.length === 0) throw new OrmError('CONFIG', 'empty condition name');
   const keys: ChainKey[] = [];
   let conn = '';
   let start = 0;
   const flush = (end: number) => {
-    const parsed = parseKey(set, e, ws.slice(start, end));
+    const parsed = parseKey(model, e, ws.slice(start, end));
     parsed.conn = conn;
     keys.push(parsed);
   };
@@ -176,7 +142,7 @@ export function parseChain(set: SchemaSet, e: EntitySchema, name: string): Chain
 
 export interface OrderKey { column: string; desc: boolean; }
 
-export function parseOrder(e: EntitySchema, name: string): OrderKey[] {
+export function parseOrder(e: Entity, name: string): OrderKey[] {
   const ws = words(name);
   const out: OrderKey[] = [];
   let start = 0;
@@ -194,13 +160,13 @@ export function parseOrder(e: EntitySchema, name: string): OrderKey[] {
 }
 
 /** Parses <L>With<R>; an undefined entity accepts a column of any entity. */
-export function splitPair(set: SchemaSet, left: EntitySchema | undefined, right: EntitySchema | undefined, name: string): [string, string] {
+export function splitPair(model: RuntimeModel, left: Entity | undefined, right: Entity | undefined, name: string): [string, string] {
   const ws = words(name);
   const found: Array<[string, string]> = [];
   ws.forEach((w, i) => {
     if (w !== 'With') return;
-    const l = columnName(set, left, ws.slice(0, i).join(''));
-    const r = columnName(set, right, ws.slice(i + 1).join(''));
+    const l = columnName(model, left, ws.slice(0, i).join(''));
+    const r = columnName(model, right, ws.slice(i + 1).join(''));
     if (l !== '' && r !== '') found.push([l, r]);
   });
   if (found.length === 1) return found[0]!;

@@ -1,6 +1,6 @@
 // orm-gen: the TypeScript schema tool.
 //
-//   orm-gen gen      --schema schema.json --out src/models [--scan <file or directory>]... [--check]
+//   orm-gen gen      --schema <document.dbspec>... --out src/models [--scan <file or directory>]... [--check]
 //   orm-gen build    <files.mmd...> --out schema.json [--check]
 //   orm-gen ddl      --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
 //   orm-gen diff     --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { loadManifest } from '../engine/manifest.js';
+import { modelOfDocuments, parseDocumentSet } from '../engine/model.js';
 import { ddlErrorText, renderDDL } from '../engine/ddl.js';
 import { generateTypeScript, renderTypeScript } from '../generate/typescript.js';
 import { buildManifest, manifestText, manifestWarnings, type SchemaManifest } from '../schema/build.js';
@@ -35,7 +35,7 @@ import {
 } from '../tools/plan.js';
 import { loadSchemaSource } from '../tools/source.js';
 
-const usageText = `usage: orm-gen gen --schema schema.json --out <directory> [--scan <file or directory>]... [--check]
+const usageText = `usage: orm-gen gen --schema <document.dbspec>... --out <directory> [--scan <file or directory>]... [--check]
        orm-gen build <files.mmd...> --out schema/schema.json [--check]
        orm-gen ddl --schema <source> --dialect mysql|postgres|sqlite --out <file.sql>
        orm-gen diff --from <source> --to <source> --dialect mysql|postgres|sqlite --out <file.sql> [--allow-destructive]
@@ -161,16 +161,17 @@ function report(lines: readonly string[]): number {
   return lines.length === 0 ? 0 : 1;
 }
 
+/** Generates models.ts from the dbspec documents of one document set, each named by --schema. */
 function gen(args: readonly string[]): number {
-  const { values } = parse(args, { schema: { type: 'string' }, out: { type: 'string' }, scan: { type: 'string', multiple: true }, check: { type: 'boolean' } });
-  const schema = text(values.schema);
+  const { values } = parse(args, { schema: { type: 'string', multiple: true }, out: { type: 'string' }, scan: { type: 'string', multiple: true }, check: { type: 'boolean' } });
+  const schemas = (values.schema as string[] | undefined) ?? [];
   const out = text(values.out);
-  if (schema === '' || out === '') usage();
-  const loaded = loadManifest(readFileSync(schema, 'utf8'));
+  if (schemas.length === 0 || out === '') usage();
+  const model = modelOfDocuments(parseDocumentSet(schemas.map(path => readFileSync(path, 'utf8'))));
   const scan = (values.scan as string[] | undefined) ?? [];
-  if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(loaded, out, scan)));
-  generateTypeScript(loaded, out, scan);
-  console.error(`orm-gen: ${loaded.manifest.order.length} models (schema ${loaded.manifest.schema_hash}) → ${out}/models.ts`);
+  if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(model, out, scan)));
+  generateTypeScript(model, out, scan);
+  console.error(`orm-gen: ${model.entities.size} models (manifest ${model.manifestHash}) → ${out}/models.ts`);
   return 0;
 }
 
