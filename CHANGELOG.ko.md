@@ -1,5 +1,9 @@
 # 변경 이력
 
+PHP client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.3).
+Orm\Dbspec\Dbspec::parse와 ::emit이 공유 case 44개를 통과하고,
+2000-table 부하 문서를 128 MiB 안에서 218-308 ms에 parse한다.
+
 모든 client의 dbspec parse budget을 docs/dbspec.md에 정하고, Go,
 TypeScript, PHP stress test가 이를 넘으면 실패하게 한다(T8.2.4.1).
 Go, PHP, TypeScript의 모든 native symbol을 contracts/symbols에 기록해
