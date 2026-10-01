@@ -1,5 +1,9 @@
 # Changelog
 
+Implement dbspec parse, validation and canonical emit in the PHP client
+(T8.2.3): Orm\Dbspec\Dbspec::parse and ::emit pass all 44 shared cases,
+and the 2000-table stress document parses in 218-308 ms within 128 MiB.
+
 State the dbspec parse budgets of every client in docs/dbspec.md and fail
 the Go, TypeScript and PHP stress tests above them (T8.2.4.1). Record
 every native Go, PHP and TypeScript symbol in contracts/symbols so
