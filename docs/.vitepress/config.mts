@@ -62,6 +62,7 @@ export default defineConfig({
         { text: 'Codecs', link: '/codec' },
         { text: 'dbspec schema language', link: '/dbspec' },
         { text: 'Database dialects', link: '/dialects' },
+        { text: 'Schema plans', link: '/plans' },
       ] },
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/interface-implementation' },
