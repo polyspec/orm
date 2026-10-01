@@ -42,6 +42,7 @@ $sum = (new Author)($db)->serviceSeq(7)->sumReadCount()->getSum();
 $avg = (new Author)($db)->serviceSeq(7)->avgLikeCount()->getAvg();
 $page = (new Author)($db)->serviceSeq(7)->removeAllColumns()->orderBySeqAsc()->getsPage(2, 10);
 
+// 세 언어가 같은 byte를 내도록 member 순서는 이 array가 고정하고 compact JSON으로 쓴다.
 echo json_encode([
     'rows' => $rows,
     'groups' => count($groups),
@@ -50,7 +51,7 @@ echo json_encode([
     'page_total' => $page->totalCount,
     'page_pages' => $page->totalPages,
     'page_length' => count($page->items),
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), "\n";
 
 /** 시드된 bench database 를 가리키는 ORM_BENCH_MYSQL_DSN 이다. 없거나 비어 있으면 연결하지 않고 끝난다. */
 function dsn(): string

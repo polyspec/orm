@@ -1,11 +1,12 @@
 //! The vectors of tests/dbspec/ddl.json through `dbspec::render`: every case
 //! renders the statements listed for MySQL, PostgreSQL and SQLite.
 
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const DEADLINE: Duration = Duration::from_secs(10);
 
@@ -21,7 +22,7 @@ fn strings(value: &Value) -> Vec<String> {
 
 #[test]
 fn render_vectors() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec render vectors");
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/ddl.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
@@ -48,6 +49,7 @@ fn render_vectors() {
             println!("PASS ddl/{id}/{dialect_name}");
         }
     }
-    assert!(started.elapsed() < DEADLINE, "dbspec render vectors exceeded {DEADLINE:?}");
-    println!("PASS dbspec render vectors {} cases {:?}", cases.len(), started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < DEADLINE, "dbspec render vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
+    println!("PASS dbspec render vectors {} cases cpu={cpu:?} wall={wall:?}", cases.len());
 }

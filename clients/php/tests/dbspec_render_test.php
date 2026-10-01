@@ -3,10 +3,11 @@ declare(strict_types=1);
 // The statement vectors of tests/dbspec/ddl.json through
 // Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
 require __DIR__ . '/autoload.php';
+require_once __DIR__ . '/case_clock.php';
 
 use Orm\Dbspec\Dbspec;
 
-$started = hrtime(true);
+$started = caseClockStart();
 echo "RUN dbspec_render\n";
 $root = dirname(__DIR__, 3);
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/ddl.json"), true, 512, JSON_THROW_ON_ERROR);
@@ -65,8 +66,8 @@ try {
 }
 echo "PASS render/unknown-dialect\n";
 
-$elapsed = (hrtime(true) - $started) / 1e6;
-if ($elapsed > 10000) {
-    throw new RuntimeException("dbspec_render deadline of 10 s exceeded ($elapsed ms)");
+[$cpuMs, $wallMs] = caseClockElapsed($started);
+if ($cpuMs > 10000) {
+    throw new RuntimeException("dbspec_render CPU deadline of 10 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
 }
-echo 'PASS dbspec_render cases=' . count($vectors['cases']) . " elapsedMs=$elapsed\n";
+echo 'PASS dbspec_render cases=' . count($vectors['cases']) . " cpuMs=$cpuMs wallMs=$wallMs\n";

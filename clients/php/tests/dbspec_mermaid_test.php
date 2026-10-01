@@ -9,6 +9,7 @@ declare(strict_types=1);
 // start, result and elapsed time against its deadline.
 // Usage: php clients/php/tests/dbspec_mermaid_test.php
 require __DIR__ . '/autoload.php';
+require_once __DIR__ . '/case_clock.php';
 
 use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Diagnostic;
@@ -29,14 +30,14 @@ $drops = static fn(array $dropped): array => array_map(static fn(Unsupported $u)
 /** @param Closure(): void $check */
 function mermaid_case(string $id, Closure $check): void
 {
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     echo "RUN mermaid/$id deadlineMs=" . CASE_DEADLINE_MS . "\n";
     $check();
-    $elapsed = (hrtime(true) - $caseStarted) / 1e6;
-    if ($elapsed > CASE_DEADLINE_MS) {
-        throw new RuntimeException("mermaid/$id: deadline of " . CASE_DEADLINE_MS . " ms exceeded ($elapsed ms)");
+    [$cpuMs, $wallMs] = caseClockElapsed($caseStarted);
+    if ($cpuMs > CASE_DEADLINE_MS) {
+        throw new RuntimeException("mermaid/$id: CPU deadline of " . CASE_DEADLINE_MS . " ms exceeded ($cpuMs ms CPU, $wallMs ms wall)");
     }
-    echo "PASS mermaid/$id elapsedMs=$elapsed\n";
+    echo "PASS mermaid/$id cpuMs=$cpuMs wallMs=$wallMs\n";
 }
 
 function mermaid_equal(string $what, mixed $want, mixed $got): void

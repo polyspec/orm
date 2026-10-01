@@ -1,5 +1,11 @@
 # Changelog
 
+- T17.6: every time limit that a test sets on its own computation bounds CPU time (the case thread in Rust, Go and TypeScript, the PHP process) and prints CPU and wall-clock time; `make timing-check` runs the stress, Rust vector and PHP dbspec tests while their process group receives one tenth of wall-clock time.
+
+- T17.5: the Rust native benchmarks `native` and `driver_compare` decode the bench schema types and read every workload's rows, and `make rust-driver-check` runs them against the seeded bench database.
+
+- T17.4: the Go, PHP and Rust programs of examples/complex print the same compact JSON bytes, and `make example-check` compares the outputs of examples/complex and examples/thin-slice byte for byte against the seeded bench database.
+
 - T8.0.14.4: a Go transaction whose context is cancelled closes its connection instead of returning it to the pool, so no named lock, user variable or SQLite mode outlives it, and it reports `CANCELED` alone.
 
 - T8.0.14.3: every client runs `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT` after a failed or panicking nested transaction and reports a failure of either with the cause, and a Go savepoint whose transaction was cancelled or lost its connection returns the cause alone.

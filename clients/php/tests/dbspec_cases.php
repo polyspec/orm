@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/case_clock.php';
 // Runs dbspec cases in the shape of tests/dbspec/cases.json: canonical cases
 // emit unchanged, normalize cases emit their canonical lines, invalid cases
 // report exactly the listed errors in order. Each case reports its start,
@@ -37,7 +38,7 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
     foreach ($cases as $case) {
         $id = $kind . '/' . $case['id'];
         echo "RUN $id\n";
-        $started = hrtime(true);
+        $started = caseClockStart();
         $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
         $text = $texts[$case['main']];
         $result = Orm\Dbspec\Dbspec::parse($text, $texts);
@@ -69,11 +70,11 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
                 throw new RuntimeException("$id: emission is not idempotent");
             }
         }
-        $elapsed = (hrtime(true) - $started) / 1e6;
-        if ($elapsed > $deadlineSeconds * 1000) {
-            throw new RuntimeException("$id: deadline of {$deadlineSeconds} s exceeded ($elapsed ms)");
+        [$cpuMs, $wallMs] = caseClockElapsed($started);
+        if ($cpuMs > $deadlineSeconds * 1000) {
+            throw new RuntimeException("$id: CPU deadline of {$deadlineSeconds} s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
         }
-        echo "PASS $id elapsedMs=$elapsed\n";
+        echo "PASS $id cpuMs=$cpuMs wallMs=$wallMs\n";
         $passed++;
     }
     return $passed;

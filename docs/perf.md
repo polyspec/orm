@@ -51,7 +51,7 @@ One release process compared sqlx 0.9 with `mysql_async` 0.37.1 using one connec
 | Primary-key row | 58.840µs | 61.825µs | 1.051 |
 | 100-row list | 1.180ms | 1.113ms | 0.943 |
 
-Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. A driver replacement requires a measured 2x improvement. Neither workload meets it, so the Rust client keeps sqlx. `make rust-driver-check` compiles the program; latency is not a CI pass condition.
+Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. A driver replacement requires a measured 2x improvement. Neither workload meets it, so the Rust client keeps sqlx. `make rust-driver-check` runs `driver_compare` and the sqlx baseline `native` with a few iterations against the seeded bench database named by `ORM_BENCH_MYSQL_DSN` and fails unless both read every workload's rows and exit with status 0; latency is not a CI pass condition.
 
 ## 5. Latest regression-check run
 
