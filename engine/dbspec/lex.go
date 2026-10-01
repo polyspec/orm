@@ -53,6 +53,8 @@ func diagnosticAt(rule string, t token, format string, args ...any) Diagnostic {
 
 // splitSource checks the size and the encoding of text and splits it into
 // lines without their line ends. A final line end does not start a line.
+// On an encoding error it returns the complete lines before the offending
+// line, so they are parsed before the error is reported.
 func splitSource(text string) ([]string, *Diagnostic) {
 	if len(text) > maxDocumentBytes {
 		return nil, &Diagnostic{Rule: RuleLimit, Line: 1, Column: 1, Message: fmt.Sprintf("document has %d bytes, more than %d", len(text), maxDocumentBytes)}
@@ -79,7 +81,7 @@ func splitSource(text string) ([]string, *Diagnostic) {
 				continue
 			case '\r':
 				if i+1 >= len(text) || text[i+1] != '\n' {
-					return nil, &Diagnostic{Rule: RuleEncoding, Line: line, Column: col, Message: "carriage return without a following line feed"}
+					return lines, &Diagnostic{Rule: RuleEncoding, Line: line, Column: col, Message: "carriage return without a following line feed"}
 				}
 			}
 			i++
@@ -88,7 +90,7 @@ func splitSource(text string) ([]string, *Diagnostic) {
 		}
 		r, size := utf8.DecodeRuneInString(text[i:])
 		if r == utf8.RuneError && size == 1 {
-			return nil, &Diagnostic{Rule: RuleEncoding, Line: line, Column: col, Message: "text is not valid UTF-8"}
+			return lines, &Diagnostic{Rule: RuleEncoding, Line: line, Column: col, Message: "text is not valid UTF-8"}
 		}
 		i += size
 		col++
@@ -212,11 +214,26 @@ func lexLine(s string, line int) ([]token, int, *Diagnostic) {
 	return tokens, col, nil
 }
 
+// lexRecover lexes a line that has a lexical error again with every
+// offending character read as a space, so the kind and the names of the
+// failed line are known. Columns stay the same.
+func lexRecover(s string, line int) []token {
+	runes := []rune(s)
+	for range runes {
+		tokens, _, bad := lexLine(string(runes), line)
+		if bad == nil {
+			return tokens
+		}
+		runes[bad.Column-1] = ' '
+	}
+	return nil
+}
+
 // nameDiagnostics checks a defining name: format, then length.
 func nameDiagnostics(t token) []Diagnostic {
 	var out []Diagnostic
 	if !validNameFormat(t.text) {
-		out = append(out, diagnosticAt(RuleNameFormat, t, "name %q does not match [a-z][a-z0-9_]* or is primary", t.text))
+		out = append(out, diagnosticAt(RuleNameFormat, t, "name %q does not match [a-z][a-z0-9_]* or is a reserved word", t.text))
 	}
 	if len(t.text) > maxNameBytes {
 		out = append(out, diagnosticAt(RuleNameLength, t, "name %q has %d bytes, more than %d", t.text, len(t.text), maxNameBytes))
@@ -224,8 +241,15 @@ func nameDiagnostics(t token) []Diagnostic {
 	return out
 }
 
+// reservedWords are not valid names (docs/dbspec.md "Names").
+var reservedWords = map[string]bool{
+	"dbspec": true, "use": true, "table": true, "diagram": true, "primary": true,
+	"unique": true, "index": true, "foreign": true, "check": true, "settings": true,
+	"null": true, "identity": true, "default": true, "true": true, "false": true,
+}
+
 func validNameFormat(s string) bool {
-	if s == "" || s == "primary" || s[0] < 'a' || s[0] > 'z' {
+	if s == "" || reservedWords[s] || s[0] < 'a' || s[0] > 'z' {
 		return false
 	}
 	for i := 1; i < len(s); i++ {
@@ -236,3 +260,6 @@ func validNameFormat(s string) bool {
 	}
 	return true
 }
+
+// wellFormed reports whether a referenced name follows the name rules.
+func wellFormed(s string) bool { return validNameFormat(s) && len(s) <= maxNameBytes }

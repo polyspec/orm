@@ -20,6 +20,7 @@ type vectorFile struct {
 type vectorCase struct {
 	ID        string              `json:"id"`
 	CRLF      bool                `json:"crlf"`
+	Mixed     bool                `json:"mixed"`
 	Documents map[string][]string `json:"documents"`
 	Main      string              `json:"main"`
 	Canonical []string            `json:"canonical"`
@@ -40,6 +41,26 @@ func joinLines(lines []string, crlf bool) string {
 	return strings.Join(lines, end) + end
 }
 
+// join writes the lines of one case document: with LF, with CRLF, or for a
+// mixed case alternating CRLF and LF from CRLF without a final line end.
+func (c vectorCase) join(lines []string) string {
+	if !c.Mixed {
+		return joinLines(lines, c.CRLF)
+	}
+	var b strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			if i%2 == 1 {
+				b.WriteString("\r\n")
+			} else {
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString(line)
+	}
+	return b.String()
+}
+
 // documentSet returns the main text and the declared document set: every
 // document of the case other than main.
 func (c vectorCase) documentSet() (string, map[string]string, error) {
@@ -50,10 +71,10 @@ func (c vectorCase) documentSet() (string, map[string]string, error) {
 	set := map[string]string{}
 	for name, lines := range c.Documents {
 		if name != c.Main {
-			set[name] = joinLines(lines, c.CRLF)
+			set[name] = c.join(lines)
 		}
 	}
-	return joinLines(main, c.CRLF), set, nil
+	return c.join(main), set, nil
 }
 
 func loadVectors(t *testing.T) vectorFile {

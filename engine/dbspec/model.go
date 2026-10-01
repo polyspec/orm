@@ -154,7 +154,8 @@ type Check struct {
 }
 
 // Settings is the settings block of a table. A nil field or an empty slice is
-// an absent setting.
+// an absent setting. Codecs repeat per column, BlindIndexes per AES column and
+// Navigations per foreign key.
 type Settings struct {
 	Comments        []string
 	Entity          *EntitySetting
@@ -163,7 +164,7 @@ type Settings struct {
 	SelectExplicit  *SelectExplicitSetting
 	Codecs          []CodecSetting
 	AESVersion      *ColumnSetting
-	BlindIndex      *BlindIndexSetting
+	BlindIndexes    []BlindIndexSetting
 	Navigations     []NavigationSetting
 	Immutable       *ImmutableSetting
 	Audit           *AuditSetting
@@ -238,6 +239,6 @@ type Diagram struct {
 type DiagramEntry struct {
 	Comments []string
 	Table    string
-	X        int64
-	Y        int64
+	X        int32
+	Y        int32
 }

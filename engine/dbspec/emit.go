@@ -22,7 +22,7 @@ func (d *documentNode) model() *Document {
 		for _, e := range g.entries {
 			x, _ := coordinate(e.x)
 			y, _ := coordinate(e.y)
-			diagram.Entries = append(diagram.Entries, DiagramEntry{Comments: e.comments, Table: e.table.text, X: x, Y: y})
+			diagram.Entries = append(diagram.Entries, DiagramEntry{Comments: e.comments, Table: e.table.text, X: int32(x), Y: int32(y)})
 		}
 		out.Diagrams = append(out.Diagrams, diagram)
 	}
@@ -63,8 +63,14 @@ func (t *tableNode) model() Table {
 	for _, k := range t.checks {
 		out.Checks = append(out.Checks, Check{Comments: k.comments, Name: k.name.text, Expression: k.expr})
 	}
-	if t.settings != nil {
-		out.Settings = t.settings.model()
+	if s := t.settings; s != nil {
+		if len(s.lines) > 0 {
+			out.Settings = s.model()
+		} else {
+			// An empty settings block has no meaning; its comments stay
+			// before the closing brace of the table.
+			out.ClosingComments = slices.Concat(s.comments, s.closing, t.closing)
+		}
 	}
 	return out
 }
@@ -87,7 +93,7 @@ func (s *settingsNode) model() *Settings {
 		case "codec":
 			out.Codecs = append(out.Codecs, CodecSetting{Comments: line.comments, Column: args[0], Stages: args[1:]})
 		case "blind_index":
-			out.BlindIndex = &BlindIndexSetting{Comments: line.comments, AESColumn: args[0], IndexColumn: args[1]}
+			out.BlindIndexes = append(out.BlindIndexes, BlindIndexSetting{Comments: line.comments, AESColumn: args[0], IndexColumn: args[1]})
 		case "navigation":
 			out.Navigations = append(out.Navigations, NavigationSetting{Comments: line.comments, ForeignKey: args[0], ChildName: args[1], ParentName: args[2]})
 		case "immutable":
@@ -142,7 +148,7 @@ func emitDocument(d *Document) string {
 		e.b.WriteByte('\n')
 		e.line(0, g.Comments, "diagram "+g.Name+" {")
 		for _, entry := range g.Entries {
-			e.line(1, entry.Comments, entry.Table+" at "+strconv.FormatInt(entry.X, 10)+" "+strconv.FormatInt(entry.Y, 10))
+			e.line(1, entry.Comments, entry.Table+" at "+strconv.Itoa(int(entry.X))+" "+strconv.Itoa(int(entry.Y)))
 		}
 		e.comments(1, g.ClosingComments)
 		e.line(0, nil, "}")
@@ -197,10 +203,22 @@ func (e *emitter) table(t *Table) {
 		e.line(1, k.Comments, "check "+k.Name+" ("+b.String()+")")
 	}
 	if s := t.Settings; s != nil {
-		e.settings(s)
+		if s.empty() {
+			e.comments(1, s.Comments)
+			e.comments(1, s.ClosingComments)
+		} else {
+			e.settings(s)
+		}
 	}
 	e.comments(1, t.ClosingComments)
 	e.line(0, nil, "}")
+}
+
+// empty reports whether the block holds no setting; canonical form omits it.
+func (s *Settings) empty() bool {
+	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
+		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
+		s.Immutable == nil && s.Audit == nil
 }
 
 func (e *emitter) settings(s *Settings) {
@@ -223,8 +241,8 @@ func (e *emitter) settings(s *Settings) {
 	if s.AESVersion != nil {
 		e.line(2, s.AESVersion.Comments, "aes_version "+s.AESVersion.Column)
 	}
-	if s.BlindIndex != nil {
-		e.line(2, s.BlindIndex.Comments, "blind_index "+s.BlindIndex.AESColumn+" "+s.BlindIndex.IndexColumn)
+	for _, b := range sortedBy(s.BlindIndexes, func(b BlindIndexSetting) string { return b.AESColumn }) {
+		e.line(2, b.Comments, "blind_index "+b.AESColumn+" "+b.IndexColumn)
 	}
 	for _, n := range sortedBy(s.Navigations, func(n NavigationSetting) string { return n.ForeignKey }) {
 		e.line(2, n.Comments, "navigation "+n.ForeignKey+" "+n.ChildName+" "+n.ParentName)
