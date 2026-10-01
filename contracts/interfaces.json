@@ -36,7 +36,7 @@
     "go": "sha256:a5c9c1e518a527220dda883ebcda4476be7cb39e8b0f36b5f9761c7c0b3304d2",
     "php": "sha256:dd77c34d4fe6e226e85eb760a224aad83379971dd830f32eb5faff4f8f682222",
     "rust": "sha256:d65f705029d623f80e6b07bffbe4ade15e7b82be3f5aecd051b2e04e849456cb",
-    "typescript": "sha256:2c8e85dd5aea590a13b10496d7f451d39c0a3be63ed5f36b2ad52a19dfcccde4"
+    "typescript": "sha256:03cc4cc904a443686f83e39908a260357b1c1804b1d144100388adf3d7852533"
   },
   "prohibited_symbols": [
     "multi_statement",
