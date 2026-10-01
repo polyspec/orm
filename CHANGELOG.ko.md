@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T16: send-savepoint SQLite file은 TEST_ENV 옆에 있어서 Rust send-savepoint test가 어느 worktree에서나 실행된다.
+
 - T14: decimal과 feature-coverage Go test는 build tag 뒤에서 `decimal-physical-check`와 `feature-check`에서만 실행된다. 그래서 `client-db-check`는 DSN을 주지 않는 test를 더 이상 실행하지 않는다.
 
 - T8.4.2: Go engine은 일정한 수의 catalog query로 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-check`가 round trip과 미지원 case를 실행한다.
