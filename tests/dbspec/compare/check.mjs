@@ -1,5 +1,6 @@
 // Compares the four dbspec clients: every runner reads the shared cases, the
-// stress document, the statement vectors and the plan vectors and prints, for
+// stress document, the statement vectors, the plan vectors and the Mermaid
+// vectors and prints, for
 // each case, its name and then its emission, manifest or rendered statements
 // ("| " and "= " lines) or its diagnostics ("! rule line column"); the stress
 // document prints "= unchanged" when it emits back unchanged. A plan case
@@ -7,10 +8,15 @@
 // lines and "<name>/<dialect>" with its statements; an invalid plan case its
 // diagnostics or changes; a chain case its order ("| name") or diagnostics;
 // a parse case its diagnostics or emitted plan. A plan or chain diagnostic
-// ends with its message, which the clients share. Each runner runs twice and
-// every output must equal the first Go output.
+// ends with its message, which the clients share. A Mermaid export case
+// prints its Mermaid text and its dropped objects ("= kind<TAB>table<TAB>name",
+// without reasons) or the diagnostics of its document; an import or invalid
+// case its emitted document and dropped objects or its diagnostics; a round
+// trip case the export of its document, then "<name>/import" with the import
+// of that export. Each runner runs twice and every output must equal the
+// first Go output.
 //
-// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json>
+// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (after the TypeScript build and the release build of the Rust example)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -19,9 +25,9 @@ import { compare } from './compare.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const TIMEOUT = 120000;
-const [cases, stress, ddl, plans] = process.argv.slice(2);
-if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined) {
-  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json>');
+const [cases, stress, ddl, plans, mermaid] = process.argv.slice(2);
+if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined || mermaid === undefined) {
+  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>');
   process.exit(2);
 }
 
@@ -34,7 +40,7 @@ const runners = [
 
 function run(runner) {
   return new Promise((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, cases, stress, ddl, plans], { cwd: root, timeout: TIMEOUT });
+    const child = spawn(runner.command, [...runner.args, cases, stress, ddl, plans, mermaid], { cwd: root, timeout: TIMEOUT });
     const out = [];
     const err = [];
     child.stdout.on('data', chunk => out.push(chunk));
