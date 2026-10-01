@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.1: docs/plans.md가 schema plan을 정한다: plan 문서, 빈 database에서의 chain, diff, dialect별 statement와 공유 case.
+
 - T8.4.2.4: MySQL introspection은 `ALTER TABLE`이 literal을 0인 소수와 함께 쓴 뒤에도 `time(p)` column의 time CHECK을 알아본다.
 
 - T8.2.6.1.2: `schemaHash`는 집합의 table을 이름 순으로 담은 문서 `schema` 하나로 계산하므로 table이 바뀔 때만 바뀐다.
