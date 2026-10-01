@@ -65,7 +65,7 @@ const CASES: &[Case] = &[
     Case { id: "byte-order-mark", documents: &[&["\u{feff}dbspec 1 shop"]], expect: Expect::Errors(&[("encoding", 1, 1)]) },
     Case { id: "bare-cr", documents: &[&["dbspec 1 shop", "table users {\r  id i64"]], expect: Expect::Errors(&[("encoding", 2, 14)]) },
     Case { id: "version-2", documents: &[&["dbspec 2 shop"]], expect: Expect::Errors(&[("header", 1, 8)]) },
-    Case { id: "header-extra-token", documents: &[&["dbspec 1 shop extra"]], expect: Expect::Errors(&[("header", 1, 15)]) },
+    Case { id: "header-extra-token", documents: &[&["dbspec 1 shop extra"]], expect: Expect::Errors(&[("header", 1, 14)]) },
     Case { id: "header-name-format", documents: &[&["dbspec 1 Shop"]], expect: Expect::Errors(&[("name.format", 1, 10)]) },
     // order
     Case {
@@ -92,7 +92,7 @@ const CASES: &[Case] = &[
             "  foreign key fk_a (a) references users (id)",
             "}",
         ]],
-        expect: Expect::Errors(&[("order", 6, 3), ("order", 7, 3), ("order", 9, 3), ("foreign_key", 9, 15)]),
+        expect: Expect::Errors(&[("order", 7, 3), ("foreign_key", 9, 15)]),
     },
     // names
     Case {
@@ -256,7 +256,7 @@ const CASES: &[Case] = &[
             "  f f64 default -0.0",
             "  g uuid default 'ABCDEF01-2345-6789-ABCD-EF0123456789'",
             "  h time(3) default '23:59:59'",
-            "  i datetime(2) default '2024-02-29 01:02:03.4000'",
+            "  i datetime(2) default '2024-02-29 01:02:03.4'",
             "  j varchar(8) default 'it''s'",
             "  k bool null default false",
             "  l date default '0001-01-01'",
@@ -329,7 +329,7 @@ const CASES: &[Case] = &[
             "  index ix_t (c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17)",
             "}",
         ]],
-        expect: Expect::Errors(&[("key", 21, 95)]),
+        expect: Expect::Errors(&[("key", 21, 9)]),
     },
     // foreign keys
     Case {
@@ -465,7 +465,7 @@ const CASES: &[Case] = &[
             "  check ck_users_parent (parent_id is null or parent_id <> id)",
             "}",
         ]],
-        expect: Expect::Errors(&[("check", 8, 26), ("check", 8, 47)]),
+        expect: Expect::Errors(&[("check", 8, 26)]),
     },
     // settings
     Case {
@@ -542,7 +542,7 @@ const CASES: &[Case] = &[
             "  }",
             "}",
         ]],
-        expect: Expect::Errors(&[("setting", 16, 5), ("setting", 16, 17), ("setting", 16, 23)]),
+        expect: Expect::Errors(&[("setting", 16, 17), ("setting", 16, 23)]),
     },
     Case {
         id: "immutable-and-audit-on-cascade-child",
@@ -711,7 +711,7 @@ const CASES: &[Case] = &[
         expect: Expect::Errors(&[("use", 2, 19), ("use", 3, 5), ("name.duplicate", 4, 5), ("name.duplicate", 4, 12)]),
     },
     Case {
-        id: "documents-use-each-other",
+        id: "use-cycle-through-foreign-keys",
         documents: &[
             &[
                 "dbspec 1 shop",
@@ -736,19 +736,7 @@ const CASES: &[Case] = &[
                 "}",
             ],
         ],
-        expect: Expect::Canonical(&[
-            "dbspec 1 shop",
-            "",
-            "use core { users }",
-            "",
-            "table orders {",
-            "  id i64 identity",
-            "  user_id i64",
-            "  primary key (id)",
-            "  index ix_orders_user (user_id)",
-            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
-            "}",
-        ]),
+        expect: Expect::Errors(&[("use", 2, 5)]),
     },
     // diagrams
     Case {
@@ -784,7 +772,204 @@ const CASES: &[Case] = &[
             "  id i64 identity",
             "  primary key (id)",
         ]],
-        expect: Expect::Errors(&[("syntax", 3, 19), ("syntax", 6, 1), ("syntax", 12, 1)]),
+        expect: Expect::Errors(&[("syntax", 3, 19), ("syntax", 6, 1), ("syntax", 9, 13)]),
+    },
+    Case { id: "header-exact-form", documents: &[&["dbspec 1  shop"]], expect: Expect::Errors(&[("header", 1, 10)]) },
+    Case { id: "header-tab", documents: &[&["dbspec\t1 shop"]], expect: Expect::Errors(&[("header", 1, 7)]) },
+    Case {
+        id: "bare-cr-after-earlier-errors",
+        documents: &[&["dbspec 1 shop", "table Users {", "  id i64 identity\r  x i64", "}"]],
+        expect: Expect::Errors(&[("name.format", 2, 7), ("encoding", 3, 18)]),
+    },
+    Case {
+        id: "check-first-diagnostic-only",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  check ck_a (x > 0 and Y > 0)",
+            "  check ck_b (Y > 0 and x > 0)",
+            "}",
+        ]],
+        expect: Expect::Errors(&[("check", 5, 15), ("name.format", 6, 15)]),
+    },
+    Case {
+        id: "codec-storage-follows-last-stage",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a text",
+            "  b bytes",
+            "  c varchar(64)",
+            "  d bytes",
+            "  e text",
+            "  primary key (id)",
+            "  settings {",
+            "    codec a ordered_json gz",
+            "    codec b ordered_json gz",
+            "    codec c serialize ordered_json",
+            "    codec d yaml base64",
+            "    codec e gz base64",
+            "  }",
+            "}",
+        ]],
+        expect: Expect::Errors(&[("setting", 11, 11), ("setting", 13, 23), ("setting", 14, 11)]),
+    },
+    Case {
+        id: "blind-index-bytes-not-allowed",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  email bytes",
+            "  email_hash bytes",
+            "  key_version i32",
+            "  primary key (id)",
+            "  settings {",
+            "    codec email aes",
+            "    aes_version key_version",
+            "    blind_index email email_hash",
+            "  }",
+            "}",
+        ]],
+        expect: Expect::Errors(&[("setting", 11, 23)]),
+    },
+    Case {
+        id: "constraint-named-like-used-table",
+        documents: &[
+            &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check users (id > 0)", "}"],
+            &[
+                "dbspec 1 core",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+                "table teams {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+            ],
+        ],
+        expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
+    },
+    Case {
+        id: "constraint-named-like-unlisted-used-table",
+        documents: &[
+            &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check teams (id > 0)", "}"],
+            &[
+                "dbspec 1 core",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+                "table teams {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+            ],
+        ],
+        expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
+    },
+    Case {
+        id: "used-documents-repeat-a-constraint",
+        documents: &[
+            &["dbspec 1 shop", "use core { users }", "use extra { teams }", "table orders {", "  id i64 identity", "  primary key (id)", "}"],
+            USERS,
+            &["dbspec 1 extra", "table teams {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_users_code (code)", "}"],
+        ],
+        expect: Expect::Errors(&[("name.duplicate", 3, 5)]),
+    },
+    Case {
+        id: "unclosed-settings-and-table",
+        documents: &[&["dbspec 1 shop", "table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    entity user"]],
+        expect: Expect::Errors(&[("syntax", 2, 13), ("syntax", 5, 12)]),
+    },
+    Case {
+        id: "empty-settings-comments-move",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # before settings",
+            "  settings {",
+            "      # inside settings",
+            "  }",
+            "  # before close",
+            "}",
+        ]],
+        expect: Expect::Canonical(&[
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # before settings",
+            "  # inside settings",
+            "  # before close",
+            "}",
+        ]),
+    },
+    Case {
+        id: "f64-shortest-round-trip",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  a f64 default 0.1000000000000000055511151231257827",
+            "  b f64 default 100000000000000000000",
+            "  c f64 default 0.000001",
+            "  primary key (id)",
+            "}",
+        ]],
+        expect: Expect::Canonical(&[
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  a f64 default 0.1",
+            "  b f64 default 100000000000000000000",
+            "  c f64 default 0.000001",
+            "  primary key (id)",
+            "}",
+        ]),
+    },
+    Case {
+        id: "time-fraction-beyond-precision",
+        documents: &[&["dbspec 1 shop", "table users {", "  id i64 identity", "  t time(0) default '10:00:00.0'", "  primary key (id)", "}"]],
+        expect: Expect::Errors(&[("column", 4, 21)]),
+    },
+    Case {
+        id: "diagram-coordinate-i32",
+        documents: &[&[
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "diagram main {",
+            "  users at -2147483648 2147483647",
+            "}",
+        ]],
+        expect: Expect::Canonical(&[
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "diagram main {",
+            "  users at -2147483648 2147483647",
+            "}",
+        ]),
+    },
+    Case {
+        id: "reserved-word-reference",
+        documents: &[&["dbspec 1 shop", "table users {", "  id i64 identity", "  primary key (id)", "  index ix_users (Id, null)", "}"]],
+        expect: Expect::Errors(&[("name.format", 5, 19), ("name.format", 5, 23)]),
     },
 ];
 
@@ -793,10 +978,16 @@ fn dbspec_rules() {
     let started = Instant::now();
     println!("RUN dbspec rules");
     let mut seen = std::collections::BTreeSet::new();
+    let mut failures = Vec::new();
     for case in CASES {
         assert!(seen.insert(case.id), "case id {} is unique", case.id);
-        run(case);
+        if let Err(panic) = std::panic::catch_unwind(|| run(case)) {
+            let message = panic.downcast_ref::<String>().cloned().unwrap_or_default();
+            println!("FAIL {}: {message}", case.id);
+            failures.push(case.id);
+        }
     }
+    assert!(failures.is_empty(), "failing cases: {failures:?}");
     let elapsed = started.elapsed();
     assert!(elapsed < SUITE_DEADLINE, "dbspec rules: {elapsed:?} exceeds {SUITE_DEADLINE:?}");
     println!("PASS dbspec rules {} cases {elapsed:?}", CASES.len());

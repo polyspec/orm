@@ -13,6 +13,34 @@ pub(crate) const MAX_FOREIGN_KEYS: usize = 20_000;
 pub(crate) const MAX_TABLE_COLUMNS: usize = 1000;
 const MAX_NAME_BYTES: usize = 63;
 
+/// Words that are not valid names.
+const RESERVED: [&str; 15] =
+    ["dbspec", "use", "table", "diagram", "primary", "unique", "index", "foreign", "check", "settings", "null", "identity", "default", "true", "false"];
+
+/// A name that matches `[a-z][a-z0-9_]*`, is not reserved and has at most 63 bytes.
+pub(crate) fn well_formed(text: &str) -> bool {
+    name_format(text) && text.len() <= MAX_NAME_BYTES
+}
+
+/// The diagnostic of a malformed name, if any.
+pub(crate) fn name_problem(text: &str) -> Option<(&'static str, String)> {
+    if !name_format(text) {
+        Some(("name.format", format!("name '{text}' does not match [a-z][a-z0-9_]* or is a reserved word")))
+    } else if text.len() > MAX_NAME_BYTES {
+        Some(("name.length", format!("name '{text}' has {} bytes; the limit is {MAX_NAME_BYTES}", text.len())))
+    } else {
+        None
+    }
+}
+
+fn name_format(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    !bytes.is_empty()
+        && bytes[0].is_ascii_lowercase()
+        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
+        && !RESERVED.contains(&text)
+}
+
 pub(crate) const CODEC_STAGES: [&str; 8] = ["ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];
 
 #[derive(Clone, Debug)]
@@ -84,8 +112,12 @@ struct Parser {
     phase: u8,
     table: Option<Table>,
     table_unresolved: Vec<String>,
-    /// Table line phase: 0 columns, 1 keys, 2 indexes, 3 foreign keys, 4 checks, 5 settings.
+    /// Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.
     table_phase: u8,
+    /// The `{` of the open table, settings block and diagram.
+    table_brace: Option<Pos>,
+    settings_brace: Option<Pos>,
+    diagram_brace: Option<Pos>,
     diagram: Option<Diagram>,
     columns: usize,
     foreign_keys: usize,
@@ -96,9 +128,12 @@ fn err(pos: Pos, rule: &'static str, message: impl Into<String>) -> Diag {
     Diag { pos, rule, message: message.into() }
 }
 
-/// Splits text into lines after the encoding checks: no byte order mark, no
-/// bare CR, at most 32 MiB.
-fn lines(text: &str) -> Result<Vec<&str>, Diag> {
+/// A line without its line end, with the column of a bare CR in it.
+type Line<'a> = (&'a str, Option<usize>);
+
+/// Splits text into lines after the whole-text checks: at most 32 MiB and no
+/// byte order mark. A bare CR is reported when parsing reaches its line.
+fn lines(text: &str) -> Result<Vec<Line<'_>>, Diag> {
     let start = Pos { line: 1, column: 1 };
     if text.len() > MAX_BYTES {
         return Err(err(start, "limit", format!("document has {} bytes; the limit is {MAX_BYTES}", text.len())));
@@ -107,13 +142,10 @@ fn lines(text: &str) -> Result<Vec<&str>, Diag> {
         return Err(err(start, "encoding", "document starts with a byte order mark"));
     }
     let mut lines = Vec::new();
-    for (index, raw) in text.split('\n').enumerate() {
+    for raw in text.split('\n') {
         let line = raw.strip_suffix('\r').unwrap_or(raw);
-        if let Some(cr) = line.find('\r') {
-            let column = line[..cr].chars().count() + 1;
-            return Err(err(Pos { line: index + 1, column }, "encoding", "bare CR is not a line end"));
-        }
-        lines.push(line);
+        let cr = line.find('\r').map(|cr| line[..cr].chars().count() + 1);
+        lines.push((line, cr));
     }
     if text.ends_with('\n') {
         lines.pop();
@@ -123,8 +155,11 @@ fn lines(text: &str) -> Result<Vec<&str>, Diag> {
 
 pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
     let lines = lines(text).map_err(|d| vec![d])?;
-    let header_tokens = lines.first().map(|l| tokenize(l, 1)).unwrap_or_default();
-    let name = header(&header_tokens).map_err(|d| vec![d])?;
+    if let Some((_, Some(column))) = lines.first() {
+        return Err(vec![bare_cr(1, *column)]);
+    }
+    let header_tokens = lines.first().map(|(l, _)| tokenize(l, 1)).unwrap_or_default();
+    let name = header(lines.first().map_or("", |(l, _)| l), &header_tokens).map_err(|d| vec![d])?;
     let mut parser = Parser {
         diags: Vec::new(),
         pending: Vec::new(),
@@ -142,53 +177,77 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         table: None,
         table_unresolved: Vec::new(),
         table_phase: 0,
+        table_brace: None,
+        settings_brace: None,
+        diagram_brace: None,
         diagram: None,
         columns: 0,
         foreign_keys: 0,
         stopped: false,
     };
     parser.document.name = parser.define(name);
-    for (index, line) in lines.iter().enumerate().skip(1) {
+    for (index, (line, cr)) in lines.iter().enumerate().skip(1) {
+        if let Some(column) = cr {
+            parser.report(bare_cr(index + 1, *column));
+            return Err(parser.diags);
+        }
         parser.line(line, index + 1);
         if parser.stopped {
             return Err(parser.diags);
         }
     }
-    parser.finish(lines.len());
+    parser.finish();
     Ok(Parsed { document: parser.document, unresolved: parser.unresolved, diags: parser.diags })
 }
 
-/// `dbspec 1 <document>`; returns the document name token.
-fn header<'t, 'a>(tokens: &'t [Token<'a>]) -> Result<&'t Token<'a>, Diag> {
-    let mut cursor = Cursor::new(tokens);
-    let start = Pos { line: 1, column: 1 };
-    let fail = |cursor: &Cursor, message: &str| err(if cursor.tokens.is_empty() { start } else { cursor.here() }, "header", message);
-    if !cursor.peek_is("dbspec") {
-        return Err(fail(&cursor, "the first line is not 'dbspec 1 <document>'"));
-    }
-    cursor.next();
-    if !cursor.peek().is_some_and(|t| t.kind == Kind::Number && t.text == "1") {
-        return Err(fail(&cursor, "the language version is not 1"));
-    }
-    cursor.next();
-    let name = match cursor.peek() {
-        Some(t) if matches!(t.kind, Kind::Word | Kind::Number) => t,
-        _ => return Err(fail(&cursor, "the header has no document name")),
-    };
-    cursor.next();
-    if cursor.peek().is_some() {
-        return Err(fail(&cursor, "the header has a token after the document name"));
-    }
-    Ok(name)
+fn bare_cr(line: usize, column: usize) -> Diag {
+    err(Pos { line, column }, "encoding", "a bare CR is not a line end")
 }
 
-fn line_kind(first: &Token, second: Option<&Token>) -> Option<u8> {
+/// The header is exactly `dbspec`, a space, `1`, a space and the document
+/// name; returns the name token. An error points at the first character that
+/// departs from that form.
+fn header<'t, 'a>(line: &'a str, tokens: &'t [Token<'a>]) -> Result<&'t Token<'a>, Diag> {
+    const PREFIX: &str = "dbspec 1 ";
+    let at = |column: usize, message: &str| err(Pos { line: 1, column }, "header", message);
+    for (index, expected) in PREFIX.chars().enumerate() {
+        match line.chars().nth(index) {
+            Some(c) if c == expected => {}
+            _ if index == 7 && line.starts_with("dbspec ") => return Err(at(index + 1, "the language version is not 1")),
+            _ => return Err(at(index + 1, "the first line is not 'dbspec 1 <document>'")),
+        }
+    }
+    match tokens.get(2) {
+        Some(name) if matches!(name.kind, Kind::Word | Kind::Number) && name.pos.column == PREFIX.len() + 1 => {
+            let end = name.end().column;
+            if line.chars().count() + 1 == end {
+                Ok(name)
+            } else {
+                Err(at(end, "the header has text after the document name"))
+            }
+        }
+        _ => Err(at(PREFIX.len() + 1, "the header has no document name")),
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LineKind {
+    Primary,
+    Unique,
+    Index,
+    ForeignKey,
+    Check,
+    Settings,
+}
+
+fn line_kind(first: &Token, second: Option<&Token>) -> Option<LineKind> {
     match first.text {
-        "primary" | "unique" => Some(1),
-        "index" => Some(2),
-        "foreign" => Some(3),
-        "check" => Some(4),
-        "settings" if second.is_some_and(|t| t.is("{")) => Some(5),
+        "primary" => Some(LineKind::Primary),
+        "unique" => Some(LineKind::Unique),
+        "index" => Some(LineKind::Index),
+        "foreign" => Some(LineKind::ForeignKey),
+        "check" => Some(LineKind::Check),
+        "settings" if second.is_some_and(|t| t.is("{")) => Some(LineKind::Settings),
         _ => None,
     }
 }
@@ -215,25 +274,39 @@ impl Parser {
         std::mem::take(&mut self.pending)
     }
 
-    /// Checks a defined name and returns it.
+    /// Checks a name, defined or referenced, and returns it.
     fn define(&mut self, token: &Token) -> Name {
-        let text = token.text;
-        let bytes = text.as_bytes();
-        let format = !bytes.is_empty() && bytes[0].is_ascii_lowercase() && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_');
-        if !format || text == "primary" {
-            self.report(err(token.pos, "name.format", format!("name '{text}' does not match [a-z][a-z0-9_]* or is 'primary'")));
-        } else if text.len() > MAX_NAME_BYTES {
-            self.report(err(token.pos, "name.length", format!("name '{text}' has {} bytes; the limit is {MAX_NAME_BYTES}", text.len())));
-        }
-        Name { text: text.to_owned(), pos: token.pos }
+        self.check_name(token.text, token.pos);
+        Name { text: token.text.to_owned(), pos: token.pos }
     }
 
-    /// Reads a name token, defining it when `define` is set.
-    fn name(&mut self, cursor: &mut Cursor, define: bool) -> Option<Name> {
+    fn check_name(&mut self, text: &str, pos: Pos) {
+        if let Some((rule, message)) = name_problem(text) {
+            self.report(err(pos, rule, message));
+        }
+    }
+
+    /// Reads a name token and checks it. A malformed reference is reported
+    /// here and not resolved further.
+    fn name(&mut self, cursor: &mut Cursor) -> Option<Name> {
         match cursor.peek() {
             Some(t) if matches!(t.kind, Kind::Word | Kind::Number) => {
                 cursor.next();
-                Some(if define { self.define(t) } else { Name { text: t.text.to_owned(), pos: t.pos } })
+                Some(self.define(t))
+            }
+            _ => {
+                self.syntax(cursor);
+                None
+            }
+        }
+    }
+
+    /// Reads a word that is not a name, such as a codec stage.
+    fn word(&mut self, cursor: &mut Cursor) -> Option<Name> {
+        match cursor.peek() {
+            Some(t) if matches!(t.kind, Kind::Word | Kind::Number) => {
+                cursor.next();
+                Some(Name { text: t.text.to_owned(), pos: t.pos })
             }
             _ => {
                 self.syntax(cursor);
@@ -336,13 +409,13 @@ impl Parser {
     fn use_line(&mut self, cursor: &mut Cursor) {
         cursor.next();
         let comments = self.comments();
-        let Some(document) = self.name(cursor, false) else { return };
+        let Some(document) = self.name(cursor) else { return };
         if self.expect(cursor, "{").is_none() {
             return;
         }
         let mut tables = Vec::new();
         loop {
-            let Some(table) = self.name(cursor, false) else { return };
+            let Some(table) = self.name(cursor) else { return };
             tables.push(table);
             if cursor.peek_is(",") {
                 cursor.next();
@@ -358,15 +431,16 @@ impl Parser {
 
     /// `<name> {` after `table` or `diagram`. The block opens even when the
     /// line is malformed, so its lines are still read.
-    fn block_header(&mut self, cursor: &mut Cursor, keyword: Pos) -> Name {
-        match self.name(cursor, true) {
+    fn block_header(&mut self, cursor: &mut Cursor, keyword: Pos) -> (Name, Option<Pos>) {
+        match self.name(cursor) {
             Some(name) => {
-                if self.expect(cursor, "{").is_some() {
-                    self.end(cursor);
+                let brace = cursor.here();
+                if self.expect(cursor, "{").is_some() && self.end(cursor).is_some() {
+                    return (name, Some(brace));
                 }
-                name
+                (name, None)
             }
-            None => Name { text: String::new(), pos: keyword },
+            None => (Name { text: String::new(), pos: keyword }, None),
         }
     }
 
@@ -377,7 +451,9 @@ impl Parser {
             return;
         }
         let comments = self.comments();
-        let name = self.block_header(cursor, keyword);
+        let (name, brace) = self.block_header(cursor, keyword);
+        self.table_brace = brace;
+        self.settings_brace = None;
         self.table = Some(Table {
             comments,
             name,
@@ -413,7 +489,8 @@ impl Parser {
     fn open_diagram(&mut self, cursor: &mut Cursor) {
         let keyword = cursor.next().map_or(Pos::default(), |t| t.pos);
         let comments = self.comments();
-        let name = self.block_header(cursor, keyword);
+        let (name, brace) = self.block_header(cursor, keyword);
+        self.diagram_brace = brace;
         self.diagram = Some(Diagram { comments, name, placements: Vec::new(), closing: Vec::new() });
         self.context = Context::Diagram;
     }
@@ -441,7 +518,7 @@ impl Parser {
     fn unclosed(&mut self, tokens: &[Token]) -> bool {
         let opens = (tokens[0].is("table") || tokens[0].is("diagram")) && tokens.len() > 1 && tokens.last().is_some_and(|t| t.is("{"));
         if opens {
-            self.report(err(tokens[0].pos, "syntax", "the block before this line has no closing '}'"));
+            self.report_open_blocks();
             match self.context {
                 Context::Diagram => self.close_diagram(),
                 _ => self.close_table(),
@@ -461,21 +538,31 @@ impl Parser {
         }
         let first = &tokens[0];
         let kind = if first.kind == Kind::Word { line_kind(first, tokens.get(1)) } else { None };
-        let phase = kind.unwrap_or(0);
-        if phase < self.table_phase {
-            self.report(err(first.pos, "order", "table lines are columns, keys, indexes, foreign keys, checks, then settings"));
+        let phase = match kind {
+            None => 0,
+            Some(LineKind::Settings) => 2,
+            Some(_) => 1,
+        };
+        let second_settings = kind == Some(LineKind::Settings) && self.table.as_ref().is_some_and(|t| t.settings.is_some());
+        if phase < self.table_phase || second_settings {
+            let message = if second_settings {
+                "a table has at most one settings block"
+            } else {
+                "table lines are columns, then key, index, foreign key and check lines, then settings"
+            };
+            self.report(err(first.pos, "order", message));
         } else {
             self.table_phase = phase;
         }
         let mut cursor = Cursor::new(tokens);
-        match (kind, first.text) {
-            (Some(1), "primary") => self.primary_line(&mut cursor),
-            (Some(1), _) => self.unique_line(&mut cursor),
-            (Some(2), _) => self.index_line(&mut cursor),
-            (Some(3), _) => self.foreign_key_line(&mut cursor),
-            (Some(4), _) => self.check_line(&mut cursor),
-            (Some(5), _) => self.open_settings(first),
-            _ => self.column_line(&mut cursor),
+        match kind {
+            Some(LineKind::Primary) => self.primary_line(&mut cursor),
+            Some(LineKind::Unique) => self.unique_line(&mut cursor),
+            Some(LineKind::Index) => self.index_line(&mut cursor),
+            Some(LineKind::ForeignKey) => self.foreign_key_line(&mut cursor),
+            Some(LineKind::Check) => self.check_line(&mut cursor),
+            Some(LineKind::Settings) => self.open_settings(first, tokens.get(1).map(|t| t.pos), tokens.get(2)),
+            None => self.column_line(&mut cursor),
         }
     }
 
@@ -508,7 +595,7 @@ impl Parser {
     /// Parses a column line; `None` when the line or its type is invalid.
     fn column(&mut self, cursor: &mut Cursor) -> Option<Column> {
         let comments = self.comments();
-        let name = self.name(cursor, true)?;
+        let name = self.name(cursor)?;
         let ty = self.column_type(cursor)?;
         let nullable = cursor.peek_is("null");
         if nullable {
@@ -657,7 +744,7 @@ impl Parser {
         self.expect(cursor, "(")?;
         let mut columns = Vec::new();
         loop {
-            let name = self.name(cursor, false)?;
+            let name = self.name(cursor)?;
             let mut desc = false;
             if directions && (cursor.peek_is("asc") || cursor.peek_is("desc")) {
                 desc = cursor.next().is_some_and(|t| t.text == "desc");
@@ -689,7 +776,7 @@ impl Parser {
     fn unique_line(&mut self, cursor: &mut Cursor) {
         let comments = self.comments();
         cursor.next();
-        let Some(name) = self.name(cursor, true) else { return };
+        let Some(name) = self.name(cursor) else { return };
         let Some(columns) = self.column_list(cursor, false) else { return };
         if self.end(cursor).is_none() {
             return;
@@ -701,7 +788,7 @@ impl Parser {
     fn index_line(&mut self, cursor: &mut Cursor) {
         let comments = self.comments();
         cursor.next();
-        let Some(name) = self.name(cursor, true) else { return };
+        let Some(name) = self.name(cursor) else { return };
         let Some(columns) = self.column_list(cursor, true) else { return };
         if self.end(cursor).is_none() {
             return;
@@ -734,12 +821,12 @@ impl Parser {
         if self.expect(cursor, "key").is_none() {
             return;
         }
-        let Some(name) = self.name(cursor, true) else { return };
+        let Some(name) = self.name(cursor) else { return };
         let Some(columns) = self.column_list(cursor, false) else { return };
         if self.expect(cursor, "references").is_none() {
             return;
         }
-        let Some(table) = self.name(cursor, false) else { return };
+        let Some(table) = self.name(cursor) else { return };
         let Some(references) = self.column_list(cursor, false) else { return };
         let mut on_delete = Action::Restrict;
         let mut on_update = Action::Restrict;
@@ -764,7 +851,7 @@ impl Parser {
     fn check_line(&mut self, cursor: &mut Cursor) {
         let comments = self.comments();
         cursor.next();
-        let Some(name) = self.name(cursor, true) else { return };
+        let Some(name) = self.name(cursor) else { return };
         if let Some(bad) = cursor.tokens[..cursor.at].iter().find(|t| t.kind == Kind::Invalid) {
             self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
             return;
@@ -789,11 +876,15 @@ impl Parser {
         }
     }
 
-    fn open_settings(&mut self, keyword: &Token) {
+    /// `settings {`; a second block was reported as `order` and its lines join the first.
+    fn open_settings(&mut self, _keyword: &Token, brace: Option<Pos>, extra: Option<&Token>) {
         let comments = self.comments();
-        if self.table_mut().settings.is_some() {
-            self.report(err(keyword.pos, "setting", "a table has at most one settings block"));
-        } else {
+        self.settings_brace = brace;
+        if let Some(extra) = extra {
+            self.report(err(extra.pos, "syntax", format!("'{}' is not allowed after '{{'", extra.text)));
+            self.settings_brace = None;
+        }
+        if self.table_mut().settings.is_none() {
             self.table_mut().settings = Some(Settings { comments, lines: Vec::new(), closing: Vec::new() });
         }
         self.context = Context::Settings;
@@ -816,45 +907,47 @@ impl Parser {
         let keyword = tokens[0];
         cursor.next();
         let setting = match (keyword.kind, keyword.text) {
-            (Kind::Word, "entity") => self.name(&mut cursor, true).map(Setting::Entity),
-            (Kind::Word, "updated") => self.name(&mut cursor, false).map(Setting::Updated),
-            (Kind::Word, "soft_delete") => self.name(&mut cursor, false).map(Setting::SoftDelete),
-            (Kind::Word, "aes_version") => self.name(&mut cursor, false).map(Setting::AesVersion),
+            (Kind::Word, "entity") => self.name(&mut cursor).map(Setting::Entity),
+            (Kind::Word, "updated") => self.name(&mut cursor).map(Setting::Updated),
+            (Kind::Word, "soft_delete") => self.name(&mut cursor).map(Setting::SoftDelete),
+            (Kind::Word, "aes_version") => self.name(&mut cursor).map(Setting::AesVersion),
             (Kind::Word, "select") => self.expect(&mut cursor, "explicit").and_then(|_| {
-                let mut columns = vec![self.name(&mut cursor, false)?];
+                let mut columns = vec![self.name(&mut cursor)?];
                 while cursor.peek().is_some() {
-                    columns.push(self.name(&mut cursor, false)?);
+                    columns.push(self.name(&mut cursor)?);
                 }
                 Some(Setting::SelectExplicit(columns))
             }),
-            (Kind::Word, "codec") => self.name(&mut cursor, false).and_then(|column| {
-                let mut stages = vec![self.name(&mut cursor, false)?];
+            (Kind::Word, "codec") => self.name(&mut cursor).and_then(|column| {
+                let mut stages = vec![self.word(&mut cursor)?];
                 while cursor.peek().is_some() {
-                    stages.push(self.name(&mut cursor, false)?);
+                    stages.push(self.word(&mut cursor)?);
                 }
-                for stage in &stages {
+                for (index, stage) in stages.iter().enumerate() {
                     if !CODEC_STAGES.contains(&stage.text.as_str()) {
                         self.report(err(stage.pos, "setting", format!("unknown codec stage '{}'", stage.text)));
+                    } else if stage.text == "ordered_json" && index > 0 {
+                        self.report(err(stage.pos, "setting", "ordered_json is the first codec stage"));
                     }
                 }
                 Some(Setting::Codec(column, stages))
             }),
-            (Kind::Word, "blind_index") => self.name(&mut cursor, false).and_then(|aes| Some(Setting::BlindIndex(aes, self.name(&mut cursor, false)?))),
-            (Kind::Word, "navigation") => self.name(&mut cursor, false).and_then(|key| {
-                let child = self.name(&mut cursor, true)?;
-                let parent = self.name(&mut cursor, true)?;
+            (Kind::Word, "blind_index") => self.name(&mut cursor).and_then(|aes| Some(Setting::BlindIndex(aes, self.name(&mut cursor)?))),
+            (Kind::Word, "navigation") => self.name(&mut cursor).and_then(|key| {
+                let child = self.name(&mut cursor)?;
+                let parent = self.name(&mut cursor)?;
                 Some(Setting::Navigation(key, child, parent))
             }),
             (Kind::Word, "immutable") => Some(Setting::Immutable),
             (Kind::Word, "audit") => (|| {
                 self.expect(&mut cursor, "into")?;
-                let into = self.name(&mut cursor, false)?;
+                let into = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "operation")?;
-                let operation = self.name(&mut cursor, false)?;
+                let operation = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "action")?;
-                let action = self.name(&mut cursor, false)?;
+                let action = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "previous")?;
-                let previous = self.name(&mut cursor, false)?;
+                let previous = self.name(&mut cursor)?;
                 Some(Setting::Audit { into, operation, action, previous })
             })(),
             _ => {
@@ -881,11 +974,11 @@ impl Parser {
         }
         let comments = self.comments();
         let mut cursor = Cursor::new(tokens);
-        let Some(table) = self.name(&mut cursor, false) else { return };
+        let Some(table) = self.name(&mut cursor) else { return };
         if self.expect(&mut cursor, "at").is_none() {
             return;
         }
-        let mut coordinates = [0i64; 2];
+        let mut coordinates = [0i32; 2];
         for coordinate in &mut coordinates {
             let pos = cursor.here();
             let negative = cursor.peek_is("-");
@@ -902,7 +995,7 @@ impl Parser {
                     } else {
                         digits.parse::<i128>().ok()
                     };
-                    magnitude.and_then(|m| i64::try_from(if negative { -m } else { m }).ok())
+                    magnitude.and_then(|m| i32::try_from(if negative { -m } else { m }).ok())
                 }
                 None => {
                     self.report(err(cursor.end, "syntax", "the line ends early"));
@@ -926,16 +1019,26 @@ impl Parser {
         }
     }
 
-    fn finish(&mut self, line_count: usize) {
-        let open = !matches!(self.context, Context::Top) || self.skip > 0;
-        if open {
-            let column = 1;
-            self.report(err(Pos { line: line_count + 1, column }, "syntax", "the document ends inside a block"));
-            match self.context {
-                Context::Diagram => self.close_diagram(),
-                Context::Table | Context::Settings => self.close_table(),
-                Context::Top => {}
-            }
+    /// Reports a `syntax` error at the `{` of every open block. A block whose
+    /// header line failed already has its error.
+    fn report_open_blocks(&mut self) {
+        let braces = match self.context {
+            Context::Top => vec![],
+            Context::Table => vec![self.table_brace],
+            Context::Settings => vec![self.table_brace, self.settings_brace],
+            Context::Diagram => vec![self.diagram_brace],
+        };
+        for brace in braces.into_iter().flatten() {
+            self.report(err(brace, "syntax", "the block has no closing '}'"));
+        }
+    }
+
+    fn finish(&mut self) {
+        self.report_open_blocks();
+        match self.context {
+            Context::Diagram => self.close_diagram(),
+            Context::Table | Context::Settings => self.close_table(),
+            Context::Top => {}
         }
         self.document.trailing = self.comments();
     }

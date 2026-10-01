@@ -73,7 +73,7 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             if int.len() > p - s {
                 return Err(unfit());
             }
-            if frac.len() > s && !frac[s..].bytes().all(|b| b == b'0') {
+            if frac.len() > s {
                 return Err(unfit());
             }
             let mut fraction: String = frac.chars().take(s).collect();
@@ -86,16 +86,13 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             Ok(if s == 0 { format!("{sign}{int}") } else { format!("{sign}{int}.{fraction}") })
         }
         (Type::F64, Value::Number { negative, text }) => {
-            let (int, frac) = split_number(text);
-            let frac = frac.trim_end_matches('0');
-            let int = if int.is_empty() { "0" } else { int };
-            let parsed: f64 = format!("{int}.{frac}0").parse().map_err(|_| unfit())?;
+            // Rust's `Display` writes the shortest decimal that reads back as
+            // the same value, without an exponent.
+            let parsed: f64 = format!("{}{text}", if *negative { "-" } else { "" }).parse().map_err(|_| unfit())?;
             if !parsed.is_finite() {
                 return Err(unfit());
             }
-            let zero = int == "0" && frac.is_empty();
-            let sign = if *negative && !zero { "-" } else { "" };
-            Ok(if frac.is_empty() { format!("{sign}{int}") } else { format!("{sign}{int}.{frac}") })
+            Ok(if parsed == 0.0 { "0".into() } else { parsed.to_string() })
         }
         (Type::Bool, Value::Word(word)) if matches!(*word, "true" | "false") => Ok((*word).into()),
         (Type::Varchar(n), Value::Str(text)) => {
@@ -157,7 +154,7 @@ fn valid_date(text: &str) -> bool {
 }
 
 /// `HH:MM:SS[.f]` below 24:00:00 written with exactly `p` fraction digits.
-/// Fraction digits beyond `p` are accepted only when they are zeros.
+/// More fraction digits than `p` do not fit.
 fn time(text: &str, p: u8) -> Option<String> {
     let (clock, frac) = match text.split_once('.') {
         Some((clock, frac)) if !frac.is_empty() && frac.bytes().all(|b| b.is_ascii_digit()) => (clock, frac),
@@ -171,7 +168,7 @@ fn time(text: &str, p: u8) -> Option<String> {
         return None;
     }
     let p = p as usize;
-    if frac.len() > p && !frac[p..].bytes().all(|b| b == b'0') {
+    if frac.len() > p {
         return None;
     }
     let mut fraction: String = frac.chars().take(p).collect();

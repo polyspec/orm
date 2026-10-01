@@ -46,7 +46,7 @@ impl std::error::Error for Diagnostic {}
 /// `header` or `limit` error ends parsing.
 pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Document, Vec<Diagnostic>> {
     let mut session = Session { documents, parsed: HashMap::new(), valid: HashMap::new(), validating: Vec::new() };
-    let parsed = parser::parse(text).map_err(diagnostics)?;
+    let parsed = parser::parse(text).map_err(stopped)?;
     let name = parsed.document.name.text.clone();
     let diags = session.validate(&name, &parsed);
     if diags.is_empty() {
@@ -61,14 +61,52 @@ pub fn emit(document: &Document) -> String {
     emit::emit(document)
 }
 
+/// The rules in the order of the rule table of docs/dbspec.md, which orders
+/// diagnostics at one position.
+const RULES: [&str; 16] = [
+    "header",
+    "syntax",
+    "order",
+    "name.format",
+    "name.length",
+    "name.duplicate",
+    "type",
+    "column",
+    "key",
+    "foreign_key",
+    "check",
+    "setting",
+    "use",
+    "diagram",
+    "limit",
+    "encoding",
+];
+
+fn sort(diags: &mut [Diag]) {
+    diags.sort_by_key(|d| (d.pos, RULES.iter().position(|r| *r == d.rule)));
+}
+
+/// The diagnostics of a stopped parse: those found before the stopping error,
+/// in order, then the stopping error.
+fn stopped(mut diags: Vec<Diag>) -> Vec<Diagnostic> {
+    let stop = diags.pop();
+    sort(&mut diags);
+    diags.extend(stop);
+    convert(diags)
+}
+
 fn diagnostics(mut diags: Vec<Diag>) -> Vec<Diagnostic> {
-    diags.sort_by_key(|d| d.pos);
+    sort(&mut diags);
+    convert(diags)
+}
+
+fn convert(diags: Vec<Diag>) -> Vec<Diagnostic> {
     diags.into_iter().map(|d| Diagnostic { rule: d.rule.to_owned(), line: d.pos.line, column: d.pos.column, message: d.message }).collect()
 }
 
 /// Resolves used documents of one `parse` call. A used document is parsed once
-/// and validated once; a document that is being validated counts as valid where
-/// `use` lines refer back to it, so documents may use each other.
+/// and validated once with its own `use` lines; using the document itself or
+/// any use cycle is a `use` error.
 struct Session<'s> {
     documents: &'s BTreeMap<String, String>,
     parsed: HashMap<String, Result<Rc<parser::Parsed>, String>>,
@@ -98,9 +136,6 @@ impl<'s> Session<'s> {
 
     /// Validates the declared document `name` once.
     fn valid(&mut self, name: &str) -> Result<(), String> {
-        if self.validating.iter().any(|n| n == name) {
-            return Ok(());
-        }
         if let Some(result) = self.valid.get(name) {
             return result.clone();
         }
@@ -118,7 +153,17 @@ impl<'s> Session<'s> {
         let mut used = Vec::with_capacity(parsed.document.uses.len());
         for line in &parsed.document.uses {
             let document = &line.document;
-            let resolved = self.parsed(&document.text).and_then(|other| self.valid(&document.text).map(|_| other));
+            if !parser::well_formed(&document.text) {
+                used.push(None);
+                continue;
+            }
+            let resolved = if document.text == name {
+                Err(format!("document '{name}' uses itself"))
+            } else if self.validating.contains(&document.text) {
+                Err(format!("document '{}' is part of a use cycle: {} -> {}", document.text, self.validating.join(" -> "), document.text))
+            } else {
+                self.parsed(&document.text).and_then(|other| self.valid(&document.text).map(|_| other))
+            };
             match resolved {
                 Ok(other) => used.push(Some(other)),
                 Err(message) => {
@@ -135,7 +180,7 @@ impl<'s> Session<'s> {
 }
 
 fn invalid(name: &str, mut diags: Vec<Diag>) -> String {
-    diags.sort_by_key(|d| d.pos);
+    sort(&mut diags);
     let first = diags.first().map_or(String::new(), |d| format!(": {}:{} {}: {}", d.pos.line, d.pos.column, d.rule, d.message));
     format!("document '{name}' is invalid{first}")
 }

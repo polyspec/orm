@@ -131,7 +131,14 @@ fn emit_table(out: &mut Out, table: &Table) {
         out.comments(1, &check.comments);
         out.line(1, &format!("check {} ({expr})", check.name.text));
     }
-    if let Some(settings) = &table.settings {
+    let mut closing: Vec<&String> = Vec::new();
+    match &table.settings {
+        // An empty block has no meaning and is omitted; its comments stay before the closing `}`.
+        Some(settings) if settings.lines.is_empty() => closing.extend(settings.comments.iter().chain(&settings.closing)),
+        _ => {}
+    }
+    closing.extend(&table.closing);
+    if let Some(settings) = table.settings.as_ref().filter(|s| !s.lines.is_empty()) {
         out.comments(1, &settings.comments);
         out.line(1, "settings {");
         let mut lines: Vec<&SettingLine> = settings.lines.iter().collect();
@@ -143,7 +150,9 @@ fn emit_table(out: &mut Out, table: &Table) {
         out.comments(2, &settings.closing);
         out.line(1, "}");
     }
-    out.comments(1, &table.closing);
+    for comment in closing {
+        out.line(1, comment);
+    }
     out.line(0, "}");
 }
 
