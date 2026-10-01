@@ -77,4 +77,4 @@ SQLite는 맞춘 table의 이름, column, foreign key, check 중 하나라도 �
 
 ## 검증
 
-`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다.
+`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-php-check`는 같은 case를 PHP client의 `Orm\Dbspec\Dbspec`(`parsePlan`, `emitPlan`, `chain`, `diff`, `planStatements`)으로 실행하고, `make dbspec-plan-php-check`는 이를 통해 세 database에 적용한다.

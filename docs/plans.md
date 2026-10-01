@@ -77,4 +77,4 @@ SQLite rebuilds a matched table when its name, a column, a foreign key or a chec
 
 ## Verification
 
-`make dbspec-go-check` runs the cases of `tests/dbspec/plans.json` through the Go engine; `make dbspec-plan-check` applies every case to MySQL, PostgreSQL and SQLite: it renders the source, runs the `before` steps, applies the statements, runs the `after` steps, and requires the introspected schema text to equal the plan's target.
+`make dbspec-go-check` runs the cases of `tests/dbspec/plans.json` through the Go engine; `make dbspec-plan-check` applies every case to MySQL, PostgreSQL and SQLite: it renders the source, runs the `before` steps, applies the statements, runs the `after` steps, and requires the introspected schema text to equal the plan's target. `make dbspec-php-check` runs the same cases through the PHP client's `Orm\Dbspec\Dbspec` (`parsePlan`, `emitPlan`, `chain`, `diff`, `planStatements`), and `make dbspec-plan-php-check` applies them through it to the three databases.
