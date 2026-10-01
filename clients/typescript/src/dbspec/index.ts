@@ -84,11 +84,10 @@ export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecMani
   const { ordered, diagnostics } = checkSet(documents);
   if (diagnostics.length > 0) return Object.freeze({ manifest: null, diagnostics });
   let manifestText = '';
-  let schemaText = '';
-  for (const document of ordered) {
-    manifestText += emitDocument(document, 'manifest');
-    schemaText += emitDocument(document, 'schema');
-  }
+  for (const document of ordered) manifestText += emitDocument(document, 'manifest');
+  // schema text는 집합의 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
+  const tables = ordered.flatMap(d => d.tables).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const schemaText = emitDocument({ name: 'schema', uses: [], tables, diagrams: [], closingComments: [] }, 'schema');
   const manifest = Object.freeze({ manifestText, schemaText, manifestHash: textHash(manifestText), schemaHash: textHash(schemaText) });
   return Object.freeze({ manifest, diagnostics: Object.freeze([]) as readonly [] });
 }

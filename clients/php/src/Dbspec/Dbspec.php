@@ -81,11 +81,16 @@ final class Dbspec
             return ManifestResult::invalid($diagnostics);
         }
         $manifestText = '';
-        $schemaText = '';
+        $tables = [];
         foreach ($ordered as $document) {
             $manifestText .= Emitter::emit($document, View::Manifest);
-            $schemaText .= Emitter::emit($document, View::Schema);
+            array_push($tables, ...$document->tables);
         }
+        // schema text 는 집합의 모든 table 을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
+        usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
+        $schema = new Document('schema');
+        $schema->tables = $tables;
+        $schemaText = Emitter::emit($schema, View::Schema);
         return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText), 'sha256:' . hash('sha256', $schemaText)));
     }
 }

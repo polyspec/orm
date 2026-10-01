@@ -138,11 +138,20 @@ pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Docume
 pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
     let ordered = check_set(documents)?;
     let mut manifest_text = String::new();
-    let mut schema_text = String::new();
-    for document in ordered {
+    for document in &ordered {
         manifest_text.push_str(&emit::emit(document, emit::View::Manifest));
-        schema_text.push_str(&emit::emit(document, emit::View::Schema));
     }
+    // schema text는 집합의 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
+    let mut tables: Vec<model::Table> = ordered.iter().flat_map(|d| d.tables.iter().cloned()).collect();
+    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let schema = Document {
+        name: model::Name { text: "schema".to_owned(), pos: Default::default() },
+        uses: Vec::new(),
+        tables,
+        diagrams: Vec::new(),
+        trailing: Vec::new(),
+    };
+    let schema_text = emit::emit(&schema, emit::View::Schema);
     let manifest_hash = text_hash(&manifest_text);
     let schema_hash = text_hash(&schema_text);
     Ok(Manifest { manifest_text, schema_text, manifest_hash, schema_hash })

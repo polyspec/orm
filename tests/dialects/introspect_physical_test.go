@@ -99,14 +99,10 @@ func parseSet(t *testing.T, s roundTripSet) []*dbspec.Document {
 	return documents
 }
 
-// expectedSchemaText는 집합의 모든 table을 이름 순으로 담은 한 문서의 schema text다.
+// expectedSchemaText는 문서 집합의 schema text다. schema text는 문서를 나누는
+// 방식과 무관하므로 introspect한 문서 하나의 schema text와 비교할 수 있다.
 func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
-	combined := &dbspec.Document{Name: "introspected"}
-	for _, d := range documents {
-		combined.Tables = append(combined.Tables, d.Tables...)
-	}
-	slices.SortFunc(combined.Tables, func(a, b dbspec.Table) int { return strings.Compare(a.Name, b.Name) })
-	manifest, diagnostics := dbspec.ManifestOf([]*dbspec.Document{combined})
+	manifest, diagnostics := dbspec.ManifestOf(documents)
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
