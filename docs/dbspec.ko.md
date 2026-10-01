@@ -142,7 +142,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
 | `audit into <history table> operation <column> action <history column> previous <history column>` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`를 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
 
-`schemaHash`는 table 정의와 schema로 표시한 settings를 포함하며, database를 바꿔야 할 때 정확히 바뀐다. `manifestHash`는 정의와 모든 settings를 포함하며 생성 코드가 확인한다. diagram과 comment는 어느 쪽에도 속하지 않는다.
+`schemaHash`는 table 정의와 schema로 표시한 settings를 포함하며, database를 바꿔야 할 때 정확히 바뀐다. `manifestHash`는 정의와 모든 settings를 포함하며 생성 코드가 확인한다. diagram과 comment는 어느 쪽에도 속하지 않는다. 두 hash는 [Manifest와 hash](#manifest와-hash)에서 정한다.
 
 ### Audit
 
@@ -180,6 +180,16 @@ table service_history {
 - **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 모든 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 모든 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
 - **삭제.** 감사 대상 table은 `soft_delete` setting이 필요하다. 삭제는 soft delete column의 `UPDATE`이므로 이력이 그 operation과 함께 기록한다. physical `DELETE`는 실패한다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. operation column을 쓰지 않는 raw SQL은 이전 operation의 id를 다시 기록한다. 이 column을 쓰는 것은 executor뿐이다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.
+
+## Manifest와 hash
+
+선언된 문서 집합이 유일한 schema 원천이다. generator, schema tool, schema 설치는 dbspec 문서를 읽으며, 다른 manifest 파일은 없다.
+
+- 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
+- **schema text**는 manifest text에서 `immutable`과 `audit`을 뺀 모든 setting을 지운 것이다. 비게 된 `settings` block은 canonical form처럼 쓰지 않는다.
+- `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
+
+생성 코드는 자신을 만든 문서 집합의 manifest text와 `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.
 
 ## Diagram
 
