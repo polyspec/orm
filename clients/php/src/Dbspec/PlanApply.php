@@ -13,6 +13,11 @@ final class PlanApply
 {
     /** 적용한 plan 을 기록하는 table. dbspec 이름에는 $ 가 없으므로 사용자 table 과 겹치지 않고, introspection 은 이 table 을 빼고 읽는다. */
     private const HISTORY = 'dbspec$plans';
+    // 현재 database 하나의 apply lock 이름. MySQL lock 이름은 64자까지이므로 database
+    // 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+    private const MYSQL_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
+    // 현재 database 의 현재 schema 하나의 advisory lock key.
+    private const POSTGRES_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
 
     /**
      * plan writer 가 쓰는 MySQL statement 형식과 그 효과다 (docs/plans.md "Apply",
@@ -125,19 +130,32 @@ final class PlanApply
         $h = self::HISTORY;
         switch ($this->r->dialect) {
             case 'mysql':
-                $got = $this->queryValue("SELECT GET_LOCK('$h', 0)");
-                if ($got !== 1 && $got !== '1') {
-                    throw new ApplyError('locked', '', 0, "another session holds GET_LOCK('$h')");
+                // GET_LOCK 의 NULL 은 lock 을 기다리던 중의 error 다.
+                $got = $this->queryValue('SELECT GET_LOCK(' . self::MYSQL_LOCK . ', 0)');
+                if ($got === 0 || $got === '0') {
+                    throw new ApplyError('locked', '', 0, "another session holds the $h lock of this database");
                 }
-                $this->finish($f, fn(bool $ok) => $this->c->exec("DO RELEASE_LOCK('$h')"));
+                if ($got !== 1 && $got !== '1') {
+                    throw new \RuntimeException('GET_LOCK returned ' . var_export($got, true) . '; want 1 or 0');
+                }
+                $this->finish($f, fn(bool $ok) => $this->c->exec('DO RELEASE_LOCK(' . self::MYSQL_LOCK . ')'));
                 return;
             case 'postgres':
-                if ($this->queryValue("SELECT pg_try_advisory_lock(hashtext('$h'))") !== true) {
-                    throw new ApplyError('locked', '', 0, "another session holds the advisory lock of $h");
+                // current_schema() 가 NULL 이면 결과도 NULL 이며 error 다.
+                $got = $this->queryValue('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK . ')');
+                if ($got === false) {
+                    throw new ApplyError('locked', '', 0, "another session holds the $h advisory lock of this schema");
+                }
+                if ($got !== true) {
+                    throw new \RuntimeException('pg_try_advisory_lock returned ' . var_export($got, true) . '; want true or false');
                 }
                 $this->finish($f, function (bool $ok) use ($h): void {
-                    if ($this->queryValue("SELECT pg_advisory_unlock(hashtext('$h'))") !== true) {
+                    $released = $this->queryValue('SELECT pg_advisory_unlock(' . self::POSTGRES_LOCK . ')');
+                    if ($released === false) {
                         throw new \RuntimeException("the advisory lock of $h was not held at unlock");
+                    }
+                    if ($released !== true) {
+                        throw new \RuntimeException('pg_advisory_unlock returned ' . var_export($released, true) . '; want true or false');
                     }
                 });
                 return;

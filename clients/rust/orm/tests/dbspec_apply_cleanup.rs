@@ -174,9 +174,12 @@ async fn mysql_effect_row(plans: Vec<Plan>) -> Result<String, String> {
         CatalogValue::Int(0),
     ];
     let mut c = Scripted {
-        executes: vec!["CREATE TABLE IF NOT EXISTS `dbspec$plans`".to_owned(), "DO RELEASE_LOCK('dbspec$plans')".to_owned()],
+        executes: vec![
+            "CREATE TABLE IF NOT EXISTS `dbspec$plans`".to_owned(),
+            "DO RELEASE_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)))".to_owned(),
+        ],
         queries: HashMap::from([
-            ("SELECT GET_LOCK('dbspec$plans', 0)".to_owned(), vec![vec![CatalogValue::Int(1)]]),
+            ("SELECT GET_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)), 0)".to_owned(), vec![vec![CatalogValue::Int(1)]]),
             (history.to_owned(), vec![running]),
             (tables.to_owned(), vec![]),
         ]),

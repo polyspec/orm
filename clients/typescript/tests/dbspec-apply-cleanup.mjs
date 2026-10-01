@@ -100,14 +100,14 @@ vector('apply/mysql-effect-row', async () => {
   const tables = 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?';
   const history = 'SELECT `name`, `from_hash`, `to_hash`, `state`, `step` FROM `dbspec$plans`';
   const script = new Map([
-    ["SELECT GET_LOCK('dbspec$plans', 0)", [[1]]],
+    ["SELECT GET_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)), 0)", [[1]]],
     [history, [[plans[0].name, 'empty', plans[0].to, 'running', 0]]],
     [tables, []],
   ]);
   const connection = {
     async query(q) {
       const sql = typeof q === 'string' ? q : q.sql;
-      if (sql.startsWith('CREATE TABLE IF NOT EXISTS `dbspec$plans`') || sql === "DO RELEASE_LOCK('dbspec$plans')") return [{}, []];
+      if (sql.startsWith('CREATE TABLE IF NOT EXISTS `dbspec$plans`') || sql === "DO RELEASE_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)))") return [{}, []];
       if (!script.has(sql)) throw new Error(`unexpected query ${sql}`);
       return [script.get(sql), []];
     },

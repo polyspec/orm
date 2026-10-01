@@ -1,7 +1,9 @@
 // dbspec plan apply on MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"):
 // the chain of create-from-empty and rename-table-and-column of
 // tests/dbspec/plans.json with its history and a second apply, drift, the
-// lock of a second session, rollback after a stop, an unlock that released
+// lock of a second session, an apply to a second database, schema or file
+// while the first holds its lock, the empty chain, rollback after a stop, an
+// unlock that released
 // nothing on PostgreSQL, a verify failure and the MySQL recovery after a
 // stop before and after a statement, through the TypeScript client's
 // applyPlans and recoverPlans. Each run uses an empty database, schema or
@@ -212,6 +214,9 @@ async function applyCode(promise) {
 }
 
 const historyTable = dialect => (dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"');
+// docs/plans.md "Apply"의 lock 이름과 key다.
+const MYSQL_APPLY_LOCK = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))";
+const POSTGRES_APPLY_LOCK = "hashtext('dbspec$plans'), hashtext(current_schema())";
 
 const scenarios = [
   ['chain_history_and_again', ['mysql', 'postgres', 'sqlite'], async (session, dialect) => {
@@ -240,13 +245,45 @@ const scenarios = [
   ['lock', ['mysql', 'postgres', 'sqlite'], async (session, dialect, open) => {
     const other = await open();
     try {
-      const hold = { mysql: "SELECT GET_LOCK('dbspec$plans', 0)", postgres: "SELECT pg_advisory_lock(hashtext('dbspec$plans'))", sqlite: 'BEGIN IMMEDIATE' }[dialect];
+      const hold = { mysql: `SELECT GET_LOCK(${MYSQL_APPLY_LOCK}, 0)`, postgres: `SELECT pg_advisory_lock(${POSTGRES_APPLY_LOCK})`, sqlite: 'BEGIN IMMEDIATE' }[dialect];
       await other.exec(hold);
       assert.equal(await applyCode(applyPlans(session.connection, dialect, plans, fixedNow, null)), 'locked');
       if (dialect === 'sqlite') await other.exec('ROLLBACK');
     } finally {
       await other.close();
     }
+  }],
+  ['other_database', ['mysql', 'postgres', 'sqlite'], async (session, dialect) => {
+    // 첫 database의 apply가 lock을 잡은 동안 두 번째 database, schema 또는 file에
+    // 같은 chain을 적용한다. lock은 database 하나만 덮으므로 locked가 아니다.
+    await withDatabase(dialect, async second => {
+      for (const sql of CONNECTION_RULES[dialect]) await second.exec(sql);
+      let applied = false;
+      const during = async event => {
+        if (event.kind === 'plan' && event.plan === plans[0].name && !applied) {
+          applied = true;
+          await applyPlans(second.connection, dialect, plans, fixedNow, null);
+        }
+      };
+      await applyPlans(session.connection, dialect, plans, fixedNow, during);
+      assert(applied, 'the second apply did not run');
+      await schemaIs(session, dialect, target);
+      await schemaIs(second, dialect, target);
+    });
+  }],
+  ['empty_chain', ['mysql', 'postgres', 'sqlite'], async (session, dialect) => {
+    // plan이 없는 chain은 table이 없는 database에 아무것도 적용하지 않는다.
+    const events = [];
+    const record = event => {
+      events.push(event.kind);
+    };
+    await applyPlans(session.connection, dialect, [], fixedNow, record);
+    await recoverPlans(session.connection, dialect, [], fixedNow, record);
+    assert.deepEqual(events, [], 'events of the empty chain');
+    await schemaIs(session, dialect, '');
+    assert.equal(await firstValue(session, `SELECT COUNT(*) FROM ${historyTable(dialect)}`), '0');
+    await session.exec('CREATE TABLE extra (id integer PRIMARY KEY)');
+    assert.equal(await applyCode(applyPlans(session.connection, dialect, [], fixedNow, null)), 'drift');
   }],
   ['rollback_on_failure', ['postgres', 'sqlite'], async (session, dialect) => {
     const stop = new Error('stop');
@@ -261,7 +298,7 @@ const scenarios = [
   ['unlock_not_held', ['postgres'], async (session, dialect) => {
     // event에서 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도 풀지 않는다.
     const release = async event => {
-      if (event.kind === 'plan' && event.plan === plans[0].name) await session.exec("SELECT pg_advisory_unlock(hashtext('dbspec$plans'))");
+      if (event.kind === 'plan' && event.plan === plans[0].name) await session.exec(`SELECT pg_advisory_unlock(${POSTGRES_APPLY_LOCK})`);
     };
     await assert.rejects(applyPlans(session.connection, dialect, plans, fixedNow, release), {
       message: 'the advisory lock of dbspec$plans was not held at unlock',
@@ -313,6 +350,6 @@ for (const [name, dialects, body] of scenarios) {
 
 vector('every apply scenario runs on its dialects', () => {
   assert.equal(runs, expected);
-  assert.equal(runs, 17);
+  assert.equal(runs, 23);
   console.log(`apply runs: ${runs}`);
 });

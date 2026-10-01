@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.7: the apply lock covers one MySQL database or one PostgreSQL schema, so applies to other databases or schemas run at the same time, an unexpected lock result is an error instead of `locked`, and an empty plan chain is valid for a database without tables in every client.
+
 - T8.7.6.2: the Go engine tests reject a missing or mistyped dbspec vector field with its file and location, and the dbspec compare harnesses and Makefile blocks are commented in Korean.
 
 - T8.5.7: every client lists every difference between two schema texts as `[kind, table, name]` without a plan, including the type, identity, primary key and column order changes that a plan refuses.

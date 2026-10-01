@@ -1379,6 +1379,11 @@
       ]
     },
     {
+      "id": "empty",
+      "plans": [],
+      "order": []
+    },
+    {
       "id": "no-plan-from-empty",
       "plans": [
         [

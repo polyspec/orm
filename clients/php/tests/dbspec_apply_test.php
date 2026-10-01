@@ -4,7 +4,9 @@ declare(strict_types=1);
 // rename-table-and-column through Orm\Dbspec\Dbspec::apply and ::recover on
 // MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"): the chain with its
 // history, events and a second apply without events; drift; the lock of a
-// second session; a PostgreSQL unlock that releases nothing; rollback after
+// second session; an apply to a second database, schema or file while the
+// first holds its lock; the empty chain; a PostgreSQL unlock that releases
+// nothing; rollback after
 // a stop on PostgreSQL and SQLite; verification; and MySQL recovery after a
 // stop before and after a statement. Every run gets a fresh database, schema or file.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the servers; the test
@@ -173,6 +175,9 @@ $targetManifest = Dbspec::manifest([$plans[1]->schema]);
 $target = $targetManifest->manifest?->schemaText ?? apply_failure('target', $targetManifest->diagnostics);
 $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00Z');
 $history = static fn(string $dialect): string => $dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
+// docs/plans.md "Apply" 의 lock 이름과 key.
+const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
+const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
 
 /** @var list<array{0: string, 1: list<string>, 2: Closure(Closure(): PDO, PDO, string): void}> $scenarios */
 $scenarios = [
@@ -202,11 +207,55 @@ $scenarios = [
     }],
     ['lock', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
         $other = $session();
-        $other->exec(['mysql' => "SELECT GET_LOCK('dbspec\$plans', 0)", 'postgres' => "SELECT pg_advisory_lock(hashtext('dbspec\$plans'))", 'sqlite' => 'BEGIN IMMEDIATE'][$db]);
+        $other->exec(['mysql' => 'SELECT GET_LOCK(' . MYSQL_APPLY_LOCK . ', 0)', 'postgres' => 'SELECT pg_advisory_lock(' . POSTGRES_APPLY_LOCK . ')', 'sqlite' => 'BEGIN IMMEDIATE'][$db]);
         apply_code('locked', static fn() => Dbspec::apply($pdo, $db, $plans, $now, null));
         if ($db === 'sqlite') {
             $other->exec('ROLLBACK');
         }
+    }],
+    ['other_database', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
+        // 첫 database 의 apply 가 lock 을 잡은 동안 두 번째 database, schema 또는 file 에
+        // 같은 chain 을 적용한다. lock 은 database 하나만 덮으므로 locked 가 아니다.
+        [$secondSession, $dropSecond] = open_apply_database($db);
+        try {
+            $second = $secondSession();
+            foreach (CONNECTION_RULES[$db] as $rule) {
+                $second->exec($rule);
+            }
+            $applied = false;
+            $during = static function (ApplyEvent $event) use (&$applied, $second, $db, $plans, $now): void {
+                if ($event->kind === 'plan' && $event->plan === $plans[0]->name && !$applied) {
+                    $applied = true;
+                    Dbspec::apply($second, $db, $plans, $now, null);
+                }
+            };
+            Dbspec::apply($pdo, $db, $plans, $now, $during);
+            if (!$applied) {
+                throw new RuntimeException('the second apply did not run');
+            }
+            apply_schema_is($pdo, $db, $target);
+            apply_schema_is($second, $db, $target);
+        } finally {
+            $second = null;
+            gc_collect_cycles();
+            $dropSecond();
+        }
+    }],
+    ['empty_chain', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($now, $history): void {
+        // plan 이 없는 chain 은 table 이 없는 database 에 아무것도 적용하지 않는다.
+        $events = [];
+        $record = static function (ApplyEvent $event) use (&$events): void {
+            $events[] = $event->kind;
+        };
+        Dbspec::apply($pdo, $db, [], $now, $record);
+        Dbspec::recover($pdo, $db, [], $now, $record);
+        if ($events !== []) {
+            throw new RuntimeException('empty chain: events ' . json_encode($events));
+        }
+        apply_schema_is($pdo, $db, '');
+        apply_want($pdo, 'SELECT COUNT(*) FROM ' . $history($db), '0');
+        $pdo->exec('CREATE TABLE extra (id integer PRIMARY KEY)');
+        apply_code('drift', static fn() => Dbspec::apply($pdo, $db, [], $now, null));
     }],
     ['rollback_on_failure', ['postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
         $stop = new RuntimeException('stop');
@@ -224,7 +273,7 @@ $scenarios = [
         // event 에서 advisory lock 을 먼저 풀면 apply 끝의 unlock 은 아무것도 풀지 않는다.
         $release = static function (ApplyEvent $event) use ($pdo, $plans): void {
             if ($event->kind === 'plan' && $event->plan === $plans[0]->name) {
-                $pdo->query("SELECT pg_advisory_unlock(hashtext('dbspec\$plans'))")->closeCursor();
+                $pdo->query('SELECT pg_advisory_unlock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
             }
         };
         $want = 'the advisory lock of dbspec$plans was not held at unlock';
@@ -301,7 +350,7 @@ foreach ($scenarios as [$name, $dbs, $scenario]) {
         echo "PASS $id elapsedMs=$elapsed\n";
     }
 }
-if ($runs !== 17) {
-    throw new RuntimeException("runs=$runs, want 17");
+if ($runs !== 23) {
+    throw new RuntimeException("runs=$runs, want 23");
 }
 echo "PASS dbspec_apply runs=$runs elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";

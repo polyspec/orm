@@ -20,9 +20,9 @@ catalog 질의로 된 본문을 가진다. 성공해야 하는 단계, 지정한
 
 | Database | 객체 | 정리 |
 |---|---|---|
-| MySQL | database `dfx_<pid>_<index>`, probe가 필요로 하면 같은 이름의 login | `DROP USER IF EXISTS`, `DROP DATABASE` 후 `information_schema.SCHEMATA`에 없어야 한다 |
+| MySQL | database `dfx_<pid>_<index>`, 필요하면 `<database>_b`, probe가 필요로 하면 같은 이름의 login | `DROP USER IF EXISTS`, `DROP DATABASE` 후 `information_schema.SCHEMATA`에 없어야 한다 |
 | PostgreSQL | schema `dfx_<pid>_<index>`, 필요하면 `<schema>_b` | `DROP SCHEMA … CASCADE` 후 `pg_namespace`에 없어야 한다 |
-| SQLite | 테스트 임시 디렉터리의 파일 `dfx_<pid>_<index>.sqlite` | 파일과 journal 파일을 삭제하며 남아 있으면 안 된다 |
+| SQLite | 테스트 임시 디렉터리의 파일 `dfx_<pid>_<index>.sqlite`, 필요하면 `dfx_<pid>_<index>_b.sqlite` | 파일과 journal 파일을 삭제하며 남아 있으면 안 된다 |
 
 ## 실행
 
