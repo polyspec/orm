@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.6: `make dbspec-apply-pairs-check`는 Go, PHP, TypeScript, Rust client의 모든 순서쌍에 대해 MySQL, PostgreSQL, SQLite에서 한 client로 chain의 첫 plan을, 다른 client로 나머지를 적용하고, MySQL에서 한 client가 멈춘 plan을 다른 client가 끝낸다.
+
 - T8.6.2.2: Go, TypeScript, Rust는 PHP처럼 apply의 정리 error를 확인한다. TypeScript와 Rust는 아무것도 풀지 않은 PostgreSQL unlock을 거부하고, Go는 정리 error가 없는 실패를 그대로 돌려주며, docs/plans.md는 각 client가 정리 error가 있는 실패를 보고하는 형식을 적는다.
 
 - T8.6.3.1: 실패한 PHP apply는 정리 error를 실패와 함께 `Orm\Dbspec\ApplyCleanupError`로 보고하고, 아무것도 풀지 않은 advisory unlock은 error이며, row 없는 MySQL 효과 query와 닫을 수 없는 result는 error다.
