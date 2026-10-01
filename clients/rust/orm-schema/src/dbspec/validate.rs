@@ -2,7 +2,7 @@
 //! settings, `use` and diagrams.
 
 use super::model::*;
-use super::parser::{name_problem, well_formed, Diag};
+use super::parser::{name_problem, well_formed, Diag, FailedKeys};
 use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -25,6 +25,7 @@ enum Lookup<'d> {
 struct TableScope<'s, 'd> {
     table: &'d Table,
     unresolved: Option<&'s HashSet<&'d str>>,
+    failed_keys: FailedKeys,
 }
 
 impl<'s, 'd> TableScope<'s, 'd> {
@@ -42,6 +43,7 @@ struct Scope<'d> {
     tables: HashMap<&'d str, usize>,
     document: &'d Document,
     failed: Vec<HashSet<&'d str>>,
+    failed_keys: &'d [FailedKeys],
     used: HashMap<&'d str, &'d Table>,
     /// Tables of `use` lines whose document or table failed; references to them report nothing more.
     unresolved: HashSet<&'d str>,
@@ -49,7 +51,11 @@ struct Scope<'d> {
 
 impl<'d> Scope<'d> {
     fn own(&self, index: usize) -> TableScope<'_, 'd> {
-        TableScope { table: &self.document.tables[index], unresolved: Some(&self.failed[index]) }
+        TableScope {
+            table: &self.document.tables[index],
+            unresolved: Some(&self.failed[index]),
+            failed_keys: self.failed_keys.get(index).copied().unwrap_or_default(),
+        }
     }
 
     /// A table of the document or a used table.
@@ -57,7 +63,7 @@ impl<'d> Scope<'d> {
         if let Some(index) = self.tables.get(name) {
             return Some(self.own(*index));
         }
-        self.used.get(name).map(|table| TableScope { table, unresolved: None })
+        self.used.get(name).map(|table| TableScope { table, unresolved: None, failed_keys: FailedKeys::default() })
     }
 
     /// A malformed table name, already reported, or a table of a failed `use` line.
@@ -68,9 +74,9 @@ impl<'d> Scope<'d> {
 
 /// Validates `document`. `used` holds, for each `use` line, the used document
 /// when it was found and is valid; a missing or invalid one is already reported.
-pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], used: &[Option<&Document>], diags: &mut Vec<Diag>) {
+pub(crate) fn validate(document: &Document, unresolved: &[Vec<String>], failed_keys: &[FailedKeys], used: &[Option<&Document>], diags: &mut Vec<Diag>) {
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
-    let mut scope = Scope { tables: HashMap::new(), document, failed, used: HashMap::new(), unresolved: HashSet::new() };
+    let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
@@ -218,7 +224,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             let sole_key = table.primary.first().is_some_and(|key| key.columns.len() == 1 && key.columns[0].text == column.name.text);
             if identities > 1 {
                 self.report(pos, "column", "a table has at most one identity column");
-            } else if !sole_key {
+            } else if !sole_key && !self.own.failed_keys.primary {
                 self.report(pos, "column", "an identity column is the only primary key column");
             }
         }
@@ -227,6 +233,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
     fn keys(&mut self) {
         let table = self.own.table;
         match table.primary.split_first() {
+            None if self.own.failed_keys.primary => {}
             None => self.report(table.name.pos, "key", format!("table '{}' has no primary key", table.name.text)),
             Some((first, rest)) => {
                 self.key_columns(first.columns.iter().map(|n| (n, false)), first.pos, true);
@@ -319,7 +326,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             let references: Vec<&str> = key.references.iter().map(|n| n.text.as_str()).collect();
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
             let keyed = target.table.primary.first().is_some_and(|p| same(&p.columns)) || target.table.uniques.iter().any(|u| same(&u.columns));
-            if !keyed {
+            if !keyed && !target.failed_keys.any {
                 self.report(key.name.pos, "foreign_key", format!("the referenced columns are not the primary key or a unique key of '{}'", key.table.text));
             }
             if children.iter().zip(&parents).any(|(c, p)| c.ty != p.ty) {
@@ -338,7 +345,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let indexed = table.primary.iter().any(|p| leads(&mut p.columns.iter().map(|n| n.text.as_str())))
             || table.uniques.iter().any(|u| leads(&mut u.columns.iter().map(|n| n.text.as_str())))
             || table.indexes.iter().any(|i| leads(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
-        if !indexed {
+        if !indexed && !self.own.failed_keys.any {
             self.report(key.name.pos, "foreign_key", "no index or key of the table leads with the foreign key's columns");
         }
     }

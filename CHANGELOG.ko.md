@@ -1,5 +1,10 @@
 # 변경 이력
 
+Rust client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.1).
+parse와 emit이 공유 case 50개를 통과하고, 2000-table 부하 문서를 release
+mode에서 median 29-31 ms에 parse한다. Rust symbol snapshot이 이제 code와
+같으므로 interface-check가 네 언어 모두에서 통과한다.
+
 각 client의 dbspec parse budget을 부하 문서 parse 다섯 번의 median으로
 판정한다. machine의 다른 부하로 느려진 parse는 더 이상 check를 실패시키지
 않고, 느린 parser는 여전히 실패한다(T8.2.4.2).

@@ -256,7 +256,7 @@ impl Setting {
     /// The name that orders repeated lines of one kind: the codec column or the navigation foreign key.
     pub fn sort_name(&self) -> &str {
         match self {
-            Setting::Codec(column, _) => &column.text,
+            Setting::Codec(column, _) | Setting::BlindIndex(column, _) => &column.text,
             Setting::Navigation(key, _, _) => &key.text,
             _ => "",
         }
