@@ -1,5 +1,13 @@
 # 변경 이력
 
+TypeScript 생성기 scan에서 model chain의 method 호출만 타입으로 만든다(N12).
+scan은 소스 파일의 모든 method 호출 이름을 모아 그 이름을 받는 모든 model에
+선언했으므로, model이 아닌 class의 `this.enabled()` 같은 호출이 model method를
+더했고 그 호출을 지우면 method도 사라졌다. 이제 scan은 소스에서 각 receiver를
+해석한다: 생성 class의 `new`, binding, 타입이 있는 parameter, model을 돌려주는
+function, model chain, model callback, model의 row와 collection. method는
+receiver가 해석된 model에만 선언한다. 사용 안내서가 규칙을 적는다.
+
 모든 driver 오류를 catalog code를 가진 ORM 오류로 보고한다(N11). PHP
 클라이언트는 `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기처럼 catalog에
 없는 driver 오류를 `PDOException` 그대로 돌려주었고, Go 클라이언트는 바꾸지 않고

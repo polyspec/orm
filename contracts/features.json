@@ -842,7 +842,8 @@
         "clients/php/tests/engine_test.php",
         "clients/typescript/tests/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
-        "internal/ormgen/fuzz_test.go"
+        "internal/ormgen/fuzz_test.go",
+        "clients/typescript/tests/generate-scan.mjs"
       ],
       "docs": [
         "docs/dsl.md",

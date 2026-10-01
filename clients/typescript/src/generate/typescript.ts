@@ -1,13 +1,13 @@
 // models.ts generation. The file declares one class per entity with the
 // fixed column methods. Methods named by the chain grammar are resolved at
-// run time from the method name; their types are declared for the names the
-// scanned sources call, so an unknown name or a wrong value type fails the
-// type check.
+// run time from the method name; their types are declared on a model for the
+// names the scanned sources call on that model, so an unknown name or a wrong
+// value type fails the type check.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Column, Entity, LoadedManifest, Manifest } from '../engine/manifest.js';
 import { category, checkColumnNames, columnName, functionColumn, numeric, parseChain, pascal, splitPair, validOrder, type ChainKey } from './names.js';
-import { scanCallNames } from './scan.js';
+import { scanModelCalls } from './scan.js';
 
 function tsString(s: string): string {
   return `'${s.replaceAll('\\', '\\\\').replaceAll("'", "\\'").replaceAll('\n', '\\n').replaceAll('\r', '\\r')}'`;
@@ -252,13 +252,14 @@ function runtimeImport(outDir: string): string {
 export function renderTypeScript(loaded: LoadedManifest, outDir: string, scan: readonly string[]): string {
   const m = loaded.manifest;
   checkColumnNames(m);
-  const names = scanCallNames(scan);
+  const calls = scanModelCalls(scan, new Set(m.order.map(pascal)));
+  const names = [...new Set([...calls.values()].flatMap(set => [...set]))].sort(byteOrder);
   const g = new Generator(m);
   for (const entity of m.order) {
     const e = m.entities[entity]!;
     const statics = staticNames(e);
     const declared = new Map<string, string>();
-    for (const name of names) {
+    for (const name of [...(calls.get(pascal(entity)) ?? [])].sort(byteOrder)) {
       if (statics.has(name)) continue;
       const decl = g.declare(e, name);
       if (decl !== undefined) declared.set(name, decl);

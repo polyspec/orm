@@ -1,5 +1,15 @@
 # Changelog
 
+Type only the method calls of model chains in the TypeScript generator
+scan (N12). The scan collected the name of every method call of a source
+file and declared it on every model whose schema accepted it, so a call
+such as `this.enabled()` of a class that is not a model added a model method and
+removing the call removed it. The scan now resolves each receiver from
+the source: `new` of a generated class, bindings, typed parameters,
+functions that return a model, model chains, model callbacks, and rows
+and collections of models. It declares a method only on the model its
+receiver resolves to. The usage guide states the rule.
+
 Report every driver error as an ORM error with a catalog code (N11). The
 PHP client returned a driver error that the catalog does not list, such as
 a write that an `orm:audit` or `orm:immutable` trigger refuses, as a raw
