@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.3.1: a failed PHP apply reports its cleanup errors with the failure through `Orm\Dbspec\ApplyCleanupError`, an advisory unlock that released nothing is an error, and a MySQL effect query without a row or a result that cannot be closed is an error.
+
 - T8.6.2.1: a failed Go apply reports its cleanup errors together with the failure, and a MySQL effect query without a row is an error.
 
 - T8.7.4: the TypeScript client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.

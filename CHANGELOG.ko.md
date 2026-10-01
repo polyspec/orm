@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.3.1: 실패한 PHP apply는 정리 error를 실패와 함께 `Orm\Dbspec\ApplyCleanupError`로 보고하고, 아무것도 풀지 않은 advisory unlock은 error이며, row 없는 MySQL 효과 query와 닫을 수 없는 result는 error다.
+
 - T8.6.2.1: 실패한 Go apply는 정리 error를 실패와 함께 보고하고, row 없는 MySQL 효과 query는 error다.
 
 - T8.7.4: TypeScript client가 dbspec 문서를 표준 Mermaid erDiagram으로 export하고, 각각이 빼는 것의 목록과 함께 import한다.

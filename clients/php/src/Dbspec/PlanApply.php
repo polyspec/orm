@@ -115,8 +115,8 @@ final class PlanApply
 
     /**
      * dialect 의 lock 을 잡고 f 를 실행한다. SQLite 는 apply 전체를 한 transaction 으로
-     * 실행하며 그 transaction 이 lock 이다. f 가 실패하면 그 error 를 돌려주고, 그때
-     * lock 을 놓거나 rollback 하다 난 error 는 Go engine 처럼 버린다.
+     * 실행하며 그 transaction 이 lock 이다. f 가 실패해도 lock 을 놓고 transaction 을
+     * 끝내며, 그때 난 error 는 finish 가 f 의 error 와 함께 던진다.
      *
      * @param \Closure(): void $f
      */
@@ -125,54 +125,91 @@ final class PlanApply
         $h = self::HISTORY;
         switch ($this->r->dialect) {
             case 'mysql':
-                $got = $this->c->query("SELECT GET_LOCK('$h', 0)")->fetchColumn();
+                $got = $this->queryValue("SELECT GET_LOCK('$h', 0)");
                 if ($got !== 1 && $got !== '1') {
                     throw new ApplyError('locked', '', 0, "another session holds GET_LOCK('$h')");
                 }
                 $this->finish($f, fn(bool $ok) => $this->c->exec("DO RELEASE_LOCK('$h')"));
                 return;
             case 'postgres':
-                if ($this->c->query("SELECT pg_try_advisory_lock(hashtext('$h'))")->fetchColumn() !== true) {
+                if ($this->queryValue("SELECT pg_try_advisory_lock(hashtext('$h'))") !== true) {
                     throw new ApplyError('locked', '', 0, "another session holds the advisory lock of $h");
                 }
-                $this->finish($f, fn(bool $ok) => $this->c->query("SELECT pg_advisory_unlock(hashtext('$h'))")->fetchColumn());
+                $this->finish($f, function (bool $ok) use ($h): void {
+                    if ($this->queryValue("SELECT pg_advisory_unlock(hashtext('$h'))") !== true) {
+                        throw new \RuntimeException("the advisory lock of $h was not held at unlock");
+                    }
+                });
                 return;
         }
         $this->c->exec('PRAGMA foreign_keys = OFF');
+        $busy = null;
         try {
             $this->c->exec('BEGIN IMMEDIATE');
         } catch (\PDOException $e) {
-            $this->c->exec('PRAGMA foreign_keys = ON');
-            throw new ApplyError('locked', '', 0, 'another connection holds the SQLite write lock', $e);
+            $busy = new ApplyError('locked', '', 0, 'another connection holds the SQLite write lock', $e);
         }
-        $this->finish($f, function (bool $ok): void {
-            try {
-                $this->c->exec($ok ? 'COMMIT' : 'ROLLBACK');
-            } finally {
-                $this->c->exec('PRAGMA foreign_keys = ON');
-            }
-        });
+        $restore = fn(bool $ok) => $this->c->exec('PRAGMA foreign_keys = ON');
+        if ($busy !== null) {
+            $this->finish(static fn() => throw $busy, $restore);
+            return;
+        }
+        $this->finish($f, fn(bool $ok) => $this->c->exec($ok ? 'COMMIT' : 'ROLLBACK'), $restore);
     }
 
     /**
-     * f 를 실행하고 end(성공 여부) 로 마무리한다. f 의 error 가 end 의 error 보다 앞선다.
+     * f 를 실행한 뒤 f 의 성공 여부를 받는 end 를 앞의 실패와 상관없이 차례로 모두
+     * 실행한다. error 가 하나면 그것을 그대로 던지고, 여럿이면 첫 error 와 그 뒤의 정리
+     * error 를 함께 담은 ApplyCleanupError 를 던진다.
      *
      * @param \Closure(): void $f
-     * @param \Closure(bool): mixed $end
+     * @param \Closure(bool): mixed ...$ends
      */
-    private function finish(\Closure $f, \Closure $end): void
+    private function finish(\Closure $f, \Closure ...$ends): void
     {
+        $errors = [];
         try {
             $f();
         } catch (\Throwable $e) {
-            try {
-                $end(false);
-            } catch (\Throwable) {
-                // Go engine 과 같이 앞선 error 를 돌려준다.
-            }
-            throw $e;
+            $errors[] = $e;
         }
-        $end(true);
+        $ok = $errors === [];
+        foreach ($ends as $end) {
+            try {
+                $end($ok);
+            } catch (\Throwable $e) {
+                $errors[] = $e;
+            }
+        }
+        if (count($errors) === 1) {
+            throw $errors[0];
+        }
+        if ($errors !== []) {
+            throw new ApplyCleanupError($errors[0], array_slice($errors, 1));
+        }
+    }
+
+    /**
+     * query 가 돌려준 첫 row 의 첫 값. row 가 없거나 result 를 닫지 못하면 error 다.
+     *
+     * @param list<mixed> $args
+     */
+    private function queryValue(string $query, array $args = []): mixed
+    {
+        $s = $this->c->prepare($query);
+        $row = false;
+        $this->finish(function () use ($s, $args, $query, &$row): void {
+            $s->execute($args);
+            $row = $s->fetch(\PDO::FETCH_NUM);
+            if ($row === false) {
+                throw new \RuntimeException("$query returned no row");
+            }
+        }, function (bool $ok) use ($s, $query): void {
+            if (!$s->closeCursor()) {
+                throw new \RuntimeException("closing the result of $query failed");
+            }
+        });
+        return $row[0];
     }
 
     /** history table 을 없을 때 만든다. */
@@ -325,7 +362,7 @@ final class PlanApply
         }
         if ($this->r->dialect === 'sqlite') {
             $query = 'SELECT COUNT(*) FROM pragma_foreign_key_check';
-            $broken = CatalogRows::integer(CatalogRows::read($this->c, $query)[0], 0, $query);
+            $broken = CatalogRows::integer([$this->queryValue($query)], 0, $query);
             if ($broken > 0) {
                 throw new ApplyError('verify', $plan->name, 0, "$broken rows break a foreign key");
             }
@@ -365,9 +402,7 @@ final class PlanApply
             if ($query === null) {
                 return false;
             }
-            $s = $this->c->prepare($query);
-            $s->execute($args);
-            $n = CatalogRows::integer([$s->fetchColumn()], 0, $query);
+            $n = CatalogRows::integer([$this->queryValue($query, $args)], 0, $query);
             return ($n > 0) === $present;
         }
         throw new \RuntimeException("statement \"$statement\" has no known effect");
