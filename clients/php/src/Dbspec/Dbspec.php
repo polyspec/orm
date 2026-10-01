@@ -142,4 +142,41 @@ final class Dbspec
         [$diff, $diagnostics] = PlanDiff::of($source, $plan);
         return $diff === null ? PlanStatementsResult::invalid($diagnostics) : PlanStatementsResult::valid(PlanStatements::write($diff, $renderer));
     }
+
+    /**
+     * Applies the plans of the chain that the database of the connection has
+     * not applied, one plan at a time (docs/plans.md "Apply"): it takes the
+     * lock, keeps the history table `dbspec$plans`, checks the state, runs
+     * the statements and verifies each plan. `$now` gives the time recorded
+     * as `applied_at`; `$events` receives each ApplyEvent, and an exception it
+     * throws stops apply there and propagates. A failure is an ApplyError;
+     * an unknown dialect, or a connection whose error mode is not
+     * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
+     * has applied the whole chain stays unchanged.
+     *
+     * @param list<Plan> $plans
+     * @param \Closure(): \DateTimeInterface $now
+     * @param ?\Closure(ApplyEvent): void $events
+     */
+    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    {
+        PlanApply::apply($connection, $dialect, $plans, $now, $events);
+    }
+
+    /**
+     * Finishes the plan that a stopped MySQL apply left `running`: it checks
+     * in the catalog the effect of the statement at the recorded step,
+     * continues after it when the effect is there and from it when not, then
+     * verifies the plan and records it `done` (docs/plans.md "Apply",
+     * recovery). Without a running plan nothing changes. Failures and
+     * arguments are as for apply.
+     *
+     * @param list<Plan> $plans
+     * @param \Closure(): \DateTimeInterface $now
+     * @param ?\Closure(ApplyEvent): void $events
+     */
+    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    {
+        PlanApply::recover($connection, $dialect, $plans, $now, $events);
+    }
 }

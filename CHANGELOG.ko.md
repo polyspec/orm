@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.3: PHP client는 `Orm\Dbspec\Dbspec::apply`로 lock, history, drift 검사, transaction, 검증, event와 함께 plan chain을 적용하고, `Dbspec::recover`로 중단된 MySQL plan을 복구한다. introspection은 `dbspec$plans`를 뺀다.
+
 - T8.5.3: PHP client는 `Orm\Dbspec\Dbspec`으로 schema plan을 parse, chain, diff하고 쓴다. `make dbspec-plan-php-check`가 이를 MySQL, PostgreSQL, SQLite에 적용한다.
 
 - T8.2.6.1.3: Korean protocol 문서가 manifest 절을 ASCII anchor로 가리킨다.
