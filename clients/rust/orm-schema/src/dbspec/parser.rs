@@ -14,8 +14,10 @@ pub(crate) const MAX_TABLE_COLUMNS: usize = 1000;
 pub(crate) const MAX_NAME_BYTES: usize = 63;
 
 /// Words that are not valid names.
-const RESERVED: [&str; 15] =
-    ["dbspec", "use", "table", "diagram", "primary", "unique", "index", "foreign", "check", "settings", "null", "identity", "default", "true", "false"];
+const RESERVED: [&str; 21] = [
+    "dbspec", "use", "table", "diagram", "primary", "unique", "index", "foreign", "check", "settings", "null", "identity", "default", "true", "false", "and",
+    "or", "not", "in", "between", "is",
+];
 
 /// A name that matches `[a-z][a-z0-9_]*`, is not reserved and has at most 63 bytes.
 pub(crate) fn well_formed(text: &str) -> bool {

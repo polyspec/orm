@@ -1,5 +1,9 @@
 # 변경 이력
 
+모든 client에서 `and`, `or`, `not`, `in`, `between`, `is`를 dbspec
+예약어로 해 check predicate가 keyword 이름의 column을 읽지 않게
+한다(T8.1.6).
+
 contracts/interfaces.json에 `Dbspec.render`를 선언하고, `make
 dbspec-compare-check`에서 네 client의 렌더링 statement를 비교한다(T8.3.6).
 

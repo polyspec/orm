@@ -27,7 +27,7 @@ final class Parser
     private const MAX_KEY_VARCHAR = 640;
     /** The rule table of docs/dbspec.md, in its order, which orders diagnostics at one position. */
     private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
-    private const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false'];
+    private const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is'];
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
 

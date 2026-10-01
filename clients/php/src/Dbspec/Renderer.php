@@ -497,7 +497,7 @@ final class Renderer
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token) && (!isset(self::KEYWORDS[$token]) || $this->findColumn($token) !== null)) {
+        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token) && !isset(self::KEYWORDS[$token])) {
             $this->at++;
             return ['column', $this->findColumn($token) ?? $this->invalid("`$token` is not a column of the table")];
         }

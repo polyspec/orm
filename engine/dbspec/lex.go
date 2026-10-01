@@ -246,6 +246,7 @@ var reservedWords = map[string]bool{
 	"dbspec": true, "use": true, "table": true, "diagram": true, "primary": true,
 	"unique": true, "index": true, "foreign": true, "check": true, "settings": true,
 	"null": true, "identity": true, "default": true, "true": true, "false": true,
+	"and": true, "or": true, "not": true, "in": true, "between": true, "is": true,
 }
 
 func validNameFormat(s string) bool {
