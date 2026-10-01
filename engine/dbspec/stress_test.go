@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -12,9 +13,12 @@ import (
 
 // TestStressDocument parses and emits the shared 2000-table, 60000-column,
 // 10000-foreign-key document that node tests/dbspec/stress.mjs writes, and
-// logs the parse and emit times. The deadline only bounds a hang; the parse
-// budget is recorded from measurement.
-const parseBudget = 100 * time.Millisecond
+// parses it five times. The median parse fails above parseBudget
+// (docs/dbspec.md, "Verification"); the deadline only bounds a hang.
+const (
+	parseBudget = 100 * time.Millisecond
+	parseRuns   = 5
+)
 
 func TestStressDocument(t *testing.T) {
 	root := repositoryRoot(t)
@@ -30,9 +34,16 @@ func TestStressDocument(t *testing.T) {
 		text := stdout.String()
 		t.Logf("stress generate bytes=%d lines=%d elapsed=%s", len(text), strings.Count(text, "\n"), time.Since(generated))
 
-		parseStarted := time.Now()
-		document, diagnostics := Parse(text, nil)
-		parseElapsed := time.Since(parseStarted)
+		var document *Document
+		var diagnostics []Diagnostic
+		parses := make([]time.Duration, parseRuns)
+		for i := range parses {
+			parseStarted := time.Now()
+			document, diagnostics = Parse(text, nil)
+			parses[i] = time.Since(parseStarted)
+		}
+		slices.Sort(parses)
+		parseElapsed := parses[parseRuns/2]
 		if err := expectDocument(document, diagnostics); err != nil {
 			return err
 		}
@@ -45,7 +56,7 @@ func TestStressDocument(t *testing.T) {
 			columns += len(table.Columns)
 			foreignKeys += len(table.ForeignKeys)
 		}
-		t.Logf("stress tables=%d columns=%d foreignKeys=%d parse=%s emit=%s", len(document.Tables), columns, foreignKeys, parseElapsed, emitElapsed)
+		t.Logf("stress tables=%d columns=%d foreignKeys=%d parse min=%s median=%s max=%s emit=%s", len(document.Tables), columns, foreignKeys, parses[0], parseElapsed, parses[parseRuns-1], emitElapsed)
 		if len(document.Tables) != 2000 || columns != 60000 || foreignKeys != 10000 {
 			return fmt.Errorf("stress document has %d tables, %d columns, %d foreign keys", len(document.Tables), columns, foreignKeys)
 		}
@@ -56,7 +67,7 @@ func TestStressDocument(t *testing.T) {
 			return fmt.Errorf("two emissions of the stress document differ")
 		}
 		if parseElapsed > parseBudget {
-			return fmt.Errorf("stress parse took %s, over the %s budget (docs/dbspec.md, Verification)", parseElapsed, parseBudget)
+			return fmt.Errorf("stress median parse took %s, over the %s budget (docs/dbspec.md, Verification)", parseElapsed, parseBudget)
 		}
 		return nil
 	})
