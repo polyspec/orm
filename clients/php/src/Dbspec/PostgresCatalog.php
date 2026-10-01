@@ -96,6 +96,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                 }
                 $column['default'] = $value;
             }
+            $column['type'] = $c->sharedType($column['type']);
             $t->columns[] = $column;
             $quoted[$table][$name] = $quotedName;
             if ($type->name === 'time') {

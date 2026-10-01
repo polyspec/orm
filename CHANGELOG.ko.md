@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.3.1: PHP는 기본 128 MB memory limit 안에서 2000 table stress database를 introspect한다.
+
 - T8.4.2.3: MySQL introspection은 2000 table에서 1분이 넘던 join 대신 catalog query 두 개로 check를 읽는다.
 
 - T8.4.2.2: MySQL introspection은 네 client에서 `ALTER TABLE`이 character set introducer를 다시 쓴 뒤의 renderer CHECK도 알아본다.

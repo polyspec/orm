@@ -84,6 +84,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             } elseif ($default !== null) {
                 $column['default'] = self::defaultLiteral($default, $typ);
             }
+            $column['type'] = $c->sharedType($column['type']);
             $t->columns[] = $column;
             $columns[$table][$name] = $column;
             if ($needsCheck !== '') {

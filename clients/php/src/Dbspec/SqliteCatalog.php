@@ -106,7 +106,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 }
                 $column['default'] = $value;
             }
-            $t->columns[] = ['name' => $column['name'], 'type' => $column['type'], 'null' => $column['null'], 'identity' => $column['identity'], 'default' => $column['default']];
+            $t->columns[] = ['name' => $column['name'], 'type' => $c->sharedType($column['type']), 'null' => $column['null'], 'identity' => $column['identity'], 'default' => $column['default']];
         }
         foreach ($c->tables as $t) {
             $st = $parsed[$t->name];

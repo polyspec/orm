@@ -103,6 +103,7 @@ dbspec-introspect-ts-check:
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_introspect_test.php
+	php clients/php/tests/dbspec_introspect_stress_test.php
 
 # dbspec-introspect-rust-check runs the same round trips and the cases of
 # tests/dbspec/introspect.json through orm::dbspec::introspect of the Rust

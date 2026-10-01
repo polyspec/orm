@@ -16,6 +16,18 @@ final class Catalog
     /** @var list<Unsupported> */
     public array $unsupported = [];
 
+    /** @var array<string, ColumnType> type text 마다 하나의 ColumnType */
+    private array $types = [];
+
+    /**
+     * 같은 type 의 ColumnType 을 하나로 나눠 쓴다. ColumnType 은 readonly 이므로
+     * 공유해도 안전하고, 2000 table 의 catalog 에서 수만 개의 객체를 줄인다.
+     */
+    public function sharedType(ColumnType $type): ColumnType
+    {
+        return $this->types[$type->text()] ??= $type;
+    }
+
     public function report(string $kind, string $table, string $name, string $reason): void
     {
         $this->unsupported[] = new Unsupported($kind, $table, $name, $reason);
@@ -51,18 +63,19 @@ final class Catalog
             // 거부된 table 의 객체는 table 과 함께 빠지므로 따로 보고하지 않는다.
             $rejected = [];
             foreach ($result->diagnostics as $d) {
-                $object = $objects[$d->line] ?? null;
-                if ($object === null) {
+                $packed = $objects[$d->line] ?? null;
+                if ($packed === null) {
                     $found = implode("\n", array_map(static fn(Diagnostic $x): string => "{$x->line}:{$x->column} {$x->rule} {$x->message}", $result->diagnostics));
                     throw new \RuntimeException("Introspected document does not parse:\n$found\n$text");
                 }
+                $object = explode("\0", $packed);
                 if ($object[0] === 'table') {
                     $rejected[$object[1]] = true;
                 }
             }
             $removed = [];
             foreach ($result->diagnostics as $d) {
-                $object = $objects[$d->line];
+                $object = explode("\0", $objects[$d->line]);
                 if ($object[0] !== 'table' && isset($rejected[$object[1]])) {
                     continue;
                 }
@@ -115,7 +128,7 @@ final class Catalog
      * table 을 이름 순으로 쓴 dbspec text 와, 줄 번호마다 그 줄의 객체를
      * 돌려준다. 닫는 괄호와 primary key 줄은 table 에 속한다.
      *
-     * @return array{0: string, 1: array<int, array{0: string, 1: string, 2: string}>}
+     * @return array{0: string, 1: array<int, string>} text 와, 줄 번호마다 "kind\0table\0name"
      */
     private function text(string $name): array
     {
@@ -123,9 +136,11 @@ final class Catalog
         usort($tables, static fn(CatalogTable $a, CatalogTable $b): int => strcmp($a->name, $b->name));
         $lines = ["dbspec 1 $name"];
         $objects = [];
+        // 줄의 객체는 "kind\0table\0name" 문자열로 둔다. 배열보다 작아서 큰 catalog 의
+        // 메모리를 줄인다.
         $add = static function (string $line, array $object) use (&$lines, &$objects): void {
             $lines[] = $line;
-            $objects[count($lines)] = $object;
+            $objects[count($lines)] = implode("\0", $object);
         };
         foreach ($tables as $t) {
             $table = ['table', $t->name, $t->name];

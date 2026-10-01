@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.3.1: PHP introspects the 2000-table stress database within the default 128 MB memory limit.
+
 - T8.4.2.3: MySQL introspection reads checks with two catalog queries instead of a join that took over a minute on 2000 tables.
 
 - T8.4.2.2: MySQL introspection recognizes renderer CHECKs after `ALTER TABLE` rewrites their character set introducers, in the four clients.
