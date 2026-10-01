@@ -5,12 +5,26 @@ declare(strict_types=1);
 // report exactly the listed errors in order. Each case reports its start,
 // result and elapsed time and has its own deadline.
 
-/** @param array<string, list<string>> $lines */
-function dbspec_documents(array $documents, bool $crlf): array
+/**
+ * Joins each document's lines with LF, with CRLF when $crlf is true, or
+ * alternately CRLF and LF (starting with CRLF, no final line end) when
+ * $mixed is true.
+ *
+ * @param array<string, list<string>> $documents
+ */
+function dbspec_documents(array $documents, bool $crlf, bool $mixed = false): array
 {
-    $end = $crlf ? "\r\n" : "\n";
     $texts = [];
     foreach ($documents as $name => $lines) {
+        if ($mixed) {
+            $text = '';
+            foreach ($lines as $i => $line) {
+                $text .= ($i > 0 ? ($i % 2 === 1 ? "\r\n" : "\n") : '') . $line;
+            }
+            $texts[$name] = $text;
+            continue;
+        }
+        $end = $crlf ? "\r\n" : "\n";
         $texts[$name] = implode($end, $lines) . $end;
     }
     return $texts;
@@ -24,7 +38,7 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
         $id = $kind . '/' . $case['id'];
         echo "RUN $id\n";
         $started = hrtime(true);
-        $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false);
+        $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
         $text = $texts[$case['main']];
         $result = Orm\Dbspec\Dbspec::parse($text, $texts);
         if ($kind === 'invalid') {

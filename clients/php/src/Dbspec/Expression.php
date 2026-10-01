@@ -5,6 +5,7 @@ namespace Orm\Dbspec;
 
 /**
  * Parses a check expression of the neutral set and writes its canonical text.
+ * The expression reports only its first diagnostic of any kind.
  * The tokens follow the opening parenthesis of `check <name> (`; the
  * expression ends with the matching parenthesis, which ends the line.
  */
@@ -186,11 +187,11 @@ final class Expression
                 $this->fail('a check expression has no functions');
             }
             if (!isset(self::KEYWORDS[$token]) || isset($this->columns[$token])) {
-                [, $column] = $this->tokens[$this->at];
                 if (!isset($this->columns[$token])) {
-                    $this->errors[] = ['check', $this->line, $column, "`$token` is not a column of the table"];
-                } elseif (isset($this->actionColumns[$token])) {
-                    $this->errors[] = ['check', $this->line, $column, "`$token` is a column of foreign key `{$this->actionColumns[$token]}` with cascade or set_null"];
+                    $this->fail("`$token` is not a column of the table");
+                }
+                if (isset($this->actionColumns[$token])) {
+                    $this->fail("`$token` is a column of foreign key `{$this->actionColumns[$token]}` with cascade or set_null");
                 }
                 $this->take();
                 return;

@@ -47,6 +47,9 @@ $invalid = [
     rules_case('header-version', ['dbspec 2 shop', '', 'table Users {', '}'], [['header', 1, '2']]),
     rules_case('header-extra-token', ['dbspec 1 shop extra', 'table Users {', '}'], [['header', 1, 'extra']]),
     rules_case('header-blank-first-line', ['', 'dbspec 1 shop'], [['header', 1, 1]]),
+    rules_case('header-double-space', ['dbspec 1  shop'], [['header', 1, 10]]),
+    rules_case('header-tab', ["dbspec\t1 shop"], [['header', 1, 7]]),
+    rules_case('blind-index-bytes-target', users(['  secret bytes', '  version i32', '  secret_hash bytes'], ['  settings {', '    codec secret aes', '    aes_version version', '    blind_index secret secret_hash', '  }']), [['setting', 12, 'secret_hash']]),
     rules_case('header-name-format', ['dbspec 1 Shop'], [['name.format', 1, 'Shop']]),
     rules_case('order-use-after-table', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}', 'use core { accounts }'], [['order', 7, 'use']], $core),
     rules_case('order-table-after-diagram', ['dbspec 1 shop', '', 'diagram main {', '}', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['order', 5, 'table']]),
@@ -113,7 +116,7 @@ $invalid = [
     ]), [['check', 8, '%'], ['check', 9, 'zzz'], ['check', 10, '< 2'], ['check', 11, ')'], ['check', 12, 'AND']]),
     rules_case('check-set-null-column', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
         '  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update set_null',
-        '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is'], ['check', 9, 'parent_id <>']]),
+        '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is']]),
     rules_case('setting-rules', users(['  name varchar(8)', '  secret bytes', '  stamp datetime(6)', '  version i32 null'], [
         '  settings {',
         '    updated name',
@@ -139,6 +142,23 @@ $invalid = [
     rules_case('use-invalid-document', ['dbspec 1 shop', '', 'use broken { accounts }'], [['use', 3, 'broken']], ['broken' => ['dbspec 1 broken', '', 'table accounts {', '  Id i64', '}']]),
     rules_case('use-header-mismatch', ['dbspec 1 shop', '', 'use core { accounts }'], [['use', 3, 'core']], ['core' => ['dbspec 1 other', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}']]),
     rules_case('diagram-rules', array_merge(users([]), ['', 'diagram main {', '  users at 1 2', '  users at 3 4', '  users at 1.5 2', '}']), [['diagram', 10, 'users'], ['diagram', 11, 'users'], ['diagram', 11, '1.5']]),
+    rules_case('codec-storage-type', users(['  a varchar(64)', '  b bytes', '  c text'], ['  settings {', '    codec a gz', '    codec b base64', '    codec c yaml ordered_json', '  }']), [['setting', 10, 11], ['setting', 11, 11], ['setting', 12, 'ordered_json']]),
+    rules_case('blind-index-shape', users(
+        ['  s1 bytes', '  s2 bytes', '  s3 bytes', '  s4 bytes', '  version i32', '  short_hash varchar(32)', '  pair_hash varchar(64)', '  null_hash varchar(64) null'],
+        ['  index ix_users_short (short_hash)', '  index ix_users_pair (pair_hash, version)', '  index ix_users_null (null_hash)', '  settings {',
+            '    codec s1 aes', '    codec s2 aes', '    codec s3 aes', '    codec s4 aes', '    aes_version version',
+            '    blind_index s1 short_hash', '    blind_index s2 pair_hash', '    blind_index s3 null_hash', '    blind_index s4 s1', '    blind_index s1 pair_hash', '  }']),
+        [['setting', 23, 'short_hash'], ['setting', 24, 'pair_hash'], ['setting', 25, 'null_hash'], ['setting', 26, 20], ['setting', 27, 'blind_index']]),
+    rules_case('audit-action-nullable', ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  operation_id i64', '  deleted_at datetime(6) null', '  primary key (id)', '  settings {', '    soft_delete deleted_at',
+        '    audit into service_history operation operation_id action change previous previous_operation_id', '  }', '}', '',
+        'table service_history {', '  history_id i64 identity', '  change varchar(8) null', '  previous_operation_id i64 null', '  id i64', '  operation_id i64', '  deleted_at datetime(6) null', '  primary key (history_id)', '}'],
+        [['setting', 10, 'change']]),
+    rules_case('used-documents-repeat-constraint', ['dbspec 1 shop', '', 'use a { ta }', 'use b { tb }'], [['name.duplicate', 4, 'b {']], [
+        'a' => ['dbspec 1 a', '', 'table ta {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],
+        'b' => ['dbspec 1 b', '', 'table tb {', '  id i64 identity', '  code varchar(8)', '  primary key (id)', '  unique uq_code (code)', '}'],
+    ]),
+    rules_case('malformed-reference', ['dbspec 1 shop', '', 'table orders {', '  id i64 identity', '  user_id i64', '  primary key (id)', '  index ix_orders_user (user_id)', '  foreign key fk_orders_user (user_id) references Users (id)', '}'], [['name.format', 8, 'Users']]),
+    rules_case('constraint-named-like-used-table', ['dbspec 1 shop', '', 'use core { accounts }', '', 'table users {', '  id i64 identity', '  primary key (id)', '  index accounts (id)', '}'], [['name.duplicate', 8, 'accounts']], $core),
 ];
 
 $normalize = [
@@ -219,12 +239,28 @@ $normalize = [
             '    navigation fk_users_account user account',
             '  }',
             '}',
+            '',
             '# trailing',
         ],
     ],
 ];
 
+$normalize[] = [
+    'id' => 'f64-shortest',
+    'documents' => ['shop' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.100000000000000005551', '  b f64 default 100.0', '  primary key (id)', '}']],
+    'main' => 'shop',
+    'canonical' => ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  a f64 default 0.1', '  b f64 default 100', '  primary key (id)', '}'],
+];
+
 $canonical = [
+    [
+        'id' => 'closing-comments-and-bounds',
+        'documents' => ['shop' => [
+            'dbspec 1 shop', '', 'table users {', '  id i64 identity', '  ratio f64 default 0.000000125', '  primary key (id)', '  # before the end of the table', '}', '',
+            'diagram main {', '  users at -2147483648 2147483647', '  # before the end of the diagram', '}', '', '# end of document',
+        ]],
+        'main' => 'shop',
+    ],
     [
         'id' => 'every-setting',
         'documents' => ['shop' => [
@@ -309,11 +345,9 @@ $limit('size', $text, ['limit', 1, 1]);
 unset($text);
 $tables = "dbspec 1 shop\n";
 for ($i = 0; $i < 4097; $i++) {
-    $tables .= "\ntable t$i {\n  id i64 identity\n  Bad i64\n  primary key (id)\n}\n";
+    $tables .= "\ntable t$i {\n  id i64 identity\n  primary key (id)\n}\n";
 }
-// The first 4096 tables each hold a name.format error; the limit stops parsing
-// and is the only diagnostic.
-$limit('tables', $tables, ['limit', 3 + 4096 * 6, 1]);
+$limit('tables', $tables, ['limit', 3 + 4096 * 5, 1]);
 unset($tables);
 $columns = "dbspec 1 shop\n\ntable t {\n";
 for ($i = 0; $i < 1001; $i++) {

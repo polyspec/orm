@@ -27,9 +27,9 @@ final class Emitter
             foreach ($diagram->placements as $placement) {
                 $out .= self::comments($placement->comments, '  ') . "  {$placement->table} at {$placement->x} {$placement->y}\n";
             }
-            $out .= self::comments($diagram->closingComments, '') . "}\n";
+            $out .= self::comments($diagram->closingComments, '  ') . "}\n";
         }
-        return $out . self::comments($document->trailingComments, '');
+        return $out . ($document->trailingComments === [] ? '' : "\n" . self::comments($document->trailingComments, ''));
     }
 
     private static function table(Table $table): string
@@ -60,7 +60,11 @@ final class Emitter
         foreach (self::sorted($table->checks, $byName) as $check) {
             $out .= self::comments($check->comments, '  ') . "  check {$check->name} ({$check->expression})\n";
         }
-        if ($table->settings !== null) {
+        $closingComments = $table->closingComments;
+        if ($table->settings !== null && $table->settings->settings === []) {
+            // An empty settings block has no meaning and is omitted; its comments stay before the table's `}`.
+            $closingComments = [...$table->settings->comments, ...$table->settings->closingComments, ...$closingComments];
+        } elseif ($table->settings !== null) {
             $out .= self::comments($table->settings->comments, '  ') . "  settings {\n";
             $rank = array_flip(Setting::KINDS);
             $settings = $table->settings->settings;
@@ -69,9 +73,9 @@ final class Emitter
             foreach ($settings as $setting) {
                 $out .= self::comments($setting->comments, '    ') . '    ' . self::setting($setting) . "\n";
             }
-            $out .= self::comments($table->settings->closingComments, '  ') . "  }\n";
+            $out .= self::comments($table->settings->closingComments, '    ') . "  }\n";
         }
-        return $out . self::comments($table->closingComments, '') . "}\n";
+        return $out . self::comments($closingComments, '  ') . "}\n";
     }
 
     private static function setting(Setting $setting): string
