@@ -1,5 +1,9 @@
 # Changelog
 
+Implement dbspec parse, validation and canonical emit in the Go engine
+(T8.2.2): Parse and Emit pass all 44 shared cases, and the 2000-table
+stress document parses in 48-53 ms.
+
 Implement dbspec parse, validation and canonical emit in the PHP client
 (T8.2.3): Orm\Dbspec\Dbspec::parse and ::emit pass all 44 shared cases,
 and the 2000-table stress document parses in 218-308 ms within 128 MiB.

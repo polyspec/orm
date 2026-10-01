@@ -1,5 +1,9 @@
 # 변경 이력
 
+Go engine에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.2).
+Parse와 Emit이 공유 case 44개를 통과하고, 2000-table 부하 문서를
+48-53 ms에 parse한다.
+
 PHP client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.3).
 Orm\Dbspec\Dbspec::parse와 ::emit이 공유 case 44개를 통과하고,
 2000-table 부하 문서를 128 MiB 안에서 218-308 ms에 parse한다.
