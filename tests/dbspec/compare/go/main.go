@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/polyspec/orm/engine/dbspec"
@@ -22,10 +23,16 @@ type testCase struct {
 	Mixed     bool                `json:"mixed"`
 }
 
+type hashCase struct {
+	ID        string              `json:"id"`
+	Documents map[string][]string `json:"documents"`
+}
+
 type cases struct {
 	Canonical []testCase `json:"canonical"`
 	Normalize []testCase `json:"normalize"`
 	Invalid   []testCase `json:"invalid"`
+	Hashes    []hashCase `json:"hashes"`
 }
 
 // join writes the lines with LF, with CRLF when crlf is true, or with
@@ -68,6 +75,48 @@ func write(out *bufio.Writer, text string, set map[string]string, stress bool) {
 	}
 }
 
+// writeManifest prints the hashes and texts of the case's document set, or
+// the diagnostics of a document or of the set.
+func writeManifest(out *bufio.Writer, c hashCase) {
+	names := make([]string, 0, len(c.Documents))
+	for name := range c.Documents {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var documents []*dbspec.Document
+	for _, name := range names {
+		set := map[string]string{}
+		for other, lines := range c.Documents {
+			if other != name {
+				set[other] = join(lines, false, false)
+			}
+		}
+		document, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
+		if len(diagnostics) > 0 {
+			for _, d := range diagnostics {
+				fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+			}
+			return
+		}
+		documents = append(documents, document)
+	}
+	manifest, diagnostics := dbspec.ManifestOf(documents)
+	if len(diagnostics) > 0 {
+		for _, d := range diagnostics {
+			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		}
+		return
+	}
+	fmt.Fprintf(out, "= manifestHash %s\n= schemaHash %s\n= manifestText\n", manifest.ManifestHash, manifest.SchemaHash)
+	for _, line := range strings.Split(manifest.ManifestText, "\n") {
+		fmt.Fprintf(out, "| %s\n", line)
+	}
+	fmt.Fprintln(out, "= schemaText")
+	for _, line := range strings.Split(manifest.SchemaText, "\n") {
+		fmt.Fprintf(out, "| %s\n", line)
+	}
+}
+
 func main() {
 	if len(os.Args) != 3 {
 		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document>")
@@ -106,6 +155,10 @@ func main() {
 	}
 	fmt.Fprintln(out, "stress")
 	write(out, string(stress), nil, true)
+	for _, c := range all.Hashes {
+		fmt.Fprintf(out, "hashes/%s\n", c.ID)
+		writeManifest(out, c)
+	}
 	if err := out.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

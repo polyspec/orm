@@ -91,8 +91,8 @@ dbspec-compare-check:
 dbspec-rust-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
@@ -147,6 +147,8 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_test.php
 	php clients/php/tests/dbspec_rules_test.php
 	php clients/php/tests/dbspec_rules_test.php
+	php clients/php/tests/dbspec_manifest_test.php
+	php clients/php/tests/dbspec_manifest_test.php
 	php clients/php/tests/dbspec_stress_test.php
 	php clients/php/tests/dbspec_stress_test.php
 
@@ -319,7 +321,7 @@ schema-check:
 # node tests/dbspec/stress.mjs writes, and logs the parse and emit times.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument)$$' -count=1 -v
+	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName)$$' -count=1 -v
 
 schema-cross-language-check:
 	./scripts/schema/cross-language-check.sh

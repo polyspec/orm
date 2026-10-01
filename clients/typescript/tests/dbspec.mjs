@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
@@ -88,3 +88,38 @@ for (const c of cases.invalid) {
     }
   });
 }
+
+// parseSet parses every document of a hashes case against the others, in document name order.
+function parseSet(c) {
+  return Object.keys(c.documents).sort().map(name => {
+    const set = {};
+    for (const [other, lines] of Object.entries(c.documents)) if (other !== name) set[other] = join(lines, false);
+    return parsed(join(c.documents[name], false), set);
+  });
+}
+
+function expectManifest(c, documents) {
+  const result = dbspecManifest(documents);
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.manifest.manifestText, join(c.manifestText, false));
+  assert.equal(result.manifest.schemaText, join(c.schemaText, false));
+  assert.equal(result.manifest.manifestHash, c.manifestHash);
+  assert.equal(result.manifest.schemaHash, c.schemaHash);
+}
+
+assert(cases.hashes.length > 0, 'hashes cases');
+for (const c of cases.hashes) {
+  vector(`hashes ${c.id}`, () => {
+    const documents = parseSet(c);
+    expectManifest(c, documents);
+    // The set is ordered by document name, not by the order given.
+    expectManifest(c, [...documents].reverse());
+  });
+}
+
+vector('manifest rejects a repeated document name', () => {
+  const text = join(['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], false);
+  const result = dbspecManifest([parsed(text, {}), parsed(text, {})]);
+  assert.equal(result.manifest, null);
+  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['name.duplicate', 1, 10]]);
+});

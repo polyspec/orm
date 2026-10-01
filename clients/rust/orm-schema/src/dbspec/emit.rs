@@ -4,8 +4,19 @@
 
 use super::model::*;
 
+/// What an emission writes: the canonical text, the manifest text without
+/// comments and diagrams, or the schema text that also keeps only the schema
+/// settings (docs/dbspec.md, "Manifest and hashes").
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum View {
+    Canonical,
+    Manifest,
+    Schema,
+}
+
 struct Out {
     text: String,
+    view: View,
 }
 
 impl Out {
@@ -18,6 +29,9 @@ impl Out {
     }
 
     fn comments(&mut self, depth: usize, comments: &[String]) {
+        if self.view != View::Canonical {
+            return;
+        }
         for comment in comments {
             self.line(depth, comment);
         }
@@ -38,8 +52,8 @@ fn sorted<T>(items: &[T], key: impl Fn(&T) -> &str) -> Vec<&T> {
     items
 }
 
-pub(crate) fn emit(document: &Document) -> String {
-    let mut out = Out { text: String::with_capacity(64 * (document.tables.len() + 1) * 16) };
+pub(crate) fn emit(document: &Document, view: View) -> String {
+    let mut out = Out { text: String::with_capacity(64 * (document.tables.len() + 1) * 16), view };
     out.line(0, &format!("dbspec 1 {}", document.name.text));
     let uses = sorted(&document.uses, |u| &u.document.text);
     if !uses.is_empty() {
@@ -52,6 +66,9 @@ pub(crate) fn emit(document: &Document) -> String {
     for table in &document.tables {
         out.blank();
         emit_table(&mut out, table);
+    }
+    if view != View::Canonical {
+        return out.text;
     }
     for diagram in &document.diagrams {
         out.blank();
@@ -138,10 +155,10 @@ fn emit_table(out: &mut Out, table: &Table) {
         _ => {}
     }
     closing.extend(&table.closing);
-    if let Some(settings) = table.settings.as_ref().filter(|s| !s.lines.is_empty()) {
+    let lines = table.settings.as_ref().map(|s| (s, written(s, out.view))).filter(|(_, lines)| !lines.is_empty());
+    if let Some((settings, mut lines)) = lines {
         out.comments(1, &settings.comments);
         out.line(1, "settings {");
-        let mut lines: Vec<&SettingLine> = settings.lines.iter().collect();
         lines.sort_by(|a, b| (a.setting.rank(), a.setting.sort_name()).cmp(&(b.setting.rank(), b.setting.sort_name())));
         for line in lines {
             out.comments(2, &line.comments);
@@ -151,9 +168,17 @@ fn emit_table(out: &mut Out, table: &Table) {
         out.line(1, "}");
     }
     for comment in closing {
-        out.line(1, comment);
+        if out.view == View::Canonical {
+            out.line(1, comment);
+        }
     }
     out.line(0, "}");
+}
+
+/// The setting lines that the view writes: every line, or only the schema settings.
+fn written(settings: &Settings, view: View) -> Vec<&SettingLine> {
+    let schema = |line: &&SettingLine| matches!(line.setting, Setting::Immutable | Setting::Audit { .. });
+    settings.lines.iter().filter(|line| view != View::Schema || schema(line)).collect()
 }
 
 fn setting_text(setting: &Setting) -> String {

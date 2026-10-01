@@ -1,5 +1,10 @@
 # Changelog
 
+Compute the manifest text, schema text, `manifestHash` and `schemaHash`
+of a dbspec document set in the Go, PHP, TypeScript and Rust clients
+(`ManifestOf`, `Dbspec::manifest`, `dbspecManifest`, `manifest`), and
+compare them in `make dbspec-compare-check` (T8.2.6.2).
+
 Define the dbspec manifest text, schema text, `manifestHash` and
 `schemaHash`, and make the document set the only schema source with no
 separate manifest file; three shared cases lock the texts and hashes

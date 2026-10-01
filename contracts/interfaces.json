@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:df1f3ed9db4eb3bc93ba7f64880fdd9a5cb6ac9d89eccf140d32691a3acfbcc4",
-    "php": "sha256:2db5f1d05ca395bde1b217acdedac6425e9655e95431e1b3084b3c1ce673bd8d",
-    "rust": "sha256:2485d5617b846569e1238e8a622d65b224831222d955f17dac7d125fcf456531",
-    "typescript": "sha256:2a3eb9f4854b9c8435915fd6a7a28911fc877fd6c9de4cdbace3c6835ade7b58"
+    "go": "sha256:d011d68695c5ab8049dd3fcce05cd42d88e9f223dea1f6d3facaa7b62e703c7c",
+    "php": "sha256:1ba9c0369c89c94463afdb7b4a5a0e0467694cd1b079ea1ce73cdcbd3864bd25",
+    "rust": "sha256:f448b189a51240b02ef49c06dde203389e3d94fb6d5f4b75223b9768adabec8c",
+    "typescript": "sha256:e27c250ec5887d4bf5ab7f020059de7cdd7ad1ecc0dc2e27f4521f927f9739cc"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -359,10 +359,11 @@
       "fields": {},
       "methods": [
         "parse",
-        "emit"
+        "emit",
+        "manifest"
       ],
-      "ownership": "Parses a dbspec document against its declared document set and emits a parsed document in canonical form (docs/dbspec.md).",
-      "ownership_ko": "선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit한다(docs/dbspec.md)."
+      "ownership": "Parses a dbspec document against its declared document set, emits a parsed document in canonical form, and gives the manifest text, schema text and hashes of a document set (docs/dbspec.md).",
+      "ownership_ko": "선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만든다(docs/dbspec.md)."
     },
     {
       "id": "DbspecDocument",
@@ -1352,6 +1353,34 @@
           "signature": "export function emitDbspec(document: DbspecDocument): string"
         }
       }
+    },
+    {
+      "id": "Dbspec.manifest",
+      "for": "once",
+      "inputs": [
+        "DbspecDocumentSet"
+      ],
+      "output": "DbspecManifestResult",
+      "errors": [],
+      "state": "Orders the documents by name and returns their manifest text, schema text, manifestHash and schemaHash; a document name that repeats returns one name.duplicate diagnostic and no manifest",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::ManifestOf",
+          "signature": "func(documents []*Document) (*Manifest, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::manifest",
+          "signature": "public static function manifest(array $documents): Orm\\Dbspec\\ManifestResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::manifest",
+          "signature": "pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::dbspecManifest",
+          "signature": "export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult"
+        }
+      }
     }
   ],
   "sequences": [
@@ -2151,6 +2180,48 @@
             "line",
             "column",
             "message"
+          ]
+        }
+      }
+    },
+    {
+      "id": "DbspecManifest",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::Manifest",
+          "fields": [
+            "ManifestText",
+            "SchemaText",
+            "ManifestHash",
+            "SchemaHash"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Manifest.php::Orm\\Dbspec\\Manifest",
+          "fields": [
+            "manifestText",
+            "schemaText",
+            "manifestHash",
+            "schemaHash"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::Manifest",
+          "fields": [
+            "manifest_text",
+            "schema_text",
+            "manifest_hash",
+            "schema_hash"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::DbspecManifest",
+          "fields": [
+            "manifestText",
+            "schemaText",
+            "manifestHash",
+            "schemaHash"
           ]
         }
       }

@@ -58,7 +58,54 @@ pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Documen
 
 /// Writes `document` in its canonical text.
 pub fn emit(document: &Document) -> String {
-    emit::emit(document)
+    emit::emit(document, emit::View::Canonical)
+}
+
+/// The manifest and schema texts of a document set and their hashes
+/// (docs/dbspec.md, "Manifest and hashes").
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Manifest {
+    pub manifest_text: String,
+    pub schema_text: String,
+    pub manifest_hash: String,
+    pub schema_hash: String,
+}
+
+/// `sha256:` and the lower-case hexadecimal SHA-256 of the text.
+fn text_hash(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(text.as_bytes());
+    let mut out = String::with_capacity(7 + 64);
+    out.push_str("sha256:");
+    for byte in digest {
+        out.push_str(&format!("{byte:02x}"));
+    }
+    out
+}
+
+/// Returns the manifest of the document set, whose documents are taken in
+/// document name order. A document name that repeats in the set is a
+/// `name.duplicate` diagnostic at the header name of the later document.
+pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
+    let mut ordered = documents.to_vec();
+    ordered.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let mut manifest_text = String::new();
+    let mut schema_text = String::new();
+    for (i, document) in ordered.iter().enumerate() {
+        if i > 0 && ordered[i - 1].name.text == document.name.text {
+            return Err(vec![Diagnostic {
+                rule: "name.duplicate".to_owned(),
+                line: 1,
+                column: "dbspec 1 ".len() + 1,
+                message: format!("document {} appears twice in the document set", document.name.text),
+            }]);
+        }
+        manifest_text.push_str(&emit::emit(document, emit::View::Manifest));
+        schema_text.push_str(&emit::emit(document, emit::View::Schema));
+    }
+    let manifest_hash = text_hash(&manifest_text);
+    let schema_hash = text_hash(&schema_text);
+    Ok(Manifest { manifest_text, schema_text, manifest_hash, schema_hash })
 }
 
 /// The rules in the order of the rule table of docs/dbspec.md, which orders

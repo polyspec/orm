@@ -7,7 +7,14 @@
 // document in its one canonical text, so Emit(Parse(s)) == s for canonical s.
 package dbspec
 
-import "sort"
+import (
+	"cmp"
+	"crypto/sha256"
+	"encoding/hex"
+	"slices"
+	"sort"
+	"strings"
+)
 
 // Code is the error code of every dbspec diagnostic.
 const Code = "SCHEMA_INVALID"
@@ -89,5 +96,42 @@ func sortDiagnostics(diagnostics []Diagnostic) {
 // It writes the model as given and does not validate it; a document returned
 // by Parse is valid and its literals are already in canonical form.
 func Emit(document *Document) string {
-	return emitDocument(document)
+	return emitDocument(document, viewCanonical)
+}
+
+// Manifest holds the manifest and schema texts of a document set and their
+// hashes (docs/dbspec.md, "Manifest and hashes").
+type Manifest struct {
+	ManifestText string
+	SchemaText   string
+	ManifestHash string
+	SchemaHash   string
+}
+
+// ManifestOf returns the manifest of the document set, whose documents are
+// taken in document name order. A document name that repeats in the set is a
+// name.duplicate diagnostic at the header name of the later document.
+func ManifestOf(documents []*Document) (*Manifest, []Diagnostic) {
+	ordered := slices.Clone(documents)
+	slices.SortStableFunc(ordered, func(a, b *Document) int { return cmp.Compare(a.Name, b.Name) })
+	var manifest, schema strings.Builder
+	for i, d := range ordered {
+		if i > 0 && ordered[i-1].Name == d.Name {
+			return nil, []Diagnostic{{Rule: RuleNameDuplicate, Line: 1, Column: len("dbspec 1 ") + 1, Message: "document " + d.Name + " appears twice in the document set"}}
+		}
+		manifest.WriteString(emitDocument(d, viewManifest))
+		schema.WriteString(emitDocument(d, viewSchema))
+	}
+	return &Manifest{
+		ManifestText: manifest.String(),
+		SchemaText:   schema.String(),
+		ManifestHash: textHash(manifest.String()),
+		SchemaHash:   textHash(schema.String()),
+	}, nil
+}
+
+// textHash is sha256: and the lower-case hexadecimal SHA-256 of the text.
+func textHash(text string) string {
+	sum := sha256.Sum256([]byte(text))
+	return "sha256:" + hex.EncodeToString(sum[:])
 }

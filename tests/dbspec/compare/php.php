@@ -77,3 +77,52 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
 }
 echo "stress\n";
 dbspec_write($stress, [], true);
+
+/** Prints the diagnostics. @param list<Orm\Dbspec\Diagnostic> $diagnostics */
+function dbspec_diagnostics(array $diagnostics): void
+{
+    foreach ($diagnostics as $d) {
+        echo "! {$d->rule} {$d->line} {$d->column}\n";
+    }
+}
+
+/** Prints the hashes and texts of the case's document set, or the diagnostics of a document or of the set. */
+function dbspec_write_manifest(array $case): void
+{
+    $names = array_keys($case['documents']);
+    sort($names, SORT_STRING);
+    $documents = [];
+    foreach ($names as $name) {
+        $set = [];
+        foreach ($case['documents'] as $other => $lines) {
+            if ($other !== $name) {
+                $set[$other] = dbspec_join($lines, false, false);
+            }
+        }
+        $result = Orm\Dbspec\Dbspec::parse(dbspec_join($case['documents'][$name], false, false), $set);
+        if ($result->document === null) {
+            dbspec_diagnostics($result->diagnostics);
+            return;
+        }
+        $documents[] = $result->document;
+    }
+    $result = Orm\Dbspec\Dbspec::manifest($documents);
+    if ($result->manifest === null) {
+        dbspec_diagnostics($result->diagnostics);
+        return;
+    }
+    $m = $result->manifest;
+    echo "= manifestHash {$m->manifestHash}\n= schemaHash {$m->schemaHash}\n= manifestText\n";
+    foreach (explode("\n", $m->manifestText) as $line) {
+        echo "| $line\n";
+    }
+    echo "= schemaText\n";
+    foreach (explode("\n", $m->schemaText) as $line) {
+        echo "| $line\n";
+    }
+}
+
+foreach ($cases['hashes'] as $case) {
+    echo "hashes/{$case['id']}\n";
+    dbspec_write_manifest($case);
+}
