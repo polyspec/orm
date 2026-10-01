@@ -1,5 +1,7 @@
 # Changelog
 
+- T17.5: the Rust native benchmarks `native` and `driver_compare` decode the bench schema types and read every workload's rows, and `make rust-driver-check` runs them against the seeded bench database.
+
 - T17.4: the Go, PHP and Rust programs of examples/complex print the same compact JSON bytes, and `make example-check` compares the outputs of examples/complex and examples/thin-slice byte for byte against the seeded bench database.
 
 - T8.2.6.4.1: clients/rust/Cargo.lock matches the workspace manifests again, so the `--locked` cargo commands, among them `make rust-check`, run.

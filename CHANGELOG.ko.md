@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T17.5: Rust native benchmark `native`와 `driver_compare`가 bench schema 형을 decode해 모든 workload의 row를 읽고, `make rust-driver-check`가 시드된 bench database에서 이들을 실행한다.
+
 - T17.4: examples/complex의 Go, PHP, Rust 프로그램이 같은 compact JSON byte를 출력하고, `make example-check`가 시드된 bench database에서 examples/complex와 examples/thin-slice의 출력을 byte 단위로 비교한다.
 
 - T8.2.6.4.1: clients/rust/Cargo.lock이 다시 workspace manifest와 일치해 `make rust-check`를 비롯한 `--locked` cargo 명령이 실행된다.
