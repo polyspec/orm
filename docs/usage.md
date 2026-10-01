@@ -196,7 +196,7 @@ Each language generates its models with its own build tool. The generator reads 
 
 ```sh
 go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
 npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```
 
@@ -263,8 +263,21 @@ master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
 ### PHP
 
 ```php
-$master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $aesKey));
+$master = Orm::connect($masterDsn, new Config(aesKey: $aesKey));
 ```
+
+`Orm::connect` takes no schema path: `bootstrap.php` of the generated models registers the runtime model, the manifest text and `manifestHash`, and every request carries that hash. `$db->utils()->schema()->install($documents)` takes the text of every dbspec document of the set.
+
+An audited table (`audit` setting, [dbspec](dbspec.md#audit)) is written inside a transaction that names its operation id; the executor writes the id into the operation column of every audited row the transaction inserts or updates, a soft delete included:
+
+```php
+$master->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+    (new Service)->getBySeq(42)->delete();
+}, operation: $operationId);
+```
+
+The id is an `int` for an `i64` operation column and a lower-case canonical UUID `string` for a `uuid` one. An insert or update of an audited table outside such a transaction, or with an id of the other type, fails with `CONFIG`; assigning the operation column with its setter fails with `IR_INVALID`. A nested transaction uses the id of the outer one and does not take `operation`.
 
 ### Rust
 

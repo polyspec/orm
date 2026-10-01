@@ -196,7 +196,7 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 
 ```sh
 go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
 npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```
 
@@ -263,8 +263,21 @@ master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
 ### PHP
 
 ```php
-$master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $aesKey));
+$master = Orm::connect($masterDsn, new Config(aesKey: $aesKey));
 ```
+
+`Orm::connect`는 schema 경로를 받지 않는다. generated model의 `bootstrap.php`가 runtime model, manifest text, `manifestHash`를 등록하고, 모든 요청은 그 hash를 포함한다. `$db->utils()->schema()->install($documents)`는 집합의 모든 dbspec 문서 text를 받는다.
+
+감사 대상 table(`audit` setting, [dbspec](dbspec.md#audit))은 operation id를 정한 transaction 안에서 쓴다. executor는 transaction이 insert하거나 update하는 모든 감사 대상 행의 operation column에 그 id를 쓰며, soft delete도 포함한다:
+
+```php
+$master->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+    (new Service)->getBySeq(42)->delete();
+}, operation: $operationId);
+```
+
+id는 `i64` operation column이면 `int`, `uuid` column이면 소문자 canonical UUID `string`이다. 그런 transaction 밖에서, 또는 다른 type의 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패하고, operation column을 setter로 지정하면 `IR_INVALID`로 실패한다. 중첩 transaction은 바깥 transaction의 id를 쓰며 `operation`을 받지 않는다.
 
 ### Rust
 
