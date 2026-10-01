@@ -57,8 +57,11 @@ if ($second !== $first) {
 echo "STEP emitted emitMs=$emitMs\n";
 
 $elapsed = (hrtime(true) - $started) / 1e6;
-// The test's own deadline guards a hang; the parse budget is recorded from
-// the first measurement in the checklist, not asserted here before it exists.
+// The parse budget is docs/dbspec.md, "Verification"; the deadline guards a hang.
+$parseBudgetMs = 400;
+if ($parseMs > $parseBudgetMs) {
+    throw new RuntimeException("dbspec_stress parse of $parseMs ms exceeds the $parseBudgetMs ms budget");
+}
 if ($elapsed > 60000) {
     throw new RuntimeException("dbspec_stress deadline of 60 s exceeded ($elapsed ms)");
 }

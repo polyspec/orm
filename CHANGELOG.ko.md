@@ -1,5 +1,10 @@
 # 변경 이력
 
+모든 client의 dbspec parse budget을 docs/dbspec.md에 정하고, Go,
+TypeScript, PHP stress test가 이를 넘으면 실패하게 한다(T8.2.4.1).
+Go, PHP, TypeScript의 모든 native symbol을 contracts/symbols에 기록해
+그 언어들의 interface-check를 통과시킨다.
+
 TypeScript client에 선언된 interface(parseDbspec, emitDbspec,
 DbspecDiagnostic)로 dbspec parse, 검증, canonical emit을 구현한다
 (T8.2.4). 공유 case 44개와 집중 case 45개가 통과하고, 2000-table 부하

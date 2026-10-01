@@ -1,8 +1,8 @@
 // dbspec stress: the 2000-table, 60000-column, 10000-foreign-key canonical
 // document that node tests/dbspec/stress.mjs writes is parsed and emitted;
 // the emission equals the document and a second emission equals the first.
-// Parse and emit times are printed; the TypeScript budget is fixed from the
-// first measurement (docs/dbspec.md, "Verification").
+// Parse and emit times are printed, and the parse fails above the TypeScript
+// budget (docs/dbspec.md, "Verification").
 //
 // Usage: node --test clients/typescript/tests/dbspec-stress.mjs (after the build)
 import test from 'node:test';
@@ -15,6 +15,7 @@ import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 const root = new URL('../../../', import.meta.url);
 const generator = fileURLToPath(new URL('tests/dbspec/stress.mjs', root));
 const TIMEOUT = 60000;
+const PARSE_BUDGET_MS = 250;
 
 function generate() {
   return new Promise((resolve, reject) => {
@@ -46,6 +47,7 @@ test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }
     console.log(`step parse ${parseMs.toFixed(1)} ms emit ${emitMs.toFixed(1)} ms`);
     assert.equal(first, text);
     assert.equal(second, first);
+    assert.ok(parseMs <= PARSE_BUDGET_MS, `parse ${parseMs.toFixed(1)} ms exceeds the ${PARSE_BUDGET_MS} ms budget`);
   } catch (error) {
     console.log(`fail dbspec stress ${(performance.now() - started).toFixed(1)} ms`);
     throw error;
