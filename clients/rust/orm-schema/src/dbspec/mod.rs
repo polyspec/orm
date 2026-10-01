@@ -13,9 +13,11 @@ mod lexer;
 mod literal;
 mod model;
 mod parser;
+mod render;
 mod validate;
 
 pub use model::Document;
+pub use render::{render, Dialect};
 
 use parser::Diag;
 use std::collections::{BTreeMap, HashMap};
