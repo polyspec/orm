@@ -70,9 +70,6 @@ fn json_output_keeps_the_ordered_json_text() {
         let mut row = Secret::from_core(Core::new(&SECRET));
         row.core_mut().set_ordered("config", value.clone());
         assert!(row.assign("config", Val::Ordered(value)).unwrap());
-        assert_eq!(
-            orm::model::to_json(&row).unwrap(),
-            format!(r#"{{"config":{{"kind":"value","value":{text}}}}}"#),
-        );
+        assert_eq!(orm::model::to_json(&row).unwrap(), format!(r#"{{"config":{{"kind":"value","value":{text}}}}}"#),);
     }
 }

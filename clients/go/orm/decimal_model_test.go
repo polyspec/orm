@@ -57,10 +57,16 @@ func TestDecimalModelFixture(t *testing.T) {
 				t.Fatalf("decimal = %q, want %q", actual, tc.Expected)
 			}
 			scaled, err := orm.DecimalScaledInt(tc.Input, column.precision, column.scale)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			decoded, err := orm.DecimalFromScaledInt(scaled, column.precision, column.scale)
-			if err != nil { t.Fatal(err) }
-			if decoded != tc.Expected { t.Fatalf("SQLite decimal = %q, want %q", decoded, tc.Expected) }
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decoded != tc.Expected {
+				t.Fatalf("SQLite decimal = %q, want %q", decoded, tc.Expected)
+			}
 		})
 	}
 }

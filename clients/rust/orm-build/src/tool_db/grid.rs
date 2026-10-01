@@ -30,18 +30,24 @@ pub struct GridQueryResult {
     pub rows: Vec<Vec<GridCell>>,
 }
 
-pub(super) fn postgres_decimal(row:&sqlx::postgres::PgRow,index:usize)->Result<GridCell,sqlx::Error>{
+pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Result<GridCell, sqlx::Error> {
     use sqlx::Row;
-    let invalid=||sqlx::Error::Decode("Unsupported or invalid finite grid decimal".into());
-    let Some(decimal)=row.try_get::<Option<bigdecimal::BigDecimal>,_>(index).map_err(|_|invalid())? else{return Ok(GridCell::Null)};
-    let raw=row.try_get_raw(index)?;
-    let decimal=if raw.format()==sqlx::postgres::PgValueFormat::Binary {
-        let bytes=raw.as_bytes().map_err(|_|invalid())?;
-        if bytes.len()<8{return Err(invalid())}
-        let scale=u16::from_be_bytes([bytes[6],bytes[7]]);
-        let scaled=decimal.with_scale(i64::from(scale));
-        if scaled!=decimal{return Err(invalid())}
+    let invalid = || sqlx::Error::Decode("Unsupported or invalid finite grid decimal".into());
+    let Some(decimal) = row.try_get::<Option<bigdecimal::BigDecimal>, _>(index).map_err(|_| invalid())? else { return Ok(GridCell::Null) };
+    let raw = row.try_get_raw(index)?;
+    let decimal = if raw.format() == sqlx::postgres::PgValueFormat::Binary {
+        let bytes = raw.as_bytes().map_err(|_| invalid())?;
+        if bytes.len() < 8 {
+            return Err(invalid());
+        }
+        let scale = u16::from_be_bytes([bytes[6], bytes[7]]);
+        let scaled = decimal.with_scale(i64::from(scale));
+        if scaled != decimal {
+            return Err(invalid());
+        }
         scaled
-    }else{decimal};
+    } else {
+        decimal
+    };
     Ok(GridCell::Decimal(decimal.to_plain_string()))
 }

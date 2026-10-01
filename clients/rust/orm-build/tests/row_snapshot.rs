@@ -8,8 +8,24 @@ fn fixture() -> TablePage {
             table: TableRef { namespace: "main".into(), name: "fixture".into() },
             kind: TableKind::Table,
             columns: vec![
-                TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false },
-                TableColumnMetadata { name: "b".into(), native_type: "TEXT".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false },
+                TableColumnMetadata {
+                    name: "a".into(),
+                    native_type: "INTEGER".into(),
+                    nullable: false,
+                    generated: false,
+                    automatic_key: false,
+                    default_expression: None,
+                    expression_default: false,
+                },
+                TableColumnMetadata {
+                    name: "b".into(),
+                    native_type: "TEXT".into(),
+                    nullable: false,
+                    generated: false,
+                    automatic_key: false,
+                    default_expression: None,
+                    expression_default: false,
+                },
             ],
             primary_key: vec!["b".into(), "a".into()],
             reliable_row_identity: true,
@@ -26,33 +42,35 @@ fn fixture() -> TablePage {
 }
 #[tokio::test]
 async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
-    let began=std::time::Instant::now();
+    let began = std::time::Instant::now();
     eprintln!("running row_update_verification");
-    tokio::time::timeout(std::time::Duration::from_secs(5),async {
-        let page=fixture();
-        let original=RowSnapshot::from_page(&page,0).unwrap();
-        let changes=vec![("b".to_owned(),GridCell::Text("assigned".into()))];
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let page = fixture();
+        let original = RowSnapshot::from_page(&page, 0).unwrap();
+        let changes = vec![("b".to_owned(), GridCell::Text("assigned".into()))];
         original.validate_update(&changes).unwrap();
-        let mut current=page.result.clone();
-        current.rows[0][1]=GridCell::Text("assigned".into());
-        original.check_updated(&page.metadata,&current,&changes).unwrap();
-        current.rows[0][0]=GridCell::Integer(0);
-        assert!(original.check_updated(&page.metadata,&current,&changes).unwrap_err().starts_with("ROW_WRITE_MISMATCH"));
-        current=page.result.clone();
-        assert!(original.check_updated(&page.metadata,&current,&changes).unwrap_err().starts_with("ROW_WRITE_MISMATCH"));
-        for invalid in [vec![],vec![("absent".into(),GridCell::Null)],vec![("b".into(),GridCell::Null)],vec![changes[0].clone(),changes[0].clone()]] {
+        let mut current = page.result.clone();
+        current.rows[0][1] = GridCell::Text("assigned".into());
+        original.check_updated(&page.metadata, &current, &changes).unwrap();
+        current.rows[0][0] = GridCell::Integer(0);
+        assert!(original.check_updated(&page.metadata, &current, &changes).unwrap_err().starts_with("ROW_WRITE_MISMATCH"));
+        current = page.result.clone();
+        assert!(original.check_updated(&page.metadata, &current, &changes).unwrap_err().starts_with("ROW_WRITE_MISMATCH"));
+        for invalid in [vec![], vec![("absent".into(), GridCell::Null)], vec![("b".into(), GridCell::Null)], vec![changes[0].clone(), changes[0].clone()]] {
             assert!(original.validate_update(&invalid).is_err());
         }
-        let mut generated=fixture();
-        generated.metadata.columns[1].generated=true;
-        let snapshot=RowSnapshot::from_page(&generated,0).unwrap();
+        let mut generated = fixture();
+        generated.metadata.columns[1].generated = true;
+        let snapshot = RowSnapshot::from_page(&generated, 0).unwrap();
         assert!(snapshot.validate_update(&changes).is_err());
-        let assigned=vec![("a".into(),GridCell::Integer(42))];
-        let mut result=generated.result.clone();
-        result.rows[0]=vec![GridCell::Integer(42),GridCell::Text("recomputed".into())];
-        snapshot.check_updated(&generated.metadata,&result,&assigned).unwrap();
-    }).await.expect("row update verification deadline");
-    eprintln!("passed row_update_verification {:?}",began.elapsed());
+        let assigned = vec![("a".into(), GridCell::Integer(42))];
+        let mut result = generated.result.clone();
+        result.rows[0] = vec![GridCell::Integer(42), GridCell::Text("recomputed".into())];
+        snapshot.check_updated(&generated.metadata, &result, &assigned).unwrap();
+    })
+    .await
+    .expect("row update verification deadline");
+    eprintln!("passed row_update_verification {:?}", began.elapsed());
 }
 #[tokio::test]
 async fn row_baseline_preserves_immutable_values_and_key_order() {

@@ -1,4 +1,7 @@
-use orm_build::{catalog::CatalogConnection, tool_db::{self, GridCell, QueryLimits}};
+use orm_build::{
+    catalog::CatalogConnection,
+    tool_db::{self, GridCell, QueryLimits},
+};
 
 #[tokio::test]
 async fn grid_numbers_preserve_native_bits_and_unsigned_range() {
@@ -19,28 +22,42 @@ async fn check() {
         let (database, seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
         drop(seed);
         let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
-        let sql = match dialect { "postgres" => "SELECT 1.5::double precision", "mysql" => "SELECT CAST(1.5 AS DOUBLE)", _ => "SELECT 1.5" };
+        let sql = match dialect {
+            "postgres" => "SELECT 1.5::double precision",
+            "mysql" => "SELECT CAST(1.5 AS DOUBLE)",
+            _ => "SELECT 1.5",
+        };
         match catalog.read_only_grid_query(sql, &[], QueryLimits::default()).await {
-            Ok(result) if result.rows == vec![vec![GridCell::Float64(1.5f64.to_bits())]] => {},
+            Ok(result) if result.rows == vec![vec![GridCell::Float64(1.5f64.to_bits())]] => {}
             _ => failures.push("float64"),
         }
-        if !catalog.read_only_grid_query(sql, &[], QueryLimits { max_rows: 1, max_bytes: 2 }).await.err().is_some_and(|error| error.contains("TOOL_QUERY_LIMIT")) {
+        if !catalog
+            .read_only_grid_query(sql, &[], QueryLimits { max_rows: 1, max_bytes: 2 })
+            .await
+            .err()
+            .is_some_and(|error| error.contains("TOOL_QUERY_LIMIT"))
+        {
             failures.push("numeric-byte-budget");
         }
-        let null_sql = match dialect { "postgres" => "SELECT NULL::double precision", "mysql" => "SELECT CAST(NULL AS DOUBLE)", _ => "SELECT CAST(NULL AS REAL)" };
+        let null_sql = match dialect {
+            "postgres" => "SELECT NULL::double precision",
+            "mysql" => "SELECT CAST(NULL AS DOUBLE)",
+            _ => "SELECT CAST(NULL AS REAL)",
+        };
         match catalog.read_only_grid_query(null_sql, &[], QueryLimits::default()).await {
-            Ok(result) if result.rows == vec![vec![GridCell::Null]] => {},
+            Ok(result) if result.rows == vec![vec![GridCell::Null]] => {}
             _ => failures.push("numeric-null"),
         }
         if dialect == "mysql" {
             match catalog.read_only_grid_query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[], QueryLimits::default()).await {
-                Ok(result) if result.rows == vec![vec![GridCell::Unsigned(u64::MAX)]] => {},
+                Ok(result) if result.rows == vec![vec![GridCell::Unsigned(u64::MAX)]] => {}
                 _ => failures.push("unsigned-range"),
             }
         }
         if dialect == "postgres" {
             match catalog.read_only_grid_query("SELECT 1.5::real, '-0'::double precision, 'NaN'::double precision", &[], QueryLimits::default()).await {
-                Ok(result) if matches!(result.rows[0].as_slice(), [GridCell::Float32(bits), GridCell::Float64(zero), GridCell::Float64(nan)] if *bits == 1.5f32.to_bits() && *zero == (-0.0f64).to_bits() && f64::from_bits(*nan).is_nan()) => {},
+                Ok(result) if matches!(result.rows[0].as_slice(), [GridCell::Float32(bits), GridCell::Float64(zero), GridCell::Float64(nan)] if *bits == 1.5f32.to_bits() && *zero == (-0.0f64).to_bits() && f64::from_bits(*nan).is_nan()) =>
+                    {}
                 _ => failures.push("float-width-specials"),
             }
         }

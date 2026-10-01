@@ -3,8 +3,8 @@ use orm_build::{
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    Arc,
     atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
 #[path = "row_insert_identity/expression.rs"]

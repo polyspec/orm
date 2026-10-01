@@ -1,5 +1,9 @@
 # Changelog
 
+Add `make go-fmt-check` to `make check`, format the six Go files that
+gofmt would change, and format the Rust workspace so `make
+rust-fmt-check` passes again (T11).
+
 Compute the manifest text, schema text, `manifestHash` and `schemaHash`
 of a dbspec document set in the Go, PHP, TypeScript and Rust clients
 (`ManifestOf`, `Dbspec::manifest`, `dbspecManifest`, `manifest`), and

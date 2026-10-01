@@ -247,7 +247,9 @@ async fn sqlite_migration_rejects_invalid_history_operations() {
         assert!(!output.stderr.contains("private-invalid-operations"));
         assert_eq!(t.sql(&["SELECT operations,status FROM orm_schema_migrations"]).await, before);
         std::fs::remove_dir_all(dir).expect("remove newly created owned fixture directory");
-    }).await.expect("history accessor regression deadline");
+    })
+    .await
+    .expect("history accessor regression deadline");
     eprintln!("passed sqlite_migration_rejects_invalid_history_operations {:?}", started.elapsed());
 }
 

@@ -1,5 +1,9 @@
 # 변경 이력
 
+`make go-fmt-check`를 `make check`에 더하고, gofmt가 바꿀 Go 파일
+6개를 정리하며, Rust workspace를 정리해 `make rust-fmt-check`가 다시
+통과하게 한다(T11).
+
 Go, PHP, TypeScript, Rust client에서 dbspec 문서 집합의 manifest text,
 schema text, `manifestHash`, `schemaHash`를 계산하고(`ManifestOf`,
 `Dbspec::manifest`, `dbspecManifest`, `manifest`), `make

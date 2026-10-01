@@ -66,9 +66,13 @@ func main() {
 			fail(err)
 		}
 		emailIndex, err := orm.BlindIndex(fmt.Sprintf("user%d@example.com", i), *blindKey)
-		if err != nil { fail(err) }
+		if err != nil {
+			fail(err)
+		}
 		phoneIndex, err := orm.BlindIndex(fmt.Sprintf("010-%08d", i), *blindKey)
-		if err != nil { fail(err) }
+		if err != nil {
+			fail(err)
+		}
 		if _, err := st.ExecContext(ctx, email, phone, emailIndex, phoneIndex, *version, i); err != nil {
 			fail(err)
 		}

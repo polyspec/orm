@@ -3,8 +3,8 @@ use orm_build::{
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
 };
 
 #[tokio::test]
@@ -54,13 +54,11 @@ async fn check() {
         let after = catalog.table_page(&table, 1, 0).await.unwrap();
         updated.check_current(&after.metadata, &after.result).unwrap();
         cancelled.store(true, Ordering::SeqCst);
-        assert!(
-            catalog
-                .update_row(&updated, &[("n".into(), P::I(12))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("JOB_CANCELLED")
-        );
+        assert!(catalog
+            .update_row(&updated, &[("n".into(), P::I(12))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("JOB_CANCELLED"));
         cancelled.store(false, Ordering::SeqCst);
         let cancel_at_lock = cancelled.clone();
         let stop: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| {
@@ -68,30 +66,24 @@ async fn check() {
                 cancel_at_lock.store(true, Ordering::SeqCst)
             }
         });
-        assert!(
-            catalog
-                .update_row(&updated, &[("n".into(), P::I(12))], cancelled, stop, std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("JOB_CANCELLED")
-        );
+        assert!(catalog
+            .update_row(&updated, &[("n".into(), P::I(12))], cancelled, stop, std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("JOB_CANCELLED"));
         let after = catalog.table_page(&table, 1, 0).await.unwrap();
         updated.check_current(&after.metadata, &after.result).unwrap();
-        assert!(
-            catalog
-                .update_row(&updated, &[("n".into(), P::S("12".into()))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-                .await
-                .is_err()
-        );
+        assert!(catalog
+            .update_row(&updated, &[("n".into(), P::S("12".into()))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
+            .await
+            .is_err());
         let after = catalog.table_page(&table, 1, 0).await.unwrap();
         updated.check_current(&after.metadata, &after.result).unwrap();
-        assert!(
-            catalog
-                .update_row(&updated, &[("g".into(), P::I(99))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("ROW_UPDATE_INVALID")
-        );
+        assert!(catalog
+            .update_row(&updated, &[("g".into(), P::I(99))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("ROW_UPDATE_INVALID"));
         let cancelled_after_write = Arc::new(AtomicBool::new(false));
         let flag = cancelled_after_write.clone();
         let stop: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| {
@@ -99,13 +91,11 @@ async fn check() {
                 flag.store(true, Ordering::SeqCst)
             }
         });
-        assert!(
-            catalog
-                .update_row(&updated, &[("n".into(), P::I(12))], cancelled_after_write, stop, std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("JOB_CANCELLED")
-        );
+        assert!(catalog
+            .update_row(&updated, &[("n".into(), P::I(12))], cancelled_after_write, stop, std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("JOB_CANCELLED"));
         let after = catalog.table_page(&table, 1, 0).await.unwrap();
         updated.check_current(&after.metadata, &after.result).unwrap();
         let late = Arc::new(AtomicBool::new(false));
@@ -213,13 +203,11 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {child}"), &[]).await.unwrap();
         let deleted = catalog.delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap();
         assert_eq!(deleted, 1);
-        assert!(
-            catalog
-                .delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("ROW_CONFLICT")
-        );
+        assert!(catalog
+            .delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("ROW_CONFLICT"));
         let after = catalog.table_page(&table, 2, 0).await.unwrap();
         assert_eq!(after.result.rows.len(), 1);
         assert_eq!(after.result.rows[0][0], GridCell::Integer(2));
@@ -235,19 +223,17 @@ async fn check() {
             .await
             .unwrap();
         assert_eq!(inserted.rows[0], vec![GridCell::Integer(3), GridCell::Integer(30), GridCell::Integer(31)]);
-        assert!(
-            catalog
-                .insert_row(
-                    &descriptor,
-                    &[("id".into(), P::I(3)), ("n".into(), P::I(40))],
-                    Arc::new(AtomicBool::new(false)),
-                    publish.clone(),
-                    std::sync::Arc::new(|| Ok(()))
-                )
-                .await
-                .unwrap_err()
-                .starts_with("ROW_CONFLICT")
-        );
+        assert!(catalog
+            .insert_row(
+                &descriptor,
+                &[("id".into(), P::I(3)), ("n".into(), P::I(40))],
+                Arc::new(AtomicBool::new(false)),
+                publish.clone(),
+                std::sync::Arc::new(|| Ok(()))
+            )
+            .await
+            .unwrap_err()
+            .starts_with("ROW_CONFLICT"));
         let omitted_key =
             catalog.insert_row(&descriptor, &[("n".into(), P::I(40))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await;
         if dialect == "sqlite" {
@@ -272,13 +258,11 @@ async fn check() {
                 captured.store(true, Ordering::SeqCst)
             }
         });
-        assert!(
-            catalog
-                .insert_row(&descriptor, &[("id".into(), P::I(4)), ("n".into(), P::I(40))], flag, stop, std::sync::Arc::new(|| Ok(())))
-                .await
-                .unwrap_err()
-                .starts_with("JOB_CANCELLED")
-        );
+        assert!(catalog
+            .insert_row(&descriptor, &[("id".into(), P::I(4)), ("n".into(), P::I(40))], flag, stop, std::sync::Arc::new(|| Ok(())))
+            .await
+            .unwrap_err()
+            .starts_with("JOB_CANCELLED"));
         let page = catalog.table_page(&table, 10, 0).await.unwrap();
         assert_eq!(page.result.rows.len(), 2);
         let inserted_baseline = RowSnapshot::from_page(&page, 1).unwrap();
