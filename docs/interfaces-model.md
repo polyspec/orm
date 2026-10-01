@@ -175,6 +175,12 @@ classDiagram
         Text code
         Text message
     }
+    class Dbspec {
+        parse()
+        emit()
+    }
+    class DbspecDocument {
+    }
     Model *-- Core : stores chain state
     Core --> Db : uses connection
     Core --> TransactionFlow : uses flow transaction
@@ -221,6 +227,8 @@ classDiagram
 | AESRotationStatus | Row counts per key version. |
 | Generator | One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call. |
 | Error | A stable code from docs/errors.yaml. |
+| Dbspec | Parses a dbspec document against its declared document set and emits a parsed document in canonical form (docs/dbspec.md). |
+| DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |
 
 | From | To | Relation |
 |---|---|---|
