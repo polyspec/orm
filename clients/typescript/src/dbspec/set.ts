@@ -1,5 +1,6 @@
-// dbspec 문서 집합 검사 (docs/dbspec.md "Manifest and hashes"). manifest와
-// 렌더링이 같은 검사를 쓴다. 기준은 Go 엔진(engine/dbspec/dbspec.go checkSet)이다.
+// Checks a dbspec document set (docs/dbspec.md "Manifest and hashes"); the
+// manifest and the rendering use the same check, after the Go engine
+// (engine/dbspec/dbspec.go checkSet).
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 
 /** The column of the document name in the header line `dbspec 1 <name>`. */
