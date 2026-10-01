@@ -1,5 +1,20 @@
 # Changelog
 
+Write the database clock with microseconds on MySQL and keep the
+fraction of the client clock in SQLite relative value functions (N14).
+The MySQL dialect rendered soft deletion as `CURRENT_TIMESTAMP` and the
+`now` value function and its relative forms with `NOW()`, so a soft
+deletion stored whole seconds in a `datetime(6)` column and
+`created_ts <= now()` missed a row created earlier in the same second.
+The SQLite relative forms rendered `datetime(clock, modifier)`, which
+drops the fraction of the bound clock. Soft deletion now assigns the
+clock with the declared fraction digits of its column, as the update
+time does: `CURRENT_TIMESTAMP(p)` on MySQL. The MySQL value functions
+use `NOW(6)`, and the SQLite relative forms append the six fraction
+digits of the clock to the `datetime` result. The cases
+`clock_soft_delete_microseconds` and `clock_now_condition` pass in Go,
+PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
 Report both errors when a transaction or savepoint callback fails and its
 rollback fails too (N13). The PHP client replaced the callback error with
 the rollback error, the TypeScript client dropped the rollback error, the

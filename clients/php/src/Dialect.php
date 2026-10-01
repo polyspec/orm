@@ -81,9 +81,13 @@ final class Dialect
         return $this->name !== 'mysql';
     }
 
-    public function now(): string
+    /**
+     * The database clock assigned to a column with the given fraction digits:
+     * CURRENT_TIMESTAMP(p) on MySQL for p > 0, otherwise CURRENT_TIMESTAMP.
+     */
+    public function now(int $precision): string
     {
-        return 'CURRENT_TIMESTAMP';
+        return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
     }
 
     public function currentTime(): string
@@ -290,10 +294,10 @@ final class Dialect
         switch ($this->name) {
             case 'mysql':
                 return match (true) {
-                    $fn === 'now' => 'NOW()',
+                    $fn === 'now' => 'NOW(6)',
                     $fn === 'today' => 'CURDATE()',
                     $unit === null => null,
-                    default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
+                    default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
                 };
             case 'postgres':
                 if ($fn === 'now') {
@@ -319,9 +323,11 @@ final class Dialect
                 if ($unit === null) {
                     return null;
                 }
+                // datetime returns whole seconds: append the six fraction digits
+                // of a second clock slot, which equals the first in one statement
                 $clock = $now();
-                $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'";
-                return $unit === 'month' ? "datetime($clock, $modifier, 'floor')" : "datetime($clock, $modifier)";
+                $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'" . ($unit === 'month' ? ", 'floor'" : '');
+                return "(datetime($clock, $modifier) || substr(" . $now() . ', 20))';
         }
     }
 

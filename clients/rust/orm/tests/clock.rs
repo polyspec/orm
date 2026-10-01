@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use orm::core::{Arg, ChainKey};
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
@@ -56,11 +57,11 @@ fn connected(db: &Db) -> ClockEvent {
 }
 
 /// Returns the DSN of a target; an unset or empty variable fails the test.
-fn target(driver: &str) -> String {
+fn target(driver: &str, file: &str) -> String {
     if driver == "sqlite" {
         let dir = std::env::temp_dir().join(format!("orm-rust-clock-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("clock.sqlite");
+        let path = dir.join(file);
         let _ = std::fs::remove_file(&path);
         return format!("sqlite://{}", path.display());
     }
@@ -84,7 +85,7 @@ async fn drop_table(db: &Db) {
 /// digits near the wall clock; at least one value has microseconds that a
 /// millisecond clock cannot give.
 async fn clock_microseconds(driver: &str) {
-    let base = target(driver);
+    let base = target(driver, "clock.sqlite");
     let dsn = format!("{base}{}timezone=%2B00:00", if base.contains('?') { '&' } else { '?' });
     let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     drop_table(&db).await;
@@ -141,4 +142,175 @@ async fn clock_microseconds_mysql() {
 #[tokio::test]
 async fn clock_microseconds_postgres() {
     bounded("postgres").await;
+}
+
+static CLOCK_MARK_SCHEMA: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/clock_mark_schema.json"), "77d3fa3246b6b3e4");
+static CLOCK_MARK: Entity =
+    Entity { name: "clock_mark", schema: &CLOCK_MARK_SCHEMA, new: orm::model::new_boxed::<ClockMark>, collect: orm::model::collect_boxed::<ClockMark> };
+const MARK_COLUMNS: [&str; 4] = ["seq", "label", "created_ts", "deleted_at"];
+
+#[derive(Clone)]
+struct ClockMark {
+    core: Core,
+    values: std::collections::BTreeMap<String, Val>,
+}
+
+impl Model for ClockMark {
+    fn entity() -> &'static Entity {
+        &CLOCK_MARK
+    }
+    fn core(&self) -> &Core {
+        &self.core
+    }
+    fn core_mut(&mut self) -> &mut Core {
+        &mut self.core
+    }
+    fn from_core(core: Core) -> Self {
+        ClockMark { core, values: std::collections::BTreeMap::new() }
+    }
+    fn into_core(self) -> Core {
+        self.core
+    }
+    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+        if !MARK_COLUMNS.contains(&name) {
+            return Ok(false);
+        }
+        self.values.insert(name.to_owned(), v);
+        Ok(true)
+    }
+    fn value(&self, name: &str) -> Option<Val> {
+        self.values.get(name).cloned()
+    }
+}
+
+fn mark(db: &Db) -> ClockMark {
+    let mut core = Core::new(&CLOCK_MARK);
+    core.connect(db);
+    ClockMark::from_core(core)
+}
+
+async fn drop_mark(db: &Db) {
+    let result = match db.pool() {
+        Pool::MySql(p) => sqlx::raw_sql("DROP TABLE IF EXISTS `clock_mark`").execute(p).await.map(|_| ()),
+        Pool::Postgres(p) => sqlx::raw_sql(r#"DROP TABLE IF EXISTS "clock_mark""#).execute(p).await.map(|_| ()),
+        Pool::Sqlite(p) => sqlx::raw_sql(r#"DROP TABLE IF EXISTS "clock_mark""#).execute(p).await.map(|_| ()),
+    };
+    result.unwrap_or_else(|e| panic!("drop clock_mark: {e}"));
+}
+
+/// Connects with the time zone `+00:00` and installs the clock_mark schema on
+/// a dropped table.
+async fn mark_db(driver: &str, file: &str) -> Db {
+    let base = target(driver, file);
+    let dsn = format!("{base}{}timezone=%2B00:00", if base.contains('?') { '&' } else { '?' });
+    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    drop_mark(&db).await;
+    db.utils().schema().install(CLOCK_MARK_SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    db
+}
+
+async fn create_mark(db: &Db, driver: &str, i: usize) -> ClockMark {
+    let mut row = mark(db);
+    row.core_mut().set("label", Param::from(format!("mark-{i}").as_str()));
+    orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"))
+}
+
+/// Sixteen soft deletions in separate statements store deleted_at with six
+/// fraction digits. Model reads exclude soft-deleted rows, so the case reads
+/// deleted_at with the connection pool. At least one value has microseconds
+/// that a whole-second clock cannot give.
+async fn clock_soft_delete_microseconds(driver: &str) {
+    let db = mark_db(driver, "clock_soft_delete.sqlite").await;
+    for i in 0..16 {
+        let row = create_mark(&db, driver, i).await;
+        orm::model::delete(&row, false).await.unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
+    }
+    let stamps: Vec<Option<String>> = match db.pool() {
+        Pool::MySql(p) => sqlx::query_scalar("SELECT DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f') FROM clock_mark ORDER BY seq").fetch_all(p).await,
+        Pool::Postgres(p) => sqlx::query_scalar("SELECT to_char(deleted_at, 'YYYY-MM-DD HH24:MI:SS.US') FROM clock_mark ORDER BY seq").fetch_all(p).await,
+        Pool::Sqlite(p) => sqlx::query_scalar("SELECT deleted_at FROM clock_mark ORDER BY seq").fetch_all(p).await,
+    }
+    .unwrap_or_else(|e| panic!("{driver}: read deleted_at: {e}"));
+    assert_eq!(stamps.len(), 16, "{driver}: rows");
+    let mut sub = false;
+    for stamp in &stamps {
+        let stamp = stamp.as_deref().unwrap_or_else(|| panic!("{driver}: deleted_at is NULL after a soft deletion"));
+        chrono::NaiveDateTime::parse_from_str(stamp, "%Y-%m-%d %H:%M:%S%.6f").unwrap_or_else(|e| panic!("{driver}: deleted_at {stamp}: {e}"));
+        let fraction = stamp.rsplit_once('.').map(|(_, f)| f).unwrap_or("");
+        assert_eq!(fraction.len(), 6, "{driver}: deleted_at {stamp} has six fraction digits");
+        sub |= !stamp.ends_with("000");
+    }
+    assert!(sub, "{driver}: every deleted_at ends in 000: {stamps:?}");
+    drop_mark(&db).await;
+    db.close().await;
+}
+
+/// Sixteen rows are read back right after their insert with created_ts <=
+/// now() and created_ts <= seconds_later(0). The database clock of the
+/// condition is later than the stored creation time, so both match the row.
+async fn clock_now_condition(driver: &str) {
+    const KEYS: &[ChainKey] = &[
+        ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" },
+        ChainKey { conn: "and", op: "le", column: "created_ts", columns: &[], compare: "" },
+    ];
+    let db = mark_db(driver, "clock_now_condition.sqlite").await;
+    for i in 0..16 {
+        let row = create_mark(&db, driver, i).await;
+        let seq = match row.values.get("seq") {
+            Some(Val::I64(seq)) => *seq,
+            other => panic!("{driver}: seq {other:?}"),
+        };
+        for (name, func) in [("now", orm::args::now()), ("seconds_later(0)", orm::args::seconds_later(0))] {
+            let filter = mark(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(Param::I64(seq))), Arg::Value(orm::args::Value::Func(func))]);
+            let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{driver}: count: {e}"));
+            assert_eq!(found, 1, "{driver}: row {seq} with created_ts <= {name}");
+        }
+    }
+    drop_mark(&db).await;
+    db.close().await;
+}
+
+/// Serializes the clock_mark cases, which share the clock_mark table of the
+/// MySQL and PostgreSQL test databases.
+static MARK_TABLE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+async fn bounded_mark(driver: &str, case: &str) {
+    let _table = MARK_TABLE.lock().await;
+    let run = async {
+        match case {
+            "soft_delete" => clock_soft_delete_microseconds(driver).await,
+            _ => clock_now_condition(driver).await,
+        }
+    };
+    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+}
+
+#[tokio::test]
+async fn clock_soft_delete_microseconds_sqlite() {
+    bounded_mark("sqlite", "soft_delete").await;
+}
+
+#[tokio::test]
+async fn clock_soft_delete_microseconds_mysql() {
+    bounded_mark("mysql", "soft_delete").await;
+}
+
+#[tokio::test]
+async fn clock_soft_delete_microseconds_postgres() {
+    bounded_mark("postgres", "soft_delete").await;
+}
+
+#[tokio::test]
+async fn clock_now_condition_sqlite() {
+    bounded_mark("sqlite", "now_condition").await;
+}
+
+#[tokio::test]
+async fn clock_now_condition_mysql() {
+    bounded_mark("mysql", "now_condition").await;
+}
+
+#[tokio::test]
+async fn clock_now_condition_postgres() {
+    bounded_mark("postgres", "now_condition").await;
 }

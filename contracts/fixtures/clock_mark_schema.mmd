@@ -1,0 +1,8 @@
+erDiagram
+  clock_mark {
+    bigint       seq        PK "auto"
+    varchar(32)  label
+    datetime(6)  created_ts "=now"
+    datetime(6)  deleted_at "?"
+  }
+  %% soft_delete clock_mark deleted_at

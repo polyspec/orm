@@ -20,7 +20,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | `aes`/`hex` styles | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | client-side (16-byte packed) |
 | `point` type | `POINT(x y)` bind; `ST_PointFromText(?)` / `ST_AsText(col)` | `(x,y)` bind; `CAST(? AS text)::point` / `(col)::text` | `POINT(x y)` text |
-| `NOW` | `CURRENT_TIMESTAMP` | same | same |
+| update 시각과 soft delete가 쓰는 clock | `p > 0`인 `datetime(p)` column은 `CURRENT_TIMESTAMP(p)`, 그 밖에는 `CURRENT_TIMESTAMP` | `CURRENT_TIMESTAMP` | executor가 bind한 마이크로초 텍스트(`now` bind slot) |
 
 Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
@@ -36,7 +36,7 @@ import (
 import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 반환한다. Rust는 sqlx feature를 사용하고 PHP는 설치된 PDO extension을 사용한다.
 
 ## 세 database의 같은 결과를 유지하는 규칙
-- `UPDATE`는 updated timestamp를 항상 명시한다. MySQL의 `ON UPDATE`는 다른 database에 대응하지 않는다.
+- `UPDATE`는 updated timestamp를 항상 명시한다(MySQL `updated_ts = CURRENT_TIMESTAMP(6)`, PostgreSQL `CURRENT_TIMESTAMP`, SQLite는 `now` bind slot으로 executor가 bind한 마이크로초 텍스트). soft delete도 같은 방식으로 column에 clock을 대입한다. MySQL의 `ON UPDATE`는 다른 database에 대응하지 않는다.
 - `plus`와 `minus`는 column을 table-qualified로 작성한다.
 - 원시 조각(`raw`, `setRaw<Col>`, `addRawColumn<Alias>`)의 `?`는 bind 순서에 따라 방언 placeholder로 변경한다. 개수와 bind 개수가 다르면 `IR_INVALID`다.
 - SQLite datetime은 연결 시간대 기준 여섯 자리 소수의 text다. 삽입 시 `=now` 컬럼 값은 실행기가 이 시간대의 시각으로 채운다. datetime 컬럼과 비교하거나 대입하는 문자열도 같은 형식으로 바꾼다. `YYYY-MM-DD[ T]HH:MM:SS[.f]`는 소수 여섯 자리로 채우고, `Z`나 `±HH:MM`을 포함한 문자열은 연결 시간대로 변환한다. date 컬럼은 `YYYY-MM-DD`를 받는다. 그 밖의 문자열은 `CODEC_ENCODE`를 반환한다.

@@ -11,6 +11,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use ClockCase\Orm\ClockEvent;
+use ClockMarkCase\Orm\ClockMark;
 use Orm\Config;
 use Orm\Generator;
 use Orm\Manifest;
@@ -33,6 +34,15 @@ spl_autoload_register(static function (string $class) use ($work): void {
     }
 });
 require "$work/models/bootstrap.php";
+$markSchemaPath = dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark_schema.json';
+$markSchemaJson = (string) file_get_contents($markSchemaPath);
+Generator::generate(Manifest::load($markSchemaJson), "$work/mark-models", 'ClockMarkCase\\Orm');
+spl_autoload_register(static function (string $class) use ($work): void {
+    if (str_starts_with($class, 'ClockMarkCase\\Orm\\')) {
+        require "$work/mark-models/" . substr($class, strlen('ClockMarkCase\\Orm\\')) . '.php';
+    }
+});
+require "$work/mark-models/bootstrap.php";
 
 $failures = 0;
 $current = '';
@@ -50,6 +60,7 @@ function dropTable(string $dsn): void
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
     $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec('DROP TABLE IF EXISTS clock_event');
+    $pdo->exec('DROP TABLE IF EXISTS clock_mark');
 }
 
 /**
@@ -84,7 +95,71 @@ function clockMicroseconds(string $dsn): void
     }
 }
 
-$cases = ['clock_microseconds' => clockMicroseconds(...)];
+function markDb(string $dsn): \Orm\Db
+{
+    global $markSchemaPath, $markSchemaJson;
+    $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config(schemaPath: $markSchemaPath));
+    $db->utils()->schema()->install($markSchemaJson);
+    return $db;
+}
+
+/**
+ * Sixteen soft deletions in separate statements store deleted_at with six
+ * fraction digits. Model reads exclude soft-deleted rows, so the case reads
+ * deleted_at with PDO. At least one value has microseconds that a
+ * whole-second clock cannot give.
+ */
+function clockSoftDeleteMicroseconds(string $dsn): void
+{
+    $db = markDb($dsn);
+    try {
+        for ($i = 0; $i < 16; $i++) {
+            (new ClockMark)($db)->setLabel("mark-$i")->create()->delete();
+        }
+    } finally {
+        $db->close();
+    }
+    [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
+    $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $column = match ($driver) {
+        'mysql' => "DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f')",
+        'postgres' => "to_char(deleted_at, 'YYYY-MM-DD HH24:MI:SS.US')",
+        default => 'deleted_at',
+    };
+    $stamps = $pdo->query("SELECT $column FROM clock_mark ORDER BY seq")->fetchAll(PDO::FETCH_COLUMN);
+    check(count($stamps) === 16, 'rows ' . count($stamps));
+    foreach ($stamps as $stamp) {
+        check(is_string($stamp) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/', $stamp) === 1, 'deleted_at ' . var_export($stamp, true) . ' has six fraction digits');
+    }
+    check(array_filter($stamps, static fn($s): bool => is_string($s) && !str_ends_with($s, '000')) !== [], 'every deleted_at ends in 000: ' . implode(', ', array_map('strval', $stamps)));
+}
+
+/**
+ * Sixteen rows are read back right after their insert with created_ts <=
+ * now() and created_ts <= secondsLater(0). The database clock of the
+ * condition is later than the stored creation time, so both match the row.
+ */
+function clockNowCondition(string $dsn): void
+{
+    $db = markDb($dsn);
+    try {
+        for ($i = 0; $i < 16; $i++) {
+            $seq = (new ClockMark)($db)->setLabel("mark-$i")->create()->getSeq();
+            foreach (['now' => Orm::now(), 'secondsLater(0)' => Orm::secondsLater(0)] as $name => $fn) {
+                $rows = (new ClockMark)($db)->addAllColumns()->andSeq($seq)->andLeCreatedTs($fn)->gets();
+                check(count($rows) === 1, "row $seq with created_ts <= $name: " . count($rows) . ' rows');
+            }
+        }
+    } finally {
+        $db->close();
+    }
+}
+
+$cases = [
+    'clock_microseconds' => clockMicroseconds(...),
+    'clock_soft_delete_microseconds' => clockSoftDeleteMicroseconds(...),
+    'clock_now_condition' => clockNowCondition(...),
+];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 $targets = ['sqlite' => "sqlite://$work/clock.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {

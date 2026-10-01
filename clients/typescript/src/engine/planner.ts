@@ -797,12 +797,7 @@ export class Planner {
     const updated = ent.timestamps?.updated ?? '';
     if (updated !== '' && !assigned(r.set ?? [], updated)) {
       const col = columnOf(ent, updated);
-      if (col) {
-        let now = this.d.now();
-        if (this.d.hostNow) now = b.now();
-        else if ((col.precision ?? 0) > 0 && this.d.name === 'mysql') now = `CURRENT_TIMESTAMP(${col.precision})`;
-        sets.push(`${this.d.quote(updated)} = ${now}`);
-      }
+      if (col) sets.push(`${this.d.quote(updated)} = ${this.clock(b, col)}`);
     }
     let where = this.renderGroup(b, root, r.where!, true);
     if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.param(r.optimistic.p)}`;
@@ -810,12 +805,22 @@ export class Planner {
     return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
   }
 
+  /**
+   * The clock assigned to a column by the update time and soft deletion: the
+   * executor's microsecond `now` slot when the dialect has no sub-second clock
+   * function, otherwise the database clock with the declared fraction digits
+   * of the column.
+   */
+  private clock(b: Builder, col: Column): string {
+    return this.d.hostNow ? b.now() : this.d.now(col.precision ?? 0);
+  }
+
   private deleteStep(r: Request): Omit<PlanStep, 'id'> {
     const b = new Builder(this.d);
     const ent = this.entity(r.entity);
     const root = this.buildScopes(r, ent.table, undefined);
     let now = '';
-    if (ent.soft_delete) now = this.d.hostNow ? b.now() : this.d.now();
+    if (ent.soft_delete) now = this.clock(b, columnOf(ent, ent.soft_delete) ?? fail('COLUMN_UNKNOWN', `${ent.name}.${ent.soft_delete}`));
     let where = this.renderGroup(b, root, r.where!, true);
     if (ent.soft_delete) {
       where += ` AND ${this.qcol(root, ent.soft_delete)} IS NULL`;

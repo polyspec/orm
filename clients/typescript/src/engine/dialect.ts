@@ -49,7 +49,8 @@ export interface Dialect {
   readExpr(col: string, colType: string, styles: readonly string[]): string;
   /** Wraps a bound value with the SQL-side write stages. */
   writeExpr(ph: () => string, colType: string, styles: readonly string[]): string;
-  now(): string;
+  /** The database clock assigned to a column with the given fraction digits. */
+  now(precision: number): string;
   currentTime(): string;
   supports(op: string): boolean;
   handlesStyle(style: string): boolean;
@@ -122,7 +123,7 @@ export const mysql: Dialect = {
     }
     return expr;
   },
-  now: () => 'CURRENT_TIMESTAMP',
+  now: precision => precision > 0 ? `CURRENT_TIMESTAMP(${precision})` : 'CURRENT_TIMESTAMP',
   currentTime: () => 'CURRENT_TIMESTAMP',
   supports: () => true,
   handlesStyle: s => s === 'hex' || s === 'ip',
@@ -141,11 +142,11 @@ export const mysql: Dialect = {
     return undefined;
   },
   valueFunction(name, arg) {
-    if (name === 'now') return 'NOW()';
+    if (name === 'now') return 'NOW(6)';
     if (name === 'today') return 'CURDATE()';
     const unit = valueFunctionUnits[name];
     if (unit === undefined) return undefined;
-    return `${name.endsWith('_later') ? 'DATE_ADD' : 'DATE_SUB'}(NOW(), INTERVAL ${arg()} ${unit.toUpperCase()})`;
+    return `${name.endsWith('_later') ? 'DATE_ADD' : 'DATE_SUB'}(NOW(6), INTERVAL ${arg()} ${unit.toUpperCase()})`;
   },
   containsBinary: (col, value) => `${col} LIKE BINARY ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
@@ -257,9 +258,11 @@ export const sqlite: Dialect = {
     const unit = valueFunctionUnits[name];
     if (unit === undefined) return undefined;
     const sign = name.endsWith('_later') ? "'+'" : "'-'";
+    // datetime returns whole seconds: append the six fraction digits of a
+    // second clock slot, which equals the first in one statement.
     const clock = now();
-    const modifier = `${sign} || CAST(${arg()} AS TEXT) || ' ${unit}s'`;
-    return unit === 'month' ? `datetime(${clock}, ${modifier}, 'floor')` : `datetime(${clock}, ${modifier})`;
+    const modifier = `${sign} || CAST(${arg()} AS TEXT) || ' ${unit}s'${unit === 'month' ? ", 'floor'" : ''}`;
+    return `(datetime(${clock}, ${modifier}) || substr(${now()}, 20))`;
   },
   // SQLite LIKE ignores ASCII case.
   containsBinary: (col, value) => `instr(${col}, ${value('')}) > 0`,

@@ -25,7 +25,7 @@ func (SQLite) Limit(offset, count int) string {
 }
 func (SQLite) ForceIndex(name string) string { return " INDEXED BY " + QuoteWith(`"`, name) }
 func (SQLite) InsertReturningID() bool       { return true }
-func (SQLite) Now() string                   { return "CURRENT_TIMESTAMP" }
+func (SQLite) Now(int) string                { return "CURRENT_TIMESTAMP" }
 func (SQLite) CurrentTime() string           { return "CURRENT_TIMESTAMP" }
 func (SQLite) HandlesStyle(string) bool      { return false }
 

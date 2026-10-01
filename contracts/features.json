@@ -617,7 +617,8 @@
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/decimal_schema.json",
-        "contracts/fixtures/clock_schema.json"
+        "contracts/fixtures/clock_schema.json",
+        "contracts/fixtures/clock_mark_schema.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",

@@ -10,7 +10,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CORE, Db, Model, registerSchema } from '../dist/index.js';
+import { DatabaseSync } from 'node:sqlite';
+import { CORE, Db, Model, orm, registerSchema } from '../dist/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const schemaPath = new URL('../../../contracts/fixtures/clock_schema.json', import.meta.url).pathname;
@@ -24,26 +25,36 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 
-const entities = new Map(Object.values(manifest.entities).map(e => [e.name, {
-  name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [],
-  columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable ?? false, styles: c.styles }])),
-}]));
-const set = { hash: manifest.schema_hash, entities };
-registerSchema(set);
+/** Registers the entities of a manifest as the generated model files do. */
+function schemaSet(m) {
+  const entities = new Map(Object.values(m.entities).map(e => [e.name, {
+    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [],
+    columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable ?? false, styles: c.styles }])),
+  }]));
+  const set = { hash: m.schema_hash, entities };
+  registerSchema(set);
+  return set;
+}
+const set = schemaSet(manifest);
 class ClockEvent extends Model {}
-ClockEvent.entity = { schema: entities.get('clock_event'), set, create: core => new ClockEvent(core) };
+ClockEvent.entity = { schema: set.entities.get('clock_event'), set, create: core => new ClockEvent(core) };
+const markSchemaPath = new URL('../../../contracts/fixtures/clock_mark_schema.json', import.meta.url).pathname;
+const markSchemaJson = await readFile(markSchemaPath, 'utf8');
+const markSet = schemaSet(JSON.parse(markSchemaJson));
+class ClockMark extends Model {}
+ClockMark.entity = { schema: markSet.entities.get('clock_mark'), set: markSet, create: core => new ClockMark(core) };
 
 /** Drops the test table with the database driver; SQLite uses a new file per run. */
 async function dropTable(driver, dsn) {
   const url = new URL(dsn);
   if (driver === 'mysql') {
     const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-    try { await conn.query('DROP TABLE IF EXISTS clock_event'); } finally { await conn.end(); }
+    try { await conn.query('DROP TABLE IF EXISTS clock_event'); await conn.query('DROP TABLE IF EXISTS clock_mark'); } finally { await conn.end(); }
   } else if (driver === 'postgres') {
     const { Client } = require('pg');
     const client = new Client({ host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
     await client.connect();
-    try { await client.query('DROP TABLE IF EXISTS clock_event'); } finally { await client.end(); }
+    try { await client.query('DROP TABLE IF EXISTS clock_event'); await client.query('DROP TABLE IF EXISTS clock_mark'); } finally { await client.end(); }
   } else {
     await rm(url.pathname, { force: true });
   }
@@ -78,7 +89,86 @@ async function clockMicroseconds(dsn) {
   } finally { await db.close(); }
 }
 
-const cases = { clock_microseconds: clockMicroseconds };
+/** Reads one column of every clock_mark row in seq order with the database driver. */
+async function readMarks(dsn, column) {
+  const url = new URL(dsn);
+  const sql = `SELECT ${column} AS v FROM clock_mark ORDER BY seq`;
+  if (url.protocol === 'mysql:') {
+    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
+    try { return (await conn.query(sql))[0].map(row => row.v); } finally { await conn.end(); }
+  }
+  if (url.protocol === 'postgres:') {
+    const { Client } = require('pg');
+    const client = new Client({ host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
+    await client.connect();
+    try { return (await client.query(sql)).rows.map(row => row.v); } finally { await client.end(); }
+  }
+  const db = new DatabaseSync(url.pathname);
+  try { return db.prepare(sql).all().map(row => row.v); } finally { db.close(); }
+}
+
+async function markDb(dsn) {
+  const db = await Db.connect(`${dsn}${dsn.includes('?') ? '&' : '?'}timezone=%2B00:00`, markSchemaPath);
+  await db.utils().schema().install(markSchemaJson);
+  return db;
+}
+
+/**
+ * Sixteen soft deletions in separate statements store deleted_at with six
+ * fraction digits. Model reads exclude soft-deleted rows, so the case reads
+ * deleted_at with the database driver. At least one value has microseconds
+ * that a whole-second clock cannot give.
+ */
+async function clockSoftDeleteMicroseconds(dsn) {
+  const db = await markDb(dsn);
+  try {
+    for (let i = 0; i < 16; i++) {
+      const row = new ClockMark().connect(db);
+      row[CORE].setValue('label', `mark-${i}`);
+      await (await row.create()).delete();
+    }
+  } finally { await db.close(); }
+  const column = {
+    'mysql:': "DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f')",
+    'postgres:': "to_char(deleted_at, 'YYYY-MM-DD HH24:MI:SS.US')",
+  }[new URL(dsn).protocol] ?? 'deleted_at';
+  const stamps = await readMarks(dsn, column);
+  check(stamps.length === 16, `rows ${stamps.length}`);
+  for (const stamp of stamps) check(typeof stamp === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/.test(stamp), `deleted_at ${stamp} has six fraction digits`);
+  check(stamps.some(stamp => typeof stamp === 'string' && !stamp.endsWith('000')), `every deleted_at ends in 000: ${stamps.join(', ')}`);
+}
+
+/**
+ * Sixteen rows are read back right after their insert with created_ts <=
+ * now() and created_ts <= secondsLater(0). The database clock of the
+ * condition is later than the stored creation time, so both match the row.
+ */
+async function clockNowCondition(dsn) {
+  const keys = [
+    { conn: '', op: '', column: 'seq', columns: [], compare: '' },
+    { conn: 'and', op: 'le', column: 'created_ts', columns: [], compare: '' },
+  ];
+  const db = await markDb(dsn);
+  try {
+    for (let i = 0; i < 16; i++) {
+      const row = new ClockMark().connect(db);
+      row[CORE].setValue('label', `mark-${i}`);
+      const seq = (await row.create())[CORE].column('seq');
+      for (const [name, fn] of [['now', orm.now()], ['secondsLater(0)', orm.secondsLater(0)]]) {
+        const query = new ClockMark().connect(db);
+        query[CORE].whereChain('', keys, [seq, fn]);
+        const found = await query.getCount();
+        check(found === 1, `row ${seq} with created_ts <= ${name}: ${found} rows`);
+      }
+    }
+  } finally { await db.close(); }
+}
+
+const cases = {
+  clock_microseconds: clockMicroseconds,
+  clock_soft_delete_microseconds: clockSoftDeleteMicroseconds,
+  clock_now_condition: clockNowCondition,
+};
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 const targets = { sqlite: `sqlite://${join(work, 'clock.sqlite')}` };
 for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {
