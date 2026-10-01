@@ -505,6 +505,7 @@ rust-check:
 
 rust-driver-check:
 	cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo check --locked --bin driver_compare
+	cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --test dsn
 
 typescript-build:
 	npm run typescript:build

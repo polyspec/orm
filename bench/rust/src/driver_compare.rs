@@ -1,9 +1,11 @@
 //! Reproducible sqlx/mysql_async comparison over the same connection count,
 //! SQL, binds, typed output, warmup, and fixture.
+//! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> driver_compare [iterations]
 use mysql_async::prelude::Queryable;
-use mysql_async::{OptsBuilder, Pool as AsyncPool, PoolConstraints, PoolOpts};
+use mysql_async::{Opts, OptsBuilder, Pool as AsyncPool, PoolConstraints, PoolOpts};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use sqlx::{MySqlPool, Row};
+use std::str::FromStr as _;
 use std::time::Instant;
 
 const PK_SQL: &str = "SELECT seq, name, is_close, service_seq FROM author WHERE seq = ?";
@@ -96,6 +98,28 @@ async fn async_list(pool: &AsyncPool, service_seq: u64) -> Vec<ResultRow> {
     .unwrap()
 }
 
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
+/// 않고 그 변수 이름을 출력하며 끝난다.
+fn bench_dsn() -> String {
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            std::process::exit(1)
+        }
+        Err(e) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
+            std::process::exit(1)
+        }
+    }
+}
+
+/// `ORM_BENCH_MYSQL_DSN`을 해석하지 못하면 그 오류를 출력하며 끝난다.
+fn invalid_dsn(error: impl std::fmt::Display) -> ! {
+    eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
+    std::process::exit(1)
+}
+
 #[tokio::main]
 async fn main() {
     let iterations = std::env::args()
@@ -104,11 +128,8 @@ async fn main() {
         .unwrap_or(1_000usize);
     assert!(iterations >= 10, "iterations must be at least 10");
 
-    let sqlx_options = MySqlConnectOptions::new()
-        .socket("/tmp/mysql.sock")
-        .username("root")
-        .database("orm_bench")
-        .statement_cache_capacity(256);
+    let dsn = bench_dsn();
+    let sqlx_options = MySqlConnectOptions::from_str(&dsn).unwrap_or_else(|e| invalid_dsn(e)).statement_cache_capacity(256);
     let sqlx = MySqlPoolOptions::new()
         .min_connections(1)
         .max_connections(1)
@@ -116,10 +137,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let async_options = OptsBuilder::default()
-        .user(Some("root"))
-        .db_name(Some("orm_bench"))
-        .socket(Some("/tmp/mysql.sock"))
+    let async_options = OptsBuilder::from_opts(Opts::from_url(&dsn).unwrap_or_else(|e| invalid_dsn(e)))
         .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
     let mysql_async = AsyncPool::new(async_options);
 
