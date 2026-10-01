@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.4: the TypeScript client applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery, and its introspection leaves `dbspec$plans` out.
+
 - T8.2.6.1.3: the Korean protocol page links the manifest section by its ASCII anchor.
 
 - T8.7.2: the Go engine exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
