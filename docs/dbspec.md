@@ -155,7 +155,7 @@ Codec stages run in the written order on write. The storage type follows the las
 | `codec <column> <stage> ...` | The value is encoded by the stages in order on write and decoded in reverse on read: `ordered_json`, `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)) | manifest |
 | `aes_version <column>` | The non-null integer column that stores the AES key version of the row; required when a column uses `aes` | manifest |
 | `blind_index <aes column> <index column>` | The executor writes an HMAC of the AES column's plaintext to the indexed column and uses it for equality conditions | manifest |
-| `navigation <foreign key> <child name> <parent name>` | The relation names that generated code uses for the foreign key, from the child and from the parent | manifest |
+| `navigation <foreign key> <child name> <parent name>` | The relation names that tools show for the foreign key, from the child and from the parent; generated code joins through its match methods and does not read them | manifest |
 | `immutable` | The database rejects `UPDATE` and `DELETE` of the table's rows with generated row triggers. `TRUNCATE` is not covered. Rejected on a child of a `cascade` or `set_null` foreign key | schema |
 | `audit into <history table> operation <column> action <history column> previous <history column>` | Generated row triggers copy every `INSERT` and `UPDATE` into the history table; see [Audit](#audit) | schema |
 
@@ -209,6 +209,36 @@ The manifest and the [rendered statements](dialects.md#rendered-statements) take
 - `manifestHash` is `sha256:` followed by the lower-case hexadecimal SHA-256 of the UTF-8 bytes of the manifest text; `schemaHash` is the same over the schema text.
 
 Generated code carries the manifest text of the document set it was generated from and its `manifestHash`, and every request it sends carries that hash. A runtime builds its model from the embedded text once, when the process starts; the PHP generator writes that model as PHP arrays instead, so the opcode cache keeps it and no request parses the text. `schemaHash` identifies the database state that migration plans and their history record.
+
+## Runtime model
+
+A client builds one runtime model from the document set, and generated code is produced from the same model:
+
+- **Entities.** One entity per table of every document of the set, documents in name order and tables in document order. The entity name is the `entity` setting or the table name; generated type names are its snake_case segments with their first letters in upper case (`service_member` → `ServiceMember`).
+- **Fields.** One field per column, named as the column, in column order, with the value type of the table below. A `null` column takes the language's absent value: Go a pointer (`[]byte` and styled values stay unwrapped), PHP `?T`, TypeScript `T | null`, Rust `Option<T>`.
+- **Keys.** The primary key columns identify a row; the identity column is never written by an insert and its generated key is returned. An upsert conflicts on the primary key or a unique key, which the call names.
+- **Default select set.** Every column except those of `select explicit`; reading a column that was not selected fails with `COLUMN_UNSELECTED`. No type or codec leaves a column out by itself.
+- **Defaults.** An insert that omits a column with a default takes the database default; the executor does not fill it. An insert that omits a non-null column without a default fails with `IR_INVALID` before reaching the database.
+- **Codecs.** A column with a `codec` setting holds the value that the first stage encodes. When a stage is `ordered_json`, `serialize`, `yaml`, `gz` or `base64`, that is a styled value of the common value model ([codecs](codec.md)), which distinguishes SQL NULL from a stored null; when every stage is `aes`, `hex` or `ip`, it is a string (`ip` takes the address text).
+- **Settings.** `updated` is assigned the UTC statement time on every `UPDATE` the executor plans; `soft_delete` filters reads and turns deletes into updates; `aes_version` stores the key version of the row; `blind_index` writes the HMAC column and rewrites equality conditions on the AES column. For `audit`, the calling code supplies an operation id for its unit of work and the executor writes it into the operation column of every audited row it inserts or updates; an insert or update of an audited table without an operation id fails with `CONFIG`. `immutable` has no runtime behavior: the database rejects the change. `navigation` has none either.
+- **Relations.** Generated code joins two entities through the match methods of their columns, as before; a joined result is reached under the alias the call gives or under `<entity>_model` and `<entity>_models`.
+- **Connection.** A connection takes the DSN URI and its configuration; it never takes a schema path. Generated code carries the manifest text and `manifestHash` and registers its model before the first connection; a request carries `manifestHash`.
+
+| dbspec | Go | PHP | TypeScript | Rust |
+| --- | --- | --- | --- | --- |
+| `i16` | `int16` | `int` | `number` | `i16` |
+| `i32` | `int32` | `int` | `number` | `i32` |
+| `i64` | `int64` | `int` | `number` (a safe integer) | `i64` |
+| `bool` | `bool` | `bool` | `boolean` | `bool` |
+| `decimal(p,s)` | `string` with exactly s fraction digits | `string` | `string` | `String` |
+| `f64` | `float64` | `float` | `number` | `f64` |
+| `varchar(n)`, `text`, `uuid` | `string` | `string` | `string` | `String` |
+| `bytes` | `[]byte` | `string` | `Uint8Array` | `Vec<u8>` |
+| `date` | `time.Time` | `\DateTimeImmutable` | `string` `YYYY-MM-DD` | `NaiveDate` |
+| `time(p)` | `string` `HH:MM:SS` with p fraction digits | `string` | `string` | `String` |
+| `datetime(p)` | `time.Time` in UTC | `\DateTimeImmutable` in UTC | `string` `YYYY-MM-DD HH:MM:SS` with p fraction digits | `NaiveDateTime` |
+
+The Mermaid manifest fields map to this model as follows: `auto` is the identity column; `lazy` is `select explicit`; `styles` are codec stages, with `json` and `jsons` both `ordered_json`; `timestamps.updated` is `updated`, and `timestamps.created` is a `default now` column; `relations` and `ref` are foreign keys; `unique`, `indexes`, `pk`, `nullable`, `default`, `precision` and `scale` keep their meaning; `fulltext`, `unsigned`, `enum`, `point`, `inet`, `on_update`, `uk`, `raw` and `len` have no runtime counterpart, so the fulltext condition and point values leave the clients.
 
 ## Diagrams
 
