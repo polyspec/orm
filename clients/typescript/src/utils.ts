@@ -3,7 +3,8 @@ import { CORE, isModel } from './core.js';
 import { activeFor, type Db, type TxFrame } from './database.js';
 import type { DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
-import { Engine } from './engine/index.js';
+import { renderDbspec } from './dbspec/index.js';
+import { parseDocumentSet } from './engine/model.js';
 import { OrmError } from './runtime_error.js';
 
 export interface AesRotationStatus {
@@ -74,7 +75,11 @@ export class Utils {
     }
   }
 
-  /** Sets a transaction-local value. */
+  /**
+   * Sets a transaction-local value: a PostgreSQL transaction setting, a MySQL
+   * user variable that the transaction end clears, and on SQLite, which has no
+   * session setting, a value of the transaction that only local() reads.
+   */
   public async setLocal(key: string, value: string): Promise<void> {
     const frame = this.active('setLocal');
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
@@ -85,10 +90,6 @@ export class Utils {
       case 'mysql':
         await frame.tx.control(`SET @\`orm.${key}\` = ?`, [value]);
         break;
-      default:
-        await frame.tx.control('CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)');
-        await frame.tx.control('INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"', [key, value]);
-        frame.contextRow = true;
     }
     frame.locals.set(key, value);
   }
@@ -116,28 +117,46 @@ export class SchemaUtils {
   }
 
   /**
-   * Installs a schema manifest and adds it to the connection. PostgreSQL and
-   * SQLite apply it in the active transaction or in a new one; MySQL commits
-   * schema statements implicitly, so it applies them outside a transaction
-   * and rejects a call inside one with CONFIG.
+   * Installs the tables of a dbspec document set: the texts are the documents
+   * of the set, and their rendered statements (docs/dialects.md "Rendered
+   * statements") create the tables when none of them exists. When every table
+   * exists the call changes nothing; when only some exist it fails with CONFIG.
+   * PostgreSQL and SQLite apply the statements in the active transaction or in
+   * a new one; MySQL commits schema statements implicitly, so it applies them
+   * outside a transaction and rejects a call inside one with CONFIG.
    */
-  public async install(manifestJson: string): Promise<void> {
-    let engine: Engine;
-    try { engine = Engine.load(manifestJson, this.db.driver); } catch (error) {
-      throw config(`invalid schema manifest: ${(error as Error).message}`);
+  public async install(texts: readonly string[]): Promise<void> {
+    if (!Array.isArray(texts) || texts.length === 0) throw config('install takes the dbspec texts of a document set');
+    const documents = parseDocumentSet(texts);
+    const rendered = renderDbspec(documents, this.db.driver);
+    if (rendered.statements === null) {
+      const d = rendered.diagnostics[0]!;
+      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
-    const statements = engine.installStatements();
-    if (statements.length === 0) throw config('schema manifest produced no statements');
+    const statements = rendered.statements;
+    // MySQL commits schema statements implicitly, so they run outside a transaction.
+    if (this.db.pool.unprepared && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
+    const tables = documents.flatMap(d => d.tables.map(t => t.name));
+    const present: string[] = [];
+    for (const table of tables) if (await this.table(table)) present.push(table);
+    if (present.length === tables.length) return;
+    if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
     if (this.db.pool.unprepared) {
-      // MySQL commits schema statements implicitly, so they run outside a transaction.
-      if (activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
       await this.db.pool.unprepared(statements);
     } else {
       await inTx(this.db, async frame => {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
-    this.db.registerEngine(engine);
+  }
+
+  /** Reports whether a table of the connected database or schema exists. */
+  private async table(name: string): Promise<boolean> {
+    switch (this.db.driver) {
+      case 'postgres': return this.check('SELECT to_regclass(current_schema() || \'.\' || quote_ident($1)) IS NOT NULL', [name]);
+      case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [name]);
+      default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [name]);
+    }
   }
 
   public async exists(name: string): Promise<boolean> {
@@ -224,12 +243,12 @@ export class AesUtils {
 
   private spec(model: unknown): AesSpec {
     if (!isModel(model)) throw config('aes requires a model');
-    const schema = model[CORE].ent.schema;
-    const columns = Object.entries(schema.columns)
-      .filter(([, col]) => (col.styles ?? []).includes('aes'))
-      .map(([name, col]) => ({ name, styles: (col.styles ?? []).filter(s => s === 'aes' || s === 'hex') }));
-    if (!schema.aesVersion || columns.length === 0) throw config(`entity ${schema.name} has no AES columns with a key version`);
-    return { table: schema.table, keys: schema.pk, version: schema.aesVersion, columns };
+    const schema = model[CORE].ent.entity;
+    const columns = schema.fields
+      .filter(col => col.stages.includes('aes'))
+      .map(col => ({ name: col.name, styles: col.stages.filter(s => s === 'aes' || s === 'hex') }));
+    if (schema.aesVersion === '' || columns.length === 0) throw config(`entity ${schema.name} has no AES columns with a key version`);
+    return { table: schema.table, keys: schema.primaryKey, version: schema.aesVersion, columns };
   }
 
   public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus> {

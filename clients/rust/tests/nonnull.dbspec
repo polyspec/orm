@@ -1,0 +1,10 @@
+dbspec 1 nonnull
+
+table nonnull_document {
+  seq i64 identity
+  body text
+  primary key (seq)
+  settings {
+    codec body ordered_json
+  }
+}

@@ -1,12 +1,10 @@
 import { Author, Db, GroupRow, GroupRows, OrmError } from '../dist/index.js';
-import { fileURLToPath } from 'node:url';
 
 const { ORM_GROUP_DATABASE: driver, ORM_GROUP_DSN: dsn } = process.env;
 if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
   throw new Error('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');
 }
-const schema = fileURLToPath(new URL('../../../schema/schema.json', import.meta.url));
-const db = await Db.connect(dsn, schema, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+const db = await Db.connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
 try {
   if (db.driver !== driver) throw new Error('DSN selected the wrong database');
   const query = () => new Author().connect(db);

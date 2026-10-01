@@ -3,45 +3,30 @@ package orm_test
 import (
 	"bytes"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
 	orderedjson "github.com/polyspec/ordered-json/go"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
-
-// An encrypted JSON value is a blob column with the stages json and aes.
-const aesJSONSchema = `erDiagram
-  secret_config {
-    bigint   seq             PK "auto"
-    int      aes_key_version
-    longblob config             "json aes"
-  }
-`
 
 const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,"first":1.50}}`
 
-// TestAESJSONColumnSchema rejects an encrypted JSON value without a key
-// version column and an AES stage on a jsontext column.
+// TestAESJSONColumnSchema는 key version setting 없는 AES codec과 text
+// column에 저장하는 AES codec을 SCHEMA_INVALID setting diagnostic으로 거부한다.
 func TestAESJSONColumnSchema(t *testing.T) {
-	for _, c := range []struct{ source, err string }{
-		{"erDiagram\n  secret_config {\n    bigint seq PK \"auto\"\n    longblob config \"json aes\"\n  }\n", "secret_config.config requires a non-null integer aes version column"},
-		{"erDiagram\n  secret_config {\n    bigint seq PK \"auto\"\n    int aes_key_version\n    jsontext config \"json aes\"\n  }\n", "column config: a jsontext column takes only the json or jsons stage"},
+	for _, c := range []struct{ document, message string }{
+		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  config bytes\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n  }\n}\n", "aes_version"},
+		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  aes_key_version i32\n  config text\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n    aes_version aes_key_version\n  }\n}\n", "bytes"},
 	} {
-		d, err := schema.Parse(c.source)
-		if err == nil {
-			_, err = schema.Build(d)
-		}
-		if err == nil || !strings.Contains(err.Error(), c.err) {
-			t.Fatalf("build error = %v, want %q", err, c.err)
+		_, diagnostics := runtimemodel.LoadDocuments([]string{c.document})
+		if len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleSetting || !strings.Contains(diagnostics[0].Message, c.message) {
+			t.Fatalf("diagnostics = %v, want a setting diagnostic about %s", diagnostics, c.message)
 		}
 	}
 }
@@ -50,18 +35,8 @@ func TestAESJSONColumnSchema(t *testing.T) {
 // it back unchanged, and rotates it to another key version on the three
 // databases.
 func TestAESJSONColumn(t *testing.T) {
-	d, err := schema.Parse(aesJSONSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "secret_config")
+	manifest := s.Text
 	sqlitePath := filepath.Join(t.TempDir(), "aes-json.sqlite")
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + sqlitePath,
@@ -73,12 +48,8 @@ func TestAESJSONColumn(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "secret_config")
 			defer dropTable(t, driver, dsn, "secret_config")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
 			open := func(keys map[int32]string, current int32) *orm.DB {
-				db, err := orm.Open(dsn, eng, orm.Config{AESKeys: keys, AESVersion: current, AESKey: keys[current]})
+				db, err := orm.Connect(dsn, s, orm.Config{AESKeys: keys, AESVersion: current, AESKey: keys[current]})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -89,7 +60,7 @@ func TestAESJSONColumn(t *testing.T) {
 			if err := first.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			entity := rowEntity("secret_config", m.SchemaHash, "seq", "aes_key_version", "config")
+			entity := rowEntity("secret_config", s, "seq", "aes_key_version", "config")
 			model := func(db *orm.DB) *orm.Core {
 				c := orm.NewCore(entity)
 				entity.New(c)
@@ -127,6 +98,7 @@ func TestAESJSONColumn(t *testing.T) {
 				t.Helper()
 				var raw *sql.DB
 				if driver == "sqlite" {
+					var err error
 					raw, err = sql.Open("sqlite", sqlitePath)
 					if err != nil {
 						t.Fatal(err)
@@ -205,183 +177,4 @@ func TestAESJSONColumn(t *testing.T) {
 			}
 		})
 	}
-}
-
-const aesJSONAuditSchema = "er" + "Diagram\n" +
-	"  audit_secret {\n" +
-	"    bigint       seq             PK \"auto\"\n" +
-	"    varchar(36)  service_ref\n" +
-	"    int          aes_key_version\n" +
-	"    longblob     config             \"json aes\"\n" +
-	"  }\n" +
-	"  %% orm:table entity=audit_secret name=ormtest.audit_secret\n" +
-	"  %% orm:audit_log operation=ormtest.audit_operation(seq, operation_uuid) context=ormtest.operation_id change=ormtest.audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n" +
-	"  %% orm:audit entity=audit_secret mode=changes\n"
-
-// TestAESJSONColumnAudit records an encrypted column in audit changes as the
-// redaction marker, never as its plaintext or its ciphertext.
-func TestAESJSONColumnAudit(t *testing.T) {
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "aes-audit.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	marker := map[string]any{"redacted": true, "present": true}
-	for driver, dsn := range targets {
-		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			tables := []string{"ormtest.audit_secret", "ormtest.audit_change", "ormtest.audit_operation"}
-			if driver == "mysql" {
-				tables = []string{"audit_secret", "audit_change", "audit_operation"}
-			}
-			logs, logManifest := auditManifest(t, auditLogSchema, driver)
-			m, manifest := auditManifest(t, aesJSONAuditSchema, driver)
-			dropAuditSchema(t, driver, dsn, tables)
-			defer dropAuditSchema(t, driver, dsn, tables)
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{AESKey: "audit-key", AESVersion: 1, AESKeys: map[int32]string{1: "audit-key"}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer db.Close()
-			for _, text := range [][]byte{logManifest, manifest} {
-				if err := db.Utils().Schema().Install(text); err != nil {
-					t.Fatal(err)
-				}
-			}
-			operations := rowEntity("audit_operation", logs.SchemaHash, "seq", "operation_uuid")
-			changes := rowEntity("audit_change", logs.SchemaHash, "seq", "operation_seq", "change_kind", "service_ref", "table_label", "entity_ref", "before_value", "after_value")
-			secrets := rowEntity("audit_secret", m.SchemaHash, "seq", "service_ref", "aes_key_version", "config")
-			first, err := orderedjson.Parse(`{"token":"first-plain-token"}`)
-			if err != nil {
-				t.Fatal(err)
-			}
-			second, err := orderedjson.Parse(`{"token":"second-plain-token"}`)
-			if err != nil {
-				t.Fatal(err)
-			}
-			sqlitePath := strings.TrimPrefix(dsn, "sqlite://")
-			write := func(fn func() error) {
-				t.Helper()
-				if err := db.Transaction(func() error {
-					if err := db.Utils().SetLocal("ormtest.operation_id", "op-1"); err != nil {
-						return err
-					}
-					return fn()
-				}, orm.Retry(0)); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if err := db.Transaction(func() error {
-				op := orm.NewCore(operations)
-				operations.New(op)
-				op.Set("operation_uuid", "op-1")
-				_, err := op.Create()
-				return err
-			}, orm.Retry(0)); err != nil {
-				t.Fatal(err)
-			}
-			var seq any
-			var ciphertexts [][]byte
-			write(func() error {
-				c := orm.NewCore(secrets)
-				secrets.New(c)
-				c.Set("service_ref", "s1")
-				c.Set("config", orm.Value(first))
-				created, err := c.Create()
-				if err == nil {
-					seq = created.(*keywordRow).vals["seq"]
-				}
-				return err
-			})
-			ciphertexts = append(ciphertexts, storedCell(t, driver, dsn, sqlitePath, tables[0], seq))
-			write(func() error {
-				u := orm.NewCore(secrets)
-				secrets.New(u)
-				u.Set("seq", seq)
-				u.Set("config", orm.Value(second))
-				return u.Update(nil)
-			})
-			ciphertexts = append(ciphertexts, storedCell(t, driver, dsn, sqlitePath, tables[0], seq))
-			write(func() error {
-				d := orm.NewCore(secrets)
-				secrets.New(d)
-				d.Set("seq", seq)
-				return d.Delete(nil)
-			})
-			q := orm.NewCore(changes)
-			changes.New(q)
-			q.Connect(db)
-			q.AddAllColumns()
-			q.OrderBy("seq", false, nil)
-			rows, err := orm.Gets[*keywordRow](q)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var kinds []string
-			var all []*keywordRow
-			for _, row := range rows.All() {
-				all = append(all, row)
-				kinds = append(kinds, row.vals["change_kind"].(string))
-				text := strings.ToLower(string(mustJSON(t, row.vals)))
-				if strings.Contains(text, "plain-token") {
-					t.Fatalf("the plaintext is recorded: %s", text)
-				}
-				for _, cell := range ciphertexts {
-					if strings.Contains(text, hex.EncodeToString(cell)) || strings.Contains(text, hex.EncodeToString(cell[len(cell)-16:])) {
-						t.Fatalf("the ciphertext is recorded: %s", text)
-					}
-				}
-				for _, column := range []string{"before_value", "after_value"} {
-					values := jsonText(t, row.vals[column]).(map[string]any)
-					if config, ok := values["config"]; ok && !reflect.DeepEqual(config, marker) {
-						t.Fatalf("%s config: %v", column, config)
-					}
-				}
-			}
-			if strings.Join(kinds, ",") != "INSERT,UPDATE,DELETE" {
-				t.Fatalf("change kinds: %v", kinds)
-			}
-			insert := jsonText(t, all[0].vals["after_value"]).(map[string]any)
-			update := jsonText(t, all[1].vals["after_value"]).(map[string]any)
-			remove := jsonText(t, all[2].vals["before_value"]).(map[string]any)
-			for _, values := range []map[string]any{insert, update, remove} {
-				if !reflect.DeepEqual(values["config"], marker) {
-					t.Fatalf("config value: %v", values)
-				}
-			}
-		})
-	}
-}
-
-// storedCell reads the stored bytes of the config column.
-func storedCell(t *testing.T, driver, dsn, sqlitePath, table string, seq any) []byte {
-	t.Helper()
-	var raw *sql.DB
-	query := "SELECT config FROM " + table + " WHERE seq = $1"
-	switch driver {
-	case "sqlite":
-		var err error
-		if raw, err = sql.Open("sqlite", sqlitePath); err != nil {
-			t.Fatal(err)
-		}
-		query = `SELECT config FROM "ormtest__audit_secret" WHERE seq = $1`
-	case "mysql":
-		raw = openNative(t, driver, dsn)
-		query = "SELECT config FROM " + table + " WHERE seq = ?"
-	default:
-		raw = openNative(t, driver, dsn)
-	}
-	defer raw.Close()
-	var cell []byte
-	if err := raw.QueryRow(query, mustInt64(seq)).Scan(&cell); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.HasPrefix(cell, []byte("ORM-AES2\x00")) {
-		t.Fatalf("stored cell %q", cell)
-	}
-	return cell
 }

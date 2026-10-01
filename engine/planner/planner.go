@@ -14,17 +14,17 @@ import (
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 type Planner struct {
-	M *schema.Manifest
+	M *runtimemodel.Model
 	D dialect.Dialect
 }
 
 // scope is one entity occurrence in a statement (root or a join) with its alias.
 type scope struct {
-	ent    *schema.Entity
+	ent    *runtimemodel.Entity
 	alias  string
 	q      *ir.Query
 	joins  map[string]*scope
@@ -90,6 +90,14 @@ func (b *builder) now() string {
 	return b.p.D.Placeholder(b.n)
 }
 
+// operation은 executor가 채우는 현재 unit of work의 operation id다. ColType은
+// audit operation column의 type(i64 또는 uuid)이다.
+func (b *builder) operation(ent *runtimemodel.Entity) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "operation", ColType: ent.Field(ent.Audit.Operation).Type})
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
 // fillPlaceholders replaces each `?` of a user fragment with the dialect's
 // placeholder for the next bind (PostgreSQL needs $n); the count must match.
 func (p *Planner) fillPlaceholders(b *builder, frag string, ps []int) (string, error) {
@@ -117,7 +125,7 @@ func (b *builder) parentList(step int) string {
 }
 
 func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
-	out := &plan.Plan{SchemaHash: p.M.SchemaHash, Kind: r.Kind}
+	out := &plan.Plan{ManifestHash: p.M.ManifestHash, Kind: r.Kind}
 	ps := &stepSet{}
 	var err error
 	switch r.Kind {
@@ -348,16 +356,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
 	for _, r := range s.q.Relations {
 		rc := &relCtx{parentStep: stepID, parentAsm: asm}
-		var target *schema.Entity
-		if r.Left != "" {
-			rc.parentKeys, rc.childKeys, rc.kind = []string{r.Left}, []string{r.Right}, r.Kind
-			target = p.M.Entities[r.Query.Entity]
-		} else {
-			rel := s.ent.Relations[r.Rel]
-			rc.parentKeys, rc.childKeys = relationColumns(rel)
-			rc.kind = rel.Kind
-			target = p.M.Entities[rel.Target]
-		}
+		rc.parentKeys, rc.childKeys, rc.kind = []string{r.Left}, []string{r.Right}, r.Kind
+		target := p.M.Entities[r.Query.Entity]
 		parentKeys, childKeys := rc.parentKeys, rc.childKeys
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
 		if err != nil {
@@ -408,15 +408,6 @@ func keyRefs(a *plan.Assemble, columns []string) []plan.KeyRef {
 		out[i] = plan.KeyRef{Column: column, Index: indexOf(a, column)}
 	}
 	return out
-}
-
-func relationColumns(rel *schema.Rel) ([]string, []string) {
-	local := make([]string, len(rel.Keys))
-	target := make([]string, len(rel.Keys))
-	for i, key := range rel.Keys {
-		local[i], target[i] = key.Local, key.Target
-	}
-	return local, target
 }
 
 func (p *Planner) qualified(scope *scope, columns []string) []string {
@@ -487,18 +478,18 @@ func (p *Planner) renderGroupBy(root *scope, q *ir.Query) (string, error) {
 // so each language can expose the grouped columns through its normal row API.
 func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope, asm *plan.Assemble, idx *int, outNames *[]string) error {
 	for _, name := range s.q.GroupBy {
-		col := s.ent.Column(name)
+		col := s.ent.Field(name)
 		if col == nil {
 			return &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name}
 		}
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		expr, _ := p.D.ReadExpr(p.qcol(s, name), col.Type, p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
+		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.sqlStyles(col.Codec), func() string { return b.secret("aes") })
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
-		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: name, Column: name, Type: col.Type, Styles: p.clientStyles(col.Styles)})
+		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: name, Column: name, Type: col.Type, Styles: p.clientStyles(col.Codec)})
 		*idx++
 	}
 	for _, g := range s.q.GroupByExpr {
@@ -512,8 +503,8 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		out := s.alias + "__" + g.As
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
-		typ := "string"
-		if col := s.ent.Column(g.As); col != nil {
+		typ := "text"
+		if col := s.ent.Field(g.As); col != nil {
 			typ = col.Type
 		}
 		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: g.As, Type: typ})
@@ -539,16 +530,16 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 	}
 	hasAES := false
 	for _, c := range cols {
-		if col := s.ent.Column(c.column); col != nil && slices.Contains(col.Styles, "aes") {
+		if col := s.ent.Field(c.column); col != nil && col.Encrypted() {
 			hasAES = true
 		}
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		col := s.ent.Column(c.column)
+		col := s.ent.Field(c.column)
 		var expr string
 		var styles []string
-		typ := "string"
+		typ := "text"
 		switch {
 		case c.fn != nil:
 			e, err := p.columnFunction(b, s, c.column, c.fn)
@@ -574,9 +565,9 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 		default:
-			e, _ := p.D.ReadExpr(p.qcol(s, c.column), col.Type, p.sqlStyles(col.Styles), func() string { return b.secret("aes") })
+			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.sqlStyles(col.Codec), func() string { return b.secret("aes") })
 			expr = e
-			styles = p.clientStyles(col.Styles)
+			styles = p.clientStyles(col.Codec)
 		}
 		sb.WriteString(expr + " AS " + p.D.Quote(s.alias+"__"+c.name))
 		*outNames = append(*outNames, s.alias+"__"+c.name)
@@ -587,17 +578,28 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		*idx++
 	}
 	if hasAES {
-		version := aesVersionCol(s.ent)
+		version := s.ent.Field(s.ent.AESVersion)
 		if version == nil {
-			return &ir.Error{Code: "SCHEMA_INVALID", Msg: s.ent.Name + ": AES column requires aes_key_version"}
+			return &ir.Error{Code: "SCHEMA_INVALID", Msg: s.ent.Name + ": AES column requires an aes_version setting"}
 		}
-		if *idx > 0 {
-			sb.WriteString(", ")
+		// 고른 version column이 있으면 그것을 쓰고, 없을 때만 숨겨서 읽는다.
+		for i, c := range asm.Columns {
+			if c.Column == version.Name && len(c.Styles) == 0 {
+				asm.AESVersion = &i
+				break
+			}
 		}
-		sb.WriteString(p.qcol(s, version.Name) + " AS " + p.D.Quote(s.alias+"__"+version.Name))
-		*outNames = append(*outNames, s.alias+"__"+version.Name)
-		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: version.Name, Column: version.Name, Type: version.Type, Hidden: true})
-		*idx++
+		if asm.AESVersion == nil {
+			if *idx > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(p.qcol(s, version.Name) + " AS " + p.D.Quote(s.alias+"__"+version.Name))
+			*outNames = append(*outNames, s.alias+"__"+version.Name)
+			at := len(asm.Columns)
+			asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: version.Name, Column: version.Name, Type: version.Type, Hidden: true})
+			asm.AESVersion = &at
+			*idx++
+		}
 	}
 	for _, j := range s.q.Joins {
 		js := s.joins[j.Rel]
@@ -608,28 +610,6 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		asm.Children = append(asm.Children, child)
 	}
 	asm.Key = keyRefs(asm, s.ent.PK)
-	return nil
-}
-
-// aesVersionColumn returns the required plaintext row-version metadata column
-// for an entity containing an AES payload. It is selected as a hidden output
-// so executors can choose the matching key before decoding each row.
-func aesVersionCol(e *schema.Entity) *schema.Col {
-	if e == nil {
-		return nil
-	}
-	for _, c := range e.Columns {
-		for _, style := range c.Styles {
-			if style == "aes" {
-				for _, v := range e.Columns {
-					if v.Name == "aes_key_version" {
-						return v
-					}
-				}
-				return nil
-			}
-		}
-	}
 	return nil
 }
 
@@ -648,16 +628,16 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 	if c != nil {
 		mode = c.Mode
 	}
-	for _, col := range s.ent.Columns {
+	for _, col := range s.ent.Fields {
 		switch mode {
 		case "all":
 			base = append(base, col.Name)
 		case "none":
-			if col.PK || col.FK {
+			if col.PrimaryKey || col.ForeignKey {
 				base = append(base, col.Name)
 			}
 		default:
-			if !col.Lazy {
+			if !col.SelectExplicit {
 				base = append(base, col.Name)
 			}
 		}
@@ -671,7 +651,7 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		if len(c.Remove) > 0 {
 			var kept []string
 			for _, x := range base {
-				if !contains(c.Remove, x) || s.ent.Column(x).PK {
+				if !contains(c.Remove, x) || s.ent.Field(x).PrimaryKey {
 					kept = append(kept, x)
 				}
 			}
@@ -686,16 +666,8 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		}
 	}
 	for _, r := range s.q.Relations {
-		if r.Left != "" {
-			if !contains(base, r.Left) {
-				base = append(base, r.Left)
-			}
-		} else {
-			for _, key := range s.ent.Relations[r.Rel].Keys {
-				if !contains(base, key.Local) {
-					base = append(base, key.Local)
-				}
-			}
+		if !contains(base, r.Left) {
+			base = append(base, r.Left)
 		}
 		if r.Query.IfParent != nil && !contains(base, r.Query.IfParent.Column) {
 			base = append(base, r.Query.IfParent.Column)
@@ -744,17 +716,7 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 		if j.Kind == "left" {
 			kw = " LEFT JOIN "
 		}
-		var conditions []string
-		if j.Left != "" {
-			conditions = []string{p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right)}
-		} else {
-			rel := s.ent.Relations[j.Rel]
-			conditions = make([]string, len(rel.Keys))
-			for i, key := range rel.Keys {
-				conditions[i] = p.qcol(s, key.Local) + " = " + p.qcol(js, key.Target)
-			}
-		}
-		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " + strings.Join(conditions, " AND "))
+		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
 		if j.Query.On != nil && len(j.Query.On.Items) > 0 {
 			on, err := p.renderGroup(b, js, j.Query.On, true)
 			if err != nil {
@@ -829,9 +791,6 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 }
 
 func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) {
-	if pr.Op != "" && !p.D.Supports(pr.Op) {
-		return "", &ir.Error{Code: "OPERATOR_NOT_ALLOWED", Msg: pr.Op + " is not available on " + p.D.Name()}
-	}
 	if pr.Expr != "" {
 		e, err := p.renderExpr(s, pr.Expr)
 		if err != nil {
@@ -843,25 +802,13 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return "(" + e + ")", nil
 	}
-	if pr.Op == "match" || pr.Op == "match_boolean" {
-		var cols []string
-		for _, c := range pr.Match {
-			cols = append(cols, p.qcol(s, c))
-		}
-		boolean := pr.Op == "match_boolean"
-		transform := ""
-		if boolean {
-			transform = "fulltext_boolean"
-		}
-		return p.D.Fulltext(cols, b.paramT(*pr.P, transform), boolean), nil
-	}
 	if pr.Op == "tuple_in" || pr.Op == "tuple_not_in" {
 		cols := p.qualified(s, pr.Cols)
 		var rows [][]string
 		for i := 0; i < len(pr.Ps); i += len(pr.Cols) {
 			row := make([]string, len(pr.Cols))
 			for k, name := range pr.Cols {
-				v, err := p.renderValue(b, s.ent.Column(name), pr.Ps[i+k])
+				v, err := p.renderValue(b, s.ent.Field(name), pr.Ps[i+k])
 				if err != nil {
 					return "", err
 				}
@@ -871,7 +818,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		}
 		return p.D.TupleIn(cols, rows, pr.Op == "tuple_not_in"), nil
 	}
-	col := s.ent.Column(pr.Column)
+	col := s.ent.Field(pr.Column)
 	lhs := p.qcol(s, pr.Column)
 	if pr.Sub != nil {
 		inner, err := p.subSelect(b, s, pr.Sub)
@@ -917,7 +864,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	}
 	switch pr.Op {
 	case "eq", "not_eq", "gt", "gte", "lt", "lte":
-		if slices.Contains(col.Styles, "aes") {
+		if col.Encrypted() {
 			if pr.Op != "eq" && pr.Op != "not_eq" {
 				return "", &ir.Error{Code: "OPERATOR_NOT_ALLOWED", Msg: "AES columns support only equality through a declared blind index"}
 			}
@@ -941,12 +888,12 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		if rs.ent.Column(pr.Ref.Column) == nil {
+		if rs.ent.Field(pr.Ref.Column) == nil {
 			return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: rs.ent.Name + "." + pr.Ref.Column}
 		}
 		return lhs + " " + cmp(strings.TrimSuffix(pr.Op, "_col")) + " " + p.qcol(rs, pr.Ref.Column), nil
 	case "in", "not_in":
-		if slices.Contains(col.Styles, "aes") {
+		if col.Encrypted() {
 			if col.BlindIndex == "" {
 				return "", &ir.Error{Code: "IR_INVALID", Msg: s.ent.Name + "." + col.Name + " requires a declared blind index for equality search"}
 			}
@@ -1002,17 +949,17 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 
 // renderValue binds one value, wrapping it for SQL-side styles (hex/ip) so
 // equality predicates on encrypted columns keep working.
-func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error) {
-	styles := p.sqlStyles(col.Styles)
+func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (string, error) {
+	styles := p.sqlStyles(col.Codec)
 	// SQL-side stages the dialect lacks (aes/hex/ip on PostgreSQL/SQLite) are
 	// applied by the executor to the bound value: recorded on the slot.
 	var host []string
-	for _, st := range col.Styles {
+	for _, st := range col.Codec {
 		if (st == "aes" || st == "hex" || st == "ip") && !p.D.HandlesStyle(st) {
 			host = append(host, st)
 		}
 	}
-	if len(styles) == 0 && col.Type != "point" {
+	if len(styles) == 0 {
 		ph := b.param(i)
 		b.binds[len(b.binds)-1].HostStyles = host
 		b.binds[len(b.binds)-1].ColType = bindType(col)
@@ -1034,7 +981,7 @@ func (p *Planner) renderValue(b *builder, col *schema.Col, i int) (string, error
 			return ph
 		}
 		return b.secret("aes")
-	}, col.Type, styles)
+	}, styles)
 	return e, nil
 }
 
@@ -1048,12 +995,12 @@ func (p *Planner) renderBlindIndexValue(b *builder, i int) (string, error) {
 }
 
 // bindType names types that executors must normalize before driver binding.
-func bindType(col *schema.Col) string {
+func bindType(col *runtimemodel.Field) string {
 	if col == nil {
 		return ""
 	}
 	switch col.Type {
-	case "date", "time", "datetime", "point", "decimal":
+	case "date", "time", "datetime", "decimal":
 		return col.Type
 	}
 	return ""
@@ -1100,7 +1047,7 @@ func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
 				return "", &ir.Error{Code: "IR_INVALID", Msg: "unterminated { in expr"}
 			}
 			name := frag[i+1 : i+1+j]
-			if s.ent.Column(name) == nil {
+			if s.ent.Field(name) == nil {
 				return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name + " in expr"}
 			}
 			out.WriteString(p.qcol(s, name))
@@ -1117,7 +1064,7 @@ func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
 			return "", &ir.Error{Code: "IR_INVALID", Msg: "unterminated ` in expr"}
 		}
 		name := frag[i+1 : i+1+j]
-		if s.ent.Column(name) == nil {
+		if s.ent.Field(name) == nil {
 			return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name + " in expr"}
 		}
 		out.WriteString(p.qcol(s, name))
@@ -1134,14 +1081,17 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
+	if err := validateOperationAssignments(ent, set); err != nil {
+		return nil, err
+	}
 	if err := validateRequiredAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	var cols, vals []string
 	for _, a := range set {
-		col := ent.Column(a.Column)
-		if col.Auto {
-			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot set auto column " + a.Column}
+		col := ent.Field(a.Column)
+		if col.Identity {
+			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot set identity column " + a.Column}
 		}
 		cols = append(cols, p.D.Quote(a.Column))
 		v, err := p.renderAssign(b, ent, col, &a)
@@ -1150,16 +1100,11 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		vals = append(vals, v)
 	}
-	if version := aesVersionColumn(ent); version != "" && !assigned(set, version) {
-		cols = append(cols, p.D.Quote(version))
-		vals = append(vals, b.config("aes_version"))
-	}
-	// A dialect without a session time zone stores the executor clock, which
-	// is in the connection time zone, instead of its UTC column default.
-	nowCols := hostNowColumns(p, ent, set)
-	for _, c := range nowCols {
-		cols = append(cols, p.D.Quote(c))
-		vals = append(vals, b.now())
+	// executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation 순서로 쓴다.
+	managed := managedInsertColumns(ent, set)
+	for _, c := range managed {
+		cols = append(cols, p.D.Quote(c.column))
+		vals = append(vals, c.value(b))
 	}
 	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
 	if len(r.Rows) > 0 {
@@ -1178,17 +1123,14 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			for i := range set {
 				param := row[source[i]]
 				a := ir.Assign{Column: set[i].Column, P: &param}
-				v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
+				v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
 				if err != nil {
 					return nil, err
 				}
 				more[i] = v
 			}
-			if version := aesVersionColumn(ent); version != "" && !assigned(set, version) {
-				more = append(more, b.config("aes_version"))
-			}
-			for range nowCols {
-				more = append(more, b.now())
+			for _, c := range managed {
+				more = append(more, c.value(b))
 			}
 			sql += ", (" + strings.Join(more, ", ") + ")"
 		}
@@ -1199,42 +1141,59 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		if err := validateAESAssignments(ent, duplicate, true); err != nil {
 			return nil, err
 		}
+		if err := validateOperationAssignments(ent, duplicate); err != nil {
+			return nil, err
+		}
 		r.OnDuplicate = duplicate
 		var sets []string
 		for _, a := range r.OnDuplicate {
-			v, err := p.renderAssign(b, ent, ent.Column(a.Column), &a)
+			v, err := p.renderAssign(b, ent, ent.Field(a.Column), &a)
 			if err != nil {
 				return nil, err
 			}
 			sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 		}
-		if version := aesVersionColumn(ent); version != "" && assignsAES(ent, r.OnDuplicate) && !assigned(r.OnDuplicate, version) {
+		if version := ent.AESVersion; version != "" && assignsAES(ent, r.OnDuplicate) {
 			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
 		}
-		if ent.Auto != "" && !p.D.InsertReturningID() {
+		// 기존 행을 바꾸는 duplicate update도 audit table의 update다.
+		if ent.Audit != nil {
+			sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
+		}
+		if ent.Identity != "" && !p.D.InsertReturningID() {
 			// MySQL idiom: make last insert id report the existing row on update
-			sets = append(sets, p.D.Quote(ent.Auto)+" = LAST_INSERT_ID("+p.D.Quote(ent.Auto)+")")
+			sets = append(sets, p.D.Quote(ent.Identity)+" = LAST_INSERT_ID("+p.D.Quote(ent.Identity)+")")
 		}
 		sql += p.D.Upsert(conflictTarget(ent, set), strings.Join(sets, ", "))
 	}
-	if p.D.InsertReturningID() && ent.Auto != "" {
-		sql += " RETURNING " + p.D.Quote(ent.Auto)
+	if p.D.InsertReturningID() && ent.Identity != "" {
+		sql += " RETURNING " + p.D.Quote(ent.Identity)
 	}
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
-func aesVersionColumn(ent *schema.Entity) string {
-	for _, col := range ent.Columns {
-		if slices.Contains(col.Styles, "aes") {
-			return "aes_key_version"
-		}
-	}
-	return ""
+// managedColumn은 executor가 insert마다 쓰는 column과 그 bind slot이다.
+type managedColumn struct {
+	column string
+	value  func(*builder) string
 }
 
-func assignsAES(ent *schema.Entity, set []ir.Assign) bool {
+// managedInsertColumns는 insert가 사용자 assignment 외에 쓰는 column이다:
+// AES key version, audit operation column.
+func managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
+	var out []managedColumn
+	if ent.AESVersion != "" && !assigned(set, ent.AESVersion) {
+		out = append(out, managedColumn{ent.AESVersion, func(b *builder) string { return b.config("aes_version") }})
+	}
+	if ent.Audit != nil {
+		out = append(out, managedColumn{ent.Audit.Operation, func(b *builder) string { return b.operation(ent) }})
+	}
+	return out
+}
+
+func assignsAES(ent *runtimemodel.Entity, set []ir.Assign) bool {
 	for _, assign := range set {
-		if col := ent.Column(assign.Column); col != nil && slices.Contains(col.Styles, "aes") {
+		if col := ent.Field(assign.Column); col != nil && col.Encrypted() {
 			return true
 		}
 	}
@@ -1244,8 +1203,8 @@ func assignsAES(ent *schema.Entity, set []ir.Assign) bool {
 // validateAESAssignments preserves the row-level key-version invariant. The
 // version is managed by the planner. An update that changes encrypted data
 // must replace every AES column because one version describes the whole row.
-func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete bool) error {
-	version := aesVersionColumn(ent)
+func validateAESAssignments(ent *runtimemodel.Entity, set []ir.Assign, requireComplete bool) error {
+	version := ent.AESVersion
 	if version == "" {
 		return nil
 	}
@@ -1255,22 +1214,28 @@ func validateAESAssignments(ent *schema.Entity, set []ir.Assign, requireComplete
 	if !requireComplete || !assignsAES(ent, set) {
 		return nil
 	}
-	for _, col := range ent.Columns {
-		if slices.Contains(col.Styles, "aes") && !assigned(set, col.Name) {
+	for _, col := range ent.Fields {
+		if col.Encrypted() && !assigned(set, col.Name) {
 			return &ir.Error{Code: "IR_INVALID", Msg: "AES update must assign every AES column; missing " + col.Name}
 		}
 	}
 	return nil
 }
 
-// validateRequiredAssignments rejects an insert that omits a required column:
-// a NOT NULL column without a default that is neither automatic nor the AES
-// key version the planner writes. MySQL fills an omitted NOT NULL ENUM column
-// with its first value, so the rule runs before any database sees the row.
-func validateRequiredAssignments(ent *schema.Entity, set []ir.Assign) error {
-	version := aesVersionColumn(ent)
-	for _, col := range ent.Columns {
-		if col.Nullable || col.Default != nil || col.Auto || col.Name == version || assigned(set, col.Name) {
+// validateOperationAssignments는 audit operation column을 executor만 쓰게 한다.
+func validateOperationAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
+	if ent.Audit != nil && assigned(set, ent.Audit.Operation) {
+		return &ir.Error{Code: "IR_INVALID", Msg: ent.Name + "." + ent.Audit.Operation + " is written by the executor from the operation id"}
+	}
+	return nil
+}
+
+// validateRequiredAssignments는 default가 없는 non-null column을 빼먹은
+// insert를 database에 닿기 전에 거부한다. identity, AES key version, audit
+// operation column은 executor나 database가 채운다.
+func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
+	for _, col := range ent.Fields {
+		if col.Null || col.Default || col.Identity || col.Name == ent.AESVersion || ent.Audit != nil && col.Name == ent.Audit.Operation || assigned(set, col.Name) {
 			continue
 		}
 		return &ir.Error{Code: "IR_INVALID", Msg: "required column " + ent.Name + "." + col.Name + " is not set"}
@@ -1278,10 +1243,10 @@ func validateRequiredAssignments(ent *schema.Entity, set []ir.Assign) error {
 	return nil
 }
 
-func addBlindIndexAssignments(ent *schema.Entity, set []ir.Assign) []ir.Assign {
+func addBlindIndexAssignments(ent *runtimemodel.Entity, set []ir.Assign) []ir.Assign {
 	for _, assign := range slices.Clone(set) {
-		col := ent.Column(assign.Column)
-		if col == nil || !slices.Contains(col.Styles, "aes") || col.BlindIndex == "" || assigned(set, col.BlindIndex) {
+		col := ent.Field(assign.Column)
+		if col == nil || !col.Encrypted() || col.BlindIndex == "" || assigned(set, col.BlindIndex) {
 			continue
 		}
 		set = append(set, ir.Assign{Column: col.BlindIndex, P: assign.P, Null: assign.Null})
@@ -1289,8 +1254,8 @@ func addBlindIndexAssignments(ent *schema.Entity, set []ir.Assign) []ir.Assign {
 	return set
 }
 
-func blindIndexSource(ent *schema.Entity, target string) *schema.Col {
-	for _, col := range ent.Columns {
+func blindIndexSource(ent *runtimemodel.Entity, target string) *runtimemodel.Field {
+	for _, col := range ent.Fields {
 		if col.BlindIndex == target {
 			return col
 		}
@@ -1310,26 +1275,26 @@ func assigned(set []ir.Assign, col string) bool {
 // conflictTarget picks the unique key an upsert conflicts on for dialects that
 // need one named (ON CONFLICT): the first declared unique key whose columns are
 // all being inserted, else the primary key.
-func conflictTarget(ent *schema.Entity, set []ir.Assign) []string {
+func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) []string {
 	inserted := map[string]bool{}
 	for _, a := range set {
 		inserted[a.Column] = true
 	}
-	for _, uk := range ent.Unique {
+	for _, uk := range ent.Uniques {
 		all := true
-		for _, c := range uk {
+		for _, c := range uk.Columns {
 			if !inserted[c] {
 				all = false
 			}
 		}
 		if all {
-			return uk
+			return uk.Columns
 		}
 	}
 	return ent.PK
 }
 
-func (p *Planner) renderAssign(b *builder, ent *schema.Entity, col *schema.Col, a *ir.Assign) (string, error) {
+func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error) {
 	if source := blindIndexSource(ent, col.Name); source != nil {
 		if a.Expr != "" || a.PlusP != nil || a.MinusP != nil {
 			return "", &ir.Error{Code: "IR_INVALID", Msg: "blind index assignment must use its AES source value"}
@@ -1368,11 +1333,14 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
+	if err := validateOperationAssignments(ent, set); err != nil {
+		return nil, err
+	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
 	var sets []string
 	for _, a := range set {
-		col := ent.Column(a.Column)
-		if col.PK || col.Auto {
+		col := ent.Field(a.Column)
+		if col.PrimaryKey || col.Identity {
 			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot update " + a.Column}
 		}
 		v, err := p.renderAssign(b, ent, col, &a)
@@ -1381,23 +1349,16 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		}
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 	}
-	if version := aesVersionColumn(ent); version != "" && assignsAES(ent, set) && !assigned(set, version) {
+	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
 		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
 	}
-	// The updated timestamp is always assigned explicitly: MySQL's ON UPDATE
-	// clause has no counterpart on the other dialects, and optimistic locking
-	// (updated_ts as the version) needs identical behaviour everywhere.
-	if ts := ent.Timestamps; ts != nil && ts.Updated != "" && !assigned(r.Set, ts.Updated) {
-		if col := ent.Column(ts.Updated); col != nil {
-			now := p.D.Now()
-			switch {
-			case p.D.HostNow():
-				now = b.now() // no sub-second clock in SQL: the executor binds its own microsecond timestamp
-			case col.Precision > 0 && p.D.Name() == "mysql":
-				now = fmt.Sprintf("CURRENT_TIMESTAMP(%d)", col.Precision)
-			}
-			sets = append(sets, p.D.Quote(ts.Updated)+" = "+now)
-		}
+	// updated setting의 column은 executor가 statement 시각으로 쓴다. 사용자가
+	// 직접 assign하면 그 값이 남는다.
+	if ent.Updated != "" && !assigned(r.Set, ent.Updated) {
+		sets = append(sets, p.D.Quote(ent.Updated)+" = "+p.statementTime(b, ent.Field(ent.Updated)))
+	}
+	if ent.Audit != nil {
+		sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {
@@ -1413,30 +1374,28 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
-// hostNowColumns lists the unassigned columns with a clock default when the
-// dialect has no session time zone.
-func hostNowColumns(p *Planner, ent *schema.Entity, set []ir.Assign) []string {
-	if !p.D.HostNow() {
-		return nil
+// statementTime은 datetime column에 쓰는 statement 시각이다. sub-second clock이
+// 없는 dialect는 executor clock을 bind하고, MySQL은 column precision을 맞춘다.
+func (p *Planner) statementTime(b *builder, col *runtimemodel.Field) string {
+	switch {
+	case p.D.HostNow():
+		return b.now()
+	case col.Precision > 0 && p.D.Name() == "mysql":
+		return fmt.Sprintf("CURRENT_TIMESTAMP(%d)", col.Precision)
 	}
-	var out []string
-	for _, c := range ent.Columns {
-		if c.Default != nil && *c.Default == "now" && !assigned(set, c.Name) {
-			out = append(out, c.Name)
-		}
-	}
-	return out
+	return p.D.Now()
 }
 
 func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	var now string
+	// soft delete는 UPDATE이므로 audit table이면 operation column도 쓴다.
+	var sets []string
 	if ent.SoftDelete != "" {
-		now = p.D.Now()
-		if p.D.HostNow() {
-			now = b.now()
+		sets = append(sets, p.D.Quote(ent.SoftDelete)+" = "+p.statementTime(b, ent.Field(ent.SoftDelete)))
+		if ent.Audit != nil {
+			sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
 		}
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
@@ -1445,7 +1404,7 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
-		return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + p.D.Quote(ent.SoftDelete) + " = " + now + " WHERE " + where, BindSlots: b.binds}, nil
+		return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, BindSlots: b.binds}, nil
 	}
 	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
@@ -1591,19 +1550,17 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 }
 
 // functionType is the assembled type of a column function result.
-func functionType(name string, col *schema.Col) string {
+func functionType(name string, col *runtimemodel.Field) string {
 	switch name {
 	case "day_of_week", "year", "month":
 		return "i64"
 	case "date":
 		return "date"
-	case "distance", "point_x", "point_y":
-		return "f64"
 	}
 	if col != nil {
 		return col.Type
 	}
-	return "string"
+	return "text"
 }
 
 // subType is the assembled type of a scalar subquery column.
@@ -1614,8 +1571,8 @@ func (p *Planner) subType(sub *ir.Sub) string {
 	case "avg":
 		return "f64"
 	}
-	if c := p.M.Entities[sub.Query.Entity].Column(sub.Column); c != nil {
+	if c := p.M.Entities[sub.Query.Entity].Field(sub.Column); c != nil {
 		return c.Type
 	}
-	return "string"
+	return "text"
 }

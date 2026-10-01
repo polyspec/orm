@@ -6,7 +6,7 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Request {
     pub ir_version: u32,
-    pub schema_hash: String,
+    pub manifest_hash: String,
     pub kind: String,
     #[serde(flatten)]
     pub query: Query,
@@ -178,8 +178,6 @@ pub struct Pred {
     pub r#ref: Option<ColRef>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub expr: String,
-    #[serde(rename = "match", skip_serializing_if = "Vec::is_empty")]
-    pub match_: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#fn: Option<Func>,
     #[serde(skip_serializing_if = "Option::is_none")]

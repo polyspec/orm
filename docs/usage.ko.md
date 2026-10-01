@@ -195,15 +195,15 @@ go run ./cmd/ormgen migrate --dsn "$ORM_DSN" \
 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 `schema.json`을 읽어 해시를 확인하고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
-npx orm-gen gen --schema schema/schema.json --out src/models --scan src
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
+npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
 }
 ```
 
@@ -220,23 +220,10 @@ fn main() {
 
 ```sh
 go run ./cmd/ormgen build schema/example.mmd --out schema/schema.json --check
-go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 생성물의 `schema_hash`와 읽은 `schema.json`이 다르면 기동 시 `SCHEMA_HASH_MISMATCH`로 멈춘다.
-
-Rust `build.rs`는 모델을 생성하기 전에 다이어그램으로 `schema.json`을 만들 수도 있다:
-
-```rust
-// build.rs
-fn main() {
-    let files = vec!["schema/example.mmd".into()];
-    let manifest = orm_build::schema::build_files(&files).expect("schema");
-    std::fs::write("schema/schema.json", manifest.marshal_indent() + "\n").unwrap();
-    println!("cargo:rerun-if-changed=schema/example.mmd");
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
-}
-```
 
 ---
 
@@ -255,32 +242,65 @@ sqlite:///var/lib/orm_example.sqlite
 ### Go
 
 ```go
-master, err := model.Connect(masterDSN, schemaPath, orm.Config{AESKey: aesKey})
+master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`model.Connect`는 `schemaPath`를 읽어 생성된 모델과 비교한 뒤 `orm.Open(dsn, engine, config)`를 호출한다.
+`ormgen gen --document <file.dbspec>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`와 `ManifestHash`를 쓴다. `model.Connect(dsn, config)`는 그 manifest로 `orm.Connect(dsn, schema, config)`를 호출한다. runtime은 process마다 한 번 text로 모델을 만들고, text의 hash가 `ManifestHash`와 다르면 `SCHEMA_HASH_MISMATCH`로 거부하며, 모든 문장을 process 안에서 계획한다. `master.Utils().Schema().Install(model.ManifestText)`는 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다.
 
 ### PHP
 
 ```php
-$master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $aesKey));
+$master = Orm::connect($masterDsn, new Config(aesKey: $aesKey));
 ```
+
+`Orm::connect`는 schema 경로를 받지 않는다. generated model의 `bootstrap.php`가 runtime model, manifest text, `manifestHash`를 등록하고, 모든 요청은 그 hash를 포함한다. `$db->utils()->schema()->install($documents)`는 집합의 모든 dbspec 문서 text를 받는다.
+
+감사 대상 table(`audit` setting, [dbspec](dbspec.md#audit))은 operation id를 정한 transaction 안에서 쓴다. executor는 transaction이 insert하거나 update하는 모든 감사 대상 행의 operation column에 그 id를 쓰며, soft delete도 포함한다:
+
+```php
+$master->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+    (new Service)->getBySeq(42)->delete();
+}, operation: $operationId);
+```
+
+id는 `i64` operation column이면 `int`, `uuid` column이면 소문자 canonical UUID `string`이다. 그런 transaction 밖에서, 또는 다른 type의 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패하고, operation column을 setter로 지정하면 `IR_INVALID`로 실패한다. 중첩 transaction은 바깥 transaction의 id를 쓰며 `operation`을 받지 않는다.
 
 ### Rust
 
 ```rust
 let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-생성된 모듈이 스키마를 포함하므로 연결은 스키마 경로를 받지 않는다.
+`orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담으므로 연결은 스키마 경로를 받지 않는다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
+
+감사 대상 table(`audit` setting)은 unit of work의 operation id를 transaction에서 받는다. 가장 바깥 transaction에 `operation(id)`로 정하면, executor가 그 transaction이 insert하거나 update하는 모든 감사 대상 row의 operation column에 그 값을 쓴다. soft delete의 update도 같다:
+
+```rust
+db.transaction(async || {
+    service.set_name("renamed").update(false).await
+})
+.operation(operation_id) // i64 operation column에는 i64, uuid column에는 &str 또는 String
+.await?;
+```
+
+operation id 없이, transaction 밖에서, 또는 operation column type에 맞지 않는 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패한다. 중첩 transaction은 `operation`을 받지 않고, operation column을 직접 쓰는 요청은 `IR_INVALID`로 실패한다.
 
 ### TypeScript
 
 ```typescript
 import { Db } from '@polyspec/orm-typescript';
+import { Item } from './models/models.js';
 
-const master = await Db.connect(masterDsn, schemaPath, { aesKey });
+const master = await Db.connect(masterDsn, { aesKey });
+await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.transaction(async () => {
+  await new Item().setTitle('first').create();
+}, { operation: 42 });
 ```
+
+`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로 export하며 import될 때 model을 등록한다. `Db.connect(dsn, options)`는 schema 경로를 받지 않으며, 프로세스가 import하지 않은 model의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(texts)`는 한 document set의 dbspec 텍스트를 받아, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. `transaction`의 `operation` 옵션은 작업 단위의 operation id다. 트랜잭션 안에서 `audit` setting이 있는 테이블의 모든 insert와 update는 soft delete를 포함해 이 값을 operation column에 쓴다. `i64` operation column에는 safe integer, `uuid` operation column에는 문자열을 쓴다. 이 값이 없거나 다른 타입이면 audit 테이블의 insert와 update는 `CONFIG`로 실패하고, operation column을 직접 지정하면 `IR_INVALID`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 operation을 그대로 쓴다.
 
 각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(manifestJson)`은 모든 데이터베이스에서 manifest의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지한다.
 
@@ -421,6 +441,19 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
+### Go operation id
+
+`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 `orm.Operation(id)`로 unit of work를 정한 트랜잭션 안에서만 쓴다. 그 트랜잭션에서 audit 테이블의 모든 insert, update, soft delete, duplicate update는 `id`를 테이블의 operation 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. `id`는 `i64` operation 컬럼이면 `int64`, `uuid` operation 컬럼이면 소문자 UUID string이다. 중첩 트랜잭션은 바깥 트랜잭션의 id를 쓰며 `orm.Retry`만 받는다.
+
+```go
+err := master.Transaction(func() error {
+    _, err := model.Item().SetTitle("draft").Create()
+    return err
+}, orm.Operation(int64(42)))
+```
+
+그런 트랜잭션 밖에서 audit 테이블을 쓰거나 operation 컬럼에 맞지 않는 id로 쓰면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다. `int64`나 `string`이 아닌 값을 준 `orm.Operation`은 트랜잭션을 시작하기 전에 `CONFIG`로 실패한다. operation 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
+
 ---
 
 ## 8. 스타일 컬럼
@@ -445,10 +478,10 @@ $b->getJsonSetting()['a'];
 go run ./cmd/ormgen ddl --schema schema/schema.json --dialect postgres --out schema.pg.sql
 psql … -f schema.pg.sql
 ```
-- Go: `model.Connect(url, schemaPath, config)`. DSN scheme이 드라이버를 선택한다.
+- Go: `model.Connect(url, config)`. DSN scheme이 드라이버를 선택한다.
 - PHP: `Orm::connect(url, config)`. DSN scheme이 PDO 드라이버를 선택한다.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`. DSN scheme이 sqlx 드라이버를 선택한다.
-- TypeScript: `Db.connect(url, schemaPath, options)`. DSN scheme이 드라이버 패키지를 선택한다.
+- TypeScript: `Db.connect(url, options)`. DSN scheme이 드라이버 패키지를 선택한다.
 - 여러 연결을 함께 열 수 있으며, `connect`가 모델마다 하나를 선택한다. 예를 들어 읽기는 `slave1`, 쓰기는 `master`를 사용한다.
 - SQLite는 `Lb`와 전문 검색 연산자를 거부한다(`OPERATOR_NOT_ALLOWED`).
 

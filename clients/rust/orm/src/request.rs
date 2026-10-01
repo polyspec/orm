@@ -25,7 +25,7 @@ impl Req {
         Req {
             ir: ir::Request {
                 ir_version: 1,
-                schema_hash: schema.hash().to_owned(),
+                manifest_hash: schema.hash().to_owned(),
                 kind: kind.to_owned(),
                 query: ir::Query { entity: entity.to_owned(), ..Default::default() },
                 ..Default::default()
@@ -366,10 +366,6 @@ fn pred(r: &mut Req, p: &PredSpec, owner: &Core, f: &mut Frame<'_>) -> Option<ir
                     out.ps.push(r.p(v.clone()));
                 }
             }
-        }
-        PredValue::Match(cols, v) => {
-            out.match_ = cols.iter().map(|c| c.to_string()).collect();
-            out.p = Some(r.p(v.clone()));
         }
         PredValue::Ref(id, column) => match f.path_of(*id) {
             Ok(path) => out.r#ref = Some(ir::ColRef { path, column: column.to_string() }),

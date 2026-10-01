@@ -2,7 +2,7 @@
 //! prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 //! other runners print the same document for the same chains.
 //!
-//! Usage: conformance --dsn URI <schema.json>
+//! Usage: conformance --dsn URI
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -81,7 +81,6 @@ fn param_json(p: &Param) -> Result<Value, String> {
         }
         Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
-        Param::Point(p) => json!(orm::point_text(*p).map_err(|e| e.to_string())?),
     })
 }
 
@@ -92,7 +91,6 @@ fn invalid_binds_cannot_be_rendered_as_valid_values() {
     let mut encrypted = b"ORM-AES2\0".to_vec();
     encrypted.extend([0xff; 12 + 16]);
     assert_eq!(param_json(&Param::Bytes(encrypted)).unwrap(), json!("$AES"));
-    assert!(param_json(&Param::Point((f64::NAN, 1.0))).is_err());
     assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
     assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
     let log = Log::default();
@@ -177,34 +175,27 @@ fn invalid_derived_integers_cannot_be_reported_as_zero() {
 }
 
 struct Args {
-    schema: String,
     dsn: String,
 }
 
 impl Args {
     fn parse() -> Args {
-        let mut rest = Vec::new();
-        let mut dsn = None;
-        let mut it = std::env::args().skip(1);
-        while let Some(a) = it.next() {
-            match a.as_str() {
-                "--dsn" => dsn = Some(it.next().expect("--dsn value")),
-                _ => rest.push(a),
-            }
-        }
-        let (Some(dsn), 1) = (dsn, rest.len()) else {
-            eprintln!("usage: conformance --dsn URI <schema.json>");
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        let [flag, dsn] = args.as_slice() else {
+            eprintln!("usage: conformance --dsn URI");
             std::process::exit(2);
         };
-        Args { schema: rest[0].clone(), dsn }
+        if flag != "--dsn" {
+            eprintln!("usage: conformance --dsn URI");
+            std::process::exit(2);
+        }
+        Args { dsn: dsn.clone() }
     }
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let schema = orm::Manifest::load(&std::fs::read(&args.schema).expect("schema.json")).expect("schema manifest");
-    assert_eq!(schema.schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = orm::Config {

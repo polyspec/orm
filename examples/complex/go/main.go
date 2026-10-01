@@ -1,6 +1,6 @@
 // A complex statement in every client language, one JSON document. Run:
 //
-//	go run ./examples/complex/go schema/schema.json
+//	go run ./examples/complex/go
 package main
 
 import (
@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	db, err := model.Connect(dsn(), os.Args[1], orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	db, err := model.Connect(dsn(), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	check(err)
 	defer db.Close()
 

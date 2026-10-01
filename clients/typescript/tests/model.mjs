@@ -5,21 +5,20 @@
 // The test drops and recreates the schema tables in those databases.
 //
 // Usage: node clients/typescript/tests/model.mjs (after npm run typescript:build)
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   AesKeyring, Account, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, StyledValue,
-  Service, ServiceMember, ServiceRegion, User, loadManifest, registerSchema, renderDDL,
+  Service, ServiceMember, ServiceRegion, User, dbspecManifest, parseDbspec, registerModel,
 } from '../dist/index.js';
-import { buildManifest, encodeManifest } from '../dist/schema/build.js';
-import { parseDiagram } from '../dist/schema/mermaid.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
-const schemaPath = join(root, 'schema/schema.json');
+const bench = await readFile(join(root, 'schema/bench.dbspec'), 'utf8');
+const benchTables = parseDbspec(bench, {}).document.tables.map(t => t.name);
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
   throw new Error('usage: model.mjs [--case styledStates --dialect sqlite|mysql|postgres]');
@@ -35,8 +34,6 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 let current = '';
-
-const manifestJson = await readFile(schemaPath, 'utf8');
 
 /** A mysql2 connection to the database, host, port, or socket of a DSN. */
 function mysqlConnection(dsn) {
@@ -114,15 +111,16 @@ async function primaryAndReplica(dialect, primary, replica) {
   }
 }
 
-/** Drops the schema tables. */
+/** Drops the tables of schema/bench.dbspec; each SQLite case starts from a new file. */
 async function dropTables(dialect, dsn) {
-  const drops = renderDDL(loadManifest(manifestJson), dialect).split('\n').filter(line => line.startsWith('DROP TABLE IF EXISTS ')).map(line => line.replace(/;$/, ''));
   if (dialect === 'mysql') {
     const conn = await mysqlConnection(dsn);
-    for (const s of drops) await conn.query(s);
-    await conn.end();
+    try {
+      await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+      for (const t of benchTables) await conn.query(`DROP TABLE IF EXISTS \`${t}\``);
+    } finally { await conn.end(); }
   } else if (dialect === 'postgres') {
-    await postgres(dsn, drops.map(s => `${s} CASCADE`));
+    await postgres(dsn, benchTables.map(t => `DROP TABLE IF EXISTS "${t}" CASCADE`));
   }
 }
 
@@ -142,8 +140,8 @@ async function install(dialect, dsn) {
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
-    await db.utils().schema().install(manifestJson);
-    await db.utils().schema().install(manifestJson);
+    await db.utils().schema().install([bench]);
+    await db.utils().schema().install([bench]);
   } finally { await db.close(); }
 }
 
@@ -163,7 +161,7 @@ async function schemaEmpty(dialect, dsn) {
       } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
       check(await db.utils().schema().empty(), 'the empty schema dropped');
     }
-    await db.utils().schema().install(manifestJson);
+    await db.utils().schema().install([bench]);
     check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
 }
@@ -467,12 +465,12 @@ async function aesRotation(db, dsn) {
   status = await db.utils().aes().status(new Author(), keyring);
   check(status.pending === 0, `after rotation: ${JSON.stringify(status)}`);
   // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-  const versioned = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
-  const current = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
+  const versioned = await Db.connect(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
+  const current = await Db.connect(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
   try {
     check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
     check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(await code(Db.connect(dsn, schemaPath, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
+    check(await code(Db.connect(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
   } finally {
     await versioned.close();
     await current.close();
@@ -480,7 +478,7 @@ async function aesRotation(db, dsn) {
 }
 
 function connect(dsn) {
-  return Db.connect(dsn, schemaPath, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
+  return Db.connect(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
 }
 
 /**
@@ -497,8 +495,13 @@ async function connectionTimeZone(db, offsetMinutes) {
     .setStartDt(midnight).setEndDt('2026-01-03 00:00:00').create();
   const row = await new Author().connect(db).getBySeq(created.getSeq());
   check(row?.getStartDt() === '2026-01-02 00:00:00.000000', `start_dt ${row?.getStartDt()}`);
-  const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`) - offsetMinutes * 60_000;
-  check(row !== null && Math.abs(wall(row.getCreatedTs()) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
+  // The insert omits created_ts, which takes the database default `now`: the
+  // SQLite default writes the UTC clock, and MySQL and PostgreSQL write the
+  // clock of the session time zone, which the UTC connection rule of
+  // docs/dialects.md (T8.0.9) is to make UTC as well.
+  const defaultOffset = db.driver === 'sqlite' ? 0 : offsetMinutes;
+  const wall = (text, offset) => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`) - offset * 60_000;
+  check(row !== null && Math.abs(wall(row.getCreatedTs(), defaultOffset) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
   check(await new Author().connect(db).startDt(midnight).getCount() === 1, 'equality filter with an instant');
   check(await new Author().connect(db).startDt('2026-01-02 00:00:00').getCount() === 1, 'equality filter by text');
   check(await new Author().connect(db).startDt('2026-01-02T00:00:00.0').getCount() === 1, 'equality filter by text with fraction');
@@ -537,97 +540,35 @@ async function bindLimitSplitting(db) {
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
 async function mysqlInstallInsideTransaction(db) {
   let inside = null;
-  await db.transaction(async () => { inside = await code(db.utils().schema().install(manifestJson)); });
+  await db.transaction(async () => { inside = await code(db.utils().schema().install([bench])); });
   check(inside === 'CONFIG', `install inside a transaction: ${inside}`);
 }
 
-/** A manifest built from Mermaid and a model class for each of its entities. */
-function auditSchema(source) {
-  const manifest = buildManifest([parseDiagram(source)]);
-  const entities = new Map(Object.values(manifest.entities).map(e => [e.name, {
-    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [], ...(e.aes_version ? { aesVersion: e.aes_version } : {}),
-    columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable, styles: c.styles }])),
-  }]));
-  const set = { hash: manifest.schema_hash, entities };
-  registerSchema(set);
+/** Registers the model of one dbspec document and returns a model class per entity. */
+function documentModels(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
   const models = {};
-  for (const name of entities.keys()) {
-    const model = class extends Model {};
-    model.entity = { schema: entities.get(name), set, create: core => new model(core) };
-    models[name] = model;
+  for (const entity of model.entities.values()) {
+    const cls = class extends Model {};
+    cls.entity = { model, entity, create: core => new cls(core) };
+    models[entity.name] = cls;
   }
-  return { json: encodeManifest(manifest), models };
+  return models;
 }
 
 /**
- * Installs log tables and, from a second manifest, audited tables, and writes
- * inside a transaction that names its operation with setLocal; PostgreSQL and
- * SQLite use schema-qualified tables.
- */
-async function auditTriggers(dialect, dsn) {
-  const prefix = dialect === 'mysql' ? '' : 'ormtest.';
-  const logs = auditSchema('erDiagram\n'
-    + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
-    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref "?"\n'
-    + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
-    + (prefix === '' ? '' : '  %% orm:table entity=audit_operation name=ormtest.audit_operation\n  %% orm:table entity=audit_change name=ormtest.audit_change\n'));
-  // The audited manifest writes into log tables that only the first manifest declares.
-  const items = auditSchema('erDiagram\n'
-    + '  audit_item {\n    bigint seq PK "auto"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n'
-    + (prefix === '' ? '' : '  %% orm:table entity=audit_item name=ormtest.audit_item\n')
-    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n`
-    + '  %% orm:audit entity=audit_item mode=changes service=service_ref\n');
-  await dropAuditTables(dialect, dsn);
-  const db = await connect(dsn);
-  try {
-    for (const json of [logs.json, items.json, items.json]) await db.utils().schema().install(json);
-    const { audit_operation: AuditOperation, audit_change: AuditChange } = logs.models;
-    const { audit_item: AuditItem } = items.models;
-    const item = (site, title) => { const m = new AuditItem(); m[CORE].setValue('service_ref', site); m[CORE].setValue('title', title); return m; };
-    let message = '';
-    try { await db.transaction(async () => { await item('s1', 'a').create(); }, { retry: 0 }); } catch (error) { message = String(error.message); }
-    check(message.includes('audit operation context is required'), `write without an operation: ${message}`);
-    let seq;
-    await db.transaction(async () => {
-      const op = new AuditOperation();
-      op[CORE].setValue('operation_uuid', 'op-1');
-      await op.create();
-      await db.utils().setLocal('ormtest.operation_id', 'op-1');
-      const created = await item('s1', 'a').create();
-      seq = created[CORE].column('seq');
-      const changed = new AuditItem();
-      changed[CORE].setValue('seq', seq);
-      changed[CORE].setValue('title', 'b');
-      await changed.update();
-    }, { retry: 0 });
-    const query = new AuditChange().connect(db).addAllColumns();
-    query[CORE].orderBy('seq', false, []);
-    const rows = [...(await query.gets()).values()];
-    const value = (row, column) => row[CORE].column(column);
-    const plain = v => JSON.parse(stringifyJson(v.payload()));
-    check(rows.map(r => value(r, 'change_kind')).join(',') === 'INSERT,UPDATE', `change kinds ${rows.map(r => value(r, 'change_kind'))}`);
-    for (const row of rows) {
-      check(Number(value(row, 'operation_seq')) === 1 && value(row, 'service_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
-      check(JSON.stringify(plain(value(row, 'entity_ref'))) === JSON.stringify({ seq: Number(seq) }), `entity key ${JSON.stringify(plain(value(row, 'entity_ref')))}`);
-    }
-    check(JSON.stringify(plain(value(rows[1], 'before_value'))) === '{"title":"a"}' && JSON.stringify(plain(value(rows[1], 'after_value'))) === '{"title":"b"}', 'update values');
-  } finally { await db.close(); }
-  await dropAuditTables(dialect, dsn);
-}
-
-/**
- * Writes a JSON value to an encrypted `json aes` column, reads it back, rotates
- * the row to the next key version, and updates it with the first key version.
+ * Writes a JSON value to an encrypted `ordered_json aes` column, reads it
+ * back, rotates the row to the next key version, and updates it with the
+ * first key version.
  */
 async function aesJsonColumn(dialect, dsn, sqlitePath) {
-  const { json, models: { secret_config: SecretConfig } } = auditSchema('erDiagram\n'
-    + '  secret_config {\n    bigint seq PK "auto"\n    int aes_key_version\n    longblob config "json aes"\n  }\n');
+  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbspec'), 'utf8');
+  const { secret_config: SecretConfig } = documentModels(secret);
   await dropTable(dialect, dsn, 'secret_config');
   const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
   const updatedText = '{"token":"next-token","list":[1,"two",null]}';
-  const manifestPath = join(work, 'secret_config.json');
-  await writeFile(manifestPath, json);
-  const open = (keys, version) => Db.connect(dsn, manifestPath, { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
+  const open = (keys, version) => Db.connect(dsn, { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
   const read = async db => {
     const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
     check(rows.length === 1, `rows ${rows.length}`);
@@ -640,7 +581,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const first = await open(one, 1);
   let seq;
   try {
-    await first.utils().schema().install(json);
+    await first.utils().schema().install([secret]);
     const created = new SecretConfig().connect(first);
     created[CORE].setValue('config', StyledValue.value(parseJson(text)));
     seq = (await created.create())[CORE].column('seq');
@@ -669,53 +610,6 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   await dropTable(dialect, dsn, 'secret_config');
 }
 
-/**
- * Installs an enum column with a default and audit triggers whose change table
- * has a bigint service column: an entity with service= records its bigint
- * value and an entity without it records NULL.
- */
-async function auditBigintService(dialect, dsn) {
-  const prefix = dialect === 'mysql' ? '' : 'ormtest.';
-  const table = name => (prefix === '' ? '' : `  %% orm:table entity=${name} name=ormtest.${name}\n`);
-  const { json, models } = auditSchema('erDiagram\n'
-    + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
-    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    bigint service_seq "?"\n'
-    + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
-    + '  routed {\n    bigint seq PK "auto"\n    bigint service_seq\n    enum(csr_ssr) render "=ssr"\n  }\n'
-    + '  unowned {\n    bigint seq PK "auto"\n    varchar(32) label\n  }\n'
-    + table('audit_operation') + table('audit_change') + table('routed') + table('unowned')
-    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)\n`
-    + '  %% orm:audit entity=routed mode=changes service=service_seq\n'
-    + '  %% orm:audit entity=unowned mode=changes\n');
-  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
-  const db = await connect(dsn);
-  try {
-    await db.utils().schema().install(json);
-    const { audit_operation: AuditOperation, audit_change: AuditChange, routed: Routed, unowned: Unowned } = models;
-    await db.transaction(async () => {
-      const op = new AuditOperation();
-      op[CORE].setValue('operation_uuid', 'op-1');
-      await op.create();
-      await db.utils().setLocal('ormtest.operation_id', 'op-1');
-      const routed = new Routed();
-      routed[CORE].setValue('service_seq', 42);
-      await routed.create();
-      const unowned = new Unowned();
-      unowned[CORE].setValue('label', 'a');
-      await unowned.create();
-    }, { retry: 0 });
-    const query = new AuditChange().connect(db).addAllColumns();
-    query[CORE].orderBy('seq', false, []);
-    const rows = [...(await query.gets()).values()];
-    const value = (row, column) => row[CORE].column(column);
-    const got = rows.map(r => `${String(value(r, 'table_label')).replace(/^ormtest\./, '')}:${value(r, 'service_seq') === null ? 'null' : Number(value(r, 'service_seq'))}`);
-    check(got.join(',') === 'routed:42,unowned:null', `changes ${got}`);
-    const after = JSON.parse(stringifyJson(value(rows[0], 'after_value').payload()));
-    check(after.render === 'ssr', `render default ${JSON.stringify(after)}`);
-  } finally { await db.close(); }
-  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
-}
-
 /** The stored config cell and key version of the single secret_config row. */
 async function storedCell(dialect, dsn, sqlitePath) {
   const sql = 'SELECT config, aes_key_version FROM secret_config';
@@ -740,20 +634,6 @@ async function dropTable(dialect, dsn, table) {
     try { await conn.query(`DROP TABLE IF EXISTS ${table}`); } finally { await conn.end(); }
   } else if (dialect === 'postgres') {
     await postgres(dsn, [`DROP TABLE IF EXISTS ${table}`]);
-  }
-}
-
-async function dropAuditTables(dialect, dsn, tables = ['audit_item', 'audit_change', 'audit_operation']) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    for (const table of tables) await conn.query(`DROP TABLE IF EXISTS ${table}`);
-    await conn.end();
-  } else if (dialect === 'postgres') {
-    const client = postgresClient(dsn);
-    await client.connect();
-    await client.query('SET client_min_messages = warning');
-    await client.query('DROP SCHEMA IF EXISTS ormtest CASCADE');
-    await client.end();
   }
 }
 
@@ -789,14 +669,14 @@ try {
   if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
     current = `${dialect}/poolSize`;
-    const sized = await Db.connect(dsn, schemaPath, { poolSize: 3 });
+    const sized = await Db.connect(dsn, { poolSize: 3 });
     try {
       // The SQLite driver holds one connection, so the size applies to the pooled drivers.
       const want = dialect === 'sqlite' ? 1 : 3;
       check(sized.utils().stats().maxOpenConnections === want, `configured pool size ${sized.utils().stats().maxOpenConnections}`);
-      check(await code(Db.connect(dsn, schemaPath, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
+      check(await code(Db.connect(dsn, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
       for (const options of [{}, { poolSize: 0 }]) {
-        const unset = await Db.connect(dsn, schemaPath, options);
+        const unset = await Db.connect(dsn, options);
         try {
           const got = unset.utils().stats().maxOpenConnections;
           check(got === (dialect === 'sqlite' ? 1 : 10), `pool size ${JSON.stringify(options)}: ${got}`);
@@ -805,7 +685,7 @@ try {
       if (dialect !== 'sqlite') {
         // Each transaction holds a connection while it runs, so six
         // transactions on a pool of two run at most two at a time.
-        const bounded = await Db.connect(dsn, schemaPath, { poolSize: 2 });
+        const bounded = await Db.connect(dsn, { poolSize: 2 });
         try {
           let active = 0;
           let peak = 0;
@@ -821,7 +701,7 @@ try {
         } finally { await bounded.close(); }
         // Three transactions hold three connections at once; after they end
         // the pool keeps one idle connection and closes the others.
-        const idle = await Db.connect(dsn, schemaPath, { poolSize: 3, poolIdleSize: 1 });
+        const idle = await Db.connect(dsn, { poolSize: 3, poolIdleSize: 1 });
         try {
           let release;
           let arrived;
@@ -837,7 +717,7 @@ try {
           check(stats.idle === 1 && stats.openConnections === 1, `pool idle size 1 keeps ${stats.idle} idle of ${stats.openConnections} open connections`);
         } finally { await idle.close(); }
         // A connection is closed when its lifetime passes, idle or at its release.
-        const aged = await Db.connect(dsn, schemaPath, { poolLifetimeMs: 100 });
+        const aged = await Db.connect(dsn, { poolLifetimeMs: 100 });
         try {
           check(aged.utils().stats().openConnections === 1, 'the connection opened by connect');
           await new Promise(resolve => setTimeout(resolve, 400));
@@ -845,7 +725,7 @@ try {
         } finally { await aged.close(); }
       }
       for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolLifetimeMs: -1 }]) {
-        check(await code(Db.connect(dsn, schemaPath, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
+        check(await code(Db.connect(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
     console.log(`${current} done`);
@@ -854,12 +734,12 @@ try {
     current = `${dialect}/statementTimeout`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     await install(dialect, dsn);
-    check(await code(Db.connect(dsn, schemaPath, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
+    check(await code(Db.connect(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
     // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
     // SQLite has no session timeout.
     const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
     if (slow !== undefined) {
-      const bounded = await Db.connect(dsn, schemaPath, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
+      const bounded = await Db.connect(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
       try {
         await seed(bounded);
         check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
@@ -881,8 +761,8 @@ try {
     try { await seed(setup); } finally { await setup.close(); }
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     const slow = 'pg_sleep(0.1) IS NOT NULL';
-    const bounded = await Db.connect(single, schemaPath, { statementTimeoutMs: 200 });
-    const plain = await Db.connect(single, schemaPath, {});
+    const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
+    const plain = await Db.connect(single, {});
     try {
       check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
       check(await new Author().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
@@ -912,18 +792,6 @@ try {
       }
       check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/auditTriggers`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await auditTriggers(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/auditBigintService`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await auditBigintService(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
   }
   for (const [dialect, dsn] of targets) {

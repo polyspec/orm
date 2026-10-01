@@ -23,7 +23,7 @@ fn next_id() -> u64 {
 pub struct ChainKey {
     /// Connector before this key; empty for the first key.
     pub conn: &'static str,
-    /// "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple.
+    /// "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple.
     pub op: &'static str,
     pub column: &'static str,
     pub columns: &'static [&'static str],
@@ -43,7 +43,6 @@ pub enum Arg {
     /// The identity of a model compared column by column.
     Model(u64),
     Tuples(Vec<Vec<Param>>),
-    Text(String),
 }
 
 #[derive(Clone)]
@@ -80,7 +79,6 @@ pub(crate) enum PredValue {
     List(Vec<Param>),
     Pair(Param, Param),
     Tuples(Vec<&'static str>, Vec<Vec<Param>>),
-    Match(Vec<&'static str>, Param),
     Ref(u64, &'static str),
     Sub(Box<Core>),
     ColumnFn(Func, Param),
@@ -683,13 +681,6 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
     };
     let pred = |op: &'static str, value: PredValue| PredSpec { column: key.column.to_owned(), op, value };
     match key.op {
-        "fulltext" | "fulltext_boolean" => {
-            let Arg::Text(s) = arg else {
-                return Err(config(format!("full-text value for {} must be text", key.column)));
-            };
-            let op = if key.op == "fulltext" { "match" } else { "match_boolean" };
-            return Ok(PredSpec { column: String::new(), op, value: PredValue::Match(key.columns.to_vec(), Param::Str(s)) });
-        }
         "tuple" | "ne_tuple" => {
             let Arg::Tuples(rows) = arg else {
                 return Err(config("tuple values must be a list of value groups"));

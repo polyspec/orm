@@ -63,7 +63,7 @@ async function state(database, dsn) {
   return match[1];
 }
 
-await run('node', ['clients/typescript/dist/bin/orm-gen.js', 'gen', '--schema', 'contracts/fixtures/decimal_schema.json',
+await run('node', ['clients/typescript/dist/bin/orm-gen.js', 'gen', '--schema', 'contracts/fixtures/decimal_schema.dbspec',
   '--out', 'clients/typescript/src/models/decimal_fixture', '--scan', 'clients/typescript/tests/decimal_model_db.mjs', '--check']);
 for (const database of databases) {
   const key = `DECIMAL_${database.toUpperCase()}_DSN`;

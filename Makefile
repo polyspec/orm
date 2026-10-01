@@ -105,8 +105,8 @@ dbspec-compare-check:
 dbspec-rust-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
@@ -253,7 +253,7 @@ fuzz-check:
 	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 client-unit-check:
-	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
+	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
 
 client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh

@@ -1,8 +1,9 @@
 <?php
-// Encrypted JSON value test on SQLite, MySQL and PostgreSQL: a `json aes` column
-// and a jsontext column take an ordered-json value, read it back with the same
-// text, rotate to another key version, and take an update. The models are generated from the test schema into a
-// temporary directory, so the test runs in its own process.
+// Encrypted JSON value test on SQLite, MySQL and PostgreSQL: the
+// `ordered_json aes` column of contracts/fixtures/secret_config.dbspec takes an
+// ordered-json value, reads it back with the same text, rotates to another key
+// version, and takes an update. The models are generated from the document into
+// a temporary directory, so the test runs in its own process.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases; the
 // test fails when either is unset.
 // Usage: php clients/php/tests/aes_json_test.php
@@ -16,9 +17,9 @@ use Orm\AesKeyring;
 use Orm\Config;
 use Orm\Db;
 use Orm\Generator;
-use Orm\Manifest;
 use Orm\Orm;
-use Orm\SchemaBuilder;
+use Orm\RuntimeModel;
+use Orm\StyledValue;
 use OrderedJson\Value;
 
 use function OrderedJson\parse;
@@ -30,17 +31,8 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$source = "erDiagram\n"
-    . "  secret_config {\n"
-    . "    bigint   seq             PK \"auto\"\n"
-    . "    int      aes_key_version\n"
-    . "    longblob config             \"json aes\"\n"
-    . "    jsontext doc                \"?\"\n"
-    . "  }\n";
-$schema = "$work/schema.json";
-$json = SchemaBuilder::json(SchemaBuilder::fromSources([$source]));
-file_put_contents($schema, $json);
-Generator::generate(Manifest::load($json), "$work/gen", 'AesJson\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbspec')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbspec' => $documents[0]])), "$work/gen", 'AesJson\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'AesJson\\Orm\\')) {
         require "$work/gen/" . substr($class, strlen('AesJson\\Orm\\')) . '.php';
@@ -76,17 +68,22 @@ function stored(string $dsn): array
 /** @param array<int, string> $keys */
 function open(string $dsn, array $keys, int $version): Db
 {
-    global $schema;
-    return Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
+    return Orm::connect($dsn, new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
 }
 
-/** The ordered-json text of a read value; a value of another type fails the test. */
+/** The ordered-json text of a read styled value; a value of another type fails the test. */
 function text(mixed $value): string
 {
-    if (!$value instanceof Value) {
-        throw new RuntimeException('json value is ' . get_debug_type($value) . ', not an ordered-json value');
+    $payload = $value instanceof StyledValue ? $value->payload() : $value;
+    if (!$payload instanceof Value) {
+        throw new RuntimeException('json value is ' . get_debug_type($payload) . ', not an ordered-json value');
     }
-    return stringify($value);
+    return stringify($payload);
+}
+
+function styled(mixed $value): StyledValue
+{
+    return StyledValue::value($value);
 }
 
 /** The OrmException code of json_encode($value), or 'no error'. */
@@ -102,33 +99,32 @@ function jsonEncodeCode(mixed $value): string
 
 function aesJsonColumn(string $dsn): void
 {
-    global $json;
+    global $documents;
     $pdo = raw($dsn);
     $pdo->exec('DROP TABLE IF EXISTS secret_config');
     $value = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.50,"e":{}}';
-    $doc = '{"b":1,"a":[],"c":{},"n":1.50}';
     $updated = '{"token":"next-token","list":[1,"two",null]}';
     $one = [1 => 'config-key-one'];
     $both = [1 => 'config-key-one', 2 => 'config-key-two'];
 
     $first = open($dsn, $one, 1);
-    $first->utils()->schema()->install($json);
-    $seq = (new SecretConfig)($first)->setConfig(parse($value))->setDoc(parse($doc))->create()->getSeq();
+    $first->utils()->schema()->install($documents);
+    $seq = (new SecretConfig)($first)->setConfig(styled(parse($value)))->create()->getSeq();
     $row = (new SecretConfig)($first)->addAllColumns()->getBySeq($seq);
     check(text($row->getConfig()) === $value, 'read back');
-    check(text($row->getDoc()) === $doc, 'jsontext read back');
-    check(text($row->toArray()['doc']) === $doc, 'toArray keeps the ordered-json value');
-    $rowJson = '{"seq":' . $seq . ',"config":' . $value . ',"doc":' . $doc . '}';
-    check($row->toJson() === $rowJson, 'toJson keeps the member order and the number text');
+    $array = $row->toArray()['config'];
+    check($array['kind'] === 'value' && text($array['value']) === $value, 'toArray keeps the ordered-json value');
+    $rowJson = '{"seq":' . $seq . ',"aes_key_version":1,"config":{"kind":"value","value":' . $value . '}}';
+    check($row->toJson() === $rowJson, 'toJson keeps the member order and the number text: ' . $row->toJson());
     check(jsonEncodeCode($row) === 'CODEC_ENCODE', 'json_encode of a model with an ordered-json value fails');
     $rows = (new SecretConfig)($first)->addAllColumns()->seq($seq)->gets();
     check($rows->toJson() === '[' . $rowJson . ']', 'collection toJson');
     check(jsonEncodeCode($rows) === 'CODEC_ENCODE', 'json_encode of a collection with an ordered-json value fails');
     check((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)->toJson() === '{"seq":' . $seq . '}'
         && json_encode((new SecretConfig)($first)->removeAllColumns()->addColumnSeq()->getBySeq($seq)) === '{"seq":' . $seq . '}', 'a row without an ordered-json value');
-    $native = (new SecretConfig)($first)->setConfig(['k' => [1, 2]])->setDoc(['a' => 1.5])->create()->getSeq();
+    $native = (new SecretConfig)($first)->setConfig(styled(['k' => [1, 2]]))->create()->getSeq();
     $read = (new SecretConfig)($first)->addAllColumns()->getBySeq($native);
-    check(text($read->getConfig()) === '{"k":[1,2]}' && text($read->getDoc()) === '{"a":1.5}', 'native value write');
+    check(text($read->getConfig()) === '{"k":[1,2]}', 'native value write');
     (new SecretConfig)($first)->getBySeq($native)->delete();
     [$cell, $version] = stored($dsn);
     check(str_starts_with($cell, "ORM-AES2\0") && !str_contains($cell, 's3cret-token') && $version === 1, "stored version $version");
@@ -145,7 +141,7 @@ function aesJsonColumn(string $dsn): void
     $rotated->close();
 
     $again = open($dsn, $both, 1);
-    (new SecretConfig)($again)->getBySeq($seq)->setConfig(parse($updated))->update();
+    (new SecretConfig)($again)->getBySeq($seq)->setConfig(styled(parse($updated)))->update();
     check(stored($dsn)[1] === 1, 'updated version');
     check(text((new SecretConfig)($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
     $again->close();

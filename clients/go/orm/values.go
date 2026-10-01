@@ -70,17 +70,6 @@ func Month() Func { return columnFunc("month") }
 // Date is the date part of a date or time column.
 func Date() Func { return columnFunc("date") }
 
-// Distance is the distance in meters from a point column to the point.
-func Distance(longitude, latitude float64) Func {
-	return columnFunc("distance", longitude, latitude)
-}
-
-// PointX is the longitude of a point column.
-func PointX() Func { return columnFunc("point_x") }
-
-// PointY is the latitude of a point column.
-func PointY() Func { return columnFunc("point_y") }
-
 // irFunc registers the function arguments as parameters.
 func (f Func) irFunc(p func(any) int) ir.Func {
 	out := ir.Func{Name: f.name}

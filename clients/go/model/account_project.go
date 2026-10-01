@@ -391,3 +391,8 @@ func (x *AccountProjectModel) AvgProjectSeq() *AccountProjectModel {
 	x.m.Aggregate("avg", "project_seq")
 	return x
 }
+
+func (x *AccountProjectModel) ForceIndexIxAccountProjectProject() *AccountProjectModel {
+	x.m.ForceIndex("ix_account_project_project")
+	return x
+}

@@ -2,68 +2,6 @@
 
 use chrono::{NaiveDate, NaiveDateTime};
 
-pub type Point = (f64, f64);
-
-pub fn point_text(point: Point) -> crate::Result<String> {
-    if !point.0.is_finite() || !point.1.is_finite() {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "point coordinates must be finite".into() });
-    }
-    Ok(format!("POINT({} {})", point_number(point.0), point_number(point.1)))
-}
-
-pub(crate) fn postgres_point_text(point: Point) -> crate::Result<String> {
-    point_text(point)?;
-    Ok(format!("({},{})", point_number(point.0), point_number(point.1)))
-}
-
-fn point_number(value: f64) -> String {
-    if value == 0.0 {
-        "0".into()
-    } else {
-        value.to_string()
-    }
-}
-
-pub fn parse_point(value: &str) -> crate::Result<Point> {
-    let value = value.trim();
-    let body = if value.len() >= 7 && value[..6].eq_ignore_ascii_case("POINT(") && value.ends_with(')') {
-        &value[6..value.len() - 1]
-    } else if value.starts_with('(') && value.ends_with(')') {
-        &value[1..value.len() - 1]
-    } else {
-        value
-    };
-    let parts: Vec<&str> = body.split(|c: char| c == ',' || c.is_whitespace()).filter(|s| !s.is_empty()).collect();
-    if parts.len() != 2 {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point requires two coordinates: {value:?}") });
-    }
-    let x = parts[0]
-        .parse::<f64>()
-        .map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point coordinate 0 is invalid: {:?}", parts[0]) })?;
-    let y = parts[1]
-        .parse::<f64>()
-        .map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("point coordinate 1 is invalid: {:?}", parts[1]) })?;
-    if !x.is_finite() || !y.is_finite() {
-        return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "point coordinates must be finite".into() });
-    }
-    Ok((x, y))
-}
-
-#[cfg(test)]
-mod point_tests {
-    use super::*;
-
-    #[test]
-    fn point_conversions_are_strict() {
-        assert_eq!(parse_point("POINT(1.25 -2)").unwrap(), (1.25, -2.0));
-        assert_eq!(parse_point("(1.25,-2)").unwrap(), (1.25, -2.0));
-        assert_eq!(point_text((1.25, -2.0)).unwrap(), "POINT(1.25 -2)");
-        assert_eq!(point_text((-0.0, 0.0)).unwrap(), "POINT(0 0)");
-        assert_eq!(parse_point("POINT(1)").unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(point_text((1.0, f64::NAN)).unwrap_err().code(), crate::codes::CODEC_ENCODE);
-    }
-}
-
 #[cfg(test)]
 mod checked_value_tests {
     use super::*;
@@ -85,7 +23,8 @@ mod checked_value_tests {
         assert_eq!(Val::Str("bad time".into()).as_datetime().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::Date(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()).as_datetime().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::F64(f64::NAN).to_json().unwrap_err().code(), crate::codes::CODEC_DECODE);
-        assert_eq!(Val::Point((f64::NAN, 0.0)).to_json().unwrap_err().code(), crate::codes::CODEC_ENCODE);
+        assert_eq!(Val::I64(40000).as_i16().unwrap_err().code(), crate::codes::CODEC_DECODE);
+        assert_eq!(Val::I64(-32768).as_i16().unwrap(), i16::MIN);
         assert_eq!(Val::Bytes(vec![0xff]).as_string().unwrap_err().code(), crate::codes::CODEC_DECODE);
         assert_eq!(Val::Null.as_string().unwrap_err().code(), crate::codes::CODEC_DECODE);
         let mut wrong = Val::I64(7);
@@ -155,13 +94,12 @@ pub enum Param {
     Bytes(Vec<u8>),
     DateTime(NaiveDateTime),
     Date(NaiveDate),
-    Point(Point),
 }
 
 macro_rules! from_param {
     ($($t:ty => $v:ident),* $(,)?) => { $( impl From<$t> for Param { fn from(x: $t) -> Self { Param::$v(x.into()) } } )* };
 }
-from_param!(bool => Bool, i32 => I64, i64 => I64, u32 => I64, f64 => F64, String => Str, Vec<u8> => Bytes, NaiveDateTime => DateTime, NaiveDate => Date);
+from_param!(bool => Bool, i16 => I64, i32 => I64, i64 => I64, u32 => I64, f64 => F64, String => Str, Vec<u8> => Bytes, NaiveDateTime => DateTime, NaiveDate => Date);
 
 impl From<&str> for Param {
     fn from(s: &str) -> Self {
@@ -176,12 +114,6 @@ impl TryFrom<u64> for Param {
         i64::try_from(x)
             .map(Param::I64)
             .map_err(|_| crate::Error::Engine { code: crate::codes::CODEC_ENCODE.into(), msg: "unsigned integer exceeds i64 range".into() })
-    }
-}
-
-impl From<Point> for Param {
-    fn from(point: Point) -> Self {
-        Param::Point(point)
     }
 }
 
@@ -214,7 +146,6 @@ pub enum Val {
     DateTime(NaiveDateTime),
     Date(NaiveDate),
     Bool(bool),
-    Point(Point),
     Json(serde_json::Value),
     Ordered(ordered_json::Value),
 }
@@ -235,7 +166,6 @@ impl PartialEq for Val {
             (Val::DateTime(a), Val::DateTime(b)) => a == b,
             (Val::Date(a), Val::Date(b)) => a == b,
             (Val::Bool(a), Val::Bool(b)) => a == b,
-            (Val::Point(a), Val::Point(b)) => a == b,
             (Val::Json(a), Val::Json(b)) => a == b,
             (Val::Ordered(a), Val::Ordered(b)) => a.compact() == b.compact(),
             _ => false,
@@ -278,15 +208,8 @@ impl Val {
         i32::try_from(self.as_i64()?).map_err(|_| decode_value("integer is outside i32 range"))
     }
 
-    pub fn as_point(&self) -> crate::Result<Point> {
-        match self {
-            Val::Point(point) => {
-                point_text(*point)?;
-                Ok(*point)
-            }
-            Val::Str(text) => parse_point(text),
-            other => Err(decode_value(format!("expected point, received {other:?}"))),
-        }
+    pub fn as_i16(&self) -> crate::Result<i16> {
+        i16::try_from(self.as_i64()?).map_err(|_| decode_value("integer is outside i16 range"))
     }
 
     pub fn as_f64(&self) -> crate::Result<f64> {
@@ -363,13 +286,20 @@ impl Val {
     }
 
     /// Moves the string out (leaves Null) — avoids a clone when the row is consumed.
+    /// string field의 값을 꺼낸다. MySQL은 binary collation의 text column을 binary로
+    /// 보고하므로 bytes는 UTF-8 text일 때 string이다.
     pub fn take_string(&mut self) -> crate::Result<String> {
-        match self {
-            Val::Str(_) => {
-                let Val::Str(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
-                Ok(value)
+        match std::mem::replace(self, Val::Null) {
+            Val::Str(value) => Ok(value),
+            Val::Bytes(bytes) => String::from_utf8(bytes).map_err(|e| {
+                *self = Val::Bytes(e.into_bytes());
+                decode_value("bytes are not UTF-8 text")
+            }),
+            other => {
+                let message = format!("expected string, received {other:?}");
+                *self = other;
+                Err(decode_value(message))
             }
-            other => Err(decode_value(format!("expected string, received {other:?}"))),
         }
     }
 
@@ -380,7 +310,6 @@ impl Val {
             Val::I64(x) => x.to_string(),
             Val::F64(x) if x.is_finite() => x.to_string(),
             Val::Bool(b) => (*b as i64).to_string(),
-            Val::Point(point) => point_text(*point)?,
             Val::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
             Val::Date(d) => d.to_string(),
             Val::Json(v) => v.to_string(),
@@ -403,7 +332,6 @@ impl Val {
             Val::DateTime(t) => serde_json::json!(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Val::Date(d) => serde_json::json!(d.to_string()),
             Val::Bool(b) => serde_json::json!(b),
-            Val::Point(point) => serde_json::json!(point_text(*point)?),
             Val::Json(v) => v.clone(),
             Val::Ordered(v) => ordered_to_json(v)?,
         })
@@ -431,14 +359,6 @@ impl Val {
 /// Executor-side value transforms.
 pub fn transform(kind: &str, s: &str) -> crate::Result<String> {
     Ok(match kind {
-        "fulltext_boolean" => {
-            let t = s.trim();
-            if t.is_empty() {
-                String::new()
-            } else {
-                format!("+{}*", t.replace(' ', " +"))
-            }
-        }
         "like_contains" => format!("%{}%", esc(s)),
         "like_starts" => format!("{}%", esc(s)),
         "like_ends" => format!("%{}", esc(s)),

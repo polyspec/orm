@@ -3,7 +3,7 @@ package ormgen
 import (
 	"strings"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 func pascal(s string) string {
@@ -24,10 +24,11 @@ func pascal(s string) string {
 	return b.String()
 }
 
-// clientStyles is the part of a column's style stack the executor handles (aes/hex/ip stay in SQL).
-func clientStyles(c *schema.Col) []string {
+// clientStyles는 field codec 중 styled value를 만드는 stage다. aes, hex, ip는
+// string 값을 그대로 두므로 빠진다.
+func clientStyles(c *runtimemodel.Field) []string {
 	var out []string
-	for _, s := range c.Styles {
+	for _, s := range c.Codec {
 		if s != "aes" && s != "hex" && s != "ip" {
 			out = append(out, s)
 		}

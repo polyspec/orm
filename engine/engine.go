@@ -1,5 +1,5 @@
 // Package engine is the query planner: IR in, Plan out. It is pure
-// and stateless apart from the loaded manifest; execution lives in the
+// and stateless apart from the loaded runtime model; execution lives in the
 // language-native executors.
 package engine
 
@@ -9,20 +9,20 @@ import (
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/planner"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-// Engine binds a manifest to a dialect.
+// Engine binds a runtime model to a dialect.
 type Engine struct {
-	M *schema.Manifest
+	M *runtimemodel.Model
 	P *planner.Planner
 }
 
 // New builds an engine for the given dialect name.
-func New(m *schema.Manifest, dialectName string) (*Engine, error) {
+func New(m *runtimemodel.Model, dialectName string) (*Engine, error) {
 	var d dialect.Dialect
 	switch dialectName {
-	case "mysql", "":
+	case "mysql":
 		d = dialect.MySQL{}
 	case "postgres":
 		d = dialect.Postgres{}
@@ -34,11 +34,12 @@ func New(m *schema.Manifest, dialectName string) (*Engine, error) {
 	return &Engine{M: m, P: &planner.Planner{M: m, D: d}}, nil
 }
 
-// LoadJSON builds an engine from schema.json bytes.
-func LoadJSON(manifestJSON []byte, dialectName string) (*Engine, error) {
-	m, err := schema.Load(manifestJSON)
-	if err != nil {
-		return nil, &ir.Error{Code: "SCHEMA_INVALID", Msg: err.Error()}
+// Load은 manifest text로 runtime model을 만들어 dialect의 engine을 반환한다.
+// 잘못된 manifest text는 SCHEMA_INVALID다.
+func Load(manifestText, dialectName string) (*Engine, error) {
+	m, diagnostics := runtimemodel.Load(manifestText)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: "SCHEMA_INVALID", Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
 	return New(m, dialectName)
 }

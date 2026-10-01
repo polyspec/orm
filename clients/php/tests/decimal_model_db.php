@@ -6,9 +6,9 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use Orm\Code;
 use Orm\Config;
 use Orm\Generator;
-use Orm\Manifest;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\RuntimeModel;
 
 if ($argc !== 3 || $argv[1] !== '--dialect' || !in_array($argv[2], ['mysql', 'postgres', 'sqlite'], true)) {
     throw new RuntimeException('usage: decimal_model_db.php --dialect mysql|postgres|sqlite');
@@ -19,10 +19,9 @@ $dsn = getenv($env);
 if (!is_string($dsn) || $dsn === '') {
     throw new RuntimeException("$env is required");
 }
-$schemaPath = dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.json';
-$manifest = Manifest::file($schemaPath);
+$model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbspec']));
 $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
-Generator::generate($manifest, $generated, 'DecimalFixture');
+Generator::generate($model, $generated, 'DecimalFixture');
 spl_autoload_register(static function (string $class) use ($generated): void {
     if (str_starts_with($class, 'DecimalFixture\\')) {
         require $generated . '/' . substr($class, strlen('DecimalFixture\\')) . '.php';
@@ -60,7 +59,7 @@ try {
         // The generated setter accepts an exact string.
     }
 
-    $db = Orm::connect($dsn, new Config(schemaPath: $schemaPath));
+    $db = Orm::connect($dsn, new Config());
     try {
         if ((new $class)->connect($db)->seq(1)->getCount() !== 0) {
             throw new RuntimeException('decimal fixture row 1 exists before the test');

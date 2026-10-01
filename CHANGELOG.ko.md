@@ -1,5 +1,15 @@
 # 변경 이력
 
+- T8.2.6.3.7: bench database는 schema/bench.dbspec에서 설치되고 conformance runner는 DSN만 받으며, conformance vector는 MySQL, PostgreSQL, SQLite에서 네 dbspec client로 기록된다.
+
+- T8.2.6.3.6: Rust client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.5: TypeScript client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.4: PHP client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.3: Go client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
 - T14.2: Rust decimal과 generated-model coverage test는 workspace 실행에서 ignored이고 소유 target이 `--include-ignored`로 실행한다.
 
 - T14.1: Rust DSN coverage test는 workspace 실행에서 ignored이고 feature-check가 `--include-ignored`로 실행한다.

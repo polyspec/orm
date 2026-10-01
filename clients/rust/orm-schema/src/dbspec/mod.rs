@@ -14,10 +14,12 @@ mod literal;
 mod model;
 mod parser;
 mod render;
+mod runtime;
 mod validate;
 
-pub use model::Document;
+pub use model::{Document, Type};
 pub use render::{render, Dialect};
+pub use runtime::{parse_manifest, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
 
 use parser::Diag;
 use std::collections::{BTreeMap, BTreeSet, HashMap};

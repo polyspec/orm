@@ -5,10 +5,9 @@ import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJson
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 import { StyledValue } from './styled_value.js';
 
-export type Point = readonly [number, number];
 export type CodecValue = null | boolean | number | string | CodecValue[] | { [key: string]: CodecValue };
 export type EncodedValue = string | Uint8Array | null;
-/** The value of a column with a json or jsons stage: an ordered-json value. */
+/** The value of a column with an ordered_json stage: an ordered-json value. */
 export type { JsonValue };
 
 /** Returns the stable lowercase HMAC-SHA256 index for plaintext. */
@@ -117,27 +116,6 @@ export class CodecError extends Error {
   }
 }
 
-export function pointText(point: Point): string {
-  if (point.length !== 2 || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) {
-    throw new CodecError('CODEC_ENCODE', 'point requires two finite coordinates');
-  }
-  return `POINT(${String(point[0])} ${String(point[1])})`;
-}
-
-export function parsePoint(value: string | Point): Point {
-  if (Array.isArray(value)) {
-    if (value.length === 2 && Number.isFinite(value[0]) && Number.isFinite(value[1])) return [value[0], value[1]];
-    throw new CodecError('CODEC_DECODE', 'point requires two finite coordinates');
-  }
-  const source = String(value).trim();
-  const match = /^(?:POINT\s*)?\(([^()]*)\)$/i.exec(source);
-  const parts = (match?.[1] ?? source).trim().split(/[\s,]+/).filter(Boolean);
-  if (parts.length !== 2) throw new CodecError('CODEC_DECODE', `point requires two coordinates: ${JSON.stringify(source)}`);
-  const point: Point = [Number(parts[0]), Number(parts[1])];
-  if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) throw new CodecError('CODEC_DECODE', 'point coordinates must be finite');
-  return point;
-}
-
 const utf8 = new TextEncoder();
 const text = new TextDecoder('utf-8', { fatal: true });
 
@@ -162,9 +140,10 @@ function decodeBase64(value: Uint8Array): Uint8Array {
 }
 
 /**
- * Decodes a stored cell with the column's styles in reverse write order. The
- * json and jsons stages return the ordered-json value, which keeps the member
- * order, the number text, and an empty object apart from an empty array.
+ * Decodes a stored cell with the column's codec stages in reverse write
+ * order. The ordered_json stage returns the ordered-json value, which keeps
+ * the member order, the number text, and an empty object apart from an empty
+ * array; without a value stage the value is the text of the bytes.
  */
 export function decode(styles: readonly string[], raw: string | Uint8Array | null): StyledValue<CodecValue | JsonValue | string> {
   if (raw === null) return StyledValue.sqlNull();
@@ -191,8 +170,7 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
       case 'yaml':
         value = decodeYaml(current);
         break;
-      case 'json':
-      case 'jsons':
+      case 'ordered_json':
         try {
           value = orderedJsonParse(string(current, 'decode'));
         } catch (error) {
@@ -207,14 +185,19 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
 }
 
 /**
- * Encodes a value with the column's styles in write order. The json and jsons
- * stages accept an ordered-json value, written as its compact text, or the
- * common value model, which may contain ordered-json values.
+ * Encodes a value with the column's codec stages in write order. The
+ * ordered_json stage accepts an ordered-json value, written as its compact
+ * text, or the common value model, which may contain ordered-json values. A
+ * first gz or base64 stage takes the value as text.
  */
 export function encode(styles: readonly string[], state: StyledValue<CodecValue | JsonValue>): EncodedValue {
   if (state.kind === 'sql-null') return null;
   let current = new Uint8Array();
   const transformed = state.payload();
+  if (styles[0] === 'gz' || styles[0] === 'base64') {
+    if (typeof transformed !== 'string') throw new CodecError('CODEC_ENCODE', `a first ${styles[0]} stage takes a string value`);
+    current = utf8.encode(transformed);
+  }
   for (let index = 0; index < styles.length; index++) {
     const style = styles[index]!;
     switch (style) {
@@ -230,9 +213,8 @@ export function encode(styles: readonly string[], state: StyledValue<CodecValue 
           throw new CodecError('CODEC_ENCODE', `yaml: ${String(error)}`);
         }
         break;
-      case 'json':
-      case 'jsons':
-        if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'json must be the first style');
+      case 'ordered_json':
+        if (index !== 0) throw new CodecError('CODEC_UNSUPPORTED', 'ordered_json must be the first stage');
         current = utf8.encode(transformed instanceof JsonValue ? orderedJsonStringify(transformed) : orderedJsonStringify(orderedJsonValue(transformed)));
         break;
       case 'base64':
@@ -254,7 +236,7 @@ export function encode(styles: readonly string[], state: StyledValue<CodecValue 
 
 /** Rejects an ordered-json value for a stage that takes the common value model. */
 function commonValue(value: CodecValue | JsonValue, style: string): CodecValue {
-  if (value instanceof JsonValue) throw new CodecError('CODEC_ENCODE', `${style}: an ordered-json value is written only by the json and jsons stages`);
+  if (value instanceof JsonValue) throw new CodecError('CODEC_ENCODE', `${style}: an ordered-json value is written only by the ordered_json stage`);
   return value;
 }
 

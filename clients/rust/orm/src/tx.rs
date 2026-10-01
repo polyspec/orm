@@ -22,8 +22,35 @@ pub(crate) struct TxShared {
     savepoints: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
-    pub(crate) context_row: AtomicBool,
+    /// unit of work의 operation id. executor가 audit 대상 row의 operation column에 쓴다.
+    pub(crate) operation: Option<OperationId>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
+}
+
+/// unit of work의 operation id (docs/dbspec.md, "Audit"). audit operation column의
+/// type에 맞춰 `i64` column은 `I64`, `uuid` column은 소문자 canonical text의 `Uuid`를 받는다.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum OperationId {
+    I64(i64),
+    Uuid(String),
+}
+
+impl From<i64> for OperationId {
+    fn from(id: i64) -> Self {
+        OperationId::I64(id)
+    }
+}
+
+impl From<String> for OperationId {
+    fn from(id: String) -> Self {
+        OperationId::Uuid(id)
+    }
+}
+
+impl From<&str> for OperationId {
+    fn from(id: &str) -> Self {
+        OperationId::Uuid(id.to_owned())
+    }
 }
 
 impl TxShared {
@@ -112,6 +139,7 @@ pub struct Transaction<'a, F> {
     read_only: bool,
     timeout_ms: u64,
     retry: u32,
+    operation: Option<OperationId>,
     set: bool,
 }
 
@@ -127,6 +155,7 @@ pub struct SendTransaction<'a, T> {
     read_only: bool,
     timeout_ms: u64,
     retry: u32,
+    operation: Option<OperationId>,
     set: bool,
 }
 
@@ -167,7 +196,7 @@ impl Db {
     /// the transaction commits. Models without a connection inside `f` use this
     /// transaction. Deadlocks run `f` again, three times by default.
     pub fn transaction<F>(&self, f: F) -> Transaction<'_, F> {
-        Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, set: false }
+        Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, operation: None, set: false }
     }
 
     /// Runs a transaction with a callback whose future is required to be
@@ -179,7 +208,16 @@ impl Db {
         Fut: Future<Output = Result<T>> + Send + 'a,
         T: Send + 'a,
     {
-        SendTransaction { db: self, f: Box::new(move || Box::pin(f())), isolation: None, read_only: false, timeout_ms: 0, retry: 3, set: false }
+        SendTransaction {
+            db: self,
+            f: Box::new(move || Box::pin(f())),
+            isolation: None,
+            read_only: false,
+            timeout_ms: 0,
+            retry: 3,
+            operation: None,
+            set: false,
+        }
     }
 
     /// Runs a callback once in a transaction and preserves its own error.
@@ -191,7 +229,7 @@ impl Db {
         if let Some(outer) = active_for(self) {
             return savepoint_once(outer, f).await;
         }
-        let tx = Arc::new(begin(self, None, false).await.map_err(TransactionOnceError::Orm)?);
+        let tx = Arc::new(begin(self, None, false, None).await.map_err(TransactionOnceError::Orm)?);
         let mut stack = frames();
         stack.push(tx.clone());
         match FLOW.scope(stack, f()).await {
@@ -230,6 +268,14 @@ impl<'a, T> SendTransaction<'a, T> {
         self.retry = n;
         self
     }
+
+    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
+    /// update는 이 값을 operation column에 쓴다.
+    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
+        self.operation = Some(id.into());
+        self.set = true;
+        self
+    }
 }
 
 impl<'a, T> IntoFuture for SendTransaction<'a, T>
@@ -257,7 +303,7 @@ where
         }
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
             let mut stack = frames();
             stack.push(tx.clone());
             let callback = FLOW.scope(stack, (self.f)());
@@ -319,6 +365,14 @@ impl<'a, F> Transaction<'a, F> {
         self.retry = n;
         self
     }
+
+    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
+    /// update는 이 값을 operation column에 쓴다. 바깥 transaction만 정할 수 있다.
+    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
+        self.operation = Some(id.into());
+        self.set = true;
+        self
+    }
 }
 
 impl<'a, F, T> IntoFuture for Transaction<'a, F>
@@ -347,7 +401,7 @@ impl<'a, F> Transaction<'a, F> {
         }
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
             let mut stack = frames();
             stack.push(tx.clone());
             let callback = FLOW.scope(stack, (self.f)());
@@ -469,7 +523,7 @@ where
     result
 }
 
-async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
+async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, operation: Option<OperationId>) -> Result<TxShared> {
     if db.inner.closed.load(Ordering::Acquire) {
         return Err(Error::Config("database is closed".into()));
     }
@@ -524,7 +578,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result
         savepoints: AtomicU32::new(0),
         locals: Mutex::new(HashMap::new()),
         locks: Mutex::new(Vec::new()),
-        context_row: AtomicBool::new(false),
+        operation,
         sqlite_mode: Mutex::new(sqlite_mode),
     })
 }
@@ -579,9 +633,6 @@ async fn commit(tx: &TxShared) -> Result<()> {
     let Some(mut inner) = guard.take() else {
         return Err(Error::Config("transaction already finished".into()));
     };
-    if tx.context_row.load(Ordering::Acquire) {
-        raw_on(&mut inner, "DELETE FROM \"orm__context\"").await?;
-    }
     finish(tx, &mut inner).await?;
     match inner {
         TxInner::MySql(t) => t.commit().await?,

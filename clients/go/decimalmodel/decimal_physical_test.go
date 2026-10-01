@@ -19,7 +19,7 @@ func decimalPhysical(t *testing.T, env string) {
 	if dsn == "" {
 		t.Fatalf("%s is required", env)
 	}
-	db, err := decimalmodel.Connect(dsn, "../../../contracts/fixtures/decimal_schema.json", orm.Config{})
+	db, err := decimalmodel.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

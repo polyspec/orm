@@ -79,14 +79,11 @@ func awaitReplica(t *testing.T, driver, primary, replica string) {
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
 func TestPrimaryAndReplica(t *testing.T) {
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := model.ManifestText
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
 			primary, replica := dsns[0], dsns[1]
-			master, err := model.Connect(primary, schemaPath, orm.Config{})
+			master, err := model.Connect(primary, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -98,7 +95,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 			name := fmt.Sprintf("replica-%d", time.Now().UnixNano())
 			must(model.User().Connect(master).SetName(name).Create())
 			awaitReplica(t, driver, primary, replica)
-			slave1, err := model.Connect(replica, schemaPath, orm.Config{})
+			slave1, err := model.Connect(replica, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -143,13 +140,10 @@ func TestPrimaryAndReplica(t *testing.T) {
 // that the process may only read: SQLite opens it read-only, reads succeed,
 // and a write returns READ_ONLY.
 func TestReadOnlySQLite(t *testing.T) {
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := model.ManifestText
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
 	dsn := "sqlite://" + path
-	writable, err := model.Connect(dsn, schemaPath, orm.Config{})
+	writable, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +155,7 @@ func TestReadOnlySQLite(t *testing.T) {
 	if err := os.Chmod(path, 0o444); err != nil {
 		t.Fatal(err)
 	}
-	readOnly, err := model.Connect(dsn, schemaPath, orm.Config{})
+	readOnly, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

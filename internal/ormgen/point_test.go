@@ -3,7 +3,6 @@ package ormgen
 import (
 	"context"
 	"database/sql"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -55,28 +54,6 @@ func TestPointDDL(t *testing.T) {
 		ddl, err := renderDDL(m, driver)
 		if err != nil || !strings.Contains(ddl, want) {
 			t.Fatalf("%s DDL=%q err=%v", driver, ddl, err)
-		}
-	}
-}
-
-func TestPointGeneratedTypes(t *testing.T) {
-	m := pointManifest()
-	dir := t.TempDir()
-	if err := genGo(m, filepath.Join(dir, "model"), nil); err != nil {
-		t.Fatal(err)
-	}
-	checks := map[string][]string{
-		filepath.Join(dir, "model", "thing.go"): {"fLocation *orm.Point", "SetLocation(v *orm.Point)"},
-	}
-	for path, wants := range checks {
-		body, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, want := range wants {
-			if !strings.Contains(string(body), want) {
-				t.Errorf("%s does not contain %q", path, want)
-			}
 		}
 	}
 }

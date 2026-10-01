@@ -11,20 +11,21 @@ final class CompositeMembership extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'composite_membership',
             'table' => 'composite_membership',
             'pk' => ['tenant_id', 'account_id'],
-            'auto' => '',
+            'identity' => '',
             'updated' => '',
+            'soft_delete' => '',
             'aes_version' => '',
+            'audit' => '',
             'columns' => [
-                'tenant_id' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'account_id' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'role' => ['type' => 'string', 'nullable' => false, 'styles' => []],
+                'tenant_id' => ['name' => 'tenant_id', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
+                'account_id' => ['name' => 'account_id', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
+                'role' => ['name' => 'role', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
             ],
-            'fulltext' => [],
+            'unique' => [],
             'indexes' => [],
         ];
     }

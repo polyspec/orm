@@ -5,41 +5,50 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-func namesManifest(t *testing.T, diagram string) *schema.Manifest {
+// namesManifest는 dbspec document 하나의 runtime model이다.
+func namesManifest(t *testing.T, document string) *runtimemodel.Model {
 	t.Helper()
-	d, err := schema.Parse(diagram)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
+	m, diagnostics := runtimemodel.LoadDocuments([]string{document})
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	return m
 }
 
-const namesDiagram = `erDiagram
-  product {
-    bigint        seq          PK "auto"
-    bigint        brand_seq
-    varchar(50)   name
-    text          body            "?"
-    int           price           "=0"
-    datetime(6)   sale_start_dt   "?"
-    point         location        "?"
-  }
-  brand {
-    bigint        seq          PK "auto"
-    int           min_price       "=0"
-  }
-  %% fulltext product (name, body)
+const namesDiagram = `dbspec 1 names
+
+table product {
+  seq i64 identity
+  brand_seq i64
+  name varchar(50)
+  body text null
+  price i32 default 0
+  sale_start_dt datetime(6) null
+  primary key (seq)
+}
+
+table brand {
+  seq i64 identity
+  min_price i32 default 0
+  primary key (seq)
+}
 `
+
+// thingDocument는 identity column과 column 하나인 table thing의 document다.
+func thingDocument(columns ...string) string {
+	text := "dbspec 1 thing\n\ntable thing {\n  seq i64 identity\n"
+	for _, column := range columns {
+		text += "  " + column + " i32\n"
+	}
+	return text + "  primary key (seq)\n}\n"
+}
 
 func TestParseChain(t *testing.T) {
 	m := namesManifest(t, namesDiagram)
@@ -49,9 +58,7 @@ func TestParseChain(t *testing.T) {
 		"NeNameOrLkName":           {{op: "ne", column: "name"}, {conn: "or", op: "lk", column: "name"}},
 		"BetweenPrice":             {{op: "between", column: "price"}},
 		"PriceGtMinPrice":          {{op: "gt", column: "price", compare: "min_price"}},
-		"FulltextNameWithBody":     {{op: "fulltext", columns: []string{"name", "body"}}},
 		"NeTupleSeqWithBrandSeq":   {{op: "ne_tuple", columns: []string{"seq", "brand_seq"}}},
-		"EqLocation":               {{column: "location"}},
 	}
 	for name, want := range cases {
 		got, err := parseChain(m, e, name)
@@ -63,14 +70,13 @@ func TestParseChain(t *testing.T) {
 		}
 	}
 	for name, message := range map[string]string{
-		"Missing":             "not a column",
-		"LkPrice":             "does not accept",
-		"PriceGtUnknown":      "no model has the column",
-		"FulltextName":        "no full-text index",
-		"TupleSeq":            "two or more columns",
-		"BetweenName":         "does not accept",
-		"NameAnd":             "empty",
-		"GtLocationAndLtName": "",
+		"Missing":                "not a column",
+		"LkPrice":                "does not accept",
+		"PriceGtUnknown":         "no model has the column",
+		"TupleSeq":               "two or more columns",
+		"BetweenName":            "does not accept",
+		"NameAnd":                "empty",
+		"GtSaleStartDtAndLtName": "",
 	} {
 		_, err := parseChain(m, e, name)
 		if message == "" {
@@ -94,24 +100,16 @@ func TestColumnNameRules(t *testing.T) {
 		"random":         "reserved",
 		"create":         "reserved",
 	} {
-		d, err := schema.Parse("erDiagram\n  thing {\n    bigint seq PK \"auto\"\n    int " + column + "\n  }\n")
-		if err != nil {
-			continue
-		}
-		m, err := schema.Build(d)
-		if err != nil {
-			continue
-		}
-		err = checkColumnNames(m)
+		err := checkNames(namesManifest(t, thingDocument(column)))
 		if err == nil || !strings.Contains(err.Error(), message) {
 			t.Fatalf("%s: got %v, want %q", column, err, message)
 		}
 	}
-	m := namesManifest(t, "erDiagram\n  thing {\n    bigint seq PK \"auto\"\n    int min_price\n  }\n")
-	if err := checkColumnNames(m); err != nil {
+	m := namesManifest(t, thingDocument("min_price"))
+	if err := checkNames(m); err != nil {
 		t.Fatal(err)
 	}
-	collision := namesManifest(t, "erDiagram\n  thing {\n    bigint seq PK \"auto\"\n    int amount\n    int sum_amount\n  }\n")
+	collision := namesManifest(t, thingDocument("amount", "sum_amount"))
 	if err := generateGo(collision, filepath.Join(t.TempDir(), "model"), "", nil); err == nil || !strings.Contains(err.Error(), "fixed method") {
 		t.Fatalf("method collision: %v", err)
 	}
@@ -218,5 +216,71 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 	err = generateGo(m, "model", "", []string{"./..."})
 	if err == nil || !strings.Contains(err.Error(), "does not accept") {
 		t.Fatalf("invalid call: %v", err)
+	}
+}
+
+// TestGeneratedFieldTypes는 dbspec type과 codec마다 generated field의 Go
+// type이 docs/dbspec.md "Runtime model" 표를 따르는지 확인한다.
+func TestGeneratedFieldTypes(t *testing.T) {
+	m := namesManifest(t, `dbspec 1 typed
+
+table typed {
+  seq i64 identity
+  small i16
+  small_null i16 null
+  ref uuid
+  clock time(3)
+  day date
+  stamp datetime(6) null
+  amount decimal(13,2)
+  ratio f64
+  flag bool
+  blob bytes null
+  address bytes null
+  secret varchar(255)
+  aes_key_version i32
+  packed bytes null
+  encoded text null
+  doc text null
+  primary key (seq)
+  settings {
+    codec address ip
+    codec doc ordered_json
+    codec encoded base64
+    codec packed gz
+    codec secret aes hex
+    aes_version aes_key_version
+  }
+}
+`)
+	dir := filepath.Join(t.TempDir(), "model")
+	if err := genGo(m, dir, nil); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "typed.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// gofmt 정렬과 무관하게 비교하려고 공백 연속을 하나로 줄인다.
+	text := strings.Join(strings.Fields(string(body)), " ")
+	for _, want := range []string{
+		"fSmall int16", "fSmallNull *int16", "fRef string", "fClock string",
+		"fDay time.Time", "fStamp *time.Time", "fAmount string", "fRatio float64",
+		"fFlag bool", "fBlob []byte", "fAddress *string", "fSecret string",
+		"fPacked orm.StyledValue", "fEncoded orm.StyledValue", "fDoc orm.StyledValue",
+		"orm.AsInt16(v)", "orm.AsTimeText(v, 3)", `orm.NormalizeStyled([]string{"gz"}, true, v)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("typed.go does not contain %q", want)
+		}
+	}
+	orm, err := os.ReadFile(filepath.Join(dir, "orm.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"const ManifestHash = " + strconv.Quote(m.ManifestHash), `"dbspec 1 typed\n" +`, "func Connect(dsn string, cfg orm.Config) (*orm.DB, error)"} {
+		if !strings.Contains(string(orm), want) {
+			t.Errorf("orm.go does not contain %q", want)
+		}
 	}
 }

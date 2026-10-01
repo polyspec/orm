@@ -55,8 +55,9 @@ impl Table {
     }
 }
 
+/// column type (docs/dbspec.md, "Types").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Type {
+pub enum Type {
     I16,
     I32,
     I64,
@@ -73,6 +74,26 @@ pub(crate) enum Type {
 }
 
 impl Type {
+    /// parameter를 뺀 type 이름: `decimal(13,2)`는 `decimal`이다.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Type::I16 => "i16",
+            Type::I32 => "i32",
+            Type::I64 => "i64",
+            Type::Bool => "bool",
+            Type::Decimal(..) => "decimal",
+            Type::F64 => "f64",
+            Type::Varchar(_) => "varchar",
+            Type::Text => "text",
+            Type::Bytes => "bytes",
+            Type::Uuid => "uuid",
+            Type::Date => "date",
+            Type::Time(_) => "time",
+            Type::DateTime(_) => "datetime",
+        }
+    }
+
+    /// dbspec이 쓰는 type text.
     pub fn render(&self) -> String {
         match self {
             Type::I16 => "i16".into(),

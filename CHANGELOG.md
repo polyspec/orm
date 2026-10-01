@@ -1,5 +1,15 @@
 # Changelog
 
+- T8.2.6.3.7: the bench databases are installed from schema/bench.dbspec, the conformance runners take only a DSN, and the conformance vectors are recorded from the four dbspec clients on MySQL, PostgreSQL and SQLite.
+
+- T8.2.6.3.6: the Rust client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.5: the TypeScript client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.4: the PHP client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.3: the Go client builds its runtime model and generated code from the dbspec document set.
+
 - T14.2: the Rust decimal and generated-model coverage tests are ignored in workspace runs and run by their owners with `--include-ignored`.
 
 - T14.1: the Rust DSN coverage test is ignored in workspace runs and run by feature-check with `--include-ignored`.

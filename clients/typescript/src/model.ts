@@ -1,9 +1,10 @@
-import { CORE, Core, RowState, configError, isModel, type EntityDef, type ModelLike, type SetSpec } from './core.js';
-import { encode, parsePoint, type CodecValue, type JsonValue } from './codec.js';
+import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
+import { encode, type CodecValue, type JsonValue } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from 'ordered-json';
-import { Db, keyOfValues, keyText, keyValue, normalizeTime, paginate, query, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
+import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
+import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
-import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey, type ColumnSchema, type EntitySchema, type SchemaSet } from './names.js';
+import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { OrmError } from './runtime_error.js';
 import { StyledValue, orderedJsonOutput } from './styled_value.js';
 import { normalizeDecimal } from './decimal.js';
@@ -165,42 +166,53 @@ function terminal(c: Core): Executor {
   return resolve(c.conn);
 }
 
-function convert(type: string, value: unknown, zone: string, declared?: ColumnSchema): unknown {
+const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
+  i16: [-32768, 32767],
+  i32: [-2147483648, 2147483647],
+  i64: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+};
+
+/** Converts a cell to the value type of its column type (docs/dbspec.md "Runtime model"). */
+function convert(type: string, value: unknown, zone: string, declared?: Field): unknown {
   if (value === null || value === undefined) return null;
   switch (type) {
-    case 'i32': case 'i64':
-      if (typeof value === 'bigint') {
-        const converted = Number(value);
-        if (!Number.isSafeInteger(converted)) throw new OrmError('CODEC_DECODE', `${type} cell exceeds safe integer range`);
-        return converted;
+    case 'i16': case 'i32': case 'i64': {
+      const converted = typeof value === 'bigint' ? Number(value) : value;
+      const [min, max] = integerRanges[type]!;
+      if (typeof converted !== 'number' || !Number.isSafeInteger(converted) || converted < min || converted > max) {
+        throw new OrmError('CODEC_DECODE', `${type} cell is not an exact integer in its range`);
       }
-      if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new OrmError('CODEC_DECODE', `${type} cell is not an exact integer`);
-      return value;
+      return converted;
+    }
     case 'f64':
       return typeof value === 'number' ? value : Number(value);
     case 'decimal': {
       if (declared === undefined) throw new OrmError('CODEC_DECODE', 'decimal column metadata is missing');
-      if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision ?? 0, declared.scale ?? 0);
+      if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision, declared.scale);
       if (typeof value !== 'string') throw new OrmError('CODEC_DECODE', `decimal cell has type ${typeof value}`);
-      try { return normalizeDecimal(value, declared.precision ?? 0, declared.scale ?? 0); }
+      try { return normalizeDecimal(value, declared.precision, declared.scale); }
       catch (cause) { throw new OrmError('CODEC_DECODE', `invalid decimal cell: ${String(cause)}`); }
     }
     case 'bool':
       return value === true || value === 1 || value === 1n || value === '1' || value === 't' || value === 'true';
-    case 'date': case 'datetime':
-      return normalizeTime(value, zone);
+    case 'date': case 'time': case 'datetime':
+      return readTime(value, type, zone, declared?.precision ?? (type === 'datetime' ? 6 : 0));
     case 'bytes':
       return value instanceof Uint8Array ? value : new Uint8Array(Buffer.from(String(value)));
-    case 'point':
-      return parsePoint(value as string);
-    case 'string': case 'text': case 'enum': case 'inet': case 'time': case 'uuid':
+    case 'varchar': case 'text': case 'uuid':
       return value instanceof Uint8Array ? Buffer.from(value).toString() : String(value);
+    case 'styled':
+      return value;
   }
-  return value;
+  throw new OrmError('INTERNAL', `cell of unknown type ${type}`);
 }
 
-function columnType(col: ColumnSchema): string {
-  return (col.styles ?? []).some(s => s !== 'aes' && s !== 'hex' && s !== 'ip') ? 'styled' : col.type;
+// host stage(aes, hex, ip)만 가진 column의 model 값은 문자열이다. 저장 형식은
+// executor가 bind할 때 만든다.
+function columnType(col: Field): string {
+  if (styledField(col)) return 'styled';
+  if (col.stages.length > 0 && col.stages.every(s => s === 'aes' || s === 'hex' || s === 'ip')) return 'text';
+  return col.type;
 }
 
 function newModel(def: EntityDef): Core {
@@ -219,11 +231,11 @@ class Assembler {
     const st = new RowState();
     st.loaded = true;
     m.row = st;
-    const schema = b.ent.schema;
+    const schema = b.ent.entity;
     for (const col of asm.columns) {
       if (col.hidden) st.hidden.add(col.name);
       st.addName(col.name);
-      const declared = col.column !== '' && col.column === col.name ? schema.columns[col.name] : undefined;
+      const declared = col.column !== '' && col.column === col.name ? fieldOf(schema, col.name) : undefined;
       if (declared) m.values.set(col.name, convert(columnType(declared), row[col.index], this.db.zone, declared));
       else st.extra.set(col.name, col.type === 'date' || col.type === 'datetime' ? convert(col.type, row[col.index], this.db.zone) : row[col.index]);
     }
@@ -231,7 +243,7 @@ class Assembler {
       const name = asm.columns.find(col => col.index === key.index)!.name;
       st.original.set(name, m.values.get(name));
     }
-    if (schema.updated && st.names.includes(schema.updated)) st.original.set(schema.updated, m.values.get(schema.updated));
+    if (schema.updated !== '' && st.names.includes(schema.updated)) st.original.set(schema.updated, m.values.get(schema.updated));
     for (const name of b.news) m.setNew(name, b.newValues.get(name));
     for (const ch of asm.children) {
       if (ch.kind === 'join') {
@@ -306,8 +318,8 @@ async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {
   return assemble(c, ex, r.external, result);
 }
 
-function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: EntitySchema): unknown {
-  const declared = column.column === column.name ? schema.columns[column.name] : undefined;
+function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
+  const declared = column.column === column.name ? fieldOf(schema, column.name) : undefined;
   if (raw === undefined) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
   if (column.name === 'row_count') return raw;
   if (raw === null) {
@@ -324,13 +336,14 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
     if ([false, 0, 0n, '0', 'f', 'false'].includes(raw as never)) return false;
     throw new OrmError('CODEC_DECODE', `group column ${column.name} is not boolean`);
   }
-  if (type === 'i32' || type === 'i64') {
+  if (type === 'i16' || type === 'i32' || type === 'i64') {
     let value: number;
     if (typeof raw === 'string' && /^-?(0|[1-9][0-9]*)$/.test(raw)) value = Number(raw);
     else if (typeof raw === 'bigint') value = Number(raw);
     else if (typeof raw === 'number') value = raw;
     else throw new OrmError('CODEC_DECODE', `group column ${column.name} is not an exact integer`);
-    if (!Number.isSafeInteger(value) || (type === 'i32' && (value < -2147483648 || value > 2147483647))) {
+    const [min, max] = integerRanges[type]!;
+    if (!Number.isSafeInteger(value) || value < min || value > max) {
       throw new OrmError('CODEC_DECODE', `group column ${column.name} is outside its exact integer range`);
     }
     return value;
@@ -344,19 +357,15 @@ function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, s
     return value;
   }
   if (type === 'decimal') return convert(type, raw, db.zone, declared);
-  if (type === 'date' || type === 'datetime') {
-    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a date`);
+  if (type === 'date' || type === 'time' || type === 'datetime') {
+    if (!(raw instanceof Date) && typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a ${type}`);
     return convert(type, raw, db.zone, declared);
   }
   if (type === 'bytes') {
     if (!(raw instanceof Uint8Array)) throw new OrmError('CODEC_DECODE', `group column ${column.name} is not bytes`);
     return raw;
   }
-  if (type === 'point') {
-    if (typeof raw !== 'string') throw new OrmError('CODEC_DECODE', `group column ${column.name} is not a point`);
-    return convert(type, raw, db.zone, declared);
-  }
-  if (['string', 'text', 'enum', 'inet', 'time', 'uuid', 'json', 'jsontext'].includes(type)) {
+  if (['string', 'varchar', 'text', 'uuid'].includes(type)) {
     if (typeof raw === 'string') return raw;
     if (raw instanceof Uint8Array) return new TextDecoder('utf-8', { fatal: true }).decode(raw);
     throw new OrmError('CODEC_DECODE', `group column ${column.name} is not text`);
@@ -385,7 +394,7 @@ async function grouped(c: Core): Promise<GroupRows> {
     for (const column of columns) {
       if (column.hidden) continue;
       if (column.index < 0 || column.index >= raw.length) throw new OrmError('INTERNAL', `group result column ${column.name} is missing`);
-      entries.push([column.name, groupValue(ex.db, column, raw[column.index], c.ent.schema)]);
+      entries.push([column.name, groupValue(ex.db, column, raw[column.index], c.ent.entity)]);
     }
     rows.push(new GroupRow(entries));
   }
@@ -502,7 +511,7 @@ export async function inTransaction(conn: Db | undefined, fn: () => Promise<void
 interface WriteRequest { ir: Request; params: unknown[]; }
 
 function writeRequest(c: Core, kind: 'insert' | 'update' | 'delete'): WriteRequest {
-  return { ir: { ir_version: 1, schema_hash: c.ent.set.hash, kind, entity: c.ent.schema.name, n_params: 0 }, params: [] };
+  return { ir: { ir_version: 1, manifest_hash: c.ent.model.manifestHash, kind, entity: c.ent.entity.name, n_params: 0 }, params: [] };
 }
 
 function param(r: WriteRequest, value: unknown): number {
@@ -510,16 +519,16 @@ function param(r: WriteRequest, value: unknown): number {
   return r.params.length - 1;
 }
 
-function encodeValue(schema: EntitySchema, column: string, value: unknown): unknown {
-  const col = schema.columns[column];
+function encodeValue(schema: Entity, column: string, value: unknown): unknown {
+  const col = fieldOf(schema, column);
   if (col === undefined) throw new OrmError('COLUMN_UNKNOWN', `${schema.name}.${column}`);
-  const codec = (col.styles ?? []).filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
+  const codec = col.stages.filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
   if (codec.length === 0) return value;
   if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
   return encode(codec, value as StyledValue<CodecValue | JsonValue>);
 }
 
-function assign(r: WriteRequest, schema: EntitySchema, s: SetSpec): NonNullable<Request['set']>[number] {
+function assign(r: WriteRequest, schema: Entity, s: SetSpec): NonNullable<Request['set']>[number] {
   if (s.null) return { column: s.column, null: true };
   if (s.raw) {
     const count = s.raw.sql.split('?').length - 1;
@@ -543,7 +552,7 @@ function finishWrite(r: WriteRequest): Request {
 async function create(c: Core): Promise<Model> {
   const ex = terminal(c);
   if (c.sets.length === 0) throw configError('create requires set<Col> values');
-  const schema = c.ent.schema;
+  const schema = c.ent.entity;
   const r = writeRequest(c, 'insert');
   r.ir.set = c.sets.map(s => assign(r, schema, s));
   if (c.duplication) {
@@ -558,17 +567,18 @@ async function create(c: Core): Promise<Model> {
   for (const s of c.sets) {
     st.addName(s.column);
     if (s.plus || s.minus || s.raw) continue;
-    const type = columnType(schema.columns[s.column]!);
+    const field = fieldOf(schema, s.column)!;
+    const type = columnType(field);
     m.values.set(s.column, s.null
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
-      : convert(type, s.value, ex.db.zone, schema.columns[s.column]));
+      : convert(type, s.value, ex.db.zone, field));
   }
-  if (schema.auto) {
-    st.addName(schema.auto);
-    m.values.set(schema.auto, id);
+  if (schema.identity !== '') {
+    st.addName(schema.identity);
+    m.values.set(schema.identity, id);
   }
   st.loaded = true;
-  for (const pk of schema.pk) {
+  for (const pk of schema.primaryKey) {
     const v = m.values.get(pk);
     if (v === undefined || v === null || v === 0 || v === '') st.loaded = false;
     st.original.set(pk, v);
@@ -588,7 +598,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
     if (s.raw || s.plus || s.minus) throw configError('creates accepts stored values only');
     return s.column;
   });
-  const schema = c.ent.schema;
+  const schema = c.ent.entity;
   const per = Math.floor((ex.db.driver === 'sqlite' ? 999 : 65535) / columns.length);
   let total = 0;
   await inTransaction(c.conn, async () => {
@@ -612,9 +622,9 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
   return total;
 }
 
-function keyValues(c: Core, schema: EntitySchema): Map<string, unknown> {
+function keyValues(c: Core, schema: Entity): Map<string, unknown> {
   const keys = new Map<string, unknown>();
-  for (const pk of schema.pk) {
+  for (const pk of schema.primaryKey) {
     if (c.row?.loaded) { keys.set(pk, c.row.original.get(pk)); continue; }
     const s = c.sets.find(s => s.column === pk && !s.plus && !s.minus && !s.raw && !s.null);
     if (!s) throw configError(`${schema.name} requires a loaded row or set primary key ${pk}`);
@@ -623,17 +633,17 @@ function keyValues(c: Core, schema: EntitySchema): Map<string, unknown> {
   return keys;
 }
 
-function keyWhere(r: WriteRequest, schema: EntitySchema, keys: Map<string, unknown>): void {
-  r.ir.where = { items: schema.pk.map((pk, i) => ({ pred: { ...(i > 0 ? { conn: 'and' } : {}), column: pk, op: 'eq', p: param(r, keys.get(pk)) } })) };
+function keyWhere(r: WriteRequest, schema: Entity, keys: Map<string, unknown>): void {
+  r.ir.where = { items: schema.primaryKey.map((pk, i) => ({ pred: { ...(i > 0 ? { conn: 'and' } : {}), column: pk, op: 'eq', p: param(r, keys.get(pk)) } })) };
 }
 
 /** Adds the other AES columns of a loaded row when one AES column changes. */
-function withAesColumns(c: Core, schema: EntitySchema): SetSpec[] {
-  if (!schema.aesVersion) return c.sets;
-  const aes = (name: string) => (schema.columns[name]?.styles ?? []).includes('aes');
+function withAesColumns(c: Core, schema: Entity): SetSpec[] {
+  if (schema.aesVersion === '') return c.sets;
+  const aes = (name: string) => (fieldOf(schema, name)?.stages ?? []).includes('aes');
   if (!c.sets.some(s => aes(s.column))) return c.sets;
   const out = [...c.sets];
-  for (const name of Object.keys(schema.columns)) {
+  for (const { name } of schema.fields) {
     if (!aes(name) || c.sets.some(s => s.column === name)) continue;
     if (!c.row?.names.includes(name)) throw configError(`changing an AES column of ${schema.name} requires a row loaded with ${name}`);
     const v = c.values.get(name) ?? null;
@@ -644,15 +654,15 @@ function withAesColumns(c: Core, schema: EntitySchema): SetSpec[] {
 
 async function update(c: Core, optimistic: boolean): Promise<void> {
   const ex = terminal(c);
-  const schema = c.ent.schema;
+  const schema = c.ent.entity;
   const r = writeRequest(c, 'update');
   const keys = keyValues(c, schema);
   const loaded = c.row?.loaded === true;
-  const sets = withAesColumns(c, schema).filter(s => loaded || !schema.pk.includes(s.column));
+  const sets = withAesColumns(c, schema).filter(s => loaded || !schema.primaryKey.includes(s.column));
   if (sets.length === 0) return;
   r.ir.set = sets.map(s => assign(r, schema, s));
   keyWhere(r, schema, keys);
-  const column = schema.updated ?? '';
+  const column = schema.updated;
   if (optimistic) {
     const version = loaded && column !== '' ? c.row!.original.get(column) : undefined;
     if (version === undefined || version === null) throw configError('update(true) requires a row loaded with its update time column');
@@ -660,7 +670,7 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
   }
   await write(ex, finishWrite(r), r.params);
   if (loaded) {
-    for (const s of c.sets) if (schema.pk.includes(s.column) && !s.plus && !s.minus && !s.raw) c.row!.original.set(s.column, s.value);
+    for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus && !s.raw) c.row!.original.set(s.column, s.value);
     c.row!.original.delete(column);
   }
   c.sets = [];
@@ -669,7 +679,7 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
 async function save(c: Core): Promise<Model> {
   terminal(c);
   let known = true;
-  try { keyValues(c, c.ent.schema); } catch { known = false; }
+  try { keyValues(c, c.ent.entity); } catch { known = false; }
   if (known) {
     await update(c, false);
     return c.self as Model;
@@ -692,7 +702,7 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
       else if (isModel(value)) await deleteOne(value[CORE], true);
     }
   }
-  const schema = c.ent.schema;
+  const schema = c.ent.entity;
   const r = writeRequest(c, 'delete');
   keyWhere(r, schema, keyValues(c, schema));
   await write(ex, finishWrite(r), r.params);
@@ -768,8 +778,8 @@ function jsonValue(value: unknown): unknown {
 
 /** Resolves a method named by the chain grammar. */
 function resolveName(def: EntityDef, name: string): Resolved | undefined {
-  const schema = def.schema;
-  const set = def.set;
+  const schema = def.entity;
+  const set = def.model;
   const P = upperFirst(name);
   const attempt = (): Resolved => {
     for (const [prefix, kind] of [['GetsBy', 'all'], ['GetBy', 'one'], ['GetCountBy', 'count']] as const) {
@@ -788,7 +798,7 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
       const rest = P.slice(prefix.length);
       return function (child) {
         if (!isModel(child)) throw configError(`${name} takes the joined model`);
-        const [left, right] = splitPair(set, schema, child[CORE].ent.schema, rest);
+        const [left, right] = splitPair(set, schema, child[CORE].ent.entity, rest);
         this[CORE].join(kind, left, right, child);
         return this;
       };
@@ -849,7 +859,7 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
   }
 }
 
-function outputName(set: SchemaSet, schema: EntitySchema, name: string): string {
+function outputName(set: RuntimeModel, schema: Entity, name: string): string {
   if (columnName(set, schema, name) !== '') throw configError(`${name} is a column name`);
   return snake(name);
 }

@@ -4,7 +4,6 @@ package model_test
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
@@ -16,8 +15,7 @@ func TestCoverageGeneratedModelConnection(t *testing.T) {
 	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
 		t.Fatal("selected database and DSN are required")
 	}
-	path := filepath.Join("..", "..", "..", "schema", "schema.json")
-	db, err := model.Connect(dsn, path, orm.Config{})
+	db, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // generatedScannedModule creates a scanned module whose output package holds a
 // hand-written file, generates its models, and returns the manifest.
-func generatedScannedModule(t *testing.T) (func(name, body string), *schema.Manifest) {
+func generatedScannedModule(t *testing.T) (func(name, body string), *runtimemodel.Model) {
 	t.Helper()
 	write := scannedModule(t)
 	write("model/doc.go", "// Package model holds the generated models.\npackage model\n")
@@ -100,7 +100,7 @@ func requireSameFiles(t *testing.T, want, got map[string]string) {
 // requireUnchanged runs a failing generation with the scan patterns, ./...
 // by default, and checks that it reports a generation failure and leaves the
 // output directory and its parent as they were.
-func requireUnchanged(t *testing.T, m *schema.Manifest, message string, patterns ...string) {
+func requireUnchanged(t *testing.T, m *runtimemodel.Model, message string, patterns ...string) {
 	t.Helper()
 	if len(patterns) == 0 {
 		patterns = []string{"./..."}
@@ -121,7 +121,7 @@ func requireUnchanged(t *testing.T, m *schema.Manifest, message string, patterns
 // before the scan leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {
 	generatedScannedModule(t)
-	collision := namesManifest(t, "erDiagram\n  product {\n    bigint seq PK \"auto\"\n    int amount\n    int sum_amount\n  }\n")
+	collision := namesManifest(t, "dbspec 1 names\n\ntable product {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n")
 	requireUnchanged(t, collision, "fixed method")
 }
 
@@ -256,16 +256,12 @@ func ormgenBinary(t *testing.T) string {
 // messages of a scanned-source compile error and of a generation failure.
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	bin := ormgenBinary(t)
-	write, m := generatedScannedModule(t)
-	js, err := m.MarshalIndent()
-	if err != nil {
-		t.Fatal(err)
-	}
-	write("schema.json", string(js))
+	write, _ := generatedScannedModule(t)
+	write("names.dbspec", namesDiagram)
 	run := func() (int, string, string) {
 		t.Helper()
 		var stdout, stderr bytes.Buffer
-		cmd := exec.Command(bin, "gen", "--schema", "schema.json", "--lang", "go", "--out", "model", "--scan", "./...")
+		cmd := exec.Command(bin, "gen", "--document", "names.dbspec", "--lang", "go", "--out", "model", "--scan", "./...")
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
 		var exit *exec.ExitError

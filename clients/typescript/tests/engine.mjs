@@ -1,12 +1,9 @@
-// Engine test: manifest loading, request validation, plans, and SQL splitting.
+// Engine test: the runtime model of the embedded manifest, request validation and plans.
 // Usage: node clients/typescript/tests/engine.mjs (after npm run typescript:build)
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { Db, Engine, SCHEMA_HASH, loadManifest, splitSQL } from '../dist/index.js';
+import { readFile } from 'node:fs/promises';
+import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
-const schemaPath = new URL('../../../schema/schema.json', import.meta.url).pathname;
-const text = await readFile(schemaPath, 'utf8');
+const text = await readFile(new URL('../../../schema/bench.dbspec', import.meta.url), 'utf8');
 let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
@@ -18,30 +15,27 @@ async function codeOf(promise) {
   try { await promise; return null; } catch (error) { return error.code ?? String(error); }
 }
 
-check(loadManifest(text).manifest.schema_hash === SCHEMA_HASH, 'the generated models use the loaded schema');
-check(code(() => loadManifest(text.replace('"name": "author"', '"name": "authors"'))) === 'SCHEMA_INVALID', 'an edited manifest is rejected');
-check(code(() => loadManifest('{')) === 'SCHEMA_INVALID', 'invalid JSON is rejected');
-check(code(() => Engine.load(text, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
+// The generated models embed the manifest of schema/bench.dbspec.
+const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbspec');
+const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
+check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
+check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task', 'entities in document order');
+check(code(() => registerModel(MANIFEST_TEXT.replace('table author', 'table authors'), MANIFEST_HASH)) === 'SCHEMA_INVALID', 'an edited manifest text is rejected');
+check(code(() => registerModel(`${MANIFEST_TEXT}# note\n`, manifest.manifestHash.replace(/.$/, '0'))) === 'SCHEMA_INVALID', 'a text that is not a manifest text is rejected');
+check(code(() => registerModel('{', 'sha256:00')) === 'SCHEMA_INVALID', 'a text that is not dbspec is rejected');
+check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
+const author = model.entities.get('author');
+const field = name => author.fields.find(f => f.name === name);
+check(!field('description').selected && field('name').selected && field('price').selected, 'the default select set leaves out only select explicit columns');
+check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_hex_email').stages.join(',') === 'aes,hex' && field('aes_hex_email').blindIndex === 'email_blind_index', 'codec stages and blind index');
+check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-engine-'));
-try {
-  const other = JSON.parse(text);
-  const edited = text.replace(`"schema_hash": "${other.schema_hash}"`, '"schema_hash": ""');
-  // A valid manifest that no imported models were generated from.
-  const { createHash } = await import('node:crypto');
-  const compact = JSON.stringify(JSON.parse(edited.replace('"table": "author"', '"table": "author_other"')));
-  const hash = createHash('sha256').update(compact).digest('hex').slice(0, 16);
-  const path = join(work, 'other.json');
-  await writeFile(path, compact.replace('"schema_hash":""', `"schema_hash":"${hash}"`));
-  check(loadManifest(await readFile(path, 'utf8')).manifest.schema_hash === hash, 'compact manifest hash');
-  check(await codeOf(Db.connect(`sqlite://${join(work, 'x.sqlite')}`, path)) === 'SCHEMA_HASH_MISMATCH', 'schema without generated models');
-  check(await codeOf(Db.connect(`sqlite://${join(work, 'x.sqlite')}`, join(work, 'missing.json'))) === 'CONFIG', 'missing schema file');
-} finally {
-  await rm(work, { recursive: true, force: true });
-}
+// A request names a manifest that no imported model registered.
+check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/schema.json')) === 'CONFIG', 'connect rejects a schema path');
 
-const engine = Engine.load(text, 'postgres');
-const base = { ir_version: 1, schema_hash: SCHEMA_HASH, entity: 'author' };
+const engine = new Engine(model, 'postgres');
+const base = { ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'author' };
 const compileCode = request => code(() => engine.compile(request));
 check(compileCode({ ...base, kind: 'all', n_params: 0, where: { items: [{ pred: { column: 'nope', op: 'eq', p: 0 } }] } }) === 'IR_INVALID', 'parameter out of range');
 check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: { column: 'nope', op: 'eq', p: 0 } }] } }) === 'COLUMN_UNKNOWN', 'unknown column');
@@ -49,13 +43,19 @@ check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: 
 check(compileCode({ ...base, kind: 'all', n_params: 0, where: { items: [{ pred: { column: 'seq', op: 'in', ps: [] } }] } }) === 'EMPTY_IN', 'empty in');
 check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: { column: 'json_setting', op: 'eq', p: 0 } }] } }) === 'OPERATOR_NOT_ALLOWED', 'operator on a json column');
 check(compileCode({ ...base, kind: 'delete', n_params: 0 }) === 'IR_INVALID', 'delete without where');
-check(compileCode({ ...base, schema_hash: 'x', kind: 'all', n_params: 0 }) === 'SCHEMA_HASH_MISMATCH', 'request of another schema');
+check(compileCode({ ...base, manifest_hash: 'x', kind: 'all', n_params: 0 }) === 'SCHEMA_HASH_MISMATCH', 'request of another manifest');
 check(compileCode({ ...base, kind: 'all', n_params: 0, force_index: 'nope' }) === 'INDEX_UNKNOWN', 'unknown index');
 
 const plan = engine.compile({ ...base, kind: 'one', n_params: 2, columns: { mode: 'none' }, where: { items: [{ pred: { column: 'seq', op: 'in', ps: [0, 1] } }] } });
 const want = 'SELECT "a"."seq" AS "a__seq", "a"."user_seq" AS "a__user_seq", "a"."service_seq" AS "a__service_seq", "a"."service_region_seq" AS "a__service_region_seq", "a"."service_member_seq" AS "a__service_member_seq" FROM "author" AS "a" WHERE "a"."seq" IN ($1, $2) LIMIT 1 OFFSET 0';
 check(plan.steps.length === 1 && plan.steps[0].sql === want, `plan SQL: ${plan.steps[0].sql}`);
 check(plan.steps[0].bind_slots.map(s => s.param).join(',') === '0,1', 'plan binds');
+
+// 모든 column을 고른 node는 AES key version column을 한 번만 읽고 그 위치를 표시한다.
+const allPlan = engine.compile({ ...base, kind: 'one', n_params: 1, columns: { mode: 'all' }, where: { items: [{ pred: { column: 'seq', op: 'eq', p: 0 } }] } });
+const allAsm = allPlan.steps[0].assemble;
+check(allPlan.steps[0].sql.split('"a"."aes_key_version" AS').length - 1 === 1, `aes_key_version selected once: ${allPlan.steps[0].sql}`);
+check(allAsm.aes_version !== undefined && allAsm.columns[allAsm.aes_version].column === 'aes_key_version' && !allAsm.columns[allAsm.aes_version].hidden, `AES version column marked: ${JSON.stringify(allAsm.aes_version)}`);
 
 // Soft delete: reads filter rows with a deleted_at value and a delete
 // rewrites to a guarded update that sets the timestamp.
@@ -66,10 +66,6 @@ check(
   softDelete.steps[0].sql.startsWith('UPDATE "soft_record" SET "deleted_at" = CURRENT_TIMESTAMP') && softDelete.steps[0].sql.includes('"soft_record"."deleted_at" IS NULL'),
   `soft-delete guarded update: ${softDelete.steps[0].sql}`,
 );
-
-const split = splitSQL("-- note\nCREATE TABLE a (x TEXT DEFAULT 'a;b');\n/* c; */ CREATE FUNCTION f() AS $$ BEGIN; END; $$;\nSELECT 1");
-check(split.length === 3 && split[0] === "CREATE TABLE a (x TEXT DEFAULT 'a;b')" && split[1].endsWith('$$') && split[2] === 'SELECT 1', `splitSQL: ${JSON.stringify(split)}`);
-check(engine.installStatements().every(s => !s.startsWith('DROP ')), 'install statements never drop tables');
 
 if (failures > 0) {
   console.error(`typescript engine test: ${failures} failure(s)`);

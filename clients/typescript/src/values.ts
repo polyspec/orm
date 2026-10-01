@@ -36,7 +36,4 @@ export const orm = {
   year: () => column('year'),
   month: () => column('month'),
   date: () => column('date'),
-  distance: (longitude: number, latitude: number) => column('distance', longitude, latitude),
-  pointX: () => column('point_x'),
-  pointY: () => column('point_y'),
 } as const;

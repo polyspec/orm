@@ -7,21 +7,58 @@ import (
 	"unicode"
 
 	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Method names of generated models are parsed with the grammar of docs/dsl.md.
 // A name is split into PascalCase words; column names never contain the
 // connector and operator segments, so the split is unambiguous.
 
-// checkColumnNames applies the column naming rules to a manifest that may
-// have been loaded without a build.
-func checkColumnNames(m *schema.Manifest) error {
+// method 이름 grammar는 column 이름을 connector와 operator 단어로 나누므로
+// column 이름에 다음 단어를 쓸 수 없다 (docs/dsl.md §9). dbspec 이름 규칙에
+// 더해 generator가 적용하는 규칙이다.
+var (
+	// reservedSegments는 underscore로 나눈 segment로 올 수 없다.
+	reservedSegments = []string{"and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "tuple"}
+	// reservedPrefixes로 column 이름을 시작할 수 없다.
+	reservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between"}
+	// reservedColumns는 column 이름이 될 수 없다.
+	reservedColumns = []string{"and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "save", "raw", "on", "random"}
+	// reservedEntities는 generated package의 package-level 이름과 겹친다.
+	reservedEntities = []string{"connect", "manifest_hash", "manifest_text"}
+)
+
+// checkNames는 model의 entity와 field 이름에 generator 이름 규칙을 적용한다.
+func checkNames(m *runtimemodel.Model) error {
 	for _, name := range m.Order {
-		for _, c := range m.Entities[name].Columns {
-			if err := schema.CheckColumnName(c.Name); err != nil {
+		if slices.Contains(reservedEntities, name) {
+			return fmt.Errorf("entity name %s is reserved by the generated package", name)
+		}
+		for _, c := range m.Entities[name].Fields {
+			if err := checkFieldName(c.Name); err != nil {
 				return fmt.Errorf("%s.%s: %v", name, c.Name, err)
 			}
+		}
+	}
+	return nil
+}
+
+// checkFieldName은 field 이름 하나에 generator 이름 규칙을 적용한다.
+func checkFieldName(n string) error {
+	if strings.Contains(n, "__") {
+		return fmt.Errorf("column name may not contain '__': %s", n)
+	}
+	for _, segment := range strings.Split(n, "_") {
+		if slices.Contains(reservedSegments, segment) {
+			return fmt.Errorf("column name may not contain the segment %q: %s", segment, n)
+		}
+	}
+	if slices.Contains(reservedColumns, n) {
+		return fmt.Errorf("column name is a reserved method name: %s", n)
+	}
+	for _, p := range reservedPrefixes {
+		if n == p || strings.HasPrefix(n, p+"_") {
+			return fmt.Errorf("column name may not start with %q: %s", p, n)
 		}
 	}
 	return nil
@@ -46,7 +83,7 @@ func words(name string) []string {
 // chainKey is one parsed key of a chain name.
 type chainKey struct {
 	conn    string
-	op      string // "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple
+	op      string // "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple
 	column  string
 	columns []string
 	compare string // right column of a column comparison
@@ -59,30 +96,30 @@ var compareOps = map[string]string{"Eq": "", "Ne": "ne", "Gt": "gt", "Lt": "lt",
 // engineOp maps a chain operator to the engine operator used for the type rule.
 var engineOp = map[string]string{"": "eq", "ne": "not_eq", "gt": "gt", "lt": "lt", "ge": "gte", "le": "lte", "lk": "contains", "lb": "contains_binary", "between": "between"}
 
-type columnIndex map[string]*schema.Col
+type columnIndex map[string]*runtimemodel.Field
 
-func indexColumns(e *schema.Entity) columnIndex {
+func indexColumns(e *runtimemodel.Entity) columnIndex {
 	out := columnIndex{}
-	for _, c := range e.Columns {
+	for _, c := range e.Fields {
 		out[pascal(c.Name)] = c
 	}
 	return out
 }
 
-func (ix columnIndex) column(ws []string) (*schema.Col, bool) {
+func (ix columnIndex) column(ws []string) (*runtimemodel.Field, bool) {
 	c, ok := ix[strings.Join(ws, "")]
 	return c, ok
 }
 
 // hasColumn reports whether any entity has the PascalCase column.
-func hasColumn(m *schema.Manifest, pascalName string) bool {
+func hasColumn(m *runtimemodel.Model, pascalName string) bool {
 	return columnName(m, nil, pascalName) != ""
 }
 
 // columnName returns the column of e (or of any entity when e is nil) whose
 // PascalCase name is pascalName.
-func columnName(m *schema.Manifest, e *schema.Entity, pascalName string) string {
-	entities := []*schema.Entity{e}
+func columnName(m *runtimemodel.Model, e *runtimemodel.Entity, pascalName string) string {
+	entities := []*runtimemodel.Entity{e}
 	if e == nil {
 		entities = nil
 		for _, name := range m.Order {
@@ -90,7 +127,7 @@ func columnName(m *schema.Manifest, e *schema.Entity, pascalName string) string 
 		}
 	}
 	for _, ent := range entities {
-		for _, c := range ent.Columns {
+		for _, c := range ent.Fields {
 			if pascal(c.Name) == pascalName {
 				return c.Name
 			}
@@ -100,7 +137,7 @@ func columnName(m *schema.Manifest, e *schema.Entity, pascalName string) string 
 }
 
 // parseChain parses the chain part of a method name for entity e.
-func parseChain(m *schema.Manifest, e *schema.Entity, name string) ([]chainKey, error) {
+func parseChain(m *runtimemodel.Model, e *runtimemodel.Entity, name string) ([]chainKey, error) {
 	ws := words(name)
 	if len(ws) == 0 {
 		return nil, fmt.Errorf("empty condition name")
@@ -132,7 +169,7 @@ func parseChain(m *schema.Manifest, e *schema.Entity, name string) ([]chainKey, 
 	return keys, nil
 }
 
-func parseKey(m *schema.Manifest, e *schema.Entity, ix columnIndex, ws []string) (chainKey, error) {
+func parseKey(m *runtimemodel.Model, e *runtimemodel.Entity, ix columnIndex, ws []string) (chainKey, error) {
 	if len(ws) == 0 {
 		return chainKey{}, fmt.Errorf("a condition key is empty")
 	}
@@ -158,12 +195,6 @@ func parseKey(m *schema.Manifest, e *schema.Entity, ix columnIndex, ws []string)
 	}
 	if ws[0] == "Tuple" {
 		try(tupleKey(e, ix, ws[1:], "tuple"))
-	}
-	if ws[0] == "Fulltext" {
-		try(fulltextKey(e, ix, ws[1:], "fulltext"))
-		if len(ws) > 1 && ws[1] == "Boolean" {
-			try(fulltextKey(e, ix, ws[2:], "fulltext_boolean"))
-		}
 	}
 	for i := 1; i < len(ws)-1; i++ {
 		op, ok := compareOps[ws[i]]
@@ -193,9 +224,9 @@ func parseKey(m *schema.Manifest, e *schema.Entity, ix columnIndex, ws []string)
 	return chainKey{}, fmt.Errorf("%s has more than one meaning", text)
 }
 
-func checkOp(e *schema.Entity, c *schema.Col, op string, k chainKey) (chainKey, error) {
+func checkOp(e *runtimemodel.Entity, c *runtimemodel.Field, op string, k chainKey) (chainKey, error) {
 	if k.compare != "" {
-		if !ir.OpAllowed(c, engineOp[op]+"_col") || len(clientStyles(c)) > 0 {
+		if !ir.OpAllowed(c, engineOp[op]+"_col") || len(c.Codec) > 0 {
 			return k, fmt.Errorf("%s.%s cannot be compared with a column", e.Name, c.Name)
 		}
 		return k, nil
@@ -221,12 +252,12 @@ func opName(op string) string {
 }
 
 // functionColumn reports columns that accept ORM column functions.
-func functionColumn(c *schema.Col) bool {
-	return len(clientStyles(c)) == 0 && (c.Type == "date" || c.Type == "datetime" || c.Type == "point")
+func functionColumn(c *runtimemodel.Field) bool {
+	return len(c.Codec) == 0 && (c.Type == "date" || c.Type == "datetime")
 }
 
-func splitWith(ix columnIndex, ws []string) ([]*schema.Col, bool) {
-	var out []*schema.Col
+func splitWith(ix columnIndex, ws []string) ([]*runtimemodel.Field, bool) {
+	var out []*runtimemodel.Field
 	start := 0
 	for i := 0; i <= len(ws); i++ {
 		if i < len(ws) && ws[i] != "With" {
@@ -242,36 +273,19 @@ func splitWith(ix columnIndex, ws []string) ([]*schema.Col, bool) {
 	return out, true
 }
 
-func tupleKey(e *schema.Entity, ix columnIndex, ws []string, op string) (chainKey, error) {
+func tupleKey(e *runtimemodel.Entity, ix columnIndex, ws []string, op string) (chainKey, error) {
 	cols, ok := splitWith(ix, ws)
 	if !ok || len(cols) < 2 {
 		return chainKey{}, fmt.Errorf("a tuple needs two or more columns of %s joined by With", e.Name)
 	}
 	k := chainKey{op: op}
 	for _, c := range cols {
-		if len(clientStyles(c)) > 0 || !ir.OpAllowed(c, "in") {
+		if len(c.Codec) > 0 || !ir.OpAllowed(c, "in") {
 			return k, fmt.Errorf("%s.%s cannot be used in a tuple", e.Name, c.Name)
 		}
 		k.columns = append(k.columns, c.Name)
 	}
 	return k, nil
-}
-
-func fulltextKey(e *schema.Entity, ix columnIndex, ws []string, op string) (chainKey, error) {
-	cols, ok := splitWith(ix, ws)
-	if !ok || len(cols) == 0 {
-		return chainKey{}, fmt.Errorf("full-text columns of %s are not valid", e.Name)
-	}
-	k := chainKey{op: op}
-	for _, c := range cols {
-		k.columns = append(k.columns, c.Name)
-	}
-	for _, index := range e.Fulltext {
-		if slices.Equal(index, k.columns) {
-			return k, nil
-		}
-	}
-	return k, fmt.Errorf("%s has no full-text index on %s", e.Name, strings.Join(k.columns, ", "))
 }
 
 // orderKey is one key of an orderBy chain.
@@ -280,7 +294,7 @@ type orderKey struct {
 	desc   bool
 }
 
-func parseOrder(e *schema.Entity, name string) ([]orderKey, error) {
+func parseOrder(e *runtimemodel.Entity, name string) ([]orderKey, error) {
 	ix := indexColumns(e)
 	ws := words(name)
 	var out []orderKey
@@ -309,7 +323,7 @@ func parseOrder(e *schema.Entity, name string) ([]orderKey, error) {
 
 // splitPair parses <L>With<R> where L is a column of left and R of right; a
 // nil entity accepts a column of any entity.
-func splitPair(m *schema.Manifest, left, right *schema.Entity, name string) (string, string, error) {
+func splitPair(m *runtimemodel.Model, left, right *runtimemodel.Entity, name string) (string, string, error) {
 	ws := words(name)
 	var found [][2]string
 	for i, w := range ws {
@@ -334,6 +348,6 @@ func splitPair(m *schema.Manifest, left, right *schema.Entity, name string) (str
 	return "", "", fmt.Errorf("%s has more than one meaning", name)
 }
 
-func columnOf(m *schema.Manifest, e *schema.Entity, pascalName string) bool {
+func columnOf(m *runtimemodel.Model, e *runtimemodel.Entity, pascalName string) bool {
 	return columnName(m, e, pascalName) != ""
 }

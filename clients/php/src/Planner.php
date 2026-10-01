@@ -9,9 +9,9 @@ namespace Orm;
  */
 final class Planner
 {
-    public function __construct(private readonly Manifest $m, private readonly Dialect $d) {}
+    public function __construct(private readonly RuntimeModel $m, private readonly Dialect $d) {}
 
-    /** @return array{schema_hash: string, kind: string, steps: list<array>} */
+    /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array
     {
         $steps = new PlanSteps();
@@ -33,7 +33,7 @@ final class Planner
             default:
                 $this->selectStep($steps, $r, $r['kind'], $r['agg'] ?? '', null);
         }
-        return ['schema_hash' => $this->m->schemaHash, 'kind' => $r['kind'], 'steps' => array_map(static fn(PlanStep $s): array => $s->toArray(), $steps->steps)];
+        return ['manifest_hash' => $this->m->manifestHash, 'kind' => $r['kind'], 'steps' => array_map(static fn(PlanStep $s): array => $s->toArray(), $steps->steps)];
     }
 
     private static function err(string $code, string $msg): OrmException
@@ -77,7 +77,7 @@ final class Planner
         $groupBy = $q['group_by'] ?? [];
         $groupExprs = $q['group_by_expr'] ?? [];
         $sql = 'SELECT ';
-        $asm = new PlanAssemble($root->ent['name'], $root->alias);
+        $asm = new PlanAssemble($root->ent['entity'], $root->alias);
         $outNames = [];
         $idx = 0;
         $groupCount = $kind === 'count' && ($groupBy !== [] || $groupExprs !== []);
@@ -127,7 +127,7 @@ final class Planner
                 $where[] = '(' . implode(', ', $this->qualified($root, $rc->childKeys)) . ') IN ((' . $b->parent($rc->parentStep) . '))';
             }
         }
-        if (($root->ent['soft_delete'] ?? '') !== '') {
+        if ($root->ent['soft_delete'] !== '') {
             $where[] = $this->qcol($root, $root->ent['soft_delete']) . ' IS NULL';
         }
         if (($q['where']['items'] ?? []) !== []) {
@@ -191,16 +191,8 @@ final class Planner
     {
         foreach ($s->q['relations'] ?? [] as $r) {
             $rc = new PlanRelation($stepId, $asm);
-            if (($r['left'] ?? '') !== '') {
-                [$rc->parentKeys, $rc->childKeys, $rc->kind] = [[$r['left']], [$r['right']], $r['kind']];
-                $target = $this->m->entities[$r['query']['entity']];
-            } else {
-                $rel = $s->ent['relations'][$r['rel']];
-                $rc->parentKeys = array_column($rel['keys'], 'local');
-                $rc->childKeys = array_column($rel['keys'], 'target');
-                $rc->kind = $rel['kind'];
-                $target = $this->m->entities[$rel['target']];
-            }
+            [$rc->parentKeys, $rc->childKeys, $rc->kind] = [[$r['left']], [$r['right']], $r['kind']];
+            $target = $this->m->entities[$r['query']['entity']];
             $st = $this->selectStep($steps, $r['query'], 'all', '', $rc);
             $child = new PlanChild($r['rel'], $rc->kind);
             $child->step = $st->id;
@@ -251,7 +243,7 @@ final class Planner
                 $parts[] = $this->renderExpr($root, $o['expr']);
                 continue;
             }
-            $col = isset($o['fn']) ? $this->columnFunction($b, $root, $o['column'], $o['fn']) : $this->qcol($root, $o['column']);
+            $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn']) : $this->qcol($root, $o['column']);
             $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC');
         }
         return $parts === [] ? '' : ' ORDER BY ' . implode(', ', $parts);
@@ -271,8 +263,8 @@ final class Planner
     {
         $parts = [];
         foreach ($s->q['group_by'] ?? [] as $name) {
-            $col = Manifest::column($s->ent, $name);
-            $expr = $this->d->readExpr($this->qcol($s, $name), $col['type'], $this->sqlStyles($col));
+            $col = RuntimeModel::column($s->ent, $name);
+            $expr = $this->d->readExpr($this->qcol($s, $name), $this->sqlStyles($col));
             $out = $s->alias . '__' . $name;
             $parts[] = $expr . ' AS ' . $this->d->quote($out);
             $outNames[] = $out;
@@ -282,7 +274,7 @@ final class Planner
             $out = $s->alias . '__' . $g['as'];
             $parts[] = $this->renderExpr($s, $g['expr']) . ' AS ' . $this->d->quote($out);
             $outNames[] = $out;
-            $asm->columns[] = self::outCol($idx++, $g['as'], '', Manifest::column($s->ent, $g['as'])['type'] ?? 'string', []);
+            $asm->columns[] = self::outCol($idx++, $g['as'], '', RuntimeModel::column($s->ent, $g['as'])['type'] ?? 'string', []);
         }
         $out = $s->alias . '__row_count';
         $parts[] = 'COUNT(*) AS ' . $this->d->quote($out);
@@ -312,15 +304,16 @@ final class Planner
     {
         $parts = [];
         $hasAes = false;
-        foreach ($this->projection($s) as $c) {
-            $col = $c['column'] !== '' ? Manifest::column($s->ent, $c['column']) : null;
-            if ($col !== null && in_array('aes', $col['styles'] ?? [], true)) {
+        $projection = $this->projection($s);
+        foreach ($projection as $c) {
+            $col = $c['column'] !== '' ? RuntimeModel::column($s->ent, $c['column']) : null;
+            if ($col !== null && RuntimeModel::encrypted($col)) {
                 $hasAes = true;
             }
             $styles = [];
             $type = 'string';
             if (isset($c['fn'])) {
-                $expr = $this->columnFunction($b, $s, $c['column'], $c['fn']);
+                $expr = $this->columnFunction($s, $c['column'], $c['fn']);
                 $type = self::functionType($c['fn']['name'], $col);
                 $col = null;
             } elseif (isset($c['sub'])) {
@@ -329,7 +322,7 @@ final class Planner
             } elseif (isset($c['expr'])) {
                 $expr = $this->fill($b, $this->renderExpr($s, $c['expr']['sql'] ?? ''), $c['expr']['ps'] ?? []);
             } else {
-                $expr = $this->d->readExpr($this->qcol($s, $c['column']), $col['type'], $this->sqlStyles($col));
+                $expr = $this->d->readExpr($this->qcol($s, $c['column']), $this->sqlStyles($col));
                 $styles = $this->clientStyles($col);
             }
             $parts[] = $expr . ' AS ' . $this->d->quote($s->alias . '__' . $c['name']);
@@ -339,16 +332,18 @@ final class Planner
             }
             $asm->columns[] = self::outCol($idx++, $c['name'], $c['column'], $type, $styles);
         }
-        if ($hasAes) {
-            $version = Manifest::column($s->ent, 'aes_key_version') ?? throw self::err(Code::SCHEMA_INVALID, "{$s->ent['name']}: AES column requires aes_key_version");
-            $parts[] = $this->qcol($s, 'aes_key_version') . ' AS ' . $this->d->quote($s->alias . '__aes_key_version');
-            $outNames[] = $s->alias . '__aes_key_version';
-            $asm->columns[] = self::outCol($idx++, 'aes_key_version', 'aes_key_version', $version['type'], [], true);
+        if ($hasAes && !in_array($s->ent['aes_version'], array_column($projection, 'column'), true)) {
+            // AES column을 읽는 행은 고르지 않은 key version column을 숨겨서 함께 읽는다.
+            $name = $s->ent['aes_version'];
+            $version = RuntimeModel::column($s->ent, $name) ?? throw self::err(Code::SCHEMA_INVALID, "{$s->ent['entity']}: an AES column requires the aes_version setting");
+            $parts[] = $this->qcol($s, $name) . ' AS ' . $this->d->quote($s->alias . '__' . $name);
+            $outNames[] = $s->alias . '__' . $name;
+            $asm->columns[] = self::outCol($idx++, $name, $name, $version['type'], [], true);
         }
         foreach ($s->q['joins'] ?? [] as $j) {
             $js = $s->joins[$j['rel']];
             $child = new PlanChild($j['rel'], 'join');
-            $child->assemble = new PlanAssemble($js->ent['name'], $js->alias);
+            $child->assemble = new PlanAssemble($js->ent['entity'], $js->alias);
             $parts[] = $this->selectList($b, $js, $child->assemble, $idx, $outNames);
             $asm->children[] = $child;
         }
@@ -365,8 +360,8 @@ final class Planner
         foreach ($s->ent['columns'] as $col) {
             $keep = match ($mode) {
                 'all' => true,
-                'none' => !empty($col['pk']) || !empty($col['fk']),
-                default => empty($col['lazy']),
+                'none' => $col['pk'] || $col['foreign_key'],
+                default => $col['select'],
             };
             if ($keep) {
                 $base[] = $col['name'];
@@ -378,16 +373,12 @@ final class Planner
             }
         }
         if (($c['remove'] ?? []) !== []) {
-            $base = array_values(array_filter($base, fn(string $x): bool => !in_array($x, $c['remove'], true) || !empty(Manifest::column($s->ent, $x)['pk'])));
+            $base = array_values(array_filter($base, fn(string $x): bool => !in_array($x, $c['remove'], true) || RuntimeModel::column($s->ent, $x)['pk']));
         }
         // columns relation steps bind or key on are always selected
         $need = $s->extra;
         foreach ($s->q['relations'] ?? [] as $r) {
-            if (($r['left'] ?? '') !== '') {
-                $need[] = $r['left'];
-            } else {
-                array_push($need, ...array_column($s->ent['relations'][$r['rel']]['keys'], 'local'));
-            }
+            $need[] = $r['left'];
             if (isset($r['query']['if_parent'])) {
                 $need[] = $r['query']['if_parent']['column'];
             }
@@ -423,11 +414,7 @@ final class Planner
         foreach ($s->q['joins'] ?? [] as $j) {
             $js = $s->joins[$j['rel']];
             $kw = ($j['kind'] ?? '') === 'left' ? ' LEFT JOIN ' : ' INNER JOIN ';
-            if (($j['left'] ?? '') !== '') {
-                $conditions = [$this->qcol($s, $j['left']) . ' = ' . $this->qcol($js, $j['right'])];
-            } else {
-                $conditions = array_map(fn(array $k): string => $this->qcol($s, $k['local']) . ' = ' . $this->qcol($js, $k['target']), $s->ent['relations'][$j['rel']]['keys']);
-            }
+            $conditions = [$this->qcol($s, $j['left']) . ' = ' . $this->qcol($js, $j['right'])];
             $sql .= $kw . $this->d->quote($js->ent['table']) . ' AS ' . $this->d->quote($js->alias) . ' ON ' . implode(' AND ', $conditions);
             if (($j['query']['on']['items'] ?? []) !== []) {
                 $sql .= ' AND ' . $this->renderGroup($b, $js, $j['query']['on'], true);
@@ -505,28 +492,21 @@ final class Planner
     private function renderPred(PlanBinds $b, PlanScope $s, array $p): string
     {
         $op = $p['op'] ?? '';
-        if ($op !== '' && !$this->d->supports($op)) {
-            throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op is not available on {$this->d->name}");
-        }
         if (($p['expr'] ?? '') !== '') {
             return '(' . $this->fill($b, $this->renderExpr($s, $p['expr']), $p['ps'] ?? []) . ')';
-        }
-        if ($op === 'match' || $op === 'match_boolean') {
-            $boolean = $op === 'match_boolean';
-            return $this->d->fulltext($this->qualified($s, $p['match']), $b->param($p['p'], $boolean ? 'fulltext_boolean' : ''), $boolean);
         }
         if ($op === 'tuple_in' || $op === 'tuple_not_in') {
             $rows = [];
             foreach (array_chunk($p['ps'], count($p['cols'])) as $values) {
                 $row = [];
                 foreach ($p['cols'] as $k => $name) {
-                    $row[] = $this->renderValue($b, Manifest::column($s->ent, $name), $values[$k]);
+                    $row[] = $this->renderValue($b, RuntimeModel::column($s->ent, $name), $values[$k]);
                 }
                 $rows[] = $row;
             }
             return $this->d->tupleIn($this->qualified($s, $p['cols']), $rows, $op === 'tuple_not_in');
         }
-        $col = Manifest::column($s->ent, $p['column']);
+        $col = RuntimeModel::column($s->ent, $p['column']);
         $lhs = $this->qcol($s, $p['column']);
         if (isset($p['sub'])) {
             $inner = $this->subSelect($b, $s, $p['sub']);
@@ -534,19 +514,19 @@ final class Planner
         }
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0]), static fn(): string => $b->now())
+            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0]), static fn(): string => $b->now(6))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             return $lhs . ' ' . self::cmp($op) . ' ' . $value;
         }
         if (isset($p['fn'])) {
-            $fn = $this->columnFunction($b, $s, $p['column'], $p['fn']);
+            $fn = $this->columnFunction($s, $p['column'], $p['fn']);
             return match ($op) {
                 'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ', array_map(static fn(int $i): string => $b->param($i), $p['ps'])) . ')',
                 'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0]) . ' AND ' . $b->param($p['ps'][1]),
                 default => $fn . ' ' . self::cmp($op) . ' ' . $b->param($p['p']),
             };
         }
-        $aes = in_array('aes', $col['styles'] ?? [], true);
+        $aes = RuntimeModel::encrypted($col);
         switch ($op) {
             case 'eq':
             case 'not_eq':
@@ -569,8 +549,8 @@ final class Planner
             case 'lte_col':
                 $rs = $this->resolvePath($s, $p['ref']['path'] ?? '');
                 $ref = $p['ref']['column'] ?? '';
-                if (Manifest::column($rs->ent, $ref) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "{$rs->ent['name']}.$ref");
+                if (RuntimeModel::column($rs->ent, $ref) === null) {
+                    throw self::err(Code::COLUMN_UNKNOWN, "{$rs->ent['entity']}.$ref");
                 }
                 return $lhs . ' ' . self::cmp(substr($op, 0, -4)) . ' ' . $this->qcol($rs, $ref);
             case 'in':
@@ -601,8 +581,8 @@ final class Planner
 
     private function blindIndex(PlanScope $s, array $col): string
     {
-        if (($col['blind_index'] ?? '') === '') {
-            throw self::err(Code::IR_INVALID, "{$s->ent['name']}.{$col['name']} requires a declared blind index for equality search");
+        if ($col['blind_index'] === '') {
+            throw self::err(Code::IR_INVALID, "{$s->ent['entity']}.{$col['name']} requires a declared blind index for equality search");
         }
         return $col['blind_index'];
     }
@@ -611,18 +591,18 @@ final class Planner
     private function renderValue(PlanBinds $b, array $col, int $i): string
     {
         $styles = $this->sqlStyles($col);
-        $host = array_values(array_filter($col['styles'] ?? [], fn(string $st): bool => in_array($st, ['aes', 'hex', 'ip'], true) && !$this->d->handlesStyle($st)));
-        $ph = $b->param($i, '', $host, self::bindType($col), $col['type'] === 'decimal' ? $col : null);
-        if ($styles === [] && $col['type'] !== 'point') {
+        $host = array_values(array_filter($col['codec'], fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
+        $ph = $b->param($i, '', $host, self::bindType($col), $col);
+        if ($styles === []) {
             return $ph;
         }
-        return $this->d->writeExpr($ph, $col['type'], $styles);
+        return $this->d->writeExpr($ph, $styles);
     }
 
-    /** Types executors normalize before binding. */
-    private static function bindType(?array $col): string
+    /** executor가 bind 전에 정규화하는 type이다. codec column은 codec이 값을 만든다. */
+    private static function bindType(array $col): string
     {
-        return in_array($col['type'] ?? '', ['date', 'time', 'datetime', 'point', 'decimal'], true) ? $col['type'] : '';
+        return $col['codec'] === [] && in_array($col['type'], ['date', 'time', 'datetime', 'decimal'], true) ? $col['type'] : '';
     }
 
     private function resolvePath(PlanScope $s, string $path): PlanScope
@@ -638,7 +618,7 @@ final class Planner
             return $cur;
         }
         foreach (explode('/', $path) as $seg) {
-            $cur = $cur->joins[$seg] ?? throw self::err(Code::ENTITY_NOT_JOINED, "{$cur->ent['name']}.$seg");
+            $cur = $cur->joins[$seg] ?? throw self::err(Code::ENTITY_NOT_JOINED, "{$cur->ent['entity']}.$seg");
         }
         return $cur;
     }
@@ -663,8 +643,8 @@ final class Planner
                 throw self::err(Code::IR_INVALID, "unterminated $c in expr");
             }
             $name = substr($frag, $i + 1, $j - $i - 1);
-            if (Manifest::column($s->ent, $name) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "{$s->ent['name']}.$name in expr");
+            if (RuntimeModel::column($s->ent, $name) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, "{$s->ent['entity']}.$name in expr");
             }
             $out .= $this->qcol($s, $name);
             $i = $j + 1;
@@ -688,18 +668,18 @@ final class Planner
 
     private function sqlStyles(array $col): array
     {
-        return array_values(array_filter($col['styles'] ?? [], fn(string $s): bool => $this->d->handlesStyle($s)));
+        return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->handlesStyle($s)));
     }
 
     private function clientStyles(array $col): array
     {
-        return array_values(array_filter($col['styles'] ?? [], fn(string $s): bool => !$this->d->handlesStyle($s)));
+        return array_values(array_filter($col['codec'], fn(string $s): bool => !$this->d->handlesStyle($s)));
     }
 
     private static function hasAes(array $ent): bool
     {
         foreach ($ent['columns'] as $c) {
-            if (in_array('aes', $c['styles'] ?? [], true)) {
+            if (RuntimeModel::encrypted($c)) {
                 return true;
             }
         }
@@ -709,7 +689,7 @@ final class Planner
     private static function assignsAes(array $ent, array $set): bool
     {
         foreach ($set as $a) {
-            if (in_array('aes', Manifest::column($ent, $a['column'])['styles'] ?? [], true)) {
+            if (RuntimeModel::encrypted(RuntimeModel::column($ent, $a['column']))) {
                 return true;
             }
         }
@@ -727,41 +707,41 @@ final class Planner
         if (!self::hasAes($ent)) {
             return;
         }
-        if (self::assigned($set, 'aes_key_version')) {
-            throw self::err(Code::IR_INVALID, 'aes_key_version is managed by the AES writer');
+        if (self::assigned($set, $ent['aes_version'])) {
+            throw self::err(Code::IR_INVALID, $ent['aes_version'] . ' is the AES key version column, which the AES writer manages');
         }
         if (!$complete || !self::assignsAes($ent, $set)) {
             return;
         }
         foreach ($ent['columns'] as $c) {
-            if (in_array('aes', $c['styles'] ?? [], true) && !self::assigned($set, $c['name'])) {
+            if (RuntimeModel::encrypted($c) && !self::assigned($set, $c['name'])) {
                 throw self::err(Code::IR_INVALID, 'AES update must assign every AES column; missing ' . $c['name']);
             }
         }
     }
 
     /**
-     * An insert assigns every required column: a NOT NULL column without a
-     * default that is neither automatic nor the AES key version the planner
-     * writes. MySQL fills an omitted NOT NULL ENUM column with its first value.
+     * insert는 필수 column을 모두 지정한다: default가 없는 NOT NULL column 중
+     * identity, planner가 쓰는 AES key version, executor가 쓰는 audit operation
+     * column이 아닌 것이다. default가 있는 column은 database default를 받는다.
      */
     private static function checkRequiredAssignments(array $ent, array $set): void
     {
-        $version = self::hasAes($ent) ? 'aes_key_version' : '';
+        $version = self::hasAes($ent) ? $ent['aes_version'] : '';
         foreach ($ent['columns'] as $c) {
-            if (!empty($c['nullable']) || array_key_exists('default', $c) || !empty($c['auto']) || $c['name'] === $version || self::assigned($set, $c['name'])) {
+            if ($c['nullable'] || $c['default'] || $c['name'] === $ent['identity'] || $c['name'] === $version || $c['name'] === $ent['audit'] || self::assigned($set, $c['name'])) {
                 continue;
             }
-            throw self::err(Code::IR_INVALID, 'required column ' . $ent['name'] . '.' . $c['name'] . ' is not set');
+            throw self::err(Code::IR_INVALID, 'required column ' . $ent['entity'] . '.' . $c['name'] . ' is not set');
         }
     }
 
     private static function withBlindIndexes(array $ent, array $set): array
     {
         foreach ($set as $a) {
-            $col = Manifest::column($ent, $a['column']);
-            $target = $col['blind_index'] ?? '';
-            if ($col === null || !in_array('aes', $col['styles'] ?? [], true) || $target === '' || self::assigned($set, $target)) {
+            $col = RuntimeModel::column($ent, $a['column']);
+            $target = $col['blind_index'];
+            if (!RuntimeModel::encrypted($col) || $target === '' || self::assigned($set, $target)) {
                 continue;
             }
             $derived = ['column' => $target];
@@ -779,7 +759,7 @@ final class Planner
     private static function blindIndexSource(array $ent, string $target): ?array
     {
         foreach ($ent['columns'] as $c) {
-            if (($c['blind_index'] ?? '') === $target) {
+            if ($c['blind_index'] === $target) {
                 return $c;
             }
         }
@@ -790,7 +770,7 @@ final class Planner
     private static function conflictTarget(array $ent, array $set): array
     {
         $inserted = array_column($set, 'column');
-        foreach ($ent['unique'] ?? [] as $uk) {
+        foreach ($ent['unique'] as $uk) {
             if (array_diff($uk, $inserted) === []) {
                 return $uk;
             }
@@ -809,7 +789,7 @@ final class Planner
         // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
         $q = $this->d->quote($ent['table']) . '.' . $this->d->quote($col['name']);
         if (($a['expr'] ?? '') !== '') {
-            $scope = new PlanScope($ent, $ent['table'], ['entity' => $ent['name']], null);
+            $scope = new PlanScope($ent, $ent['table'], ['entity' => $ent['entity']], null);
             return $this->fill($b, $this->renderExpr($scope, $a['expr']), $a['ps'] ?? []);
         }
         if (isset($a['plus_p'])) {
@@ -833,34 +813,25 @@ final class Planner
         $set = self::withBlindIndexes($ent, $r['set']);
         self::checkAesAssignments($ent, $set, false);
         self::checkRequiredAssignments($ent, $set);
-        $versioned = self::hasAes($ent) && !self::assigned($set, 'aes_key_version');
+        $versioned = self::hasAes($ent);
+        $audited = $ent['audit'] !== '';
         $cols = [];
         $vals = [];
         foreach ($set as $a) {
-            $col = Manifest::column($ent, $a['column']);
-            if (!empty($col['auto'])) {
-                throw self::err(Code::IR_INVALID, 'cannot set auto column ' . $a['column']);
+            $col = RuntimeModel::column($ent, $a['column']);
+            if ($col['name'] === $ent['identity']) {
+                throw self::err(Code::IR_INVALID, 'cannot set identity column ' . $a['column']);
             }
             $cols[] = $this->d->quote($a['column']);
             $vals[] = $this->renderAssign($b, $ent, $col, $a);
         }
         if ($versioned) {
-            $cols[] = $this->d->quote('aes_key_version');
+            $cols[] = $this->d->quote($ent['aes_version']);
             $vals[] = $b->config('aes_version');
         }
-        // A dialect without a session time zone stores the executor clock, which
-        // is in the connection time zone, instead of its UTC column default.
-        $nowCols = [];
-        if ($this->d->hostNow()) {
-            foreach ($ent['columns'] as $c) {
-                if (($c['default'] ?? null) === 'now' && !self::assigned($set, $c['name'])) {
-                    $nowCols[] = $c['name'];
-                }
-            }
-        }
-        foreach ($nowCols as $c) {
-            $cols[] = $this->d->quote($c);
-            $vals[] = $b->now();
+        if ($audited) {
+            $cols[] = $this->d->quote($ent['audit']);
+            $vals[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
         }
         $sql = 'INSERT INTO ' . $this->d->quote($ent['table']) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
         $rows = $r['rows'] ?? [];
@@ -874,13 +845,13 @@ final class Planner
             foreach ($rows as $row) {
                 $more = [];
                 foreach ($set as $i => $a) {
-                    $more[] = $this->renderAssign($b, $ent, Manifest::column($ent, $a['column']), ['column' => $a['column'], 'p' => $row[$source[$i]]]);
+                    $more[] = $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), ['column' => $a['column'], 'p' => $row[$source[$i]]]);
                 }
                 if ($versioned) {
                     $more[] = $b->config('aes_version');
                 }
-                foreach ($nowCols as $_) {
-                    $more[] = $b->now();
+                if ($audited) {
+                    $more[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
                 }
                 $sql .= ', (' . implode(', ', $more) . ')';
             }
@@ -891,20 +862,23 @@ final class Planner
             self::checkAesAssignments($ent, $duplicate, true);
             $sets = [];
             foreach ($duplicate as $a) {
-                $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, Manifest::column($ent, $a['column']), $a);
+                $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), $a);
             }
-            if (self::hasAes($ent) && self::assignsAes($ent, $duplicate) && !self::assigned($duplicate, 'aes_key_version')) {
-                $sets[] = $this->d->quote('aes_key_version') . ' = ' . $b->config('aes_version');
+            if (self::assignsAes($ent, $duplicate)) {
+                $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
             }
-            $auto = $ent['auto'] ?? '';
-            if ($auto !== '' && !$this->d->insertReturningId()) {
+            if ($audited) {
+                $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+            }
+            $identity = $ent['identity'];
+            if ($identity !== '' && !$this->d->insertReturningId()) {
                 // MySQL: make the last insert id report the existing row
-                $sets[] = $this->d->quote($auto) . ' = LAST_INSERT_ID(' . $this->d->quote($auto) . ')';
+                $sets[] = $this->d->quote($identity) . ' = LAST_INSERT_ID(' . $this->d->quote($identity) . ')';
             }
             $sql .= $this->d->upsert(self::conflictTarget($ent, $set), implode(', ', $sets));
         }
-        if ($this->d->insertReturningId() && ($ent['auto'] ?? '') !== '') {
-            $sql .= ' RETURNING ' . $this->d->quote($ent['auto']);
+        if ($this->d->insertReturningId() && $ent['identity'] !== '') {
+            $sql .= ' RETURNING ' . $this->d->quote($ent['identity']);
         }
         return new PlanStep('main', $sql, '', $b->slots);
     }
@@ -918,31 +892,29 @@ final class Planner
         $root = $this->scopes($r, $ent['table'], null);
         $sets = [];
         foreach ($set as $a) {
-            $col = Manifest::column($ent, $a['column']);
-            if (!empty($col['pk']) || !empty($col['auto'])) {
+            $col = RuntimeModel::column($ent, $a['column']);
+            if ($col['pk']) {
                 throw self::err(Code::IR_INVALID, 'cannot update ' . $a['column']);
             }
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
-        if (self::hasAes($ent) && self::assignsAes($ent, $set) && !self::assigned($set, 'aes_key_version')) {
-            $sets[] = $this->d->quote('aes_key_version') . ' = ' . $b->config('aes_version');
+        if (self::assignsAes($ent, $set)) {
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
         }
         // the updated time is always assigned: optimistic locking needs the same behavior everywhere
-        $updated = $ent['timestamps']['updated'] ?? '';
-        if ($updated !== '' && !self::assigned($r['set'], $updated) && ($col = Manifest::column($ent, $updated)) !== null) {
-            $now = $this->d->now();
-            if ($this->d->hostNow()) {
-                $now = $b->now();
-            } elseif (($col['precision'] ?? 0) > 0 && $this->d->name === 'mysql') {
-                $now = "CURRENT_TIMESTAMP({$col['precision']})";
-            }
-            $sets[] = $this->d->quote($updated) . ' = ' . $now;
+        $updated = $ent['updated'];
+        if ($updated !== '' && !self::assigned($r['set'], $updated)) {
+            $sets[] = $this->d->quote($updated) . ' = ' . $this->clock($b, RuntimeModel::column($ent, $updated));
+        }
+        if ($ent['audit'] !== '') {
+            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if (isset($r['optimistic'])) {
-            $where .= ' AND ' . $this->qcol($root, $r['optimistic']['column']) . ' = ' . $b->param($r['optimistic']['p']);
+            $column = $r['optimistic']['column'];
+            $where .= ' AND ' . $this->qcol($root, $column) . ' = ' . $this->renderValue($b, RuntimeModel::column($ent, $column), $r['optimistic']['p']);
         }
-        if (($ent['soft_delete'] ?? '') !== '') {
+        if ($ent['soft_delete'] !== '') {
             $where .= ' AND ' . $this->qcol($root, $ent['soft_delete']) . ' IS NULL';
         }
         return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
@@ -953,22 +925,38 @@ final class Planner
         $b = new PlanBinds($this->d);
         $ent = $this->m->entities[$r['entity']];
         $root = $this->scopes($r, $ent['table'], null);
-        $soft = $ent['soft_delete'] ?? '';
-        $now = '';
+        $soft = $ent['soft_delete'];
+        $sets = '';
         if ($soft !== '') {
-            $now = $this->d->hostNow() ? $b->now() : $this->d->now();
+            $sets = $this->d->quote($soft) . ' = ' . $this->clock($b, RuntimeModel::column($ent, $soft));
+            if ($ent['audit'] !== '') {
+                // soft delete는 감사 대상 행의 update이므로 지우는 operation을 기록한다.
+                $sets .= ', ' . $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+            }
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if ($soft !== '') {
             $where .= ' AND ' . $this->qcol($root, $soft) . ' IS NULL';
-            return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . $this->d->quote($soft) . ' = ' . $now . ' WHERE ' . $where, '', $b->slots);
+            return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots);
         }
         return new PlanStep('main', 'DELETE FROM ' . $this->d->quote($ent['table']) . ' WHERE ' . $where, '', $b->slots);
     }
 
-    private function columnFunction(PlanBinds $b, PlanScope $s, string $column, array $f): string
+    /** datetime column에 쓰는 statement 시각이다. SQLite는 executor가 시각을 bind한다. */
+    private function clock(PlanBinds $b, array $col): string
     {
-        return $this->d->columnFunction($f['name'], $this->qcol($s, $column), static fn(int $i): string => $b->param($f['ps'][$i]))
+        if ($this->d->hostNow()) {
+            return $b->now($col['precision']);
+        }
+        if ($this->d->name === 'mysql' && $col['precision'] > 0) {
+            return "CURRENT_TIMESTAMP({$col['precision']})";
+        }
+        return $this->d->now();
+    }
+
+    private function columnFunction(PlanScope $s, string $column, array $f): string
+    {
+        return $this->d->columnFunction($f['name'], $this->qcol($s, $column))
             ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "{$f['name']} is not available on {$this->d->name}");
     }
 
@@ -988,7 +976,7 @@ final class Planner
         $sql .= ' FROM ' . $this->d->quote($root->ent['table']) . ' AS ' . $this->d->quote($root->alias);
         $sql .= $this->renderJoins($b, $root);
         $where = [];
-        if (($root->ent['soft_delete'] ?? '') !== '') {
+        if ($root->ent['soft_delete'] !== '') {
             $where[] = $this->qcol($root, $root->ent['soft_delete']) . ' IS NULL';
         }
         if (($q['where']['items'] ?? []) !== []) {
@@ -1009,7 +997,6 @@ final class Planner
         return match ($name) {
             'day_of_week', 'year', 'month' => 'i64',
             'date' => 'date',
-            'distance', 'point_x', 'point_y' => 'f64',
             default => $col['type'] ?? 'string',
         };
     }
@@ -1019,7 +1006,7 @@ final class Planner
         return match ($sub['agg'] ?? '') {
             'count' => 'i64',
             'avg' => 'f64',
-            default => Manifest::column($this->m->entities[$sub['query']['entity']], $sub['column'] ?? '')['type'] ?? 'string',
+            default => RuntimeModel::column($this->m->entities[$sub['query']['entity']], $sub['column'] ?? '')['type'] ?? 'string',
         };
     }
 }
@@ -1061,8 +1048,11 @@ final class PlanBinds
         return $this->d->placeholder(count($this->slots));
     }
 
-    /** @param list<string> $hostStyles */
-    public function param(int $i, string $transform = '', array $hostStyles = [], string $colType = '', ?array $decimal = null): string
+    /**
+     * @param list<string> $hostStyles
+     * @param ?array $col decimal의 precision과 scale, datetime의 precision을 slot에 넣는 column
+     */
+    public function param(int $i, string $transform = '', array $hostStyles = [], string $colType = '', ?array $col = null): string
     {
         $slot = ['from' => 'param', 'param' => $i];
         if ($transform !== '') {
@@ -1074,9 +1064,11 @@ final class PlanBinds
         if ($colType !== '') {
             $slot['col_type'] = $colType;
         }
-        if ($decimal !== null) {
-            $slot['precision'] = $decimal['precision'];
-            $slot['scale'] = $decimal['scale'];
+        if ($colType === 'decimal') {
+            $slot['precision'] = $col['precision'];
+            $slot['scale'] = $col['scale'];
+        } elseif ($colType === 'datetime') {
+            $slot['precision'] = $col['precision'];
         }
         return $this->add($slot);
     }
@@ -1092,10 +1084,16 @@ final class PlanBinds
         return $this->add(['from' => 'config', 'param' => 0, 'name' => $name]);
     }
 
-    /** The executor clock (dialects without a sub-second clock function). */
-    public function now(): string
+    /** precision 자리의 소수를 가진 executor 시각이다(sub-second 시각 함수가 없는 dialect). */
+    public function now(int $precision): string
     {
-        return $this->add(['from' => 'now', 'param' => 0]);
+        return $this->add(['from' => 'now', 'param' => 0, 'precision' => $precision]);
+    }
+
+    /** 실행 중인 작업 단위의 operation id다. executor가 transaction에서 채우고 column type으로 검사한다. */
+    public function operation(array $col): string
+    {
+        return $this->add(['from' => 'operation', 'param' => 0, 'col_type' => $col['type']]);
     }
 
     /** The one placeholder the executor expands to the parent key values. */

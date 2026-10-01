@@ -18,9 +18,7 @@ import (
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 )
 
-const schemaPath = "../../../schema/schema.json"
-
-var tables = []string{"account_project", "composite_membership", "composite_account", "author", "service_member", "service_region", "soft_record", "account", "project", "user", "service"}
+var tables = []string{"task", "account_project", "composite_membership", "composite_account", "author", "service_member", "service_region", "soft_record", "account", "project", "user", "service"}
 
 // databases returns a fresh SQLite, MySQL and PostgreSQL database;
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
@@ -33,15 +31,12 @@ func databases(t *testing.T) map[string]*orm.DB {
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := model.ManifestText
 	for driver, dsn := range targets {
 		if dsn == "" {
 			t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
 		}
-		db, err := model.Connect(dsn, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
+		db, err := model.Connect(dsn, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 		if err != nil {
 			t.Fatalf("%s: %v", driver, err)
 		}
@@ -151,7 +146,7 @@ func seed(t *testing.T, db *orm.DB) fixture {
 			SetServiceMemberSeq(f.member.GetSeq()).
 			SetStartDt(start.Add(time.Duration(i) * time.Hour)).
 			SetEndDt(start.Add(48 * time.Hour)).
-			SetReadCount(int64(i * 10)).
+			SetReadCount(int32(i * 10)).
 			SetIsClose(i%2 == 1)
 		if i < 2 {
 			b.SetPhotoUrl(&cover)
@@ -247,15 +242,12 @@ func TestConditions(t *testing.T) {
 
 func TestGetMissingReturnsNoRows(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "model.sqlite")
-	db, err := model.Connect("sqlite://"+path, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
+	db, err := model.Connect("sqlite://"+path, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := model.ManifestText
 	if err := db.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
@@ -316,7 +308,7 @@ func TestJoinsAndRelations(t *testing.T) {
 		if got := limited.First().GetAuthorModels(); got.Len() != 1 || got.First().GetName() != "gamma" {
 			t.Fatalf("groupLimit: %s", names(got))
 		}
-		other := must(model.Connect(dsnOf(t, db), schemaPath, orm.Config{}))
+		other := must(model.Connect(dsnOf(t, db), orm.Config{}))
 		defer other.Close()
 		external := must(model.Author().Connect(db).
 			Relation(model.User().Connect(other).MatchUserSeqWithSeq().AliasOwner()).

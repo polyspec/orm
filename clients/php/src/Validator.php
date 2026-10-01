@@ -3,32 +3,29 @@ declare(strict_types=1);
 
 namespace Orm;
 
-/** Validates a request (docs/protocol.md) against the manifest. */
+/** 요청(docs/protocol.md)을 runtime model에 대해 검증한다. */
 final class Validator
 {
     public const IR_VERSION = 1;
 
     private const CMP = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte'];
     private const ORDERED = ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'];
+    private const EQUALITY = ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'];
     private const OPS_BY_TYPE = [
-        'i32' => self::ORDERED, 'i64' => self::ORDERED, 'f64' => self::ORDERED, 'decimal' => self::ORDERED,
+        'i16' => self::ORDERED, 'i32' => self::ORDERED, 'i64' => self::ORDERED, 'f64' => self::ORDERED, 'decimal' => self::ORDERED,
         'date' => self::ORDERED, 'time' => self::ORDERED, 'datetime' => self::ORDERED,
-        'string' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
+        'varchar' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
         'text' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
-        'enum' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
+        'uuid' => self::EQUALITY,
         'bool' => ['eq', 'not_eq', 'is_null', 'is_not_null'],
-        'inet' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-        'bytes' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-        'jsontext' => ['is_null', 'is_not_null'],
-        'point' => ['is_null', 'is_not_null'],
+        'bytes' => self::EQUALITY,
     ];
     private const COL_OPS = ['eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col'];
-    private const NUMERIC = ['i32', 'i64', 'f64', 'decimal'];
 
     /** Field types of every record: int, string, bool, list<T>, map<T>, or a record name. */
     private const RECORDS = [
         'Request' => self::QUERY + [
-            'ir_version' => 'int', 'schema_hash' => 'string', 'kind' => 'string', 'set' => 'list<Assign>',
+            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'set' => 'list<Assign>',
             'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist', 'agg' => 'string', 'n_params' => 'int',
         ],
         'Query' => self::QUERY,
@@ -44,7 +41,7 @@ final class Validator
         'JoinedRef' => ['conn' => 'string', 'join' => 'string'],
         'Pred' => [
             'conn' => 'string', 'column' => 'string', 'op' => 'string', 'p' => 'int', 'ps' => 'list<int>', 'ref' => 'ColRef',
-            'expr' => 'string', 'match' => 'list<string>', 'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
+            'expr' => 'string', 'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
         ],
         'ColRef' => ['path' => 'string', 'column' => 'string'],
         'Order' => ['column' => 'string', 'expr' => 'string', 'desc' => 'bool', 'random' => 'bool', 'fn' => 'Func'],
@@ -63,27 +60,31 @@ final class Validator
 
     private int $n = 0;
 
-    public function __construct(private readonly Manifest $m) {}
+    public function __construct(private readonly RuntimeModel $m) {}
 
     private static function err(string $code, string $msg): OrmException
     {
         return new OrmException($code, $msg);
     }
 
-    /** Whether op is valid for a column of the given type and styles. */
+    /**
+     * column의 type과 codec에 op가 유효한지 여부다. aes column은 blind index로
+     * 같음을, hex와 ip만 가진 column은 결정적인 encoding으로 같음을 비교하고,
+     * 다른 codec column은 null 여부만 비교한다.
+     */
     public static function opAllowed(array $c, string $op): bool
     {
-        if (in_array($op, self::COL_OPS, true) || $op === 'expr' || $op === 'match' || $op === 'match_boolean') {
+        if (in_array($op, self::COL_OPS, true) || $op === 'expr') {
             return true;
         }
-        $styles = $c['styles'] ?? [];
-        if ($styles !== [] && $c['type'] !== 'inet') {
-            if ($styles[0] === 'aes') {
-                return in_array($op, ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'], true);
+        $codec = $c['codec'];
+        if ($codec !== []) {
+            if ($codec[0] === 'aes' || array_diff($codec, ['hex', 'ip']) === []) {
+                return in_array($op, self::EQUALITY, true);
             }
             return $op === 'is_null' || $op === 'is_not_null';
         }
-        return in_array($op, self::OPS_BY_TYPE[$c['type']] ?? [], true);
+        return in_array($op, self::OPS_BY_TYPE[$c['type']], true);
     }
 
     public function validate(array $r): void
@@ -92,8 +93,8 @@ final class Validator
         if (($r['ir_version'] ?? 0) !== self::IR_VERSION) {
             throw self::err(Code::VERSION_MISMATCH, 'ir_version ' . ($r['ir_version'] ?? 0) . ', engine ' . self::IR_VERSION);
         }
-        if (($r['schema_hash'] ?? '') !== $this->m->schemaHash) {
-            throw self::err(Code::SCHEMA_HASH_MISMATCH, 'client ' . ($r['schema_hash'] ?? '') . ", engine {$this->m->schemaHash}");
+        if (($r['manifest_hash'] ?? '') !== $this->m->manifestHash) {
+            throw self::err(Code::SCHEMA_HASH_MISMATCH, 'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
         }
         $kind = $r['kind'] ?? '';
         if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete'], true)) {
@@ -108,8 +109,8 @@ final class Validator
         $ent = $this->m->entities[$entity];
         if ($kind === 'sum' || $kind === 'avg') {
             $agg = $r['agg'] ?? '';
-            $c = Manifest::column($ent, $agg) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$agg");
-            if (!in_array($c['type'], self::NUMERIC, true)) {
+            $c = RuntimeModel::column($ent, $agg) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$agg");
+            if (!RuntimeModel::numeric($c)) {
                 throw self::err(Code::OPERATOR_NOT_ALLOWED, "$kind on $entity.$agg ({$c['type']})");
             }
         }
@@ -148,15 +149,15 @@ final class Validator
             }
             foreach ($r['on_duplicate'] as $a) {
                 $this->assign($ent, $a);
-                $c = Manifest::column($ent, $a['column']);
-                if (!empty($c['pk']) || !empty($c['auto'])) {
+                $c = RuntimeModel::column($ent, $a['column']);
+                if ($c['pk']) {
                     throw self::err(Code::IR_INVALID, "on_duplicate cannot assign $entity.{$a['column']}");
                 }
             }
         }
         if (isset($r['optimistic'])) {
             $column = $r['optimistic']['column'] ?? '';
-            if (Manifest::column($ent, $column) === null) {
+            if (RuntimeModel::column($ent, $column) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity.$column");
             }
             $this->params([$r['optimistic']['p'] ?? 0]);
@@ -229,16 +230,19 @@ final class Validator
     private function assign(array $ent, array $a): void
     {
         $column = $a['column'] ?? '';
-        $c = Manifest::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['name']}.$column");
+        $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
+        if ($column === $ent['audit']) {
+            throw self::err(Code::IR_INVALID, "{$ent['entity']}.$column is the audit operation column, which the executor writes");
+        }
         $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) (($a['expr'] ?? '') !== '') + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
         if ($n !== 1) {
             throw self::err(Code::IR_INVALID, "set $column: exactly one of p/null/expr/plus_p/minus_p");
         }
-        if (!empty($a['null']) && empty($c['nullable'])) {
-            throw self::err(Code::IR_INVALID, "set {$ent['name']}.$column to null but column is NOT NULL");
+        if (!empty($a['null']) && !$c['nullable']) {
+            throw self::err(Code::IR_INVALID, "set {$ent['entity']}.$column to null but column is NOT NULL");
         }
-        if ((isset($a['plus_p']) || isset($a['minus_p'])) && !in_array($c['type'], self::NUMERIC, true)) {
-            throw self::err(Code::OPERATOR_NOT_ALLOWED, "plus/minus on {$ent['name']}.$column ({$c['type']})");
+        if ((isset($a['plus_p']) || isset($a['minus_p'])) && !RuntimeModel::numeric($c)) {
+            throw self::err(Code::OPERATOR_NOT_ALLOWED, "plus/minus on {$ent['entity']}.$column ({$c['type']})");
         }
         foreach (['p', 'plus_p', 'minus_p'] as $k) {
             if (isset($a[$k])) {
@@ -264,14 +268,14 @@ final class Validator
                 throw self::err(Code::IR_INVALID, "columns.mode \"$mode\"");
             }
             foreach ([...($cols['add'] ?? []), ...($cols['remove'] ?? [])] as $c) {
-                if (Manifest::column($ent, $c) === null) {
+                if (RuntimeModel::column($ent, $c) === null) {
                     throw self::err(Code::COLUMN_UNKNOWN, "$entity.$c");
                 }
             }
             $outputs = [];
             foreach ($cols['expr'] ?? [] as $out => $e) {
                 $out = (string) $out;
-                if (Manifest::column($ent, $out) !== null) {
+                if (RuntimeModel::column($ent, $out) !== null) {
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out already a column");
                 }
                 $sql = $e['sql'] ?? '';
@@ -283,16 +287,16 @@ final class Validator
             }
             foreach ($cols['fn'] ?? [] as $out => $cf) {
                 $out = (string) $out;
-                if (Manifest::column($ent, $out) !== null || isset($outputs[$out])) {
+                if (RuntimeModel::column($ent, $out) !== null || isset($outputs[$out])) {
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
                 }
                 $outputs[$out] = true;
-                $col = Manifest::column($ent, $cf['column'] ?? '') ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($cf['column'] ?? ''));
+                $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($cf['column'] ?? ''));
                 $this->columnFunc($ent, $col, $cf['fn'] ?? []);
             }
             foreach ($cols['sub'] ?? [] as $out => $sub) {
                 $out = (string) $out;
-                if (Manifest::column($ent, $out) !== null || isset($outputs[$out])) {
+                if (RuntimeModel::column($ent, $out) !== null || isset($outputs[$out])) {
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
                 }
                 $outputs[$out] = true;
@@ -311,22 +315,16 @@ final class Validator
             }
             $left = $j['left'] ?? '';
             $right = $j['right'] ?? '';
-            if ($left !== '' || $right !== '') {
-                if ($left === '' || $right === '' || !isset($j['query'])) {
-                    throw self::err(Code::IR_INVALID, "join $rel: left, right and query are required");
-                }
-                $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $j['query']['entity'] ?? '');
-                if (Manifest::column($ent, $left) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "{$ent['name']}.$left");
-                }
-                if (Manifest::column($target, $right) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$right");
-                }
-            } else {
-                $r = $ent['relations'][$rel] ?? throw self::err(Code::RELATION_UNKNOWN, "$entity.$rel");
-                if (!isset($j['query']) || ($j['query']['entity'] ?? '') !== $r['target']) {
-                    throw self::err(Code::IR_INVALID, "join $rel: query entity must be {$r['target']}");
-                }
+            // join은 match method가 고른 두 column으로만 잇는다. 이름에서 추론한 relation은 없다.
+            if ($left === '' || $right === '' || !isset($j['query'])) {
+                throw self::err(Code::IR_INVALID, "join $rel: left, right and query are required");
+            }
+            $target = $this->m->entities[$j['query']['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $j['query']['entity'] ?? '');
+            if (RuntimeModel::column($ent, $left) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$left");
+            }
+            if (RuntimeModel::column($target, $right) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
             $joined[$rel] = $j;
             $this->query($j['query'], self::joinPath($path, $rel), true, false);
@@ -349,33 +347,22 @@ final class Validator
                 throw self::err(Code::COLUMN_ALIAS_CONFLICT, "relation name \"$rel\" is empty or used twice");
             }
             $relationNames[$rel] = true;
-            if (Manifest::column($ent, $rel) !== null) {
+            if (RuntimeModel::column($ent, $rel) !== null) {
                 throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$rel is already a column");
             }
             $child = $r['query'] ?? throw self::err(Code::IR_INVALID, "relation $rel needs a query");
             $kind = $r['kind'] ?? '';
             $left = $r['left'] ?? '';
             $right = $r['right'] ?? '';
-            if ($left !== '' || $right !== '') {
-                if ($left === '' || $right === '' || ($kind !== 'one' && $kind !== 'many')) {
-                    throw self::err(Code::IR_INVALID, "relation $rel: left, right and kind one|many are required");
-                }
-                $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $child['entity'] ?? '');
-                if (Manifest::column($ent, $left) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "$entity.$left");
-                }
-                if (Manifest::column($target, $right) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$right");
-                }
-            } else {
-                $schemaRel = $ent['relations'][$rel] ?? throw self::err(Code::RELATION_UNKNOWN, "$entity.$rel");
-                if (($child['entity'] ?? '') !== $schemaRel['target']) {
-                    throw self::err(Code::IR_INVALID, "relation $rel: query entity must be {$schemaRel['target']}");
-                }
-                if ($kind !== '') {
-                    throw self::err(Code::IR_INVALID, "relation $rel: kind needs left and right");
-                }
-                $kind = $schemaRel['kind'];
+            if ($left === '' || $right === '' || ($kind !== 'one' && $kind !== 'many')) {
+                throw self::err(Code::IR_INVALID, "relation $rel: left, right and kind one|many are required");
+            }
+            $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $child['entity'] ?? '');
+            if (RuntimeModel::column($ent, $left) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, "$entity.$left");
+            }
+            if (RuntimeModel::column($target, $right) === null) {
+                throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
             if (isset($child['limit'])) {
                 throw self::err(Code::LIMIT_IN_RELATION, "$rel: use limit_per_parent");
@@ -386,13 +373,13 @@ final class Validator
             if (($child['key_by'] ?? '') !== '' && $kind !== 'many') {
                 throw self::err(Code::IR_INVALID, "relation $rel: key_by needs a many relation");
             }
-            if (isset($child['if_parent']) && Manifest::column($ent, $child['if_parent']['column'] ?? '') === null) {
+            if (isset($child['if_parent']) && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)');
             }
             $this->query($child, self::joinPath($path, $rel), false, true);
         }
         $keyBy = $q['key_by'] ?? '';
-        if ($keyBy !== '' && Manifest::column($ent, $keyBy) === null) {
+        if ($keyBy !== '' && RuntimeModel::column($ent, $keyBy) === null) {
             throw self::err(Code::COLUMN_UNKNOWN, "$entity.$keyBy");
         }
         if (isset($q['if_parent'])) {
@@ -408,7 +395,7 @@ final class Validator
                 throw self::err(Code::IR_INVALID, 'order needs exactly one of column, expr, random');
             }
             if ($column !== '') {
-                $col = Manifest::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$column");
+                $col = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$column");
                 if (isset($o['fn'])) {
                     $this->columnFunc($ent, $col, $o['fn']);
                 }
@@ -418,7 +405,7 @@ final class Validator
         }
         $groups = [];
         foreach ($q['group_by'] ?? [] as $g) {
-            if (Manifest::column($ent, $g) === null) {
+            if (RuntimeModel::column($ent, $g) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity.$g");
             }
             $groups[$g] = true;
@@ -448,7 +435,7 @@ final class Validator
             throw self::err(Code::IR_INVALID, 'row lock is only valid on a root row select');
         }
         $index = $q['force_index'] ?? '';
-        if ($index !== '' && !array_key_exists($index, $ent['indexes'] ?? [])) {
+        if ($index !== '' && !array_key_exists($index, $ent['indexes'])) {
             throw self::err(Code::INDEX_UNKNOWN, "$entity.$index");
         }
     }
@@ -501,7 +488,7 @@ final class Validator
         if (isset($p['p'])) {
             $this->params([$p['p']]);
         }
-        $name = $ent['name'];
+        $name = $ent['entity'];
         $column = $p['column'] ?? '';
         $op = $p['op'] ?? '';
         if (($p['expr'] ?? '') !== '') {
@@ -516,8 +503,8 @@ final class Validator
                 throw self::err(Code::IR_INVALID, "$op needs at least two columns");
             }
             foreach ($cols as $c) {
-                $col = Manifest::column($ent, $c) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$c");
-                if (($col['styles'] ?? []) !== [] || $col['type'] === 'json' || $col['type'] === 'point') {
+                $col = RuntimeModel::column($ent, $c) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$c");
+                if ($col['codec'] !== []) {
                     throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$c");
                 }
             }
@@ -534,7 +521,7 @@ final class Validator
             throw self::err(Code::IR_INVALID, 'cols is only valid with tuple_in or tuple_not_in');
         }
         if (isset($p['sub'])) {
-            if (Manifest::column($ent, $column) === null) {
+            if (RuntimeModel::column($ent, $column) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$name.$column");
             }
             if ($op !== 'in' && $op !== 'not_in') {
@@ -547,7 +534,7 @@ final class Validator
             return;
         }
         if (isset($p['fn']) || isset($p['value'])) {
-            $c = Manifest::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$column");
+            $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$column");
             if (isset($p['fn']) && isset($p['value'])) {
                 throw self::err(Code::IR_INVALID, 'fn and value cannot be combined');
             }
@@ -574,7 +561,7 @@ final class Validator
             if (!Dialect::isValueFunction($fn)) {
                 throw self::err(Code::FUNCTION_UNKNOWN, $fn);
             }
-            if ($c['type'] !== 'date' && $c['type'] !== 'datetime') {
+            if ($c['codec'] !== [] || ($c['type'] !== 'date' && $c['type'] !== 'datetime')) {
                 throw self::err(Code::OPERATOR_NOT_ALLOWED, "$fn on $name.$column ({$c['type']})");
             }
             $want = isset(Dialect::VALUE_FUNCTION_UNITS[$fn]) ? 1 : 0;
@@ -590,20 +577,7 @@ final class Validator
             $this->params($p['value']['ps'] ?? []);
             return;
         }
-        if ($op === 'match' || $op === 'match_boolean') {
-            $match = $p['match'] ?? [];
-            if ($match === []) {
-                throw self::err(Code::IR_INVALID, 'match needs columns');
-            }
-            if (!in_array($match, $ent['fulltext'] ?? [], true)) {
-                throw self::err(Code::INDEX_UNKNOWN, "no fulltext index on $name(" . implode(',', $match) . ')');
-            }
-            if (!isset($p['p'])) {
-                throw self::err(Code::IR_INVALID, 'match needs a value (p)');
-            }
-            return;
-        }
-        $c = Manifest::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$column");
+        $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$column");
         if (!self::opAllowed($c, $op)) {
             throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$column ({$c['type']})");
         }
@@ -638,8 +612,8 @@ final class Validator
     {
         $fn = $f['name'] ?? '';
         $types = Dialect::COLUMN_FUNCTION_TYPES[$fn] ?? throw self::err(Code::FUNCTION_UNKNOWN, $fn);
-        if (!in_array($c['type'], $types, true)) {
-            throw self::err(Code::OPERATOR_NOT_ALLOWED, "$fn on {$ent['name']}.{$c['name']} ({$c['type']})");
+        if ($c['codec'] !== [] || !in_array($c['type'], $types, true)) {
+            throw self::err(Code::OPERATOR_NOT_ALLOWED, "$fn on {$ent['entity']}.{$c['name']} ({$c['type']})");
         }
         if (count($f['ps'] ?? []) !== Dialect::COLUMN_FUNCTION_ARITY[$fn]) {
             throw self::err(Code::IR_INVALID, "$fn takes " . Dialect::COLUMN_FUNCTION_ARITY[$fn] . ' arguments');
@@ -664,9 +638,9 @@ final class Validator
                 if (!$scalar) {
                     throw self::err(Code::IR_INVALID, "$agg subquery is only valid as a column");
                 }
-                $c = Manifest::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['name']}.$column");
-                if (!in_array($c['type'], self::NUMERIC, true)) {
-                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "$agg on {$ent['name']}.$column ({$c['type']})");
+                $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
+                if (!RuntimeModel::numeric($c)) {
+                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "$agg on {$ent['entity']}.$column ({$c['type']})");
                 }
                 break;
             case 'count':
@@ -677,8 +651,8 @@ final class Validator
             default:
                 throw self::err(Code::IR_INVALID, "subquery agg \"$agg\"");
         }
-        if ($column !== '' && Manifest::column($ent, $column) === null) {
-            throw self::err(Code::COLUMN_UNKNOWN, "{$ent['name']}.$column");
+        if ($column !== '' && RuntimeModel::column($ent, $column) === null) {
+            throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
         }
         if (isset($q['limit']) || ($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])) {
             throw self::err(Code::IR_INVALID, 'subquery may not use limit, relations, lock or columns');
