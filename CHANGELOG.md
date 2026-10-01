@@ -1,5 +1,10 @@
 # Changelog
 
+Type dbspec check predicates in every client: arithmetic, functions,
+the `null` literal and `bytes` columns are rejected, a literal must be a
+default of the column it meets and is written in that default form, and
+two columns compare only when their types meet (T8.1.4).
+
 Add `make go-fmt-check` to `make check`, format the six Go files that
 gofmt would change, and format the Rust workspace so `make
 rust-fmt-check` passes again (T11).

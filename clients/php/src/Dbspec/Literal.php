@@ -28,18 +28,6 @@ final class Literal
         return $digits === '' ? '0' : ($n[0] ? '-' : '') . $digits;
     }
 
-    /** A number in check expressions: the integer part without leading zeros, the fraction as written, no sign for zero. */
-    public static function checkNumber(string $text): ?string
-    {
-        $n = self::number($text);
-        if ($n === null) {
-            return null;
-        }
-        $digits = ltrim($n[1], '0');
-        $zero = $digits === '' && ($n[2] === null || trim($n[2], '0') === '');
-        return ($n[0] && !$zero ? '-' : '') . ($digits === '' ? '0' : $digits) . ($n[2] === null ? '' : '.' . $n[2]);
-    }
-
     /** A single-quoted string token's value, or null when the token is not a string. */
     public static function stringValue(string $token): ?string
     {

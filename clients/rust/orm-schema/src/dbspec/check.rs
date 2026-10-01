@@ -1,9 +1,10 @@
-//! The neutral check expression: column references, literals, comparisons,
-//! arithmetic, `and`/`or`/`not`, `in`, `between` and `is null`.
+//! Reads a check predicate (docs/dbspec.md, "Checks"): comparisons of columns
+//! and literals, `in`, `between`, `is null`, a column alone, and
+//! `and`/`or`/`not` with parentheses. Types are checked by `check_type`.
 
 use super::lexer::{Kind, Token};
-use super::literal::{canonical_check_decimal, canonical_integer, quote};
-use super::model::{Expr, Name, Pos};
+use super::literal::Value;
+use super::model::{Expr, Literal, Name, Operand, Pos};
 
 const KEYWORDS: [&str; 9] = ["and", "or", "not", "in", "between", "is", "null", "true", "false"];
 const COMPARISONS: [&str; 6] = ["=", "<>", "<", "<=", ">", ">="];
@@ -37,7 +38,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
 
     fn unexpected<T>(&self) -> Result<T, CheckError> {
         match self.peek() {
-            Some(t) => Err((t.pos, format!("'{}' is not allowed in a check expression", t.text))),
+            Some(t) => Err(not_allowed(t)),
             None => Err((self.end, "check expression ends early".into())),
         }
     }
@@ -56,7 +57,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         while self.peek_is("or") {
             self.at += 1;
             let right = self.and()?;
-            left = Expr::Binary(Box::new(left), "or", Box::new(right));
+            left = Expr::Logic(Box::new(left), "or", Box::new(right));
         }
         Ok(left)
     }
@@ -66,7 +67,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         while self.peek_is("and") {
             self.at += 1;
             let right = self.not()?;
-            left = Expr::Binary(Box::new(left), "and", Box::new(right));
+            left = Expr::Logic(Box::new(left), "and", Box::new(right));
         }
         Ok(left)
     }
@@ -79,13 +80,29 @@ impl<'t, 'a> CheckParser<'t, 'a> {
         self.predicate()
     }
 
+    /// A parenthesized predicate or a predicate form that starts with an operand.
     fn predicate(&mut self) -> Result<Expr, CheckError> {
-        let left = self.additive()?;
-        if let Some(op) = self.peek().and_then(|t| COMPARISONS.iter().find(|op| t.is(op))) {
+        if self.peek_is("(") {
             self.at += 1;
-            let right = self.additive()?;
-            return Ok(Expr::Binary(Box::new(left), op, Box::new(right)));
+            let inner = self.expression()?;
+            self.expect(")")?;
+            return Ok(Expr::Paren(Box::new(inner)));
         }
+        let left = self.operand()?;
+        if let Some(token) = self.peek() {
+            if let Some(op) = COMPARISONS.iter().find(|op| token.is(op)) {
+                self.at += 1;
+                let right = self.operand()?;
+                if let (Operand::Literal(first), Operand::Literal(_)) = (&left, &right) {
+                    return Err((first.pos, "a comparison of two literals has no column".into()));
+                }
+                return Ok(Expr::Compare(left, op, token.pos, right));
+            }
+        }
+        let column = match left {
+            Operand::Column(column) => column,
+            Operand::Literal(literal) => return self.after_literal(&literal),
+        };
         if self.peek_is("is") {
             self.at += 1;
             let negated = self.peek_is("not");
@@ -93,7 +110,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
                 self.at += 1;
             }
             self.expect("null")?;
-            return Ok(Expr::IsNull(Box::new(left), negated));
+            return Ok(Expr::IsNull(column, negated));
         }
         let negated = self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in") || t.is("between"));
         if negated {
@@ -108,79 +125,78 @@ impl<'t, 'a> CheckParser<'t, 'a> {
                 list.push(self.literal()?);
             }
             self.expect(")")?;
-            return Ok(Expr::In(Box::new(left), negated, list));
+            return Ok(Expr::In(column, negated, list));
         }
-        if self.peek_is("between") {
+        if let Some(token) = self.peek().filter(|t| t.is("between")) {
             self.at += 1;
-            let low = self.additive()?;
+            let low = self.literal()?;
             self.expect("and")?;
-            let high = self.additive()?;
-            return Ok(Expr::Between(Box::new(left), negated, Box::new(low), Box::new(high)));
+            let high = self.literal()?;
+            return Ok(Expr::Between(column, negated, token.pos, low, high));
         }
-        Ok(left)
+        Ok(Expr::Column(column))
     }
 
-    fn additive(&mut self) -> Result<Expr, CheckError> {
-        let mut left = self.multiplicative()?;
-        while let Some(op) = self.peek().and_then(|t| ["+", "-"].into_iter().find(|op| t.is(op))) {
-            self.at += 1;
-            let right = self.multiplicative()?;
-            left = Expr::Binary(Box::new(left), op, Box::new(right));
+    /// The error after a literal that no comparison follows: a literal as the
+    /// subject of `in`, `between` or `is`, or alone, is reported at itself; any
+    /// other token at that token.
+    fn after_literal<T>(&self, literal: &Literal) -> Result<T, CheckError> {
+        let subject = ["in", "between", "is"].iter().any(|w| self.peek_is(w))
+            || (self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in") || t.is("between")));
+        if subject {
+            return Err((literal.pos, "a literal is not the subject of 'in', 'between' or 'is'; the subject is a column".into()));
         }
-        Ok(left)
+        match self.peek() {
+            None => Err((literal.pos, "a literal alone is not a predicate".into())),
+            Some(t) if t.is("and") || t.is("or") || t.is(")") => Err((literal.pos, "a literal alone is not a predicate".into())),
+            Some(_) => self.unexpected(),
+        }
     }
 
-    fn multiplicative(&mut self) -> Result<Expr, CheckError> {
-        let mut left = self.primary()?;
-        while let Some(op) = self.peek().and_then(|t| ["*", "/"].into_iter().find(|op| t.is(op))) {
-            self.at += 1;
-            let right = self.primary()?;
-            left = Expr::Binary(Box::new(left), op, Box::new(right));
-        }
-        Ok(left)
-    }
-
-    /// A literal: a signed integer or decimal, a string, `true`, `false` or `null`.
-    fn literal(&mut self) -> Result<String, CheckError> {
+    /// A column or a literal.
+    fn operand(&mut self) -> Result<Operand, CheckError> {
         let Some(token) = self.peek() else { return self.unexpected() };
-        let negative = token.is("-");
-        let token = if negative {
-            match self.tokens.get(self.at + 1) {
-                Some(next) if next.kind == Kind::Number => {
-                    self.at += 1;
-                    next
-                }
-                _ => return self.unexpected(),
-            }
-        } else {
-            token
-        };
-        let text = match token.kind {
-            Kind::Number if token.text.contains('.') => canonical_check_decimal(negative, token.text),
-            Kind::Number => canonical_integer(negative, token.text),
-            Kind::Str => quote(&token.string_value()),
-            Kind::Word if matches!(token.text, "true" | "false" | "null") => token.text.to_owned(),
-            _ => return self.unexpected(),
-        };
-        self.at += 1;
-        Ok(text)
-    }
-
-    fn primary(&mut self) -> Result<Expr, CheckError> {
-        let Some(token) = self.peek() else { return self.unexpected() };
-        if token.is("(") {
-            self.at += 1;
-            let inner = self.expression()?;
-            self.expect(")")?;
-            return Ok(Expr::Paren(Box::new(inner)));
-        }
         if token.kind == Kind::Word && !KEYWORDS.contains(&token.text) {
             if self.tokens.get(self.at + 1).is_some_and(|t| t.is("(")) {
                 return Err((token.pos, format!("function '{}' is not allowed in a check expression", token.text)));
             }
             self.at += 1;
-            return Ok(Expr::Column(Name { text: token.text.to_owned(), pos: token.pos }));
+            return Ok(Operand::Column(Name { text: token.text.to_owned(), pos: token.pos }));
         }
-        self.literal().map(Expr::Literal)
+        self.literal().map(Operand::Literal)
+    }
+
+    /// A literal: a number with an optional unary minus, a string, `true` or `false`.
+    fn literal(&mut self) -> Result<Literal, CheckError> {
+        let Some(token) = self.peek() else { return self.unexpected() };
+        let pos = token.pos;
+        let value = if token.is("-") {
+            match self.tokens.get(self.at + 1) {
+                Some(next) if next.kind == Kind::Number => {
+                    self.at += 1;
+                    Value::Number { negative: true, text: next.text.to_owned() }
+                }
+                _ => return Err((pos, "a unary minus applies only to a number literal".into())),
+            }
+        } else {
+            match token.kind {
+                Kind::Number => Value::Number { negative: false, text: token.text.to_owned() },
+                Kind::Str => Value::Str(token.string_value()),
+                Kind::Word if token.is("null") => return Err((pos, "the null literal is not allowed in a check expression".into())),
+                Kind::Word if token.is("true") || token.is("false") => Value::Word(token.text.to_owned()),
+                _ => return self.unexpected(),
+            }
+        };
+        self.at += 1;
+        Ok(Literal { value, pos, text: String::new() })
+    }
+}
+
+/// The error of a token outside the predicate forms.
+pub(crate) fn not_allowed(token: &Token) -> CheckError {
+    if ["+", "-", "*", "/"].iter().any(|op| token.is(op)) {
+        (token.pos, format!("arithmetic operator '{}' is not allowed in a check expression", token.text))
+    } else {
+        (token.pos, format!("'{}' is not allowed in a check expression", token.text))
     }
 }

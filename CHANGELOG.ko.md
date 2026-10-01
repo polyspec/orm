@@ -1,5 +1,10 @@
 # 변경 이력
 
+모든 client에서 dbspec check predicate에 type 규칙을 둔다. 산술, 함수,
+`null` literal, `bytes` column을 거부하고, literal은 만나는 column의
+default여야 하며 그 default 형식으로 쓰고, 두 column은 type이 만날 때에만
+비교한다(T8.1.4).
+
 `make go-fmt-check`를 `make check`에 더하고, gofmt가 바꿀 Go 파일
 6개를 정리하며, Rust workspace를 정리해 `make rust-fmt-check`가 다시
 통과하게 한다(T11).

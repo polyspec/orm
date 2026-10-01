@@ -285,18 +285,19 @@ func (v *validator) tableRules(t *tableNode) {
 			}
 		}
 	}
-	// A check expression reports only its first diagnostic.
+	// A check predicate that reads completely has its types checked; it
+	// reports only its first diagnostic in source order.
 	for _, k := range t.checks {
-		before := len(v.out)
-		for _, ref := range k.refs {
-			if v.columnRef(t, ref, RuleCheck) != nil && propagated[ref.text] {
-				v.add(RuleCheck, ref, "column %q belongs to a foreign key with cascade or set_null", ref.text)
-			}
-			if len(v.out) > before {
-				v.out = v.out[:before+1]
-				break
-			}
+		if k.expr == nil {
+			continue
 		}
+		typer := &checkTyper{v: v, t: t, propagated: propagated}
+		typed := typer.predicate(k.expr)
+		if len(typer.out) > 0 {
+			v.out = append(v.out, firstDiagnostic(typer.out))
+			continue
+		}
+		k.expr = typed
 	}
 	if t.settings != nil {
 		v.settings(t)

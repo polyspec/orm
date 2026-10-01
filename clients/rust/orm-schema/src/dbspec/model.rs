@@ -1,6 +1,8 @@
 //! The parsed dbspec model. Every name keeps the position of its token so that
 //! validation can point at it; emission ignores positions.
 
+use super::literal::Value;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Pos {
     pub line: usize,
@@ -174,35 +176,78 @@ pub(crate) struct Check {
     pub expr: Expr,
 }
 
+/// A check predicate (docs/dbspec.md, "Checks").
 #[derive(Clone, Debug)]
 pub(crate) enum Expr {
+    /// A `bool` column alone.
     Column(Name),
-    /// A literal in its canonical text.
-    Literal(String),
     Paren(Box<Expr>),
     Not(Box<Expr>),
-    Binary(Box<Expr>, &'static str, Box<Expr>),
-    In(Box<Expr>, bool, Vec<String>),
-    Between(Box<Expr>, bool, Box<Expr>, Box<Expr>),
-    IsNull(Box<Expr>, bool),
+    /// `and` or `or`.
+    Logic(Box<Expr>, &'static str, Box<Expr>),
+    /// A comparison with its operator and the operator position.
+    Compare(Operand, &'static str, Pos, Operand),
+    /// `<column> [not] in (<literal>, ...)`.
+    In(Name, bool, Vec<Literal>),
+    /// `<column> [not] between <low> and <high>` with the `between` position.
+    Between(Name, bool, Pos, Literal, Literal),
+    /// `<column> is [not] null`.
+    IsNull(Name, bool),
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum Operand {
+    Column(Name),
+    Literal(Literal),
+}
+
+/// A check literal. `text` is its canonical text in the form of the column it
+/// meets; validation sets it, so it is empty until the document is valid.
+#[derive(Clone, Debug)]
+pub(crate) struct Literal {
+    pub value: Value,
+    pub pos: Pos,
+    pub text: String,
 }
 
 impl Expr {
     /// The column references of the expression in source order.
     pub fn columns<'e>(&'e self, out: &mut Vec<&'e Name>) {
         match self {
-            Expr::Column(name) => out.push(name),
-            Expr::Literal(_) => {}
-            Expr::Paren(inner) | Expr::Not(inner) | Expr::In(inner, _, _) | Expr::IsNull(inner, _) => inner.columns(out),
-            Expr::Binary(left, _, right) => {
+            Expr::Column(name) | Expr::In(name, _, _) | Expr::Between(name, _, _, _, _) | Expr::IsNull(name, _) => out.push(name),
+            Expr::Paren(inner) | Expr::Not(inner) => inner.columns(out),
+            Expr::Logic(left, _, right) => {
                 left.columns(out);
                 right.columns(out);
             }
-            Expr::Between(value, _, low, high) => {
-                value.columns(out);
-                low.columns(out);
-                high.columns(out);
+            Expr::Compare(left, _, _, right) => {
+                for operand in [left, right] {
+                    if let Operand::Column(name) = operand {
+                        out.push(name);
+                    }
+                }
             }
+        }
+    }
+
+    /// The literals of the expression in source order.
+    pub fn literals_mut<'e>(&'e mut self, out: &mut Vec<&'e mut Literal>) {
+        match self {
+            Expr::Column(_) | Expr::IsNull(_, _) => {}
+            Expr::Paren(inner) | Expr::Not(inner) => inner.literals_mut(out),
+            Expr::Logic(left, _, right) => {
+                left.literals_mut(out);
+                right.literals_mut(out);
+            }
+            Expr::Compare(left, _, _, right) => {
+                for operand in [left, right] {
+                    if let Operand::Literal(literal) = operand {
+                        out.push(literal);
+                    }
+                }
+            }
+            Expr::In(_, _, list) => out.extend(list.iter_mut()),
+            Expr::Between(_, _, _, low, high) => out.extend([low, high]),
         }
     }
 }

@@ -203,7 +203,6 @@ fn setting_text(setting: &Setting) -> String {
 fn emit_expr(out: &mut String, expr: &Expr) {
     match expr {
         Expr::Column(name) => out.push_str(&name.text),
-        Expr::Literal(text) => out.push_str(text),
         Expr::Paren(inner) => {
             out.push('(');
             emit_expr(out, inner);
@@ -213,29 +212,48 @@ fn emit_expr(out: &mut String, expr: &Expr) {
             out.push_str("not ");
             emit_expr(out, inner);
         }
-        Expr::Binary(left, op, right) => {
+        Expr::Logic(left, op, right) => {
             emit_expr(out, left);
             out.push(' ');
             out.push_str(op);
             out.push(' ');
             emit_expr(out, right);
         }
-        Expr::In(value, negated, list) => {
-            emit_expr(out, value);
+        Expr::Compare(left, op, _, right) => {
+            emit_operand(out, left);
+            out.push(' ');
+            out.push_str(op);
+            out.push(' ');
+            emit_operand(out, right);
+        }
+        Expr::In(column, negated, list) => {
+            out.push_str(&column.text);
             out.push_str(if *negated { " not in (" } else { " in (" });
-            out.push_str(&list.join(", "));
+            for (index, literal) in list.iter().enumerate() {
+                if index > 0 {
+                    out.push_str(", ");
+                }
+                out.push_str(&literal.text);
+            }
             out.push(')');
         }
-        Expr::Between(value, negated, low, high) => {
-            emit_expr(out, value);
+        Expr::Between(column, negated, _, low, high) => {
+            out.push_str(&column.text);
             out.push_str(if *negated { " not between " } else { " between " });
-            emit_expr(out, low);
+            out.push_str(&low.text);
             out.push_str(" and ");
-            emit_expr(out, high);
+            out.push_str(&high.text);
         }
-        Expr::IsNull(value, negated) => {
-            emit_expr(out, value);
+        Expr::IsNull(column, negated) => {
+            out.push_str(&column.text);
             out.push_str(if *negated { " is not null" } else { " is null" });
         }
+    }
+}
+
+fn emit_operand(out: &mut String, operand: &Operand) {
+    match operand {
+        Operand::Column(name) => out.push_str(&name.text),
+        Operand::Literal(literal) => out.push_str(&literal.text),
     }
 }

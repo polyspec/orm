@@ -2,10 +2,11 @@
 
 use super::model::Type;
 
-/// A default value as written: a signed number, a word or a string.
-pub(crate) enum Value<'a> {
-    Number { negative: bool, text: &'a str },
-    Word(&'a str),
+/// A literal as written: a signed number, a word or a string value.
+#[derive(Clone, Debug)]
+pub(crate) enum Value {
+    Number { negative: bool, text: String },
+    Word(String),
     Str(String),
 }
 
@@ -14,27 +15,6 @@ pub(crate) enum Value<'a> {
 fn split_number(text: &str) -> (&str, &str) {
     let (int, frac) = text.split_once('.').unwrap_or((text, ""));
     (int.trim_start_matches('0'), frac)
-}
-
-/// The canonical text of an integer literal: no sign for zero, no leading zeros.
-pub(crate) fn canonical_integer(negative: bool, digits: &str) -> String {
-    let digits = digits.trim_start_matches('0');
-    if digits.is_empty() {
-        "0".into()
-    } else if negative {
-        format!("-{digits}")
-    } else {
-        digits.into()
-    }
-}
-
-/// The canonical text of a decimal literal of a check expression: integer part
-/// without leading zeros, fraction as written, no sign for zero.
-pub(crate) fn canonical_check_decimal(negative: bool, text: &str) -> String {
-    let (int, frac) = split_number(text);
-    let int = if int.is_empty() { "0" } else { int };
-    let zero = int == "0" && frac.bytes().all(|b| b == b'0');
-    format!("{}{int}.{frac}", if negative && !zero { "-" } else { "" })
 }
 
 /// The canonical string literal: single quotes, a quote written as `''`.
@@ -94,7 +74,7 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             }
             Ok(if parsed == 0.0 { "0".into() } else { parsed.to_string() })
         }
-        (Type::Bool, Value::Word(word)) if matches!(*word, "true" | "false") => Ok((*word).into()),
+        (Type::Bool, Value::Word(word)) if matches!(word.as_str(), "true" | "false") => Ok(word.clone()),
         (Type::Varchar(n), Value::Str(text)) => {
             if text.contains('\0') || text.chars().count() > n as usize {
                 return Err(unfit());
@@ -117,7 +97,7 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             Ok(quote(text))
         }
         (Type::Time(p), Value::Str(text)) => Ok(quote(&time(text, p).ok_or_else(unfit)?)),
-        (Type::DateTime(_), Value::Word("now")) => Ok("now".into()),
+        (Type::DateTime(_), Value::Word(word)) if word == "now" => Ok("now".into()),
         (Type::DateTime(p), Value::Str(text)) => {
             let (date, clock) = text.split_once(' ').ok_or_else(unfit)?;
             if !valid_date(date) {
@@ -126,6 +106,30 @@ pub(crate) fn default_literal(ty: Type, value: &Value) -> Result<String, String>
             Ok(quote(&format!("{date} {}", time(clock, p).ok_or_else(unfit)?)))
         }
         _ => Err(unfit()),
+    }
+}
+
+/// Validates a check literal against the column it meets and returns its
+/// canonical text: the default literal of the column type, where a `text`
+/// column takes the `varchar` form without a length limit and `now` is not a
+/// literal.
+pub(crate) fn check_literal(ty: Type, value: &Value) -> Result<String, String> {
+    let fits = match (ty, value) {
+        (Type::Text, Value::Str(text)) if !text.contains('\0') => Ok(quote(text)),
+        (Type::Text, _) | (Type::DateTime(_), Value::Word(_)) => Err(()),
+        _ => default_literal(ty, value).map_err(|_| ()),
+    };
+    fits.map_err(|()| format!("literal {} does not fit {}", value.written(), ty.render()))
+}
+
+impl Value {
+    /// The literal as written, for messages.
+    pub fn written(&self) -> String {
+        match self {
+            Value::Number { negative, text } => format!("{}{text}", if *negative { "-" } else { "" }),
+            Value::Word(word) => word.clone(),
+            Value::Str(text) => quote(text),
+        }
     }
 }
 

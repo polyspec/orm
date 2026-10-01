@@ -111,17 +111,34 @@ A key or index lists 1 to 16 distinct columns of its table. A `text` or `bytes` 
 
 ### Checks
 
-`check <name> (<expression>)`
+`check <name> (<predicate>)`
 
-The expression uses only:
+A predicate is one of:
 
-- column references of the same table;
-- literals: integers, decimals, single-quoted strings (`''` is a quote), `true`, `false`, `null`;
-- `=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`;
-- `and`, `or`, `not`, parentheses;
-- `<expr> [not] in (<literal>, ...)`, `<expr> [not] between <a> and <b>`, `<expr> is [not] null`.
+- `<operand> <comparison> <operand>` with `=`, `<>`, `<`, `<=`, `>` or `>=`, where at least one operand is a column;
+- `<column> [not] in (<literal>, ...)`;
+- `<column> [not] between <literal> and <literal>`;
+- `<column> is [not] null`;
+- a `bool` column alone, which holds when the column is true;
+- `not <predicate>`, `<predicate> and <predicate>`, `<predicate> or <predicate>`, `(<predicate>)`.
 
-A unary minus applies only to a number literal. There are no functions, so no clock, random or session values. A check cannot use a column of a foreign key with `cascade` or `set_null`, because MySQL rejects it (3823).
+An operand is a column of the same table or a literal. The three databases evaluate these predicates alike only when both sides have the same kind of value, so the types decide which operands meet. A literal that meets a column is a valid `default` literal of the column's type (a `text` column takes the `varchar` form), and canonical form writes it as that default, so `0` against `decimal(13,2)` is `0.00`. Two columns meet when:
+
+| Column type | Other column |
+| --- | --- |
+| `i16`, `i32`, `i64` | another integer column |
+| `decimal(p,s)` | a `decimal` column of the same scale s |
+| `f64` | an `f64` column |
+| `bool` | a `bool` column |
+| `varchar(n)`, `text` | a `varchar` or `text` column |
+| `uuid` | a `uuid` column |
+| `date` | a `date` column |
+| `time(p)` | a `time` column of the same p |
+| `datetime(p)` | a `datetime` column of the same p |
+
+A `bool` operand takes only `=`, `<>` and `in`.
+
+A `bytes` column, arithmetic, functions and the `null` literal are not part of a predicate: integer division, overflow and the scaled SQLite decimal give different results on the three databases. A unary minus applies only to a number literal. A check cannot use a column of a foreign key with `cascade` or `set_null`, because MySQL rejects it (3823).
 
 ## Settings
 
@@ -206,7 +223,7 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 - literals in one form: integers without a sign for zero or leading zeros, decimals with exactly the column scale (`0.00` for `decimal(13,2)`), strings in single quotes with `''` for a quote, `true` and `false`, `date` as `'YYYY-MM-DD'`, `time(p)` and `datetime(p)` with exactly p fraction digits (`'2026-01-01 00:00:00.000000'` for `datetime(6)`), `uuid` in lower case;
 - tables and diagrams in document order; diagram lines in document order;
 - `select explicit` columns and the tables of a `use` line in their written order;
-- `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; check literals keep decimal fraction digits as written and drop integer leading zeros;
+- `f64` literals as the shortest decimal without exponent that reads back as the same value, without a point for an integral value, and `0` for negative zero; a check literal takes the canonical default form of the column it meets;
 - a comment line stays attached to the line that follows it and takes that line's indentation; a comment before a closing `}` takes the indentation of the block's lines; comments after the last block follow one blank line; a comment keeps its text from `#` to the line end unchanged.
 
 ## Limits and errors
@@ -220,6 +237,7 @@ A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign key
 - a used document that fails reports one `use` diagnostic at its name with its first error in the message; two used documents that repeat a constraint name report `name.duplicate` at the later document name; a document or table repeated in `use` lines is `name.duplicate`; a use cycle or a header name that differs from the used name is `use`;
 - a `header` error points at the first character where the line departs from `dbspec 1 <name>`, `<name>` being a run of ASCII letters, digits and `_`, or one past the line end when a part is missing;
 - the 32 MiB limit points at line 1, column 1; a table with more than 1000 columns is a `limit` error at its 1001st column name;
+- check: a predicate is read first. Reading reports, at the token, an arithmetic operator, a function, a `null` literal or any other token outside the predicate forms, and a literal where the forms need a column: the subject of `in`, `between` or `is`, a literal alone, and the first literal of a comparison of two literals. A predicate with a reading diagnostic is not checked further. A predicate that reads completely then has its columns and types checked, and the first of these diagnostics in source order is reported: an unknown column, a column of a `cascade` or `set_null` foreign key and a `bytes` column at the column; a column that does not meet the other column of its comparison at the later column; a literal that is not a default of the column it meets at the literal; `<`, `<=`, `>`, `>=` or `between` with a `bool` operand at the operator; a column alone that is not `bool` at the column;
 - a line has at most one `syntax` diagnostic; a check expression reports only its first diagnostic; a malformed name in a reference reports `name.format` and is not resolved further; a reference to a column or table whose own line failed reports nothing more; a failed line keeps the kind that its first word gives and the name it would declare, reading a tab as a space only to learn them; a failed key or index line therefore still declares a key or index whose columns are unknown, so no rule that depends on them is reported: a failed `primary key` line hides the missing primary key and the identity rule of its table, and a failed `primary key`, `unique` or `index` line hides the leading-index rule of its table's foreign keys and the key-target rule of foreign keys that reference its table;
 - a header that is not the first line, including a comment or blank line before it, and a header line that is not exactly `dbspec`, a space, `1`, a space and a name (for example one with a tab) is a `header` error. Parsing reports every error of a document in source order, not only the first; an `encoding`, `header` or `limit` error stops parsing.
 
@@ -235,7 +253,7 @@ A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign key
 | `column` | A column combines `null`, `identity` and `default` in a way the rules reject, or a default does not fit its type |
 | `key` | A table has no primary key or more than one, a key column is nullable, or a key or index lists an unknown, repeated, `text` or `bytes` column, more than 16 columns, or more than 640 `varchar` characters |
 | `foreign_key` | A foreign key target, column types, index, arity or `set_null` nullability breaks the rules |
-| `check` | A check expression uses something outside the neutral set, an unknown column, or a column of a `cascade` or `set_null` foreign key |
+| `check` | A check predicate uses something outside the predicate forms, an unknown column, operands whose types do not meet, a literal outside its column's type, or a column of a `cascade` or `set_null` foreign key |
 | `setting` | A setting is unknown, repeats, names an unknown column, or its column type or companion settings are wrong |
 | `use` | A used document is not in the declared set, or a used table is not defined there |
 | `diagram` | A diagram names an unknown table, repeats a table, or has a coordinate that is not an integer |

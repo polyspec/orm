@@ -127,6 +127,9 @@ var ruleCases = []ruleCase{
 	{id: "check-set-null-on-update", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i64 null", "  primary key (id)", "  index ix_u (user_id)", "  foreign key fk_u (user_id) references users (id) on update set_null", "  check ck_u (user_id is not null or id > 0)", "}")), errors: errs(14, 15, RuleCheck)},
 	{id: "check-outside-neutral-set", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  check ck_a (id like 1)", "  check ck_b (id > -id)", "  check ck_c (id AND 1)", "  check ck_d (id in (id))", "  check ck_e ((id > 0)", "}")),
 		errors: errs(6, 18, RuleCheck, 7, 20, RuleCheck, 8, 18, RuleCheck, 9, 22, RuleCheck, 10, 22, RuleCheck)},
+	{id: "check-typed-operands", lines: with(block("table users {", "  id i64 identity", "  on bool", "  t0 time(0)", "  t3 time(3)", "  primary key (id)",
+		"  check ck_a (on between true and false)", "  check ck_b (t0 < t3)", "  check ck_c (1 is null)", "  check ck_d (id = 1 and on > false)", "}")),
+		errors: errs(9, 18, RuleCheck, 10, 20, RuleCheck, 11, 15, RuleCheck, 12, 29, RuleCheck)},
 
 	// settings
 	{id: "setting-repeats", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    entity user", "    entity person", "  }", "}")), errors: errs(8, 5, RuleSetting)},
@@ -254,10 +257,10 @@ func TestCanonicalForms(t *testing.T) {
 		{
 			id: "check-expressions",
 			input: with(block("table v {", "  id i64 identity", "  s varchar(8) null", "  n decimal(5,2)", "  primary key (id)",
-				"  check ck_b (s   not in('a','b''c') and(n between -01.50 and 2))", "  check ck_a (not(id>=0)or s is not null or n*2<>id-1)",
+				"  check ck_b (s   not in('a','b''c') and(n between -01.50 and 2))", "  check ck_a (not(id>=0)or s is not null or 2.5<>n)",
 				"  check ck_c (s is null)", "}")),
 			want: with(block("table v {", "  id i64 identity", "  s varchar(8) null", "  n decimal(5,2)", "  primary key (id)",
-				"  check ck_a (not (id >= 0) or s is not null or n * 2 <> id - 1)", "  check ck_b (s not in ('a', 'b''c') and (n between -1.50 and 2))",
+				"  check ck_a (not (id >= 0) or s is not null or 2.50 <> n)", "  check ck_b (s not in ('a', 'b''c') and (n between -1.50 and 2.00))",
 				"  check ck_c (s is null)", "}")),
 		},
 		{
