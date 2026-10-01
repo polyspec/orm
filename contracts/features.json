@@ -1637,7 +1637,8 @@
         "bench/go/gate_test.go",
         "bench/go/native_test.go",
         "clients/php/tests/perf_gate.php",
-        "clients/rust/tests/src/client_bench.rs"
+        "clients/rust/tests/src/client_bench.rs",
+        "clients/rust/tests/tests/client_bench_dsn.rs"
       ],
       "docs": [
         "docs/perf.md"
