@@ -173,7 +173,7 @@ impl<'s> Session<'s> {
             }
         }
         let used: Vec<Option<&Document>> = used.iter().map(|u| u.as_ref().map(|p| &p.document)).collect();
-        validate::validate(&parsed.document, &parsed.unresolved, &used, &mut diags);
+        validate::validate(&parsed.document, &parsed.unresolved, &parsed.failed_keys, &used, &mut diags);
         self.validating.pop();
         diags
     }

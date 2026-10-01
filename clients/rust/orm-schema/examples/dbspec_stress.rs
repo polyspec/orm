@@ -1,7 +1,9 @@
 //! Measures dbspec parse and emit of the shared stress document
 //! (`node tests/dbspec/stress.mjs`, 2000 tables, 60000 columns, 10000 foreign
-//! keys). Run in release mode: parse must finish within 300 ms, emission must
-//! reproduce the canonical document, and two emissions must be identical.
+//! keys). Run in release mode: the document is parsed five times and the
+//! median parse must finish within 300 ms (docs/dbspec.md, "Verification"),
+//! emission must reproduce the canonical document, and two emissions must be
+//! identical.
 //!
 //! Usage: `cargo run --release -p orm-schema --example dbspec_stress -- <document path>`
 
@@ -10,6 +12,7 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 const PARSE_BUDGET: Duration = Duration::from_millis(300);
+const PARSES: usize = 5;
 const RUN_DEADLINE: Duration = Duration::from_secs(10);
 
 fn main() -> ExitCode {
@@ -27,19 +30,28 @@ fn main() -> ExitCode {
         }
     };
     println!("STEP read {} bytes {} lines", text.len(), text.lines().count());
-    let parse_started = Instant::now();
-    let document = match orm_schema::dbspec::parse(&text, &BTreeMap::new()) {
-        Ok(document) => document,
-        Err(errors) => {
-            for error in errors.iter().take(20) {
-                eprintln!("{error}");
+    let mut parses = Vec::with_capacity(PARSES);
+    let mut parsed = None;
+    for _ in 0..PARSES {
+        let parse_started = Instant::now();
+        let document = match orm_schema::dbspec::parse(&text, &BTreeMap::new()) {
+            Ok(document) => document,
+            Err(errors) => {
+                for error in errors.iter().take(20) {
+                    eprintln!("{error}");
+                }
+                eprintln!("FAIL dbspec stress: {} diagnostics", errors.len());
+                return ExitCode::FAILURE;
             }
-            eprintln!("FAIL dbspec stress: {} diagnostics", errors.len());
-            return ExitCode::FAILURE;
-        }
-    };
-    let parse_time = parse_started.elapsed();
-    println!("STEP parse {:.3} ms", parse_time.as_secs_f64() * 1000.0);
+        };
+        parses.push(parse_started.elapsed());
+        parsed = Some(document);
+    }
+    let Some(document) = parsed else { unreachable!("PARSES is positive") };
+    parses.sort();
+    let parse_time = parses[PARSES / 2];
+    let ms = |d: Duration| d.as_secs_f64() * 1000.0;
+    println!("STEP parse min {:.3} median {:.3} max {:.3} ms", ms(parses[0]), ms(parse_time), ms(parses[PARSES - 1]));
     let emit_started = Instant::now();
     let emitted = orm_schema::dbspec::emit(&document);
     let emit_time = emit_started.elapsed();
@@ -47,7 +59,7 @@ fn main() -> ExitCode {
     let second = orm_schema::dbspec::emit(&document);
     let mut failed = false;
     if parse_time > PARSE_BUDGET {
-        eprintln!("FAIL dbspec stress: parse {parse_time:?} exceeds {PARSE_BUDGET:?}");
+        eprintln!("FAIL dbspec stress: median parse {parse_time:?} exceeds {PARSE_BUDGET:?}");
         failed = true;
     }
     if emitted != text {

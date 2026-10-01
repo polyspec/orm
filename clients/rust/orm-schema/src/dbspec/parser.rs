@@ -55,7 +55,19 @@ pub(crate) struct Diag {
 pub(crate) struct Parsed {
     pub document: Document,
     pub unresolved: Vec<Vec<String>>,
+    /// For each table, the key and index lines that failed.
+    pub failed_keys: Vec<FailedKeys>,
     pub diags: Vec<Diag>,
+}
+
+/// Key and index lines of a table that failed: their columns are unknown, so
+/// the rules that depend on them report nothing.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct FailedKeys {
+    /// A `primary key` line failed.
+    pub primary: bool,
+    /// A `primary key`, `unique` or `index` line failed.
+    pub any: bool,
 }
 
 /// A stopping error (`encoding`, `header` or `limit`) ends parsing with the
@@ -105,6 +117,7 @@ struct Parser {
     pending: Vec<String>,
     document: Document,
     unresolved: Vec<Vec<String>>,
+    failed_keys: Vec<FailedKeys>,
     context: Context,
     /// Depth of an unreadable block whose lines are skipped.
     skip: usize,
@@ -112,6 +125,7 @@ struct Parser {
     phase: u8,
     table: Option<Table>,
     table_unresolved: Vec<String>,
+    table_failed_keys: FailedKeys,
     /// Table line phase: 0 columns, 1 key, index, foreign key and check lines, 2 settings.
     table_phase: u8,
     /// The `{` of the open table, settings block and diagram.
@@ -171,11 +185,13 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
             trailing: Vec::new(),
         },
         unresolved: Vec::new(),
+        failed_keys: Vec::new(),
         context: Context::Top,
         skip: 0,
         phase: 0,
         table: None,
         table_unresolved: Vec::new(),
+        table_failed_keys: FailedKeys::default(),
         table_phase: 0,
         table_brace: None,
         settings_brace: None,
@@ -197,7 +213,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         }
     }
     parser.finish();
-    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, diags: parser.diags })
+    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, diags: parser.diags })
 }
 
 fn bare_cr(line: usize, column: usize) -> Diag {
@@ -359,8 +375,16 @@ impl Parser {
         if !check_line {
             if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid) {
                 self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
-                if matches!(self.context, Context::Table) && first.kind == Kind::Word && line_kind(first, tokens.get(1)).is_none() {
-                    self.table_unresolved.push(first.text.to_owned());
+                // The line keeps the kind and name that its words give.
+                let mut words = tokens.iter().filter(|t| t.kind != Kind::Invalid);
+                if let (Context::Table, Some(word)) = (&self.context, words.next()) {
+                    match line_kind(word, words.next()) {
+                        Some(LineKind::Primary) => self.fail_key(true),
+                        Some(LineKind::Unique | LineKind::Index) => self.fail_key(false),
+                        Some(_) => {}
+                        None if word.kind == Kind::Word => self.table_unresolved.push(word.text.to_owned()),
+                        None => {}
+                    }
                 }
                 if tokens.last().is_some_and(|t| t.is("{")) {
                     self.skip = 1;
@@ -467,6 +491,7 @@ impl Parser {
             closing: Vec::new(),
         });
         self.table_unresolved = Vec::new();
+        self.table_failed_keys = FailedKeys::default();
         self.table_phase = 0;
         self.context = Context::Table;
     }
@@ -482,6 +507,7 @@ impl Parser {
             }
             self.document.tables.push(table);
             self.unresolved.push(std::mem::take(&mut self.table_unresolved));
+            self.failed_keys.push(std::mem::take(&mut self.table_failed_keys));
         }
         self.context = Context::Top;
     }
@@ -759,41 +785,60 @@ impl Parser {
         }
     }
 
+    /// Knows a key or index line that failed, so the rules that depend on its columns report nothing.
+    fn fail_key(&mut self, primary: bool) {
+        self.table_failed_keys.primary |= primary;
+        self.table_failed_keys.any = true;
+    }
+
     fn primary_line(&mut self, cursor: &mut Cursor) {
+        if self.primary_key(cursor).is_none() {
+            self.fail_key(true);
+        }
+    }
+
+    fn primary_key(&mut self, cursor: &mut Cursor) -> Option<()> {
         let comments = self.comments();
         let pos = cursor.next().map_or(Pos::default(), |t| t.pos);
-        if self.expect(cursor, "key").is_none() {
-            return;
-        }
-        let Some(columns) = self.column_list(cursor, false) else { return };
-        if self.end(cursor).is_none() {
-            return;
-        }
+        self.expect(cursor, "key")?;
+        let columns = self.column_list(cursor, false)?;
+        self.end(cursor)?;
         let columns = columns.into_iter().map(|(n, _)| n).collect();
         self.table_mut().primary.push(PrimaryKey { comments, pos, columns });
+        Some(())
     }
 
     fn unique_line(&mut self, cursor: &mut Cursor) {
+        if self.unique(cursor).is_none() {
+            self.fail_key(false);
+        }
+    }
+
+    fn unique(&mut self, cursor: &mut Cursor) -> Option<()> {
         let comments = self.comments();
         cursor.next();
-        let Some(name) = self.name(cursor) else { return };
-        let Some(columns) = self.column_list(cursor, false) else { return };
-        if self.end(cursor).is_none() {
-            return;
-        }
+        let name = self.name(cursor)?;
+        let columns = self.column_list(cursor, false)?;
+        self.end(cursor)?;
         let columns = columns.into_iter().map(|(n, _)| n).collect();
         self.table_mut().uniques.push(Unique { comments, name, columns });
+        Some(())
     }
 
     fn index_line(&mut self, cursor: &mut Cursor) {
+        if self.index(cursor).is_none() {
+            self.fail_key(false);
+        }
+    }
+
+    fn index(&mut self, cursor: &mut Cursor) -> Option<()> {
         let comments = self.comments();
         cursor.next();
-        let Some(name) = self.name(cursor) else { return };
-        let Some(columns) = self.column_list(cursor, true) else { return };
-        if self.end(cursor).is_none() {
-            return;
-        }
+        let name = self.name(cursor)?;
+        let columns = self.column_list(cursor, true)?;
+        self.end(cursor)?;
         self.table_mut().indexes.push(Index { comments, name, columns });
+        Some(())
     }
 
     fn action(&mut self, cursor: &mut Cursor) -> Option<Action> {

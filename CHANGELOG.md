@@ -1,5 +1,11 @@
 # Changelog
 
+Implement dbspec parse, validation and canonical emit in the Rust client
+(T8.2.1): parse and emit pass all 50 shared cases, and the 2000-table
+stress document parses with a 29-31 ms median in release mode. The Rust
+symbol snapshot now matches the code, so interface-check passes for all
+four languages.
+
 Judge each client's dbspec parse budget on the median of five parses of
 the stress document, so a parse slowed by other load on the machine no
 longer fails the check while a slow parser still does (T8.2.4.2).
