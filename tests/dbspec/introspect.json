@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; reasons are not compared. docs/dialects.md \"Introspection\".",
+  "cases": [
+    {
+      "id": "mysql-unsupported",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `orders` ADD COLUMN `qty` int unsigned NOT NULL DEFAULT 0",
+        "ALTER TABLE `orders` ADD INDEX `ix_qty` (`qty`)",
+        "ALTER TABLE `orders` ADD COLUMN `doc` json NULL",
+        "ALTER TABLE `orders` ADD COLUMN `flag` tinyint(1) NOT NULL DEFAULT 0",
+        "ALTER TABLE `orders` ADD INDEX `ix_name_prefix` (`name`(10))",
+        "ALTER TABLE `orders` ADD INDEX `ix_name_expr` ((lower(`name`)))",
+        "ALTER TABLE `orders` ADD CONSTRAINT `ck_name` CHECK (char_length(`name`) > 0)",
+        "CREATE TABLE `loose` (`a` int)",
+        "CREATE TABLE `parts` (`id` bigint NOT NULL, PRIMARY KEY (`id`)) PARTITION BY HASH (`id`) PARTITIONS 2",
+        "CREATE VIEW `v_orders` AS SELECT `id` FROM `orders`",
+        "CREATE PROCEDURE `p_touch`() SELECT 1",
+        "CREATE EVENT `e_tick` ON SCHEDULE EVERY 1 DAY DISABLE DO SELECT 1",
+        "CREATE TRIGGER `orders_bi` BEFORE INSERT ON `orders` FOR EACH ROW SET NEW.`name` = NEW.`name`"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "event",
+          "",
+          "e_tick"
+        ],
+        [
+          "routine",
+          "",
+          "p_touch"
+        ],
+        [
+          "table",
+          "loose",
+          "loose"
+        ],
+        [
+          "check",
+          "orders",
+          "ck_name"
+        ],
+        [
+          "column",
+          "orders",
+          "doc"
+        ],
+        [
+          "column",
+          "orders",
+          "flag"
+        ],
+        [
+          "column",
+          "orders",
+          "qty"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_name_expr"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_name_prefix"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_qty"
+        ],
+        [
+          "trigger",
+          "orders",
+          "orders_bi"
+        ],
+        [
+          "partition",
+          "parts",
+          "parts"
+        ],
+        [
+          "view",
+          "v_orders",
+          "v_orders"
+        ]
+      ]
+    },
+    {
+      "id": "postgres-unsupported",
+      "dialect": "postgres",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE \"orders\" ADD COLUMN \"at\" timestamptz",
+        "ALTER TABLE \"orders\" ADD COLUMN \"code\" varchar(8)",
+        "ALTER TABLE \"orders\" ADD COLUMN \"n\" bigint GENERATED ALWAYS AS IDENTITY",
+        "CREATE INDEX \"ix_lower\" ON \"orders\" (lower(\"name\"))",
+        "CREATE INDEX \"ix_partial\" ON \"orders\" (\"name\") WHERE \"id\" > 0",
+        "CREATE UNIQUE INDEX \"ux_name\" ON \"orders\" (\"name\")",
+        "ALTER TABLE \"orders\" ADD CONSTRAINT \"ck_len\" CHECK (length(\"name\") > 0)",
+        "CREATE TABLE \"lines\" (\"id\" bigint NOT NULL, \"order_id\" bigint NOT NULL, PRIMARY KEY (\"id\"), CONSTRAINT \"fk_lines_order\" FOREIGN KEY (\"order_id\") REFERENCES \"orders\" (\"id\") DEFERRABLE INITIALLY DEFERRED)",
+        "CREATE INDEX \"ix_lines_order\" ON \"lines\" (\"order_id\")",
+        "CREATE SEQUENCE \"s_free\"",
+        "CREATE VIEW \"v_orders\" AS SELECT \"id\" FROM \"orders\"",
+        "CREATE FUNCTION \"f_noop\"() RETURNS integer LANGUAGE sql AS 'SELECT 1'",
+        "CREATE FUNCTION \"t_touch\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END$$",
+        "CREATE TRIGGER \"orders_bi\" BEFORE INSERT ON \"orders\" FOR EACH ROW EXECUTE FUNCTION \"t_touch\"()",
+        "CREATE TABLE \"events\" (\"id\" bigint NOT NULL, PRIMARY KEY (\"id\")) PARTITION BY RANGE (\"id\")",
+        "CREATE TABLE \"events_1\" PARTITION OF \"events\" FOR VALUES FROM (0) TO (100)"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table lines {",
+        "  id i64",
+        "  order_id i64",
+        "  primary key (id)",
+        "  index ix_lines_order (order_id)",
+        "}",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "routine",
+          "",
+          "f_noop"
+        ],
+        [
+          "sequence",
+          "",
+          "s_free"
+        ],
+        [
+          "partition",
+          "events",
+          "events"
+        ],
+        [
+          "partition",
+          "events_1",
+          "events_1"
+        ],
+        [
+          "foreign_key",
+          "lines",
+          "fk_lines_order"
+        ],
+        [
+          "check",
+          "orders",
+          "ck_len"
+        ],
+        [
+          "column",
+          "orders",
+          "at"
+        ],
+        [
+          "column",
+          "orders",
+          "code"
+        ],
+        [
+          "column",
+          "orders",
+          "n"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_lower"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_partial"
+        ],
+        [
+          "index",
+          "orders",
+          "ux_name"
+        ],
+        [
+          "trigger",
+          "orders",
+          "orders_bi"
+        ],
+        [
+          "view",
+          "v_orders",
+          "v_orders"
+        ]
+      ]
+    },
+    {
+      "id": "sqlite-unsupported",
+      "dialect": "sqlite",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  name varchar(64)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "CREATE TABLE \"kv\" (\"k\" TEXT NOT NULL, \"v\" TEXT, PRIMARY KEY (\"k\")) WITHOUT ROWID",
+        "ALTER TABLE \"orders\" ADD COLUMN \"w\" VARCHAR2(10)",
+        "ALTER TABLE \"orders\" ADD COLUMN \"g\" INTEGER GENERATED ALWAYS AS (\"id\" + 1) VIRTUAL",
+        "CREATE INDEX \"ix_lower\" ON \"orders\" (lower(\"name\"))",
+        "CREATE INDEX \"ix_partial\" ON \"orders\" (\"name\") WHERE \"id\" > 0",
+        "CREATE VIEW \"v_orders\" AS SELECT \"id\" FROM \"orders\"",
+        "CREATE TRIGGER \"orders_ai\" AFTER INSERT ON \"orders\" BEGIN SELECT 1; END",
+        "CREATE TABLE \"tags\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" TEXT NOT NULL, CONSTRAINT \"ck_label\" CHECK (length(\"label\") > 0))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  name varchar(64)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table tags {",
+        "  id i64 identity",
+        "  label text",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "table",
+          "kv",
+          "kv"
+        ],
+        [
+          "column",
+          "orders",
+          "g"
+        ],
+        [
+          "column",
+          "orders",
+          "w"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_lower"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_partial"
+        ],
+        [
+          "trigger",
+          "orders",
+          "orders_ai"
+        ],
+        [
+          "check",
+          "tags",
+          "ck_label"
+        ],
+        [
+          "view",
+          "v_orders",
+          "v_orders"
+        ]
+      ]
+    }
+  ]
+}

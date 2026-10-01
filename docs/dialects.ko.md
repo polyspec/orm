@@ -313,3 +313,62 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 - `immutable`: 거부하는 `BEFORE UPDATE`와 `BEFORE DELETE` row trigger.
 - `audit`: `AFTER INSERT` row trigger는 이력 table에 action `'insert'`, NULL 이전 operation, 모든 `NEW` column을 넣는다. `AFTER UPDATE` row trigger는 `'update'`, `OLD.<operation column>`, 모든 `NEW` column을 넣는다. `BEFORE DELETE` row trigger는 거부한다. insert는 action, previous, 감사 column 순으로 column을 적고 이력 key는 identity에 맡긴다.
 - MySQL trigger 본문은 statement 하나다. PostgreSQL function 본문은 `LANGUAGE plpgsql`의 `BEGIN … RETURN NULL; END`다(`BEFORE` 거부는 반환하지 않는다). SQLite 본문은 `BEGIN …; END`다.
+
+## Introspection
+
+introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤, introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 이유는 비교하지 않는다.
+
+### 문서
+
+- table은 이름 순, column은 catalog 위치 순, constraint와 index는 이름 순이다. 문서에는 diagram과 comment가 없다.
+- database에 렌더링되는 setting만 읽는다: trigger로 알아보는 `immutable`과 `audit`. manifest setting은 문서에만 있다. 동기화하는 도구는 비교하는 문서에서 이를 유지한다.
+
+### Type과 column
+
+| Catalog | MySQL `COLUMN_TYPE` | PostgreSQL `format_type` | SQLite 선언 type | dbspec |
+| --- | --- | --- | --- | --- |
+| 16, 32, 64-bit 정수 | `smallint`, `int`, `bigint` | `smallint`, `integer`, `bigint` | renderer CHECK가 있는 `smallint`, `integer`, `bigint` | `i16`, `i32`, `i64` |
+| boolean | renderer CHECK가 있는 `tinyint(1)` | `boolean` | renderer CHECK가 있는 `BOOLEAN` | `bool` |
+| decimal | `decimal(p,s)` | `numeric(p,s)` | renderer CHECK가 있는 `DECIMALINT(p,s)` | `decimal(p,s)` |
+| 실수 | `double` | `double precision` | renderer CHECK가 있는 `REAL` | `f64` |
+| 길이 제한 text | `utf8mb4_0900_bin`의 `varchar(n)` | collation `C`의 `character varying(n)` | renderer CHECK가 있는 `varchar(n)` | `varchar(n)` |
+| text | `utf8mb4_0900_bin`의 `longtext` | collation `C`의 `text` | CHECK 없는 `TEXT` | `text` |
+| bytes | `longblob` | `bytea` | `BLOB` | `bytes` |
+| uuid | renderer CHECK가 있는 `ascii_bin`의 `char(36)` | `uuid` | renderer CHECK가 있는 `TEXT` | `uuid` |
+| date | `date` | `date` | renderer CHECK가 있는 `DATE` | `date` |
+| 하루 중 시각 | renderer CHECK가 있는 `time`이나 `time(p)` | renderer CHECK가 있는 `time(p) without time zone` | p 하나의 renderer CHECK가 있는 `TIME` | `time(p)` |
+| date-time | `datetime`이나 `datetime(p)` | `timestamp(p) without time zone` | p 하나의 renderer CHECK가 있는 `DATETIME` | `datetime(p)` |
+
+MySQL은 precision 0을 괄호 없이 쓴다(`time`, `datetime`). type, collation, character set이 이 표에 없는 column, renderer CHECK 없는 MySQL `tinyint(1)`, `char(36)`, `time` column, CHECK가 어떤 dbspec type의 renderer 출력도 아닌 SQLite column은 미지원으로 보고한다.
+
+- **Null.** `IS_NULLABLE`, `attnotnull`, `pragma_table_xinfo.notnull`이 `null`을 준다.
+- **Identity.** MySQL `EXTRA` `auto_increment`, PostgreSQL `attidentity` `d`, SQLite `INTEGER PRIMARY KEY AUTOINCREMENT`인 단일 column `bigint` primary key는 `identity`다. PostgreSQL `attidentity` `a`(`ALWAYS`)는 미지원이다.
+- **Default.** literal default는 column의 canonical default 형식으로 읽는다. MySQL `COLUMN_DEFAULT`는 escape를 푼 값(문자열, 숫자, `bool`이면 `1`이나 `0`)이다. PostgreSQL `pg_get_expr`는 `'-5'::integer`, `'a''b'::character varying`, `'2026-01-01'::date`처럼 cast를 가진 literal을 주며 cast를 뗀다. SQLite `dflt_value`는 렌더링한 literal이며 decimal은 scale을 곱한 정수다. 시각 default는 renderer 출력과 같을 때 `default now`다: `DEFAULT_GENERATED`인 MySQL `CURRENT_TIMESTAMP`나 `CURRENT_TIMESTAMP(p)`, PostgreSQL `statement_timestamp()`, 그 precision의 SQLite `strftime` 식. 그 밖의 식은 미지원이다.
+
+### Key, index, foreign key
+
+- primary key는 column 순서를 유지한다. MySQL `UNIQUE` index, PostgreSQL `UNIQUE` constraint, origin이 `c`인 SQLite unique index는 unique key이고, 그 밖의 index는 index이며 `DESC`는 `COLLATION`, `indoption`, `pragma_index_xinfo.desc`에서 읽는다.
+- prefix, partial, expression, full-text index, constraint 없는 PostgreSQL unique index, primary key가 아닌 SQLite `sqlite_autoindex`, 이름에 `$`가 있는 index는 미지원이다.
+- foreign key는 이름, column, 참조 table과 column, 두 action을 읽는다. `NO ACTION`, `SET DEFAULT`, deferrable key, `MATCH FULL`은 미지원이다. SQLite foreign key 이름은 `sqlite_master`의 `CREATE TABLE` text에서 온다.
+
+### Check
+
+`<table>$<column>` 이름의 check는 renderer CHECK다. column type에 대한 renderer 출력의 catalog 형식과 같아야 한다: `bool`은 MySQL `` (`c` in (0,1)) ``, `uuid`는 `` regexp_like(`c`,_utf8mb4\'^…$\',_utf8mb4\'c\') ``, `time(p)`는 `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) ``, PostgreSQL은 column 이름을 `quote_ident`가 쓰는 대로 쓴 `CHECK ((c < '24:00:00'::time without time zone))`, SQLite는 렌더링한 text 그대로다. 다른 renderer CHECK와 renderer CHECK가 아닌 `$` 이름은 미지원이다.
+
+그 밖의 check는 [dbspec](dbspec.md#checks)의 predicate로 읽어 canonical form으로 쓴다.
+
+- **MySQL** `CHECK_CLAUSE`: 모두 괄호로 감싸고, keyword는 소문자, column은 backquote, `in (a,b)`는 공백 없음, 음수는 `-(n)`, 문자열은 `_utf8mb4`와 MySQL 문자열 literal이며 그 text는 한 번 더 escape된다(clause 안의 `\'`와 `\\`).
+- **PostgreSQL** `pg_get_constraintdef`: 모두 괄호로 감싼 식을 `CHECK (…)`가 감싸고, column은 `quote_ident`가 필요할 때만 따옴표를 쓰며, literal과 column에 cast가 붙고(`'x'::text`, `(s)::text`, `'-1.50'::numeric`, `(1.5)::double precision`), `in`은 `= ANY (ARRAY[…])`, `not in`은 `<> ALL (ARRAY[…])`이고, time과 date-time literal은 끝의 0 소수를 뺀다.
+- **SQLite**: `CREATE TABLE` statement의 `CHECK (…)` 안 text이며 렌더링한 text다. decimal literal은 scale을 곱한 정수다.
+
+literal은 만나는 column의 값으로 읽어 canonical default 형식으로 쓴다. 그래서 `datetime(6)` column의 `'2100-01-01 00:00:00'`은 `'2100-01-01 00:00:00.000000'`, `bool` column의 `1`은 `true`가 된다. predicate로 읽히지 않거나 dbspec 규칙을 어기는 check는 미지원이다.
+
+### Trigger
+
+`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
+
+### 미지원 객체
+
+미지원 객체마다 kind, 있으면 table과 이름, 이유를 보고하며 문서에서는 뺀다. 목록은 table, kind, 이름 순이고 table이 없는 객체가 먼저 온다. kind는 `column`, `index`, `unique`, `foreign_key`, `check`, `trigger`(parse되지 않는 `immutable`이나 `audit` setting마다 하나), `view`, `routine`, `sequence`, `event`, `partition`(MySQL이나 PostgreSQL의 partitioned table과 PostgreSQL partition), `table`(SQLite `WITHOUT ROWID`나 virtual table, primary key가 없는 table)이다.
+
+빠진 객체를 참조하는 객체도 보고하고 뺀다. 미지원 column 위의 index나 key, 빠진 table로 가는 foreign key, 미지원 column을 쓰는 check가 그렇다. introspect한 문서는 parse되며, parse가 거부한 줄의 객체는 그 diagnostic을 이유로 보고되고 빠진다. 문서가 parse될 때까지 반복한다.
