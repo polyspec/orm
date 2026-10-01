@@ -87,7 +87,13 @@
 - [ ] T8.6.4 TypeScript client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
 - [ ] T8.6.5 Rust client에서 plan을 적용하고 복구한다 (T8.6.1 필요).
 - [ ] T8.6.6 다른 client가 적용한 chain을 모든 client 쌍에서 이어 적용한다 (T8.6.2-T8.6.5 필요).
-- [ ] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
+- [~] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
+- [o] T8.7.1 Mermaid export와 import를 docs/mermaid.md와 Korean pair에 정하고 tests/dbspec/mermaid.json의 공유 case를 둔다 (T8.2 필요). Evidence: docs/mermaid.md와 docs/mermaid.ko.md는 export 형식(decimal(p-s) type, PK/FK/UK key, column 뒷부분 comment, relationship 줄과 label)과 export가 빼는 것, import 문법과 import가 옮기는 것, 보고 kind를 정한다. tests/dbspec/mermaid.json은 export case 1개, import case 2개(다시 읽은 export와 다른 도구의 diagram), invalid case 4개를 둔다. docs-rules-check가 24쌍을 통과한다.
+- [o] T8.7.2 Go engine에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요). Evidence: engine/dbspec/mermaid.go의 `ExportMermaid`와 `ImportMermaid`. 이것 없이 test는 build되지 않았다(`undefined: ExportMermaid`). `make dbspec-go-check`는 tests/dbspec/mermaid.json의 export, import, invalid case를 통과한다. schema/bench.dbspec을 export하고 다시 import하면 table, column, key, foreign key가 되살아나고 export가 뺀 객체 16개를 보고한다.
+- [ ] T8.7.3 PHP client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
+- [ ] T8.7.4 TypeScript client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
+- [ ] T8.7.5 Rust client에서 Mermaid diagram을 export하고 import한다 (T8.7.1 필요).
+- [ ] T8.7.6 `make dbspec-compare-check`에서 네 client의 Mermaid 결과를 비교한다 (T8.7.2-T8.7.5 필요).
 - [ ] T8.8 `feat/dbspec-T8`을 `main`에 merge하고 worktree를 제거한다(T8.0–T8.7 선행). 완료 기준: 낡은 개발 규칙(`auto`, `COLUMN_UNSELECTED`, Mermaid가 source라는 규칙, full suite 실행 시점)을 다시 쓴다.
 - [ ] T9 dbspec 인터페이스를 PHP 확장으로, 같은 contract의 다섯 번째 구현으로 만든다(T8.2.5 선행). 원인: native PHP 확장을 계획한다. 다른 client처럼 `Dbspec.parse`, `Dbspec.emit`, `DbspecDiagnostic`과 모든 공유 case를 만족해야 한다.
 - [ ] T10 package의 Cargo manifest가 하나인 ordered-json revision에 의존한다. 원인: clients/rust의 모든 cargo 명령이 "skipping duplicate package `ordered-json`"을 경고한다. clients/rust/orm/Cargo.toml의 ordered-json revision과 ordered-json main 모두 Cargo.toml(library rust/src/lib.rs)과 rust/Cargo.toml에서 같은 package를 정의하고, cargo는 앞의 것을 쓰고 뒤의 것을 건너뛴다. 완료 조건: ordered-json이 package의 manifest를 하나만 두고, clients/rust/orm/Cargo.toml이 그 revision을 고정하며, clients/rust의 cargo test가 duplicate package 경고를 출력하지 않는다.

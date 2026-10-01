@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.7.2: the Go engine exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.7.1: docs/mermaid.md specifies standard Mermaid export and import with the list of what each leaves out.
+
 - T17: the Rust client benchmark `client_bench` fails and names `ORM_BENCH_MYSQL_DSN` when the variable is unset or empty instead of connecting to a built-in local socket.
 
 - T12: `make ts-model-check` fails when the TypeScript models script scans a source that does not call models or misses one that does, or when the committed models.ts differs from its output; the script scans only the 8 sources that call models.

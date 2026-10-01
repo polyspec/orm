@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.7.2: Go engine은 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
+
+- T8.7.1: docs/mermaid.md가 표준 Mermaid export와 import, 그리고 각각 빼는 것의 목록을 정한다.
+
 - T17: Rust client benchmark `client_bench`는 `ORM_BENCH_MYSQL_DSN`이 없거나 비어 있으면 내장 local socket에 연결하지 않고 그 변수 이름을 출력하며 실패한다.
 
 - T12: `make ts-model-check`는 TypeScript models script가 model을 호출하지 않는 source를 scan하거나 호출하는 source를 빠뜨릴 때, 또는 commit된 models.ts가 그 출력과 다를 때 실패한다. script는 model을 호출하는 8개 source만 scan한다.

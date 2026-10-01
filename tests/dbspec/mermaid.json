@@ -1,0 +1,282 @@
+{
+  "version": 1,
+  "note": "export cases write the Mermaid lines and the dropped objects [kind, table, name] of their document; import cases read their Mermaid lines into the document named imported and the dropped objects; invalid cases report exactly the listed [rule, line, column] diagnostics. Lines join with LF and end with one. docs/mermaid.md.",
+  "export": [
+    {
+      "document": [
+        "dbspec 1 shop",
+        "",
+        "# accounts",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  note varchar(32) null default 'say \"hi\"'",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "  settings {",
+        "    immutable",
+        "  }",
+        "}",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64 null",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete set_null on update restrict",
+        "}"
+      ],
+      "dropped": [
+        [
+          "foreign_key",
+          "orders",
+          "fk_orders_user"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_orders_user"
+        ],
+        [
+          "check",
+          "users",
+          "ck_users_age"
+        ],
+        [
+          "comment",
+          "users",
+          "users"
+        ],
+        [
+          "default",
+          "users",
+          "note"
+        ],
+        [
+          "settings",
+          "users",
+          "users"
+        ],
+        [
+          "unique",
+          "users",
+          "uq_users_mail"
+        ]
+      ],
+      "id": "shop",
+      "mermaid": [
+        "erDiagram",
+        "    orders {",
+        "        i64 id PK \"identity\"",
+        "        i64 user_id FK \"null\"",
+        "        decimal(10-2) total \"default 0.00\"",
+        "    }",
+        "    users {",
+        "        i64 id PK \"identity\"",
+        "        varchar(64) mail UK",
+        "        i32 age \"null\"",
+        "        varchar(32) note \"null\"",
+        "    }",
+        "    users |o--o{ orders : \"fk_orders_user (user_id) references (id)\""
+      ]
+    }
+  ],
+  "import": [
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64 null",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user_id (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  note varchar(32) null",
+        "  primary key (id)",
+        "}"
+      ],
+      "dropped": [
+        [
+          "index",
+          "orders",
+          "ix_orders_user_id"
+        ],
+        [
+          "unique",
+          "users",
+          "mail"
+        ]
+      ],
+      "id": "export-shop",
+      "mermaid": [
+        "erDiagram",
+        "    orders {",
+        "        i64 id PK \"identity\"",
+        "        i64 user_id FK \"null\"",
+        "        decimal(10-2) total \"default 0.00\"",
+        "    }",
+        "    users {",
+        "        i64 id PK \"identity\"",
+        "        varchar(64) mail UK",
+        "        i32 age \"null\"",
+        "        varchar(32) note \"null\"",
+        "    }",
+        "    users |o--o{ orders : \"fk_orders_user (user_id) references (id)\""
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table customer {",
+        "  id i64 identity",
+        "  code varchar(32)",
+        "  note text",
+        "  ref i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table order_line {",
+        "  id i64",
+        "  customer_id i64",
+        "  price decimal(8,2) default 1.50",
+        "  primary key (id)",
+        "  index ix_order_line_customer_id (customer_id)",
+        "  foreign key fk_line_customer (customer_id) references customer (id) on delete restrict on update restrict",
+        "}"
+      ],
+      "dropped": [
+        [
+          "table",
+          "CUSTOMER",
+          "CUSTOMER"
+        ],
+        [
+          "comment",
+          "customer",
+          "note"
+        ],
+        [
+          "foreign_key",
+          "customer",
+          "ref"
+        ],
+        [
+          "relationship",
+          "customer",
+          "mirrors"
+        ],
+        [
+          "unique",
+          "customer",
+          "code"
+        ],
+        [
+          "index",
+          "order_line",
+          "ix_order_line_customer_id"
+        ],
+        [
+          "relationship",
+          "order_line",
+          "places"
+        ]
+      ],
+      "id": "foreign-diagram",
+      "mermaid": [
+        "erDiagram",
+        "    %% a diagram from another tool",
+        "    CUSTOMER {",
+        "        string name",
+        "        int id PK",
+        "    }",
+        "    customer {",
+        "        i64 id PK \"identity\"",
+        "        varchar(32) code UK",
+        "        text note \"free text\"",
+        "        i64 ref FK",
+        "    }",
+        "    order_line {",
+        "        i64 id PK",
+        "        i64 customer_id FK",
+        "        decimal(8-2) price \"default 1.50\"",
+        "    }",
+        "    customer ||--o{ order_line : places",
+        "    order_line }o--|| customer : \"fk_line_customer (customer_id) references (id)\"",
+        "    customer ||--|| CUSTOMER : mirrors"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "errors": [
+        [
+          "mermaid",
+          1,
+          1
+        ]
+      ],
+      "id": "no-header",
+      "mermaid": [
+        "    a {",
+        "    }"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          3,
+          1
+        ]
+      ],
+      "id": "bad-attribute",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64",
+        "    }"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          3,
+          1
+        ]
+      ],
+      "id": "unclosed-block",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          2,
+          1
+        ]
+      ],
+      "id": "unknown-line",
+      "mermaid": [
+        "erDiagram",
+        "    a -> b"
+      ]
+    }
+  ]
+}
