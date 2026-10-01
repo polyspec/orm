@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.7: 모든 client는 세 dialect에서 insert가 identity column을, update와 duplicate update가 primary key나 identity column을 쓰지 못하는지 검사한다.
+
 - T8.0.6: 렌더링한 `immutable`과 `audit` guard는 row trigger이며, 공유 DDL step은 어떤 행과도 맞지 않는 `UPDATE`나 `DELETE`가 MySQL, PostgreSQL, SQLite에서 성공하는지 검사한다.
 
 - T8.0.5: 공유 case는 모든 client가 `cascade` 또는 `set_null` foreign key의 child에서 `immutable`과 `audit`을 거부하는지 검사한다.

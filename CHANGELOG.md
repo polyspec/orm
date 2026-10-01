@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.7: Every client asserts on the three dialects that an insert cannot write the identity column and an update or duplicate update cannot write a primary key or identity column.
+
 - T8.0.6: The rendered `immutable` and `audit` guards are row triggers, and a shared DDL step asserts that an `UPDATE` or `DELETE` matching no row succeeds on MySQL, PostgreSQL and SQLite.
 
 - T8.0.5: Shared cases assert that `immutable` and `audit` are rejected on a child of a `cascade` or `set_null` foreign key in every client.

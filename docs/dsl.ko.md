@@ -256,6 +256,7 @@ rows, err := model.Product().Connect(slave1).
 
 쓰기가 성공하면 속성 변경 기록을 비운다.
 
+- `create()`와 `creates()`는 identity column 값을, `update()`와 `duplication` 모델의 변경은 primary key나 identity column 값을 statement 실행 전에 `IR_INVALID`로 거부한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않아 다음 생성 key가 충돌하므로, identity key는 모두 database가 만든다.
 - `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
 - Go와 Rust는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 Go의 `any`, Rust의 공통 값 타입이다.
