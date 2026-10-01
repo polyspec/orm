@@ -359,6 +359,10 @@ func mysqlProbes() []Probe {
 			e.Exec("ALTER TABLE t ADD INDEX ix (t)")
 			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\',_utf8mb4\\'c\\'),(`t` < \\'24:00:00\\')")
 		}),
+		p("check.alter_writes_time_precision", "ALTER TABLE writes a time literal that meets a time(p) column with p fraction digits", func(e *Env) {
+			e.Exec("CREATE TABLE t (a time(3), CONSTRAINT ck CHECK (a < '24:00:00'))", "ALTER TABLE t ADD INDEX ix (a)")
+			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(`a` < \\'24:00:00.000\\')")
+		}),
 		p("check.fk_action_column_rejected", "a column of a foreign key with a referential action cannot appear in a CHECK (3823)", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (pid int, CONSTRAINT fk FOREIGN KEY (pid) REFERENCES p (id) ON DELETE SET NULL, CONSTRAINT ck CHECK (pid > 0))", "3823")

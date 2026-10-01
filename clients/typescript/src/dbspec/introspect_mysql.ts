@@ -187,7 +187,9 @@ function mysqlType(columnType: string, charset: string, collation: string): { ty
  * 의미가 같다.
  */
 function withoutIntroducers(clause: string): string {
-  return clause.replace(/_[a-z0-9]+\\'/g, "\\'");
+  // ALTER TABLE은 time(p) column과 만나는 time literal에 0으로 된 p 자리 소수도 붙이므로
+  // (probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
+  return clause.replace(/_[a-z0-9]+\\'/g, "\\'").replace(/\\'(\d\d:\d\d:\d\d)\.0+\\'/g, "\\'$1\\'");
 }
 
 /** renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md "Introspection", "Checks"). */

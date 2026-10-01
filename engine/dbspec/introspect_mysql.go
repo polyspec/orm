@@ -266,12 +266,17 @@ func mysqlRendererCheck(col icolumn) string {
 // mysqlIntroducer는 CHECK_CLAUSE의 문자열 literal 앞 character set introducer다.
 var mysqlIntroducer = regexp.MustCompile(`_[a-z0-9]+\\'`)
 
+// mysqlTimeFraction은 CHECK_CLAUSE의 time literal 뒤 0뿐인 소수 자리다.
+var mysqlTimeFraction = regexp.MustCompile(`\\'(\d\d:\d\d:\d\d)\.0+\\'`)
+
 // withoutIntroducers는 character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은
 // CHECK_CLAUSE를 다시 쓰며 introducer를 바꾸거나 빼므로(probe
 // mysql.check.alter_rewrites_introducers) renderer CHECK은 introducer 없이
-// 비교한다. 이 template의 literal은 ASCII이므로 의미가 같다.
+// 비교한다. 같은 다시 쓰기는 time(p) column과 만나는 time literal에 0으로 된 p
+// 자리 소수를 붙이므로(probe mysql.check.alter_writes_time_precision) 그 소수도
+// 뺀다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 의미가 같다.
 func withoutIntroducers(clause string) string {
-	return mysqlIntroducer.ReplaceAllString(clause, `\'`)
+	return mysqlTimeFraction.ReplaceAllString(mysqlIntroducer.ReplaceAllString(clause, `\'`), `\'$1\'`)
 }
 
 // mysqlNow는 DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지

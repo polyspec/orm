@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.2.4: MySQL introspection recognizes the time CHECK of a `time(p)` column after `ALTER TABLE` writes its literals with zero fractions.
+
 - T8.2.6.1.2: `schemaHash` is taken over one document `schema` with the tables of the set in name order, so it changes only when a table changes.
 
 - T8.4: MySQL, PostgreSQL and SQLite introspect into dbspec in every client.
