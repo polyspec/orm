@@ -91,4 +91,6 @@ apply는 일어난 일을 event로 알린다: plan이 시작할 때 statement �
 
 ## 검증
 
-`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-apply-check`는 history, lock, drift, 검증, recovery와 함께 chain을 세 database에 적용한다. `make dbspec-ts-check`와 `make dbspec-plan-ts-check`는 TypeScript client의 `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planStatements`로 같은 일을 한다.
+`make dbspec-go-check`는 `tests/dbspec/plans.json`의 case를 Go engine으로 실행한다. `make dbspec-plan-check`는 모든 case를 MySQL, PostgreSQL, SQLite에 적용한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다. `make dbspec-apply-check`는 history, lock, drift, 검증, recovery와 함께 chain을 세 database에 적용한다. `make dbspec-ts-check`와 `make dbspec-plan-ts-check`는 TypeScript client의 `parsePlan`, `emitPlan`, `chainPlans`, `diffPlan`, `planStatements`로 같은 일을 한다. source를 렌더링하고, `before` step을 실행하고, statement를 적용하고, `after` step을 실행한 뒤, introspect한 schema text가 plan의 target과 같기를 요구한다.
+
+`make dbspec-rust-check`는 같은 case를 Rust client로 실행하고, `make dbspec-plan-rust-check`는 Rust renderer, plan statement, introspection으로 적용한다.

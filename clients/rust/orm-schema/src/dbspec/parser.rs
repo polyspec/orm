@@ -37,10 +37,12 @@ pub(crate) fn name_problem(text: &str) -> Option<(&'static str, String)> {
 
 fn name_format(text: &str) -> bool {
     let bytes = text.as_bytes();
-    !bytes.is_empty()
-        && bytes[0].is_ascii_lowercase()
-        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_')
-        && !RESERVED.contains(&text)
+    !bytes.is_empty() && bytes[0].is_ascii_lowercase() && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'_') && !reserved(text)
+}
+
+/// A reserved word, which is not a valid name.
+pub(crate) fn reserved(text: &str) -> bool {
+    RESERVED.contains(&text)
 }
 
 pub(crate) const CODEC_STAGES: [&str; 8] = ["ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"];

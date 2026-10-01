@@ -200,7 +200,7 @@ fn setting_text(setting: &Setting) -> String {
     }
 }
 
-fn emit_expr(out: &mut String, expr: &Expr) {
+pub(crate) fn emit_expr(out: &mut String, expr: &Expr) {
     match expr {
         Expr::Logic(left, op, right) => {
             emit_side(out, op, left);
