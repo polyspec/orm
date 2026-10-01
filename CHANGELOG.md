@@ -1,5 +1,13 @@
 # Changelog
 
+Write the client clock with microseconds in every client (N10). The
+TypeScript client read its clock from `Date`, so the SQLite `now` bind
+slot stored `.mmm000`. It now adds the microseconds of the monotonic
+clock, anchored to the wall clock, and moves the anchor when the two
+clocks differ by more than one millisecond. The protocol states the rule
+of the `now` slot for all clients. The `clock_microseconds` case passes
+in Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
 Load the generated PHP models of several schemas in one process (N3.1).
 Each generated model class carries its schema hash, and a connection keeps
 one engine per registered schema: the schema it opened with and every
