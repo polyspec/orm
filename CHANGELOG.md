@@ -1,5 +1,9 @@
 # Changelog
 
+Point a dbspec `header` error at the first character that departs from
+`dbspec 1 <name>` in every client, and reject double spaces in the
+TypeScript header (T8.1.3). Seven shared cases lock the positions.
+
 Implement dbspec parse, validation and canonical emit in the Rust client
 (T8.2.1): parse and emit pass all 50 shared cases, and the 2000-table
 stress document parses with a 29-31 ms median in release mode. The Rust

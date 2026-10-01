@@ -265,30 +265,23 @@ final class Parser
         }
     }
 
+    /**
+     * The header error points at the first character that departs from
+     * `dbspec 1 <name>`, or one past the line end when a part is missing.
+     * Everything before it is ASCII, so its byte offset is its column.
+     */
     private function header(): void
     {
+        $prefix = 'dbspec 1 ';
+        $same = strspn($this->text ^ $prefix, "\0");
+        if ($same < strlen($prefix)) {
+            $this->stop('header', 1, min($same, strlen($this->text)) + 1, 'the first line is exactly `dbspec 1 <document>`');
+        }
+        $end = strlen($prefix) + strspn($this->text, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_', strlen($prefix));
+        if ($end === strlen($prefix) || $end < strlen($this->text)) {
+            $this->stop('header', 1, $end + 1, 'the first line is exactly `dbspec 1 <document>`');
+        }
         $t = $this->tokens;
-        $end = $this->endColumn();
-        if (($t[0][0] ?? null) !== 'dbspec' || $t[0][1] !== 1) {
-            $this->stop('header', 1, 1, 'the first line is not `dbspec 1 <document>`');
-        }
-        if (!isset($t[1])) {
-            $this->stop('header', 1, $end, 'the header has no language version');
-        }
-        if ($t[1][0] !== '1') {
-            $this->stop('header', 1, $t[1][1], "the language version is `{$t[1][0]}`, not 1");
-        }
-        if (!isset($t[2]) || !self::isWord($t[2][0])) {
-            $this->stop('header', 1, $t[2][1] ?? $end, 'the header has no document name');
-        }
-        if (isset($t[3])) {
-            $this->stop('header', 1, $t[3][1], 'the header ends after the document name');
-        }
-        $exact = 'dbspec 1 ' . $t[2][0];
-        if ($this->text !== $exact) {
-            $differs = strspn($this->text ^ $exact, "\0");
-            $this->stop('header', 1, $differs + 1, 'the header is exactly `dbspec 1 <document>` with single spaces');
-        }
         $this->name($t[2]);
         $this->document = new Document($t[2][0]);
     }

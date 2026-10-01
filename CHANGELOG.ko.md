@@ -1,5 +1,9 @@
 # 변경 이력
 
+모든 client에서 dbspec `header` error의 위치를 `dbspec 1 <name>`에서
+처음 벗어나는 문자로 정하고, TypeScript header의 이중 공백을 거부한다
+(T8.1.3). 공유 case 7개가 이 위치를 고정한다.
+
 Rust client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.1).
 parse와 emit이 공유 case 50개를 통과하고, 2000-table 부하 문서를 release
 mode에서 median 29-31 ms에 parse한다. Rust symbol snapshot이 이제 code와

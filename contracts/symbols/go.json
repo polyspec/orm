@@ -2528,6 +2528,7 @@
   "engine/dbspec/parse.go::foreignKeyNode#field.references": "[]token",
   "engine/dbspec/parse.go::foreignKeyNode#field.target": "token",
   "engine/dbspec/parse.go::foreignKeyNode.propagates": "receiver=*foreignKeyNode func() bool",
+  "engine/dbspec/parse.go::isHeaderNameRune": "func(r rune) bool",
   "engine/dbspec/parse.go::keyNode": "type keyNode struct { comments []string keyword token name token columns []token descending []bool }",
   "engine/dbspec/parse.go::keyNode#field.columns": "[]token",
   "engine/dbspec/parse.go::keyNode#field.comments": "[]string",

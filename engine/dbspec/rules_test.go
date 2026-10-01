@@ -52,7 +52,7 @@ var ruleCases = []ruleCase{
 	// header, encoding, limit
 	{id: "empty-document", lines: nil, errors: errs(1, 1, RuleHeader)},
 	{id: "header-version", lines: []string{"dbspec 2 shop"}, errors: errs(1, 8, RuleHeader)},
-	{id: "header-extra-token", lines: []string{"dbspec 1 shop extra"}, errors: errs(1, 15, RuleHeader)},
+	{id: "header-extra-token", lines: []string{"dbspec 1 shop extra"}, errors: errs(1, 14, RuleHeader)},
 	{id: "header-missing-name", lines: []string{"dbspec 1"}, errors: errs(1, 9, RuleHeader)},
 	{id: "header-name-format", lines: []string{"dbspec 1 Shop"}, errors: errs(1, 10, RuleNameFormat)},
 	{id: "header-stops-parsing", lines: []string{"dbspec 1", "table Users {", "}"}, errors: errs(1, 9, RuleHeader)},

@@ -2287,6 +2287,153 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "header-extra-word",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop extra",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 14,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-double-space",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1  shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-tab",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec\t1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 7,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-version",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 2 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 8,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-missing-name",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 9,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-leading-space",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          " dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-double-space-before-version",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec  1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 8,
+          "rule": "header"
+        }
+      ]
     }
   ]
 }
