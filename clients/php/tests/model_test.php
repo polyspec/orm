@@ -333,6 +333,22 @@ $tests['styled value states'] = function (Db $db, string $dsn): void {
     }
 };
 
+// ip, gz, base64 codec column은 저장한 값을 읽고, ip column은 같음으로 찾는다.
+$tests['codec columns'] = function (Db $db, string $dsn): void {
+    $f = seed($db);
+    $seq = $f['authors'][0]->getSeq();
+    (new Author)($db)->getBySeq($seq)->setIp('10.0.0.1')->setGzExtend(StyledValue::value('compressed text'))
+        ->setBase64Extra(StyledValue::value('plain'))->update();
+    $row = (new Author)($db)->addAllColumns()->getBySeq($seq);
+    check($row->getIp() === '10.0.0.1', 'ip ' . var_export($row->getIp(), true));
+    check($row->getGzExtend()->payload() === 'compressed text', 'gz styled value');
+    check($row->getBase64Extra()->payload() === 'plain', 'base64 styled value');
+    check((new Author)($db)->ip('10.0.0.1')->getCount() === 1, 'ip condition');
+    check((new Author)($db)->addAllColumns()->getBySeq($f['authors'][1]->getSeq())->getGzExtend()->kind === 'sql-null', 'gz SQL NULL');
+    $stored = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = ' . $seq)->fetchColumn();
+    check($stored === base64_encode('plain'), 'base64 storage');
+};
+
 $tests['transactions'] = function (Db $db, string $dsn): void {
     $boom = new RuntimeException('boom');
     try {
