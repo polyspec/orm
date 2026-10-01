@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.2.2: MySQL introspection recognizes renderer CHECKs after `ALTER TABLE` rewrites their character set introducers, in the four clients.
+
 - T8.4.2.1: introspection reports each unsupported object once, leaves the objects of a rejected table out with it, and reads only renderer-form SQLite table items, in Go, PHP, TypeScript and Rust.
 
 - T8.4.5: the Rust client introspects MySQL, PostgreSQL and SQLite into a dbspec document: `orm::dbspec::introspect` runs the catalog queries of `orm_schema::dbspec` on a sqlx connection and returns the document and the unsupported objects; `make dbspec-introspect-rust-check` runs the round trips and the unsupported cases.

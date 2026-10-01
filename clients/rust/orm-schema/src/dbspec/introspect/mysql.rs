@@ -113,7 +113,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         }
         if let Some((owner, column)) = name.split_once('$') {
             let known = columns.get(&table).and_then(|cols| cols.get(column));
-            if owner != table || known.is_none_or(|typ| clause != renderer_check(column, *typ)) {
+            if owner != table || known.is_none_or(|typ| without_introducers(&clause) != without_introducers(&renderer_check(column, *typ))) {
                 c.report("check", &table, &name, format!("the check {clause} is not the renderer CHECK"));
                 continue;
             }
@@ -175,6 +175,16 @@ fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Option<(Type
         "datetime" => plain(Type::DateTime(precision()?), true),
         _ => None,
     }
+}
+
+static INTRODUCER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"_[a-z0-9]+\\'").expect("MySQL introducer pattern"));
+
+/// character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를 다시
+/// 쓰며 introducer를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
+/// renderer CHECK은 introducer 없이 비교한다. 이 template의 literal은 ASCII이므로
+/// 의미가 같다.
+fn without_introducers(clause: &str) -> String {
+    INTRODUCER.replace_all(clause, r"\'").into_owned()
 }
 
 /// renderer CHECK이 CHECK_CLAUSE에 남는 형식 (docs/dialects.md "Introspection",

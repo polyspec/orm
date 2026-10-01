@@ -785,6 +785,7 @@
   "clients/rust/orm-schema/src/dbspec/introspect/mysql.rs::read_indexes": " fn read_indexes (results : \u0026 Results , c : \u0026 mut Catalog) -\u003e Result \u003c () , String \u003e",
   "clients/rust/orm-schema/src/dbspec/introspect/mysql.rs::read_triggers": " fn read_triggers (results : \u0026 Results , c : \u0026 mut Catalog) -\u003e Result \u003c () , String \u003e",
   "clients/rust/orm-schema/src/dbspec/introspect/mysql.rs::renderer_check": " fn renderer_check (column : \u0026 str , typ : Type) -\u003e String",
+  "clients/rust/orm-schema/src/dbspec/introspect/mysql.rs::without_introducers": " fn without_introducers (clause : \u0026 str) -\u003e String",
   "clients/rust/orm-schema/src/dbspec/introspect/postgres.rs::postgres_action": " fn postgres_action (code : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e",
   "clients/rust/orm-schema/src/dbspec/introspect/postgres.rs::postgres_default": " fn postgres_default (text : \u0026 str , typ : Type) -\u003e Option \u003c String \u003e",
   "clients/rust/orm-schema/src/dbspec/introspect/postgres.rs::postgres_kind": " fn postgres_kind (contype : \u0026 str) -\u003e \u0026 'static str",

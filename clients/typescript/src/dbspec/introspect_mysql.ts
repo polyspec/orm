@@ -95,7 +95,7 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     const [owner, column, generated] = cut(name, '$');
     if (generated) {
       const col = columns.get(table)?.get(column);
-      if (owner !== table || col === undefined || clause !== rendererCheck(col)) {
+      if (owner !== table || col === undefined || withoutIntroducers(clause) !== withoutIntroducers(rendererCheck(col))) {
         c.report('check', table, name, `the check ${clause} is not the renderer CHECK`);
         continue;
       }
@@ -172,6 +172,16 @@ function mysqlType(columnType: string, charset: string, collation: string): { ty
       return result({ kind: 'datetime', precision }, '', true);
   }
   return null;
+}
+
+/**
+ * character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를 다시
+ * 쓰며 introducer를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)
+ * renderer CHECK은 introducer 없이 비교한다. 이 template의 literal은 ASCII이므로
+ * 의미가 같다.
+ */
+function withoutIntroducers(clause: string): string {
+  return clause.replace(/_[a-z0-9]+\\'/g, "\\'");
 }
 
 /** renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md "Introspection", "Checks"). */

@@ -394,6 +394,37 @@
           ""
         ]
       ]
+    },
+    {
+      "id": "mysql-checks-after-alter",
+      "dialect": "mysql",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table events {",
+          "  id i64 identity",
+          "  ref uuid null",
+          "  at time(0)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "statements": [
+        "ALTER TABLE `events` ADD INDEX `ix_events_at` (`at`)"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table events {",
+        "  id i64 identity",
+        "  ref uuid null",
+        "  at time(0)",
+        "  primary key (id)",
+        "  index ix_events_at (at)",
+        "}"
+      ],
+      "unsupported": []
     }
   ]
 }

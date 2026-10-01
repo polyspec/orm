@@ -500,6 +500,7 @@
   "clients/php/src/Dbspec/MysqlCatalog.php::Orm\\Dbspec\\MysqlCatalog::readTriggers": "private static function readTriggers(PDO $connection, Orm\\Dbspec\\Catalog $c): void",
   "clients/php/src/Dbspec/MysqlCatalog.php::Orm\\Dbspec\\MysqlCatalog::rendererCheck": "private static function rendererCheck(array $column): string",
   "clients/php/src/Dbspec/MysqlCatalog.php::Orm\\Dbspec\\MysqlCatalog::type": "private static function type(string $columnType, string $charset, string $collation): ?array",
+  "clients/php/src/Dbspec/MysqlCatalog.php::Orm\\Dbspec\\MysqlCatalog::withoutIntroducers": "private static function withoutIntroducers(string $clause): string",
   "clients/php/src/Dbspec/ParseResult.php::Orm\\Dbspec\\ParseResult": "final readonly class Orm\\Dbspec\\ParseResult extends  implements  uses ",
   "clients/php/src/Dbspec/ParseResult.php::Orm\\Dbspec\\ParseResult::$diagnostics": "public readonly array",
   "clients/php/src/Dbspec/ParseResult.php::Orm\\Dbspec\\ParseResult::$document": "public readonly ?Orm\\Dbspec\\Document",

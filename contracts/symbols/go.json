@@ -2448,6 +2448,7 @@
   "engine/dbspec/introspect_mysql.go::readMySQLTriggers": "func(ctx context.Context, q Querier, c *catalog) error",
   "engine/dbspec/introspect_mysql.go::scanner": "type scanner interface{ Scan(dest ...any) error }",
   "engine/dbspec/introspect_mysql.go::tableTypes": "func(t *itable) map[string]Type",
+  "engine/dbspec/introspect_mysql.go::withoutIntroducers": "func(clause string) string",
   "engine/dbspec/introspect_postgres.go::postgresAction": "func(code string) (string, bool)",
   "engine/dbspec/introspect_postgres.go::postgresDefault": "func(text string, typ Type) (string, bool)",
   "engine/dbspec/introspect_postgres.go::postgresKind": "func(contype string) string",

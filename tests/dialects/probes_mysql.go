@@ -352,6 +352,13 @@ func mysqlProbes() []Probe {
 			e.Exec("CREATE TABLE t (s varchar(32), CONSTRAINT ck CHECK (s <> 'it''s \\\\ x'))")
 			e.Want("SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()", "(`s` <> _utf8mb4\\'it\\\\\\'s \\\\\\\\ x\\')")
 		}),
+		p("check.alter_rewrites_introducers", "ALTER TABLE writes CHECK_CLAUSE again: a literal that meets an ascii column takes _ascii and a literal that meets a time column loses its introducer", func(e *Env) {
+			const q = "SELECT CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() ORDER BY CONSTRAINT_NAME"
+			e.Exec("CREATE TABLE t (a char(36) CHARACTER SET ascii COLLATE ascii_bin, t time, CONSTRAINT ck1 CHECK (REGEXP_LIKE(a, '^x$', 'c')), CONSTRAINT ck2 CHECK (t < '24:00:00'))")
+			e.WantRows(q, "regexp_like(`a`,_utf8mb4\\'^x$\\',_utf8mb4\\'c\\'),(`t` < _utf8mb4\\'24:00:00\\')")
+			e.Exec("ALTER TABLE t ADD INDEX ix (t)")
+			e.WantRows(q, "regexp_like(`a`,_ascii\\'^x$\\',_utf8mb4\\'c\\'),(`t` < \\'24:00:00\\')")
+		}),
 		p("check.fk_action_column_rejected", "a column of a foreign key with a referential action cannot appear in a CHECK (3823)", func(e *Env) {
 			e.Exec("CREATE TABLE p (id int PRIMARY KEY)")
 			e.Fails("CREATE TABLE c (pid int, CONSTRAINT fk FOREIGN KEY (pid) REFERENCES p (id) ON DELETE SET NULL, CONSTRAINT ck CHECK (pid > 0))", "3823")
