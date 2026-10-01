@@ -88,6 +88,10 @@ final class Parser
     private array $tableSettings = [];
     /** @var array<string, true> */
     private array $settingKeys = [];
+    /** A primary key line of the table failed: its primary key columns are unknown. */
+    private bool $failedPrimary = false;
+    /** @var array<string, true> tables with a failed primary key, unique or index line: some key's columns are unknown */
+    private array $failedKeyTables = [];
     private ?Diagram $diagram = null;
     /** @var array<string, true> */
     private array $diagramTables = [];
@@ -237,9 +241,15 @@ final class Parser
                 continue;
             }
             $this->error('syntax', $this->line, $column, 'only the space character separates tokens');
-            $first = $this->tokens[0][0];
-            if ($this->state === 'table' && $i > 0 && self::isWord($first) && !in_array($first, ['primary', 'unique', 'index', 'foreign', 'check', 'settings'], true)) {
-                $this->failColumn($first);
+            $words = array_values(array_filter($this->tokens, static fn(array $t): bool => $t[0] !== "\t"));
+            $first = $words[0][0] ?? '';
+            if ($this->state === 'table' && self::isWord($first)) {
+                match ($first) {
+                    'primary' => $this->failKey(true),
+                    'unique', 'index' => $this->failKey(false),
+                    'foreign', 'check', 'settings' => null,
+                    default => $this->failColumn($first),
+                };
             }
             return true;
         }
@@ -474,6 +484,7 @@ final class Parser
         $this->tableChecks = [];
         $this->tableSettings = [];
         $this->settingKeys = [];
+        $this->failedPrimary = false;
     }
 
     private function tableLine(): void
@@ -679,10 +690,12 @@ final class Parser
     {
         $first = $this->tokens[0];
         if (!$this->expectAt(1, 'key')) {
+            $this->failKey(true);
             return;
         }
         $list = $this->columnList(2, false);
         if ($list === null || !$this->endAt($list[1])) {
+            $this->failKey(true);
             return;
         }
         if ($this->table->primaryKey !== null) {
@@ -697,10 +710,12 @@ final class Parser
     {
         $name = $this->wordAt(1);
         if ($name === null) {
+            $this->failKey(false);
             return;
         }
         $list = $this->columnList(2, $index);
         if ($list === null || !$this->endAt($list[1])) {
+            $this->failKey(false);
             return;
         }
         $this->constraintName($name);
@@ -711,6 +726,13 @@ final class Parser
             $this->table->uniqueKeys[] = new UniqueKey($name[0], $columns, $this->takeComments());
         }
         $this->checkKeyColumns($list[0], $name[1], false, ($index ? 'index' : 'unique key') . " `{$name[0]}`");
+    }
+
+    /** Knows a key or index line that failed, so that rules depending on its columns report nothing. */
+    private function failKey(bool $primary): void
+    {
+        $this->failedPrimary = $this->failedPrimary || $primary;
+        $this->failedKeyTables[$this->table->name] = true;
     }
 
     /** @param list<array{0:string,1:int,2:bool}> $columns */
@@ -1006,11 +1028,11 @@ final class Parser
         if ($this->columns === []) {
             $this->error('column', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no column");
         }
-        if ($primary === null) {
+        if ($primary === null && !$this->failedPrimary) {
             $this->error('key', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no primary key");
         }
         foreach ($this->identities as [$name, $line, $column, $rejected]) {
-            if (!$rejected && ($primary === null || $primary->columns !== [$name])) {
+            if (!$rejected && !$this->failedPrimary && ($primary === null || $primary->columns !== [$name])) {
                 $this->error('column', $line, $column, "identity column `$name` must be the only primary key column");
             }
         }
@@ -1038,7 +1060,7 @@ final class Parser
                     break;
                 }
             }
-            if (!$covered) {
+            if (!$covered && !isset($this->failedKeyTables[$table->name])) {
                 $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its columns");
             }
             if ($foreignKey->onDelete === 'set_null' || $foreignKey->onUpdate === 'set_null') {
@@ -1236,7 +1258,7 @@ final class Parser
             foreach ($target['table']->uniqueKeys as $unique) {
                 $keys[] = $unique->columns;
             }
-            if (!in_array($foreignKey->referencedColumns, $keys, true)) {
+            if (!in_array($foreignKey->referencedColumns, $keys, true) && !isset($this->failedKeyTables[$foreignKey->table])) {
                 $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` references columns that are not the primary key or a unique key of `{$foreignKey->table}`");
             }
             foreach ($foreignKey->columns as $i => $child) {

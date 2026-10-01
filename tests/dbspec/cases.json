@@ -316,6 +316,56 @@
         "}"
       ],
       "mixed": true
+    },
+    {
+      "id": "blind-index-sorted",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  key_version i32",
+          "  email bytes",
+          "  phone bytes",
+          "  email_hash varchar(64)",
+          "  phone_hash varchar(64)",
+          "  primary key (id)",
+          "  unique uq_users_email_hash (email_hash)",
+          "  unique uq_users_phone_hash (phone_hash)",
+          "  settings {",
+          "    codec email aes",
+          "    codec phone aes",
+          "    aes_version key_version",
+          "    blind_index phone phone_hash",
+          "    blind_index email email_hash",
+          "  }",
+          "}"
+        ]
+      },
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  key_version i32",
+        "  email bytes",
+        "  phone bytes",
+        "  email_hash varchar(64)",
+        "  phone_hash varchar(64)",
+        "  primary key (id)",
+        "  unique uq_users_email_hash (email_hash)",
+        "  unique uq_users_phone_hash (phone_hash)",
+        "  settings {",
+        "    codec email aes",
+        "    codec phone aes",
+        "    aes_version key_version",
+        "    blind_index email email_hash",
+        "    blind_index phone phone_hash",
+        "  }",
+        "}"
+      ]
     }
   ],
   "invalid": [
@@ -2112,6 +2162,129 @@
           "line": 1009,
           "column": 3,
           "rule": "limit"
+        }
+      ]
+    },
+    {
+      "id": "failed-primary-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key id",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-index-line-under-foreign-key",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user user_id",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 12,
+          "column": 24,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-target-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_users_code code",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_code varchar(8)",
+          "  primary key (id)",
+          "  index ix_orders_user (user_code)",
+          "  foreign key fk_orders_user (user_code) references users (code)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "tab-in-primary-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key\t(id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 14,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "leading-tab-column-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "\tid i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 4,
+          "column": 1,
+          "rule": "syntax"
         }
       ]
     }
