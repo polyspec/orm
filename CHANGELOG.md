@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.2.6.1.1: the Korean manifest heading has the anchor `manifest-and-hashes`, which its links use; the decomposed Hangul id reached no link.
+
 - T8.1.8: `audit` no longer requires `soft_delete`. A schema setting is read back from the database and a manifest setting is not, so the requirement made every introspected audited table invalid; the `BEFORE DELETE` trigger still makes a physical delete fail.
 
 Keep only the dbspec check predicate forms that MySQL and PostgreSQL
