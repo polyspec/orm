@@ -109,6 +109,20 @@ pub struct Session {
 }
 
 impl Session {
+    /// probe의 database, schema 또는 file 이름. 이 module은 test crate마다 따로
+    /// compile되며 dbspec_apply만 이 method와 `second`를 쓴다.
+    #[allow(dead_code)]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// 두 번째 database, schema 또는 file `<name>_b`에 connection을 여는 값. probe가
+    /// 그것을 만들고, 정리는 첫 것과 함께 지운다.
+    #[allow(dead_code)]
+    pub fn second(&self) -> Session {
+        Session { name: format!("{}_b", self.name), ..self.clone() }
+    }
+
     /// probe의 database(MySQL), schema(PostgreSQL) 또는 file(SQLite)에 connection을 연다.
     pub async fn open(&self) -> Result<Conn, String> {
         let name = &self.name;
@@ -205,11 +219,15 @@ impl Servers {
         }
         match db {
             "mysql" => {
-                if let Err(e) = self.admin(db, format!("DROP DATABASE IF EXISTS `{name}`")).await {
-                    errors.push(e);
+                // 두 번째 database가 필요한 case는 그것을 <database>_b로 만든다.
+                for database in [format!("{name}_b"), name.to_owned()] {
+                    if let Err(e) = self.admin(db, format!("DROP DATABASE IF EXISTS `{database}`")).await {
+                        errors.push(e);
+                    }
                 }
-                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?")
+                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)")
                     .bind(name)
+                    .bind(format!("{name}_b"))
                     .fetch_one(&mut self.mysql)
                     .await
                 {
@@ -238,16 +256,18 @@ impl Servers {
                 }
             }
             _ => {
-                let path = Self::sqlite_path(name);
-                for suffix in ["", "-journal", "-wal", "-shm"] {
-                    let file = PathBuf::from(format!("{}{suffix}", path.display()));
-                    match std::fs::remove_file(&file) {
-                        Ok(()) => {}
-                        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                        Err(e) => errors.push(format!("{}: {e}", file.display())),
-                    }
-                    if file.exists() {
-                        errors.push(format!("{} remains after cleanup", file.display()));
+                // 두 번째 file이 필요한 case는 그것을 <name>_b.sqlite로 만든다.
+                for path in [Self::sqlite_path(name), Self::sqlite_path(&format!("{name}_b"))] {
+                    for suffix in ["", "-journal", "-wal", "-shm"] {
+                        let file = PathBuf::from(format!("{}{suffix}", path.display()));
+                        match std::fs::remove_file(&file) {
+                            Ok(()) => {}
+                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                            Err(e) => errors.push(format!("{}: {e}", file.display())),
+                        }
+                        if file.exists() {
+                            errors.push(format!("{} remains after cleanup", file.display()));
+                        }
                     }
                 }
             }

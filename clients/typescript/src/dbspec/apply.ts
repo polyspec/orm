@@ -69,6 +69,11 @@ export class DbspecApplyError extends Error {
 // history table은 적용한 plan을 기록한다. dbspec 이름에는 $가 없으므로
 // 사용자 table과 겹치지 않고, introspection은 이 table을 빼고 읽는다.
 const HISTORY_TABLE = 'dbspec$plans';
+// 현재 database 하나의 apply lock 이름이다. MySQL lock 이름은 64자까지이므로 database
+// 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+const MYSQL_LOCK = `CONCAT('${HISTORY_TABLE}$', LEFT(SHA2(DATABASE(), 256), 51))`;
+// 현재 database의 현재 schema 하나의 advisory lock key다.
+const POSTGRES_LOCK = `hashtext('${HISTORY_TABLE}'), hashtext(current_schema())`;
 
 // mysql2/promise는 PromisePool class를 내보내지만 type 선언에는 없다.
 const MYSQL_POOL = (mysql as unknown as { PromisePool: abstract new (...args: never[]) => unknown }).PromisePool;
@@ -186,21 +191,24 @@ class Applier {
   async locked(f: () => Promise<void>): Promise<void> {
     switch (this.dialect) {
       case 'mysql': {
-        const got = await this.queryValue(`SELECT GET_LOCK('${HISTORY_TABLE}', 0)`);
-        if (got === null || integer(got, 'GET_LOCK') !== 1) {
-          throw new DbspecApplyError('locked', '', 0, `another session holds GET_LOCK('${HISTORY_TABLE}')`);
-        }
-        await this.release(f, () => this.s.exec(`DO RELEASE_LOCK('${HISTORY_TABLE}')`));
+        // GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
+        const got = await this.queryValue(`SELECT GET_LOCK(${MYSQL_LOCK}, 0)`);
+        if (got === null) throw new Error('GET_LOCK returned NULL; want 1 or 0');
+        const acquired = integer(got, 'GET_LOCK');
+        if (acquired === 0) throw new DbspecApplyError('locked', '', 0, `another session holds the ${HISTORY_TABLE} lock of this database`);
+        if (acquired !== 1) throw new Error(`GET_LOCK returned ${acquired}; want 1 or 0`);
+        await this.release(f, () => this.s.exec(`DO RELEASE_LOCK(${MYSQL_LOCK})`));
         return;
       }
       case 'postgres': {
-        const got = await this.queryValue(`SELECT pg_try_advisory_lock(hashtext('${HISTORY_TABLE}'))`);
+        // current_schema()가 NULL이면 결과도 NULL이며 error다.
+        const got = await this.queryValue(`SELECT pg_try_advisory_lock(${POSTGRES_LOCK})`);
         if (got !== true) {
           if (got !== false) throw new Error(`pg_try_advisory_lock returned ${String(got)}`);
-          throw new DbspecApplyError('locked', '', 0, `another session holds the advisory lock of ${HISTORY_TABLE}`);
+          throw new DbspecApplyError('locked', '', 0, `another session holds the ${HISTORY_TABLE} advisory lock of this schema`);
         }
         await this.release(f, async () => {
-          const released = await this.queryValue(`SELECT pg_advisory_unlock(hashtext('${HISTORY_TABLE}'))`);
+          const released = await this.queryValue(`SELECT pg_advisory_unlock(${POSTGRES_LOCK})`);
           if (released !== true) {
             if (released !== false) throw new Error(`pg_advisory_unlock returned ${String(released)}`);
             throw new Error(`the advisory lock of ${HISTORY_TABLE} was not held at unlock`);

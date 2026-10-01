@@ -258,6 +258,10 @@ pub fn chain(plans: &[Plan]) -> Result<Vec<&Plan>, Vec<Diagnostic>> {
         names.sort_unstable();
         out.extend(chain_failure(format!("plans {} start from the same schema", names.join(", "))));
     }
+    if plans.is_empty() {
+        // plan이 없으면 table이 없는 database의 빈 chain이다.
+        return Ok(Vec::new());
+    }
     let Some(first) = by_from.get(&None).map(|indexes| indexes[0]) else {
         out.extend(chain_failure("no plan starts from empty".to_owned()));
         return Err(out);

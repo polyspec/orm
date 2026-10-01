@@ -135,19 +135,43 @@ func (s *Servers) openMySQL(ctx, cleanup context.Context, e *Env) (func() error,
 		conn, err := db.Conn(ctx)
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name}, err
 	}
+	var second *sql.DB
+	e.Second = func() (*Env, error) {
+		if second != nil {
+			return nil, fmt.Errorf("the second database of %s is already open", e.Name)
+		}
+		if _, err := s.mysqlAdmin.ExecContext(ctx, "CREATE DATABASE `"+e.Name+"_b`"); err != nil {
+			return nil, err
+		}
+		cfg := s.mysqlConfig.Clone()
+		cfg.DBName = e.Name + "_b"
+		connector, err := mysql.NewConnector(cfg)
+		if err != nil {
+			return nil, err
+		}
+		second = sql.OpenDB(connector)
+		conn, err := second.Conn(ctx)
+		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
+	}
 	drop := func() error {
 		var errs []error
 		if e.Conn != nil {
 			errs = append(errs, e.Conn.Close())
 		}
 		errs = append(errs, db.Close())
+		if second != nil {
+			errs = append(errs, second.Close())
+		}
 		// A probe that creates a login names it after its database.
 		_, err := s.mysqlAdmin.ExecContext(cleanup, "DROP USER IF EXISTS '"+e.Name+"'@'127.0.0.1'")
+		errs = append(errs, err)
+		// A probe that needs a second database names it <database>_b.
+		_, err = s.mysqlAdmin.ExecContext(cleanup, "DROP DATABASE IF EXISTS `"+e.Name+"_b`")
 		errs = append(errs, err)
 		_, err = s.mysqlAdmin.ExecContext(cleanup, "DROP DATABASE `"+e.Name+"`")
 		errs = append(errs, err)
 		var count int
-		err = s.mysqlAdmin.QueryRowContext(cleanup, "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?", e.Name).Scan(&count)
+		err = s.mysqlAdmin.QueryRowContext(cleanup, "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)", e.Name, e.Name+"_b").Scan(&count)
 		errs = append(errs, err)
 		if err == nil && count != 0 {
 			errs = append(errs, fmt.Errorf("database %s remains after cleanup", e.Name))
@@ -171,19 +195,26 @@ func (s *Servers) openPostgres(ctx, cleanup context.Context, e *Env) (func() err
 		return nil, err
 	}
 	e.Admin = s.postgres
-	open := func() (*sql.Conn, error) {
+	open := func(schema string) (*sql.Conn, error) {
 		conn, err := db.Conn(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := conn.ExecContext(ctx, `SET search_path TO "`+e.Name+`"`); err != nil {
+		if _, err := conn.ExecContext(ctx, `SET search_path TO "`+schema+`"`); err != nil {
 			return nil, errors.Join(err, conn.Close())
 		}
 		return conn, nil
 	}
 	e.Session = func() (*Env, error) {
-		conn, err := open()
+		conn, err := open(e.Name)
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name}, err
+	}
+	e.Second = func() (*Env, error) {
+		if _, err := s.postgres.ExecContext(ctx, `CREATE SCHEMA "`+e.Name+`_b"`); err != nil {
+			return nil, err
+		}
+		conn, err := open(e.Name + "_b")
+		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
 	}
 	drop := func() error {
 		var errs []error
@@ -204,7 +235,7 @@ func (s *Servers) openPostgres(ctx, cleanup context.Context, e *Env) (func() err
 		}
 		return errors.Join(errs...)
 	}
-	conn, err := open()
+	conn, err := open(e.Name)
 	if err != nil {
 		return drop, err
 	}
@@ -226,18 +257,40 @@ func (s *Servers) openSQLite(ctx context.Context, e *Env) (func() error, error) 
 		conn, err := db.Conn(ctx)
 		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name}, err
 	}
+	// A probe that needs a second file names it <name>_b.sqlite.
+	secondPath := filepath.Join(s.sqliteDir, e.Name+"_b.sqlite")
+	var second *sql.DB
+	e.Second = func() (*Env, error) {
+		if second != nil {
+			return nil, fmt.Errorf("the second file of %s is already open", e.Name)
+		}
+		if _, err := os.Stat(secondPath); err == nil {
+			return nil, fmt.Errorf("SQLite file %s already exists", secondPath)
+		}
+		var err error
+		if second, err = sql.Open("sqlite", secondPath); err != nil {
+			return nil, err
+		}
+		conn, err := second.Conn(ctx)
+		return &Env{Ctx: ctx, Conn: conn, DB: e.DB, Name: e.Name + "_b"}, err
+	}
 	drop := func() error {
 		var errs []error
 		if e.Conn != nil {
 			errs = append(errs, e.Conn.Close())
 		}
 		errs = append(errs, db.Close())
-		for _, suffix := range []string{"", "-journal", "-wal", "-shm"} {
-			if err := os.Remove(path + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
-				errs = append(errs, err)
-			}
-			if _, err := os.Stat(path + suffix); err == nil {
-				errs = append(errs, fmt.Errorf("%s remains after cleanup", path+suffix))
+		if second != nil {
+			errs = append(errs, second.Close())
+		}
+		for _, file := range []string{path, secondPath} {
+			for _, suffix := range []string{"", "-journal", "-wal", "-shm"} {
+				if err := os.Remove(file + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+					errs = append(errs, err)
+				}
+				if _, err := os.Stat(file + suffix); err == nil {
+					errs = append(errs, fmt.Errorf("%s remains after cleanup", file+suffix))
+				}
 			}
 		}
 		return errors.Join(errs...)

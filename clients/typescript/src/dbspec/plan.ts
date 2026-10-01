@@ -196,6 +196,8 @@ export function emitPlan(plan: DbspecPlan): string {
  */
 export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult {
   if (!Array.isArray(plans)) throw new TypeError('plans must be an array of parsed plans');
+  // plan이 없으면 table이 없는 database의 빈 chain이다.
+  if (plans.length === 0) return Object.freeze({ plans: Object.freeze([]), diagnostics: NO_DIAGNOSTICS });
   // 빈 database에서 시작하는 plan의 key는 ''이다.
   const byFrom = new Map<string, DbspecPlan[]>();
   for (const p of plans) {

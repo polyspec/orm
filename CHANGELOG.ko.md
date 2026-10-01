@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.7: apply lock은 MySQL database 하나나 PostgreSQL schema 하나만 덮어 다른 database나 schema의 apply가 동시에 실행되고, 예상 밖의 lock 결과는 `locked`가 아닌 error이며, 모든 client에서 빈 plan chain은 table 없는 database의 올바른 chain이다.
+
 - T8.7.6.2: Go engine test가 빠지거나 type이 틀린 dbspec vector field를 file, 위치와 함께 거부하고, dbspec compare harness와 Makefile block의 주석이 한국어다.
 
 - T8.5.7: 모든 client가 plan 없이 두 schema text의 모든 차이를, plan이 거부하는 type, identity, primary key, column 순서 변경까지 `[kind, table, name]`으로 나열한다.

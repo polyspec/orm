@@ -21,9 +21,9 @@ Each probe runs in its own disposable object:
 
 | Database | Object | Cleanup |
 |---|---|---|
-| MySQL | database `dfx_<pid>_<index>`; a login of the same name when the probe needs one | `DROP USER IF EXISTS`, `DROP DATABASE`, then `information_schema.SCHEMATA` must not list it |
+| MySQL | database `dfx_<pid>_<index>` and, when needed, `<database>_b`; a login of the same name when the probe needs one | `DROP USER IF EXISTS`, `DROP DATABASE`, then `information_schema.SCHEMATA` must not list them |
 | PostgreSQL | schema `dfx_<pid>_<index>` and, when needed, `<schema>_b` | `DROP SCHEMA … CASCADE`, then `pg_namespace` must not list them |
-| SQLite | file `dfx_<pid>_<index>.sqlite` in the test's temporary directory | the file and its journal files are removed and must not exist |
+| SQLite | file `dfx_<pid>_<index>.sqlite` in the test's temporary directory and, when needed, `dfx_<pid>_<index>_b.sqlite` | the files and their journal files are removed and must not exist |
 
 ## Run
 

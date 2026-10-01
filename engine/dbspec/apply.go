@@ -59,6 +59,13 @@ func (e *ApplyError) Unwrap() error { return e.Err }
 // 사용자 table과 겹치지 않고, introspection은 이 table을 빼고 읽는다.
 const historyTable = "dbspec$plans"
 
+// mysqlLockName은 현재 database 하나의 apply lock 이름이다. MySQL lock 이름은
+// 64자까지이므로 database 이름 대신 그 SHA-256 hex 앞 51자를 붙여 64자로 만든다.
+const mysqlLockName = "CONCAT('" + historyTable + "$', LEFT(SHA2(DATABASE(), 256), 51))"
+
+// postgresLockKey는 현재 database의 현재 schema 하나의 advisory lock key다.
+const postgresLockKey = "hashtext('" + historyTable + "'), hashtext(current_schema())"
+
 // applier는 apply 한 번의 상태다.
 type applier struct {
 	ctx     context.Context
@@ -154,26 +161,33 @@ func (a *applier) locked(f func() error) error {
 	switch a.r.d {
 	case DialectMySQL:
 		var got sql.NullInt64
-		if err := a.queryRow("SELECT GET_LOCK('"+historyTable+"', 0)", &got); err != nil {
+		if err := a.queryRow("SELECT GET_LOCK("+mysqlLockName+", 0)", &got); err != nil {
 			return err
 		}
-		if !got.Valid || got.Int64 != 1 {
-			return &ApplyError{Code: "locked", Message: "another session holds GET_LOCK('" + historyTable + "')"}
+		// GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
+		switch {
+		case !got.Valid:
+			return fmt.Errorf("GET_LOCK returned NULL; want 1 or 0")
+		case got.Int64 != 0 && got.Int64 != 1:
+			return fmt.Errorf("GET_LOCK returned %d; want 1 or 0", got.Int64)
+		case got.Int64 == 0:
+			return &ApplyError{Code: "locked", Message: "another session holds the " + historyTable + " lock of this database"}
 		}
 		err := f()
-		_, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK('"+historyTable+"')")
+		_, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK("+mysqlLockName+")")
 		return joinCleanup(err, unlock)
 	case DialectPostgres:
+		// current_schema()가 NULL이면 결과도 NULL이며, bool로 읽지 못해 error다.
 		var got bool
-		if err := a.queryRow("SELECT pg_try_advisory_lock(hashtext('"+historyTable+"'))", &got); err != nil {
+		if err := a.queryRow("SELECT pg_try_advisory_lock("+postgresLockKey+")", &got); err != nil {
 			return err
 		}
 		if !got {
-			return &ApplyError{Code: "locked", Message: "another session holds the advisory lock of " + historyTable}
+			return &ApplyError{Code: "locked", Message: "another session holds the " + historyTable + " advisory lock of this schema"}
 		}
 		err := f()
 		var released bool
-		unlock := a.queryRow("SELECT pg_advisory_unlock(hashtext('"+historyTable+"'))", &released)
+		unlock := a.queryRow("SELECT pg_advisory_unlock("+postgresLockKey+")", &released)
 		if unlock == nil && !released {
 			unlock = fmt.Errorf("the advisory lock of %s was not held at unlock", historyTable)
 		}

@@ -184,8 +184,12 @@ func EmitPlan(p *Plan) string {
 	return b.String()
 }
 
-// Chain은 plan들을 from empty에서 이어지는 순서로 돌려준다.
+// Chain은 plan들을 from empty에서 이어지는 순서로 돌려준다. plan이 없으면
+// table이 없는 database의 빈 chain이다.
 func Chain(plans []*Plan) ([]*Plan, []Diagnostic) {
+	if len(plans) == 0 {
+		return []*Plan{}, nil
+	}
 	byFrom := map[string][]*Plan{}
 	for _, p := range plans {
 		byFrom[p.From] = append(byFrom[p.From], p)

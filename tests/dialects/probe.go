@@ -86,10 +86,13 @@ type Env struct {
 	DB      string
 	Name    string // database, schema or file of this probe
 	Session func() (*Env, error)
-	Admin   *sql.DB // server connection used to create and drop probe objects
-	Extra   map[string]string
-	Err     error
-	Notes   []string
+	// Second creates the probe's second database, schema or file, named
+	// <name>_b, and opens a session on it; cleanup removes it with the first.
+	Second func() (*Env, error)
+	Admin  *sql.DB // server connection used to create and drop probe objects
+	Extra  map[string]string
+	Err    error
+	Notes  []string
 }
 
 func (e *Env) fail(format string, args ...any) {

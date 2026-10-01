@@ -52,6 +52,20 @@ func applyChain(t *testing.T) []*dbspec.Plan {
 
 var fixedNow = func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
 
+// mysqlApplyLock와 postgresApplyLock은 docs/plans.md "Apply"의 lock 이름과 key다.
+const (
+	mysqlApplyLock    = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51))"
+	postgresApplyLock = "hashtext('dbspec$plans'), hashtext(current_schema())"
+)
+
+// historyOf는 dialect에서 따옴표로 감싼 history table 이름이다.
+func historyOf(db string) string {
+	if db == "mysql" {
+		return "`dbspec$plans`"
+	}
+	return `"dbspec$plans"`
+}
+
 // applyCode는 apply error의 code다. ApplyError가 아니면 빈 문자열이다.
 func applyCode(err error) string {
 	var a *dbspec.ApplyError
@@ -115,11 +129,7 @@ func TestApplyChain(t *testing.T) {
 				return
 			}
 			schemaIs(e, db, target.SchemaText)
-			history := map[string]string{"mysql": "`dbspec$plans`"}[db]
-			if history == "" {
-				history = `"dbspec$plans"`
-			}
-			e.Want("SELECT COUNT(*) FROM "+history+" WHERE state = 'done'", "2")
+			e.Want("SELECT COUNT(*) FROM "+historyOf(db)+" WHERE state = 'done'", "2")
 			counts := map[string]int{}
 			for _, k := range events {
 				counts[k]++
@@ -149,7 +159,7 @@ func TestApplyChain(t *testing.T) {
 				return
 			}
 			defer other.Conn.Close()
-			hold := map[string]string{"mysql": "SELECT GET_LOCK('dbspec$plans', 0)", "postgres": "SELECT pg_advisory_lock(hashtext('dbspec$plans'))", "sqlite": "BEGIN IMMEDIATE"}[db]
+			hold := map[string]string{"mysql": "SELECT GET_LOCK(" + mysqlApplyLock + ", 0)", "postgres": "SELECT pg_advisory_lock(" + postgresApplyLock + ")", "sqlite": "BEGIN IMMEDIATE"}[db]
 			if _, err := other.Conn.ExecContext(e.Ctx, hold); err != nil {
 				e.fail("hold: %v", err)
 				return
@@ -159,6 +169,61 @@ func TestApplyChain(t *testing.T) {
 			}
 			if db == "sqlite" {
 				other.Conn.ExecContext(e.Ctx, "ROLLBACK")
+			}
+		}},
+		{"other_database", []string{"mysql", "postgres", "sqlite"}, func(e *Env, db string) {
+			// 첫 database의 apply가 lock을 잡은 동안 두 번째 database, schema 또는 file에
+			// 같은 chain을 적용한다. lock은 database 하나만 덮으므로 locked가 아니다.
+			other, err := e.Second()
+			if err != nil {
+				e.fail("second %s: %v", db, err)
+				return
+			}
+			defer other.Conn.Close()
+			other.Exec(connectionRules[db]...)
+			var otherErr error
+			applied := false
+			during := func(ev dbspec.ApplyEvent) error {
+				if ev.Kind == "plan" && ev.Plan == plans[0].Name && !applied {
+					applied = true
+					otherErr = dbspec.Apply(other.Ctx, other.Conn, dbspec.Dialect(db), plans, fixedNow, nil)
+				}
+				return nil
+			}
+			if err := dbspec.Apply(e.Ctx, e.Conn, dbspec.Dialect(db), plans, fixedNow, during); err != nil {
+				e.fail("apply: %v", err)
+				return
+			}
+			if !applied || otherErr != nil {
+				e.fail("apply to %s while %s applies: ran %v, error %v", other.Name, e.Name, applied, otherErr)
+				return
+			}
+			schemaIs(e, db, target.SchemaText)
+			schemaIs(other, db, target.SchemaText)
+			if other.Err != nil {
+				e.fail("%s: %v", other.Name, other.Err)
+			}
+		}},
+		{"empty_chain", []string{"mysql", "postgres", "sqlite"}, func(e *Env, db string) {
+			// plan이 없는 chain은 table이 없는 database에 아무것도 적용하지 않는다.
+			var events []string
+			record := func(ev dbspec.ApplyEvent) error {
+				events = append(events, ev.Kind)
+				return nil
+			}
+			if err := dbspec.Apply(e.Ctx, e.Conn, dbspec.Dialect(db), []*dbspec.Plan{}, fixedNow, record); err != nil || len(events) != 0 {
+				e.fail("apply of the empty chain: %v, events %v", err, events)
+				return
+			}
+			if err := dbspec.Recover(e.Ctx, e.Conn, dbspec.Dialect(db), []*dbspec.Plan{}, fixedNow, record); err != nil || len(events) != 0 {
+				e.fail("recover of the empty chain: %v, events %v", err, events)
+				return
+			}
+			schemaIs(e, db, "")
+			e.Want("SELECT COUNT(*) FROM "+historyOf(db), "0")
+			e.Exec(`CREATE TABLE extra (id integer PRIMARY KEY)`)
+			if code := applyCode(dbspec.Apply(e.Ctx, e.Conn, dbspec.Dialect(db), []*dbspec.Plan{}, fixedNow, nil)); code != "drift" {
+				e.fail("apply of the empty chain to a database with a table: code %q, want drift", code)
 			}
 		}},
 		{"rollback_on_failure", []string{"postgres", "sqlite"}, func(e *Env, db string) {
@@ -184,7 +249,7 @@ func TestApplyChain(t *testing.T) {
 			// event에서 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도 풀지 않는다.
 			release := func(ev dbspec.ApplyEvent) error {
 				if ev.Kind == "plan" && ev.Plan == plans[0].Name {
-					_, err := e.Conn.ExecContext(e.Ctx, "SELECT pg_advisory_unlock(hashtext('dbspec$plans'))")
+					_, err := e.Conn.ExecContext(e.Ctx, "SELECT pg_advisory_unlock("+postgresApplyLock+")")
 					return err
 				}
 				return nil
