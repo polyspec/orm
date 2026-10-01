@@ -1,10 +1,10 @@
-//! Connection time zones: a wall-clock value is written and read back in the
-//! connection zone on SQLite, MySQL and PostgreSQL. `default now` writes the UTC
-//! statement time (docs/dbspec.md, "Columns"); the executor never fills it, so
-//! the clock default is checked on a UTC connection. A test fails when
-//! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
+//! Connection time zones: every connection reads and writes datetime values in
+//! UTC on SQLite, MySQL and PostgreSQL, whatever the server zone (docs/dialects.md
+//! "Date and time"); a wall-clock value round-trips and `default now` writes the
+//! UTC statement time. A test fails when ORM_TEST_MYSQL_DSN or
+//! ORM_TEST_POSTGRES_DSN is unset.
 
-use chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc};
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use orm::core::{Arg, ChainKey};
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
@@ -76,19 +76,6 @@ fn event(db: &Db) -> ZoneEvent {
     ZoneEvent::from_core(core)
 }
 
-/// The current wall-clock time in a zone of the test.
-fn wall_clock(zone: &str) -> NaiveDateTime {
-    let now = Utc::now();
-    match zone {
-        "Asia/Seoul" => chrono_tz::Asia::Seoul.from_utc_datetime(&now.naive_utc()).naive_local(),
-        _ => {
-            let sign = if zone.starts_with('-') { -1 } else { 1 };
-            let secs = sign * (zone[1..3].parse::<i32>().unwrap() * 3600 + zone[4..6].parse::<i32>().unwrap() * 60);
-            now.with_timezone(&chrono::FixedOffset::east_opt(secs).unwrap()).naive_local()
-        }
-    }
-}
-
 async fn drop_table(db: &Db) {
     let statement = sqlx::raw_sql("DROP TABLE IF EXISTS zone_event");
     match db.pool() {
@@ -100,7 +87,7 @@ async fn drop_table(db: &Db) {
 }
 
 #[tokio::test]
-async fn connection_time_zone() {
+async fn connections_use_utc() {
     let _serial = SERIAL.lock().await;
     let tmp = std::env::temp_dir().join(format!("orm-rust-zone-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
@@ -109,30 +96,28 @@ async fn connection_time_zone() {
     let targets = vec![("sqlite".to_owned(), String::new()), ("mysql".to_owned(), mysql_dsn), ("postgres".to_owned(), postgres_dsn)];
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
     for (driver, base) in &targets {
-        for zone in ["+00:00", "+09:00", "-05:30", "Asia/Seoul"] {
+        // 시험 server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다.
+        for zone in ["", "UTC", "+00:00"] {
             let base = if driver == "sqlite" {
                 format!("sqlite://{}", tmp.join(format!("zone{}.sqlite", zone.replace([':', '/', '+'], "_"))).display())
             } else {
                 base.clone()
             };
             let sep = if base.contains('?') { '&' } else { '?' };
-            let dsn = format!("{base}{sep}timezone={}", zone.replace('+', "%2B"));
+            let dsn = if zone.is_empty() { base.clone() } else { format!("{base}{sep}timezone={}", zone.replace('+', "%2B")) };
             let label = format!("{driver}/{zone}");
             let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             drop_table(&db).await;
             db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
-            let before = wall_clock(zone);
+            let before = Utc::now().naive_utc();
             let mut row = event(&db);
             row.core_mut().set("start_dt", Param::DateTime(start));
             orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
             let got = orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
-            // `default now`는 database default이고 UTC statement 시각이다. 연결 zone이 UTC일 때
-            // 세 database의 값이 같으므로 그 연결에서 확인한다.
-            if zone == "+00:00" {
-                let skew = (got.created_ts - before).num_seconds().abs();
-                assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
-            }
+            // `default now`는 UTC statement 시각이다.
+            let skew = (got.created_ts - before).num_seconds().abs();
+            assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
             const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
             let filter = event(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(Param::DateTime(start)))]);
             let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: count: {e}"));
@@ -160,6 +145,24 @@ async fn connection_time_zone() {
         }
     }
     let _ = std::fs::remove_dir_all(&tmp);
+}
+
+/// UTC가 아닌 timezone parameter는 CONFIG로 실패한다.
+#[test]
+fn non_utc_time_zones_are_rejected() {
+    for dsn in [
+        "mysql://root@localhost/orm_example?timezone=%2B09:00",
+        "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
+        "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
+    ] {
+        let err = orm::db::parse_dsn(dsn).err().unwrap_or_else(|| panic!("{dsn}: a non-UTC timezone was accepted"));
+        assert_eq!(err.code(), orm::codes::CONFIG, "{dsn}: {err}");
+    }
+    for dsn in
+        ["mysql://root@localhost/orm_example", "postgres://root@localhost/orm_example?timezone=UTC", "sqlite:///tmp/orm_example.sqlite?timezone=%2B00:00"]
+    {
+        orm::db::parse_dsn(dsn).unwrap_or_else(|e| panic!("{dsn}: {e}"));
+    }
 }
 
 /// A MySQL install inside a transaction returns CONFIG: schema statements

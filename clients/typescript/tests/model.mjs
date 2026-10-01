@@ -482,31 +482,28 @@ function connect(dsn) {
 }
 
 /**
- * Writes a wall-clock value and reads it back in the connection time zone, and
- * checks that the clock default and an equality filter use the same zone.
+ * 모든 connection은 server의 time zone과 상관없이 datetime을 UTC로 읽고 쓴다
+ * (docs/dialects.md "Date and time"). 시험 server의 MySQL은 SYSTEM(KST),
+ * PostgreSQL은 Asia/Seoul이다. offset이 있는 instant는 UTC wall clock으로 저장되고,
+ * clock default도 UTC다.
  */
-async function connectionTimeZone(db, offsetMinutes) {
+async function connectionsUseUtc(db) {
   const f = await seed(db);
-  const midnight = new Date(Date.UTC(2026, 0, 2) - offsetMinutes * 60_000);
+  const midnight = new Date('2026-01-02T00:00:00+09:00');
   const before = Date.now();
   const created = await new Author().connect(db)
     .setName('zone').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
     .setServiceRegionSeq(f.module.getSeq()).setServiceMemberSeq(f.member.getSeq())
     .setStartDt(midnight).setEndDt('2026-01-03 00:00:00').create();
   const row = await new Author().connect(db).getBySeq(created.getSeq());
-  check(row?.getStartDt() === '2026-01-02 00:00:00.000000', `start_dt ${row?.getStartDt()}`);
-  // The insert omits created_ts, which takes the database default `now`: the
-  // SQLite default writes the UTC clock, and MySQL and PostgreSQL write the
-  // clock of the session time zone, which the UTC connection rule of
-  // docs/dialects.md (T8.0.9) is to make UTC as well.
-  const defaultOffset = db.driver === 'sqlite' ? 0 : offsetMinutes;
-  const wall = (text, offset) => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`) - offset * 60_000;
-  check(row !== null && Math.abs(wall(row.getCreatedTs(), defaultOffset) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
+  check(row?.getStartDt() === '2026-01-01 15:00:00.000000', `start_dt ${row?.getStartDt()}`);
+  const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`);
+  check(row !== null && Math.abs(wall(row.getCreatedTs()) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
   check(await new Author().connect(db).startDt(midnight).getCount() === 1, 'equality filter with an instant');
-  check(await new Author().connect(db).startDt('2026-01-02 00:00:00').getCount() === 1, 'equality filter by text');
-  check(await new Author().connect(db).startDt('2026-01-02T00:00:00.0').getCount() === 1, 'equality filter by text with fraction');
-  check(await new Author().connect(db).startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');
-  check(await new Author().connect(db).betweenStartDt(['2026-01-02 00:00:00', '2026-01-02 00:00:00.5']).getCount() === 1, 'between filter by text');
+  check(await new Author().connect(db).startDt('2026-01-01 15:00:00').getCount() === 1, 'equality filter by text');
+  check(await new Author().connect(db).startDt('2026-01-01T15:00:00.0').getCount() === 1, 'equality filter by text with fraction');
+  check(await new Author().connect(db).startDt(['2026-01-01 15:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');
+  check(await new Author().connect(db).betweenStartDt(['2026-01-01 15:00:00', '2026-01-01 15:00:00.5']).getCount() === 1, 'between filter by text');
   if (db.driver === 'sqlite') {
     check(await code(new Author().connect(db).startDt('2026-01-02').getCount()) === 'CODEC_ENCODE', 'date-only datetime text');
   }
@@ -637,7 +634,7 @@ async function dropTable(dialect, dsn, table) {
   }
 }
 
-const zones = [['+00:00', 0], ['+09:00', 540], ['-05:30', -330], ['Asia/Seoul', 540]];
+const zones = ['', 'UTC', '+00:00'];
 
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
@@ -809,13 +806,13 @@ try {
     console.log(`${current} done`);
   }
   for (const [dialect, base] of targets) {
-    for (const [zone, offset] of zones) {
-      current = `${dialect}/connectionTimeZone/${zone}`;
+    for (const zone of zones) {
+      current = `${dialect}/connectionsUseUtc/${zone}`;
       if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-      const dsn = `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
+      const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
       await install(dialect, dsn);
       const db = await connect(dsn);
-      try { await connectionTimeZone(db, offset); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
+      try { await connectionsUseUtc(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
       console.log(`${current} done`);
     }
   }

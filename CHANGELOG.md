@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.9.1: Go, TypeScript and Rust connections read and write datetime values in UTC like PHP, and `timezone` accepts only `UTC` or `+00:00`.
+
 - T8.0.14: A failed MySQL `setLocal` reset at the end of a transaction is reported in every client, and a callback failure with a failed cleanup reports both errors as `CONFIG`.
 
 - T8.0.13: Every client and schema tool asserts that a SQLite DSN with a query creates only the file named by its path.

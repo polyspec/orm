@@ -363,12 +363,12 @@ Go는 `orm.Distance(…)`, Rust는 `orm::distance(…)`, TypeScript는 `orm.dist
 
 | 함수 | MySQL | PostgreSQL | SQLite |
 |---|---|---|---|
-| `now()` | `NOW()` | `now()` | 클라이언트가 연결 시간대로 계산해 바인드한 값 |
+| `now()` | `NOW()` | `now()` | 클라이언트가 UTC로 계산해 바인드한 값 |
 | `today()` | `CURDATE()` | `CURRENT_DATE` | 클라이언트가 계산해 바인드한 값 |
 | `secondsAgo(n)`, `minutesAgo(n)`, `hoursAgo(n)`, `daysAgo(n)`, `monthsAgo(n)` | `DATE_SUB(NOW(), INTERVAL ? unit)` | `now() - make_interval(unit => ?)` | 클라이언트가 계산해 바인드한 값 |
 | `secondsLater(n)`, `minutesLater(n)`, `hoursLater(n)`, `daysLater(n)`, `monthsLater(n)` | `DATE_ADD(NOW(), INTERVAL ? unit)` | `now() + make_interval(unit => ?)` | 클라이언트가 계산해 바인드한 값 |
 
-- 연결 시간대는 DSN의 `timezone` 매개변수에서 받고, 없으면 서버 환경의 시간대를 사용한다. MySQL과 PostgreSQL 연결은 세션 시간대를 설정한다.
+- 모든 연결은 datetime 값을 UTC로 읽고 쓴다([config](config.ko.md)). MySQL과 PostgreSQL 연결은 세션 시간대를 UTC로 설정한다.
 - 월 계산은 MySQL, PostgreSQL과 같이 대상 월의 마지막 유효 일자를 유지한다.
 
 ### 10.2 컬럼 함수

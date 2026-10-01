@@ -2,15 +2,21 @@ import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Db } from '../dist/index.js';
-import { openDriver, parseDsn, postgresZone } from '../dist/driver.js';
+import { openDriver, parseDsn } from '../dist/driver.js';
 
 for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/orm_example?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate', 'sqlite:///tmp/x.sqlite?_txlock=deferred', 'sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {
   let failed = false;
   try { await Db.connect(dsn); } catch (error) { failed = error?.code === 'CONFIG'; }
   if (!failed) throw new Error(`invalid DSN was accepted: ${dsn}`);
 }
-for (const [zone, posix] of [['+09:00', '<+09:00>-09:00'], ['-05:30', '<-05:30>+05:30'], ['+00:00', '<+00:00>-00:00'], ['Asia/Seoul', 'Asia/Seoul']]) {
-  if (postgresZone(zone) !== posix) throw new Error(`postgres zone ${zone}: ${postgresZone(zone)}`);
+// 모든 connection은 datetime을 UTC로 읽고 쓰므로 timezone은 UTC와 +00:00만 받는다.
+for (const dsn of ['mysql://root@localhost/orm_example?timezone=%2B09:00', 'postgres://root@localhost/orm_example?timezone=Asia/Seoul', 'sqlite:///tmp/x.sqlite?timezone=Asia%2FSeoul']) {
+  let failed = false;
+  try { parseDsn(dsn); } catch (error) { failed = error?.code === 'CONFIG'; }
+  if (!failed) throw new Error(`a non-UTC timezone was accepted: ${dsn}`);
+}
+for (const dsn of ['mysql://root@localhost/orm_example', 'postgres://root@localhost/orm_example?timezone=UTC', 'sqlite:///tmp/x.sqlite?timezone=%2B00:00']) {
+  if (parseDsn(dsn).zone !== '+00:00') throw new Error(`connection zone of ${dsn}: ${parseDsn(dsn).zone}`);
 }
 for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolIdleSize: 11 }, { poolLifetimeMs: -1 }]) {
   let failed = false;

@@ -232,7 +232,7 @@ go run github.com/polyspec/orm/cmd/ormgen gen --document schema/example.dbspec -
 A connection takes one DSN URI as an argument; the client reads no environment or secret store of its own. The URI scheme selects the database; callers do not pass a second driver value.
 
 ```text
-mysql://user:password@host:3306/orm_example?timezone=%2B09:00
+mysql://user:password@host:3306/orm_example
 postgres://user:password@host:5432/orm_example?sslmode=disable
 sqlite:///var/lib/orm_example.sqlite
 ```
