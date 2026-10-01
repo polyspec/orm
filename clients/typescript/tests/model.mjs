@@ -868,6 +868,72 @@ try {
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   console.log(`${current} done`);
+  const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+  // message가 원인과 transaction 끝의 오류를 함께 담은 CONFIG인지 확인한다.
+  const checkBoth = (what, message, cause, end) => check(message.startsWith('CONFIG: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
+  // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
+  // 보고한다. 풀리지 않은 named lock은 connection에 남는다. 실제 server는 RELEASE_LOCK을 거부하지 않으므로
+  // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
+  current = 'mysql/failedLockRelease';
+  try {
+    const db = await Db.connect(process.env.ORM_TEST_MYSQL_DSN);
+    try {
+      const key = name => `orm_test.${name}.${process.pid}`;
+      const failRelease = () => {
+        const tx = db.utils().active('lock').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
+      };
+      const committed = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('commit')); }, { retry: 0 }));
+      check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
+      const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
+      checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
+      // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+      const notHeld = await failureMessage(db.transaction(async () => {
+        await db.utils().lock(key('released'));
+        await db.utils().active('lock').tx.control('DO RELEASE_LOCK(?)', [key('released')]);
+      }, { retry: 0 }));
+      check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  console.log(`${current} done`);
+  // native rollback, SQLite mode 복원, begin 뒤의 rollback이 실패하면 transaction이 그 오류를 원인과
+  // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 exec가 실패시킨다.
+  // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
+  current = 'sqlite/failedRollback';
+  try {
+    const db = await Db.connect(`sqlite://${join(work, 'transaction-end.sqlite')}`);
+    try {
+      const native = db.pool.state.db;
+      const exec = native.exec.bind(native);
+      let rejects = () => false;
+      let rejectRollback = false;
+      native.exec = sql => {
+        if (rejects(sql)) throw new Error('statement rejected by the test driver');
+        const result = exec(sql);
+        if (rejectRollback && sql === 'ROLLBACK') throw new Error('rollback rejected by the test driver');
+        return result;
+      };
+      rejectRollback = true;
+      const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
+      checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
+      rejects = sql => sql === 'PRAGMA query_only = 1';
+      const began = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+      checkBoth('begin', began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
+      rejectRollback = false;
+      rejects = sql => sql === 'PRAGMA query_only = 0';
+      const committed = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+      check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
+      const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
+      checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
+      check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  console.log(`${current} done`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });

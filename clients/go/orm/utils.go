@@ -101,12 +101,25 @@ func (u *Utils) Lock(key string) error {
 	return nil
 }
 
-// releaseLocks releases MySQL named locks before the transaction ends.
-func (t *txConn) releaseLocks() {
-	for _, key := range t.locks {
-		_, _ = t.tx.ExecContext(t.ctx, "SELECT RELEASE_LOCK(?)", key)
-	}
+// releaseLocks는 transaction이 끝나기 전에 MySQL named lock을 푼다. named lock은
+// COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 실패한 해제와 1이 아닌
+// RELEASE_LOCK 결과(lock을 갖고 있지 않음)를 모두 오류로 돌려준다. 한 번 시도한
+// lock은 다시 풀지 않는다.
+func (t *txConn) releaseLocks() error {
+	locks := t.locks
 	t.locks = nil
+	var errs []error
+	for _, key := range locks {
+		var released sql.NullInt64
+		if err := t.tx.QueryRowContext(t.ctx, "SELECT RELEASE_LOCK(?)", key).Scan(&released); err != nil {
+			errs = append(errs, mapDriverErr(err))
+			continue
+		}
+		if !released.Valid || released.Int64 != 1 {
+			errs = append(errs, configErr("lock %s was not held at transaction end", key))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // SetLocal은 transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은

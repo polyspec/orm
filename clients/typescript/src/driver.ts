@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { connect as netConnect } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
-import { OrmError } from './runtime_error.js';
+import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -212,7 +212,7 @@ class MySqlTx implements DriverTransaction {
     try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }
   public async rollback(): Promise<void> {
-    try { await this.connection.rollback(); } finally { this.connection.release(); }
+    try { await this.connection.rollback(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }
   public async rowLock(): Promise<void> {}
 }
@@ -303,9 +303,13 @@ class PostgresPoolDriver implements DriverPool {
       if (options.readOnly) await client.query('SET TRANSACTION READ ONLY');
       if ((options.timeoutMs ?? 0) > 0) await client.query(`SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs!)}`);
     } catch (error) {
-      if (began) await client.query('ROLLBACK').catch(() => undefined);
-      this.release(client);
-      throw driverError(this.name, error);
+      const failure = driverError(this.name, error);
+      try {
+        if (began) await client.query('ROLLBACK');
+      } catch (rollback) {
+        throw rollbackFailed(failure, driverError(this.name, rollback));
+      } finally { this.release(client); }
+      throw failure;
     }
     return new PostgresTx(client, this.cacheSize, this.config, () => this.release(client));
   }
@@ -332,7 +336,7 @@ class PostgresTx implements DriverTransaction {
     try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   public async rollback(): Promise<void> {
-    try { await this.client.query('ROLLBACK'); } finally { this.release(); }
+    try { await this.client.query('ROLLBACK'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   public async rowLock(): Promise<void> {}
 }
@@ -391,13 +395,21 @@ class SqlitePoolDriver implements DriverPool {
       // A write transaction holds the write lock from its start and waits for
       // it up to busy_timeout; a read-only one begins deferred.
       this.state.db.exec(options.readOnly ? 'BEGIN DEFERRED' : 'BEGIN IMMEDIATE');
-      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
-      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
     } catch (error) {
       this.release();
       throw driverError(this.name, error);
     }
-    return new SqliteTx(this.state, options, () => this.release());
+    const tx = new SqliteTx(this.state, options, () => this.release());
+    try {
+      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
+      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
+    } catch (error) {
+      // 시작한 transaction은 mode까지 되돌리고 rollback한다.
+      const failure = driverError(this.name, error);
+      try { await tx.rollback(); } catch (rollback) { throw rollbackFailed(failure, rollback); }
+      throw failure;
+    }
+    return tx;
   }
   private release(): void {
     this.state.busy = false;
@@ -417,23 +429,41 @@ class SqliteTx implements DriverTransaction {
     return sqliteExecute(this.state, sql, params);
   }
   public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return sqliteExecute(this.state, sql, params); }
-  private finishModes(): void {
-    if (this.options.readOnly) this.state.db.exec('PRAGMA query_only = 0');
-    if (this.options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 0');
+  /**
+   * transaction 안에서 바꾼 mode를 되돌린다. PRAGMA 값은 transaction 뒤에도 connection에 남으므로
+   * 모든 단계를 시도하고 실패를 모두 돌려준다.
+   */
+  private finishModes(): unknown[] {
+    const errors: unknown[] = [];
+    const attempt = (sql: string): void => {
+      try { this.state.db.exec(sql); } catch (error) { errors.push(driverError(this.name, error)); }
+    };
+    if (this.options.readOnly) attempt('PRAGMA query_only = 0');
+    if (this.options.isolation === 'read_uncommitted') attempt('PRAGMA read_uncommitted = 0');
+    return errors;
   }
   public async commit(): Promise<void> {
     try {
-      this.finishModes();
-      this.state.db.exec('COMMIT');
-    } catch (error) {
-      try { this.state.db.exec('ROLLBACK'); } catch { /* the transaction already ended */ }
-      throw driverError(this.name, error);
+      let failure = joinedErrors(this.finishModes());
+      if (failure === undefined) {
+        try {
+          this.state.db.exec('COMMIT');
+          return;
+        } catch (error) { failure = driverError(this.name, error); }
+      }
+      // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있으므로 열려 있을 때만 rollback한다.
+      if (this.state.db.isTransaction) {
+        try { this.state.db.exec('ROLLBACK'); } catch (rollback) { throw rollbackFailed(failure, driverError(this.name, rollback)); }
+      }
+      throw failure;
     } finally { this.release(); }
   }
   public async rollback(): Promise<void> {
     try {
-      this.finishModes();
-      this.state.db.exec('ROLLBACK');
+      const errors = this.finishModes();
+      try { this.state.db.exec('ROLLBACK'); } catch (error) { errors.push(driverError(this.name, error)); }
+      const failure = joinedErrors(errors);
+      if (failure !== undefined) throw failure;
     } finally { this.release(); }
   }
   /**

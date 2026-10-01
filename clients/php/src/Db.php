@@ -239,6 +239,7 @@ final class Db
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
+        $frame = null;
         try {
             if ($this->driver === 'mysql') {
                 if ($isolation !== '') {
@@ -278,40 +279,109 @@ final class Db
             }
             return $frame;
         } catch (\PDOException $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            $failure = OrmException::fromDriver($e, $this->driver);
+            try {
+                // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다.
+                if ($frame !== null) {
+                    $this->finish($frame, false);
+                } elseif ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
+            } catch (\Throwable $cleanup) {
+                throw self::rollbackFailed($failure, $cleanup);
             }
-            throw OrmException::fromDriver($e, $this->driver);
+            throw $failure;
         }
     }
 
+    /** 원인과 실패한 transaction 끝을 함께 보고한다(docs/interfaces.md). */
+    private static function rollbackFailed(\Throwable $failure, \Throwable $cleanup): OrmException
+    {
+        return new OrmException(Code::CONFIG, "transaction failed ({$failure->getMessage()}) and rollback failed ({$cleanup->getMessage()})", $failure);
+    }
+
+    /**
+     * transaction을 끝낸다. 끝내기 전에 MySQL named lock을 풀고 MySQL local 값을
+     * 지우고 SQLite mode를 되돌린다. 이 상태는 COMMIT과 ROLLBACK 뒤에도
+     * connection에 남으므로 모든 단계를 시도하고 실패를 모두 보고한다. cleanup이
+     * 실패한 commit은 rollback하고 cleanup 오류를 던진다.
+     */
     private function finish(TxFrame $frame, bool $commit): void
     {
         $frame->finished = true;
+        $failure = self::joined($this->cleanup($frame));
+        if ($commit && $failure === null) {
+            try {
+                $this->pdo->commit();
+                return;
+            } catch (\PDOException $e) {
+                $failure = OrmException::fromDriver($e, $this->driver);
+            }
+        }
+        $rollback = null;
         try {
-            foreach ($frame->locks as $key) {
-                $this->pdo->prepare('SELECT RELEASE_LOCK(?)')->execute([$key]);
-            }
-            if ($this->driver === 'mysql') {
-                foreach ($frame->locals as $key => $_) {
-                    $this->pdo->exec('SET @`orm.' . $key . '` = NULL');
-                }
-            }
-            if ($this->driver === 'sqlite') {
-                if ($frame->readOnly) {
-                    $this->pdo->exec('PRAGMA query_only = 0');
-                }
-                if ($frame->isolation === 'read_uncommitted') {
-                    $this->pdo->exec('PRAGMA read_uncommitted = 0');
-                }
-            }
-            $commit ? $this->pdo->commit() : $this->pdo->rollBack();
-        } catch (\PDOException $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-            throw OrmException::fromDriver($e, $this->driver);
+        } catch (\PDOException $e) {
+            $rollback = OrmException::fromDriver($e, $this->driver);
         }
+        if ($commit) {
+            throw $rollback === null ? $failure : self::rollbackFailed($failure, $rollback);
+        }
+        $failure = self::joined(array_values(array_filter([$failure, $rollback])));
+        if ($failure !== null) {
+            throw $failure;
+        }
+    }
+
+    /** @return list<\Throwable> transaction 끝의 cleanup에서 실패한 단계들이다. */
+    private function cleanup(TxFrame $frame): array
+    {
+        $errors = [];
+        $attempt = function (callable $step) use (&$errors): void {
+            try {
+                $step();
+            } catch (\PDOException $e) {
+                $errors[] = OrmException::fromDriver($e, $this->driver);
+            } catch (OrmException $e) {
+                $errors[] = $e;
+            }
+        };
+        foreach ($frame->locks as $key) {
+            $attempt(function () use ($key): void {
+                $st = $this->pdo->prepare('SELECT RELEASE_LOCK(?)');
+                $st->execute([$key]);
+                // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+                if ((string) $st->fetchColumn() !== '1') {
+                    throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
+                }
+            });
+        }
+        $frame->locks = [];
+        if ($this->driver === 'mysql') {
+            foreach ($frame->locals as $key => $_) {
+                $attempt(fn() => $this->pdo->exec('SET @`orm.' . $key . '` = NULL'));
+            }
+        }
+        if ($this->driver === 'sqlite') {
+            if ($frame->readOnly) {
+                $attempt(fn() => $this->pdo->exec('PRAGMA query_only = 0'));
+            }
+            if ($frame->isolation === 'read_uncommitted') {
+                $attempt(fn() => $this->pdo->exec('PRAGMA read_uncommitted = 0'));
+            }
+        }
+        return $errors;
+    }
+
+    /** @param list<\Throwable> $errors 하나면 그 오류, 여럿이면 message를 모은 CONFIG다. */
+    private static function joined(array $errors): ?\Throwable
+    {
+        if (count($errors) <= 1) {
+            return $errors[0] ?? null;
+        }
+        return new OrmException(Code::CONFIG, implode('; ', array_map(static fn(\Throwable $e): string => $e->getMessage(), $errors)), $errors[0]);
     }
 
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
