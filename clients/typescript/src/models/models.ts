@@ -611,7 +611,6 @@ export interface Author {
   nePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   orIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   orderByReadCountDescAndSeqAsc(): this;
   possibleIsClose(value: unknown): this;
@@ -704,7 +703,6 @@ export interface User {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -792,7 +790,6 @@ export interface Service {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -899,7 +896,6 @@ export interface ServiceRegion {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
@@ -1009,7 +1005,6 @@ export interface ServiceMember {
   matchUserSeqWithSeq(): this;
   matchUserSeqWithUserSeq(): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
@@ -1107,7 +1102,6 @@ export interface CompositeAccount {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
@@ -1197,7 +1191,6 @@ export interface CompositeMembership {
   aliasWriter(): this;
   getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
@@ -1297,7 +1290,6 @@ export interface SoftRecord {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1385,7 +1377,6 @@ export interface Account {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1473,7 +1464,6 @@ export interface Project {
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1553,7 +1543,6 @@ export interface AccountProject {
   aliasOwner(): this;
   aliasWriter(): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
@@ -1645,7 +1634,6 @@ export interface Task {
   matchServiceSeqWithSeq(): this;
   matchUserSeqWithSeq(): this;
   newLabel(value: unknown): this;
-  newPage(value: unknown): this;
   possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
