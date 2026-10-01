@@ -3,6 +3,7 @@ package dbspec
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
@@ -160,10 +161,8 @@ func (a *applier) locked(f func() error) error {
 			return &ApplyError{Code: "locked", Message: "another session holds GET_LOCK('" + historyTable + "')"}
 		}
 		err := f()
-		if _, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK('"+historyTable+"')"); unlock != nil && err == nil {
-			err = unlock
-		}
-		return err
+		_, unlock := a.c.ExecContext(a.ctx, "DO RELEASE_LOCK('"+historyTable+"')")
+		return errors.Join(err, unlock)
 	case DialectPostgres:
 		var got bool
 		if err := a.queryRow("SELECT pg_try_advisory_lock(hashtext('"+historyTable+"'))", &got); err != nil {
@@ -174,30 +173,27 @@ func (a *applier) locked(f func() error) error {
 		}
 		err := f()
 		var released bool
-		if unlock := a.queryRow("SELECT pg_advisory_unlock(hashtext('"+historyTable+"'))", &released); unlock != nil && err == nil {
-			err = unlock
+		unlock := a.queryRow("SELECT pg_advisory_unlock(hashtext('"+historyTable+"'))", &released)
+		if unlock == nil && !released {
+			unlock = fmt.Errorf("the advisory lock of %s was not held at unlock", historyTable)
 		}
-		return err
+		return errors.Join(err, unlock)
 	}
 	if _, err := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return err
 	}
 	if _, err := a.c.ExecContext(a.ctx, "BEGIN IMMEDIATE"); err != nil {
-		a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON")
-		return &ApplyError{Code: "locked", Message: "another connection holds the SQLite write lock", Err: err}
+		_, restore := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON")
+		return errors.Join(&ApplyError{Code: "locked", Message: "another connection holds the SQLite write lock", Err: err}, restore)
 	}
 	err := f()
 	end := "COMMIT"
 	if err != nil {
 		end = "ROLLBACK"
 	}
-	if _, e := a.c.ExecContext(a.ctx, end); e != nil && err == nil {
-		err = e
-	}
-	if _, e := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON"); e != nil && err == nil {
-		err = e
-	}
-	return err
+	_, ended := a.c.ExecContext(a.ctx, end)
+	_, restore := a.c.ExecContext(a.ctx, "PRAGMA foreign_keys = ON")
+	return errors.Join(err, ended, restore)
 }
 
 func (a *applier) queryRow(query string, dest ...any) error {
@@ -205,17 +201,12 @@ func (a *applier) queryRow(query string, dest ...any) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		return fmt.Errorf("%s returned no row", query)
+	if rows.Next() {
+		err = rows.Scan(dest...)
+	} else if err = rows.Err(); err == nil {
+		err = fmt.Errorf("%s returned no row", query)
 	}
-	if err := rows.Scan(dest...); err != nil {
-		return err
-	}
-	return rows.Err()
+	return errors.Join(err, rows.Close())
 }
 
 // createHistory는 history table을 없을 때 만든다.
@@ -346,9 +337,8 @@ func (a *applier) applyPlan(p *Plan, start int, resume bool) error {
 		if err != nil {
 			end = "ROLLBACK"
 		}
-		if _, e := a.c.ExecContext(a.ctx, end); e != nil && err == nil {
-			err = e
-		}
+		_, ended := a.c.ExecContext(a.ctx, end)
+		err = errors.Join(err, ended)
 	}
 	if err != nil {
 		return err
@@ -490,10 +480,10 @@ func (a *applier) mysqlEffect(statement string) (bool, error) {
 		var n int
 		if rows.Next() {
 			err = rows.Scan(&n)
+		} else if err = rows.Err(); err == nil {
+			err = fmt.Errorf("%s returned no row", query)
 		}
-		if e := rows.Close(); err == nil {
-			err = e
-		}
+		err = errors.Join(err, rows.Close())
 		if err != nil {
 			return false, err
 		}

@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.2.1: a failed Go apply reports its cleanup errors together with the failure, and a MySQL effect query without a row is an error.
+
 - T8.7.4: the TypeScript client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
 
 - T8.6.4: the TypeScript client applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery, and its introspection leaves `dbspec$plans` out.
