@@ -151,7 +151,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 
 ## 6. Connections, transactions, and utilities — IF-13 to IF-17
 
-`connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned.
+`connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned. Before the transaction ends, the client releases its `lock` locks and clears the MySQL values of `setLocal`, because MySQL user variables outlive `COMMIT` and `ROLLBACK` on a pooled connection. When that cleanup fails at commit, the transaction rolls back and returns the cleanup error. When the callback fails and the cleanup or the rollback fails too, the error is `CONFIG` `transaction failed (<callback error>) and rollback failed (<cleanup error>)`.
 
 | Option | Values |
 |---|---|

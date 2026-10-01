@@ -846,6 +846,31 @@ try {
     try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     console.log(`${current} done`);
   }
+  // transaction 끝의 MySQL local 값 reset이 실패하면 commit과 rollback이 그 오류를 보고한다.
+  // MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
+  // 실제 server는 reset을 거부하지 않으므로 transaction connection의 control이 reset만 실패시킨다.
+  current = 'mysql/failedLocalReset';
+  try {
+    const db = await Db.connect(process.env.ORM_TEST_MYSQL_DSN);
+    try {
+      const failReset = () => {
+        const tx = db.utils().active('setLocal').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params);
+      };
+      const message = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+      const committed = await message(db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); }, { retry: 0 }));
+      check(committed.includes('reset rejected by the test driver'), `commit reports the failed reset: ${committed}`);
+      let rolledBack = null;
+      try {
+        await db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); throw new Error('callback failed'); }, { retry: 0 });
+      } catch (error) { rolledBack = error; }
+      check(rolledBack instanceof OrmError && rolledBack.code === 'CONFIG' && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  console.log(`${current} done`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });

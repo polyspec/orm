@@ -216,8 +216,14 @@ final class Db
             $v = $fn();
         } catch (\Throwable $e) {
             array_pop(self::$frames);
-            $this->finish($frame, false);
-            throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            try {
+                $this->finish($frame, false);
+            } catch (\Throwable $cleanup) {
+                // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+                throw new OrmException(Code::CONFIG, "transaction failed ({$failure->getMessage()}) and rollback failed ({$cleanup->getMessage()})", $failure);
+            }
+            throw $failure;
         }
         array_pop(self::$frames);
         $this->finish($frame, true);

@@ -374,7 +374,13 @@ export class Db {
     try {
       result = await flow.run([...frames(), frame], callback);
     } catch (error) {
-      await this.finish(frame, false).catch(() => undefined);
+      try {
+        await this.finish(frame, false);
+      } catch (cleanup) {
+        // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+        const text = (e: unknown) => (e instanceof Error ? e.message : String(e));
+        throw new OrmError('CONFIG', `transaction failed (${text(error)}) and rollback failed (${text(cleanup)})`, error);
+      }
       throw error;
     }
     await this.finish(frame, true);
