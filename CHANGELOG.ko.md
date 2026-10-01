@@ -1,5 +1,17 @@
 # 변경 이력
 
+MySQL, PostgreSQL, SQLite의 스키마 사실을 기록하고 기능별 중립 지원을
+결정한다(T8.0, T8.0.12). tests/dialects에 공통 probe 239개와
+dialect-facts-check target을 추가한다. 각 probe는 자기 일회용 database,
+schema, file에서 자기 deadline으로 실행하며, SQLite 파일 이름 case는 PDO,
+node:sqlite, sqlite3 shell이 DSN query를 파일 이름에 남긴다는 것을 보여
+준다. MySQL 8.4.11, PostgreSQL 17.11, SQLite 3.53.4에서 두 번 실패 없이
+통과했다. docs/dialects.md는 기능별 문법, 의미, probe, 중립 rendering 또는
+미지원 사유, catalog 출처와 UTC 연결 규칙의 local datetime,
+실행기 수정 시각 기록을 기록하고 audit context 정의는 T8.1 review로
+남긴다. 현재 스키마 도구와 client의 결함 13개를 T8.0.1-T8.0.11, T8.0.13,
+T8.0.14로 기록한다.
+
 네 파서에서 물리 문서 입력 상한을 검증한다(T7.17.2.10.3.4).
 64 MiB·200000줄·4096블록을 유지하며 소유별 상한·초과를 두 번 실행해
 정확한 보존·안전한 자원 진단을 확인했다. PHP 상한 Red는 즉시 할당하는

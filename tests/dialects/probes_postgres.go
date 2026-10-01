@@ -370,6 +370,19 @@ func postgresProbes() []Probe {
 			e.Exec("ROLLBACK")
 		}),
 		// Proposed neutral renderings.
+		p("render.timestamp_utc_session", "with TimeZone UTC, CURRENT_TIMESTAMP cast to timestamp equals now() AT TIME ZONE 'UTC'", func(e *Env) {
+			e.Exec("SET TIME ZONE 'UTC'")
+			e.Want("SELECT CURRENT_TIMESTAMP::timestamp = (now() AT TIME ZONE 'UTC')", "true")
+			e.Exec("CREATE TABLE t (a int, d timestamp(6) DEFAULT CURRENT_TIMESTAMP)", "BEGIN", "INSERT INTO t (a) VALUES (1)")
+			e.Want("SELECT d = (now() AT TIME ZONE 'UTC') FROM t", "true")
+			e.Exec("COMMIT")
+		}),
+		p("render.timestamptz_conversion", "ALTER COLUMN TYPE timestamp USING d AT TIME ZONE 'UTC' converts a timestamptz instant to its UTC wall clock", func(e *Env) {
+			e.Exec("SET TIME ZONE 'Asia/Seoul'", "CREATE TABLE t (d timestamptz(6))", "INSERT INTO t VALUES ('2020-01-01 09:00:00+09')",
+				"ALTER TABLE t ALTER COLUMN d TYPE timestamp(6) USING d AT TIME ZONE 'UTC'")
+			e.Want("SELECT d::text FROM t", "2020-01-01 00:00:00")
+			e.Want("SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = 't'::regclass AND attname = 'd'", "timestamp(6) without time zone")
+		}),
 		p("render.time_of_day_check", "TIME with CHECK (v < '24:00:00') rejects 24:00:00 (23514)", func(e *Env) {
 			e.Exec("CREATE TABLE t (v time(6), CONSTRAINT t_v_time CHECK (v < '24:00:00'))", "INSERT INTO t VALUES ('23:59:59.999999')")
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "23514")

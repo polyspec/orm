@@ -36,6 +36,12 @@ tag `physical`)를 실행한다. SQLite는 서버가 필요 없다. Go probe 연
 `modernc.org/sqlite`를 사용하며 `sqlite.env.library`가 링크한 library
 version을 기록한다.
 
+`TestSQLiteFileNameWithQuery`는 probe와 함께 실행하며 DSN query를 파일
+이름에 남기는 SQLite opener를 기록한다. Go `modernc.org/sqlite`, PHP PDO,
+`node:sqlite`, `sqlite3` shell로
+`<dir>/bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00`을 열고
+자기 임시 디렉터리에 생긴 파일 이름을 확인한다.
+
 각 probe는 `start`, `observed` 값, `result … PASS|FAIL after <elapsed>`를
 기록한다. `go test -v`도 각 subtest와 경과 시간을 출력한다. 각 probe는
 자기 30초 deadline을 가지며 정리 단계도 별도 30초를 가지므로 go test

@@ -202,11 +202,12 @@ client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
-# the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe.
+# the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
+# and records which SQLite openers keep a DSN query in the file name.
 # Each probe has its own deadline, so the go test binary timeout is off.
 dialect-facts-check:
 	go test ./tests/dialects -run '^TestProbeIDs$$' -count=1 -v
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestDialectFacts$$' -count=1 -timeout 0 -v
+	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1 -timeout 0 -v
 
 conformance-counter-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck)$$' -count=1 -timeout 3m
