@@ -97,7 +97,7 @@ classDiagram
 
 ### 5.0 연결 입력
 
-모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 선택 매개변수 `timezone`이 연결 시간대를 정하며, 없으면 서버 환경의 시간대를 사용한다. 호출자는 별도 드라이버 값을 전달하지 않는다.
+모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 모든 연결은 datetime 값을 UTC로 읽고 쓰며, 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받는다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
 | 클라이언트 | 공개 연결 호출 | 결과 |
 |---|---|---|
@@ -151,7 +151,7 @@ classDiagram
 
 ## 6. 연결·트랜잭션·유틸리티 — IF-13 ~ IF-17
 
-`connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다.
+`connection.transaction(fn, options)`은 콜백을 하나의 트랜잭션에서 실행한다. begin, commit, rollback, 실행기는 비공개다. 콜백 오류나 예외는 트랜잭션을 되돌리고, 그렇지 않으면 커밋하고 콜백 결과를 반환한다. MySQL user variable은 pool connection에서 `COMMIT`과 `ROLLBACK` 뒤에도 남으므로, 클라이언트는 트랜잭션이 끝나기 전에 `lock` lock을 풀고 `setLocal`의 MySQL 값을 지운다. 커밋할 때 이 정리가 실패하면 트랜잭션을 되돌리고 정리 오류를 반환한다. 콜백이 실패하고 정리나 rollback도 실패하면 오류는 `CONFIG` `transaction failed (<callback error>) and rollback failed (<cleanup error>)`다.
 
 | 옵션 | 값 |
 |---|---|

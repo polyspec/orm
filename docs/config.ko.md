@@ -5,15 +5,15 @@
 DSN URI만 데이터베이스를 선택한다.
 
 ```text
-mysql://user:password@host:3306/orm_example?timezone=%2B09:00
+mysql://user:password@host:3306/orm_example
 mysql://user@localhost/orm_example?socket=/tmp/mysql.sock
-postgres://user:password@host:5432/orm_example?sslmode=disable&timezone=Asia/Seoul
+postgres://user:password@host:5432/orm_example?sslmode=disable
 postgres:///orm_example?host=/tmp
 sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
 ```
 
 - scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다.
-- `timezone`은 IANA 명칭이나 고정 오프셋으로 연결 시간대를 정한다. MySQL과 PostgreSQL 연결은 세션 시간대를 설정하고, SQLite 값과 ORM 값 함수는 클라이언트에서 이 시간대를 사용한다. `timezone`이 없으면 서버 환경의 시간대를 사용한다. MySQL에서 명칭 시간대를 쓰려면 서버에 시간대 테이블(`mysql_tzinfo_to_sql`)이 있어야 하며, 없으면 연결이 `CONFIG`를 반환한다. PostgreSQL datetime 컬럼은 시각(instant)을 저장하고 연결 시간대로 읽는다.
+- 모든 연결은 서버 시간대와 상관없이 datetime 값을 UTC로 읽고 쓴다([dialects](dialects.ko.md#date-and-time)). MySQL 연결은 `time_zone = '+00:00'`을, PostgreSQL 연결은 `TimeZone`을 `UTC`로 설정하고, SQLite 값과 ORM 값 함수는 클라이언트에서 UTC를 쓴다. offset이 있는 값은 UTC wall clock으로 쓰고 UTC로 다시 읽는다. 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받으며, 다른 값은 `CONFIG`를 반환한다.
 - 연결 설정은 최대 연결 수 `poolSize`를 받는다. Go는 `orm.Config{PoolSize: n}`, PHP는 `new Config(poolSize: n)`, TypeScript는 `{ poolSize: n }`, Rust는 `Db::connect(dsn, n, config)`다. 0이거나 지정하지 않으면 Go·TypeScript·Rust는 최대 10개의 연결을 열고, 음수는 `CONFIG`를 반환한다. 풀은 최대값보다 많은 연결을 열지 않으며, 모든 연결이 사용 중일 때 연결이 필요한 문이나 트랜잭션은 연결이 반환될 때까지 기다린다. TypeScript의 SQLite 드라이버는 연결 하나를 유지한다. PHP에는 풀이 없다. `Orm::connect`는 `Db` 값이 살아 있는 동안 유지되는 PDO 연결 하나를 열고, 요청을 넘어 유지되는 연결은 없으며, `stats()`는 `poolSize`를 프로세스가 스스로 지키는 상한으로 보고한다.
 - 연결 설정은 풀의 최대 유휴 연결 수 `poolIdleSize`와 풀 연결의 수명(밀리초) `poolLifetimeMs`를 받는다. Go는 `orm.Config{PoolIdleSize: n, PoolLifetimeMs: ms}`, TypeScript는 `{ poolIdleSize: n, poolLifetimeMs: ms }`, Rust는 `Config { pool_idle_size: n, pool_lifetime_ms: ms, ..Default::default() }`다. 풀이 이미 `poolIdleSize`개의 유휴 연결을 유지하는 동안 반환된 연결은 닫힌다. 수명이 지난 연결은 유휴 상태일 때 또는 반환될 때 닫힌다. `poolIdleSize`가 0이거나 지정하지 않으면 풀 크기까지 유휴 연결을 유지한다. `poolLifetimeMs`가 0이거나 지정하지 않으면 Go와 TypeScript는 수명 없이 연결을 유지하고, Rust는 풀의 30분 수명을 유지한다. 음수나 풀 크기보다 큰 유휴 연결 수는 `CONFIG`를 반환하며, Rust의 필드는 부호 없는 정수다. TypeScript의 SQLite 드라이버는 연결 하나를 유지하며 이 값을 사용하지 않는다. PHP에는 풀이 없으며, `new Config(poolIdleSize: n, poolLifetimeMs: ms)`에서 둘 중 하나라도 0이 아니면 `Orm::connect`가 `CONFIG`를 반환한다.
 - 연결 설정은 연결의 모든 문을 제한하는 `statementTimeoutMs`를 받는다. Go는 `orm.Config{StatementTimeoutMs: n}`, PHP는 `new Config(statementTimeoutMs: n)`, TypeScript는 `{ statementTimeoutMs: n }`, Rust는 `Config { statement_timeout_ms: n, ..Default::default() }`다. 0이거나 지정하지 않으면 서버 기본값을 쓰고, 음수는 `CONFIG`를 반환한다. PostgreSQL은 `statement_timeout`으로 모든 문을 제한하며, 모든 클라이언트는 이 값을 각 서버 연결의 startup 매개변수로 전달한다. MySQL은 `max_execution_time`으로 SELECT 문을 제한하며, 쓰기는 이 값이 아니라 서버 잠금 대기 시간(`innodb_lock_wait_timeout`)이 제한한다. SQLite에는 세션 시간 제한이 없으므로 DSN의 `busy_timeout`이 그 한계다. 제한에 걸려 중단된 문은 `CANCELED`를 반환한다.

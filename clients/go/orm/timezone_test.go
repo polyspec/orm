@@ -42,10 +42,11 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 	}
 }
 
-// TestConnectionTimeZone writes a wall-clock value and reads it back in the
-// connection time zone, and checks that the database clock default is in the
-// same zone.
-func TestConnectionTimeZone(t *testing.T) {
+// TestConnectionsUseUTC는 모든 connection이 server의 time zone과 상관없이
+// datetime을 UTC로 읽고 쓰는지 확인한다(docs/dialects.md "Date and time"). 시험
+// server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다. offset이 있는 값은
+// UTC wall clock으로 저장되고 UTC location으로 읽히며, clock default도 UTC다.
+func TestConnectionsUseUTC(t *testing.T) {
 	s := fixtureSchema(t, "zone")
 	manifest := s.Text
 	targets := map[string]string{
@@ -58,16 +59,19 @@ func TestConnectionTimeZone(t *testing.T) {
 			t.Run(driver, func(t *testing.T) { requireTarget(t, driver, base) })
 			continue
 		}
-		for _, zone := range []string{"+00:00", "+09:00", "-05:30", "Asia/Seoul"} {
+		for _, zone := range []string{"", "UTC", "+00:00"} {
 			t.Run(driver+"/"+zone, func(t *testing.T) {
 				if driver == "sqlite" {
 					base = "sqlite://" + filepath.Join(t.TempDir(), "zone.sqlite")
 				}
-				sep := "?"
-				if strings.Contains(base, "?") {
-					sep = "&"
+				dsn := base
+				if zone != "" {
+					sep := "?"
+					if strings.Contains(base, "?") {
+						sep = "&"
+					}
+					dsn = base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
 				}
-				dsn := base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
 				dropTable(t, driver, base, "zone_event")
 				defer dropTable(t, driver, base, "zone_event")
 				db, err := orm.Connect(dsn, s, orm.Config{})
@@ -78,15 +82,6 @@ func TestConnectionTimeZone(t *testing.T) {
 				if err := db.Utils().Schema().Install(manifest); err != nil {
 					t.Fatal(err)
 				}
-				loc := time.FixedZone("", 0)
-				switch zone {
-				case "+09:00":
-					loc = time.FixedZone(zone, 9*3600)
-				case "-05:30":
-					loc = time.FixedZone(zone, -(5*3600 + 1800))
-				case "Asia/Seoul":
-					loc, _ = time.LoadLocation(zone)
-				}
 				ent := zoneEntity(s)
 				model := func() *orm.Core {
 					c := orm.NewCore(ent)
@@ -94,7 +89,7 @@ func TestConnectionTimeZone(t *testing.T) {
 					c.Connect(db)
 					return c
 				}
-				start := time.Date(2026, 1, 2, 0, 0, 0, 0, loc)
+				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
 				c := model()
 				c.Set("start_dt", start)
 				before := time.Now()
@@ -107,23 +102,12 @@ func TestConnectionTimeZone(t *testing.T) {
 				}
 				vals := row.(*keywordRow).vals
 				got, ok := vals["start_dt"].(time.Time)
-				if !ok || !got.Equal(start) || got.Format("15:04") != "00:00" {
-					t.Fatalf("start_dt = %v, want %v", vals["start_dt"], start)
+				if !ok || !got.Equal(start) || got.Location() != time.UTC || got.Format("2006-01-02 15:04") != "2026-01-01 15:00" {
+					t.Fatalf("start_dt = %v, want %v in UTC", vals["start_dt"], start.UTC())
 				}
-				// SQLite의 default now는 UTC text다 (docs/dialects.md "Rendered
-				// statements"). 연결 time zone이 UTC가 아니면 그 text를 연결 time
-				// zone으로 읽게 되어 이 검사는 SQLite에서 UTC 연결에만 적용한다.
 				created, ok := vals["created_ts"].(time.Time)
-				if driver != "sqlite" || zone == "+00:00" {
-					if !ok || created.Sub(before).Abs() > time.Minute {
-						t.Fatalf("created_ts = %v, want about %v", vals["created_ts"], before.In(loc))
-					}
-				}
-				filter := model()
-				filter.Where("", []orm.ChainKey{{Column: "start_dt"}}, start)
-				found, err := filter.GetCount()
-				if err != nil || found != 1 {
-					t.Fatalf("where start_dt: %d %v", found, err)
+				if !ok || created.Location() != time.UTC || created.Sub(before).Abs() > time.Minute {
+					t.Fatalf("created_ts = %v, want about %v in UTC", vals["created_ts"], before.UTC())
 				}
 				text := model()
 				text.Set("start_dt", "2026-01-03 00:00:00")
@@ -136,10 +120,11 @@ func TestConnectionTimeZone(t *testing.T) {
 					arg  any
 					want int64
 				}{
-					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-02 00:00:00", 1},
+					{"instant", orm.ChainKey{Column: "start_dt"}, start, 1},
+					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-01 15:00:00", 1},
 					{"fraction", orm.ChainKey{Column: "start_dt"}, "2026-01-03T00:00:00.0", 1},
-					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-02 00:00:00", "2026-01-03 00:00:00"}, 2},
-					{"between", orm.ChainKey{Op: "between", Column: "start_dt"}, [2]string{"2026-01-02 00:00:00", "2026-01-02 23:59:59"}, 1},
+					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-01 15:00:00", "2026-01-03 00:00:00"}, 2},
+					{"between", orm.ChainKey{Op: "between", Column: "start_dt"}, [2]string{"2026-01-01 15:00:00", "2026-01-02 23:59:59"}, 1},
 				} {
 					q := model()
 					q.Where("", []orm.ChainKey{filter.key}, filter.arg)

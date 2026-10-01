@@ -24,7 +24,7 @@
 
 ## 현재 동작
 
-- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 timezone 파라미터가 연결 시간대를 정하며, client는 자기 process에서 statement를 계획한다.
+- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다.
 - `model_queries`: 생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.
 - `model_writes`: 생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다.
 - `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다.

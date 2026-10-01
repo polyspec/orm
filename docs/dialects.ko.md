@@ -39,7 +39,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - `UPDATE`는 updated timestamp를 항상 명시한다. MySQL의 `ON UPDATE`는 다른 database에 대응하지 않는다.
 - `plus`와 `minus`는 column을 table-qualified로 작성한다.
 - 원시 조각(`raw`, `setRaw<Col>`, `addRawColumn<Alias>`)의 `?`는 bind 순서에 따라 방언 placeholder로 변경한다. 개수와 bind 개수가 다르면 `IR_INVALID`다.
-- SQLite datetime은 연결 시간대 기준 여섯 자리 소수의 text다. 삽입 시 `=now` 컬럼 값은 실행기가 이 시간대의 시각으로 채운다. datetime 컬럼과 비교하거나 대입하는 문자열도 같은 형식으로 바꾼다. `YYYY-MM-DD[ T]HH:MM:SS[.f]`는 소수 여섯 자리로 채우고, `Z`나 `±HH:MM`을 포함한 문자열은 연결 시간대로 변환한다. date 컬럼은 `YYYY-MM-DD`를 받는다. 그 밖의 문자열은 `CODEC_ENCODE`를 반환한다.
+- SQLite datetime은 UTC 기준 여섯 자리 소수의 text다. 삽입 시 `=now` 컬럼 값은 실행기가 UTC 시각으로 채운다. datetime 컬럼과 비교하거나 대입하는 문자열도 같은 형식으로 바꾼다. `YYYY-MM-DD[ T]HH:MM:SS[.f]`는 소수 여섯 자리로 채우고, `Z`나 `±HH:MM`을 포함한 문자열은 UTC로 변환한다. date 컬럼은 `YYYY-MM-DD`를 받는다. 그 밖의 문자열은 `CODEC_ENCODE`를 반환한다.
 - `decimal(P,S)` 컬럼은 MySQL에서 `DECIMAL(P,S)`, PostgreSQL에서 `NUMERIC(P,S)`, SQLite에서 `DECIMALINT(P,S)`를 사용한다. SQLite는 정확한 값을 10^S배 한 부호 있는 정수로 저장하고, 실행기는 읽을 때 생성 모델의 고정 소수부 자릿수 십진 문자열로 변환한다. 선언은 `1 ≤ P ≤ 18`, `0 ≤ S ≤ P`를 요구하므로 배율 정수가 부호 있는 64비트 정수 범위에 들어간다. 정수 decimal의 매니페스트에도 `scale: 0`을 명시한다. 잘못된 텍스트, 초과 자릿수, 소수부 손실, 맞지 않는 저장 셀은 `CODEC_ENCODE` 또는 `CODEC_DECODE`로 실패한다.
 - `jsontext` 컬럼은 모든 방언에서 텍스트다. PostgreSQL은 `text`, MySQL은 `LONGTEXT`, SQLite는 TEXT다. 저장한 텍스트를 그대로 반환하므로 멤버 순서, 중복 키, 빈 객체와 빈 배열의 구분이 유지된다. ORM에는 JSON 경로 조건과 JSON 인덱스가 없으며, 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만든다.
 - `uuid` 컬럼은 PostgreSQL에서 네이티브 `uuid`, MySQL에서 `char(36)`, SQLite에서 TEXT다. 클라이언트는 uuid 값을 텍스트로 bind한다.
@@ -316,7 +316,7 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 
 ## Introspection
 
-introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤, introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust client로 실행한다. `make dbspec-introspect-compare-check`는 2000 table stress 문서를 각 dialect에 적용하고 `tests/dbspec/introspect`의 runner 네 개를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없고, 각 introspection이 5초 안에 끝나기를 요구한다.
+introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust client로 실행한다. `make dbspec-introspect-compare-check`는 2000 table stress 문서를 각 dialect에 적용하고 `tests/dbspec/introspect`의 runner 네 개를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없고, 각 introspection이 5초 안에 끝나기를 요구한다.
 
 ### 문서
 
@@ -350,7 +350,7 @@ MySQL은 precision 0을 괄호 없이 쓴다(`time`, `datetime`). type, collatio
 
 - primary key는 column 순서를 유지한다. MySQL `UNIQUE` index, PostgreSQL `UNIQUE` constraint, origin이 `c`인 SQLite unique index는 unique key이고, 그 밖의 index는 index이며 `DESC`는 `COLLATION`, `indoption`, `pragma_index_xinfo.desc`에서 읽는다.
 - prefix, partial, expression, full-text index, constraint 없는 PostgreSQL unique index, primary key가 아닌 SQLite `sqlite_autoindex`, 이름에 `$`가 있는 index는 미지원이다.
-- foreign key는 이름, column, 참조 table과 column, 두 action을 읽는다. `NO ACTION`, `SET DEFAULT`, deferrable key, `MATCH FULL`은 미지원이다. SQLite foreign key 이름은 `sqlite_master`의 `CREATE TABLE` text에서 온다.
+- foreign key는 이름, column, 참조 table과 column, 두 action을 읽는다. `NO ACTION`, `SET DEFAULT`, deferrable key, `MATCH FULL`, 참조 table이 다른 schema에 있는 PostgreSQL key는 미지원이다. SQLite foreign key 이름은 `sqlite_master`의 `CREATE TABLE` text에서 온다.
 
 ### Check
 

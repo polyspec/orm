@@ -114,8 +114,8 @@ process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true 
 let probes = 0;
 
 // withDatabase creates an empty database, schema or file named after the
-// language, the pid and the probe, gives a connection to it to body, and
-// drops it and checks that nothing remains.
+// language, the pid and the probe, gives a connection to it, an exec function
+// and its name to body, and drops it and checks that nothing remains.
 async function withDatabase(dialect, body) {
   const name = `dbspec_${run}_${String(probes++).padStart(3, '0')}`;
   switch (dialect) {
@@ -126,7 +126,7 @@ async function withDatabase(dialect, body) {
         try {
           const connection = await mysql.createConnection(mysqlOptions(name));
           try {
-            await body(connection, (connection, sql) => connection.query(sql));
+            await body(connection, (connection, sql) => connection.query(sql), name);
           } finally {
             await connection.end();
           }
@@ -151,13 +151,15 @@ async function withDatabase(dialect, body) {
           try {
             await client.query('SET client_min_messages = warning');
             await client.query(`SET search_path TO "${name}"`);
-            await body(client, (client, sql) => client.query(sql));
+            await body(client, (client, sql) => client.query(sql), name);
           } finally {
             await client.end();
           }
         } finally {
+          // 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+          await admin.query(`DROP SCHEMA IF EXISTS "${name}_b" CASCADE`);
           await admin.query(`DROP SCHEMA "${name}" CASCADE`);
-          const { rows } = await admin.query('SELECT COUNT(*)::int AS n FROM pg_namespace WHERE nspname = $1', [name]);
+          const { rows } = await admin.query('SELECT COUNT(*)::int AS n FROM pg_namespace WHERE nspname IN ($1, $2)', [name, `${name}_b`]);
           assert.equal(rows[0].n, 0, `schema ${name} remains after cleanup`);
         }
       } finally {
@@ -170,7 +172,7 @@ async function withDatabase(dialect, body) {
       assert(!existsSync(path), `SQLite file ${path} already exists`);
       const db = new DatabaseSync(path);
       try {
-        await body(db, (db, sql) => db.exec(sql));
+        await body(db, (db, sql) => db.exec(sql), name);
       } finally {
         db.close();
         for (const suffix of ['', '-journal', '-wal', '-shm']) rmSync(path + suffix, { force: true });
@@ -247,8 +249,10 @@ for (const c of cases) {
     for (const [name, lines] of Object.entries(c.documents)) sources[name] = text(lines);
     const rendered = renderDbspec(parseSet(c.id, sources), c.dialect);
     assert.deepEqual(rendered.diagnostics, []);
-    await withDatabase(c.dialect, async (connection, exec) => {
-      for (const sql of [...CONNECTION_RULES[c.dialect], ...rendered.statements, ...c.statements]) await exec(connection, sql);
+    await withDatabase(c.dialect, async (connection, exec, name) => {
+      // {schema}는 이 case의 database 또는 schema 이름이다.
+      const statements = c.statements.map(sql => sql.replaceAll('{schema}', name));
+      for (const sql of [...CONNECTION_RULES[c.dialect], ...rendered.statements, ...statements]) await exec(connection, sql);
       const { document, unsupported } = await introspectDbspec(connection, c.dialect, 'introspected');
       assert.equal(emitDbspec(document), text(c.document));
       assert.deepEqual(unsupported.map(u => [u.kind, u.table, u.name]), c.unsupported);

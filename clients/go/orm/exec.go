@@ -125,12 +125,8 @@ func (d *DB) localTime(v any) any {
 	return v
 }
 
-// now is the executor clock in the connection time zone. PostgreSQL receives
-// the offset because its columns store instants.
+// now is the executor clock as UTC wall-clock text.
 func (d *DB) now() string {
-	if d.driver == "postgres" {
-		return time.Now().In(d.location).Format("2006-01-02 15:04:05.000000-07:00")
-	}
 	return time.Now().In(d.location).Format("2006-01-02 15:04:05.000000")
 }
 
@@ -213,11 +209,12 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 			return nil, nil, &ir.Error{Code: CodeInternal, Msg: "bind from " + b.From}
 		}
 	}
-	if d.driver != "postgres" {
-		for i, v := range out {
-			if t, ok := v.(time.Time); ok {
-				out[i] = t.In(d.location).Format("2006-01-02 15:04:05.000000")
-			}
+	// datetime column은 time zone 없는 wall clock이므로 offset이 있는 값을 UTC
+	// wall clock text로 바꿔 보낸다. PostgreSQL timestamp는 offset을 버린다
+	// (postgres.timestamp.ignores_offset).
+	for i, v := range out {
+		if t, ok := v.(time.Time); ok {
+			out[i] = t.In(d.location).Format("2006-01-02 15:04:05.000000")
 		}
 	}
 	return out, masks, nil

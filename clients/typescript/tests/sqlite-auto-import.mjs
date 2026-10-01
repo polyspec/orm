@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildManifest } from '../dist/schema/build.js';
@@ -33,5 +33,20 @@ try {
   }
 } finally {
   await rm(dir, { recursive: true, force: true });
+}
+// query가 붙은 SQLite DSN은 path만으로 file을 만든다(docs/dialects.md "Probe environment").
+const named = await mkdtemp(join(tmpdir(), 'orm-ts-tool-name-'));
+try {
+  const { db } = await openToolDb(`sqlite://${join(named, 'named.sqlite')}?_pragma=busy_timeout(5000)&timezone=%2B00:00`);
+  try {
+    await db.exec('CREATE TABLE t (a INTEGER)');
+  } finally {
+    await db.close();
+  }
+  const names = await readdir(named);
+  assert.ok(names.includes('named.sqlite'), `files ${JSON.stringify(names)}: named.sqlite is missing`);
+  for (const name of names) assert.ok(['named.sqlite', 'named.sqlite-journal', 'named.sqlite-shm', 'named.sqlite-wal'].includes(name), `files ${JSON.stringify(names)}: ${name} is not named by the path`);
+} finally {
+  await rm(named, { recursive: true, force: true });
 }
 console.log('TypeScript SQLite automatic rowid import passed');

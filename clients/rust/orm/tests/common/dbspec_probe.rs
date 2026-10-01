@@ -156,7 +156,7 @@ impl Servers {
         Servers { mysql_dsn, postgres_dsn, mysql, postgres, run: format!("dbspec_rust_{}_{run}", std::process::id()) }
     }
 
-    fn name(&self, index: usize) -> String {
+    pub fn name(&self, index: usize) -> String {
         format!("{}_{index:03}", self.run)
     }
 
@@ -219,10 +219,19 @@ impl Servers {
                 }
             }
             "postgres" => {
+                // 두 번째 schema가 필요한 case는 그것을 <schema>_b로 만든다.
+                if let Err(e) = self.admin(db, format!("DROP SCHEMA IF EXISTS \"{name}_b\" CASCADE")).await {
+                    errors.push(e);
+                }
                 if let Err(e) = self.admin(db, format!("DROP SCHEMA IF EXISTS \"{name}\" CASCADE")).await {
                     errors.push(e);
                 }
-                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM pg_namespace WHERE nspname = $1").bind(name).fetch_one(&mut self.postgres).await {
+                match sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM pg_namespace WHERE nspname IN ($1, $2)")
+                    .bind(name)
+                    .bind(format!("{name}_b"))
+                    .fetch_one(&mut self.postgres)
+                    .await
+                {
                     Ok(0) => {}
                     Ok(_) => errors.push(format!("schema {name} remains after cleanup")),
                     Err(e) => errors.push(e.to_string()),

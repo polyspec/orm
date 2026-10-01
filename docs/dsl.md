@@ -256,6 +256,7 @@ rows, err := model.Product().Connect(slave1).
 
 Attribute changes are cleared after a successful write.
 
+- `create()` and `creates()` reject a value for the identity column, and `update()` and the changes of a `duplication` model reject a primary key or identity column, with `IR_INVALID` before any statement runs. The database generates every identity key, because PostgreSQL identity does not advance past an explicit key and its next generated key would collide.
 - `new<Name>` attaches data that the row carries to its output, such as a computed amount or a flag for a view. The value is not used in `INSERT`, `UPDATE`, or `SELECT` statements. `get<Name>()`, `toArray()`, and JSON output include it after reads and writes; a model returned by `create()` keeps the attached values.
 - A real column name in `new<Name>` is rejected; stored column values use `set<Col>`.
 - Go and Rust generate `New<Name>` and `Get<Name>` for the names that the scanned source code calls. The value type is `any` in Go and the common value type in Rust.
@@ -362,12 +363,12 @@ Go uses `orm.Distance(…)`, Rust uses `orm::distance(…)`, and TypeScript uses
 
 | Function | MySQL | PostgreSQL | SQLite |
 |---|---|---|---|
-| `now()` | `NOW()` | `now()` | value computed by the client in the connection time zone and bound |
+| `now()` | `NOW()` | `now()` | value computed by the client in UTC and bound |
 | `today()` | `CURDATE()` | `CURRENT_DATE` | value computed by the client and bound |
 | `secondsAgo(n)`, `minutesAgo(n)`, `hoursAgo(n)`, `daysAgo(n)`, `monthsAgo(n)` | `DATE_SUB(NOW(), INTERVAL ? unit)` | `now() - make_interval(unit => ?)` | value computed by the client and bound |
 | `secondsLater(n)`, `minutesLater(n)`, `hoursLater(n)`, `daysLater(n)`, `monthsLater(n)` | `DATE_ADD(NOW(), INTERVAL ? unit)` | `now() + make_interval(unit => ?)` | value computed by the client and bound |
 
-- The connection time zone comes from the DSN `timezone` parameter; without it the server environment time zone is used. MySQL and PostgreSQL connections set the session time zone.
+- Every connection reads and writes datetime values in UTC ([config](config.md)); MySQL and PostgreSQL connections set the session time zone to UTC.
 - Month arithmetic keeps the last valid day of the target month, as MySQL and PostgreSQL do.
 
 ### 10.2 Column functions

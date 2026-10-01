@@ -73,6 +73,26 @@ foreach ([
     expect(code(fn() => $mysql->compile($ir)) === $code, "validation: $name");
 }
 
+// insert 는 identity column 값을, update 와 duplicate update 는 primary key 와
+// identity column 값을 쓰지 못한다. PostgreSQL identity 는 명시한 key 를 지나
+// 나아가지 않으므로(postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
+$keyWrites = [
+    'cannot set identity column seq' => $request(['kind' => 'insert', 'entity' => 'service', 'set' => [['column' => 'seq', 'p' => 0], ['column' => 'name', 'p' => 1]], 'n_params' => 2]),
+    'cannot update seq' => $request(['kind' => 'update', 'entity' => 'service', 'set' => [['column' => 'seq', 'p' => 0]], 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 1]]]], 'n_params' => 2]),
+    'on_duplicate cannot assign service.seq' => $request(['kind' => 'insert', 'entity' => 'service', 'set' => [['column' => 'name', 'p' => 0]], 'on_duplicate' => [['column' => 'seq', 'p' => 1]], 'n_params' => 2]),
+    'on_duplicate cannot assign composite_account.tenant_id' => $request(['kind' => 'insert', 'entity' => 'composite_account', 'set' => [['column' => 'tenant_id', 'p' => 0], ['column' => 'account_id', 'p' => 1], ['column' => 'name', 'p' => 2]], 'on_duplicate' => [['column' => 'tenant_id', 'p' => 3]], 'n_params' => 4]),
+];
+foreach ($engines as $d => $engine) {
+    foreach ($keyWrites as $message => $ir) {
+        try {
+            $engine->compile($ir);
+            expect(false, "$d key write: $message: no error");
+        } catch (OrmException $e) {
+            expect($e->code_ === Code::IR_INVALID && str_contains($e->getMessage(), $message), "$d key write: want $message, got {$e->code_} {$e->getMessage()}");
+        }
+    }
+}
+
 $softRead = $request(['kind' => 'all', 'entity' => 'soft_record', 'n_params' => 0]);
 $softDelete = $request(['kind' => 'delete', 'entity' => 'soft_record', 'n_params' => 1, 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 0]]]]]);
 foreach ($engines as $d => $engine) {

@@ -69,24 +69,18 @@ impl Default for Config {
 
 const SQLITE_DATETIME: &str = "%Y-%m-%d %H:%M:%S%.6f";
 
-/// The time zone of a connection.
+/// The time zone of a connection. Every connection reads and writes datetime
+/// values in UTC (docs/dialects.md "Date and time").
 #[derive(Clone, Copy, Debug)]
-pub enum Zone {
-    Local,
-    Fixed(FixedOffset),
-    Named(chrono_tz::Tz),
-}
+pub struct Zone;
 
 impl Zone {
+    /// The `timezone` parameter accepts only UTC.
     fn parse(value: &str) -> Result<Zone> {
-        let b = value.as_bytes();
-        if b.len() == 6 && (b[0] == b'+' || b[0] == b'-') && b[3] == b':' {
-            let hours: i32 = value[1..3].parse().map_err(|_| Error::Config(format!("dsn timezone {value:?}")))?;
-            let minutes: i32 = value[4..6].parse().map_err(|_| Error::Config(format!("dsn timezone {value:?}")))?;
-            let secs = (hours * 3600 + minutes * 60) * if b[0] == b'-' { -1 } else { 1 };
-            return FixedOffset::east_opt(secs).map(Zone::Fixed).ok_or_else(|| Error::Config(format!("dsn timezone {value:?}")));
+        match value {
+            "UTC" | "+00:00" => Ok(Zone),
+            _ => Err(Error::Config(format!("dsn timezone {value}: every connection reads and writes datetime values in UTC"))),
         }
-        chrono_tz::Tz::from_str(value).map(Zone::Named).map_err(|_| Error::Config(format!("dsn timezone {value:?} is not a time zone")))
     }
 
     /// The current time in the zone.
@@ -96,27 +90,17 @@ impl Zone {
 
     /// An instant in the zone.
     pub fn at(&self, t: chrono::DateTime<Utc>) -> chrono::DateTime<FixedOffset> {
-        match self {
-            Zone::Local => t.with_timezone(&chrono::Local).fixed_offset(),
-            Zone::Fixed(o) => t.with_timezone(o),
-            Zone::Named(z) => t.with_timezone(z).fixed_offset(),
-        }
+        t.fixed_offset()
     }
 
-    /// The instant of a wall-clock time in the zone; the earlier one when the
-    /// time occurs twice, None when it does not occur.
+    /// The instant of a wall-clock time in the zone.
     pub fn instant(&self, t: NaiveDateTime) -> Option<chrono::DateTime<Utc>> {
-        use chrono::TimeZone;
-        match self {
-            Zone::Local => chrono::Local.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-            Zone::Fixed(o) => o.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-            Zone::Named(z) => z.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-        }
+        Some(t.and_utc())
     }
 
     /// An instant as wall-clock time in the zone.
     pub fn local(&self, t: chrono::DateTime<Utc>) -> NaiveDateTime {
-        self.at(t).naive_local()
+        t.naive_utc()
     }
 }
 
@@ -128,8 +112,7 @@ pub enum ConnectOptions {
 }
 
 /// A DSN URI split into driver options and the connection time zone. The
-/// scheme selects the database; the optional `timezone` parameter sets the
-/// connection time zone, otherwise the server environment's is used.
+/// scheme selects the database; the `timezone` parameter accepts only UTC.
 pub struct ParsedDsn {
     pub options: ConnectOptions,
     pub zone: Zone,
@@ -143,17 +126,6 @@ impl ParsedDsn {
             ConnectOptions::Sqlite(_) => "sqlite",
         }
     }
-}
-
-/// A fixed offset in the POSIX form PostgreSQL expects, where the sign after
-/// the name is inverted: +09:00 becomes <+09:00>-09:00. Named zones pass through.
-fn postgres_zone(zone: &str) -> String {
-    let b = zone.as_bytes();
-    if b.len() == 6 && (b[0] == b'+' || b[0] == b'-') && b[3] == b':' {
-        let inverted = if b[0] == b'-' { '+' } else { '-' };
-        return format!("<{zone}>{inverted}{}", &zone[1..]);
-    }
-    zone.to_owned()
 }
 
 /// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
@@ -183,7 +155,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     }
     let zone = match &zone_text {
         Some(z) => Zone::parse(z)?,
-        None => Zone::Local,
+        None => Zone,
     };
     let sqlx_err = |e: sqlx::Error| Error::Config(format!("dsn: {e}"));
     let options = match url.scheme() {
@@ -191,7 +163,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if url.host_str().unwrap_or("").is_empty() || url.path().trim_matches('/').is_empty() {
                 return Err(bad("mysql DSN must include host and database".into()));
             }
-            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(zone_text.clone()))
+            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())))
         }
         "postgres" => {
             let host = url.host_str().unwrap_or("").to_owned() + &pairs.iter().filter(|(k, _)| k == "host").map(|(_, v)| v.clone()).collect::<String>();
@@ -201,10 +173,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            let mut o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None);
-            if let Some(z) = &zone_text {
-                o = o.options([("timezone", postgres_zone(z).as_str())]);
-            }
+            let o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None).options([("timezone", "UTC")]);
             ConnectOptions::Postgres(o)
         }
         "sqlite" => {

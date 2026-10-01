@@ -22,7 +22,7 @@ LEFT JOIN pg_collation co ON co.oid = a.attcollation
 WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
 ORDER BY c.relname, a.attnum`
 	postgresConstraintsQuery = `SELECT c.relname, con.conname, con.contype::text, pg_get_constraintdef(con.oid), con.condeferrable,
-con.convalidated, con.confmatchtype::text, con.confdeltype::text, con.confupdtype::text, coalesce(r.relname, ''),
+con.convalidated, con.confmatchtype::text, con.confdeltype::text, con.confupdtype::text, CASE WHEN r.relnamespace = c.relnamespace THEN r.relname ELSE '' END,
 array_to_string(ARRAY(SELECT a.attname FROM unnest(con.conkey) WITH ORDINALITY k(n, o)
   JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.n ORDER BY k.o), ','),
 array_to_string(ARRAY(SELECT a.attname FROM unnest(con.confkey) WITH ORDINALITY k(n, o)
@@ -155,6 +155,9 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 				return nil
 			}
 			t.uniques = append(t.uniques, ikey{name: name, columns: list, desc: make([]bool, len(list))})
+		case kind == "f" && refTable == "":
+			// 다른 schema의 table을 가리키는 foreign key는 이 문서 밖의 table을 가리킨다.
+			c.report("foreign_key", table, name, "the referenced table is outside the current schema")
 		case kind == "f":
 			del, okDelete := postgresAction(onDelete)
 			upd, okUpdate := postgresAction(onUpdate)
