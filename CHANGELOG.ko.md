@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.4: 63 byte를 넘는 선언 이름과 생성 이름은 모든 client에서 렌더링 전에 거부되며, 정확히 64 byte인 이름을 써서 검사한다.
+
 - T8.0.3: Introspection case는 stored와 virtual generated column이 모든 client에서 MySQL, PostgreSQL, SQLite 모두 미지원으로 보고되는지 검사한다.
 
 - T8.0.2: Introspection은 모든 client에서 prefix, partial, expression index를 table과 이름과 함께 미지원으로 보고한다.
