@@ -2,6 +2,7 @@ package orm_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -163,50 +164,66 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 			if _, err := seed.Create(); err != nil {
 				t.Fatal(err)
 			}
-			held := make(chan struct{})
-			release := make(chan struct{})
-			done := make(chan error, 1)
-			go func() {
-				done <- holder.Transaction(func() error {
-					locked := orm.NewCore(ent)
-					ent.New(locked)
-					locked.Connect(holder)
-					locked.Lock("update")
-					if _, err := locked.Get(); err != nil {
+			for _, nested := range []bool{false, true} {
+				t.Run(fmt.Sprintf("nested=%v", nested), func(t *testing.T) {
+					held := make(chan struct{})
+					release := make(chan struct{})
+					done := make(chan error, 1)
+					go func() {
+						done <- holder.Transaction(func() error {
+							locked := orm.NewCore(ent)
+							ent.New(locked)
+							locked.Connect(holder)
+							locked.Lock("update")
+							if _, err := locked.Get(); err != nil {
+								return err
+							}
+							close(held)
+							<-release
+							return nil
+						})
+					}()
+					// holder가 row를 잡기 전에 끝나면 held는 닫히지 않으므로 그 결과를 보고한다.
+					select {
+					case <-held:
+					case holderErr := <-done:
+						t.Fatalf("the holder transaction ended before it held the row: %v", holderErr)
+					}
+					ctx, cancel := context.WithCancel(context.Background())
+					go func() {
+						time.Sleep(300 * time.Millisecond)
+						cancel()
+					}()
+					start := time.Now()
+					// The transaction is opened on the connection, and the statement
+					// inside it runs on a handle carrying the caller's context.
+					read := func() error {
+						blocked := orm.NewCore(ent)
+						ent.New(blocked)
+						blocked.Connect(waiter.WithContext(ctx))
+						blocked.Lock("update")
+						_, err := blocked.Get()
 						return err
 					}
-					close(held)
-					<-release
-					return nil
+					// 중첩 transaction에서는 취소된 statement가 savepoint 안에서 실행된다.
+					err := waiter.Transaction(func() error {
+						if nested {
+							return waiter.Transaction(read)
+						}
+						return read()
+					})
+					waited := time.Since(start)
+					close(release)
+					if holderErr := <-done; holderErr != nil {
+						t.Fatal(holderErr)
+					}
+					if orm.ErrorCode(err) != orm.CodeCanceled {
+						t.Fatalf("blocked read: %v (code %q)", err, orm.ErrorCode(err))
+					}
+					if waited > 10*time.Second {
+						t.Fatalf("cancel took %s", waited)
+					}
 				})
-			}()
-			<-held
-			ctx, cancel := context.WithCancel(context.Background())
-			go func() {
-				time.Sleep(300 * time.Millisecond)
-				cancel()
-			}()
-			start := time.Now()
-			// The transaction is opened on the connection, and the statement
-			// inside it runs on a handle carrying the caller's context.
-			err = waiter.Transaction(func() error {
-				blocked := orm.NewCore(ent)
-				ent.New(blocked)
-				blocked.Connect(waiter.WithContext(ctx))
-				blocked.Lock("update")
-				_, err := blocked.Get()
-				return err
-			})
-			waited := time.Since(start)
-			close(release)
-			if holderErr := <-done; holderErr != nil {
-				t.Fatal(holderErr)
-			}
-			if orm.ErrorCode(err) != orm.CodeCanceled {
-				t.Fatalf("blocked read: %v (code %q)", err, orm.ErrorCode(err))
-			}
-			if waited > 10*time.Second {
-				t.Fatalf("cancel took %s", waited)
 			}
 		})
 	}

@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.14.3: every client runs `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT` after a failed or panicking nested transaction and reports a failure of either with the cause, and a Go savepoint whose transaction was cancelled or lost its connection returns the cause alone.
+
 - T8.0.14.2: a Rust transaction future dropped before its transaction ends closes its connection at once, so over TLS too the server ends the transaction and its named locks with the session.
 
 - T8.2.6.4.1: the Rust lock file no longer lists the removed `libc` dependency of `orm-schema`, so `cargo check --locked` passes.

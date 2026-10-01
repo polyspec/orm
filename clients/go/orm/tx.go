@@ -515,31 +515,62 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
+		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
+		// savepoint rollback은 panic으로 보고한다.
 		if r := recover(); r != nil {
 			t.inserted = insertedBefore
-			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
+			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+				panic(rollbackFailed(r, rollbackErr))
+			}
 			panic(r)
 		}
 		if !returned {
 			t.inserted = insertedBefore
-			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
-			_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
+			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+				panic(rollbackFailed("callback exited without returning", rollbackErr))
+			}
 		}
 	}()
 	err = fn()
 	returned = true
 	if err != nil {
 		t.inserted = insertedBefore
-		if _, rbErr := t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name); rbErr != nil {
-			return mapDriverErr(rbErr)
+		if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+			return rollbackFailed(err, rollbackErr)
 		}
-		_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
 		return err
 	}
-	if _, err := t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name); err != nil {
-		return mapDriverErr(err)
+	return t.endSavepoint("RELEASE SAVEPOINT " + name)
+}
+
+// rollbackSavepoint는 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두
+// statement를 모두 시도하고 실패를 모두 돌려준다.
+func (t *txConn) rollbackSavepoint(name string) error {
+	return errors.Join(t.endSavepoint("ROLLBACK TO SAVEPOINT "+name), t.endSavepoint("RELEASE SAVEPOINT "+name))
+}
+
+// endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction 전체가
+// 이미 끝났으면 savepoint도 함께 끝났으므로 실패가 아니다. transaction의
+// context가 취소되면 database/sql이 transaction을 rollback하고, 취소된
+// statement 때문에 driver가 connection을 닫으면 server가 session과 함께
+// transaction을 끝낸다(rollbackNative).
+func (t *txConn) endSavepoint(statement string) error {
+	_, err := t.tx.ExecContext(t.ctx, statement)
+	if err == nil || t.ctx.Err() != nil {
+		return nil
 	}
-	return nil
+	mapped := mapDriverErr(err)
+	if errors.Is(mapped, driver.ErrBadConn) {
+		return nil
+	}
+	closed, rawErr := t.connectionClosed()
+	if rawErr != nil {
+		return errors.Join(mapped, rawErr)
+	}
+	if closed {
+		return nil
+	}
+	return mapped
 }
 
 func cloneInserted(src map[string]map[int64]struct{}) map[string]map[int64]struct{} {

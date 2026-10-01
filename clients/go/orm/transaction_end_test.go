@@ -156,3 +156,53 @@ func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 		wantBoth(t, "rollback", err, "callback failed", errStatementRejected.Error())
 	})
 }
+
+// TestSavepointReportsFailedEnd는 중첩 transaction의 savepoint를 끝내는
+// ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback 오류, panic,
+// 끝나 버린 callback이 그 오류를 함께 보고하고 성공한 callback은 실패한
+// RELEASE SAVEPOINT를 돌려주는지 확인한다.
+func TestSavepointReportsFailedEnd(t *testing.T) {
+	useFailingDriver(t, "sqlite")
+	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "savepoint.sqlite"))
+	rejected := func(prefix string) injectedFailure {
+		return injectedFailure{statement: func(query string) bool { return strings.HasPrefix(query, prefix) }}
+	}
+	nested := func(fn func() error) error {
+		return db.Transaction(func() error { return db.Transaction(fn) }, Retry(0))
+	}
+	for _, statement := range []string{"ROLLBACK TO SAVEPOINT", "RELEASE SAVEPOINT"} {
+		t.Run(statement+"/callback error", func(t *testing.T) {
+			inject(t, rejected(statement))
+			err := nested(func() error { return errors.New("callback failed") })
+			wantBoth(t, "callback error", err, "callback failed", errStatementRejected.Error())
+		})
+		t.Run(statement+"/panic", func(t *testing.T) {
+			inject(t, rejected(statement))
+			value := recovered(func() { _ = nested(func() error { panic("callback panicked") }) })
+			err, _ := value.(error)
+			wantBoth(t, "panic", err, "callback panicked", errStatementRejected.Error())
+		})
+		t.Run(statement+"/goexit", func(t *testing.T) {
+			inject(t, rejected(statement))
+			value := recovered(func() { _ = nested(func() error { runtime.Goexit(); return nil }) })
+			err, _ := value.(error)
+			wantBoth(t, "goexit", err, "callback exited without returning", errStatementRejected.Error())
+		})
+	}
+	t.Run("RELEASE SAVEPOINT/success", func(t *testing.T) {
+		inject(t, rejected("RELEASE SAVEPOINT"))
+		if err := nested(func() error { return nil }); !errors.Is(err, errStatementRejected) {
+			t.Fatalf("want the release error, got %v", err)
+		}
+	})
+	t.Run("both statements", func(t *testing.T) {
+		inject(t, injectedFailure{statement: func(query string) bool {
+			return strings.HasPrefix(query, "ROLLBACK TO SAVEPOINT") || strings.HasPrefix(query, "RELEASE SAVEPOINT")
+		}})
+		err := nested(func() error { return errors.New("callback failed") })
+		wantBoth(t, "both statements", err, "callback failed", errStatementRejected.Error())
+		if n := strings.Count(err.Error(), errStatementRejected.Error()); n != 2 {
+			t.Fatalf("want both savepoint statements reported, got %d in %v", n, err)
+		}
+	})
+}

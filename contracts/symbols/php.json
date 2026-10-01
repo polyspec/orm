@@ -253,6 +253,7 @@
   "clients/php/src/Db.php::Orm\\Db::config": "public function config(): Orm\\Config",
   "clients/php/src/Db.php::Orm\\Db::driver": "public function driver(): string",
   "clients/php/src/Db.php::Orm\\Db::emit": "private function emit(string $sql, array $args, float $start, string $planId, ?Throwable $err): void",
+  "clients/php/src/Db.php::Orm\\Db::endSavepoint": "private function endSavepoint(string $statement): ?Throwable",
   "clients/php/src/Db.php::Orm\\Db::enter": "private function enter(?Orm\\TxFrame $frame, array $ir): void",
   "clients/php/src/Db.php::Orm\\Db::exec": "private function exec(PDOStatement $st, array $args): void",
   "clients/php/src/Db.php::Orm\\Db::expandIn": "private static function expandIn(array $step, array $vals): array",

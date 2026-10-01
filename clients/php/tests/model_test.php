@@ -892,6 +892,37 @@ try {
 }
 echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 
+// 중첩 transaction 의 savepoint 를 끝내는 ROLLBACK TO SAVEPOINT 나 RELEASE SAVEPOINT 가
+// 실패하면 callback 오류와 그 오류를 함께 보고하고, 성공한 callback 은 실패한
+// RELEASE SAVEPOINT 를 보고한다.
+$current = 'failed savepoint end/sqlite';
+try {
+    $pdo = new FailingPdo("sqlite:$work/savepoint-end.sqlite");
+    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $nested = static fn(Closure $fn): string => failureMessage(fn() => $failing->transaction(fn() => $failing->transaction($fn), retry: 0));
+    foreach (['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT'] as $statement) {
+        $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, $statement);
+        $failed = $nested(function (): void {
+            throw new RuntimeException('callback failed');
+        });
+        checkBoth($statement, $failed, 'callback failed', 'statement rejected by the test driver');
+    }
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'RELEASE SAVEPOINT');
+    $released = $nested(fn() => null);
+    check(str_contains($released, 'statement rejected by the test driver'), "a successful callback reports the failed release: $released");
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT') || str_starts_with($sql, 'RELEASE SAVEPOINT');
+    $both = $nested(function (): void {
+        throw new RuntimeException('callback failed');
+    });
+    checkBoth('both statements', $both, 'callback failed', 'statement rejected by the test driver');
+    check(substr_count($both, 'statement rejected by the test driver') === 2, "both savepoint statements are reported: $both");
+    $pdo->rejects = null;
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+
 if ($failures > 0) {
     fwrite(STDERR, "php model test: $failures failures\n");
     exit(1);
