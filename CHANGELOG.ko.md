@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.3.1: 실패한 PHP apply는 정리 error를 실패와 함께 `Orm\Dbspec\ApplyCleanupError`로 보고하고, 아무것도 풀지 않은 advisory unlock은 error이며, row 없는 MySQL 효과 query와 닫을 수 없는 result는 error다.
+
 - T8.0.9: `datetime(p)`는 세 데이터베이스에서 local date-time으로 생성되고, 모든 client 연결이 이를 UTC로 읽고 쓰며, introspection은 time zone 컬럼을 미지원으로 보고한다.
 
 - T8.0.9.1: Go, TypeScript, Rust connection은 PHP처럼 datetime 값을 UTC로 읽고 쓰며, `timezone`은 `UTC`나 `+00:00`만 받는다.

@@ -4,9 +4,9 @@ declare(strict_types=1);
 // rename-table-and-column through Orm\Dbspec\Dbspec::apply and ::recover on
 // MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"): the chain with its
 // history, events and a second apply without events; drift; the lock of a
-// second session; rollback after a stop on PostgreSQL and SQLite;
-// verification; and MySQL recovery after a stop before and after a
-// statement. Every run gets a fresh database, schema or file.
+// second session; a PostgreSQL unlock that releases nothing; rollback after
+// a stop on PostgreSQL and SQLite; verification; and MySQL recovery after a
+// stop before and after a statement. Every run gets a fresh database, schema or file.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the servers; the test
 // fails when either is unset.
 // Usage: php clients/php/tests/dbspec_apply_test.php
@@ -220,6 +220,25 @@ $scenarios = [
         Dbspec::apply($pdo, $db, $plans, $now, null);
         apply_schema_is($pdo, $db, $target);
     }],
+    ['unlock_not_held', ['postgres'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
+        // event 에서 advisory lock 을 먼저 풀면 apply 끝의 unlock 은 아무것도 풀지 않는다.
+        $release = static function (ApplyEvent $event) use ($pdo, $plans): void {
+            if ($event->kind === 'plan' && $event->plan === $plans[0]->name) {
+                $pdo->query("SELECT pg_advisory_unlock(hashtext('dbspec\$plans'))")->closeCursor();
+            }
+        };
+        $want = 'the advisory lock of dbspec$plans was not held at unlock';
+        try {
+            Dbspec::apply($pdo, $db, $plans, $now, $release);
+        } catch (RuntimeException $e) {
+            if ($e->getMessage() !== $want) {
+                throw new RuntimeException("{$e->getMessage()}; want \"$want\"", 0, $e);
+            }
+            echo "  {$e->getMessage()}\n";
+            return;
+        }
+        throw new RuntimeException("succeeded; want \"$want\"");
+    }],
     ['verify_failure', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $history): void {
         // 마지막 statement 뒤에 plan 밖의 table 을 만들면 검증이 실패한다.
         $sneak = static function (ApplyEvent $event) use ($pdo, $plans): void {
@@ -282,7 +301,7 @@ foreach ($scenarios as [$name, $dbs, $scenario]) {
         echo "PASS $id elapsedMs=$elapsed\n";
     }
 }
-if ($runs !== 16) {
-    throw new RuntimeException("runs=$runs, want 16");
+if ($runs !== 17) {
+    throw new RuntimeException("runs=$runs, want 17");
 }
 echo "PASS dbspec_apply runs=$runs elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";
