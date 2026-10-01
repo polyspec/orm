@@ -2,7 +2,8 @@
 // validates a document against its declared document set; emitDbspec writes a
 // parsed document in canonical form; dbspecManifest gives the manifest text,
 // the schema text and their hashes of a document set; renderDbspec writes the
-// statements of a document set in one dialect.
+// statements of a document set in one dialect; introspectDbspec reads a
+// database into a document and the objects it cannot read.
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
@@ -10,6 +11,14 @@ import { parseDocument } from './parse.js';
 import { checkSet } from './set.js';
 
 export { renderDbspec, type DbspecDialect, type DbspecRenderResult } from './render.js';
+export {
+  introspectDbspec,
+  type DbspecIntrospection,
+  type DbspecMySqlConnection,
+  type DbspecPostgresConnection,
+  type DbspecSqliteConnection,
+  type DbspecUnsupported,
+} from './introspect.js';
 
 export type * from './model.js';
 
