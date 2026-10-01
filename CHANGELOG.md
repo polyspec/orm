@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.2: Introspection reports prefix, partial and expression indexes as unsupported with their table and name in every client.
+
 - T8.0.1: PostgreSQL introspection reports a foreign key whose referenced table is in another schema as unsupported instead of reading it as a key to a same-named table.
 
 - T8.5.2: the Go engine parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-check` applies them.
