@@ -1,5 +1,8 @@
 # 변경 이력
 
+PHP client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
+렌더링하고(`Dbspec::render`), tests/dbspec/ddl.json과 비교한다(T8.3.3).
+
 renderer가 생성하는 CHECK나 trigger 이름이 63 bytes를 넘을 dbspec
 table이나 column을 모든 client에서 거부한다(T8.1.5).
 

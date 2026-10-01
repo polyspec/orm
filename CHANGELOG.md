@@ -1,5 +1,9 @@
 # Changelog
 
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the PHP client (`Dbspec::render`), compared with tests/dbspec/ddl.json
+(T8.3.3).
+
 Reject a dbspec table or column whose renderer-generated CHECK or
 trigger name would exceed 63 bytes, in every client (T8.1.5).
 

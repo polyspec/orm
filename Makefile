@@ -145,9 +145,10 @@ physical-document-limits-check: physical-document-php-limits-check
 	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
 
 .PHONY: dbspec-php-check
-# dbspec-php-check runs the shared dbspec vectors, the focused PHP rules and
-# the stress document of tests/dbspec/stress.mjs twice each; the stress test
-# prints its parse and emit times and peak memory.
+# dbspec-php-check runs the shared dbspec vectors, the focused PHP rules, the
+# statement vectors of tests/dbspec/ddl.json and the stress document of
+# tests/dbspec/stress.mjs twice each; the stress test prints its parse and
+# emit times and peak memory.
 dbspec-php-check:
 	php clients/php/tests/dbspec_test.php
 	php clients/php/tests/dbspec_test.php
@@ -155,6 +156,8 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_rules_test.php
 	php clients/php/tests/dbspec_manifest_test.php
 	php clients/php/tests/dbspec_manifest_test.php
+	php clients/php/tests/dbspec_render_test.php
+	php clients/php/tests/dbspec_render_test.php
 	php clients/php/tests/dbspec_stress_test.php
 	php clients/php/tests/dbspec_stress_test.php
 
