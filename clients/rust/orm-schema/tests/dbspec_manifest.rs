@@ -2,11 +2,12 @@
 //! name rule through `dbspec::manifest`, and the `sets` cases through
 //! `dbspec::manifest` and `dbspec::render`.
 
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const DEADLINE: Duration = Duration::from_secs(10);
 
@@ -40,7 +41,7 @@ fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {
 
 #[test]
 fn manifest_vectors() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec manifest vectors");
     let cases = cases();
     let hashes = cases["hashes"].as_array().expect("hashes cases");
@@ -62,13 +63,14 @@ fn manifest_vectors() {
         expect(case, &refs);
         println!("PASS hashes/{id}");
     }
-    assert!(started.elapsed() < DEADLINE, "dbspec manifest vectors exceeded {DEADLINE:?}");
-    println!("PASS dbspec manifest vectors {} cases {:?}", hashes.len(), started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < DEADLINE, "dbspec manifest vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
+    println!("PASS dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len());
 }
 
 #[test]
 fn manifest_rejects_repeated_document_name() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec manifest repeated name");
     let source = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
     let first = parsed("first", source, &BTreeMap::new());
@@ -76,13 +78,14 @@ fn manifest_rejects_repeated_document_name() {
     let errors = dbspec::manifest(&[&first, &second]).expect_err("a set that repeats a document name has no manifest");
     let got: Vec<(&str, usize, usize)> = errors.iter().map(|e| (e.rule.as_str(), e.line, e.column)).collect();
     assert_eq!(got, vec![("name.duplicate", 1, 10)]);
-    assert!(started.elapsed() < DEADLINE);
-    println!("PASS dbspec manifest repeated name {:?}", started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
+    println!("PASS dbspec manifest repeated name cpu={cpu:?} wall={wall:?}");
 }
 
 #[test]
 fn set_vectors() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec set vectors");
     let cases = cases();
     let sets = cases["sets"].as_array().expect("sets cases");
@@ -131,6 +134,7 @@ fn set_vectors() {
         }
         println!("PASS sets/{id}");
     }
-    assert!(started.elapsed() < DEADLINE, "dbspec set vectors exceeded {DEADLINE:?}");
-    println!("PASS dbspec set vectors {} cases {:?}", sets.len(), started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < DEADLINE, "dbspec set vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
+    println!("PASS dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len());
 }

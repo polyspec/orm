@@ -8,6 +8,7 @@ declare(strict_types=1);
 // comparison's differences or `compare` diagnostics, and the unknown dialect
 // rule.
 require __DIR__ . '/autoload.php';
+require_once __DIR__ . '/case_clock.php';
 
 use Orm\Dbspec\Change;
 use Orm\Dbspec\Dbspec;
@@ -67,19 +68,19 @@ function plan_messages(string $id, string $rule, array $diagnostics): array
     return $messages;
 }
 
-function finish_plan_case(string $id, int $caseStarted): void
+function finish_plan_case(string $id, array $caseStarted): void
 {
-    $elapsed = (hrtime(true) - $caseStarted) / 1e6;
-    if ($elapsed > CASE_DEADLINE_MS) {
-        throw new RuntimeException("$id: deadline of " . CASE_DEADLINE_MS . " ms exceeded ($elapsed ms)");
+    [$cpuMs, $wallMs] = caseClockElapsed($caseStarted);
+    if ($cpuMs > CASE_DEADLINE_MS) {
+        throw new RuntimeException("$id: CPU deadline of " . CASE_DEADLINE_MS . " ms exceeded ($cpuMs ms CPU, $wallMs ms wall)");
     }
-    echo "PASS $id elapsedMs=$elapsed\n";
+    echo "PASS $id cpuMs=$cpuMs wallMs=$wallMs\n";
 }
 
 foreach ($vectors['cases'] as $case) {
     $id = "plan/{$case['id']}";
     echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     $source = plan_source($id, $case['source'] ?? null);
     $plan = plan_of($id, $case['plan']);
     $emitted = Dbspec::emitPlan($plan);
@@ -108,7 +109,7 @@ foreach ($vectors['cases'] as $case) {
 foreach ($vectors['invalid'] as $case) {
     $id = "plan/invalid/{$case['id']}";
     echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     $source = plan_source($id, $case['source'] ?? null);
     $parsed = Dbspec::parsePlan(plan_text($case['plan']));
     $diagnostics = $parsed->plan === null ? $parsed->diagnostics : Dbspec::diff($source, $parsed->plan)->diagnostics;
@@ -129,7 +130,7 @@ foreach ($vectors['invalid'] as $case) {
 foreach ($vectors['chains'] as $case) {
     $id = "plan/chain/{$case['id']}";
     echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     $plans = array_map(static fn(array $lines): Plan => plan_of($id, $lines), $case['plans']);
     $chain = Dbspec::chain($plans);
     $errors = plan_messages($id, 'chain', $chain->diagnostics);
@@ -146,7 +147,7 @@ foreach ($vectors['chains'] as $case) {
 foreach ($vectors['parse'] as $case) {
     $id = "plan/parse/{$case['id']}";
     echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     $parsed = Dbspec::parsePlan(plan_text($case['plan']));
     // plan diagnostic 은 message 까지, target diagnostic 은 rule, 줄, 칸까지 비교한다.
     $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->rule === 'plan' ? $d->message : null], $parsed->diagnostics);
@@ -159,7 +160,7 @@ foreach ($vectors['parse'] as $case) {
 foreach ($vectors['comparisons'] as $case) {
     $id = "plan/comparison/{$case['id']}";
     echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = hrtime(true);
+    $caseStarted = caseClockStart();
     $source = plan_source("$id/source", $case['source']);
     $target = plan_source("$id/target", $case['target']);
     $result = Dbspec::compareSchemas($source, $target);

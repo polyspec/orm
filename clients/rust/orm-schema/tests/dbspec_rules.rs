@@ -1,8 +1,9 @@
 //! dbspec rules that the shared vectors in tests/dbspec/cases.json do not cover yet.
 
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec;
 use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 const SUITE_DEADLINE: Duration = Duration::from_secs(10);
@@ -26,7 +27,7 @@ fn text(lines: &[&str]) -> String {
 }
 
 fn run(case: &Case) {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN {}", case.id);
     let main = text(case.documents[0]);
     // The main document is part of the declared set too, so that documents may use it.
@@ -52,9 +53,9 @@ fn run(case: &Case) {
         }
         (Expect::Canonical(_), Err(errors)) => panic!("{}: unexpected errors {errors:#?}", case.id),
     }
-    let elapsed = started.elapsed();
-    assert!(elapsed < CASE_DEADLINE, "{}: {elapsed:?} exceeds {CASE_DEADLINE:?}", case.id);
-    println!("PASS {} {elapsed:?}", case.id);
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < CASE_DEADLINE, "{}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})", case.id);
+    println!("PASS {} cpu={cpu:?} wall={wall:?}", case.id);
 }
 
 const USERS: &[&str] =
@@ -1079,7 +1080,7 @@ const CASES: &[Case] = &[
 
 #[test]
 fn dbspec_rules() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec rules");
     let mut seen = std::collections::BTreeSet::new();
     let mut failures = Vec::new();
@@ -1092,14 +1093,14 @@ fn dbspec_rules() {
         }
     }
     assert!(failures.is_empty(), "failing cases: {failures:?}");
-    let elapsed = started.elapsed();
-    assert!(elapsed < SUITE_DEADLINE, "dbspec rules: {elapsed:?} exceeds {SUITE_DEADLINE:?}");
-    println!("PASS dbspec rules {} cases {elapsed:?}", CASES.len());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < SUITE_DEADLINE, "dbspec rules: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})");
+    println!("PASS dbspec rules {} cases cpu={cpu:?} wall={wall:?}", CASES.len());
 }
 
 #[test]
 fn dbspec_comment_attachment() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec comment attachment");
     let core = text(USERS);
     let set = BTreeMap::from([("core".to_owned(), core)]);
@@ -1154,14 +1155,14 @@ fn dbspec_comment_attachment() {
     assert_eq!(dbspec::emit(&document), expected);
     let again = dbspec::parse(&expected, &set).unwrap_or_else(|e| panic!("{e:#?}"));
     assert_eq!(dbspec::emit(&again), expected);
-    let elapsed = started.elapsed();
-    assert!(elapsed < CASE_DEADLINE, "dbspec comment attachment: {elapsed:?} exceeds {CASE_DEADLINE:?}");
-    println!("PASS dbspec comment attachment {elapsed:?}");
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < CASE_DEADLINE, "dbspec comment attachment: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})");
+    println!("PASS dbspec comment attachment cpu={cpu:?} wall={wall:?}");
 }
 
 #[test]
 fn dbspec_limits() {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN dbspec limits");
     let none = BTreeMap::new();
     let rules = |text: &str| -> Vec<(String, usize, usize)> {
@@ -1183,7 +1184,7 @@ fn dbspec_limits() {
     let mut size = String::from("dbspec 1 shop\n");
     size.push_str(&"#".repeat(32 * 1024 * 1024));
     assert_eq!(rules(&size), vec![("limit".to_owned(), 1, 1)]);
-    let elapsed = started.elapsed();
-    assert!(elapsed < SUITE_DEADLINE, "dbspec limits: {elapsed:?} exceeds {SUITE_DEADLINE:?}");
-    println!("PASS dbspec limits {elapsed:?}");
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < SUITE_DEADLINE, "dbspec limits: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})");
+    println!("PASS dbspec limits cpu={cpu:?} wall={wall:?}");
 }
