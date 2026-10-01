@@ -18,12 +18,10 @@
 //
 // Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (after the TypeScript build and the release build of the Rust example)
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { compare } from './compare.mjs';
+import { runRunner, runners } from './runners.mjs';
 
-const root = fileURLToPath(new URL('../../../', import.meta.url));
 const TIMEOUT = 120000;
 const [cases, stress, ddl, plans, mermaid] = process.argv.slice(2);
 if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined || mermaid === undefined) {
@@ -31,26 +29,10 @@ if (cases === undefined || stress === undefined || ddl === undefined || plans ==
   process.exit(2);
 }
 
-const runners = [
-  { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'] },
-  { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'] },
-  { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mjs'] },
-  { name: 'rust', command: 'clients/rust/target/release/examples/dbspec_compare', args: [] },
-];
-
-function run(runner) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, cases, stress, ddl, plans, mermaid], { cwd: root, timeout: TIMEOUT });
-    const out = [];
-    const err = [];
-    child.stdout.on('data', chunk => out.push(chunk));
-    child.stderr.on('data', chunk => err.push(chunk));
-    child.on('error', reject);
-    child.on('close', (code, signal) => {
-      if (code === 0) resolve(Buffer.concat(out).toString('utf8'));
-      else reject(new Error(`${runner.name} exited with ${code ?? signal}: ${Buffer.concat(err).toString('utf8')}`));
-    });
-  });
+async function run(runner) {
+  const result = await runRunner(runner, [cases, stress, ddl, plans, mermaid], TIMEOUT);
+  if (result.code !== 0) throw new Error(`${runner.name} exited with ${result.code ?? result.signal}: ${result.stderr}`);
+  return result.stdout;
 }
 
 const started = performance.now();

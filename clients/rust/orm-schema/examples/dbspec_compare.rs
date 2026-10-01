@@ -5,15 +5,232 @@
 //! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
 
 use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, Unsupported};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
 use std::process::ExitCode;
 
+type Documents = BTreeMap<String, Vec<String>>;
+
+struct TestCase {
+    id: String,
+    main: String,
+    documents: Documents,
+    crlf: bool,
+    mixed: bool,
+}
+
+struct HashCase {
+    id: String,
+    documents: Documents,
+}
+
+struct SharedCases {
+    canonical: Vec<TestCase>,
+    normalize: Vec<TestCase>,
+    invalid: Vec<TestCase>,
+    hashes: Vec<HashCase>,
+}
+
+/// `source`가 `None`이면 빈 schema이다.
+struct PlanCase {
+    id: String,
+    source: Option<Vec<String>>,
+    plan: Vec<String>,
+}
+
+struct ChainCase {
+    id: String,
+    plans: Vec<Vec<String>>,
+}
+
+struct ParseCase {
+    id: String,
+    plan: Vec<String>,
+}
+
+struct PlanVectors {
+    cases: Vec<PlanCase>,
+    invalid: Vec<PlanCase>,
+    chains: Vec<ChainCase>,
+    parse: Vec<ParseCase>,
+}
+
+struct ExportCase {
+    id: String,
+    document: Vec<String>,
+    documents: Documents,
+}
+
+struct ImportCase {
+    id: String,
+    mermaid: Vec<String>,
+}
+
+struct RoundTripCase {
+    id: String,
+    path: String,
+}
+
+struct MermaidVectors {
+    export: Vec<ExportCase>,
+    import: Vec<ImportCase>,
+    invalid: Vec<ImportCase>,
+    round_trip: Vec<RoundTripCase>,
+}
+
+/// 한 vector file의 값을 위치를 밝히며 읽는다.
+struct Reader<'p> {
+    path: &'p str,
+}
+
+fn at(location: &str, key: &str) -> String {
+    if location.is_empty() {
+        key.to_string()
+    } else {
+        format!("{location}.{key}")
+    }
+}
+
+impl<'p> Reader<'p> {
+    /// vector file을 JSON object로 읽어 그 reader와 함께 돌려준다.
+    fn open(path: &'p str) -> Result<(Self, Map<String, Value>), String> {
+        let reader = Reader { path };
+        let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+        match serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))? {
+            Value::Object(object) => Ok((reader, object)),
+            _ => Err(reader.fail("$", "is not an object")),
+        }
+    }
+
+    fn fail(&self, location: &str, problem: &str) -> String {
+        format!("{}: {location} {problem}", self.path)
+    }
+
+    /// `object`의 `key` 값을 돌려주고, 없으면 error를 돌려준다.
+    fn field<'v>(&self, object: &'v Map<String, Value>, location: &str, key: &str) -> Result<&'v Value, String> {
+        object.get(key).ok_or_else(|| self.fail(&at(location, key), "is missing"))
+    }
+
+    fn string(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<String, String> {
+        self.field(object, location, key)?.as_str().map(str::to_string).ok_or_else(|| self.fail(&at(location, key), "is not a string"))
+    }
+
+    /// `key`가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다.
+    fn flag(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<bool, String> {
+        match object.get(key) {
+            None => Ok(false),
+            Some(value) => value.as_bool().ok_or_else(|| self.fail(&at(location, key), "is not a boolean")),
+        }
+    }
+
+    /// `value`가 string의 array인지 확인해 돌려준다.
+    fn lines(&self, value: &Value, location: &str) -> Result<Vec<String>, String> {
+        let items = value.as_array().ok_or_else(|| self.fail(location, "is not an array"))?;
+        items
+            .iter()
+            .enumerate()
+            .map(|(i, item)| item.as_str().map(str::to_string).ok_or_else(|| self.fail(&format!("{location}[{i}]"), "is not a string")))
+            .collect()
+    }
+
+    fn lines_field(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Vec<String>, String> {
+        self.lines(self.field(object, location, key)?, &at(location, key))
+    }
+
+    /// 이름마다 line array를 가진 object를 돌려준다.
+    fn documents(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Documents, String> {
+        let items = self.field(object, location, key)?.as_object().ok_or_else(|| self.fail(&at(location, key), "is not an object"))?;
+        items.iter().map(|(name, item)| Ok((name.clone(), self.lines(item, &at(&at(location, key), name))?))).collect()
+    }
+
+    /// section `key`의 각 case가 object인지와 그 id를 확인하고 `read`로 case를 읽는다.
+    fn cases<T>(
+        &self,
+        object: &Map<String, Value>,
+        key: &str,
+        read: impl Fn(&Map<String, Value>, &str, String) -> Result<T, String>,
+    ) -> Result<Vec<T>, String> {
+        let items = self.field(object, "", key)?.as_array().ok_or_else(|| self.fail(key, "is not an array"))?;
+        let mut cases = Vec::with_capacity(items.len());
+        for (i, item) in items.iter().enumerate() {
+            let location = format!("{key}[{i}]");
+            let case = item.as_object().ok_or_else(|| self.fail(&location, "is not an object"))?;
+            let id = self.string(case, &location, "id")?;
+            cases.push(read(case, &location, id)?);
+        }
+        Ok(cases)
+    }
+
+    fn hash_case(&self, case: &Map<String, Value>, location: &str, id: String) -> Result<HashCase, String> {
+        Ok(HashCase { id, documents: self.documents(case, location, "documents")? })
+    }
+}
+
+/// tests/dbspec/cases.json을 읽는다.
+fn read_cases(path: &str) -> Result<SharedCases, String> {
+    let (r, v) = Reader::open(path)?;
+    let test_case = |case: &Map<String, Value>, location: &str, id: String| {
+        let main = r.string(case, location, "main")?;
+        let documents = r.documents(case, location, "documents")?;
+        if !documents.contains_key(&main) {
+            return Err(r.fail(&at(&at(location, "documents"), &main), "is missing"));
+        }
+        Ok(TestCase { id, main, documents, crlf: r.flag(case, location, "crlf")?, mixed: r.flag(case, location, "mixed")? })
+    };
+    Ok(SharedCases {
+        canonical: r.cases(&v, "canonical", test_case)?,
+        normalize: r.cases(&v, "normalize", test_case)?,
+        invalid: r.cases(&v, "invalid", test_case)?,
+        hashes: r.cases(&v, "hashes", |case, location, id| r.hash_case(case, location, id))?,
+    })
+}
+
+/// tests/dbspec/ddl.json의 cases를 읽는다.
+fn read_ddl(path: &str) -> Result<Vec<HashCase>, String> {
+    let (r, v) = Reader::open(path)?;
+    r.cases(&v, "cases", |case, location, id| r.hash_case(case, location, id))
+}
+
+/// tests/dbspec/plans.json을 읽는다. source는 빈 schema를 뜻하는 null이거나 line array이다.
+fn read_plans(path: &str) -> Result<PlanVectors, String> {
+    let (r, v) = Reader::open(path)?;
+    let plan_case = |case: &Map<String, Value>, location: &str, id: String| {
+        let source = match r.field(case, location, "source")? {
+            Value::Null => None,
+            lines => Some(r.lines(lines, &at(location, "source"))?),
+        };
+        Ok(PlanCase { id, source, plan: r.lines_field(case, location, "plan")? })
+    };
+    Ok(PlanVectors {
+        cases: r.cases(&v, "cases", plan_case)?,
+        invalid: r.cases(&v, "invalid", plan_case)?,
+        chains: r.cases(&v, "chains", |case, location, id| {
+            let items = r.field(case, location, "plans")?.as_array().ok_or_else(|| r.fail(&at(location, "plans"), "is not an array"))?;
+            let plans = items.iter().enumerate().map(|(i, item)| r.lines(item, &format!("{}[{i}]", at(location, "plans")))).collect::<Result<_, _>>()?;
+            Ok(ChainCase { id, plans })
+        })?,
+        parse: r.cases(&v, "parse", |case, location, id| Ok(ParseCase { id, plan: r.lines_field(case, location, "plan")? }))?,
+    })
+}
+
+/// tests/dbspec/mermaid.json을 읽는다.
+fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
+    let (r, v) = Reader::open(path)?;
+    let import_case = |case: &Map<String, Value>, location: &str, id: String| Ok(ImportCase { id, mermaid: r.lines_field(case, location, "mermaid")? });
+    Ok(MermaidVectors {
+        export: r.cases(&v, "export", |case, location, id| {
+            Ok(ExportCase { id, document: r.lines_field(case, location, "document")?, documents: r.documents(case, location, "documents")? })
+        })?,
+        import: r.cases(&v, "import", import_case)?,
+        invalid: r.cases(&v, "invalid", import_case)?,
+        round_trip: r.cases(&v, "round_trip", |case, location, id| Ok(RoundTripCase { id, path: r.string(case, location, "path")? }))?,
+    })
+}
+
 /// Writes the lines with LF, with CRLF when `crlf` is true, or with
 /// alternating CRLF and LF and no final line end when `mixed` is true.
-fn join(lines: &Value, crlf: bool, mixed: bool) -> String {
-    let lines: Vec<&str> = lines.as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+fn join(lines: &[String], crlf: bool, mixed: bool) -> String {
     let mut text = String::new();
     for (i, line) in lines.iter().enumerate() {
         text.push_str(line);
@@ -59,11 +276,10 @@ fn write_diagnostics(out: &mut impl Write, diagnostics: &[orm_schema::dbspec::Di
 
 /// Prints the hashes and texts of the case's document set, or the
 /// diagnostics of a document or of the set.
-fn write_manifest(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
-    let documents_value = case["documents"].as_object().into_iter().flatten().collect::<BTreeMap<_, _>>();
+fn write_manifest(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
     let mut documents = Vec::new();
-    for (name, lines) in &documents_value {
-        let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| ((*other).clone(), join(l, false, false))).collect();
+    for (name, lines) in &case.documents {
+        let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
         match orm_schema::dbspec::parse(&join(lines, false, false), &set) {
             Ok(document) => documents.push(document),
             Err(diagnostics) => return write_diagnostics(out, &diagnostics),
@@ -88,12 +304,11 @@ fn write_manifest(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
 
 /// Prints the statements of the case's document set in every dialect, or the
 /// diagnostics of a document or of the set.
-fn write_render(out: &mut impl Write, case: &Value) -> std::io::Result<()> {
-    let id = case["id"].as_str().unwrap_or_default();
-    let documents_value = case["documents"].as_object().into_iter().flatten().collect::<BTreeMap<_, _>>();
+fn write_render(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
+    let id = &case.id;
     let mut documents = Vec::new();
-    for (name, lines) in &documents_value {
-        let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| ((*other).clone(), join(l, false, false))).collect();
+    for (name, lines) in &case.documents {
+        let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
         match orm_schema::dbspec::parse(&join(lines, false, false), &set) {
             Ok(document) => documents.push(document),
             Err(diagnostics) => {
@@ -148,10 +363,10 @@ fn write_emitted_plan(out: &mut impl Write, plan: &Plan) -> std::io::Result<()> 
 
 /// The source schema of a plan case, `None` for the empty schema, or `Err`
 /// after printing its diagnostics.
-fn plan_source(out: &mut impl Write, lines: &Value) -> std::io::Result<Result<Option<Document>, ()>> {
-    if lines.is_null() {
+fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Result<Result<Option<Document>, ()>> {
+    let Some(lines) = lines else {
         return Ok(Ok(None));
-    }
+    };
     match orm_schema::dbspec::parse(&join(lines, false, false), &BTreeMap::new()) {
         Ok(document) => Ok(Ok(Some(document))),
         Err(diagnostics) => {
@@ -165,12 +380,12 @@ fn plan_source(out: &mut impl Write, lines: &Value) -> std::io::Result<Result<Op
 /// statements of each dialect; for every invalid case its diagnostics; for
 /// every chain case the chain order or its diagnostics; and for every parse
 /// case its diagnostics or the emitted plan.
-fn write_plans(out: &mut impl Write, plans: &Value) -> std::io::Result<()> {
-    for case in plans["cases"].as_array().into_iter().flatten() {
-        let id = case["id"].as_str().unwrap_or_default();
+fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()> {
+    for case in &plans.cases {
+        let id = &case.id;
         writeln!(out, "plans/cases/{id}")?;
-        let Ok(source) = plan_source(out, &case["source"])? else { continue };
-        let plan = match orm_schema::dbspec::parse_plan(&join(&case["plan"], false, false)) {
+        let Ok(source) = plan_source(out, &case.source)? else { continue };
+        let plan = match orm_schema::dbspec::parse_plan(&join(&case.plan, false, false)) {
             Ok(plan) => plan,
             Err(diagnostics) => {
                 write_plan_diagnostics(out, &diagnostics)?;
@@ -195,10 +410,10 @@ fn write_plans(out: &mut impl Write, plans: &Value) -> std::io::Result<()> {
             }
         }
     }
-    for case in plans["invalid"].as_array().into_iter().flatten() {
-        writeln!(out, "plans/invalid/{}", case["id"].as_str().unwrap_or_default())?;
-        let Ok(source) = plan_source(out, &case["source"])? else { continue };
-        match orm_schema::dbspec::parse_plan(&join(&case["plan"], false, false)) {
+    for case in &plans.invalid {
+        writeln!(out, "plans/invalid/{}", case.id)?;
+        let Ok(source) = plan_source(out, &case.source)? else { continue };
+        match orm_schema::dbspec::parse_plan(&join(&case.plan, false, false)) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
             Ok(plan) => match orm_schema::dbspec::diff(source.as_ref(), &plan) {
                 Ok(changes) => write_changes(out, &changes)?,
@@ -206,11 +421,11 @@ fn write_plans(out: &mut impl Write, plans: &Value) -> std::io::Result<()> {
             },
         }
     }
-    for case in plans["chains"].as_array().into_iter().flatten() {
-        writeln!(out, "plans/chains/{}", case["id"].as_str().unwrap_or_default())?;
+    for case in &plans.chains {
+        writeln!(out, "plans/chains/{}", case.id)?;
         let mut parsed = Vec::new();
         let mut failed = false;
-        for lines in case["plans"].as_array().into_iter().flatten() {
+        for lines in &case.plans {
             match orm_schema::dbspec::parse_plan(&join(lines, false, false)) {
                 Ok(plan) => parsed.push(plan),
                 Err(diagnostics) => {
@@ -231,9 +446,9 @@ fn write_plans(out: &mut impl Write, plans: &Value) -> std::io::Result<()> {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
         }
     }
-    for case in plans["parse"].as_array().into_iter().flatten() {
-        writeln!(out, "plans/parse/{}", case["id"].as_str().unwrap_or_default())?;
-        match orm_schema::dbspec::parse_plan(&join(&case["plan"], false, false)) {
+    for case in &plans.parse {
+        writeln!(out, "plans/parse/{}", case.id)?;
+        match orm_schema::dbspec::parse_plan(&join(&case.plan, false, false)) {
             Ok(plan) => write_emitted_plan(out, &plan)?,
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
         }
@@ -273,42 +488,31 @@ fn write_import(out: &mut impl Write, text: &str) -> std::io::Result<()> {
     }
 }
 
-/// The array `key` of `value`, or an error that names it.
-fn array<'v>(value: &'v Value, key: &str) -> Result<&'v Vec<Value>, String> {
-    value[key].as_array().ok_or_else(|| format!("mermaid vectors: {key} is not an array"))
-}
-
-/// The string `key` of `value`, or an error that names it.
-fn string<'v>(value: &'v Value, key: &str) -> Result<&'v str, String> {
-    value[key].as_str().ok_or_else(|| format!("mermaid vectors: {key} is not a string"))
-}
-
 /// Prints every export case, every import and invalid case, and every round
 /// trip case: the export of its document, then `<case>/import` with the
 /// import of that export.
-fn write_mermaid(out: &mut impl Write, mermaid: &Value) -> Result<(), String> {
+fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), String> {
     let io = |e: std::io::Error| e.to_string();
-    for case in array(mermaid, "export")? {
-        writeln!(out, "mermaid/export/{}", string(case, "id")?).map_err(io)?;
-        let documents = case["documents"].as_object().ok_or("mermaid vectors: documents is not an object")?;
-        let set = documents.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
-        match orm_schema::dbspec::parse(&join(&case["document"], false, false), &set) {
+    for case in &mermaid.export {
+        writeln!(out, "mermaid/export/{}", case.id).map_err(io)?;
+        let set = case.documents.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
+        match orm_schema::dbspec::parse(&join(&case.document, false, false), &set) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
             Ok(document) => {
                 write_export(out, &document).map_err(io)?;
             }
         }
     }
-    for kind in ["import", "invalid"] {
-        for case in array(mermaid, kind)? {
-            writeln!(out, "mermaid/{kind}/{}", string(case, "id")?).map_err(io)?;
-            write_import(out, &join(&case["mermaid"], false, false)).map_err(io)?;
+    for (kind, cases) in [("import", &mermaid.import), ("invalid", &mermaid.invalid)] {
+        for case in cases {
+            writeln!(out, "mermaid/{kind}/{}", case.id).map_err(io)?;
+            write_import(out, &join(&case.mermaid, false, false)).map_err(io)?;
         }
     }
-    for case in array(mermaid, "round_trip")? {
-        let id = string(case, "id")?;
+    for case in &mermaid.round_trip {
+        let id = &case.id;
         writeln!(out, "mermaid/round_trip/{id}").map_err(io)?;
-        let path = string(case, "path")?;
+        let path = &case.path;
         let source = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
         match orm_schema::dbspec::parse(&source, &BTreeMap::new()) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
@@ -323,44 +527,34 @@ fn write_mermaid(out: &mut impl Write, mermaid: &Value) -> Result<(), String> {
 }
 
 fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
-    let cases: Value =
-        serde_json::from_str(&std::fs::read_to_string(cases_path).map_err(|e| format!("{cases_path}: {e}"))?).map_err(|e| format!("{cases_path}: {e}"))?;
+    let cases = read_cases(cases_path)?;
     let stress = std::fs::read_to_string(stress_path).map_err(|e| format!("{stress_path}: {e}"))?;
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
     let io = |e: std::io::Error| e.to_string();
-    for kind in ["canonical", "normalize", "invalid"] {
-        for case in cases[kind].as_array().into_iter().flatten() {
-            let crlf = case["crlf"] == Value::Bool(true);
-            let mixed = case["mixed"] == Value::Bool(true);
-            let main = case["main"].as_str().unwrap_or_default();
+    for (kind, cases) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
+        for case in cases {
             let mut set = BTreeMap::new();
-            for (name, lines) in case["documents"].as_object().into_iter().flatten() {
-                if name != main {
-                    set.insert(name.clone(), join(lines, crlf, mixed));
+            for (name, lines) in &case.documents {
+                if *name != case.main {
+                    set.insert(name.clone(), join(lines, case.crlf, case.mixed));
                 }
             }
-            writeln!(out, "{kind}/{}", case["id"].as_str().unwrap_or_default()).map_err(io)?;
-            write(&mut out, &join(&case["documents"][main], crlf, mixed), &set, false).map_err(io)?;
+            writeln!(out, "{kind}/{}", case.id).map_err(io)?;
+            write(&mut out, &join(&case.documents[&case.main], case.crlf, case.mixed), &set, false).map_err(io)?;
         }
     }
     writeln!(out, "stress").map_err(io)?;
     write(&mut out, &stress, &BTreeMap::new(), true).map_err(io)?;
-    for case in cases["hashes"].as_array().into_iter().flatten() {
-        writeln!(out, "hashes/{}", case["id"].as_str().unwrap_or_default()).map_err(io)?;
+    for case in &cases.hashes {
+        writeln!(out, "hashes/{}", case.id).map_err(io)?;
         write_manifest(&mut out, case).map_err(io)?;
     }
-    let ddl: Value =
-        serde_json::from_str(&std::fs::read_to_string(ddl_path).map_err(|e| format!("{ddl_path}: {e}"))?).map_err(|e| format!("{ddl_path}: {e}"))?;
-    for case in ddl["cases"].as_array().into_iter().flatten() {
+    for case in &read_ddl(ddl_path)? {
         write_render(&mut out, case).map_err(io)?;
     }
-    let plans: Value =
-        serde_json::from_str(&std::fs::read_to_string(plans_path).map_err(|e| format!("{plans_path}: {e}"))?).map_err(|e| format!("{plans_path}: {e}"))?;
-    write_plans(&mut out, &plans).map_err(io)?;
-    let mermaid: Value = serde_json::from_str(&std::fs::read_to_string(mermaid_path).map_err(|e| format!("{mermaid_path}: {e}"))?)
-        .map_err(|e| format!("{mermaid_path}: {e}"))?;
-    write_mermaid(&mut out, &mermaid)?;
+    write_plans(&mut out, &read_plans(plans_path)?).map_err(io)?;
+    write_mermaid(&mut out, &read_mermaid(mermaid_path)?)?;
     out.flush().map_err(io)
 }
 

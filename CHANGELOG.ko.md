@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.7.6.1: 실패한 Go Mermaid나 plan vector case는 지켜지는 deadline 아래에서 실패만 기록하고, 모든 dbspec runner는 없는 input이나 directory input을 `<path>: <reason>`과 0이 아닌 exit로 거부한다.
+
+- T8.5.6.1: dbspec compare runner는 빠지거나 type이 틀린 vector section, id, document, 줄을 빈 값으로 읽지 않고 `<file>: <location> <problem>`과 0이 아닌 exit로 거부한다.
+
 - T8.2.6.1.1.1: 같은 link를 고친 T8.2.6.1.3으로 닫는다.
 
 - T8.6: 모든 client가 lock, history, 검증, event와 함께 plan chain을 적용하고 recover하며, 어느 client든 다른 client가 적용한 chain을 이어 간다.
