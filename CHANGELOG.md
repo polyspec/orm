@@ -1,5 +1,11 @@
 # Changelog
 
+Implement dbspec parse, validation and canonical emit in the TypeScript
+client (T8.2.4) with the declared interface: parseDbspec, emitDbspec and
+DbspecDiagnostic. All 44 shared cases and 45 focused cases pass, and the
+2000-table stress document parses in 105-156 ms and emits unchanged.
+Record its 279 symbols in contracts/symbols/typescript.json.
+
 Specify dbspec, the neutral schema language that replaces the Mermaid
 schema source (T8.1). docs/dbspec.md and its Korean pair define documents
 joined by name through a declared document set, the thirteen neutral types,
