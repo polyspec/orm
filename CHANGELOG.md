@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.4: the TypeScript client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `introspectDbspec` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-ts-check` runs the round trips and the unsupported cases.
+
 - T8.2.6.3.7: the bench databases are installed from schema/bench.dbspec, the conformance runners take only a DSN, and the conformance vectors are recorded from the four dbspec clients on MySQL, PostgreSQL and SQLite.
 
 - T8.2.6.3.6: the Rust client builds its runtime model and generated code from the dbspec document set.
