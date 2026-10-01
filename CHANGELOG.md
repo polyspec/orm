@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6.3.1: a failed PHP apply reports its cleanup errors with the failure through `Orm\Dbspec\ApplyCleanupError`, an advisory unlock that released nothing is an error, and a MySQL effect query without a row or a result that cannot be closed is an error.
+
 - T8.0.9: `datetime(p)` renders as a local date-time on the three databases, every client connection reads and writes it in UTC, and introspection reports time-zone columns as unsupported.
 
 - T8.0.9.1: Go, TypeScript and Rust connections read and write datetime values in UTC like PHP, and `timezone` accepts only `UTC` or `+00:00`.
