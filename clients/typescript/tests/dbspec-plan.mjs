@@ -2,7 +2,8 @@
 // parses its plan, emits it back unchanged, diffs it against its source and
 // writes exactly the listed statements in every dialect; every invalid case
 // reports exactly its plan diagnostics; every chain case orders its plans or
-// reports exactly its chain diagnostics.
+// reports exactly its chain diagnostics; every parse case reports exactly its
+// diagnostics with rule, line, column and the message of a plan diagnostic.
 //
 // Usage: node --test clients/typescript/tests/dbspec-plan.mjs (after the build)
 import test from 'node:test';
@@ -49,7 +50,7 @@ function plan(lines) {
 }
 
 assert.equal(vectors.version, 1, 'plans.json version');
-assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0, 'plans.json cases');
+assert(vectors.cases.length > 0 && vectors.invalid.length > 0 && vectors.chains.length > 0 && vectors.parse.length > 0, 'plans.json cases');
 
 for (const c of vectors.cases) {
   vector(`plan ${c.id}`, () => {
@@ -82,6 +83,14 @@ for (const c of vectors.chains) {
     for (const d of result.diagnostics) assert.equal(d.rule, 'chain', d.message);
     assert.deepEqual(result.diagnostics.map(d => d.message), c.errors ?? []);
     assert.deepEqual(result.plans?.map(p => p.name) ?? null, c.order ?? null);
+  });
+}
+
+for (const c of vectors.parse) {
+  vector(`plan parse ${c.id}`, () => {
+    const { diagnostics } = parsePlan(text(c.plan));
+    // plan diagnostic은 message까지, target diagnostic은 rule, 줄, 칸까지 비교한다.
+    assert.deepEqual(diagnostics.map(d => [d.rule, d.line, d.column, d.rule === 'plan' ? d.message : null]), c.errors);
   });
 }
 

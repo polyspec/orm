@@ -20,7 +20,7 @@ final class PlanText
         }
         $name = self::NAME;
         $lines = explode("\n", substr($text, 0, -1));
-        if (!preg_match("/^dbplan 1 ($name)\$/D", $lines[0], $m) || in_array($m[1], Parser::RESERVED, true)) {
+        if (!preg_match("/^dbplan 1 ($name)\$/D", $lines[0], $m) || in_array($m[1], Parser::RESERVED, true) || strlen($m[1]) > 63) {
             return self::fail(1, 'the first line is exactly `dbplan 1 <name>`');
         }
         $planName = $m[1];

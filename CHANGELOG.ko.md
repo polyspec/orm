@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 plan을 비교하고, PHP, TypeScript, Rust가 63 byte를 넘는 plan 이름을 거절하며 공유 plan parse case를 실행한다.
+
 - T8.2.2.1: Go가 다른 client처럼 primary key 줄 없는 table에도 identity 규칙을 보고한다.
 
 - T8.2.1.1: Rust client가 Go, PHP, TypeScript처럼 parse한 dbspec model을 `orm_schema::dbspec::model`로 공개한다.

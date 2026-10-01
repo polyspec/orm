@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-// Prints the PHP dbspec result of every shared case and of the stress
-// document in the line format of tests/dbspec/compare/check.mjs.
+// Prints the PHP dbspec result of every shared case, of the stress document,
+// of the statement vectors and of the plan vectors in the line format of
+// tests/dbspec/compare/check.mjs.
 //
-// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json>
+// Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json>
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 
-if ($argc !== 4) {
-    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json>\n");
+if ($argc !== 5) {
+    fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json>\n");
     exit(2);
 }
 
@@ -161,4 +162,120 @@ function dbspec_write_render(array $case): void
 $ddl = json_decode((string) file_get_contents($argv[3]), true, 512, JSON_THROW_ON_ERROR);
 foreach ($ddl['cases'] as $case) {
     dbspec_write_render($case);
+}
+
+/**
+ * Prints diagnostics; a plan or chain diagnostic ends with its message, which
+ * every client shares, and a schema diagnostic of the target or source does not.
+ *
+ * @param list<Orm\Dbspec\Diagnostic> $diagnostics
+ */
+function dbspec_plan_diagnostics(array $diagnostics): void
+{
+    foreach ($diagnostics as $d) {
+        echo $d->rule === 'plan' || $d->rule === 'chain' ? "! {$d->rule} {$d->line} {$d->column} {$d->message}\n" : "! {$d->rule} {$d->line} {$d->column}\n";
+    }
+}
+
+/**
+ * The source schema of a plan case, null for the empty schema, or false after
+ * printing its diagnostics.
+ *
+ * @param ?list<string> $lines
+ */
+function dbspec_plan_source(?array $lines): Orm\Dbspec\Document|null|false
+{
+    if ($lines === null) {
+        return null;
+    }
+    $result = Orm\Dbspec\Dbspec::parse(dbspec_join($lines, false, false), []);
+    if ($result->document === null) {
+        dbspec_plan_diagnostics($result->diagnostics);
+        return false;
+    }
+    return $result->document;
+}
+
+/** Prints the changes as "| kind table name". @param list<Orm\Dbspec\Change> $changes */
+function dbspec_changes(array $changes): void
+{
+    foreach ($changes as $c) {
+        echo "| {$c->kind} {$c->table} {$c->name}\n";
+    }
+}
+
+/** Prints the lines of an emitted plan. */
+function dbspec_emitted_plan(Orm\Dbspec\Plan $plan): void
+{
+    foreach (explode("\n", Orm\Dbspec\Dbspec::emitPlan($plan)) as $line) {
+        echo "| $line\n";
+    }
+}
+
+$plans = json_decode((string) file_get_contents($argv[4]), true, 512, JSON_THROW_ON_ERROR);
+foreach ($plans['cases'] as $case) {
+    echo "plans/cases/{$case['id']}\n";
+    $source = dbspec_plan_source($case['source']);
+    if ($source === false) {
+        continue;
+    }
+    $parsed = Orm\Dbspec\Dbspec::parsePlan(dbspec_join($case['plan'], false, false));
+    if ($parsed->plan === null) {
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        continue;
+    }
+    dbspec_emitted_plan($parsed->plan);
+    echo "plans/cases/{$case['id']}/changes\n";
+    $diff = Orm\Dbspec\Dbspec::diff($source, $parsed->plan);
+    dbspec_plan_diagnostics($diff->diagnostics);
+    dbspec_changes($diff->changes ?? []);
+    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+        echo "plans/cases/{$case['id']}/$dialect\n";
+        $result = Orm\Dbspec\Dbspec::planStatements($source, $parsed->plan, $dialect);
+        dbspec_plan_diagnostics($result->diagnostics);
+        foreach ($result->statements ?? [] as $statement) {
+            echo "| $statement\n";
+        }
+    }
+}
+foreach ($plans['invalid'] as $case) {
+    echo "plans/invalid/{$case['id']}\n";
+    $source = dbspec_plan_source($case['source']);
+    if ($source === false) {
+        continue;
+    }
+    $parsed = Orm\Dbspec\Dbspec::parsePlan(dbspec_join($case['plan'], false, false));
+    if ($parsed->plan === null) {
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        continue;
+    }
+    $diff = Orm\Dbspec\Dbspec::diff($source, $parsed->plan);
+    dbspec_plan_diagnostics($diff->diagnostics);
+    dbspec_changes($diff->changes ?? []);
+}
+foreach ($plans['chains'] as $case) {
+    echo "plans/chains/{$case['id']}\n";
+    $parsedPlans = [];
+    foreach ($case['plans'] as $lines) {
+        $parsed = Orm\Dbspec\Dbspec::parsePlan(dbspec_join($lines, false, false));
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        $parsedPlans[] = $parsed->plan;
+    }
+    if (in_array(null, $parsedPlans, true)) {
+        continue;
+    }
+    $chain = Orm\Dbspec\Dbspec::chain($parsedPlans);
+    dbspec_plan_diagnostics($chain->diagnostics);
+    foreach ($chain->plans ?? [] as $plan) {
+        echo "| {$plan->name}\n";
+    }
+}
+foreach ($plans['parse'] as $case) {
+    echo "plans/parse/{$case['id']}\n";
+    $parsed = Orm\Dbspec\Dbspec::parsePlan(dbspec_join($case['plan'], false, false));
+    if ($parsed->plan === null) {
+        dbspec_plan_diagnostics($parsed->diagnostics);
+        continue;
+    }
+    dbspec_emitted_plan($parsed->plan);
 }
