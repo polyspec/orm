@@ -7,7 +7,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -17,23 +16,24 @@ import (
 )
 
 type testCase struct {
-	ID        string              `json:"id"`
-	Main      string              `json:"main"`
-	Documents map[string][]string `json:"documents"`
-	CRLF      bool                `json:"crlf"`
-	Mixed     bool                `json:"mixed"`
+	ID        string
+	Main      string
+	Documents map[string][]string
+	CRLF      bool
+	Mixed     bool
 }
 
 type hashCase struct {
-	ID        string              `json:"id"`
-	Documents map[string][]string `json:"documents"`
+	ID        string
+	Documents map[string][]string
 }
 
-type cases struct {
-	Canonical []testCase `json:"canonical"`
-	Normalize []testCase `json:"normalize"`
-	Invalid   []testCase `json:"invalid"`
-	Hashes    []hashCase `json:"hashes"`
+// sharedCases는 tests/dbspec/cases.json이다.
+type sharedCases struct {
+	Canonical []testCase
+	Normalize []testCase
+	Invalid   []testCase
+	Hashes    []hashCase
 }
 
 // join writes the lines with LF, with CRLF when crlf is true, or with
@@ -171,24 +171,27 @@ func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 
 // planVectors is tests/dbspec/plans.json (docs/plans.md).
 type planVectors struct {
-	Cases []struct {
-		ID     string    `json:"id"`
-		Source *[]string `json:"source"`
-		Plan   []string  `json:"plan"`
-	} `json:"cases"`
-	Invalid []struct {
-		ID     string    `json:"id"`
-		Source *[]string `json:"source"`
-		Plan   []string  `json:"plan"`
-	} `json:"invalid"`
-	Chains []struct {
-		ID    string     `json:"id"`
-		Plans [][]string `json:"plans"`
-	} `json:"chains"`
-	Parse []struct {
-		ID   string   `json:"id"`
-		Plan []string `json:"plan"`
-	} `json:"parse"`
+	Cases   []planCase
+	Invalid []planCase
+	Chains  []chainCase
+	Parse   []parseCase
+}
+
+// planCase의 Source가 nil이면 빈 schema이다.
+type planCase struct {
+	ID     string
+	Source *[]string
+	Plan   []string
+}
+
+type chainCase struct {
+	ID    string
+	Plans [][]string
+}
+
+type parseCase struct {
+	ID   string
+	Plan []string
 }
 
 // planSource parses the source schema of a plan case, nil for the empty
@@ -293,23 +296,26 @@ func writePlans(out *bufio.Writer, v planVectors) {
 
 // mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
 type mermaidVectors struct {
-	Export []struct {
-		ID        string              `json:"id"`
-		Document  []string            `json:"document"`
-		Documents map[string][]string `json:"documents"`
-	} `json:"export"`
-	Import []struct {
-		ID      string   `json:"id"`
-		Mermaid []string `json:"mermaid"`
-	} `json:"import"`
-	Invalid []struct {
-		ID      string   `json:"id"`
-		Mermaid []string `json:"mermaid"`
-	} `json:"invalid"`
-	RoundTrip []struct {
-		ID   string `json:"id"`
-		Path string `json:"path"`
-	} `json:"round_trip"`
+	Export    []exportCase
+	Import    []importCase
+	Invalid   []importCase
+	RoundTrip []roundTripCase
+}
+
+type exportCase struct {
+	ID        string
+	Document  []string
+	Documents map[string][]string
+}
+
+type importCase struct {
+	ID      string
+	Mermaid []string
+}
+
+type roundTripCase struct {
+	ID   string
+	Path string
 }
 
 // writeDropped prints what an export or import left out as
@@ -392,13 +398,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>")
 		os.Exit(2)
 	}
-	raw, err := os.ReadFile(os.Args[1])
+	all, err := readCases(os.Args[1])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	var all cases
-	if err := json.Unmarshal(raw, &all); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -429,39 +430,22 @@ func main() {
 		fmt.Fprintf(out, "hashes/%s\n", c.ID)
 		writeManifest(out, c)
 	}
-	rawDDL, err := os.ReadFile(os.Args[3])
+	ddl, err := readDDL(os.Args[3])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	var ddl struct {
-		Cases []hashCase `json:"cases"`
-	}
-	if err := json.Unmarshal(rawDDL, &ddl); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	for _, c := range ddl.Cases {
+	for _, c := range ddl {
 		writeRender(out, c)
 	}
-	rawPlans, err := os.ReadFile(os.Args[4])
+	plans, err := readPlans(os.Args[4])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	var plans planVectors
-	if err := json.Unmarshal(rawPlans, &plans); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	writePlans(out, plans)
-	rawMermaid, err := os.ReadFile(os.Args[5])
+	mermaid, err := readMermaid(os.Args[5])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	var mermaid mermaidVectors
-	if err := json.Unmarshal(rawMermaid, &mermaid); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

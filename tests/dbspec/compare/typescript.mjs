@@ -25,6 +25,113 @@ if (casesPath === undefined || stressPath === undefined || ddlPath === undefined
   process.exit(2);
 }
 
+// fail은 vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다.
+function fail(path, location, problem) {
+  console.error(`${path}: ${location} ${problem}`);
+  process.exit(1);
+}
+
+// readVectors는 vector file을 JSON으로 읽고 check로 모양을 확인한다.
+function readVectors(path, check) {
+  let value;
+  try {
+    value = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    console.error(`${path}: ${error.message}`);
+    process.exit(1);
+  }
+  if (!isObject(value)) fail(path, '$', 'is not an object');
+  check(path, value);
+  return value;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+// field는 object의 key가 있고 kind에 맞는지 확인해 그 값을 돌려준다.
+function field(path, object, location, key, kind) {
+  const at = location === '' ? key : `${location}.${key}`;
+  if (!Object.hasOwn(object, key)) fail(path, at, 'is missing');
+  const value = object[key];
+  if (kind === 'string' && typeof value !== 'string') fail(path, at, 'is not a string');
+  if (kind === 'boolean' && typeof value !== 'boolean') fail(path, at, 'is not a boolean');
+  if (kind === 'object' && !isObject(value)) fail(path, at, 'is not an object');
+  if (kind === 'array' && !Array.isArray(value)) fail(path, at, 'is not an array');
+  return value;
+}
+
+// optionalBoolean은 key가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다.
+function optionalBoolean(path, object, location, key) {
+  return Object.hasOwn(object, key) ? field(path, object, location, key, 'boolean') : false;
+}
+
+// checkLines는 value가 string의 array인지 확인한다.
+function checkLines(path, value, at) {
+  if (!Array.isArray(value)) fail(path, at, 'is not an array');
+  value.forEach((line, i) => {
+    if (typeof line !== 'string') fail(path, `${at}[${i}]`, 'is not a string');
+  });
+}
+
+function lines(path, object, location, key) {
+  checkLines(path, field(path, object, location, key, 'array'), `${location}.${key}`);
+}
+
+// documents는 이름마다 line array를 가진 object인지 확인한다.
+function documents(path, object, location, key) {
+  const value = field(path, object, location, key, 'object');
+  for (const [name, text] of Object.entries(value)) checkLines(path, text, `${location}.${key}.${name}`);
+  return value;
+}
+
+// cases는 section의 각 case가 object인지 확인하고 check로 그 field를 확인한다.
+function cases(path, object, key, check) {
+  field(path, object, '', key, 'array').forEach((c, i) => {
+    const at = `${key}[${i}]`;
+    if (!isObject(c)) fail(path, at, 'is not an object');
+    field(path, c, at, 'id', 'string');
+    check(c, at);
+  });
+}
+
+function checkCases(path, v) {
+  for (const kind of ['canonical', 'normalize', 'invalid']) {
+    cases(path, v, kind, (c, at) => {
+      const main = field(path, c, at, 'main', 'string');
+      const set = documents(path, c, at, 'documents');
+      if (!Object.hasOwn(set, main)) fail(path, `${at}.documents.${main}`, 'is missing');
+      optionalBoolean(path, c, at, 'crlf');
+      optionalBoolean(path, c, at, 'mixed');
+    });
+  }
+  cases(path, v, 'hashes', (c, at) => documents(path, c, at, 'documents'));
+}
+
+function checkDdl(path, v) {
+  cases(path, v, 'cases', (c, at) => documents(path, c, at, 'documents'));
+}
+
+function checkPlans(path, v) {
+  for (const kind of ['cases', 'invalid']) {
+    cases(path, v, kind, (c, at) => {
+      if (field(path, c, at, 'source', 'any') !== null) checkLines(path, c.source, `${at}.source`);
+      lines(path, c, at, 'plan');
+    });
+  }
+  cases(path, v, 'chains', (c, at) => field(path, c, at, 'plans', 'array').forEach((p, i) => checkLines(path, p, `${at}.plans[${i}]`)));
+  cases(path, v, 'parse', (c, at) => lines(path, c, at, 'plan'));
+}
+
+function checkMermaid(path, v) {
+  cases(path, v, 'export', (c, at) => {
+    lines(path, c, at, 'document');
+    documents(path, c, at, 'documents');
+  });
+  for (const kind of ['import', 'invalid']) cases(path, v, kind, (c, at) => lines(path, c, at, 'mermaid'));
+  cases(path, v, 'round_trip', (c, at) => field(path, c, at, 'path', 'string'));
+}
+
 // join writes the lines with LF, with CRLF when crlf is true, or with
 // alternating CRLF and LF and no final line end when mixed is true.
 function join(lines, crlf, mixed) {
@@ -47,9 +154,9 @@ function write(text, set, stress) {
   else for (const line of emitted.split('\n')) out.push(`| ${line}`);
 }
 
-const cases = JSON.parse(readFileSync(casesPath, 'utf8'));
+const shared = readVectors(casesPath, checkCases);
 for (const kind of ['canonical', 'normalize', 'invalid']) {
-  for (const c of cases[kind]) {
+  for (const c of shared[kind]) {
     const crlf = c.crlf === true;
     const mixed = c.mixed === true;
     const set = {};
@@ -87,7 +194,7 @@ function writeManifest(c) {
   for (const line of m.schemaText.split('\n')) out.push(`| ${line}`);
 }
 
-for (const c of cases.hashes) {
+for (const c of shared.hashes) {
   out.push(`hashes/${c.id}`);
   writeManifest(c);
 }
@@ -115,7 +222,7 @@ function writeRender(c) {
   }
 }
 
-for (const c of JSON.parse(readFileSync(ddlPath, 'utf8')).cases) writeRender(c);
+for (const c of readVectors(ddlPath, checkDdl).cases) writeRender(c);
 
 // writePlanDiagnostics prints diagnostics; a plan or chain diagnostic ends with
 // its message, which every client shares, and a schema diagnostic of the
@@ -147,7 +254,7 @@ function writeEmittedPlan(plan) {
   for (const line of emitPlan(plan).split('\n')) out.push(`| ${line}`);
 }
 
-const plans = JSON.parse(readFileSync(plansPath, 'utf8'));
+const plans = readVectors(plansPath, checkPlans);
 for (const c of plans.cases) {
   out.push(`plans/cases/${c.id}`);
   const source = planSource(c.source);
@@ -223,7 +330,7 @@ function writeImport(text) {
   writeDropped(result.dropped);
 }
 
-const mermaid = JSON.parse(readFileSync(mermaidPath, 'utf8'));
+const mermaid = readVectors(mermaidPath, checkMermaid);
 for (const c of mermaid.export) {
   out.push(`mermaid/export/${c.id}`);
   const set = Object.fromEntries(Object.entries(c.documents).map(([name, lines]) => [name, join(lines, false, false)]));

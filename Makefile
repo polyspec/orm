@@ -198,6 +198,8 @@ dbspec-introspect-compare-check:
 # twice each on tests/dbspec/cases.json, the stress document,
 # tests/dbspec/ddl.json, tests/dbspec/plans.json and tests/dbspec/mermaid.json
 # and fails on the first case whose output differs between any two runs.
+# Before that every runner must reject vectors with a section or a field
+# removed or mistyped with a located error.
 .PHONY: dbspec-compare-check
 dbspec-compare-check:
 	node --test tests/dbspec/compare/check.test.mjs
@@ -205,6 +207,7 @@ dbspec-compare-check:
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare
+	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
 
 dbspec-rust-check:
