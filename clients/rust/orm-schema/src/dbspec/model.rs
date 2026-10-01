@@ -55,8 +55,9 @@ impl Table {
     }
 }
 
+/// A column type (docs/dbspec.md, "Types").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Type {
+pub enum Type {
     I16,
     I32,
     I64,
@@ -73,6 +74,26 @@ pub(crate) enum Type {
 }
 
 impl Type {
+    /// The type name without its parameters: `decimal(13,2)` is `decimal`.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Type::I16 => "i16",
+            Type::I32 => "i32",
+            Type::I64 => "i64",
+            Type::Bool => "bool",
+            Type::Decimal(..) => "decimal",
+            Type::F64 => "f64",
+            Type::Varchar(_) => "varchar",
+            Type::Text => "text",
+            Type::Bytes => "bytes",
+            Type::Uuid => "uuid",
+            Type::Date => "date",
+            Type::Time(_) => "time",
+            Type::DateTime(_) => "datetime",
+        }
+    }
+
+    /// The type as dbspec writes it.
     pub fn render(&self) -> String {
         match self {
             Type::I16 => "i16".into(),
