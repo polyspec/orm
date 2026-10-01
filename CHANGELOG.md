@@ -1,5 +1,7 @@
 # Changelog
 
+- T17: the Rust client benchmark `client_bench` fails and names `ORM_BENCH_MYSQL_DSN` when the variable is unset or empty instead of connecting to a built-in local socket.
+
 - T12: `make ts-model-check` fails when the TypeScript models script scans a source that does not call models or misses one that does, or when the committed models.ts differs from its output; the script scans only the 8 sources that call models.
 
 - T8.5.2.2: plan names over 63 bytes are rejected, and shared cases cover plan parse errors.

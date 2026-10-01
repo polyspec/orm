@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T17: Rust client benchmark `client_bench`는 `ORM_BENCH_MYSQL_DSN`이 없거나 비어 있으면 내장 local socket에 연결하지 않고 그 변수 이름을 출력하며 실패한다.
+
 - T12: `make ts-model-check`는 TypeScript models script가 model을 호출하지 않는 source를 scan하거나 호출하는 source를 빠뜨릴 때, 또는 commit된 models.ts가 그 출력과 다를 때 실패한다. script는 model을 호출하는 8개 source만 scan한다.
 
 - T8.5.2.2: 63 bytes를 넘는 plan 이름을 거부하고, 공유 case가 plan parse error를 덮는다.
