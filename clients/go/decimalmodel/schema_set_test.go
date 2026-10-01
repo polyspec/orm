@@ -131,3 +131,90 @@ func schemaSet(t *testing.T, driver string) {
 func TestSchemaSetSQLite(t *testing.T)   { schemaSet(t, "sqlite") }
 func TestSchemaSetMySQL(t *testing.T)    { schemaSet(t, "mysql") }
 func TestSchemaSetPostgres(t *testing.T) { schemaSet(t, "postgres") }
+
+// registerSchema registers the decimal manifest on a connection opened with
+// the core schema. Register creates nothing: before installation the decimal
+// table stays absent. After another connection installs the manifest, the
+// decimal models read and write on the registering connection.
+func registerSchema(t *testing.T, driver string) {
+	dsn := schemaSetDatabase(t, driver)
+	coreJSON, err := os.ReadFile("../../../schema/schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decimalJSON, err := os.ReadFile("../../../contracts/fixtures/decimal_schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := model.Connect(dsn, "../../../schema/schema.json", orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fresh.Utils().Schema().Register(decimalJSON); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decimalmodel.DecimalCase().Connect(fresh).GetCount(); orm.ErrorCode(err) != orm.CodeDriver {
+		t.Fatalf("decimal read after register on an empty database = %v, want DRIVER: register creates no table", err)
+	}
+	fresh.Close()
+	installer, err := model.Connect(dsn, "../../../schema/schema.json", orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, manifest := range [][]byte{coreJSON, decimalJSON} {
+		if err := installer.Utils().Schema().Install(manifest); err != nil {
+			t.Fatal(err)
+		}
+	}
+	installer.Close()
+	db, err := model.Connect(dsn, "../../../schema/schema.json", orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for range 2 {
+		if err := db.Utils().Schema().Register(decimalJSON); err != nil {
+			t.Fatal(err)
+		}
+	}
+	row, err := decimalmodel.DecimalCase().Connect(db).SetSeq(3).SetAmount("2.5000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := row.Create(); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := decimalmodel.DecimalCase().Connect(db).Seq(3).Get()
+	if err != nil || loaded.GetAmount() != "2.5000" {
+		t.Fatalf("decimal row after register = %v, %v", loaded, err)
+	}
+}
+
+// registerEditedManifest registers a manifest whose content differs from its
+// hash, which fails with CONFIG.
+func registerEditedManifest(t *testing.T, driver string) {
+	dsn := schemaSetDatabase(t, driver)
+	decimalJSON, err := os.ReadFile("../../../contracts/fixtures/decimal_schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := []byte(strings.ReplaceAll(string(decimalJSON), `"decimal_case"`, `"decimal_edit"`))
+	if string(edited) == string(decimalJSON) {
+		t.Fatal("edited manifest does not differ")
+	}
+	db, err := model.Connect(dsn, "../../../schema/schema.json", orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Utils().Schema().Register(edited); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("register of an edited manifest = %v, want CONFIG", err)
+	}
+}
+
+func TestRegisterSchemaSQLite(t *testing.T)           { registerSchema(t, "sqlite") }
+func TestRegisterSchemaMySQL(t *testing.T)            { registerSchema(t, "mysql") }
+func TestRegisterSchemaPostgres(t *testing.T)         { registerSchema(t, "postgres") }
+func TestRegisterEditedManifestSQLite(t *testing.T)   { registerEditedManifest(t, "sqlite") }
+func TestRegisterEditedManifestMySQL(t *testing.T)    { registerEditedManifest(t, "mysql") }
+func TestRegisterEditedManifestPostgres(t *testing.T) { registerEditedManifest(t, "postgres") }

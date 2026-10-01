@@ -179,8 +179,8 @@ final class SchemaUtils
     public function install(string $manifestJson): void
     {
         $driver = $this->db->driver();
+        $engine = $this->engine($manifestJson);
         try {
-            $engine = new Engine(Manifest::load($manifestJson), $driver, $this->db->config()->planCacheSize);
             $manifest = SchemaBuilder::load($manifestJson);
         } catch (\InvalidArgumentException | OrmException $e) {
             throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
@@ -210,6 +210,26 @@ final class SchemaUtils
             $apply();
         }
         $this->db->registerEngine($engine);
+    }
+
+    /**
+     * Adds the engine of an installed schema manifest to the connection, as
+     * install does after its statements, without running any statement. The
+     * manifest hash is verified against its content.
+     */
+    public function register(string $manifestJson): void
+    {
+        $this->db->registerEngine($this->engine($manifestJson));
+    }
+
+    /** The engine of a manifest whose hash matches its content; CONFIG otherwise. */
+    private function engine(string $manifestJson): Engine
+    {
+        try {
+            return new Engine(Manifest::load($manifestJson), $this->db->driver(), $this->db->config()->planCacheSize);
+        } catch (\InvalidArgumentException | OrmException $e) {
+            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
+        }
     }
 
     private function bool(string $sql, array $args): bool

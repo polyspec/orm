@@ -1,5 +1,15 @@
 # Changelog
 
+Provide `utils().schema().register(manifestJson)` in the four clients
+(N3.3). Registering a schema whose tables already exist required
+constructing the engine and calling the internal `registerEngine`. Register
+verifies the manifest hash against its content and returns `CONFIG` when
+they differ, runs no statement, and adds the engine to the connection as
+`install` does; `install` uses the same registration. The Rust client
+verifies the manifest only, because its connections do not yet keep their
+schemas (N3.2). `contracts/interfaces.json` records the operation and the
+current symbol snapshot hashes.
+
 Type only the method calls of model chains in the TypeScript generator
 scan (N12). The scan collected the name of every method call of a source
 file and declared it on every model whose schema accepted it, so a call

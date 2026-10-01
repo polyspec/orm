@@ -194,13 +194,9 @@ func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 // outside a transaction and returns CONFIG inside one.
 func (s *SchemaUtils) Install(manifestJSON []byte) error {
 	d := s.u.db
-	manifest, err := schema.Load(manifestJSON)
+	manifest, compiled, err := s.engine(manifestJSON)
 	if err != nil {
-		return configErr("invalid schema manifest: %v", err)
-	}
-	compiled, err := engine.New(manifest, d.driver)
-	if err != nil {
-		return configErr("compile schema: %v", err)
+		return err
 	}
 	ddl, err := ormgen.RenderCreateDDL(manifest, d.driver)
 	if err != nil {
@@ -229,8 +225,39 @@ func (s *SchemaUtils) Install(manifestJSON []byte) error {
 	if err != nil {
 		return err
 	}
+	return s.register(compiled)
+}
+
+// Register adds the engine of an installed schema manifest to the
+// connection, as Install does after its statements, without running any
+// statement. The manifest hash is verified against its content; a manifest
+// that does not match returns CONFIG.
+func (s *SchemaUtils) Register(manifestJSON []byte) error {
+	_, compiled, err := s.engine(manifestJSON)
+	if err != nil {
+		return err
+	}
+	return s.register(compiled)
+}
+
+// engine loads a manifest whose hash matches its content and compiles it for
+// the connection's driver.
+func (s *SchemaUtils) engine(manifestJSON []byte) (*schema.Manifest, *engine.Engine, error) {
+	manifest, err := schema.Load(manifestJSON)
+	if err != nil {
+		return nil, nil, configErr("invalid schema manifest: %v", err)
+	}
+	compiled, err := engine.New(manifest, s.u.db.driver)
+	if err != nil {
+		return nil, nil, configErr("compile schema: %v", err)
+	}
+	return manifest, compiled, nil
+}
+
+func (s *SchemaUtils) register(compiled *engine.Engine) error {
+	d := s.u.db
 	d.m.engineMu.Lock()
-	d.engines[manifest.SchemaHash] = compiled
+	d.engines[compiled.M.SchemaHash] = compiled
 	d.m.engineMu.Unlock()
 	return RegisterEngine(compiled)
 }

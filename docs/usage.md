@@ -465,6 +465,7 @@ psql … -f schema.pg.sql
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(manifestJson)` |
+| Register an installed schema | `connection.utils().schema().register(manifestJson)` |
 
 ---
 

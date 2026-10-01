@@ -134,4 +134,97 @@ async fn schema_set_sqlite() {
     schema_set("sqlite").await;
 }
 
+/// Registers the decimal manifest on a connection. Register creates nothing:
+/// before installation the decimal table stays absent. After another
+/// connection installs the manifest, the decimal models read and write on the
+/// registering connection.
+#[cfg(test)]
+async fn register_schema(driver: &str) {
+    use decimal_model::DecimalCase;
+
+    let (dsn, name) = schema_set_database(driver).await;
+    let core = std::fs::read("../../../schema/schema.json").unwrap();
+    let decimal = std::fs::read("../../../contracts/fixtures/decimal_schema.json").unwrap();
+    let fresh = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    fresh.utils().schema().register(&decimal).await.unwrap_or_else(|e| panic!("{driver}: register: {e}"));
+    let missing = DecimalCase::new().connect(&fresh).get_count().await.expect_err("register creates no table");
+    assert_eq!(missing.code(), "DRIVER", "{driver}: read after register on an empty database: {missing}");
+    fresh.close().await;
+    let installer = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    for manifest in [&core, &decimal] {
+        installer.utils().schema().install(manifest).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    }
+    installer.close().await;
+    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    for _ in 0..2 {
+        db.utils().schema().register(&decimal).await.unwrap_or_else(|e| panic!("{driver}: register: {e}"));
+    }
+    DecimalCase::new().connect(&db).set_seq(3).set_amount("2.5000").unwrap().create().await.unwrap();
+    assert_eq!(DecimalCase::new().connect(&db).get_by_seq(3).await.unwrap().get_amount().unwrap(), "2.5000", "{driver}: decimal row");
+    db.close().await;
+    drop_schema_set_database(driver, &dsn, &name).await;
+}
+
+/// Registers a manifest whose content differs from its hash, which fails with
+/// CONFIG.
+#[cfg(test)]
+async fn register_edited_manifest(driver: &str) {
+    let (dsn, name) = schema_set_database(driver).await;
+    let decimal = String::from_utf8(std::fs::read("../../../contracts/fixtures/decimal_schema.json").unwrap()).unwrap();
+    let edited = decimal.replace("\"decimal_case\"", "\"decimal_edit\"");
+    assert_ne!(edited, decimal, "edited manifest differs");
+    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let error = db.utils().schema().register(edited.as_bytes()).await.expect_err("register of an edited manifest");
+    assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
+    db.close().await;
+    drop_schema_set_database(driver, &dsn, &name).await;
+}
+
+#[cfg(test)]
+async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
+    if driver == "sqlite" {
+        let _ = std::fs::remove_file(dsn.trim_start_matches("sqlite://"));
+    } else {
+        let base = std::env::var(format!("ORM_TEST_{}_DSN", driver.to_uppercase())).unwrap();
+        let drop = if driver == "postgres" { format!("DROP DATABASE {name} WITH (FORCE)") } else { format!("DROP DATABASE {name}") };
+        schema_set_server(driver, &base, &drop).await;
+    }
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_schema_mysql() {
+    register_schema("mysql").await;
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_schema_postgres() {
+    register_schema("postgres").await;
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_schema_sqlite() {
+    register_schema("sqlite").await;
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_edited_manifest_mysql() {
+    register_edited_manifest("mysql").await;
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_edited_manifest_postgres() {
+    register_edited_manifest("postgres").await;
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn register_edited_manifest_sqlite() {
+    register_edited_manifest("sqlite").await;
+}
+
 fn main() {}

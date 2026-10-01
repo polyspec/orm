@@ -465,6 +465,7 @@ psql … -f schema.pg.sql
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
 | 에러 코드 상수 | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(manifestJson)` |
+| 설치된 스키마 등록 | `connection.utils().schema().register(manifestJson)` |
 
 ---
 

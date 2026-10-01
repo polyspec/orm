@@ -20,7 +20,8 @@ runs beside it. PHP 8.4 or later. Version 0.0.1.
   namespace; the runtime needs `gen/bootstrap.php` required once — it registers the
   models and the schema hash they were generated from. A process may load the generated models of
   several schemas; each model class carries its schema hash, and a connection plans its requests with
-  the schema it opened with or a schema installed through `utils()->schema()->install()`.
+  the schema it opened with or a schema added through `utils()->schema()->install()` or
+  `utils()->schema()->register()`.
 - `tests/` — `model_test.php` (the model integration test), `engine_test.php`, `hostcodec.php`, `dsn.php`,
   `relation_keys.php`, `perf_gate.php`, `schema_set_test.php` (several schemas on one connection), and the schema tool tests `schema_test.php` (the shared Go results in
   `tests/schema/cases.json`), `schema_tool_test.php`, and `schema_db_test.php` (parity with the Go
@@ -114,6 +115,8 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
   comments, and triggers of a manifest in one transaction; existing tables are kept. MySQL commits
   each DDL statement itself, so there the statements run outside a transaction and `install`
   inside one is a `CONFIG` error.
+- `utils()->schema()->register($manifestJson)` adds an installed manifest to the connection without
+  running a statement; a manifest whose hash differs from its content is a `CONFIG` error.
 
 ## Errors
 `Orm\OrmException::$code_` is one of `Orm\Code::*`. Driver errors map per driver to `DEADLOCK`

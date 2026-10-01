@@ -204,6 +204,11 @@ impl<'a> Utils<'a> {
     }
 }
 
+/// A manifest whose hash matches its content; CONFIG otherwise.
+fn verified(manifest_json: &[u8]) -> Result<Manifest> {
+    Manifest::load(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))
+}
+
 /// Schema installation and inspection.
 pub struct SchemaUtils<'a> {
     u: &'a Utils<'a>,
@@ -216,7 +221,7 @@ impl SchemaUtils<'_> {
     /// implicitly, so it applies them outside a transaction and returns CONFIG
     /// inside one.
     pub async fn install(&self, manifest_json: &[u8]) -> Result<()> {
-        Manifest::load(manifest_json)?;
+        verified(manifest_json)?;
         let text = std::str::from_utf8(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
         let manifest = orm_schema::schema::Manifest::load(text).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
         let ddl = orm_schema::ddl::render_create_ddl(&manifest, self.u.db.driver()).map_err(|e| Error::Config(format!("render schema: {e}")))?;
@@ -244,6 +249,15 @@ impl SchemaUtils<'_> {
                 Ok(())
             })
             .await
+    }
+
+    /// Registers an installed schema manifest on the connection without
+    /// running any statement: the manifest hash is verified against its
+    /// content, and a manifest that does not match returns CONFIG. Generated
+    /// Rust models plan with the manifest they embed, so the connection keeps
+    /// no engine for it.
+    pub async fn register(&self, manifest_json: &[u8]) -> Result<()> {
+        verified(manifest_json).map(|_| ())
     }
 
     /// Whether a schema exists.

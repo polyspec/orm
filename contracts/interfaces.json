@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:20f93d12e8bd5497d953e313b24828808697cabdb568dd5498eba24ee8434170",
-    "php": "sha256:af4b7d1142cb07da297aaa5ca56e978a81705a15e843df9610cee82c3d94f836",
-    "rust": "sha256:0b383c74170a3cbd2fc3aa6a59010777d466ace2311892164dfeb31edc7bad53",
-    "typescript": "sha256:abadaabef98d170ab273f0c6b721f6bd4ace6ccab38ebb3f29a0d8add85076d1"
+    "go": "sha256:5508321d2351f61dbcf1153779c3c7012aa8e28a11d1fb6a21c8175ccfe8b846",
+    "php": "sha256:17b7e32884251ca95c4df1b9fc690f398ed0bc0f5fbd600bec81b43d593711ff",
+    "rust": "sha256:46d9b0f8ca1412f96ee3b8c24b86eb9291c1044cacd24b5ed802fc3d3cfd1f85",
+    "typescript": "sha256:2a7d628262c7d9190e8cf07e157e2ee70cdf89ddae13109f78fa1e803df72dc3"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1189,6 +1189,36 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
           "signature": "public async install(manifestJson: string): Promise<void>"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.register",
+      "for": "once",
+      "inputs": [
+        "ManifestJson"
+      ],
+      "output": "Success",
+      "errors": [
+        "CONFIG"
+      ],
+      "state": "Registers an installed manifest with the connection without running a statement",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.Register",
+          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::register",
+          "signature": "public function register(string $manifestJson): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
+          "signature": "pub async fn register(&self, manifest_json: &[u8]) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.register",
+          "signature": "public async register(manifestJson: string): Promise<void>"
         }
       }
     },
