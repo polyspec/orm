@@ -178,6 +178,22 @@
           "}"
         ]
       }
+    },
+    {
+      "id": "generated-names-at-63-bytes",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
+          "  id i64 identity",
+          "  cccccccccccccccccccccc i32",
+          "  body text",
+          "  primary key (id)",
+          "}"
+        ]
+      }
     }
   ],
   "normalize": [
@@ -3467,6 +3483,90 @@
           "line": 20,
           "column": 19,
           "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "generated-check-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
+          "  id i64 identity",
+          "  ccccccccccccccccccccccc i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "generated-immutable-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    immutable",
+          "  }",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 7,
+          "column": 5,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "generated-audit-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table ddddddddddddddddddddddddddddddddddddddddddddddddddd {",
+          "  id i64 identity",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (id)",
+          "  index ix_op (op)",
+          "  settings {",
+          "    soft_delete gone",
+          "    audit into h operation op action change previous before",
+          "  }",
+          "}",
+          "",
+          "table h {",
+          "  hid i64 identity",
+          "  change varchar(8)",
+          "  before i64 null",
+          "  id i64",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (hid)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 11,
+          "column": 5,
+          "rule": "name.length"
         }
       ]
     }

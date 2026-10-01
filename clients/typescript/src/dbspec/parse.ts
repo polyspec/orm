@@ -545,6 +545,20 @@ class DocumentParser {
     return formed;
   }
 
+  /**
+   * Reports a name that the renderer generates from table name and suffix
+   * and that exceeds 63 bytes (docs/dbspec.md "Names"), at tok. A malformed
+   * or too long table name, or a column name at tok, is reported at its own
+   * token already.
+   */
+  private generatedName(table: ITable, tok: Tk, suffix: string, column: boolean): void {
+    const resolved = (name: string): boolean => wellFormed(name) && utf8Length(name) <= MAX_NAME_BYTES;
+    if (!resolved(table.name.t) || (column && !resolved(suffix))) return;
+    const name = `${table.name.t}$${suffix}`;
+    const bytes = utf8Length(name);
+    if (bytes > MAX_NAME_BYTES) this.at('name.length', tok, `the generated name ${name} has ${bytes} bytes, more than ${MAX_NAME_BYTES}`);
+  }
+
   private constraintName(tok: Tk): void {
     if (!this.name(tok)) return;
     if (this.document.constraints.has(tok.t)) this.at('name.duplicate', tok, `${tok.t} repeats an index, key, foreign key or check name`);
@@ -1254,6 +1268,11 @@ class DocumentParser {
   }
 
   private validateTable(table: ITable, available: Map<string, ITable | null>): void {
+    // 렌더러가 타입 CHECK를 쓰는 열(text, bytes, identity 제외)은 <table>$<column> 이름을 만든다.
+    for (const column of table.columns) {
+      if (column.identity !== null || column.type === null || column.type.kind === 'text' || column.type.kind === 'bytes') continue;
+      this.generatedName(table, column.name, column.name.t, true);
+    }
     if (table.columns.length === 0) this.at('column', table.name, 'a table has at least one column');
     if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${table.name.t} has no primary key`);
     for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'a table has exactly one primary key');
@@ -1658,9 +1677,12 @@ class DocumentParser {
           break;
         case 'immutable':
           if (actionChild) this.at('setting', s.kw, 'immutable is rejected on a child of a cascade or set_null foreign key');
+          // 가장 긴 trigger 이름이 설정의 모든 이름을 대신한다.
+          this.generatedName(table, s.kw, 'immutable_update', false);
           break;
         case 'audit':
           this.audit(table, s, available, actionChild, hasSoftDelete);
+          this.generatedName(table, s.kw, 'audit_insert', false);
           break;
       }
     }

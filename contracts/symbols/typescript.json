@@ -469,6 +469,7 @@
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.diagramHeader": "private diagramHeader(toks: Tk[], line: number, comments: string[]): IDiagram",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.end": "private end(toks: Tk[], i: number, line: number): boolean",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.foreignKey": "private foreignKey(table: ITable, fk: IForeignKey, available: Map\u003cstring, ITable | null\u003e): void",
+  "clients/typescript/src/dbspec/parse.ts::DocumentParser.generatedName": "private generatedName(table: ITable, tok: Tk, suffix: string, column: boolean): void",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.header": "private header(): boolean",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.keyColumns": "private keyColumns(toks: Tk[], i: number, line: number, directions: boolean): [ IKeyColumn[], number ] | null",
   "clients/typescript/src/dbspec/parse.ts::DocumentParser.keyLike": "private keyLike(table: ITable, key: IKey, primary: boolean): void",

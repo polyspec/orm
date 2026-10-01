@@ -48,7 +48,7 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 `dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true`, `false`는 예약어이며 어떤 이름에도 쓸 수 없다.
 
-index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다.
+index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다. renderer는 자기 이름도 쓴다([rendered statements](dialects.md#rendered-statements)). `text`, `bytes`, identity column이 아닌 모든 column의 type CHECK에 `<table>$<column>`, `immutable`에 `<table>$immutable_update`와 `<table>$immutable_delete`, `audit`에 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete`다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. 각각 최대 63 bytes이며, 더 길면 column 이름이나 setting keyword에서 `name.length` error다.
 
 ## 문서와 `use`
 

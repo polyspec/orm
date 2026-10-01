@@ -492,6 +492,7 @@
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::failColumn": "private function failColumn(string $name): void",
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::failKey": "private function failKey(bool $primary): void",
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::foreignKeyLine": "private function foreignKeyLine(): void",
+  "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::generatedName": "private function generatedName(int $line, int $column, string $name): void",
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::header": "private function header(): void",
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::isWord": "private static function isWord(string $token): bool",
   "clients/php/src/Dbspec/Parser.php::Orm\\Dbspec\\Parser::keyLine": "private function keyLine(bool $index): void",

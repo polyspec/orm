@@ -1,5 +1,8 @@
 # Changelog
 
+Reject a dbspec table or column whose renderer-generated CHECK or
+trigger name would exceed 63 bytes, in every client (T8.1.5).
+
 Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
 in the Go engine (`dbspec.Render`), compared with tests/dbspec/ddl.json
 (T8.3.2).

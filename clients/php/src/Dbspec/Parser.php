@@ -540,7 +540,7 @@ final class Parser
         if ($name === null) {
             return;
         }
-        $this->name($name);
+        $wellFormed = $this->name($name);
         if (!isset($t[1])) {
             $this->error('syntax', $this->line, $this->endColumn(), 'expected a column type');
             $this->failColumn($name[0]);
@@ -603,6 +603,10 @@ final class Parser
             }
         }
         $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null, $canonical, $this->takeComments());
+        // renderer 가 type CHECK 를 쓰는 컬럼은 그 이름 <table>$<column> 이 이름 한도를 지킨다.
+        if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes' && $wellFormed) {
+            $this->generatedName($this->line, $name[1], $this->table->name . '$' . $name[0]);
+        }
         if (isset($this->columns[$name[0]])) {
             $this->error('name.duplicate', $this->line, $name[1], "column `{$name[0]}` is already defined");
         } else {
@@ -1197,6 +1201,7 @@ final class Parser
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `immutable` is rejected on a child of a cascade or set_null foreign key');
                     }
+                    $this->generatedName($line, $at, $this->table->name . '$immutable_update');
                     break;
                 case 'audit':
                     if (!isset($kinds['soft_delete'])) {
@@ -1212,6 +1217,7 @@ final class Parser
                     if (self::validName($arguments[0][0]) && self::validName($arguments[2][0]) && self::validName($arguments[3][0])) {
                         $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operation?->type, $line];
                     }
+                    $this->generatedName($line, $at, $this->table->name . '$audit_insert');
                     break;
             }
         }
@@ -1336,6 +1342,19 @@ final class Parser
     private static function validName(string $name): bool
     {
         return preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, self::RESERVED, true) && strlen($name) <= 63;
+    }
+
+    /**
+     * Reports a name the renderer generates from a well-formed table name
+     * that is longer than 63 bytes (docs/dbspec.md "Names"); the longest
+     * name of a setting stands for all of its names. A malformed or too long
+     * table name is already reported.
+     */
+    private function generatedName(int $line, int $column, string $name): void
+    {
+        if (strlen($name) > 63 && self::validName(explode('$', $name, 2)[0])) {
+            $this->error('name.length', $line, $column, "the generated name `$name` has " . strlen($name) . ' bytes, more than 63');
+        }
     }
 
     private static function isWord(string $token): bool
