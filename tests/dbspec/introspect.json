@@ -465,6 +465,31 @@
       ]
     },
     {
+      "id": "sqlite-primary-key-null",
+      "dialect": "sqlite",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE \"kp\" (\"k\" varchar(8) NULL, \"n\" integer NOT NULL, PRIMARY KEY (\"k\"), CONSTRAINT \"kp$k\" CHECK (length(\"k\") <= 8), CONSTRAINT \"kp$n\" CHECK (typeof(\"n\") IN ('integer', 'null') AND \"n\" BETWEEN -2147483648 AND 2147483647))",
+        "CREATE TABLE \"kq\" (\"k\" varchar(8) NOT NULL, \"n\" integer NOT NULL, PRIMARY KEY (\"k\"), CONSTRAINT \"kq$k\" CHECK (length(\"k\") <= 8), CONSTRAINT \"kq$n\" CHECK (typeof(\"n\") IN ('integer', 'null') AND \"n\" BETWEEN -2147483648 AND 2147483647))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table kq {",
+        "  k varchar(8)",
+        "  n i32",
+        "  primary key (k)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "table",
+          "kp",
+          "kp"
+        ]
+      ]
+    },
+    {
       "id": "mysql-checks-after-alter",
       "dialect": "mysql",
       "documents": {
