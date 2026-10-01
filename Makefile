@@ -317,7 +317,7 @@ ts-min-check:
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs
+	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 

@@ -1,11 +1,14 @@
 // dbspec: the schema language of this repository (docs/dbspec.md). parseDbspec
 // validates a document against its declared document set; emitDbspec writes a
 // parsed document in canonical form; dbspecManifest gives the manifest text,
-// the schema text and their hashes of a document set.
+// the schema text and their hashes of a document set; renderDbspec writes the
+// statements of a document set in one dialect.
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
 import type { DbspecDocument, DbspecRule } from './model.js';
 import { parseDocument } from './parse.js';
+
+export { renderDbspec, type DbspecDialect } from './render.js';
 
 export type * from './model.js';
 

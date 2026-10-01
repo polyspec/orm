@@ -1,5 +1,9 @@
 # 변경 이력
 
+TypeScript client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite
+statement로 렌더링하고(`renderDbspec`) tests/dbspec/ddl.json과 비교하며,
+package root에서 `renderDbspec`과 `dbspecManifest`를 export한다(T8.3.4).
+
 PHP client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
 렌더링하고(`Dbspec::render`), tests/dbspec/ddl.json과 비교한다(T8.3.3).
 

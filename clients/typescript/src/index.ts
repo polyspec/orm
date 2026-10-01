@@ -29,7 +29,7 @@ export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physic
 export { createPhysicalGraph, PhysicalGraphError } from './physical_graph.js';
 export { parsePhysicalGraphJSON, emitPhysicalGraphJSON } from './physical_graph_json.js';
 export type { PhysicalGraph, PhysicalTable } from './physical_graph.js';
-export { emitDbspec, parseDbspec } from './dbspec/index.js';
+export { dbspecManifest, emitDbspec, parseDbspec, renderDbspec } from './dbspec/index.js';
 export type * from './dbspec/index.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
