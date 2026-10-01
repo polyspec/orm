@@ -27,6 +27,13 @@ pub struct Document {
     pub(crate) trailing: Vec<String>,
 }
 
+impl Document {
+    /// Whether the document has a table; an introspected empty database has none.
+    pub fn has_tables(&self) -> bool {
+        !self.tables.is_empty()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Use {
     pub comments: Vec<String>,
