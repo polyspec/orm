@@ -266,6 +266,13 @@ schema-check:
 	npm run schema:check
 	go run ./tests/schema/record -check
 
+# dbspec-go-check runs the Go dbspec parser on the shared vectors of
+# tests/dbspec/cases.json, its own rule cases, and the stress document that
+# node tests/dbspec/stress.mjs writes, and logs the parse and emit times.
+.PHONY: dbspec-go-check
+dbspec-go-check:
+	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument)$$' -count=1 -v
+
 schema-cross-language-check:
 	./scripts/schema/cross-language-check.sh
 

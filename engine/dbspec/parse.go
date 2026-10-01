@@ -1,0 +1,878 @@
+package dbspec
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+// The parse tree keeps every token with its position, so validation can
+// point at the token that breaks a rule. A line with a syntax error is
+// dropped and contributes only that error, except that a `table`, `diagram`
+// or `settings` line still opens its block and a `}` line still closes it.
+
+type documentNode struct {
+	name        token
+	uses        []*useNode
+	tables      []*tableNode
+	diagrams    []*diagramNode
+	trailing    []string
+	constraints []token // index, unique, foreign key and check names in source order
+}
+
+type useNode struct {
+	comments []string
+	keyword  token
+	document token
+	tables   []token
+}
+
+type tableNode struct {
+	comments    []string
+	keyword     token
+	name        token
+	columns     []*columnNode
+	byName      map[string]*columnNode
+	primaryKeys []*keyNode
+	uniques     []*keyNode
+	indexes     []*keyNode
+	foreignKeys []*foreignKeyNode
+	checks      []*checkNode
+	settings    *settingsNode
+	closing     []string
+	phase       int
+	columnLines int
+}
+
+// anchor is the token that a rule about the whole table points at.
+func (t *tableNode) anchor() token {
+	if t.name.line != 0 {
+		return t.name
+	}
+	return t.keyword
+}
+
+// column returns the first column with the given name.
+func (t *tableNode) column(name string) *columnNode {
+	if t.byName == nil {
+		t.byName = make(map[string]*columnNode, len(t.columns))
+		for _, c := range t.columns {
+			if _, ok := t.byName[c.name.text]; !ok {
+				t.byName[c.name.text] = c
+			}
+		}
+	}
+	return t.byName[name]
+}
+
+const (
+	phaseColumns = iota
+	phaseConstraints
+	phaseAfterSettings
+)
+
+type columnNode struct {
+	comments []string
+	name     token
+	typ      typeNode
+	null     *token
+	identity *token
+	dflt     *token
+	value    *token
+	literal  string // canonical default literal, set by validation
+}
+
+type typeNode struct {
+	word  token
+	typ   Type
+	valid bool
+}
+
+type keyNode struct {
+	comments   []string
+	keyword    token
+	name       token
+	columns    []token
+	descending []bool
+}
+
+type foreignKeyNode struct {
+	comments   []string
+	keyword    token
+	name       token
+	columns    []token
+	target     token
+	references []token
+	onDelete   *token
+	onUpdate   *token
+}
+
+func actionOf(t *token) Action {
+	if t == nil {
+		return ActionRestrict
+	}
+	return Action(t.text)
+}
+
+// propagates reports whether the foreign key has a cascade or set_null action.
+func (f *foreignKeyNode) propagates() bool {
+	for _, a := range []Action{actionOf(f.onDelete), actionOf(f.onUpdate)} {
+		if a == ActionCascade || a == ActionSetNull {
+			return true
+		}
+	}
+	return false
+}
+
+type checkNode struct {
+	comments []string
+	keyword  token
+	name     token
+	expr     Expr
+	refs     []token
+}
+
+type settingsNode struct {
+	comments []string
+	keyword  token
+	lines    []*settingNode
+	closing  []string
+}
+
+type settingNode struct {
+	comments []string
+	keyword  token
+	args     []token
+}
+
+type diagramNode struct {
+	comments []string
+	keyword  token
+	name     token
+	entries  []*entryNode
+	closing  []string
+}
+
+type entryNode struct {
+	comments []string
+	table    token
+	x        token
+	y        token
+}
+
+type parsedDocument struct {
+	document    *documentNode
+	diagnostics []Diagnostic
+	stopped     bool
+}
+
+const (
+	stateTop = iota
+	stateTable
+	stateSettings
+	stateDiagram
+)
+
+const (
+	topUses = iota
+	topTables
+	topDiagrams
+)
+
+type parser struct {
+	out         *parsedDocument
+	doc         *documentNode
+	state       int
+	topPhase    int
+	table       *tableNode
+	settings    *settingsNode
+	diagram     *diagramNode
+	open        token
+	pending     []string
+	tables      int
+	columns     int
+	foreignKeys int
+}
+
+func (p *parser) add(d Diagnostic) { p.out.diagnostics = append(p.out.diagnostics, d) }
+
+// stop records an encoding, header or limit error. It stops parsing and is
+// reported alone, because the lines before it are not validated.
+func (p *parser) stop(d Diagnostic) {
+	p.out.diagnostics = []Diagnostic{d}
+	p.out.stopped = true
+}
+
+func (p *parser) takeComments() []string {
+	c := p.pending
+	p.pending = nil
+	return c
+}
+
+// parseStructure tokenizes and parses text into a parse tree. It reports
+// encoding, header, limit, syntax, order and type errors, and errors of check
+// expressions and unknown settings; validate reports the rest.
+func parseStructure(text string) *parsedDocument {
+	p := &parser{out: &parsedDocument{document: &documentNode{}}}
+	p.doc = p.out.document
+	lines, bad := splitSource(text)
+	if bad != nil {
+		p.stop(*bad)
+		return p.out
+	}
+	if !p.header(lines) {
+		return p.out
+	}
+	for i := 1; i < len(lines) && !p.out.stopped; i++ {
+		raw := lines[i]
+		trimmed := strings.TrimLeft(raw, " ")
+		if trimmed == "" {
+			continue
+		}
+		if trimmed[0] == '#' {
+			p.pending = append(p.pending, trimmed)
+			continue
+		}
+		tokens, end, lexErr := lexLine(raw, i+1)
+		c := &cursor{p: p, tokens: tokens, line: i + 1, end: end, lexErr: lexErr}
+		if len(tokens) == 0 {
+			c.fail("a statement")
+			continue
+		}
+		switch p.state {
+		case stateTop:
+			p.topLine(c)
+		case stateTable:
+			p.tableLine(c)
+		case stateSettings:
+			p.settingsLine(c)
+		case stateDiagram:
+			p.diagramLine(c)
+		}
+	}
+	if p.out.stopped {
+		return p.out
+	}
+	if p.state != stateTop {
+		p.add(diagnosticAt(RuleSyntax, p.open, "block opened by %s is not closed", p.open.describe()))
+	}
+	p.doc.trailing = p.takeComments()
+	return p.out
+}
+
+func (p *parser) header(lines []string) bool {
+	fail := func(line, col int, message string) bool {
+		p.stop(Diagnostic{Rule: RuleHeader, Line: line, Column: col, Message: message})
+		return false
+	}
+	if len(lines) == 0 {
+		return fail(1, 1, "document is empty; the first line must be dbspec 1 <document>")
+	}
+	tokens, end, lexErr := lexLine(lines[0], 1)
+	expected := "the first line must be dbspec 1 <document>"
+	if len(tokens) == 0 || !tokens[0].is(tokenWord, "dbspec") {
+		if len(tokens) > 0 {
+			return fail(1, tokens[0].col, expected)
+		}
+		if lexErr != nil {
+			return fail(lexErr.Line, lexErr.Column, expected)
+		}
+		return fail(1, 1, expected)
+	}
+	if len(tokens) < 2 {
+		if lexErr != nil {
+			return fail(lexErr.Line, lexErr.Column, expected)
+		}
+		return fail(1, end, expected)
+	}
+	if !tokens[1].is(tokenNumber, "1") {
+		return fail(1, tokens[1].col, fmt.Sprintf("language version %s is not 1", tokens[1].describe()))
+	}
+	if len(tokens) < 3 {
+		if lexErr != nil {
+			return fail(lexErr.Line, lexErr.Column, expected)
+		}
+		return fail(1, end, expected)
+	}
+	if tokens[2].kind != tokenWord && tokens[2].kind != tokenNumber {
+		return fail(1, tokens[2].col, expected)
+	}
+	if len(tokens) > 3 {
+		return fail(1, tokens[3].col, expected)
+	}
+	if lexErr != nil {
+		return fail(lexErr.Line, lexErr.Column, expected)
+	}
+	p.doc.name = tokens[2]
+	for _, d := range nameDiagnostics(tokens[2]) {
+		p.add(d)
+	}
+	return true
+}
+
+// cursor reads the tokens of one line. Its first failure reports one syntax
+// error; the caller then drops the line.
+type cursor struct {
+	p      *parser
+	tokens []token
+	i      int
+	line   int
+	end    int
+	lexErr *Diagnostic
+}
+
+func (c *cursor) more() bool { return c.i < len(c.tokens) }
+
+func (c *cursor) peekIs(kind tokenKind, text string) bool {
+	return c.more() && c.tokens[c.i].is(kind, text)
+}
+
+func (c *cursor) fail(expected string) bool {
+	switch {
+	case c.more():
+		t := c.tokens[c.i]
+		c.p.add(diagnosticAt(RuleSyntax, t, "unexpected %s, expected %s", t.describe(), expected))
+	case c.lexErr != nil:
+		c.p.add(*c.lexErr)
+	default:
+		c.p.add(Diagnostic{Rule: RuleSyntax, Line: c.line, Column: c.end, Message: "line ends, expected " + expected})
+	}
+	return false
+}
+
+func (c *cursor) next() token {
+	t := c.tokens[c.i]
+	c.i++
+	return t
+}
+
+func (c *cursor) keyword(text string) bool {
+	if c.peekIs(tokenWord, text) {
+		c.i++
+		return true
+	}
+	return c.fail("'" + text + "'")
+}
+
+func (c *cursor) punct(text string) bool {
+	if c.peekIs(tokenPunct, text) {
+		c.i++
+		return true
+	}
+	return c.fail("'" + text + "'")
+}
+
+// optional consumes the keyword text when it comes next.
+func (c *cursor) optional(text string) *token {
+	if c.peekIs(tokenWord, text) {
+		t := c.next()
+		return &t
+	}
+	return nil
+}
+
+// name reads a name token. A number is read as a name so that the name rules
+// report it.
+func (c *cursor) name(what string) (token, bool) {
+	if c.more() && (c.tokens[c.i].kind == tokenWord || c.tokens[c.i].kind == tokenNumber) {
+		return c.next(), true
+	}
+	return token{}, c.fail(what)
+}
+
+// value reads one literal token; a '-' before a number makes it negative.
+func (c *cursor) value(what string, allowString bool) (token, bool) {
+	if c.peekIs(tokenOperator, "-") {
+		minus := c.tokens[c.i]
+		if c.i+1 < len(c.tokens) && c.tokens[c.i+1].kind == tokenNumber {
+			c.i += 2
+			return token{kind: tokenNumber, text: "-" + c.tokens[c.i-1].text, line: minus.line, col: minus.col}, true
+		}
+		c.i++
+		return token{}, c.fail("a number after '-'")
+	}
+	if c.more() {
+		switch c.tokens[c.i].kind {
+		case tokenWord, tokenNumber:
+			return c.next(), true
+		case tokenString:
+			if allowString {
+				return c.next(), true
+			}
+		}
+	}
+	return token{}, c.fail(what)
+}
+
+func (c *cursor) done() bool {
+	if !c.more() && c.lexErr == nil {
+		return true
+	}
+	return c.fail("the end of the line")
+}
+
+// names reads `( name [asc|desc], ... )`.
+func (c *cursor) names(directions bool) ([]token, []bool, bool) {
+	if !c.punct("(") {
+		return nil, nil, false
+	}
+	var names []token
+	var descending []bool
+	for {
+		n, ok := c.name("a column name")
+		if !ok {
+			return nil, nil, false
+		}
+		names = append(names, n)
+		if directions {
+			desc := false
+			if c.optional("asc") == nil && c.optional("desc") != nil {
+				desc = true
+			}
+			descending = append(descending, desc)
+		}
+		if c.peekIs(tokenPunct, ")") {
+			c.i++
+			return names, descending, true
+		}
+		if !c.peekIs(tokenPunct, ",") {
+			return nil, nil, c.fail("',' or ')'")
+		}
+		c.i++
+	}
+}
+
+func (p *parser) topLine(c *cursor) {
+	first := c.tokens[0]
+	switch {
+	case first.is(tokenWord, "use"):
+		p.useLine(c)
+	case first.is(tokenWord, "table"):
+		p.openTable(c)
+	case first.is(tokenWord, "diagram"):
+		p.openDiagram(c)
+	default:
+		c.fail("'use', 'table' or 'diagram'")
+	}
+}
+
+func (p *parser) useLine(c *cursor) {
+	keyword := c.next()
+	u := &useNode{keyword: keyword}
+	var ok bool
+	if u.document, ok = c.name("a document name"); !ok || !c.punct("{") {
+		return
+	}
+	for {
+		t, ok := c.name("a table name")
+		if !ok {
+			return
+		}
+		u.tables = append(u.tables, t)
+		if c.peekIs(tokenPunct, "}") {
+			c.i++
+			break
+		}
+		if !c.peekIs(tokenPunct, ",") {
+			c.fail("',' or '}'")
+			return
+		}
+		c.i++
+	}
+	if !c.done() {
+		return
+	}
+	if p.topPhase > topUses {
+		p.add(diagnosticAt(RuleOrder, keyword, "use lines come before table and diagram blocks"))
+	}
+	u.comments = p.takeComments()
+	p.doc.uses = append(p.doc.uses, u)
+}
+
+func (p *parser) openTable(c *cursor) {
+	keyword := c.next()
+	p.tables++
+	if p.tables > maxTables {
+		p.stop(diagnosticAt(RuleLimit, keyword, "document has more than %d tables", maxTables))
+		return
+	}
+	t := &tableNode{comments: p.takeComments(), keyword: keyword}
+	p.doc.tables = append(p.doc.tables, t)
+	p.state, p.table, p.open = stateTable, t, keyword
+	outOfOrder := p.topPhase > topTables
+	p.topPhase = max(p.topPhase, topTables)
+	name, ok := c.name("a table name")
+	if !ok || !c.punct("{") || !c.done() {
+		return
+	}
+	t.name = name
+	if outOfOrder {
+		p.add(diagnosticAt(RuleOrder, keyword, "table blocks come before diagram blocks"))
+	}
+}
+
+func (p *parser) openDiagram(c *cursor) {
+	keyword := c.next()
+	d := &diagramNode{comments: p.takeComments(), keyword: keyword}
+	p.doc.diagrams = append(p.doc.diagrams, d)
+	p.state, p.diagram, p.open = stateDiagram, d, keyword
+	p.topPhase = topDiagrams
+	name, ok := c.name("a diagram name")
+	if !ok || !c.punct("{") || !c.done() {
+		return
+	}
+	d.name = name
+}
+
+func (p *parser) tableLine(c *cursor) {
+	t := p.table
+	first := c.tokens[0]
+	switch {
+	case first.is(tokenPunct, "}"):
+		c.i++
+		t.closing = p.takeComments()
+		p.state, p.table = stateTop, nil
+		c.done()
+	case first.is(tokenWord, "settings"):
+		keyword := c.next()
+		s := &settingsNode{comments: p.takeComments(), keyword: keyword}
+		duplicate := t.settings != nil
+		if !duplicate {
+			t.settings = s
+		}
+		p.state, p.settings, p.open = stateSettings, s, keyword
+		if c.punct("{") && c.done() && duplicate {
+			p.add(diagnosticAt(RuleOrder, keyword, "a table has at most one settings block, after its other lines"))
+		}
+	case first.is(tokenWord, "primary"), first.is(tokenWord, "unique"), first.is(tokenWord, "index"),
+		first.is(tokenWord, "foreign"), first.is(tokenWord, "check"):
+		p.constraintLine(c)
+	default:
+		p.columnLine(c)
+	}
+}
+
+func (p *parser) constraintOrder(t *tableNode, keyword token) {
+	if t.phase == phaseAfterSettings {
+		p.add(diagnosticAt(RuleOrder, keyword, "key, index, foreign key and check lines come before the settings block"))
+		return
+	}
+	t.phase = phaseConstraints
+}
+
+func (p *parser) constraintLine(c *cursor) {
+	t := p.table
+	keyword := c.next()
+	switch keyword.text {
+	case "primary":
+		if !c.keyword("key") {
+			return
+		}
+		columns, _, ok := c.names(false)
+		if !ok || !c.done() {
+			return
+		}
+		p.constraintOrder(t, keyword)
+		t.primaryKeys = append(t.primaryKeys, &keyNode{comments: p.takeComments(), keyword: keyword, columns: columns})
+	case "unique", "index":
+		name, ok := c.name("a " + keyword.text + " name")
+		if !ok {
+			return
+		}
+		columns, descending, ok := c.names(keyword.text == "index")
+		if !ok || !c.done() {
+			return
+		}
+		p.constraintOrder(t, keyword)
+		k := &keyNode{comments: p.takeComments(), keyword: keyword, name: name, columns: columns, descending: descending}
+		if keyword.text == "unique" {
+			t.uniques = append(t.uniques, k)
+		} else {
+			t.indexes = append(t.indexes, k)
+		}
+		p.doc.constraints = append(p.doc.constraints, name)
+	case "foreign":
+		p.foreignKeys++
+		if p.foreignKeys > maxForeignKeys {
+			p.stop(diagnosticAt(RuleLimit, keyword, "document has more than %d foreign keys", maxForeignKeys))
+			return
+		}
+		f := &foreignKeyNode{keyword: keyword}
+		var ok bool
+		if !c.keyword("key") {
+			return
+		}
+		if f.name, ok = c.name("a foreign key name"); !ok {
+			return
+		}
+		if f.columns, _, ok = c.names(false); !ok || !c.keyword("references") {
+			return
+		}
+		if f.target, ok = c.name("a table name"); !ok {
+			return
+		}
+		if f.references, _, ok = c.names(false); !ok {
+			return
+		}
+		if c.peekIs(tokenWord, "on") && c.i+1 < len(c.tokens) && c.tokens[c.i+1].is(tokenWord, "delete") {
+			c.i += 2
+			a, ok := c.name("an action")
+			if !ok {
+				return
+			}
+			f.onDelete = &a
+		}
+		if c.optional("on") != nil {
+			if !c.keyword("update") {
+				return
+			}
+			a, ok := c.name("an action")
+			if !ok {
+				return
+			}
+			f.onUpdate = &a
+		}
+		if !c.done() {
+			return
+		}
+		p.constraintOrder(t, keyword)
+		f.comments = p.takeComments()
+		t.foreignKeys = append(t.foreignKeys, f)
+		p.doc.constraints = append(p.doc.constraints, f.name)
+	case "check":
+		name, ok := c.name("a check name")
+		if !ok || !c.punct("(") {
+			return
+		}
+		if c.lexErr != nil {
+			c.i = len(c.tokens)
+			c.fail("a check expression")
+			return
+		}
+		rest := c.tokens[c.i:]
+		if len(rest) == 0 || !rest[len(rest)-1].is(tokenPunct, ")") {
+			c.i = len(c.tokens)
+			c.fail("')' at the end of the check")
+			return
+		}
+		p.constraintOrder(t, keyword)
+		k := &checkNode{comments: p.takeComments(), keyword: keyword, name: name}
+		expr, refs, bad := parseExpression(rest[:len(rest)-1], rest[len(rest)-1])
+		if bad != nil {
+			p.add(*bad)
+		} else {
+			k.expr, k.refs = expr, refs
+		}
+		t.checks = append(t.checks, k)
+		p.doc.constraints = append(p.doc.constraints, name)
+	}
+}
+
+func (p *parser) columnLine(c *cursor) {
+	t := p.table
+	first := c.tokens[0]
+	t.columnLines++
+	p.columns++
+	if t.columnLines > maxTableColumns {
+		p.stop(diagnosticAt(RuleLimit, first, "table has more than %d columns", maxTableColumns))
+		return
+	}
+	if p.columns > maxColumns {
+		p.stop(diagnosticAt(RuleLimit, first, "document has more than %d columns", maxColumns))
+		return
+	}
+	col := &columnNode{}
+	var ok bool
+	if col.name, ok = c.name("a column name, key, index, foreign key, check, settings or '}'"); !ok {
+		return
+	}
+	if !c.more() || c.tokens[c.i].kind != tokenWord {
+		c.fail("a type")
+		return
+	}
+	col.typ.word = c.next()
+	var params []token
+	if c.peekIs(tokenPunct, "(") {
+		c.i++
+		for {
+			v, ok := c.value("a type parameter", false)
+			if !ok {
+				return
+			}
+			params = append(params, v)
+			if c.peekIs(tokenPunct, ")") {
+				c.i++
+				break
+			}
+			if !c.peekIs(tokenPunct, ",") {
+				c.fail("',' or ')'")
+				return
+			}
+			c.i++
+		}
+	}
+	col.null = c.optional("null")
+	col.identity = c.optional("identity")
+	if col.dflt = c.optional("default"); col.dflt != nil {
+		v, ok := c.value("a default value", true)
+		if !ok {
+			return
+		}
+		col.value = &v
+	}
+	if !c.done() {
+		return
+	}
+	if t.phase != phaseColumns {
+		p.add(diagnosticAt(RuleOrder, col.name, "column lines come before key, index, foreign key, check and settings lines"))
+	}
+	col.comments = p.takeComments()
+	var bad *Diagnostic
+	col.typ.typ, bad = resolveType(col.typ.word, params)
+	if bad != nil {
+		p.add(*bad)
+	} else {
+		col.typ.valid = true
+	}
+	t.columns = append(t.columns, col)
+}
+
+// resolveType checks a type name and its parameters.
+func resolveType(word token, params []token) (Type, *Diagnostic) {
+	kind := TypeKind(word.text)
+	count := 0
+	switch kind {
+	case TypeI16, TypeI32, TypeI64, TypeBool, TypeF64, TypeText, TypeBytes, TypeUUID, TypeDate:
+	case TypeVarchar, TypeTime, TypeDatetime:
+		count = 1
+	case TypeDecimal:
+		count = 2
+	default:
+		d := diagnosticAt(RuleType, word, "type %q is not a dbspec type", word.text)
+		return Type{}, &d
+	}
+	bad := func(format string, args ...any) (Type, *Diagnostic) {
+		d := diagnosticAt(RuleType, word, format, args...)
+		return Type{}, &d
+	}
+	if len(params) != count {
+		return bad("type %s takes %d parameters, not %d", kind, count, len(params))
+	}
+	values := make([]int, count)
+	for i, p := range params {
+		v, err := strconv.Atoi(p.text)
+		if err != nil || strings.Contains(p.text, ".") {
+			return bad("type %s parameter %s is not an integer in range", kind, p.text)
+		}
+		values[i] = v
+	}
+	t := Type{Kind: kind}
+	switch kind {
+	case TypeVarchar:
+		if values[0] < 1 || values[0] > 16383 {
+			return bad("varchar(n) needs 1 <= n <= 16383, not %d", values[0])
+		}
+		t.Length = values[0]
+	case TypeTime, TypeDatetime:
+		if values[0] < 0 || values[0] > 6 {
+			return bad("%s(p) needs 0 <= p <= 6, not %d", kind, values[0])
+		}
+		t.Precision = values[0]
+	case TypeDecimal:
+		if values[0] < 1 || values[0] > 18 || values[1] < 0 || values[1] > values[0] {
+			return bad("decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p, not (%d,%d)", values[0], values[1])
+		}
+		t.Precision, t.Scale = values[0], values[1]
+	}
+	return t, nil
+}
+
+func (p *parser) settingsLine(c *cursor) {
+	s := p.settings
+	first := c.tokens[0]
+	if first.is(tokenPunct, "}") {
+		c.i++
+		s.closing = p.takeComments()
+		p.state, p.settings, p.open = stateTable, nil, p.table.keyword
+		p.table.phase = phaseAfterSettings
+		c.done()
+		return
+	}
+	if first.kind != tokenWord {
+		c.fail("a setting or '}'")
+		return
+	}
+	keyword := c.next()
+	line := &settingNode{keyword: keyword}
+	arg := func(what string) bool {
+		t, ok := c.name(what)
+		if ok {
+			line.args = append(line.args, t)
+		}
+		return ok
+	}
+	rest := func(what string) bool {
+		if !arg(what) {
+			return false
+		}
+		for c.more() {
+			if !arg(what) {
+				return false
+			}
+		}
+		return true
+	}
+	ok := true
+	switch keyword.text {
+	case "entity":
+		ok = arg("an entity name")
+	case "updated", "soft_delete", "aes_version":
+		ok = arg("a column name")
+	case "select":
+		ok = c.keyword("explicit") && rest("a column name")
+	case "codec":
+		ok = arg("a column name") && rest("a codec stage")
+	case "blind_index":
+		ok = arg("the AES column") && arg("the index column")
+	case "navigation":
+		ok = arg("a foreign key name") && arg("the child relation name") && arg("the parent relation name")
+	case "immutable":
+	case "audit":
+		ok = c.keyword("into") && arg("the history table") &&
+			c.keyword("operation") && arg("the operation column") &&
+			c.keyword("action") && arg("the action column") &&
+			c.keyword("previous") && arg("the previous column")
+	default:
+		p.add(diagnosticAt(RuleSetting, keyword, "setting %q is unknown", keyword.text))
+		return
+	}
+	if !ok || !c.done() {
+		return
+	}
+	line.comments = p.takeComments()
+	s.lines = append(s.lines, line)
+}
+
+func (p *parser) diagramLine(c *cursor) {
+	d := p.diagram
+	if c.tokens[0].is(tokenPunct, "}") {
+		c.i++
+		d.closing = p.takeComments()
+		p.state, p.diagram = stateTop, nil
+		c.done()
+		return
+	}
+	e := &entryNode{}
+	var ok bool
+	if e.table, ok = c.name("a table name or '}'"); !ok || !c.keyword("at") {
+		return
+	}
+	if e.x, ok = c.value("the x coordinate", true); !ok {
+		return
+	}
+	if e.y, ok = c.value("the y coordinate", true); !ok || !c.done() {
+		return
+	}
+	e.comments = p.takeComments()
+	d.entries = append(d.entries, e)
+}
