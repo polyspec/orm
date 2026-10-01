@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.4: Declared and generated names over 63 bytes are rejected before rendering in every client, asserted with names of exactly 64 bytes.
+
 - T8.0.3: The introspection cases assert that stored and virtual generated columns are reported as unsupported on MySQL, PostgreSQL and SQLite in every client.
 
 - T8.0.2: Introspection reports prefix, partial and expression indexes as unsupported with their table and name in every client.
