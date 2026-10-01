@@ -125,7 +125,7 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 }
 ```
 
-- `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(연결 시간대의 클라이언트 시각), `operation`(unit of work의 operation id. operation 컬럼의 `col_type` `i64` 또는 `uuid`가 있다) 중 하나다. `operation` 슬롯이 있는 쓰기를 operation id 없이 실행하거나 id가 `col_type`에 맞지 않으면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
+- `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `operation`(unit of work의 operation id. operation 컬럼의 `col_type` `i64` 또는 `uuid`가 있다) 중 하나다. `operation` 슬롯이 있는 쓰기를 operation id 없이 실행하거나 id가 `col_type`에 맞지 않으면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
 - `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.

@@ -223,6 +223,30 @@
         {
           "sql": "INSERT INTO pairs (a, b) VALUES (1, 2)",
           "fails": true
+        },
+        {
+          "sql": "INSERT INTO orders (user_id, code, placed_at) VALUES (NULL, 'a', '2026-01-01 00:00:00.000000')"
+        },
+        {
+          "sql": "INSERT INTO orders (user_id, code, placed_at) VALUES (NULL, 'A', '2026-01-01 00:00:00.000000')"
+        },
+        {
+          "sql": "INSERT INTO orders (user_id, code, placed_at) VALUES (NULL, 'á', '2026-01-01 00:00:00.000000')"
+        },
+        {
+          "sql": "INSERT INTO orders (user_id, code, placed_at) VALUES (NULL, 'a ', '2026-01-01 00:00:00.000000')"
+        },
+        {
+          "sql": "INSERT INTO orders (user_id, code, placed_at) VALUES (NULL, 'a', '2026-01-01 00:00:00.000000')",
+          "fails": true
+        },
+        {
+          "query": "SELECT count(*) FROM orders WHERE code = 'a'",
+          "want": "1"
+        },
+        {
+          "query": "SELECT code FROM orders WHERE code IN ('a', 'A', 'á') ORDER BY code",
+          "want": "A"
         }
       ]
     },
@@ -426,6 +450,12 @@
           "fails": true
         },
         {
+          "sql": "UPDATE ledger SET amount = 7 WHERE id = 999"
+        },
+        {
+          "sql": "DELETE FROM ledger WHERE id = 999"
+        },
+        {
           "query": "SELECT amount FROM ledger",
           "want": "5"
         },
@@ -438,6 +468,9 @@
         {
           "sql": "DELETE FROM service",
           "fails": true
+        },
+        {
+          "sql": "DELETE FROM service WHERE id = 999"
         },
         {
           "query": "SELECT count(*) FROM service_history",

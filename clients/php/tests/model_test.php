@@ -754,6 +754,48 @@ try {
 }
 echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 
+// transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
+// 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
+// (mysql.context.user_variable_session_scope). 실제 server 는 reset 을 거부하지
+// 않으므로 PDO 가 reset 만 실패시킨다.
+final class ResetFailingPdo extends PDO
+{
+    public function exec(string $statement): int|false
+    {
+        if (str_starts_with($statement, 'SET @`orm.') && str_ends_with($statement, '= NULL')) {
+            throw new PDOException('reset rejected by the test driver');
+        }
+        return parent::exec($statement);
+    }
+}
+
+$current = 'failed local reset/mysql';
+try {
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
+    $failing = new Db(new ResetFailingPdo($pdoDsn, $user, $password), 'mysql', new Config(), new DateTimeZone('UTC'));
+    $message = static function (callable $fn): string {
+        try {
+            $fn();
+        } catch (Throwable $e) {
+            return $e->getMessage();
+        }
+        return 'no error';
+    };
+    $committed = $message(fn() => $failing->transaction(function () use ($failing): void {
+        $failing->utils()->setLocal('ormtest.actor', 'tester');
+    }));
+    check(str_contains($committed, 'reset rejected by the test driver'), "commit reports the failed reset: $committed");
+    $rolledBack = $message(fn() => $failing->transaction(function () use ($failing): void {
+        $failing->utils()->setLocal('ormtest.actor', 'tester');
+        throw new RuntimeException('callback failed');
+    }));
+    check(str_starts_with($rolledBack, 'CONFIG: ') && str_contains($rolledBack, 'callback failed') && str_contains($rolledBack, 'reset rejected by the test driver'), "rollback reports the callback and the failed reset: $rolledBack");
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+
 if ($failures > 0) {
     fwrite(STDERR, "php model test: $failures failures\n");
     exit(1);

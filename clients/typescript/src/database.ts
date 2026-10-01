@@ -109,7 +109,7 @@ function pad2(n: number): string { return String(n).padStart(2, '0'); }
 
 /** Formats an instant in a connection time zone as date-time text with six fraction digits. */
 export function formatInstant(instant: Date, zone: string): string {
-  const shifted = new Date(instant.getTime() + zoneOffset(zone, instant) * 60_000);
+  const shifted = new Date(instant.getTime() + zoneOffset(zone) * 60_000);
   const micro = String(shifted.getUTCMilliseconds()).padStart(3, '0') + '000';
   return `${shifted.getUTCFullYear()}-${pad2(shifted.getUTCMonth() + 1)}-${pad2(shifted.getUTCDate())} ${pad2(shifted.getUTCHours())}:${pad2(shifted.getUTCMinutes())}:${pad2(shifted.getUTCSeconds())}.${micro}`;
 }
@@ -374,7 +374,13 @@ export class Db {
     try {
       result = await flow.run([...frames(), frame], callback);
     } catch (error) {
-      await this.finish(frame, false).catch(() => undefined);
+      try {
+        await this.finish(frame, false);
+      } catch (cleanup) {
+        // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+        const text = (e: unknown) => (e instanceof Error ? e.message : String(e));
+        throw new OrmError('CONFIG', `transaction failed (${text(error)}) and rollback failed (${text(cleanup)})`, error);
+      }
       throw error;
     }
     await this.finish(frame, true);

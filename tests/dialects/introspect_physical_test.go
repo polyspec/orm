@@ -242,7 +242,10 @@ func TestIntrospectUnsupported(t *testing.T) {
 		probe := Probe{ID: c.Dialect + ".introspect." + c.ID, DB: c.Dialect, Fact: "introspection reports " + c.ID, Run: func(e *Env) {
 			e.Exec(connectionRules[c.Dialect]...)
 			e.Exec(statements...)
-			e.Exec(c.Statements...)
+			for _, statement := range c.Statements {
+				// {schema}는 이 case의 database 또는 schema 이름이다.
+				e.Exec(strings.ReplaceAll(statement, "{schema}", e.Name))
+			}
 			if e.Err != nil {
 				return
 			}

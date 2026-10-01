@@ -861,4 +861,37 @@ mod tests {
         }
         std::fs::remove_dir_all(tmp).unwrap();
     }
+
+    /// MySQL transaction을 열고 local 값을 둔 뒤 그 connection을 다른 connection에서 끊는다.
+    /// 실제 server는 `SET @`orm.…` = NULL`을 거부하지 않으므로 끊긴 connection으로 reset을 실패시킨다.
+    async fn transaction_with_failing_reset(db: &Db) -> TxShared {
+        let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
+        let tx = begin(db, None, false, None).await.expect("begin");
+        let id: u64 = {
+            let mut guard = tx.inner.lock().await;
+            let Some(TxInner::MySql(t)) = guard.as_mut() else { panic!("MySQL transaction") };
+            let conn = &mut **t.conn.as_mut().expect("active MySQL transaction connection");
+            sqlx::raw_sql("SET @`orm.ormtest.actor` = 'tester'").execute(&mut *conn).await.expect("set local");
+            sqlx::query_scalar("SELECT CONNECTION_ID()").fetch_one(&mut *conn).await.expect("connection id")
+        };
+        tx.locals.lock().unwrap().insert("ormtest.actor".into(), "tester".into());
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.expect("kill the transaction connection");
+        tx
+    }
+
+    // transaction 끝의 MySQL local 값 reset이 실패하면 그 오류를 보고한다. MySQL user
+    // variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
+    #[tokio::test]
+    async fn failed_local_reset_is_reported() {
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let tx = transaction_with_failing_reset(&db).await;
+        let mut inner = tx.inner.lock().await.take().expect("transaction inner");
+        let reset = finish(&tx, &mut inner).await;
+        drop(inner);
+        assert!(reset.is_err(), "the reset of a killed connection is reported: {reset:?}");
+        let tx = transaction_with_failing_reset(&db).await;
+        let ended = rollback(&tx).await.expect_err("the rollback of a killed connection reports the reset");
+        assert!(ended.to_string().contains("transaction cleanup failed"), "{ended}");
+        db.close().await;
+    }
 }

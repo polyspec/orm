@@ -1,5 +1,33 @@
 # Changelog
 
+- T8.0.9: `datetime(p)` renders as a local date-time on the three databases, every client connection reads and writes it in UTC, and introspection reports time-zone columns as unsupported.
+
+- T8.0.9.1: Go, TypeScript and Rust connections read and write datetime values in UTC like PHP, and `timezone` accepts only `UTC` or `+00:00`.
+
+- T8.0.14: A failed MySQL `setLocal` reset at the end of a transaction is reported in every client, and a callback failure with a failed cleanup reports both errors as `CONFIG`.
+
+- T8.0.13: Every client and schema tool asserts that a SQLite DSN with a query creates only the file named by its path.
+
+- T8.0.11: Introspection cases assert that PostgreSQL time zone, padded, single-precision and JSON types, MySQL `TIMESTAMP`, `char` and `float`, and `NO ACTION` and `SET DEFAULT` keys are reported as unsupported in every client.
+
+- T8.0.10: An introspection case asserts that a SQLite primary key column keeps its declared nullability in every client.
+
+- T8.0.8: A shared DDL step asserts that the rendered binary collations keep `a`, `A`, `á` and `a ` distinct in a unique key on MySQL, PostgreSQL and SQLite.
+
+- T8.0.7: Every client asserts on the three dialects that an insert cannot write the identity column and an update or duplicate update cannot write a primary key or identity column.
+
+- T8.0.6: The rendered `immutable` and `audit` guards are row triggers, and a shared DDL step asserts that an `UPDATE` or `DELETE` matching no row succeeds on MySQL, PostgreSQL and SQLite.
+
+- T8.0.5: Shared cases assert that `immutable` and `audit` are rejected on a child of a `cascade` or `set_null` foreign key in every client.
+
+- T8.0.4: Declared and generated names over 63 bytes are rejected before rendering in every client, asserted with names of exactly 64 bytes.
+
+- T8.0.3: The introspection cases assert that stored and virtual generated columns are reported as unsupported on MySQL, PostgreSQL and SQLite in every client.
+
+- T8.0.2: Introspection reports prefix, partial and expression indexes as unsupported with their table and name in every client.
+
+- T8.0.1: PostgreSQL introspection reports a foreign key whose referenced table is in another schema as unsupported instead of reading it as a key to a same-named table.
+
 - T8.6.2.1: a failed Go apply reports its cleanup errors together with the failure, and a MySQL effect query without a row is an error.
 
 - T8.7.4: the TypeScript client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.

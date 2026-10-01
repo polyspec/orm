@@ -1,5 +1,33 @@
 # 변경 이력
 
+- T8.0.9: `datetime(p)`는 세 데이터베이스에서 local date-time으로 생성되고, 모든 client 연결이 이를 UTC로 읽고 쓰며, introspection은 time zone 컬럼을 미지원으로 보고한다.
+
+- T8.0.9.1: Go, TypeScript, Rust connection은 PHP처럼 datetime 값을 UTC로 읽고 쓰며, `timezone`은 `UTC`나 `+00:00`만 받는다.
+
+- T8.0.14: transaction 끝에서 실패한 MySQL `setLocal` reset은 모든 client에서 보고되고, callback 실패와 정리 실패가 겹치면 두 오류를 `CONFIG`로 함께 보고한다.
+
+- T8.0.13: 모든 client와 schema tool은 query가 붙은 SQLite DSN이 path로 정한 file만 만드는지 검사한다.
+
+- T8.0.11: Introspection case는 모든 client에서 PostgreSQL time zone, padding, 단정밀도, JSON type과 MySQL `TIMESTAMP`, `char`, `float`, 그리고 `NO ACTION`과 `SET DEFAULT` key가 미지원으로 보고되는지 검사한다.
+
+- T8.0.10: Introspection case는 모든 client에서 SQLite primary key column이 선언한 nullability를 유지하는지 검사한다.
+
+- T8.0.8: 공유 DDL step은 렌더링한 binary collation이 MySQL, PostgreSQL, SQLite의 unique key에서 `a`, `A`, `á`, `a `를 서로 다르게 두는지 검사한다.
+
+- T8.0.7: 모든 client는 세 dialect에서 insert가 identity column을, update와 duplicate update가 primary key나 identity column을 쓰지 못하는지 검사한다.
+
+- T8.0.6: 렌더링한 `immutable`과 `audit` guard는 row trigger이며, 공유 DDL step은 어떤 행과도 맞지 않는 `UPDATE`나 `DELETE`가 MySQL, PostgreSQL, SQLite에서 성공하는지 검사한다.
+
+- T8.0.5: 공유 case는 모든 client가 `cascade` 또는 `set_null` foreign key의 child에서 `immutable`과 `audit`을 거부하는지 검사한다.
+
+- T8.0.4: 63 byte를 넘는 선언 이름과 생성 이름은 모든 client에서 렌더링 전에 거부되며, 정확히 64 byte인 이름을 써서 검사한다.
+
+- T8.0.3: Introspection case는 stored와 virtual generated column이 모든 client에서 MySQL, PostgreSQL, SQLite 모두 미지원으로 보고되는지 검사한다.
+
+- T8.0.2: Introspection은 모든 client에서 prefix, partial, expression index를 table과 이름과 함께 미지원으로 보고한다.
+
+- T8.0.1: PostgreSQL introspection은 참조 table이 다른 schema에 있는 foreign key를 같은 이름의 table을 가리키는 key로 읽지 않고 미지원으로 보고한다.
+
 - T8.6.2.1: 실패한 Go apply는 정리 error를 실패와 함께 보고하고, row 없는 MySQL 효과 query는 error다.
 
 - T8.7.4: TypeScript client가 dbspec 문서를 표준 Mermaid erDiagram으로 export하고, 각각이 빼는 것의 목록과 함께 import한다.

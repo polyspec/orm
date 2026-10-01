@@ -177,7 +177,9 @@ async fn introspect_unsupported() {
         let documents = parse_set(case_id, &documents_text);
         let refs: Vec<&Document> = documents.iter().collect();
         let statements = dbspec::render(&refs, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
-        let extra = strings(&case["statements"]);
+        // {schema}는 이 case의 database 또는 schema 이름이다.
+        let schema = servers.name(index);
+        let extra: Vec<String> = strings(&case["statements"]).iter().map(|s| s.replace("{schema}", &schema)).collect();
         let want_document = lines(&case["document"]);
         let want_unsupported: Vec<Vec<String>> = case["unsupported"].as_array().expect("unsupported").iter().map(strings).collect();
         let id = format!("{db}.introspect.{case_id}");

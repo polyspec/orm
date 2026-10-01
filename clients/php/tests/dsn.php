@@ -6,6 +6,7 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Orm\Code;
+use Orm\Config;
 use Orm\Orm;
 use Orm\OrmException;
 
@@ -36,4 +37,18 @@ foreach (['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relat
         expect($e->code_ === Code::CONFIG, "wrong error for $dsn");
     }
 }
+// query 가 붙은 SQLite DSN 은 path 만으로 file 을 만든다. query 를 file 이름에 둔
+// opener 는 `named.sqlite?_pragma=…` 같은 file 을 만든다(docs/dialects.md "Probe environment").
+$directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
+expect(!file_exists($directory) && mkdir($directory), "temporary directory $directory");
+$db = Orm::connect("sqlite://$directory/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00", new Config());
+$db = null;
+$names = array_values(array_diff(scandir($directory), ['.', '..']));
+foreach ($names as $name) {
+    expect(in_array($name, ['named.sqlite', 'named.sqlite-journal', 'named.sqlite-shm', 'named.sqlite-wal'], true), 'files ' . json_encode($names) . ": $name is not named by the path");
+    expect(unlink("$directory/$name"), "remove $name");
+}
+expect(rmdir($directory), "remove $directory");
+expect(in_array('named.sqlite', $names, true), 'files ' . json_encode($names) . ': named.sqlite is missing');
+
 echo "php DSN parsing passed\n";

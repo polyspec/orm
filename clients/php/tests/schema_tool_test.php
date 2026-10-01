@@ -151,6 +151,20 @@ $tests['tool DSNs are client URIs'] = function (): void {
     check(str_starts_with(error(fn() => SchemaImport::connect('mysql://nobody:pw@127.0.0.1:1/orm_example')), 'MIGRATION_CONNECT: dsn=mysql://nobody:xxxxx@127.0.0.1:1/orm_example: '), 'connect error');
 };
 
+// query 가 붙은 SQLite DSN 은 path 만으로 file 을 만든다(docs/dialects.md "Probe environment").
+$tests['SQLite DSN names the file by its path only'] = function () use ($work): void {
+    $directory = "$work/sqlite-name";
+    check(mkdir($directory), "mkdir $directory");
+    $db = SchemaImport::connect("sqlite://$directory/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00")[1];
+    $db->exec('CREATE TABLE "t" ("a" INTEGER)');
+    $db = null;
+    $names = array_values(array_diff(scandir($directory), ['.', '..']));
+    check(in_array('named.sqlite', $names, true), 'files ' . json_encode($names) . ': named.sqlite is missing');
+    foreach ($names as $name) {
+        check(in_array($name, ['named.sqlite', 'named.sqlite-journal', 'named.sqlite-shm', 'named.sqlite-wal'], true), 'files ' . json_encode($names) . ": $name is not named by the path");
+    }
+};
+
 $tests['SQLite import filters tables and reads keys and clock defaults'] = function () use ($work): void {
     $db = sqlite("$work/import.sqlite");
     $db->exec('CREATE TABLE "kept" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL, "created_ts" TEXT NOT NULL DEFAULT (strftime(\'%Y-%m-%d %H:%M:%f\', \'now\') || \'000\'))');

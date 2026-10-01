@@ -6,14 +6,13 @@ func TestParseDSN(t *testing.T) {
 	tests := []struct {
 		name, input, driver, native, zone string
 	}{
-		{"mysql tcp", "mysql://orm:secret@127.0.0.1:3306/orm_example", "mysql", "orm:secret@tcp(127.0.0.1:3306)/orm_example?clientFoundRows=true&parseTime=true", "Local"},
-		{"mysql socket and zone", "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=%2B09:00", "mysql", "root@unix(/tmp/mysql.sock)/orm_example?clientFoundRows=true&parseTime=true&time_zone=%27%2B09%3A00%27", "+09:00"},
-		{"postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=Asia/Seoul", "postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=Asia/Seoul", "Asia/Seoul"},
-		{"postgres offset", "postgres:///orm_example?host=/tmp&timezone=%2B09:00", "postgres", "postgres:///orm_example?host=%2Ftmp&timezone=%3C%2B09%3A00%3E-09%3A00", "+09:00"},
-		{"postgres socket", "postgres:///orm_example?host=/tmp", "postgres", "postgres:///orm_example?host=/tmp", "Local"},
+		{"mysql tcp", "mysql://orm:secret@127.0.0.1:3306/orm_example", "mysql", "orm:secret@tcp(127.0.0.1:3306)/orm_example?clientFoundRows=true&parseTime=true&time_zone=%27%2B00%3A00%27", "UTC"},
+		{"mysql socket and UTC", "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=%2B00:00", "mysql", "root@unix(/tmp/mysql.sock)/orm_example?clientFoundRows=true&parseTime=true&time_zone=%27%2B00%3A00%27", "UTC"},
+		{"postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=UTC", "postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=UTC", "UTC"},
+		{"postgres socket", "postgres:///orm_example?host=/tmp", "postgres", "postgres:///orm_example?host=%2Ftmp&timezone=UTC", "UTC"},
 		{"sqlite", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(5000)&timezone=UTC", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=immediate", "UTC"},
-		{"sqlite lock wait", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%28250%29&_pragma=foreign_keys%281%29&_txlock=immediate", "Local"},
-		{"sqlite default lock wait", "sqlite:///tmp/orm_example.sqlite", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=immediate", "Local"},
+		{"sqlite lock wait", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%28250%29&_pragma=foreign_keys%281%29&_txlock=immediate", "UTC"},
+		{"sqlite default lock wait", "sqlite:///tmp/orm_example.sqlite", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29&_txlock=immediate", "UTC"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -33,6 +32,10 @@ func TestParseDSNRejectsInvalidInput(t *testing.T) {
 		"sqlite:///tmp/orm_example.sqlite?_txlock=immediate",
 		"sqlite:///tmp/orm_example.sqlite?_txlock=deferred",
 		"mysql://root@localhost/orm_example?timezone=Nowhere/City",
+		// 모든 connection은 datetime을 UTC로 읽고 쓴다(docs/dialects.md "Date and time").
+		"mysql://root@localhost/orm_example?timezone=%2B09:00",
+		"postgres://root@localhost/orm_example?timezone=Asia/Seoul",
+		"sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
 		"oracle://root@localhost/orm_example",
 		"root@tcp(localhost)/orm_example",
 	} {

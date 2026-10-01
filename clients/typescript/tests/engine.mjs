@@ -46,6 +46,24 @@ check(compileCode({ ...base, kind: 'delete', n_params: 0 }) === 'IR_INVALID', 'd
 check(compileCode({ ...base, manifest_hash: 'x', kind: 'all', n_params: 0 }) === 'SCHEMA_HASH_MISMATCH', 'request of another manifest');
 check(compileCode({ ...base, kind: 'all', n_params: 0, force_index: 'nope' }) === 'INDEX_UNKNOWN', 'unknown index');
 
+// insert는 identity column 값을, update와 duplicate update는 primary key와 identity
+// column 값을 쓰지 못한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로
+// (postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
+const keyWrites = {
+  'cannot set identity column seq': { kind: 'insert', entity: 'service', set: [{ column: 'seq', p: 0 }, { column: 'name', p: 1 }], n_params: 2 },
+  'cannot update seq': { kind: 'update', entity: 'service', set: [{ column: 'seq', p: 0 }], where: { items: [{ pred: { column: 'seq', op: 'eq', p: 1 } }] }, n_params: 2 },
+  'on_duplicate cannot assign service.seq': { kind: 'insert', entity: 'service', set: [{ column: 'name', p: 0 }], on_duplicate: [{ column: 'seq', p: 1 }], n_params: 2 },
+  'on_duplicate cannot assign composite_account.tenant_id': { kind: 'insert', entity: 'composite_account', set: [{ column: 'tenant_id', p: 0 }, { column: 'account_id', p: 1 }, { column: 'name', p: 2 }], on_duplicate: [{ column: 'tenant_id', p: 3 }], n_params: 4 },
+};
+for (const dialect of ['mysql', 'postgres', 'sqlite']) {
+  const keyEngine = new Engine(model, dialect);
+  for (const [message, request] of Object.entries(keyWrites)) {
+    let error = null;
+    try { keyEngine.compile({ ir_version: 1, manifest_hash: MANIFEST_HASH, ...request }); } catch (e) { error = e; }
+    check(error?.code === 'IR_INVALID' && String(error?.message).includes(message), `${dialect} key write: want ${message}, got ${error?.code} ${error?.message}`);
+  }
+}
+
 const plan = engine.compile({ ...base, kind: 'one', n_params: 2, columns: { mode: 'none' }, where: { items: [{ pred: { column: 'seq', op: 'in', ps: [0, 1] } }] } });
 const want = 'SELECT "a"."seq" AS "a__seq", "a"."user_seq" AS "a__user_seq", "a"."service_seq" AS "a__service_seq", "a"."service_region_seq" AS "a__service_region_seq", "a"."service_member_seq" AS "a__service_member_seq" FROM "author" AS "a" WHERE "a"."seq" IN ($1, $2) LIMIT 1 OFFSET 0';
 check(plan.steps.length === 1 && plan.steps[0].sql === want, `plan SQL: ${plan.steps[0].sql}`);

@@ -62,10 +62,12 @@
       "tests": [
         "clients/go/orm/dsn_test.go",
         "clients/go/orm/timezone_test.go",
+        "clients/go/orm/sqlite_file_name_test.go",
         "clients/go/model/replica_test.go",
         "clients/php/tests/dsn.php",
         "clients/typescript/tests/dsn.mjs",
         "clients/rust/orm/tests/zone.rs",
+        "clients/rust/orm/tests/sqlite_file_name.rs",
         "clients/go/orm/coverage_dsn_test.go",
         "clients/go/model/coverage_dsn_test.go",
         "clients/php/tests/coverage_dsn.php",
@@ -80,7 +82,7 @@
       "verification": [
         {
           "id": "dsn-go",
-          "command": "go test ./clients/go/orm -run 'ParseDSN|ConnectionTimeZone' -count=1"
+          "command": "go test ./clients/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1"
         },
         {
           "id": "dsn-php",
@@ -92,7 +94,7 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test zone"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test zone --test sqlite_file_name"
         }
       ],
       "coverage": {
@@ -756,6 +758,7 @@
         "clients/rust/orm/tests/zone.rs",
         "clients/rust/tests/src/integration.rs",
         "clients/go/orm/goexit_test.go",
+        "clients/go/orm/context_reset_test.go",
         "clients/go/model/sqlite_concurrency_test.go",
         "clients/php/tests/sqlite_concurrency_test.php",
         "clients/typescript/tests/sqlite-concurrency.mjs",
@@ -1019,7 +1022,7 @@
       "verification": [
         {
           "id": "install-go",
-          "command": "go test ./clients/go/orm -run 'SQLKeywordNames|ConnectionTimeZone' -count=1"
+          "command": "go test ./clients/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1"
         },
         {
           "id": "install-php",

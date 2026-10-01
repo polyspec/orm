@@ -19,26 +19,22 @@ type parsedDSN struct {
 	location *time.Location
 }
 
-// parseDSN treats the URI scheme as the only database selector. The optional
-// timezone parameter sets the connection time zone; without it the server
-// environment time zone is used.
-// parseDSN reads the DSN URI. statementTimeoutMs bounds every statement of
-// the connection; zero keeps the server default.
+// parseDSN reads the DSN URI; the scheme is the only database selector.
+// statementTimeoutMs bounds every statement of the connection; zero keeps the
+// server default. Every connection reads and writes datetime values in UTC
+// (docs/dialects.md "Date and time"), so the timezone parameter accepts only
+// UTC or +00:00.
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" {
 		return parsedDSN{}, configErr("dsn must be a URI using mysql://, postgres://, or sqlite://")
 	}
 	q := u.Query()
-	out := parsedDSN{driver: strings.ToLower(u.Scheme), location: time.Local}
-	zone := q.Get("timezone")
-	if zone != "" {
-		loc, err := loadZone(zone)
-		if err != nil {
-			return parsedDSN{}, configErr("dsn timezone %q: %v", zone, err)
-		}
-		out.location = loc
+	out := parsedDSN{driver: strings.ToLower(u.Scheme), location: time.UTC}
+	if zone := q.Get("timezone"); zone != "" && zone != "UTC" && zone != "+00:00" {
+		return parsedDSN{}, configErr("dsn timezone %s: every connection reads and writes datetime values in UTC", zone)
 	}
+	q.Del("timezone")
 	switch out.driver {
 	case "mysql":
 		if u.Host == "" || strings.Trim(u.Path, "/") == "" {
@@ -49,10 +45,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 			network, address = "unix", socket
 			q.Del("socket")
 		}
-		q.Del("timezone")
-		if zone != "" {
-			q.Set("time_zone", quoteText(zone))
-		}
+		q.Set("time_zone", quoteText("+00:00"))
 		q.Set("clientFoundRows", "true")
 		if statementTimeoutMs > 0 {
 			// MySQL bounds SELECT statements with max_execution_time.
@@ -73,26 +66,18 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if u.Host == "" && q.Get("host") == "" || strings.Trim(u.Path, "/") == "" {
 			return parsedDSN{}, configErr("postgres DSN must include host and database")
 		}
-		out.native = raw
-		changed := false
 		if statementTimeoutMs > 0 {
 			options := q.Get("options")
 			if options != "" {
 				options += " "
 			}
 			q.Set("options", options+"-c statement_timeout="+strconv.Itoa(statementTimeoutMs))
-			changed = true
 		}
-		if posix := postgresZone(zone); posix != zone {
-			q.Set("timezone", posix)
-			changed = true
-		}
-		if changed {
-			// PostgreSQL reads the option string literally, so a space is
-			// percent-encoded instead of the form encoder's plus sign.
-			u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
-			out.native = u.String()
-		}
+		q.Set("timezone", "UTC")
+		// PostgreSQL reads the option string literally, so a space is
+		// percent-encoded instead of the form encoder's plus sign.
+		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
+		out.native = u.String()
 	case "sqlite":
 		path := u.Path
 		if !strings.HasPrefix(path, "/") {
@@ -105,7 +90,6 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if q.Has("_txlock") {
 			return parsedDSN{}, configErr("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE")
 		}
-		q.Del("timezone")
 		q.Set("_txlock", "immediate")
 		pragmas := strings.Join(q["_pragma"], ",")
 		if !strings.Contains(pragmas, "busy_timeout") {
@@ -119,32 +103,6 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
 	}
 	return out, nil
-}
-
-// loadZone accepts an IANA name or a fixed offset such as +09:00.
-func loadZone(zone string) (*time.Location, error) {
-	if len(zone) == 6 && (zone[0] == '+' || zone[0] == '-') && zone[3] == ':' {
-		t, err := time.Parse("-07:00", zone)
-		if err != nil {
-			return nil, err
-		}
-		_, offset := t.Zone()
-		return time.FixedZone(zone, offset), nil
-	}
-	return time.LoadLocation(zone)
-}
-
-// postgresZone writes a fixed offset in the POSIX form PostgreSQL expects,
-// where the sign after the name is inverted: +09:00 becomes <+09:00>-09:00.
-func postgresZone(zone string) string {
-	if len(zone) == 6 && (zone[0] == '+' || zone[0] == '-') && zone[3] == ':' {
-		inverted := "-"
-		if zone[0] == '-' {
-			inverted = "+"
-		}
-		return "<" + zone + ">" + inverted + zone[1:]
-	}
-	return zone
 }
 
 // DriverFromDSN returns the database selected by a DSN URI.

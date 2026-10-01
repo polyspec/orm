@@ -316,3 +316,27 @@ func TestMultiRowInsert(t *testing.T) {
 	formsError(t, e, `"kind":"insert","entity":"visit","set":[{"column":"place_seq","p":0},{"column":"amount","p":1}],"rows":[[2]]`, "IR_INVALID")
 	formsError(t, e, `"kind":"update","entity":"visit","set":[{"column":"amount","p":0}],"rows":[[1]],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`, "IR_INVALID")
 }
+
+// TestKeyColumnsAreNotWritten은 insert가 identity column 값을, update와
+// duplicate update가 primary key와 identity column 값을 쓰지 못하게 하는지
+// 세 dialect에서 확인한다. PostgreSQL identity는 명시한 key를 지나 나아가지
+// 않으므로(postgres.identity.by_default_not_advanced) 이 거부가 없으면 다음
+// 생성 key가 충돌한다.
+func TestKeyColumnsAreNotWritten(t *testing.T) {
+	cases := []struct{ body, message string }{
+		{`"kind":"insert","entity":"place","set":[{"column":"seq","p":0},{"column":"owner_seq","p":1},{"column":"name","p":2}]`, "cannot set identity column seq"},
+		{`"kind":"update","entity":"place","set":[{"column":"seq","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`, "cannot update seq"},
+		{`"kind":"insert","entity":"place","set":[{"column":"owner_seq","p":0},{"column":"name","p":1}],"on_duplicate":[{"column":"seq","p":2}]`, "on_duplicate cannot assign place.seq"},
+		{`"kind":"insert","entity":"membership","set":[{"column":"tenant_id","p":0},{"column":"account_id","p":1},{"column":"role","p":2}],"on_duplicate":[{"column":"tenant_id","p":3}]`, "on_duplicate cannot assign membership.tenant_id"},
+	}
+	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
+		e := formsEngine(t, driver)
+		for _, c := range cases {
+			full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + c.body + `}`
+			_, err := e.Compile([]byte(full))
+			if err == nil || !strings.Contains(err.Error(), "IR_INVALID") || !strings.Contains(err.Error(), c.message) {
+				t.Errorf("%s %s: want IR_INVALID %q, got %v", driver, c.body, c.message, err)
+			}
+		}
+	}
+}
