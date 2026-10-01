@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.5.4: the TypeScript client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-ts-check` applies them.
+
 - T8.6.2: the Go engine applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery.
 
 - T8.6.1: docs/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.

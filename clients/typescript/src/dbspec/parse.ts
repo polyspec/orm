@@ -199,7 +199,8 @@ interface ParseContext {
   readonly cache: Map<string, Parsed>;
 }
 
-const RESERVED = new Set([
+/** The reserved words, which are not names (docs/dbspec.md "Names"). */
+export const RESERVED: ReadonlySet<string> = new Set([
   'dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings',
   'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is',
 ]);
