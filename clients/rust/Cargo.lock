@@ -1078,6 +1078,7 @@ dependencies = [
  "ordered-json",
  "orm-schema",
  "rand 0.10.2",
+ "regex",
  "rust_decimal",
  "serde",
  "serde_json",

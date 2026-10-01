@@ -15,7 +15,7 @@ TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check
+check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-apply-rust-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check
 	$(WITH_TEST_ENV) go test ./...
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -126,6 +126,12 @@ dbspec-plan-check:
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1 -timeout 10m -v
+
+# dbspec-apply-rust-check applies the same chain scenarios through
+# orm::dbspec::apply and orm::dbspec::recover of the Rust client.
+.PHONY: dbspec-apply-rust-check
+dbspec-apply-rust-check:
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check builds the TypeScript client and applies every case of
 # tests/dbspec/plans.json to MySQL, PostgreSQL and SQLite through its
