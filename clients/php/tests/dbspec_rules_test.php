@@ -155,7 +155,7 @@ $invalid = [
     rules_case('setting-audit-shape', ['dbspec 1 shop', '', 'table service {', '  id i64 identity', '  name varchar(191)', '  operation_id i32', '  primary key (id)', '  settings {',
         '    audit into service_history operation operation_id action change previous previous_operation_id', '  }', '}', '',
         'table service_history {', '  history_id i64 identity', '  change varchar(9)', '  previous_operation_id i64', '  id i64', '  extra i64', '  primary key (history_id)', '}'],
-        [['setting', 9, 'audit'], ['setting', 9, 'service_history'], ['setting', 9, 'operation_id'], ['setting', 9, 'change'], ['setting', 9, 'previous_operation_id']]),
+        [['setting', 9, 'service_history'], ['setting', 9, 'operation_id'], ['setting', 9, 'change'], ['setting', 9, 'previous_operation_id']]),
     rules_case('use-unknown-table', ['dbspec 1 shop', '', 'use core { accounts, ghosts }', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'], [['use', 3, 'ghosts']], $core),
     rules_case('use-invalid-document', ['dbspec 1 shop', '', 'use broken { accounts }'], [['use', 3, 'broken']], ['broken' => ['dbspec 1 broken', '', 'table accounts {', '  Id i64', '}']]),
     rules_case('use-header-mismatch', ['dbspec 1 shop', '', 'use core { accounts }'], [['use', 3, 'core']], ['core' => ['dbspec 1 other', '', 'table accounts {', '  id i64 identity', '  primary key (id)', '}']]),

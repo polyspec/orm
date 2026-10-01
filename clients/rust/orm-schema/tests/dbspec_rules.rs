@@ -669,7 +669,7 @@ const CASES: &[Case] = &[
             "  }",
             "}",
         ]],
-        expect: Expect::Errors(&[("setting", 14, 5), ("setting", 15, 5), ("setting", 15, 5), ("setting", 15, 16), ("setting", 15, 52), ("setting", 15, 68)]),
+        expect: Expect::Errors(&[("setting", 14, 5), ("setting", 15, 5), ("setting", 15, 16), ("setting", 15, 52), ("setting", 15, 68)]),
     },
     Case {
         id: "audit-history-shape",

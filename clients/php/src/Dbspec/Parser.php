@@ -1204,9 +1204,6 @@ final class Parser
                     $this->generatedName($line, $at, $this->table->name . '$immutable_update');
                     break;
                 case 'audit':
-                    if (!isset($kinds['soft_delete'])) {
-                        $this->error('setting', $line, $at, 'setting `audit` needs a `soft_delete` setting');
-                    }
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
                     }

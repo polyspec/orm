@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.1.8: `audit` no longer requires `soft_delete`. A schema setting is read back from the database and a manifest setting is not, so the requirement made every introspected audited table invalid; the `BEFORE DELETE` trigger still makes a physical delete fail.
+
 Keep only the dbspec check predicate forms that MySQL and PostgreSQL
 catalogs give back: remove `not`, `between` and a column alone, and
 write only the parentheses that an `or` inside an `and` needs, in every

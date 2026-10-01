@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.1.8: `audit`은 더 이상 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, 이 요구는 introspect한 모든 audit table을 잘못된 문서로 만들었다. physical delete는 여전히 `BEFORE DELETE` trigger가 실패시킨다.
+
 MySQL과 PostgreSQL catalog가 돌려주는 dbspec check predicate 형식만
 남긴다. 모든 client에서 `not`, `between`, column 하나를 없애고 `and`
 안의 `or`에 필요한 괄호만 쓴다(T8.1.7).
