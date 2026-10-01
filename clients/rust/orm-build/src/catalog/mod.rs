@@ -8,19 +8,16 @@ mod mutation;
 mod mutation_finish;
 mod page;
 mod read_only;
-mod reader;
 mod row_delete;
 mod row_insert;
 mod row_snapshot;
 mod row_update;
-use crate::{live::Table, schema::Manifest, tool_db::Conn};
+use crate::tool_db::Conn;
 pub use metadata::{TableColumnMetadata, TableKind, TableMetadata, TableRef};
 pub use mutation::MutationPhase;
 use orm::db::{ConnectOptions, Pool};
 pub use page::TablePage;
-pub use reader::{live_manifest, postgres_check_expr, read_tables, trigger_bodies};
 pub use row_snapshot::RowSnapshot;
-use std::collections::HashSet;
 
 #[cfg(test)]
 #[path = "../../tests/unit/read_only_disposal.rs"]
@@ -74,12 +71,6 @@ impl CatalogConnection {
         let mut connection = self.read_only_connection("SELECT 1").await?;
         let result = page::read(&mut connection, &self.dialect, table, limit, offset).await;
         finish_read_only(&mut connection, result).await
-    }
-    pub async fn tables(&mut self, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
-        read_tables(&mut self.connection, &self.dialect, only).await
-    }
-    pub async fn manifest(&mut self) -> Result<Manifest, String> {
-        live_manifest(&mut self.connection, &self.dialect).await
     }
     /// Executes one caller-authorized statement; this does not impose read-only isolation.
     pub async fn query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {

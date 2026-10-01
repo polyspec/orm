@@ -32,7 +32,7 @@ check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_he
 check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
 // A request names a manifest that no imported model registered.
-check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/schema.json')) === 'CONFIG', 'connect rejects a schema path');
+check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/bench.dbspec')) === 'CONFIG', 'connect rejects a string in place of the options object');
 
 const engine = new Engine(model, 'postgres');
 const base = { ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'author' };

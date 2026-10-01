@@ -25,7 +25,7 @@ import (
 	"unicode"
 
 	"github.com/polyspec/orm/contracts"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 type Symbols map[string]string
@@ -119,9 +119,8 @@ func main() {
 			fatal("Korean component diagram differs from the manifest; run with --generate")
 		}
 	}
-	js, err := os.ReadFile(filepath.Join(abs, m.Schema))
-	must(err)
-	s, err := schema.Load(js)
+	// entity 단위 rule은 contract가 가리키는 dbspec document의 entity 순서로 펼친다.
+	s, err := runtimemodel.LoadFiles(filepath.Join(abs, m.Schema))
 	must(err)
 	rust := ""
 	if slices.Contains(languages, "rust") {
@@ -137,7 +136,7 @@ func main() {
 		errors := checkRules(lang, actual, m.Rules, s)
 		errors = append(errors, checkRules(lang, actual, m.Storage, s)...)
 		errors = append(errors, checkRecords(lang, actual, m.Records)...)
-		errors = append(errors, checkOwners(lang, actual, m.Owners, s)...)
+		errors = append(errors, checkOwners(lang, actual, m.Owners)...)
 		errors = append(errors, checkProhibitedSymbols(lang, actual, m.ProhibitedSymbols)...)
 		errors = append(errors, callFailures...)
 		if len(errors) > 0 {
@@ -416,7 +415,7 @@ func pascal(s string) string {
 	return b.String()
 }
 
-func checkRules(lang string, actual Symbols, rules []Rule, m *schema.Manifest) []string {
+func checkRules(lang string, actual Symbols, rules []Rule, m *runtimemodel.Model) []string {
 	var errors []string
 	for _, rule := range rules {
 		n, ok := rule.Native[lang]

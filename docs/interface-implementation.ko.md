@@ -11,7 +11,7 @@
 | 명세 호출 | Rust API와 동작 |
 |---|---|
 | 엔진 선택과 연결 | `Db::connect(dsn, pool_size, Config)`가 DSN에서 MySQL·PostgreSQL·SQLite를 선택하고 제한된 pool을 만든다. |
-| 스키마 해시 검사 | 생성된 `Schema::new(schema_json, schema_hash)`가 내장 manifest를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
+| 스키마 해시 검사 | 생성된 `Schema::new(manifest_text, manifest_hash)`가 내장 manifest text를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
 | 스키마 설치와 검사 | `db.utils().schema().install(manifest)`가 manifest를 설치하고 `exists`, `installed`, `empty`가 선택한 데이터베이스를 검사한다. manifest의 감사 지시어는 감사 테이블·trigger와 함께 설치된다. |
 | 트랜잭션 격리 수준·읽기 전용·시간 제한·재시도 | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)`가 선언된 옵션을 적용하며 `retry(0)`은 콜백을 한 번 실행한다. `Db::transaction_once`는 콜백 오류를 보존하고 재시도하지 않는다. |
 | 취소 | 문장 또는 트랜잭션 Future를 폐기하면 확인된 연결을 닫아 서버 작업을 취소하거나 롤백한 뒤 슬롯을 재사용하며, 드라이버 취소는 `CANCELED`로 대응한다. |

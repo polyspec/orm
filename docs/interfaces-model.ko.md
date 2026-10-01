@@ -227,7 +227,7 @@ classDiagram
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
 | AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
 | AESRotationStatus | key version별 행 수다. |
-| Generator | 언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
+| Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
 | Error | docs/errors.yaml의 안정적인 code다. |
 | Dbspec | 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md). |
 | DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |

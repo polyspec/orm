@@ -263,8 +263,8 @@ func TestRunnerDeadlineFails(t *testing.T) {
 
 func TestCommandLogDoesNotExposeDSN(t *testing.T) {
 	for _, flag := range []string{"--dsn", "-dsn"} {
-		got := displayCommand([]string{"runner", flag, "mysql://user:secret@db/test", "schema.json"})
-		want := "runner " + flag + " <redacted> schema.json"
+		got := displayCommand([]string{"runner", flag, "mysql://user:secret@db/test", "bench.dbspec"})
+		want := "runner " + flag + " <redacted> bench.dbspec"
 		if got != want {
 			t.Fatalf("DSN was exposed or command arguments changed: %q", got)
 		}

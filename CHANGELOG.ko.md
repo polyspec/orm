@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.2.6.4: dbspec 문서 집합이 유일한 schema source다. Mermaid schema source, 그 manifest와 `orm-schema-v1` SQL, 그것을 읽던 모든 schema CLI 명령과 PhysicalGraph record를 모든 client에서 제거했고, CLI는 Go, PHP, TypeScript에서 `orm-gen`이다.
+
+- T8.2.6.3: 모든 generator, runtime, schema tool, schema 설치가 dbspec 문서 집합을 읽는다.
+
 - T8.0.9.2: 모든 client는 SQLite DSN의 percent-decode한 path를 열고, 잘못된 escape, NUL byte, UTF-8이 아닌 path를 `CONFIG`로 거부하며, tests/dsn/sqlite-paths.json의 공유 case가 이를 확인한다.
 
 - T8.5.1.1: 모든 client에서 SQLite table rebuild는 identity table의 `sqlite_sequence` counter를 옮겨, rebuild 전에 지운 key를 다시 주지 않는다.

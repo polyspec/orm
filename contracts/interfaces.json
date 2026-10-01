@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "schema/schema.json",
+  "schema": "schema/bench.dbspec",
   "languages": {
     "go": {
       "roots": [
@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:13715f10d454fb11bf7f697d35fee0874dd62dbc6aa987e734d41e76890ff3a7",
-    "php": "sha256:536b7554bd9067e37ae38f500554986c61f26fb04bda45ad805685bf86c9b73d",
-    "rust": "sha256:e3daf9cb595244dee92c80d7b812747ed0b73f0d01a7a6b275a6c7d236ed663f",
-    "typescript": "sha256:57bf9814e7d89f07dfe4403e8a84526f500198394dc7435d03aad254c0567ea9"
+    "go": "sha256:785571ecc8792a46609ba99583e874dc2adeba549a68711995c55ae86c2fa96e",
+    "php": "sha256:ddf57b25cfcec6dafec27a26b504d9e76bd9ca6300dc7cf8f3799fb8868d2f91",
+    "rust": "sha256:b4f117f2c3f581c29a955be58f7c98ef1a7f8caba8b3e3f4db9dc160d5a4b326",
+    "typescript": "sha256:08c272a4f5cd68df587f3850c5436dd1f43d41fe0e0a88cd6a57cf9747a660da"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -340,8 +340,8 @@
       "methods": [
         "generate"
       ],
-      "ownership": "One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call.",
-      "ownership_ko": "언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다."
+      "ownership": "One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call.",
+      "ownership_ko": "언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다."
     },
     {
       "id": "Error",

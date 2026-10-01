@@ -1,4 +1,4 @@
-# Error codes shared by the planner and every executor. `ormgen errors --lang go|php|rust`
+# Error codes shared by the planner and every executor. `orm-gen errors --lang go|php|rust`
 # generates one constants file per language from this file; codes are the stable `error.code`.
 # origin: engine = raised while planning a request in the client process;
 #         executor = raised by the language runtime; driver = passed through from the DB driver
@@ -7,9 +7,9 @@ codes:
   # ---- request ----
   - code: VERSION_MISMATCH        # ir_version the engine does not speak
     origin: engine
-  - code: SCHEMA_HASH_MISMATCH    # client generated from another schema.json than the engine loaded
+  - code: SCHEMA_HASH_MISMATCH    # client generated from another dbspec document set than the engine loaded
     origin: engine
-  - code: SCHEMA_INVALID          # schema.json failed validation at load
+  - code: SCHEMA_INVALID          # the dbspec document set failed validation at load
     origin: engine
   - code: DIALECT_UNKNOWN
     origin: engine

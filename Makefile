@@ -1,4 +1,4 @@
-.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check db-test perf-check interface-check go-model-check ts-model-check ts-check schema-check schema-cross-language-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check checklist-check ts-min-check client-unit-check client-db-check client-pooler-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -15,7 +15,7 @@ TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
+check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 	$(WITH_TEST_ENV) go test ./...
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -27,48 +27,7 @@ checklist-check:
 	node --test scripts/checklist/check.test.mjs
 	node scripts/checklist/check.mjs
 
-.PHONY: physical-identity-check
-physical-identity-check:
-	go test ./clients/go/orm -run '^TestPhysicalIdentityVectors$$' -count=2 -v
-	php clients/php/tests/physical_identity_test.php
-	php clients/php/tests/physical_identity_test.php
-	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_identity -- --nocapture
-	cd clients/rust && cargo test --locked --offline -p orm-schema --test physical_identity -- --nocapture
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	node --test clients/typescript/tests/physical-identity.mjs
-	node --test clients/typescript/tests/physical-identity.mjs
-
-PHYSICAL_NODE ?= node
 PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
-.PHONY: physical-check-check
-.PHONY: physical-index-check
-.PHONY: physical-key-check
-physical-key-check: physical-index-check physical-fk-check
-	go test ./clients/go/orm -run '^TestPhysicalKeyVectors$$' -count=2 -v
-	php clients/php/tests/physical_key_test.php
-	php clients/php/tests/physical_key_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_key -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_key -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-key.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-key.mjs
-
-physical-index-check: physical-check-check
-	go test ./clients/go/orm -run '^TestPhysicalIndexVectors$$' -count=2 -v
-	php clients/php/tests/physical_index_test.php
-	php clients/php/tests/physical_index_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_index -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_index -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-index.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-index.mjs
-
-physical-check-check: physical-column-check
-	go test ./clients/go/orm -run '^TestPhysicalCheck(Vectors|Bounds)$$' -count=2 -v
-	php clients/php/tests/physical_check_test.php
-	php clients/php/tests/physical_check_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_check -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_check -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-check.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행하고, tests/dbspec/stress.mjs의 stress
@@ -219,42 +178,6 @@ rust-send-savepoint-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 
-.PHONY: physical-column-check
-physical-column-check:
-	go test ./clients/go/orm -run '^TestPhysicalColumnVectors$$' -count=2 -v
-	php clients/php/tests/physical_column_test.php
-	php clients/php/tests/physical_column_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_column -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_column -- --nocapture
-	$(PHYSICAL_NODE) clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-column.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-column.mjs
-
-.PHONY: physical-fk-check
-physical-fk-check: physical-column-check
-	go test ./clients/go/orm -run '^TestPhysicalForeignKeyVectors$$' -count=2 -v
-	php clients/php/tests/physical_foreign_key_test.php
-	php clients/php/tests/physical_foreign_key_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_foreign_key -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_foreign_key -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-foreign-key.mjs
-
-.PHONY: physical-graph-check
-.PHONY: physical-json-check
-.PHONY: physical-envelope-check
-.PHONY: physical-document-typescript-check
-.PHONY: physical-document-check
-.PHONY: physical-document-php-limits-check
-.PHONY: physical-document-limits-check
-physical-document-limits-check: physical-document-php-limits-check
-	go test ./clients/go/orm -run '^TestPhysicalDocumentLimits$$' -count=2 -v
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document_limits -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document_limits -- --nocapture
-	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document-limits.mjs
-
 .PHONY: dbspec-php-check
 # dbspec-php-check는 공유 dbspec vector, PHP rule, tests/dbspec/ddl.json의 statement vector,
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
@@ -278,63 +201,6 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_stress_test.php
 	php clients/php/tests/dbspec_stress_test.php
 
-physical-document-php-limits-check:
-	php clients/php/tests/physical_document_limits_test.php
-	php clients/php/tests/physical_document_limits_test.php
-
-physical-document-check: physical-document-typescript-check physical-document-limits-check
-	go test ./clients/go/orm -run '^TestPhysical(Document|GraphVectors)$$' -count=2 -v
-	php clients/php/tests/physical_document_test.php
-	php clients/php/tests/physical_document_test.php
-	php clients/php/tests/physical_graph_test.php
-	php clients/php/tests/physical_graph_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document --test physical_graph -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_document --test physical_graph -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs
-
-physical-document-typescript-check:
-	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document.mjs clients/typescript/tests/physical-document-render.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-document.mjs clients/typescript/tests/physical-document-render.mjs
-
-physical-envelope-check:
-	go test ./clients/go/orm -run '^TestPhysicalEnvelope$$' -count=2 -v
-	php clients/php/tests/physical_envelope_test.php
-	php clients/php/tests/physical_envelope_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_envelope -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_envelope -- --nocapture
-	$(PHYSICAL_NODE) node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-envelope.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-envelope.mjs
-
-physical-json-check: physical-graph-check
-	go test ./engine/schema -run '^TestPhysicalJSONPreflightBounds$$' -count=2 -v
-	go test ./clients/go/orm -run '^TestPhysicalGraphJSON(Output)?$$' -count=2 -v
-	php clients/php/tests/physical_graph_json_test.php
-	php clients/php/tests/physical_graph_json_test.php
-	php clients/php/tests/physical_graph_json_output_test.php
-	php clients/php/tests/physical_graph_json_output_test.php
-	php clients/php/tests/physical_json_limits_test.php
-	php clients/php/tests/physical_json_limits_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --lib physical_json::tests::preflight_bounds -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --lib physical_json::tests::preflight_bounds -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph_json -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph_json -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph-json.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph-json.mjs
-
-physical-graph-check: physical-key-check
-	go test ./clients/go/orm -run '^TestPhysicalGraph(Vectors|Limits|Records)$$' -count=2 -v
-	php clients/php/tests/physical_graph_test.php
-	php clients/php/tests/physical_graph_test.php
-	php clients/php/tests/physical_graph_records_test.php
-	php clients/php/tests/physical_graph_records_test.php
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits --test physical_graph_records -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test physical_graph --test physical_graph_limits --test physical_graph_records -- --nocapture
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs clients/typescript/tests/physical-graph-records.mjs
-	$(PHYSICAL_NODE) --test clients/typescript/tests/physical-graph.mjs clients/typescript/tests/physical-graph-records.mjs
-
 test-servers:
 	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 
@@ -355,14 +221,11 @@ package-check:
 	./scripts/package-check.sh
 
 fuzz-check:
-	go test ./engine/schema -run '^$$' -fuzz FuzzParseMermaid -fuzztime=1s
-	go test ./engine/schema -run '^$$' -fuzz FuzzLoadManifest -fuzztime=1s
 	go test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
-	go test ./internal/ormgen -run '^$$' -fuzz FuzzSplitSQL -fuzztime=1s
 	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 client-unit-check:
-	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
+	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/orm_gen_test.php
 
 client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
@@ -421,9 +284,6 @@ ts-model-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	node --test clients/typescript/tests/models-scan.mjs
 
-db-test:
-	$(WITH_TEST_ENV) ./scripts/db-test.sh
-
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
@@ -445,10 +305,6 @@ dbspec-ts-check:
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 
-schema-check:
-	npm run schema:check
-	go run ./tests/schema/record -check
-
 # dbspec-go-check는 Go dbspec engine으로 tests/dbspec/cases.json의 공유 vector, 자기 rule case,
 # node tests/dbspec/stress.mjs가 쓰는 stress 문서, manifest, statement, plan, comparison,
 # Mermaid vector, apply 정리 error, case harness를 실행하고, 모든 vector file의 빠지거나 type이
@@ -456,9 +312,6 @@ schema-check:
 .PHONY: dbspec-go-check
 dbspec-go-check:
 	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
-
-schema-cross-language-check:
-	./scripts/schema/cross-language-check.sh
 
 docs-dev:
 	npm run docs:dev
@@ -494,7 +347,7 @@ rust-150-check:
 
 rust-check:
 	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo check --locked && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked --workspace --all-targets -- -D warnings
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked -p orm-build --all-targets --features cli -- -D warnings
+	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
 
 rust-driver-check:
 	cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo check --locked --bin driver_compare

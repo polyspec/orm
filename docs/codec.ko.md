@@ -21,13 +21,19 @@ Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유�
 
 `json aes` 단계를 가진 blob 컬럼은 AES v2로 암호화한 JSON 값을 저장한다. `json` 단계가 ordered-json 텍스트를 쓰고 `aes`가 그 텍스트를 암호화한다. 읽기는 셀을 복호화하고 모든 `json` 단계와 같이 텍스트의 ordered-json 값을 반환한다([값 모델](#value-model) 참고). 이 값은 멤버 순서, 숫자 텍스트, 빈 객체와 빈 배열의 구분을 유지하므로 `1.50`은 `1.50`으로 반환된다. 엔티티는 non-null integer `aes_key_version` 컬럼을 선언한다.
 
-```mermaid
-erDiagram
-  service_config {
-    bigint   seq             PK "auto"
-    int      aes_key_version
-    longblob config             "json aes"
+```text
+dbspec 1 example
+
+table service_config {
+  seq i64 identity
+  aes_key_version i32
+  config bytes
+  primary key (seq)
+  settings {
+    codec config ordered_json aes
+    aes_version aes_key_version
   }
+}
 ```
 
 키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.

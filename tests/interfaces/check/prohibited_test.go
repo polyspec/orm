@@ -74,7 +74,7 @@ func TestCIRequiresGeneratedChecks(t *testing.T) {
 	if err := validateGeneratedCI(string(workflow)); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"go-model-check", "interface-check", "schema-check"} {
+	for _, command := range []string{"go-model-check", "ts-model-check", "interface-check"} {
 		changed := strings.Replace(string(workflow), "run: make "+command, "run: true", 1)
 		if changed == string(workflow) {
 			t.Fatalf("missing mutation target %s", command)
@@ -93,7 +93,7 @@ func validateGeneratedCI(workflow string) error {
 			commands[strings.TrimPrefix(line, "run: make ")] = true
 		}
 	}
-	for _, command := range []string{"go-model-check", "interface-check", "schema-check"} {
+	for _, command := range []string{"go-model-check", "ts-model-check", "interface-check"} {
 		if !commands[command] {
 			return fmt.Errorf("CI must run make %s", command)
 		}
