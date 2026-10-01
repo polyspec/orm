@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.7.2: the Go engine exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
 - T8.7.1: docs/mermaid.md specifies standard Mermaid export and import with the list of what each leaves out.
 
 - T8.6.2: the Go engine applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery.

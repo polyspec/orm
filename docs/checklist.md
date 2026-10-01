@@ -88,7 +88,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [ ] T8.6.6 Continue a chain that another client applied, in every pair of clients (requires T8.6.2-T8.6.5).
 - [~] T8.7 Export standard Mermaid `erDiagram` and import it with a complete list of dropped information (requires T8.2).
 - [o] T8.7.1 Specify Mermaid export and import in docs/mermaid.md and its Korean pair, with the shared cases of tests/dbspec/mermaid.json (requires T8.2). Evidence: docs/mermaid.md and docs/mermaid.ko.md state the export format (types with decimal(p-s), PK/FK/UK keys, column suffix comments, relationship lines and labels) and what export leaves out, and the import grammar, what import carries over and the dropped kinds; tests/dbspec/mermaid.json holds 1 export case, 2 import cases (the export read back and a diagram of another tool) and 4 invalid cases; docs-rules-check passes 24 pairs.
-- [ ] T8.7.2 Export and import Mermaid diagrams in the Go engine (requires T8.7.1).
+- [o] T8.7.2 Export and import Mermaid diagrams in the Go engine (requires T8.7.1). Evidence: engine/dbspec/mermaid.go `ExportMermaid` and `ImportMermaid`; the test did not build without them (`undefined: ExportMermaid`); `make dbspec-go-check` passes the export, import and invalid cases of tests/dbspec/mermaid.json; exporting schema/bench.dbspec and importing it back reproduces its tables, columns, keys and foreign keys and reports the 16 objects that export leaves out.
 - [ ] T8.7.3 Export and import Mermaid diagrams in the PHP client (requires T8.7.1).
 - [ ] T8.7.4 Export and import Mermaid diagrams in the TypeScript client (requires T8.7.1).
 - [ ] T8.7.5 Export and import Mermaid diagrams in the Rust client (requires T8.7.1).
