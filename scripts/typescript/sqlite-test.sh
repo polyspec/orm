@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs the TypeScript model, schema set, clock and driver error integration tests on SQLite, MySQL
+# Runs the TypeScript model, schema set, clock, driver error and rollback integration tests on SQLite, MySQL
 # and PostgreSQL, and the SQLite locking test; ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN
 # must name test databases.
 set -eu
@@ -12,3 +12,4 @@ node clients/typescript/tests/sqlite-concurrency.mjs
 node clients/typescript/tests/schema-set.mjs
 node clients/typescript/tests/clock.mjs
 node clients/typescript/tests/driver-error.mjs
+node clients/typescript/tests/rollback.mjs

@@ -216,7 +216,7 @@ class MySqlTx implements DriverTransaction {
     try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }
   public async rollback(): Promise<void> {
-    try { await this.connection.rollback(); } finally { this.connection.release(); }
+    try { await this.connection.rollback(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }
   public async rowLock(): Promise<void> {}
 }
@@ -284,9 +284,9 @@ function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
 class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
   public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {}
-  /** Returns client to the pool, or closes it when the pool already keeps idleSize idle connections. */
-  private release(client: pg.PoolClient): void {
-    client.release(this.pool.idleCount >= this.idleSize);
+  /** Returns client to the pool, or closes it when it failed or the pool already keeps idleSize idle connections. */
+  private release(client: pg.PoolClient, failed = false): void {
+    client.release(failed || this.pool.idleCount >= this.idleSize);
   }
   public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     let client: pg.PoolClient;
@@ -311,7 +311,7 @@ class PostgresPoolDriver implements DriverPool {
       this.release(client);
       throw driverError(this.name, error);
     }
-    return new PostgresTx(client, this.cacheSize, this.config, () => this.release(client));
+    return new PostgresTx(client, this.cacheSize, this.config, failed => this.release(client, failed));
   }
   public stats(): PoolStats {
     return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };
@@ -321,7 +321,17 @@ class PostgresPoolDriver implements DriverPool {
 
 class PostgresTx implements DriverTransaction {
   public readonly name = 'postgres' as const;
-  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly release: () => void) {}
+  /** The connection error the server reported between statements, such as the end of its session. */
+  private failure: unknown;
+  private readonly onError = (error: unknown) => { this.failure = error; };
+  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly done: (failed: boolean) => void) {
+    // A checked-out client reports a connection error between statements as an event; the next statement then fails.
+    client.on('error', this.onError);
+  }
+  private release(): void {
+    this.client.removeListener('error', this.onError);
+    this.done(this.failure !== undefined);
+  }
   public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     const work = pgExecute(this.client, sql, params, this.cacheSize);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
@@ -336,7 +346,7 @@ class PostgresTx implements DriverTransaction {
     try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   public async rollback(): Promise<void> {
-    try { await this.client.query('ROLLBACK'); } finally { this.release(); }
+    try { await this.client.query('ROLLBACK'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   public async rowLock(): Promise<void> {}
 }
@@ -438,7 +448,7 @@ class SqliteTx implements DriverTransaction {
     try {
       this.finishModes();
       this.state.db.exec('ROLLBACK');
-    } finally { this.release(); }
+    } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
   }
   /**
    * SQLite has no row-lock clause; one lock row serializes ORM lock requests.

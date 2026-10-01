@@ -3,6 +3,7 @@ package orm_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -160,7 +161,9 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 
 // TestWithContextCancelsInsideTransaction waits inside a transaction for a row
 // another connection holds, and cancels the handle's context: the statement
-// returns CANCELED instead of waiting for the lock.
+// returns CANCELED instead of waiting for the lock. On MySQL and PostgreSQL
+// the driver closes the connection of the cancelled statement, so the
+// transaction reports ROLLBACK, which keeps the cancellation.
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
 	targets := map[string]string{
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -247,8 +250,18 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 			if holderErr := <-done; holderErr != nil {
 				t.Fatal(holderErr)
 			}
-			if orm.ErrorCode(err) != orm.CodeCanceled {
-				t.Fatalf("blocked read: %v (code %q)", err, orm.ErrorCode(err))
+			// The MySQL and PostgreSQL drivers close the connection of a
+			// cancelled statement, so the rollback of the transaction fails
+			// and the client reports both errors.
+			want := orm.CodeCanceled
+			if driver != "sqlite" {
+				want = orm.CodeRollback
+			}
+			if orm.ErrorCode(err) != want {
+				t.Fatalf("blocked read: %v (code %q), want %s", err, orm.ErrorCode(err), want)
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("blocked read does not keep the cancellation: %v", err)
 			}
 			if waited > 10*time.Second {
 				t.Fatalf("cancel took %s", waited)

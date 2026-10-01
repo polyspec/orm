@@ -1,5 +1,18 @@
 # 변경 이력
 
+트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 두 오류를
+모두 보고한다(N13). PHP 클라이언트는 callback 오류를 rollback 오류로 바꾸었고,
+TypeScript 클라이언트는 rollback 오류를 버렸으며, Go 클라이언트는 트랜잭션
+rollback 오류를 버렸고, Rust 클라이언트는 두 오류를 `CONFIG` 문자열로만
+보고했다. 이제 모든 클라이언트가 catalog code `ROLLBACK`을 가진 오류 하나를
+반환하며, 그 오류는 두 오류를 적고 유지한다. checkout된 TypeScript PostgreSQL
+연결은 서버가 문장 사이에 보고한 연결 오류를 처리되지 않은 error event로
+process를 종료하지 않고 보관한다. ORM test는 SQLite에서 callback이 model 호출만
+하는 동안 `ROLLBACK`을 일으키는 fixture trigger로 트랜잭션을 종료하고, MySQL과
+PostgreSQL에서는 test 연결이 server session을 종료한다. Go에서 MySQL이나
+PostgreSQL 트랜잭션 안의 취소된 문장은 연결을 닫으므로, 트랜잭션은 취소를 유지한
+`ROLLBACK`을 보고한다.
+
 네 클라이언트에 `utils().schema().register(manifestJson)`을 제공한다(N3.3).
 테이블이 이미 있는 스키마를 등록하려면 engine을 만들고 내부
 `registerEngine`을 호출해야 했다. register는 manifest hash를 내용과 대조하여 다르면

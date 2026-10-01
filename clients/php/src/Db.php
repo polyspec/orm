@@ -218,8 +218,13 @@ final class Db
             $v = $fn();
         } catch (\Throwable $e) {
             array_pop(self::$frames);
-            $this->finish($frame, false);
-            throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            $e = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            try {
+                $this->finish($frame, false);
+            } catch (\Throwable $rollback) {
+                throw OrmException::rollback($e, $rollback);
+            }
+            throw $e;
         }
         array_pop(self::$frames);
         $this->finish($frame, true);
@@ -306,10 +311,15 @@ final class Db
             }
             $commit ? $this->pdo->commit() : $this->pdo->rollBack();
         } catch (\PDOException $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            $e = OrmException::fromDriver($e, $this->driver);
+            if ($commit && $this->pdo->inTransaction()) {
+                try {
+                    $this->pdo->rollBack();
+                } catch (\PDOException $rollback) {
+                    throw OrmException::rollback($e, OrmException::fromDriver($rollback, $this->driver));
+                }
             }
-            throw OrmException::fromDriver($e, $this->driver);
+            throw $e;
         }
     }
 
@@ -323,9 +333,14 @@ final class Db
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $this->pdo->exec("ROLLBACK TO SAVEPOINT $name");
-                $this->pdo->exec("RELEASE SAVEPOINT $name");
-                throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                $e = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                try {
+                    $this->pdo->exec("ROLLBACK TO SAVEPOINT $name");
+                    $this->pdo->exec("RELEASE SAVEPOINT $name");
+                } catch (\PDOException $rollback) {
+                    throw OrmException::rollback($e, OrmException::fromDriver($rollback, $this->driver));
+                }
+                throw $e;
             }
             array_pop(self::$frames);
             $this->pdo->exec("RELEASE SAVEPOINT $name");

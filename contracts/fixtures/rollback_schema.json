@@ -1,0 +1,32 @@
+{
+  "schema_hash": "49f05d72379c94b4",
+  "order": [
+    "rollback_probe"
+  ],
+  "entities": {
+    "rollback_probe": {
+      "name": "rollback_probe",
+      "table": "rollback_probe",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "raw": "varchar(32)",
+          "len": 32
+        }
+      ],
+      "relations": {}
+    }
+  }
+}

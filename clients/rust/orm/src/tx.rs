@@ -276,7 +276,7 @@ where
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                        return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -366,7 +366,7 @@ impl<'a, F> Transaction<'a, F> {
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                        return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -396,8 +396,12 @@ where
                 Ok(v)
             }
             Err(e) => {
-                tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
-                let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                if let Err(rollback) = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await {
+                    return Err(Error::rollback(e, rollback));
+                }
+                if let Err(release) = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await {
+                    return Err(Error::rollback(e, release));
+                }
                 Err(e)
             }
         }
@@ -424,8 +428,12 @@ where
                 Ok(v)
             }
             Err(e) => {
-                tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
-                let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                if let Err(rollback) = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await {
+                    return Err(Error::rollback(e, rollback));
+                }
+                if let Err(release) = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await {
+                    return Err(Error::rollback(e, release));
+                }
                 Err(e)
             }
         }

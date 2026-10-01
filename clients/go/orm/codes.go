@@ -30,6 +30,7 @@ const (
 	CodeCodecUnsupported      = "CODEC_UNSUPPORTED"      // executor: PHP objects/references in serialize, unknown style
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
+	CodeRollback              = "ROLLBACK"               // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 	CodeInternal              = "INTERNAL"               // executor
 	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
 	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions

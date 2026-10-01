@@ -325,9 +325,19 @@ final class Config
 
 final class OrmException extends \RuntimeException
 {
-    public function __construct(public readonly string $code_, string $message, ?\Throwable $previous = null)
+    /**
+     * @param ?\Throwable $rollback the rollback error of a ROLLBACK error, whose
+     *     previous exception is the callback error
+     */
+    public function __construct(public readonly string $code_, string $message, ?\Throwable $previous = null, public readonly ?\Throwable $rollback = null)
     {
         parent::__construct($code_ . ': ' . $message, 0, $previous);
+    }
+
+    /** The error of a callback that failed and whose rollback failed too. */
+    public static function rollback(\Throwable $callback, \Throwable $rollback): self
+    {
+        return new self(Code::ROLLBACK, 'callback failed (' . $callback->getMessage() . ') and rollback failed (' . $rollback->getMessage() . ')', $callback, $rollback);
     }
 
     /**

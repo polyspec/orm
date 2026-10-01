@@ -486,6 +486,7 @@ psql … -f schema.pg.sql
 | `READ_ONLY` | 쓰기가 읽기 전용 서버나 연결에 도달했다. replica, 읽기 전용 트랜잭션, 읽기 전용으로 열린 SQLite 데이터베이스가 해당한다. 쓰기는 primary 연결에서 실행한다 |
 | `CONSTRAINT` | CHECK 제약이 행을 거부했다. 오류는 드라이버 메시지와 드라이버 오류를 유지한다 |
 | `DRIVER` | `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류. 오류는 드라이버 메시지와 원인인 드라이버 오류를 유지한다 |
+| `ROLLBACK` | 서버가 session을 종료한 경우처럼 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패했다. 오류는 두 오류를 유지하며 재시도하지 않는다 |
 | `CODEC_DECODE` | 저장 바이트가 선언된 컬럼 스타일과 다르다 |
 
 ---

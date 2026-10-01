@@ -53,6 +53,8 @@ pub enum Error {
     OptimisticLock,
     /// Executor configuration problem (missing AES key, bad transform input, …).
     Config(String),
+    /// A transaction or savepoint callback failed and its rollback failed too.
+    Rollback { callback: Box<Error>, rollback: Box<Error> },
 }
 
 impl std::fmt::Display for Error {
@@ -63,6 +65,7 @@ impl std::fmt::Display for Error {
             Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
+            Error::Rollback { callback, rollback } => write!(f, "{}: callback failed ({callback}) and rollback failed ({rollback})", codes::ROLLBACK),
         }
     }
 }
@@ -71,6 +74,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::Driver { source, .. } => Some(source),
+            Error::Rollback { callback, .. } => Some(callback.as_ref()),
             _ => None,
         }
     }
@@ -150,7 +154,13 @@ impl Error {
             Error::NoRows => codes::NO_ROWS,
             Error::OptimisticLock => codes::OPTIMISTIC_LOCK,
             Error::Config(_) => codes::CONFIG,
+            Error::Rollback { .. } => codes::ROLLBACK,
         }
+    }
+
+    /// The error of a callback that failed and whose rollback failed too.
+    pub fn rollback(callback: Error, rollback: Error) -> Error {
+        Error::Rollback { callback: Box::new(callback), rollback: Box::new(rollback) }
     }
 
     /// A DEADLOCK mapped at the driver boundary (`From<sqlx::Error>`): MySQL 1213 / 40001,
