@@ -1,5 +1,9 @@
 # Changelog
 
+Declare `Dbspec.render` in contracts/interfaces.json and compare the
+rendered statements of the four clients in `make dbspec-compare-check`
+(T8.3.6).
+
 Reject a dbspec document set with a repeated document name or a missing
 used document in the manifest and the renderer of every client, which
 now returns statements or diagnostics (T8.2.6.2.1).

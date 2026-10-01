@@ -92,7 +92,7 @@ dbspec-compare-check:
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare
-	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT)
+	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json
 
 dbspec-rust-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))

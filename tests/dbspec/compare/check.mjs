@@ -1,10 +1,11 @@
-// Compares the four dbspec clients (T8.2.5): every runner reads the shared
-// cases and the stress document and prints, for each case, its name and then
-// either its emission ("| " lines) or its diagnostics ("! rule line column");
-// the stress document prints "= unchanged" when it emits back unchanged. Each
-// runner runs twice and every output must equal the first Go output.
+// Compares the four dbspec clients: every runner reads the shared cases, the
+// stress document and the statement vectors and prints, for each case, its
+// name and then its emission, manifest or rendered statements ("| " and "= "
+// lines) or its diagnostics ("! rule line column"); the stress document prints
+// "= unchanged" when it emits back unchanged. Each runner runs twice and every
+// output must equal the first Go output.
 //
-// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document>
+// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json>
 // (after the TypeScript build and the release build of the Rust example)
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -13,9 +14,9 @@ import { compare } from './compare.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const TIMEOUT = 120000;
-const [cases, stress] = process.argv.slice(2);
-if (cases === undefined || stress === undefined) {
-  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document>');
+const [cases, stress, ddl] = process.argv.slice(2);
+if (cases === undefined || stress === undefined || ddl === undefined) {
+  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json>');
   process.exit(2);
 }
 
@@ -28,7 +29,7 @@ const runners = [
 
 function run(runner) {
   return new Promise((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, cases, stress], { cwd: root, timeout: TIMEOUT });
+    const child = spawn(runner.command, [...runner.args, cases, stress, ddl], { cwd: root, timeout: TIMEOUT });
     const out = [];
     const err = [];
     child.stdout.on('data', chunk => out.push(chunk));
