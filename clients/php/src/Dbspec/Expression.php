@@ -227,7 +227,7 @@ final class Expression
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
-            if (!isset(self::KEYWORDS[$token]) || isset($this->columns[$token])) {
+            if (!isset(self::KEYWORDS[$token])) {
                 $operand = ['column', $token, $this->position(), $this->columns[$token] ?? null];
                 $this->take();
                 return $operand;

@@ -201,7 +201,7 @@ interface ParseContext {
 
 const RESERVED = new Set([
   'dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings',
-  'null', 'identity', 'default', 'true', 'false',
+  'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is',
 ]);
 
 /** Whether a name matches the name rule; reserved words are not names. */

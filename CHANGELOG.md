@@ -1,5 +1,9 @@
 # Changelog
 
+Reserve `and`, `or`, `not`, `in`, `between` and `is` as dbspec names in
+every client, so a check predicate never reads a column named like a
+keyword (T8.1.6).
+
 Declare `Dbspec.render` in contracts/interfaces.json and compare the
 rendered statements of the four clients in `make dbspec-compare-check`
 (T8.3.6).

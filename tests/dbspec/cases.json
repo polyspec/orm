@@ -3569,6 +3569,33 @@
           "rule": "name.length"
         }
       ]
+    },
+    {
+      "id": "reserved-predicate-keywords",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table or {",
+          "  id i64 identity",
+          "  between i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "name.format"
+        },
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        }
+      ]
     }
   ],
   "hashes": [
