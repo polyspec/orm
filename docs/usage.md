@@ -197,7 +197,7 @@ Each language generates its models with its own build tool. The generator reads 
 ```sh
 go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace 'Example\Model'
-npx orm-gen gen --schema schema/schema.json --out src/models --scan src
+npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
 ```
 
 ```rust
@@ -278,9 +278,16 @@ The generated module embeds its schema, so the connection does not take a schema
 
 ```typescript
 import { Db } from '@polyspec/orm-typescript';
+import { Item } from './models/models.js';
 
-const master = await Db.connect(masterDsn, schemaPath, { aesKey });
+const master = await Db.connect(masterDsn, { aesKey });
+await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.transaction(async () => {
+  await new Item().setTitle('first').create();
+}, { operation: 42 });
 ```
+
+`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT` and its hash as `MANIFEST_HASH` and registers the model when it is imported; `Db.connect(dsn, options)` takes no schema path, and a request of models that the process did not import fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(texts)` takes the dbspec texts of one document set and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
 
 Each client caches plans by request shape. `connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of a manifest on every database; existing tables are kept.
 
@@ -448,7 +455,7 @@ psql … -f schema.pg.sql
 - Go: `model.Connect(url, schemaPath, config)`; the DSN scheme selects the driver.
 - PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
 - Rust: `orm::Db::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
-- TypeScript: `Db.connect(url, schemaPath, options)`; the DSN scheme selects the driver package.
+- TypeScript: `Db.connect(url, options)`; the DSN scheme selects the driver package.
 - Several connections can be open at once, and `connect` selects one per model, for example reads on `slave1` and writes on `master`.
 - SQLite rejects `Lb` and fulltext operators (`OPERATOR_NOT_ALLOWED`).
 
