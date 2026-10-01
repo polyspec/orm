@@ -150,9 +150,12 @@ final class Dbspec
      * the statements and verifies each plan. `$now` gives the time recorded
      * as `applied_at`; `$events` receives each ApplyEvent, and an exception it
      * throws stops apply there and propagates. A failure is an ApplyError;
-     * an unknown dialect, or a connection whose error mode is not
-     * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
-     * has applied the whole chain stays unchanged.
+     * when releasing the lock, ending the transaction or restoring SQLite
+     * foreign keys fails after it, apply throws an ApplyCleanupError whose
+     * previous throwable is that failure and whose `cleanup` lists the
+     * cleanup errors. An unknown dialect, or a connection whose error mode is
+     * not PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database
+     * that has applied the whole chain stays unchanged.
      *
      * @param list<Plan> $plans
      * @param \Closure(): \DateTimeInterface $now
