@@ -18,7 +18,8 @@ if (!class_exists(StyledValue::class)) {
 $tested = 0;
 foreach ($fixture['cases'] as $case) {
     $id = $case['id'];
-    $styles = [$case['style']];
+    // fixture의 Mermaid style 이름 json과 jsons는 둘 다 dbspec codec stage ordered_json이다.
+    $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
     if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {
         if (!in_array($id, ['unselected', 'nonnull_sql_null'], true)) {
             throw new RuntimeException("$id: fixture case has no codec operation");
@@ -56,9 +57,10 @@ $probe = new class extends Model {
     public static function meta(): array
     {
         return [
-            'entity' => 'styled_probe', 'table' => 'styled_probe', 'pk' => [], 'auto' => '',
-            'updated' => '', 'aes_version' => '', 'fulltext' => [], 'indexes' => [],
-            'columns' => ['payload' => ['type' => 'jsontext', 'nullable' => false, 'styles' => ['json']]],
+            'entity' => 'styled_probe', 'table' => 'styled_probe', 'pk' => [], 'identity' => '',
+            'updated' => '', 'soft_delete' => '', 'aes_version' => '', 'audit' => '', 'unique' => [], 'indexes' => [],
+            'columns' => ['payload' => ['name' => 'payload', 'type' => 'text', 'nullable' => false, 'default' => false, 'select' => true,
+                'codec' => ['ordered_json'], 'blind_index' => '', 'pk' => false, 'foreign_key' => false]],
         ];
     }
 

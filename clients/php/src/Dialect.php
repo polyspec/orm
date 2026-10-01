@@ -8,8 +8,6 @@ final class Dialect
 {
     /** Replaced in trusted expression fragments with the advancing wall clock. */
     public const CURRENT_TIME_TOKEN = '$CURRENT_TIME';
-    /** Sphere radius of MySQL ST_Distance_Sphere and the portable haversine. */
-    private const EARTH_RADIUS = '6370986';
 
     /** Column types each column function accepts. */
     public const COLUMN_FUNCTION_TYPES = [
@@ -17,13 +15,10 @@ final class Dialect
         'year' => ['date', 'datetime'],
         'month' => ['date', 'datetime'],
         'date' => ['date', 'datetime'],
-        'distance' => ['point'],
-        'point_x' => ['point'],
-        'point_y' => ['point'],
     ];
 
     /** Arguments of each column function, not counting the compared value. */
-    public const COLUMN_FUNCTION_ARITY = ['day_of_week' => 0, 'year' => 0, 'month' => 0, 'date' => 0, 'distance' => 2, 'point_x' => 0, 'point_y' => 0];
+    public const COLUMN_FUNCTION_ARITY = ['day_of_week' => 0, 'year' => 0, 'month' => 0, 'date' => 0];
 
     /** Interval unit of each relative value function. */
     public const VALUE_FUNCTION_UNITS = [
@@ -91,19 +86,10 @@ final class Dialect
         return $this->name === 'postgres' ? 'clock_timestamp()' : 'CURRENT_TIMESTAMP';
     }
 
-    public function supports(string $op): bool
-    {
-        return $this->name !== 'sqlite' || ($op !== 'match' && $op !== 'match_boolean');
-    }
-
-    /** Whether a style stage is applied in SQL; the rest is left to the executor. */
+    /** codec stage를 SQL에서 적용하는지 여부다. 나머지는 executor가 적용한다. */
     public function handlesStyle(string $style): bool
     {
-        return match ($this->name) {
-            'mysql' => $style === 'hex' || $style === 'ip',
-            'postgres' => $style === 'ip',
-            default => false,
-        };
+        return $this->name === 'mysql' && ($style === 'hex' || $style === 'ip');
     }
 
     /** SQLite has no sub-second clock function; the executor binds the time. */
@@ -131,17 +117,6 @@ final class Dialect
         };
     }
 
-    /** @param list<string> $cols */
-    public function fulltext(array $cols, string $ph, bool $boolean): string
-    {
-        if ($this->name === 'mysql') {
-            return 'MATCH(' . implode(', ', $cols) . ") AGAINST ($ph" . ($boolean ? ' IN BOOLEAN MODE' : ' IN NATURAL LANGUAGE MODE') . ')';
-        }
-        $doc = count($cols) > 1 ? 'coalesce(' . implode(", '') || ' ' || coalesce(", $cols) . ", '')" : implode(" || ' ' || ", $cols);
-        $fn = $boolean ? 'websearch_to_tsquery' : 'plainto_tsquery';
-        return "to_tsvector('simple', $doc) @@ $fn('simple', $ph)";
-    }
-
     /** @param list<string> $conflict */
     public function upsert(array $conflict, string $assigns): string
     {
@@ -152,61 +127,28 @@ final class Dialect
         return ' ON CONFLICT (' . implode(', ', $q) . ') DO UPDATE SET ' . $assigns;
     }
 
-    /** SQL-side read stages of a column. @param list<string> $styles */
-    public function readExpr(string $col, string $type, array $styles): string
+    /** column의 SQL 쪽 read stage다. handlesStyle이 고른 stage만 받는다. @param list<string> $styles */
+    public function readExpr(string $col, array $styles): string
     {
-        switch ($this->name) {
-            case 'mysql':
-                if ($type === 'point') {
-                    $col = "ST_AsText($col)";
-                }
-                for ($i = count($styles) - 1; $i >= 0; $i--) {
-                    $col = match ($styles[$i]) {
-                        'hex' => "UNHEX($col)",
-                        'ip' => "INET6_NTOA($col)",
-                        default => $col,
-                    };
-                }
-                return $col;
-            case 'postgres':
-                if ($type === 'point') {
-                    $col = "($col)::text";
-                }
-                return in_array('ip', $styles, true) ? "host($col)" : $col;
-            default:
-                return $col;
+        for ($i = count($styles) - 1; $i >= 0; $i--) {
+            $col = match ($styles[$i]) {
+                'hex' => "UNHEX($col)",
+                'ip' => "INET6_NTOA($col)",
+            };
         }
+        return $col;
     }
 
-    /** SQL-side write stages around a bound value. @param list<string> $styles */
-    public function writeExpr(string $ph, string $type, array $styles): string
+    /** bind 값 주위의 SQL 쪽 write stage다. handlesStyle이 고른 stage만 받는다. @param list<string> $styles */
+    public function writeExpr(string $ph, array $styles): string
     {
-        switch ($this->name) {
-            case 'mysql':
-                if ($type === 'point') {
-                    $ph = "ST_PointFromText($ph)";
-                }
-                foreach ($styles as $s) {
-                    $ph = match ($s) {
-                        'hex' => "HEX($ph)",
-                        'ip' => "INET6_ATON($ph)",
-                        default => $ph,
-                    };
-                }
-                return $ph;
-            case 'postgres':
-                if ($type === 'point') {
-                    $ph = "CAST($ph AS text)::point";
-                }
-                foreach ($styles as $s) {
-                    if ($s === 'ip') {
-                        $ph = "($ph)::inet";
-                    }
-                }
-                return $ph;
-            default:
-                return $ph;
+        foreach ($styles as $s) {
+            $ph = match ($s) {
+                'hex' => "HEX($ph)",
+                'ip' => "INET6_ATON($ph)",
+            };
         }
+        return $ph;
     }
 
     /** The row lock suffix; SQLite locks in the executor. */
@@ -239,8 +181,7 @@ final class Dialect
         return '(' . implode(', ', $cols) . ')' . ($negate ? ' NOT IN ' : ' IN ') . '(' . $list . ')';
     }
 
-    /** @param \Closure(int): string $arg a placeholder for the i-th function argument */
-    public function columnFunction(string $fn, string $col, \Closure $arg): ?string
+    public function columnFunction(string $fn, string $col): ?string
     {
         switch ($this->name) {
             case 'mysql':
@@ -249,9 +190,6 @@ final class Dialect
                     'year' => "YEAR($col)",
                     'month' => "MONTH($col)",
                     'date' => "DATE($col)",
-                    'distance' => "ST_Distance_Sphere($col, POINT(" . $arg(0) . ', ' . $arg(1) . '))',
-                    'point_x' => "ST_X($col)",
-                    'point_y' => "ST_Y($col)",
                     default => null,
                 };
             case 'postgres':
@@ -260,9 +198,6 @@ final class Dialect
                     'year' => "EXTRACT(YEAR FROM $col)::int",
                     'month' => "EXTRACT(MONTH FROM $col)::int",
                     'date' => "CAST($col AS date)",
-                    'distance' => self::haversine("{$col}[0]", "{$col}[1]", static fn(): string => 'CAST(' . $arg(0) . ' AS double precision)', static fn(): string => 'CAST(' . $arg(1) . ' AS double precision)'),
-                    'point_x' => "{$col}[0]",
-                    'point_y' => "{$col}[1]",
                     default => null,
                 };
             default:
@@ -271,9 +206,6 @@ final class Dialect
                     'year' => "CAST(strftime('%Y', $col) AS INTEGER)",
                     'month' => "CAST(strftime('%m', $col) AS INTEGER)",
                     'date' => "date($col)",
-                    'distance' => self::haversine(self::sqlitePoint($col, false), self::sqlitePoint($col, true), static fn(): string => $arg(0), static fn(): string => $arg(1)),
-                    'point_x' => self::sqlitePoint($col, false),
-                    'point_y' => self::sqlitePoint($col, true),
                     default => null,
                 };
         }
@@ -323,22 +255,5 @@ final class Dialect
                 $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'";
                 return $unit === 'month' ? "datetime($clock, $modifier, 'floor')" : "datetime($clock, $modifier)";
         }
-    }
-
-    /** Great-circle distance; $x2 and $y2 bind a value at each occurrence. */
-    private static function haversine(string $x1, string $y1, \Closure $x2, \Closure $y2): string
-    {
-        $rad = static fn(string $v): string => "RADIANS($v)";
-        return '(2 * ' . self::EARTH_RADIUS . ' * ASIN(SQRT(POWER(SIN((' . $rad($y2()) . ' - ' . $rad($y1) . ') / 2), 2) + COS(' . $rad($y1) . ') * COS(' . $rad($y2()) . ') * POWER(SIN((' . $rad($x2()) . ' - ' . $rad($x1) . ') / 2), 2))))';
-    }
-
-    /** One coordinate of the stored `POINT(x y)` text. */
-    private static function sqlitePoint(string $col, bool $second): string
-    {
-        $space = "instr($col, ' ')";
-        if ($second) {
-            return "CAST(substr($col, $space + 1, length($col) - $space - 1) AS REAL)";
-        }
-        return "CAST(substr($col, 7, $space - 7) AS REAL)";
     }
 }

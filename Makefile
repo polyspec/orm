@@ -246,7 +246,7 @@ fuzz-check:
 	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 client-unit-check:
-	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
+	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php
 
 client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh

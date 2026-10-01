@@ -34,7 +34,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:a1430054c133328a39a46e547539271dd7e676594983a27c4814f90f6ba4a867",
-    "php": "sha256:864379b3daa6d6099da464af15cc97d8e6bcf4b637c5c1cc31b256deb2a3da07",
+    "php": "sha256:2d9915816f666676a67fe6eb2d065f543d8e1f1809570c79c28f9f6b81725d5e",
     "rust": "sha256:6251f7aefc6e97a229e29a6f815545f0d4de25307db0c34f2e3d519ec1160d1a",
     "typescript": "sha256:ad17fb8c84a0ba10957f203199c9d05941f7c2e89d94510c34dcc6cde387c533"
   },
@@ -1084,7 +1084,7 @@
         },
         "php": {
           "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
-          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3): mixed"
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, string|int|null $operation=null): mixed"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/tx.rs::Db::transaction",
@@ -1199,7 +1199,7 @@
         },
         "php": {
           "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
-          "signature": "public function install(string $manifestJson): void"
+          "signature": "public function install(array $documents): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
@@ -1678,7 +1678,7 @@
       },
       "fields": {
         "ir_version": "integer",
-        "schema_hash": "text",
+        "manifest_hash": "text",
         "kind": "text",
         "set": "list<IRAssign>",
         "on_duplicate": "list<IRAssign>",
@@ -1859,7 +1859,6 @@
         "ps": "list<integer>",
         "ref": "IRColRef",
         "expr": "text",
-        "match": "list<text>",
         "fn": "IRFunc",
         "value": "IRFunc",
         "cols": "list<text>",
@@ -1871,7 +1870,6 @@
         "conn",
         "expr",
         "fn",
-        "match",
         "op",
         "p",
         "ps",

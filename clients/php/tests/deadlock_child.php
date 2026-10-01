@@ -3,7 +3,7 @@
 // print "locked", wait for a line on stdin, then update the second row. The other side runs with
 // the rows swapped, so the database reports a deadlock to one of them and transaction() runs the
 // closure again. Prints "done <closure runs>".
-// Usage: php deadlock_child.php <dsn> <schema.json> <first seq> <second seq> <tag>
+// Usage: php deadlock_child.php <dsn> <first seq> <second seq> <tag>
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -12,8 +12,8 @@ use Polyspec\Orm\Tests\Model\Author;
 use Orm\Config;
 use Orm\Orm;
 
-[, $dsn, $schema, $first, $second, $tag] = $argv;
-$db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+[, $dsn, $first, $second, $tag] = $argv;
+$db = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
 $runs = 0;
 $db->transaction(function () use (&$runs, $first, $second, $tag): void {
     $runs++;

@@ -1,6 +1,6 @@
 <?php
-// Engine test: manifest hash check, request validation, statement forms of each
-// dialect, and generator output.
+// Engine test: manifest hash check, request validation, and statement forms of
+// each dialect for the runtime model of schema/bench.dbspec.
 // Usage: php clients/php/tests/engine_test.php
 declare(strict_types=1);
 
@@ -8,13 +8,11 @@ require __DIR__ . '/autoload.php';
 
 use Orm\Code;
 use Orm\Engine;
-use Orm\Generator;
-use Orm\Manifest;
 use Orm\OrmException;
+use Orm\RuntimeModel;
 
 $root = dirname(__DIR__, 3);
-$json = (string) file_get_contents("$root/schema/schema.json");
-$manifest = Manifest::load($json);
+$model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbspec"]));
 $failures = 0;
 
 function expect(bool $ok, string $message): void
@@ -36,13 +34,11 @@ function code(callable $fn): string
     return 'no error';
 }
 
-expect(code(fn() => Manifest::load(str_replace('"table": "author"', '"table": "authors"', $json))) === Code::SCHEMA_INVALID, 'edited manifest');
-
 $engines = [];
 foreach (['mysql', 'postgres', 'sqlite'] as $d) {
-    $engines[$d] = new Engine($manifest, $d, 8);
+    $engines[$d] = new Engine($model, $d, 8);
 }
-$request = static fn(array $ir): array => ['ir_version' => 1, 'schema_hash' => $manifest->schemaHash] + $ir;
+$request = static fn(array $ir): array => ['ir_version' => 1, 'manifest_hash' => $model->manifestHash] + $ir;
 $byId = $request(['kind' => 'one', 'entity' => 'service', 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 0]]]], 'n_params' => 1]);
 
 $want = [
@@ -62,12 +58,16 @@ foreach ([
     'raw kind' => [$request(['kind' => 'raw', 'entity' => 'service', 'n_params' => 0]), Code::IR_INVALID],
     'max kind' => [$request(['kind' => 'max', 'entity' => 'service', 'agg' => 'seq', 'n_params' => 0]), Code::IR_INVALID],
     'wrong type' => [$request(['kind' => 'all', 'entity' => 'service', 'n_params' => '0']), Code::IR_INVALID],
-    'schema hash' => [['ir_version' => 1, 'schema_hash' => 'x', 'kind' => 'all', 'entity' => 'service', 'n_params' => 0], Code::SCHEMA_HASH_MISMATCH],
+    'manifest hash' => [['ir_version' => 1, 'manifest_hash' => 'x', 'kind' => 'all', 'entity' => 'service', 'n_params' => 0], Code::SCHEMA_HASH_MISMATCH],
     'entity' => [$request(['kind' => 'all', 'entity' => 'missing', 'n_params' => 0]), Code::ENTITY_UNKNOWN],
     'param range' => [$request(['kind' => 'all', 'entity' => 'service', 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 1]]]], 'n_params' => 1]), Code::IR_INVALID],
     'or first' => [$request(['kind' => 'all', 'entity' => 'service', 'where' => ['items' => [['pred' => ['conn' => 'or', 'column' => 'seq', 'op' => 'eq', 'p' => 0]]]], 'n_params' => 1]), Code::OR_AT_GROUP_START],
     'like op' => [$request(['kind' => 'all', 'entity' => 'service', 'where' => ['items' => [['pred' => ['column' => 'name', 'op' => 'like', 'p' => 0]]]], 'n_params' => 1]), Code::OPERATOR_NOT_ALLOWED],
     'empty in' => [$request(['kind' => 'all', 'entity' => 'service', 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'in', 'ps' => []]]]], 'n_params' => 0]), Code::EMPTY_IN],
+    'relation by name' => [$request(['kind' => 'all', 'entity' => 'service_member', 'relations' => [['rel' => 'service', 'query' => ['entity' => 'service']]], 'n_params' => 0]), Code::IR_INVALID],
+    'join by name' => [$request(['kind' => 'all', 'entity' => 'service_member', 'joins' => [['rel' => 'service', 'kind' => 'inner', 'query' => ['entity' => 'service']]], 'n_params' => 0]), Code::IR_INVALID],
+    'match op' => [$request(['kind' => 'all', 'entity' => 'author', 'where' => ['items' => [['pred' => ['op' => 'match', 'match' => ['name'], 'p' => 0]]]], 'n_params' => 1]), Code::IR_INVALID],
+    'insert without required column' => [$request(['kind' => 'insert', 'entity' => 'service_region', 'set' => [['column' => 'name', 'p' => 0]], 'n_params' => 1]), Code::IR_INVALID],
     'update without where' => [$request(['kind' => 'update', 'entity' => 'service', 'set' => [['column' => 'name', 'p' => 0]], 'n_params' => 1]), Code::IR_INVALID],
 ] as $name => [$ir, $code]) {
     expect(code(fn() => $mysql->compile($ir)) === $code, "validation: $name");
@@ -83,18 +83,6 @@ foreach ($engines as $d => $engine) {
     $mark = 'SET ' . $q('deleted_at') . ' = ' . ($d === 'sqlite' ? '?' : 'CURRENT_TIMESTAMP');
     expect(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
 }
-
-$fulltext = $request(['kind' => 'all', 'entity' => 'author', 'where' => ['items' => [['pred' => ['op' => 'match', 'match' => $manifest->entities['author']['fulltext'][0], 'p' => 0]]]], 'n_params' => 1]);
-expect(code(fn() => $engines['sqlite']->compile($fulltext)) === Code::OPERATOR_NOT_ALLOWED, 'sqlite full-text');
-expect(str_contains($engines['postgres']->compile($fulltext)['steps'][0]['sql'], "plainto_tsquery('simple', \$1)"), 'postgres full-text');
-
-$out = sys_get_temp_dir() . '/orm-php-gen-' . getmypid();
-Generator::generate($manifest, $out, 'Polyspec\Orm\Tests\Model');
-foreach (glob("$root/clients/php/gen/*.php") as $file) {
-    expect(file_get_contents($file) === file_get_contents($out . '/' . basename($file)), 'generated ' . basename($file));
-}
-array_map('unlink', glob("$out/*.php"));
-rmdir($out);
 
 if ($failures > 0) {
     fwrite(STDERR, "php engine test: $failures failures\n");
