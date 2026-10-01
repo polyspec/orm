@@ -937,6 +937,7 @@
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::checks": " fn checks (\u0026 mut self)",
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::columns": " fn columns (\u0026 mut self)",
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::foreign_key": " fn foreign_key (\u0026 mut self , key : \u0026 ForeignKey)",
+  "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::generated_name": " fn generated_name (\u0026 mut self , at : Pos , suffix : \u0026 str , suffix_is_column : bool)",
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::key_columns": " fn key_columns \u003c 'n \u003e (\u0026 mut self , columns : impl Iterator \u003c Item = (\u0026 'n Name , bool) \u003e , at : Pos , primary : bool)",
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::keys": " fn keys (\u0026 mut self)",
   "clients/rust/orm-schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::report": " fn report (\u0026 mut self , pos : Pos , rule : \u0026 'static str , message : impl Into \u003c String \u003e)",

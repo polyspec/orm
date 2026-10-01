@@ -3,7 +3,7 @@
 
 use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
-use super::parser::{name_problem, well_formed, Diag, FailedKeys};
+use super::parser::{name_problem, well_formed, Diag, FailedKeys, MAX_NAME_BYTES};
 use std::collections::{HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -217,8 +217,30 @@ impl<'s, 'd> TableRules<'s, 'd> {
         self.settings();
     }
 
+    /// Reports `<table>$<suffix>`, a name that the renderer generates, when it
+    /// exceeds the name limit (docs/dbspec.md, "Names"). A malformed or too
+    /// long table name, or column name when the suffix is a column, is
+    /// already reported at that name.
+    fn generated_name(&mut self, at: Pos, suffix: &str, suffix_is_column: bool) {
+        let table = &self.own.table.name.text;
+        if !well_formed(table) || (suffix_is_column && !well_formed(suffix)) {
+            return;
+        }
+        let name = format!("{table}${suffix}");
+        if name.len() > MAX_NAME_BYTES {
+            self.report(at, "name.length", format!("the generated name {name} has {} bytes; the limit is {MAX_NAME_BYTES}", name.len()));
+        }
+    }
+
     fn columns(&mut self) {
         let table = self.own.table;
+        // The renderer writes a type CHECK for every column other than an
+        // identity, text or bytes column.
+        for column in &table.columns {
+            if column.identity.is_none() && !matches!(column.ty, Type::Text | Type::Bytes) {
+                self.generated_name(column.name.pos, &column.name.text, true);
+            }
+        }
         let mut names = HashSet::new();
         for column in &table.columns {
             if !names.insert(column.name.text.as_str()) {
@@ -497,6 +519,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     if changes_rows {
                         self.report(line.pos, "setting", "immutable is rejected on a child of a cascade or set_null foreign key");
                     }
+                    // The longest of the immutable trigger names stands for both.
+                    self.generated_name(line.pos, "immutable_update", false);
                 }
                 Setting::Audit { into, operation, action, previous } => {
                     if !has_soft_delete {
@@ -506,6 +530,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
                     self.audit(into, operation, action, previous);
+                    // The longest of the audit trigger names stands for all three.
+                    self.generated_name(line.pos, "audit_insert", false);
                 }
             }
         }

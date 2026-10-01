@@ -11,7 +11,7 @@ pub(crate) const MAX_TABLES: usize = 4096;
 pub(crate) const MAX_COLUMNS: usize = 120_000;
 pub(crate) const MAX_FOREIGN_KEYS: usize = 20_000;
 pub(crate) const MAX_TABLE_COLUMNS: usize = 1000;
-const MAX_NAME_BYTES: usize = 63;
+pub(crate) const MAX_NAME_BYTES: usize = 63;
 
 /// Words that are not valid names.
 const RESERVED: [&str; 15] =

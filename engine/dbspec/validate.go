@@ -2,6 +2,7 @@ package dbspec
 
 import (
 	"slices"
+	"strings"
 )
 
 // session holds the declared document set and the parse trees of the
@@ -210,7 +211,32 @@ func (v *validator) columnRef(t *tableNode, ref token, rule string) *columnNode 
 	return c
 }
 
+// generatedName reports a name that the renderer generates and that exceeds
+// the identifier limit (docs/dbspec.md "Names"); the longest name of a
+// setting stands for all of its names. A name built from a malformed name is
+// already reported there.
+func (v *validator) generatedName(at token, name string) {
+	table, rest, _ := strings.Cut(name, "$")
+	if !wellFormed(table) || (at.text == rest && !wellFormed(rest)) {
+		return
+	}
+	if len(name) > maxNameBytes {
+		v.add(RuleNameLength, at, "the generated name %s has %d bytes, more than %d", name, len(name), maxNameBytes)
+	}
+}
+
+// renderedCheck reports whether the renderer writes a type CHECK for the
+// column on some dialect.
+func renderedCheck(c *columnNode) bool {
+	return c.identity == nil && c.typ.valid && c.typ.typ.Kind != TypeText && c.typ.typ.Kind != TypeBytes
+}
+
 func (v *validator) tableRules(t *tableNode) {
+	for _, c := range t.columns {
+		if renderedCheck(c) {
+			v.generatedName(c.name, t.name.text+"$"+c.name.text)
+		}
+	}
 	if len(t.columns) == 0 && t.failedLines == 0 {
 		v.add(RuleColumn, t.anchor(), "table has no column")
 	}
