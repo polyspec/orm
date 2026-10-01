@@ -12,7 +12,7 @@ namespace Orm\Dbspec;
 final class PostgresCatalog
 {
     private const TABLES = "SELECT c.relname, c.relkind::text, c.relispartition FROM pg_class c
-WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') ORDER BY c.relname";
+WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname <> 'dbspec\$plans' ORDER BY c.relname";
     private const SEQUENCES = "SELECT c.relname FROM pg_class c WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'S'
 AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.deptype = 'i') ORDER BY c.relname";
     private const COLUMNS = "SELECT c.relname, a.attname, quote_ident(a.attname), format_type(a.atttypid, a.atttypmod), a.attnotnull,

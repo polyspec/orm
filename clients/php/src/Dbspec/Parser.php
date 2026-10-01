@@ -1336,7 +1336,7 @@ final class Parser
         return $map;
     }
 
-    private static function validName(string $name): bool
+    public static function validName(string $name): bool
     {
         return preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, self::RESERVED, true) && strlen($name) <= 63;
     }

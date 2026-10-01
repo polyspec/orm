@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.7.3: the PHP client exports dbspec documents to standard Mermaid erDiagrams with `Orm\Dbspec\Dbspec::exportMermaid` and imports them with `Dbspec::importMermaid`, with the list of what each leaves out.
+
+- T8.6.3: the PHP client applies plan chains through `Orm\Dbspec\Dbspec::apply` with a lock, history, drift checks, transactions, verification and events, and recovers an interrupted MySQL plan with `Dbspec::recover`; its introspection leaves `dbspec$plans` out.
+
 - T8.2.2.1: Go reports the identity rule for a table without a primary key line, as the other clients do.
 
 - T8.2.1.1: the Rust client exposes the parsed dbspec model in `orm_schema::dbspec::model`, as Go, PHP and TypeScript expose theirs.
