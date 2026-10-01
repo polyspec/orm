@@ -96,7 +96,7 @@ statement는 이 순서로 오며, 각 단계 안에서 table과 객체는 이�
 
 MySQL은 column을 렌더링한 전체 정의의 `MODIFY COLUMN`으로 바꾸고, PostgreSQL은 `ALTER COLUMN`의 `TYPE`, `SET NOT NULL`, `DROP NOT NULL`, `SET DEFAULT`, `DROP DEFAULT`를 이 순서로 쓴다.
 
-SQLite는 맞춘 table의 이름, column, foreign key, check 중 하나라도 바뀌면 table을 다시 만든다. target table을 `"$rebuild"`로 만들고, 맞춘 column을 `INSERT … SELECT` 하나로 옮기고, table을 지우고, `"$rebuild"`에 원래 table 이름을 주고, index를 만들고 trigger를 다시 만든다. rename이 먼저 실행되므로 다른 table의 foreign key가 따라온다. 정밀도가 커지는 `time(p)`나 `datetime(p)` column은 0인 소수 자리를 덧붙여 옮긴다. index와 unique key만, 또는 trigger만 바뀌면 다시 만들지 않는다. SQLite는 foreign key를 끄고 plan을 실행한 뒤 검사한다(`PRAGMA foreign_key_check`가 row를 돌려주지 않는다).
+SQLite는 맞춘 table의 이름, column, foreign key, check 중 하나라도 바뀌면 table을 다시 만든다. target table을 `"$rebuild"`로 만들고, table에 `identity` column이 있으면 `INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = '<table>'`로 automatic key counter를 옮겨 지운 row의 key까지 포함해 지금까지 준 가장 큰 key를 유지하므로 key를 다시 쓰지 않고, 맞춘 column을 `INSERT … SELECT` 하나로 옮기고, table을 지우고, `"$rebuild"`에 원래 table 이름을 주고, index를 만들고 trigger를 다시 만든다. rename이 먼저 실행되므로 다른 table의 foreign key가 따라온다. 정밀도가 커지는 `time(p)`나 `datetime(p)` column은 0인 소수 자리를 덧붙여 옮긴다. index와 unique key만, 또는 trigger만 바뀌면 다시 만들지 않는다. SQLite는 foreign key를 끄고 plan을 실행한 뒤 검사한다(`PRAGMA foreign_key_check`가 row를 돌려주지 않는다).
 
 ## Apply
 

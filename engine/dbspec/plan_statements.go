@@ -218,6 +218,13 @@ func (w *planWriter) rebuild(name string) {
 	create := statements[0]
 	prefix := "CREATE TABLE " + w.q(name) + " ("
 	w.add("CREATE TABLE " + w.q("$rebuild") + " (" + strings.TrimPrefix(create, prefix))
+	// AUTOINCREMENT counter를 옮겨, 지운 row의 key까지 다시 쓰지 않는다. dbspec
+	// 이름에는 따옴표가 없으므로 문자열 literal로 그대로 쓴다.
+	for _, c := range t.Columns {
+		if c.Identity {
+			w.add("INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = '" + name + "'")
+		}
+	}
 	var into, from []string
 	for _, c := range t.Columns {
 		old, ok := d.columnOf[name][c.Name]

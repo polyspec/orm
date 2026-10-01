@@ -224,6 +224,13 @@ final class PlanStatements
             throw new \LogicException("The rendered table $name does not start with $prefix");
         }
         $this->add('CREATE TABLE ' . $this->q('$rebuild') . ' (' . substr($statements[0], strlen($prefix)));
+        // AUTOINCREMENT counter 를 옮겨, 지운 row 의 key 까지 다시 쓰지 않는다. dbspec
+        // 이름에는 따옴표가 없으므로 문자열 literal 로 그대로 쓴다.
+        foreach ($t->columns as $c) {
+            if ($c->identity) {
+                $this->add("INSERT INTO sqlite_sequence (name, seq) SELECT '\$rebuild', seq FROM sqlite_sequence WHERE name = '$name'");
+            }
+        }
         $into = [];
         $from = [];
         foreach ($t->columns as $c) {

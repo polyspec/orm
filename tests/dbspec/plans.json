@@ -150,6 +150,7 @@
           "ALTER TABLE \"users\" RENAME TO \"clients\"",
           "ALTER TABLE \"clients\" RENAME COLUMN \"mail\" TO \"email\"",
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(64) NOT NULL, \"age\" integer NULL, CONSTRAINT \"clients$email\" CHECK (length(\"email\") <= 64), CONSTRAINT \"clients$age\" CHECK (typeof(\"age\") IN ('integer', 'null') AND \"age\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"ck_users_age\" CHECK (\"age\" >= 0))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'clients'",
           "INSERT INTO \"$rebuild\" (\"id\", \"email\", \"age\") SELECT \"id\", \"email\", \"age\" FROM \"clients\"",
           "DROP TABLE \"clients\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"clients\"",
@@ -268,6 +269,7 @@
         "sqlite": [
           "DROP TABLE \"legacy\"",
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"mail\" varchar(64) NOT NULL, \"nick\" varchar(32) NULL, \"status\" varchar(8) NOT NULL DEFAULT 'new', CONSTRAINT \"users$mail\" CHECK (length(\"mail\") <= 64), CONSTRAINT \"users$nick\" CHECK (length(\"nick\") <= 32), CONSTRAINT \"users$status\" CHECK (length(\"status\") <= 8), CONSTRAINT \"ck_users_mail\" CHECK (\"mail\" <> ''))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'users'",
           "INSERT INTO \"$rebuild\" (\"id\", \"mail\") SELECT \"id\", \"mail\" FROM \"users\"",
           "DROP TABLE \"users\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"users\"",
@@ -385,6 +387,7 @@
         ],
         "sqlite": [
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"small\" bigint NOT NULL, \"name\" varchar(20) NOT NULL, \"note\" TEXT NOT NULL, \"price\" DECIMALINT(8,2) NOT NULL DEFAULT 150, \"at\" TIME NOT NULL, \"stamp\" DATETIME NOT NULL, \"flag\" BOOLEAN NOT NULL, CONSTRAINT \"w$small\" CHECK (typeof(\"small\") IN ('integer', 'null')), CONSTRAINT \"w$name\" CHECK (length(\"name\") <= 20), CONSTRAINT \"w$price\" CHECK (typeof(\"price\") IN ('integer', 'null') AND \"price\" BETWEEN -99999999 AND 99999999), CONSTRAINT \"w$at\" CHECK (length(\"at\") = 12 AND substr(\"at\", 1, 8) IS time(substr(\"at\", 1, 8)) AND substr(\"at\", 1, 8) < '24:00:00' AND substr(\"at\", 9, 1) = '.' AND substr(\"at\", 10) GLOB '[0-9][0-9][0-9]'), CONSTRAINT \"w$stamp\" CHECK (length(\"stamp\") = 26 AND substr(\"stamp\", 1, 19) IS datetime(substr(\"stamp\", 1, 19)) AND substr(\"stamp\", 12, 2) < '24' AND substr(\"stamp\", 20, 1) = '.' AND substr(\"stamp\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'), CONSTRAINT \"w$flag\" CHECK (\"flag\" IN (0, 1)))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'w'",
           "INSERT INTO \"$rebuild\" (\"id\", \"small\", \"name\", \"note\", \"price\", \"at\", \"stamp\", \"flag\") SELECT \"id\", \"small\", \"name\", \"note\", \"price\", \"at\" || '.000', \"stamp\" || '.000000', \"flag\" FROM \"w\"",
           "DROP TABLE \"w\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"w\""
@@ -540,12 +543,14 @@
         ],
         "sqlite": [
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"code\" varchar(16) NOT NULL, \"n\" integer NOT NULL, CONSTRAINT \"a$code\" CHECK (length(\"code\") <= 16), CONSTRAINT \"a$n\" CHECK (typeof(\"n\") IN ('integer', 'null') AND \"n\" BETWEEN -2147483648 AND 2147483647))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'a'",
           "INSERT INTO \"$rebuild\" (\"id\", \"code\", \"n\") SELECT \"id\", \"code\", \"n\" FROM \"a\"",
           "DROP TABLE \"a\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"a\"",
           "CREATE UNIQUE INDEX \"uq_a_code\" ON \"a\" (\"code\")",
           "CREATE INDEX \"ix_a_code\" ON \"a\" (\"code\" DESC)",
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"a_id\" bigint NOT NULL, CONSTRAINT \"fk_b_a\" FOREIGN KEY (\"a_id\") REFERENCES \"a\" (\"id\") ON DELETE CASCADE ON UPDATE RESTRICT, CONSTRAINT \"b$a_id\" CHECK (typeof(\"a_id\") IN ('integer', 'null')))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'b'",
           "INSERT INTO \"$rebuild\" (\"id\", \"a_id\") SELECT \"id\", \"a_id\" FROM \"b\"",
           "DROP TABLE \"b\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"b\"",
@@ -711,10 +716,12 @@
           "DROP TRIGGER \"service$audit_delete\"",
           "CREATE TABLE \"config\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"v\" integer NOT NULL, CONSTRAINT \"config$v\" CHECK (typeof(\"v\") IN ('integer', 'null') AND \"v\" BETWEEN -2147483648 AND 2147483647))",
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'service'",
           "INSERT INTO \"$rebuild\" (\"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"service\"",
           "DROP TABLE \"service\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"service\"",
           "CREATE TABLE \"$rebuild\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'service_history'",
           "INSERT INTO \"$rebuild\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"service_history\"",
           "DROP TABLE \"service_history\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"service_history\"",
@@ -809,6 +816,7 @@
           "ALTER TABLE \"flags\" RENAME TO \"switches\"",
           "ALTER TABLE \"switches\" RENAME COLUMN \"active\" TO \"enabled\"",
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"enabled\" BOOLEAN NOT NULL, \"ref\" TEXT NULL, \"at\" TIME NULL, CONSTRAINT \"switches$enabled\" CHECK (\"enabled\" IN (0, 1)), CONSTRAINT \"switches$ref\" CHECK (\"ref\" GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'), CONSTRAINT \"switches$at\" CHECK (\"at\" IS time(\"at\") AND \"at\" < '24:00:00'))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'switches'",
           "INSERT INTO \"$rebuild\" (\"id\", \"enabled\", \"ref\", \"at\") SELECT \"id\", \"enabled\", \"ref\", \"at\" FROM \"switches\"",
           "DROP TABLE \"switches\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"switches\""
@@ -926,6 +934,7 @@
         ],
         "sqlite": [
           "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"p_id\" bigint NOT NULL, CONSTRAINT \"fk_c_p\" FOREIGN KEY (\"p_id\") REFERENCES \"p\" (\"id\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"c$p_id\" CHECK (typeof(\"p_id\") IN ('integer', 'null')))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'c'",
           "INSERT INTO \"$rebuild\" (\"id\", \"p_id\") SELECT \"id\", \"p_id\" FROM \"c\"",
           "DROP TABLE \"c\"",
           "ALTER TABLE \"$rebuild\" RENAME TO \"c\"",
@@ -1066,6 +1075,74 @@
             "postgres"
           ],
           "query": "SELECT COUNT(*) FROM pg_proc WHERE proname LIKE 'a$%'",
+          "want": "0"
+        }
+      ]
+    },
+    {
+      "id": "rebuild-keeps-key-counter",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table k {",
+        "  id i64 identity",
+        "  n i32",
+        "  primary key (id)",
+        "}"
+      ],
+      "plan": [
+        "dbplan 1 keep_key_counter",
+        "from sha256:3561eab7f5658152640616d99ab2cbc57095065945d3b0f6af311bfe0128b386",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table k {",
+        "  id i64 identity",
+        "  n i32",
+        "  primary key (id)",
+        "  check ck_k_n (n >= 0)",
+        "}"
+      ],
+      "changes": [
+        [
+          "add_check",
+          "k",
+          "ck_k_n"
+        ]
+      ],
+      "statements": {
+        "mysql": [
+          "ALTER TABLE `k` ADD CONSTRAINT `ck_k_n` CHECK (`n` >= 0)"
+        ],
+        "postgres": [
+          "ALTER TABLE \"k\" ADD CONSTRAINT \"ck_k_n\" CHECK (\"n\" >= 0)"
+        ],
+        "sqlite": [
+          "CREATE TABLE \"$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"n\" integer NOT NULL, CONSTRAINT \"k$n\" CHECK (typeof(\"n\") IN ('integer', 'null') AND \"n\" BETWEEN -2147483648 AND 2147483647), CONSTRAINT \"ck_k_n\" CHECK (\"n\" >= 0))",
+          "INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = 'k'",
+          "INSERT INTO \"$rebuild\" (\"id\", \"n\") SELECT \"id\", \"n\" FROM \"k\"",
+          "DROP TABLE \"k\"",
+          "ALTER TABLE \"$rebuild\" RENAME TO \"k\""
+        ]
+      },
+      "before": [
+        {
+          "sql": "INSERT INTO k (n) VALUES (1), (2), (3)"
+        },
+        {
+          "sql": "DELETE FROM k WHERE id = 3"
+        }
+      ],
+      "after": [
+        {
+          "sql": "INSERT INTO k (n) VALUES (4)"
+        },
+        {
+          "query": "SELECT MAX(id) FROM k",
+          "want": "4"
+        },
+        {
+          "query": "SELECT COUNT(*) FROM k WHERE id = 3",
           "want": "0"
         }
       ]
