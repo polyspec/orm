@@ -49,6 +49,25 @@ final class Dbspec
     }
 
     /**
+     * Reads the current database (MySQL), the current schema (PostgreSQL) or
+     * the main database (SQLite) of the connection into one document named
+     * `$name` and the objects it leaves out (docs/dialects.md
+     * "Introspection"). The number of catalog queries does not depend on the
+     * table count. A failing query, or a catalog that yields no document, is
+     * a RuntimeException; an unknown dialect is an InvalidArgumentException.
+     */
+    public static function introspect(\PDO $connection, string $dialect, string $name): IntrospectResult
+    {
+        $catalog = match ($dialect) {
+            'mysql' => MysqlCatalog::read($connection),
+            'postgres' => PostgresCatalog::read($connection),
+            'sqlite' => SqliteCatalog::read($connection),
+            default => throw new \InvalidArgumentException("Unknown dialect `$dialect`; the dialects are mysql, postgres and sqlite"),
+        };
+        return $catalog->document($name);
+    }
+
+    /**
      * The manifest of the document set, whose documents are taken in document
      * name order, or the diagnostics of the set (docs/dbspec.md "Manifest and
      * hashes").
