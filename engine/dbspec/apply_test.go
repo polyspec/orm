@@ -79,6 +79,16 @@ func applyTestPlans(t *testing.T) []*Plan {
 	return nil
 }
 
+// logResult는 case의 결과와 걸린 시간을 알린다.
+func logResult(t *testing.T, name string, start time.Time) {
+	t.Helper()
+	result := "PASS"
+	if t.Failed() {
+		result = "FAIL"
+	}
+	t.Logf("%s %s elapsed=%s", result, name, time.Since(start))
+}
+
 // TestApplyReportsCleanupErrors는 apply가 실패한 뒤 정리(ROLLBACK, foreign key
 // 복원)에서 난 error도 버리지 않고 함께 돌려주는지 확인한다.
 func TestApplyReportsCleanupErrors(t *testing.T) {
@@ -90,14 +100,20 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	defer cancel()
 
 	stop := errors.New("stop")
-	rollback := errors.New("rollback failed")
-	c := &failing{conn: applyTestConn(t), fail: map[string]error{"ROLLBACK": rollback}}
-	err := Apply(ctx, c, DialectSQLite, plans, now, func(ev ApplyEvent) error {
+	stopAt := func(ev ApplyEvent) error {
 		if ev.Kind == "applied" {
 			return stop
 		}
 		return nil
-	})
+	}
+	// 정리 error가 없으면 실패를 감싸지 않고 그대로 돌려준다.
+	if err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != stop {
+		t.Errorf("apply stopped by an event without a cleanup error: %#v, want the event error itself", err)
+	}
+
+	rollback := errors.New("rollback failed")
+	c := &failing{conn: applyTestConn(t), fail: map[string]error{"ROLLBACK": rollback}}
+	err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
 	if !errors.Is(err, stop) || !errors.Is(err, rollback) {
 		t.Errorf("apply stopped by an event with a failing ROLLBACK: %v, want both errors", err)
 	}
@@ -109,7 +125,7 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	if applyErr := (*ApplyError)(nil); !errors.As(err, &applyErr) || applyErr.Code != "locked" || !errors.Is(err, restore) {
 		t.Errorf("apply with a failing BEGIN IMMEDIATE and foreign key restore: %v, want locked and the restore error", err)
 	}
-	t.Logf("PASS apply/cleanup-errors elapsed=%s", time.Since(start))
+	logResult(t, "apply/cleanup-errors", start)
 }
 
 // TestMySQLEffectRequiresRow는 catalog 확인 query가 row를 돌려주지 않으면 효과가
@@ -125,5 +141,5 @@ func TestMySQLEffectRequiresRow(t *testing.T) {
 	if _, err := a.mysqlEffect("CREATE TABLE `orders` (`id` BIGINT NOT NULL)"); err == nil {
 		t.Error("mysqlEffect with a catalog query that returns no row: no error")
 	}
-	t.Logf("PASS apply/mysql-effect-row elapsed=%s", time.Since(start))
+	logResult(t, "apply/mysql-effect-row", start)
 }

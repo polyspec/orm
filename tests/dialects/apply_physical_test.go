@@ -62,8 +62,8 @@ func applyCode(err error) string {
 }
 
 // TestApplyChain은 docs/plans.md "Apply"를 세 database에서 확인한다: chain
-// 적용과 history, 다시 적용해도 그대로임, drift, lock, 중간 실패, 그리고 MySQL의
-// recovery.
+// 적용과 history, 다시 적용해도 그대로임, drift, lock, 중간 실패, PostgreSQL에서
+// 아무것도 풀지 않은 unlock, 그리고 MySQL의 recovery.
 func TestApplyChain(t *testing.T) {
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
@@ -179,6 +179,20 @@ func TestApplyChain(t *testing.T) {
 				return
 			}
 			schemaIs(e, db, target.SchemaText)
+		}},
+		{"unlock_not_held", []string{"postgres"}, func(e *Env, db string) {
+			// event에서 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도 풀지 않는다.
+			release := func(ev dbspec.ApplyEvent) error {
+				if ev.Kind == "plan" && ev.Plan == plans[0].Name {
+					_, err := e.Conn.ExecContext(e.Ctx, "SELECT pg_advisory_unlock(hashtext('dbspec$plans'))")
+					return err
+				}
+				return nil
+			}
+			want := "the advisory lock of dbspec$plans was not held at unlock"
+			if err := dbspec.Apply(e.Ctx, e.Conn, dbspec.Dialect(db), plans, fixedNow, release); err == nil || err.Error() != want {
+				e.fail("apply after the lock was released by another statement: %v, want %q", err, want)
+			}
 		}},
 		{"verify_failure", []string{"mysql", "postgres", "sqlite"}, func(e *Env, db string) {
 			// 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패한다.

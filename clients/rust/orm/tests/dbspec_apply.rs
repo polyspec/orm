@@ -1,9 +1,9 @@
 //! Plan chains applied to MySQL, PostgreSQL and SQLite through
 //! `orm::dbspec::apply` and `orm::dbspec::recover` (docs/plans.md, "Apply"):
 //! the chain with its history and a second apply without events, drift, the
-//! lock of a second session, rollback after a stopped statement, a failed
-//! verification, and MySQL recovery after a stop before and after a
-//! statement. The chain is create-from-empty and rename-table-and-column of
+//! lock of a second session, rollback after a stopped statement, an unlock
+//! that released nothing on PostgreSQL, a failed verification, and MySQL
+//! recovery after a stop before and after a statement. The chain is create-from-empty and rename-table-and-column of
 //! tests/dbspec/plans.json. A test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
@@ -59,27 +59,28 @@ fn fixed_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time")
 }
 
-/// 지정한 statement를 실행한 직후 plan 밖의 table `sneak`을 같은 connection에서
-/// 한 번 만든다. Go test가 마지막 statement의 `applied` event에서 만드는 것과 같은
-/// 시점이다.
-struct Sneak<'c, C> {
+/// 지정한 statement `after`를 실행한 직후 statement `then`을 같은 connection에서
+/// 한 번 실행한다. event 처리기는 apply가 빌린 connection을 쓸 수 없으므로, Go
+/// test가 event에서 실행하는 statement를 이 시점에 실행한다.
+struct RunAfter<'c, C> {
     inner: &'c mut C,
     after: String,
+    then: String,
     done: bool,
 }
 
-impl<C: CatalogQuerier + Send> CatalogQuerier for Sneak<'_, C> {
+impl<C: CatalogQuerier + Send> CatalogQuerier for RunAfter<'_, C> {
     async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         self.inner.rows(query).await
     }
 }
 
-impl<C: ApplyConnection + Send> ApplyConnection for Sneak<'_, C> {
+impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         self.inner.execute(statement).await?;
         if !self.done && statement == self.after {
             self.done = true;
-            self.inner.execute("CREATE TABLE sneak (id integer PRIMARY KEY)").await?;
+            self.inner.execute(&self.then).await?;
         }
         Ok(())
     }
@@ -93,13 +94,13 @@ impl<C: ApplyConnection + Send> ApplyConnection for Sneak<'_, C> {
     }
 }
 
-/// probe connection 하나에 apply 또는 recover를 실행한다. `sneak`이 있으면 그
-/// statement 뒤에 `sneak` table을 만든다.
+/// probe connection 하나에 apply 또는 recover를 실행한다. `run_after`가
+/// `(after, then)`이면 statement `after` 뒤에 statement `then`을 실행한다.
 async fn run(
     conn: &mut Conn,
     recovering: bool,
     plans: &[Plan],
-    sneak: Option<&str>,
+    run_after: Option<(&str, &str)>,
     events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
 ) -> Result<(), ApplyError> {
     async fn on<C: ApplyConnection + Send>(
@@ -107,12 +108,12 @@ async fn run(
         dialect: Dialect,
         recovering: bool,
         plans: &[Plan],
-        sneak: Option<&str>,
+        run_after: Option<(&str, &str)>,
         events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
     ) -> Result<(), ApplyError> {
-        match sneak {
-            Some(after) => {
-                let mut wrapped = Sneak { inner: c, after: after.to_owned(), done: false };
+        match run_after {
+            Some((after, then)) => {
+                let mut wrapped = RunAfter { inner: c, after: after.to_owned(), then: then.to_owned(), done: false };
                 if recovering {
                     recover(&mut wrapped, dialect, plans, &fixed_now, events).await
                 } else {
@@ -124,9 +125,9 @@ async fn run(
         }
     }
     match conn {
-        Conn::MySql(c) => on(c, Dialect::MySql, recovering, plans, sneak, events).await,
-        Conn::Postgres(c) => on(c, Dialect::Postgres, recovering, plans, sneak, events).await,
-        Conn::Sqlite(c) => on(c, Dialect::Sqlite, recovering, plans, sneak, events).await,
+        Conn::MySql(c) => on(c, Dialect::MySql, recovering, plans, run_after, events).await,
+        Conn::Postgres(c) => on(c, Dialect::Postgres, recovering, plans, run_after, events).await,
+        Conn::Sqlite(c) => on(c, Dialect::Sqlite, recovering, plans, run_after, events).await,
     }
 }
 
@@ -260,12 +261,23 @@ async fn rollback_on_failure(conn: &mut Conn, plans: &[Plan], target: &str) -> R
     schema_is(conn, target).await
 }
 
+async fn unlock_not_held(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> {
+    // 첫 transaction을 연 뒤 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도
+    // 풀지 않는다.
+    let result = run(conn, false, plans, Some(("BEGIN", "SELECT pg_advisory_unlock(hashtext('dbspec$plans'))")), &mut quiet).await;
+    let want = "the advisory lock of dbspec$plans was not held at unlock";
+    match &result {
+        Err(e) if e.to_string() == want => Ok(()),
+        _ => Err(format!("apply after the lock was released by another statement: {result:?}, want {want:?}")),
+    }
+}
+
 async fn verify_failure(conn: &mut Conn, db: &str, plans: &[Plan]) -> Result<(), String> {
     // 첫 plan의 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패한다.
     let dialect = DIALECTS.iter().find(|(name, _)| *name == db).map(|(_, d)| *d).ok_or_else(|| format!("unknown database {db}"))?;
     let statements = dbspec::plan_statements(None, &plans[0], dialect).map_err(|e| format!("statements: {e:?}"))?;
     let last = statements.last().ok_or("the first plan has no statement")?;
-    let result = run(conn, false, plans, Some(last), &mut quiet).await;
+    let result = run(conn, false, plans, Some((last, "CREATE TABLE sneak (id integer PRIMARY KEY)")), &mut quiet).await;
     if code(&result) != Some("verify") {
         return Err(format!("apply with a table outside the plan: {result:?}, want verify"));
     }
@@ -302,11 +314,12 @@ async fn recover_after(conn: &mut Conn, kind: ApplyEventKind, plans: &[Plan], ta
 }
 
 /// scenario 이름과 그 database.
-const SCENARIOS: [(&str, &[&str]); 7] = [
+const SCENARIOS: [(&str, &[&str]); 8] = [
     ("chain_history_and_again", &["mysql", "postgres", "sqlite"]),
     ("drift", &["mysql", "postgres", "sqlite"]),
     ("lock", &["mysql", "postgres", "sqlite"]),
     ("rollback_on_failure", &["postgres", "sqlite"]),
+    ("unlock_not_held", &["postgres"]),
     ("verify_failure", &["mysql", "postgres", "sqlite"]),
     ("recover_after_applied", &["mysql"]),
     ("recover_after_statement", &["mysql"]),
@@ -337,6 +350,7 @@ async fn apply_chain_on_three_databases() {
                         "drift" => drift(conn, plans).await,
                         "lock" => lock(conn, db, plans, &session).await,
                         "rollback_on_failure" => rollback_on_failure(conn, plans, target).await,
+                        "unlock_not_held" => unlock_not_held(conn, plans).await,
                         "verify_failure" => verify_failure(conn, db, plans).await,
                         "recover_after_applied" => recover_after(conn, ApplyEventKind::Applied, plans, target).await,
                         "recover_after_statement" => recover_after(conn, ApplyEventKind::Statement, plans, target).await,
@@ -352,7 +366,7 @@ async fn apply_chain_on_three_databases() {
     }
     servers.close().await;
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    assert_eq!(runs, 16, "apply runs");
+    assert_eq!(runs, 17, "apply runs");
     println!("PASS dbspec apply: {runs} runs on three databases in {:?}", started.elapsed());
     assert!(started.elapsed() < Duration::from_secs(600), "apply exceeded 600s");
 }
