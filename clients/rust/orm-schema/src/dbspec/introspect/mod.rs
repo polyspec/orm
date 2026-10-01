@@ -137,25 +137,25 @@ impl Row<'_> {
 /// dialect reader가 채우는 중립 중간 model. type은 dbspec Type이고, default
 /// literal과 predicate는 이미 dbspec 표기다.
 #[derive(Default)]
-struct Catalog {
-    tables: Vec<ITable>,
+pub(super) struct Catalog {
+    pub(super) tables: Vec<ITable>,
     unsupported: Vec<Unsupported>,
 }
 
 #[derive(Clone, Default)]
-struct ITable {
-    name: String,
-    columns: Vec<IColumn>,
-    primary: Vec<String>,
+pub(super) struct ITable {
+    pub(super) name: String,
+    pub(super) columns: Vec<IColumn>,
+    pub(super) primary: Vec<String>,
     uniques: Vec<IKey>,
-    indexes: Vec<IKey>,
-    fks: Vec<IForeignKey>,
+    pub(super) indexes: Vec<IKey>,
+    pub(super) fks: Vec<IForeignKey>,
     checks: Vec<ICheck>,
     settings: Vec<String>,
 }
 
 impl ITable {
-    fn new(name: &str) -> ITable {
+    pub(super) fn new(name: &str) -> ITable {
         ITable { name: name.to_owned(), ..ITable::default() }
     }
 
@@ -166,29 +166,29 @@ impl ITable {
 }
 
 #[derive(Clone)]
-struct IColumn {
-    name: String,
-    typ: Type,
-    null: bool,
-    identity: bool,
-    dflt: String,
+pub(super) struct IColumn {
+    pub(super) name: String,
+    pub(super) typ: Type,
+    pub(super) null: bool,
+    pub(super) identity: bool,
+    pub(super) dflt: String,
 }
 
 #[derive(Clone)]
-struct IKey {
-    name: String,
-    columns: Vec<String>,
-    desc: Vec<bool>,
+pub(super) struct IKey {
+    pub(super) name: String,
+    pub(super) columns: Vec<String>,
+    pub(super) desc: Vec<bool>,
 }
 
 #[derive(Clone)]
-struct IForeignKey {
-    name: String,
-    columns: Vec<String>,
-    table: String,
-    refs: Vec<String>,
-    on_delete: &'static str,
-    on_update: &'static str,
+pub(super) struct IForeignKey {
+    pub(super) name: String,
+    pub(super) columns: Vec<String>,
+    pub(super) table: String,
+    pub(super) refs: Vec<String>,
+    pub(super) on_delete: &'static str,
+    pub(super) on_update: &'static str,
 }
 
 #[derive(Clone)]
@@ -206,15 +206,15 @@ struct LineObject {
 }
 
 impl Catalog {
-    fn report(&mut self, kind: &str, table: &str, name: &str, reason: impl fmt::Display) {
+    pub(super) fn report(&mut self, kind: &str, table: &str, name: &str, reason: impl fmt::Display) {
         self.unsupported.push(Unsupported { kind: kind.to_owned(), table: table.to_owned(), name: name.to_owned(), reason: reason.to_string() });
     }
 
-    fn table(&mut self, name: &str) -> Option<&mut ITable> {
+    pub(super) fn table(&mut self, name: &str) -> Option<&mut ITable> {
         self.tables.iter_mut().find(|t| t.name == name)
     }
 
-    fn has_table(&self, name: &str) -> bool {
+    pub(super) fn has_table(&self, name: &str) -> bool {
         self.tables.iter().any(|t| t.name == name)
     }
 
@@ -229,7 +229,7 @@ impl Catalog {
     /// 줄의 객체를 미지원으로 보고하고 빼서 다시 만든다. 빠진 객체를 참조하던
     /// 객체는 다음 parse에서 거부되므로 같은 방식으로 빠진다. 객체에 속하지 않는
     /// 줄의 diagnostic은 reader의 결함이므로 error다.
-    fn document(mut self, name: &str) -> Result<Introspection, String> {
+    pub(super) fn document(mut self, name: &str) -> Result<Introspection, String> {
         self.drop_tables_without_key();
         loop {
             let (text, objects) = self.text(name);

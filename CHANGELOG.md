@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.7.5: the Rust client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.6.5: the Rust client applies plan chains with `orm::dbspec::apply` under a lock, with history, drift checks, transactions, verification and events, and `orm::dbspec::recover` finishes an interrupted MySQL plan; Rust introspection leaves `dbspec$plans` out.
+
 - T8.5.6: `make dbspec-compare-check` compares the plans of the Go, PHP, TypeScript and Rust clients, and PHP, TypeScript and Rust reject plan names over 63 bytes and run the shared plan parse cases.
 
 - T8.7.3: the PHP client exports dbspec documents to standard Mermaid erDiagrams with `Orm\Dbspec\Dbspec::exportMermaid` and imports them with `Dbspec::importMermaid`, with the list of what each leaves out.

@@ -15,6 +15,7 @@ orm-schema = { version = "=0.0.1", path = "../orm-schema" }
 ordered-json = { version = "=0.0.1", git = "https://github.com/polyspec/ordered-json.git" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
 rust_decimal = "1"
+regex = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
