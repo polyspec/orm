@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.3: The introspection cases assert that stored and virtual generated columns are reported as unsupported on MySQL, PostgreSQL and SQLite in every client.
+
 - T8.0.2: Introspection reports prefix, partial and expression indexes as unsupported with their table and name in every client.
 
 - T8.0.1: PostgreSQL introspection reports a foreign key whose referenced table is in another schema as unsupported instead of reading it as a key to a same-named table.
