@@ -3,7 +3,9 @@
 // parsed document in canonical form; dbspecManifest gives the manifest text,
 // the schema text and their hashes of a document set; renderDbspec writes the
 // statements of a document set in one dialect; introspectDbspec reads a
-// database into a document and the objects it cannot read.
+// database into a document and the objects it cannot read. parsePlan,
+// emitPlan, chainPlans, diffPlan and planStatements read, write, order, diff
+// and render schema plans (docs/plans.md).
 import { createHash } from 'node:crypto';
 import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
@@ -19,6 +21,20 @@ export {
   type DbspecSqliteConnection,
   type DbspecUnsupported,
 } from './introspect.js';
+
+export {
+  chainPlans,
+  emitPlan,
+  parsePlan,
+  type DbspecChainResult,
+  type DbspecColumnName,
+  type DbspecColumnRename,
+  type DbspecPlan,
+  type DbspecPlanResult,
+  type DbspecTableRename,
+} from './plan.js';
+export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
+export { planStatements, type DbspecPlanStatementsResult } from './plan_statements.js';
 
 export type * from './model.js';
 
