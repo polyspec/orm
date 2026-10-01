@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.0.9: `datetime(p)` renders as a local date-time on the three databases, every client connection reads and writes it in UTC, and introspection reports time-zone columns as unsupported.
+
 - T8.0.9.1: Go, TypeScript and Rust connections read and write datetime values in UTC like PHP, and `timezone` accepts only `UTC` or `+00:00`.
 
 - T8.0.14: A failed MySQL `setLocal` reset at the end of a transaction is reported in every client, and a callback failure with a failed cleanup reports both errors as `CONFIG`.
