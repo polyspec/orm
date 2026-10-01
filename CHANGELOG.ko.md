@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.5.2.2: 63 bytes를 넘는 plan 이름을 거부하고, 공유 case가 plan parse error를 덮는다.
+
 - T8.5.5: Rust client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-rust-check`가 이를 적용한다.
 
 - T8.5.4: TypeScript client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-ts-check`가 이를 적용한다.

@@ -57,7 +57,7 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 		return nil, []Diagnostic{{Rule: RulePlan, Line: line, Column: 1, Message: fmt.Sprintf(format, args...)}}
 	}
 	m := planHeader.FindStringSubmatch(lines[0])
-	if m == nil || reservedWords[m[1]] {
+	if m == nil || reservedWords[m[1]] || len(m[1]) > 63 {
 		return fail(1, "the first line is exactly `dbplan 1 <name>`")
 	}
 	p := &Plan{Name: m[1]}
