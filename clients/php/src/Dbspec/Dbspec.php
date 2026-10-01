@@ -32,6 +32,20 @@ final class Dbspec
     }
 
     /**
+     * The statements that create the tables of the document set in one
+     * dialect, `mysql`, `postgres` or `sqlite` (docs/dialects.md "Rendered
+     * statements"). The documents are valid parsed documents of one declared
+     * set; an unknown dialect is an InvalidArgumentException.
+     *
+     * @param list<Document> $documents
+     * @return list<string>
+     */
+    public static function render(array $documents, string $dialect): array
+    {
+        return Renderer::render($documents, $dialect);
+    }
+
+    /**
      * The manifest of the document set, whose documents are taken in document
      * name order. A document name that repeats in the set is a name.duplicate
      * diagnostic at the header name of the later document.
