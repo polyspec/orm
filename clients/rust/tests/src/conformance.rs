@@ -2,7 +2,7 @@
 //! prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 //! other runners print the same document for the same chains.
 //!
-//! Usage: conformance --dsn URI <schema.json>
+//! Usage: conformance --dsn URI <bench.dbspec>
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -81,7 +81,6 @@ fn param_json(p: &Param) -> Result<Value, String> {
         }
         Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
-        Param::Point(p) => json!(orm::point_text(*p).map_err(|e| e.to_string())?),
     })
 }
 
@@ -92,7 +91,6 @@ fn invalid_binds_cannot_be_rendered_as_valid_values() {
     let mut encrypted = b"ORM-AES2\0".to_vec();
     encrypted.extend([0xff; 12 + 16]);
     assert_eq!(param_json(&Param::Bytes(encrypted)).unwrap(), json!("$AES"));
-    assert!(param_json(&Param::Point((f64::NAN, 1.0))).is_err());
     assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
     assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
     let log = Log::default();
@@ -193,7 +191,7 @@ impl Args {
             }
         }
         let (Some(dsn), 1) = (dsn, rest.len()) else {
-            eprintln!("usage: conformance --dsn URI <schema.json>");
+            eprintln!("usage: conformance --dsn URI <bench.dbspec>");
             std::process::exit(2);
         };
         Args { schema: rest[0].clone(), dsn }
@@ -203,8 +201,10 @@ impl Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let schema = orm::Manifest::load(&std::fs::read(&args.schema).expect("schema.json")).expect("schema manifest");
-    assert_eq!(schema.schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
+    let text = std::fs::read_to_string(&args.schema).unwrap_or_else(|e| panic!("{}: {e}", args.schema));
+    let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args.schema));
+    let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args.schema));
+    assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = orm::Config {

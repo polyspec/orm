@@ -203,7 +203,7 @@ npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
 }
 ```
 
@@ -224,19 +224,6 @@ go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 생성물의 `schema_hash`와 읽은 `schema.json`이 다르면 기동 시 `SCHEMA_HASH_MISMATCH`로 멈춘다.
-
-Rust `build.rs`는 모델을 생성하기 전에 다이어그램으로 `schema.json`을 만들 수도 있다:
-
-```rust
-// build.rs
-fn main() {
-    let files = vec!["schema/example.mmd".into()];
-    let manifest = orm_build::schema::build_files(&files).expect("schema");
-    std::fs::write("schema/schema.json", manifest.marshal_indent() + "\n").unwrap();
-    println!("cargo:rerun-if-changed=schema/example.mmd");
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
-}
-```
 
 ---
 
@@ -270,9 +257,22 @@ $master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $
 
 ```rust
 let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-생성된 모듈이 스키마를 포함하므로 연결은 스키마 경로를 받지 않는다.
+`orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담으므로 연결은 스키마 경로를 받지 않는다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
+
+감사 대상 table(`audit` setting)은 unit of work의 operation id를 transaction에서 받는다. 가장 바깥 transaction에 `operation(id)`로 정하면, executor가 그 transaction이 insert하거나 update하는 모든 감사 대상 row의 operation column에 그 값을 쓴다. soft delete의 update도 같다:
+
+```rust
+db.transaction(async || {
+    service.set_name("renamed").update(false).await
+})
+.operation(operation_id) // i64 operation column에는 i64, uuid column에는 &str 또는 String
+.await?;
+```
+
+operation id 없이, transaction 밖에서, 또는 operation column type에 맞지 않는 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패한다. 중첩 transaction은 `operation`을 받지 않고, operation column을 직접 쓰는 요청은 `IR_INVALID`로 실패한다.
 
 ### TypeScript
 

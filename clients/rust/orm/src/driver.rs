@@ -42,7 +42,6 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
             .to_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
-        Param::Point(p) => crate::point_text(*p)?,
     };
     Ok(a == b)
 }
@@ -72,7 +71,6 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
                     Val::F64(x) => Param::F64(*x),
                     Val::DateTime(t) => Param::DateTime(*t),
                     Val::Date(d) => Param::Date(*d),
-                    Val::Point(p) => Param::Point(*p),
                     Val::Json(j) => Param::Str(j.to_string()),
                     Val::Ordered(j) => Param::Str(j.compact()),
                     Val::Null => Param::Null,
@@ -237,7 +235,6 @@ pub(crate) fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> 
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
-        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -252,7 +249,6 @@ pub(crate) fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
-        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -324,7 +320,6 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
             Param::DateTime(t) => q.bind(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Param::Date(d) => q.bind(d.to_string()),
             Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
-            Param::Point(point) => q.bind(crate::point_text(*point)?),
         },
         "TIMESTAMP" => match p {
             Param::Null => q.bind(Option::<NaiveDateTime>::None),

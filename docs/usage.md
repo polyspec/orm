@@ -203,7 +203,7 @@ npx orm-gen gen --schema schema/schema.json --out src/models --scan src
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
 }
 ```
 
@@ -224,19 +224,6 @@ go run github.com/polyspec/orm/cmd/ormgen gen --schema schema/schema.json --lang
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A mismatch between the generated `schema_hash` and the loaded `schema.json` stops startup with `SCHEMA_HASH_MISMATCH`.
-
-The Rust `build.rs` can also build `schema.json` from the diagrams before it generates the models:
-
-```rust
-// build.rs
-fn main() {
-    let files = vec!["schema/example.mmd".into()];
-    let manifest = orm_build::schema::build_files(&files).expect("schema");
-    std::fs::write("schema/schema.json", manifest.marshal_indent() + "\n").unwrap();
-    println!("cargo:rerun-if-changed=schema/example.mmd");
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
-}
-```
 
 ---
 
@@ -270,9 +257,22 @@ $master = Orm::connect($masterDsn, new Config(schemaPath: $schemaPath, aesKey: $
 
 ```rust
 let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-The generated module embeds its schema, so the connection does not take a schema path.
+`orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`, so the connection does not take a schema path; the runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database and applies the statements. It does nothing when every table of the set exists and returns `CONFIG` when only some exist; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
+
+An audited table (`audit` setting) takes the operation id of its unit of work from the transaction. `operation(id)` sets it on the outermost transaction; the executor writes it into the operation column of every audited row the transaction inserts or updates, including the update of a soft delete:
+
+```rust
+db.transaction(async || {
+    service.set_name("renamed").update(false).await
+})
+.operation(operation_id) // i64 for an i64 operation column, &str or String for a uuid column
+.await?;
+```
+
+An insert or update of an audited table without an operation id, outside a transaction or with an id that does not fit the operation column type, fails with `CONFIG`. A nested transaction accepts no `operation`, and a request that assigns the operation column itself fails with `IR_INVALID`.
 
 ### TypeScript
 

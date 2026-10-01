@@ -1,5 +1,6 @@
-//! Column-style codecs (docs/codec.md): json/jsons, serialize, base64, gz, yaml.
-//! Styles are listed in write order; `decode` applies them in reverse.
+//! Column-style codecs (docs/codec.md): ordered_json, serialize, base64, gz, yaml.
+//! Styles are listed in write order; `decode` applies them in reverse. 첫 stage가
+//! `gz`나 `base64`이면 값을 먼저 PHP serialize한다.
 
 use std::collections::HashSet;
 use std::io::{Read, Write};
@@ -18,13 +19,13 @@ fn err(code: &str, msg: impl Into<String>) -> Error {
     Error::Engine { code: code.into(), msg: msg.into() }
 }
 
-/// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `json` and
-/// `jsons` stages return `Val::Ordered`; the other stages return `Val::Json`.
+/// Stored cell → decoded value, or `Val::Null` for SQL NULL. The `ordered_json`
+/// stage returns `Val::Ordered`; the other stages return `Val::Json`.
 pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     let mut cur: Vec<u8> = match raw {
         Val::Null => return Ok(Val::Null),
         // a driver-parsed JSON cell: only a bare json style applies
-        Val::Json(v) if styles.len() == 1 && (styles[0] == "json" || styles[0] == "jsons") => v.to_string().into_bytes(),
+        Val::Json(v) if styles.len() == 1 && styles[0] == "ordered_json" => v.to_string().into_bytes(),
         Val::Str(s) => s.as_bytes().to_vec(),
         Val::Bytes(b) => b.clone(),
         other => return Err(err(CODEC_DECODE, format!("cell is {other:?}, not bytes"))),
@@ -49,9 +50,12 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
                 validate_yaml_syntax(&cur)?;
                 value = Some(Val::Json(serde_yaml_ng::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?));
             }
-            "json" | "jsons" => value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)),
+            "ordered_json" => value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
+    }
+    if value.is_none() && serializes_first(styles.first().map(String::as_str)) {
+        value = Some(Val::Json(php_unserialize(&cur)?));
     }
     Ok(match value {
         Some(value) => value,
@@ -62,13 +66,18 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
     })
 }
 
-/// An ordered-json value → stored representation. The first stage is `json`
-/// or `jsons` and writes the compact text of the value, including JSON null.
+/// 첫 stage가 `gz`나 `base64`이면 그 stage 앞에서 값을 PHP serialize한다 (docs/codec.md).
+fn serializes_first(stage: Option<&str>) -> bool {
+    matches!(stage, Some("gz" | "base64"))
+}
+
+/// An ordered-json value → stored representation. The first stage is
+/// `ordered_json` and writes the compact text of the value, including JSON null.
 pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> Result<Param> {
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     match styles.first() {
-        Some(&"json") | Some(&"jsons") => finish(&styles[1..], v.compact().into_bytes()),
-        _ => Err(err(CODEC_UNSUPPORTED, format!("an ordered-json value needs the first style json, not {styles:?}"))),
+        Some(&"ordered_json") => finish(&styles[1..], v.compact().into_bytes()),
+        _ => Err(err(CODEC_UNSUPPORTED, format!("an ordered-json value needs the first style ordered_json, not {styles:?}"))),
     }
 }
 
@@ -82,7 +91,7 @@ fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
                 enc.write_all(&cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
                 return Ok(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?));
             }
-            "json" | "jsons" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
+            "ordered_json" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
@@ -94,6 +103,11 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     let StyledValue::Value(v) = v else { return Ok(Param::Null) };
     let mut cur: Vec<u8> = Vec::new();
     let value = v.clone();
+    if serializes_first(styles.first().copied()) {
+        let mut s = String::new();
+        php_serialize(&mut s, &value)?;
+        cur = s.into_bytes();
+    }
     for (i, st) in styles.iter().enumerate() {
         match *st {
             "serialize" => {
@@ -110,9 +124,9 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                 }
                 cur = serde_yaml_ng::to_string(&value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?.into_bytes();
             }
-            "json" | "jsons" => {
+            "ordered_json" => {
                 if i != 0 {
-                    return Err(err(CODEC_UNSUPPORTED, "json must be the first style"));
+                    return Err(err(CODEC_UNSUPPORTED, "ordered_json must be the first style"));
                 }
                 let raw = serde_json::to_vec(&value).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
                 let parsed = strict_json::parse_bytes(&raw).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
@@ -455,6 +469,11 @@ fn is_host(style: &str) -> bool {
     matches!(style, "aes" | "hex" | "ip" | "blind_index")
 }
 
+/// executor codec이 적용하는 stage를 쓰기 순서로 돌려준다. `aes`, `hex`, `ip`는 host stage다.
+pub fn executor_stages(stages: &[String]) -> Vec<&str> {
+    stages.iter().map(String::as_str).filter(|s| !is_host(s)).collect()
+}
+
 // ---- host stages (docs/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{
@@ -571,7 +590,6 @@ pub fn host_encode(v: &Param, styles: &[String], aes_key: &str) -> Result<Param>
         Param::F64(x) => x.to_string().into_bytes(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string().into_bytes(),
         Param::Date(d) => d.to_string().into_bytes(),
-        Param::Point(p) => crate::point_text(*p)?.into_bytes(),
     };
     for st in styles {
         cur = match st.as_str() {
@@ -654,9 +672,17 @@ mod tests {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/codec");
         let src = std::fs::read(format!("{root}/vectors.json")).expect("vectors.json");
         let f: serde_json::Map<String, Value> = serde_json::from_slice(&src).unwrap();
-        let vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
+        let mut vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
         let mut out = Map::new();
         let mut fails = 0;
+        for v in &mut vectors {
+            // codec vector의 `json` stage는 dbspec의 `ordered_json` stage다.
+            for style in &mut v.styles {
+                if style == "json" || style == "jsons" {
+                    *style = "ordered_json".into();
+                }
+            }
+        }
         for v in &vectors {
             let raw = match &v.encoded_b64 {
                 None => Val::Null,
@@ -745,7 +771,7 @@ mod tests {
     #[test]
     fn errors_and_keys() {
         for (styles, raw, code) in [
-            (vec!["json"], "{bad", "CODEC_DECODE"),
+            (vec!["ordered_json"], "{bad", "CODEC_DECODE"),
             (vec!["serialize"], "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"),
             (vec!["serialize"], "a:1:{i:0;", "CODEC_DECODE"),
             (vec!["serialize", "gz"], "not zlib", "CODEC_DECODE"),
@@ -778,7 +804,7 @@ mod tests {
         assert_eq!(decode(&["serialize".into()], &Val::Str("d:NAN;".into())).unwrap_err().code(), CODEC_DECODE);
         assert_eq!(decode(&[], &Val::Bytes(vec![0xff])).unwrap(), Val::Bytes(vec![0xff]));
         assert_eq!(decode(&[], &Val::Str(String::new())).unwrap(), Val::Str(String::new()));
-        assert_eq!(decode(&["json".into()], &Val::Str(String::new())).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(decode(&["ordered_json".into()], &Val::Str(String::new())).unwrap_err().code(), CODEC_DECODE);
     }
 
     /// The json stage returns the ordered-json value with its member order,
@@ -786,7 +812,7 @@ mod tests {
     #[test]
     fn json_stage_keeps_ordered_json() {
         let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
-        for styles in [vec!["json"], vec!["jsons"], vec!["json", "gz"], vec!["json", "base64"]] {
+        for styles in [vec!["ordered_json"], vec!["ordered_json", "gz"], vec!["ordered_json", "base64"]] {
             let value = strict_json::parse(text).unwrap();
             let stored = encode_ordered(&styles, StyledValue::Value(&value)).unwrap();
             let raw = match stored {
@@ -803,20 +829,38 @@ mod tests {
                 other => panic!("{styles:?}: read {other:?}"),
             }
         }
-        assert_eq!(encode_ordered(&["json"], StyledValue::Value(&strict_json::Value::null())).unwrap(), Param::Str("null".into()));
+        assert_eq!(encode_ordered(&["ordered_json"], StyledValue::Value(&strict_json::Value::null())).unwrap(), Param::Str("null".into()));
         assert_eq!(encode_ordered(&["serialize"], StyledValue::Value(&strict_json::parse("{}").unwrap())).unwrap_err().code(), CODEC_UNSUPPORTED);
-        assert_eq!(decode(&["json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
+        assert_eq!(decode(&["ordered_json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
+    }
+
+    /// 첫 stage가 `gz`나 `base64`이면 값을 PHP serialize한 뒤 그 stage를 적용한다
+    /// (docs/codec.md, `gz`와 `base64`), 그래서 값은 styled value다.
+    #[test]
+    fn leading_gz_and_base64_serialize_the_value() {
+        let value = serde_json::json!({"a": [1, "x"], "b": null});
+        for (stage, serialized) in [("gz", ["serialize", "gz"]), ("base64", ["serialize", "base64"])] {
+            let stored = encode(&[stage], StyledValue::Value(&value)).unwrap();
+            assert_eq!(stored, encode(&serialized, StyledValue::Value(&value)).unwrap(), "{stage}: stored bytes");
+            let raw = match stored {
+                Param::Str(s) => Val::Str(s),
+                Param::Bytes(b) => Val::Bytes(b),
+                other => panic!("{stage}: stored {other:?}"),
+            };
+            assert_eq!(decode(&[stage.to_string()], &raw).unwrap(), Val::Json(value.clone()), "{stage}: read");
+            assert_eq!(encode(&[stage], StyledValue::SqlNull).unwrap(), Param::Null, "{stage}: SQL NULL write");
+        }
     }
 
     #[test]
     fn json_literal_null_is_distinct_from_sql_null() {
         let literal = strict_json::Value::null();
-        let stored = encode_ordered(&["json"], StyledValue::Value(&literal)).unwrap();
+        let stored = encode_ordered(&["ordered_json"], StyledValue::Value(&literal)).unwrap();
         assert_eq!(stored, Param::Str("null".into()));
-        assert_eq!(decode(&["json".into()], &Val::Str("null".into())).unwrap(), Val::Ordered(literal));
-        assert_eq!(decode(&["json".into()], &Val::Null).unwrap(), Val::Null);
-        assert_eq!(encode(&["json"], StyledValue::Value(&Value::Null)).unwrap(), Param::Str("null".into()));
-        assert_eq!(encode(&["json"], StyledValue::SqlNull).unwrap(), Param::Null);
+        assert_eq!(decode(&["ordered_json".into()], &Val::Str("null".into())).unwrap(), Val::Ordered(literal));
+        assert_eq!(decode(&["ordered_json".into()], &Val::Null).unwrap(), Val::Null);
+        assert_eq!(encode(&["ordered_json"], StyledValue::Value(&Value::Null)).unwrap(), Param::Str("null".into()));
+        assert_eq!(encode(&["ordered_json"], StyledValue::SqlNull).unwrap(), Param::Null);
         for style in ["serialize", "yaml"] {
             let stored = encode(&[style], StyledValue::Value(&Value::Null)).unwrap();
             let Param::Str(text) = stored else { panic!("{style}: expected stored text") };
@@ -835,7 +879,11 @@ mod tests {
         assert_eq!(cases.len(), 13, "every shared styled-column case remains present");
         for case in cases {
             let id = case["id"].as_str().expect("case ID");
-            let style = case["style"].as_str().expect("style");
+            // fixture의 `json`과 `jsons` stage는 dbspec의 `ordered_json` stage다.
+            let style = match case["style"].as_str().expect("style") {
+                "json" | "jsons" => "ordered_json",
+                other => other,
+            };
             if id == "unselected" {
                 assert_eq!(case["getter_error"].as_str(), Some("COLUMN_UNSELECTED"), "{id}: getter contract");
                 assert_eq!(case["requested_output_error"].as_str(), Some("COLUMN_UNSELECTED"), "{id}: output contract");

@@ -2,7 +2,8 @@
 //! column names never contain connector or operator segments, so the split is
 //! unambiguous.
 
-use crate::manifest::{Column, Entity, Manifest};
+use crate::manifest::{function_column, styled};
+use orm_schema::dbspec::{Entity, Field, RuntimeModel};
 
 pub fn pascal(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -53,7 +54,7 @@ fn words(name: &str) -> Vec<&str> {
 #[derive(Clone, Debug, Default)]
 pub struct ChainKey {
     pub conn: &'static str,
-    /// "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple
+    /// "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple
     pub op: &'static str,
     pub column: String,
     pub columns: Vec<String>,
@@ -104,44 +105,47 @@ fn engine_op(op: &str) -> &'static str {
 
 const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
 
+/// equality와 목록 비교만 하는 operator.
+const EQUALITY: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
+
 /// The operator table of the engine.
-fn op_allowed(c: &Column, op: &str) -> bool {
+fn op_allowed(c: &Field, op: &str) -> bool {
     if op.ends_with("_col") {
         return true;
     }
-    if !c.styles.is_empty() && c.typ != "inet" {
-        if c.styles[0] == "aes" {
-            return matches!(op, "eq" | "not_eq" | "in" | "not_in" | "is_null" | "is_not_null");
+    if !c.codec.is_empty() {
+        if c.aes() || c.codec.iter().all(|s| s == "hex" || s == "ip") {
+            return EQUALITY.contains(&op);
         }
         return matches!(op, "is_null" | "is_not_null");
     }
-    let ops: &[&str] = match c.typ.as_str() {
-        "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
-        "string" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
+    let ops: &[&str] = match c.ty.name() {
+        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
+        "varchar" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
         "text" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"],
-        "enum" | "inet" | "bytes" => &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"],
+        "uuid" | "bytes" => EQUALITY,
         "bool" => &["eq", "not_eq", "is_null", "is_not_null"],
         _ => &["is_null", "is_not_null"],
     };
     ops.contains(&op)
 }
 
-fn column_of<'e>(e: &'e Entity, ws: &[&str]) -> Option<&'e Column> {
+fn column_of<'e>(e: &'e Entity, ws: &[&str]) -> Option<&'e Field> {
     let name = ws.concat();
-    e.columns.iter().find(|c| pascal(&c.name) == name)
+    e.fields.iter().find(|c| pascal(&c.name) == name)
 }
 
 /// The column of `e` (of any entity when None) whose PascalCase name is given.
-pub fn column_name(m: &Manifest, e: Option<&Entity>, pascal_name: &str) -> Option<String> {
-    let found = |ent: &Entity| ent.columns.iter().find(|c| pascal(&c.name) == pascal_name).map(|c| c.name.clone());
+pub fn column_name(m: &RuntimeModel, e: Option<&Entity>, pascal_name: &str) -> Option<String> {
+    let found = |ent: &Entity| ent.fields.iter().find(|c| pascal(&c.name) == pascal_name).map(|c| c.name.clone());
     match e {
         Some(e) => found(e),
-        None => m.entities().find_map(found),
+        None => m.entities.iter().find_map(found),
     }
 }
 
 /// Parses the chain part of a method name for entity `e`.
-pub fn parse_chain(m: &Manifest, e: &Entity, name: &str) -> Result<Vec<ChainKey>, String> {
+pub fn parse_chain(m: &RuntimeModel, e: &Entity, name: &str) -> Result<Vec<ChainKey>, String> {
     let ws = words(name);
     if ws.is_empty() {
         return Err("empty condition name".into());
@@ -164,7 +168,7 @@ pub fn parse_chain(m: &Manifest, e: &Entity, name: &str) -> Result<Vec<ChainKey>
     Ok(keys)
 }
 
-fn parse_key(m: &Manifest, e: &Entity, ws: &[&str]) -> Result<ChainKey, String> {
+fn parse_key(m: &RuntimeModel, e: &Entity, ws: &[&str]) -> Result<ChainKey, String> {
     if ws.is_empty() {
         return Err("a condition key is empty".into());
     }
@@ -188,12 +192,6 @@ fn parse_key(m: &Manifest, e: &Entity, ws: &[&str]) -> Result<ChainKey, String> 
     if ws[0] == "Tuple" {
         try_key(tuple_key(e, &ws[1..], "tuple"));
     }
-    if ws[0] == "Fulltext" {
-        try_key(fulltext_key(e, &ws[1..], "fulltext"));
-        if ws.len() > 1 && ws[1] == "Boolean" {
-            try_key(fulltext_key(e, &ws[2..], "fulltext_boolean"));
-        }
-    }
     for i in 1..ws.len().saturating_sub(1) {
         let Some(op) = compare_op(ws[i]) else { continue };
         let Some(left) = column_of(e, &ws[..i]) else { continue };
@@ -211,10 +209,10 @@ fn parse_key(m: &Manifest, e: &Entity, ws: &[&str]) -> Result<ChainKey, String> 
     }
 }
 
-fn check_op(e: &Entity, c: &Column, k: ChainKey) -> Result<ChainKey, String> {
+fn check_op(e: &Entity, c: &Field, k: ChainKey) -> Result<ChainKey, String> {
     let op = k.op;
     if !k.compare.is_empty() {
-        if !op_allowed(c, &format!("{}_col", engine_op(op))) || c.styled() {
+        if !op_allowed(c, &format!("{}_col", engine_op(op))) || styled(c) {
             return Err(format!("{}.{} cannot be compared with a column", e.name, c.name));
         }
         return Ok(k);
@@ -223,7 +221,7 @@ fn check_op(e: &Entity, c: &Column, k: ChainKey) -> Result<ChainKey, String> {
     if op.is_empty() || op == "ne" {
         allowed = allowed || op_allowed(c, "is_null");
     }
-    if matches!(op, "gt" | "lt" | "ge" | "le" | "") && c.function_column() {
+    if matches!(op, "gt" | "lt" | "ge" | "le" | "") && function_column(c) {
         allowed = true;
     }
     if !allowed {
@@ -233,7 +231,7 @@ fn check_op(e: &Entity, c: &Column, k: ChainKey) -> Result<ChainKey, String> {
     Ok(k)
 }
 
-fn split_with<'e>(e: &'e Entity, ws: &[&str]) -> Option<Vec<&'e Column>> {
+fn split_with<'e>(e: &'e Entity, ws: &[&str]) -> Option<Vec<&'e Field>> {
     let mut out = Vec::new();
     let mut start = 0;
     for i in 0..=ws.len() {
@@ -250,22 +248,12 @@ fn tuple_key(e: &Entity, ws: &[&str], op: &'static str) -> Result<ChainKey, Stri
     let cols = split_with(e, ws).filter(|c| c.len() >= 2).ok_or_else(|| format!("a tuple needs two or more columns of {} joined by With", e.name))?;
     let mut k = ChainKey { op, ..Default::default() };
     for c in cols {
-        if c.styled() || !op_allowed(c, "in") {
+        if styled(c) || !op_allowed(c, "in") {
             return Err(format!("{}.{} cannot be used in a tuple", e.name, c.name));
         }
         k.columns.push(c.name.clone());
     }
     Ok(k)
-}
-
-fn fulltext_key(e: &Entity, ws: &[&str], op: &'static str) -> Result<ChainKey, String> {
-    let cols = split_with(e, ws).filter(|c| !c.is_empty()).ok_or_else(|| format!("full-text columns of {} are not valid", e.name))?;
-    let k = ChainKey { op, columns: cols.iter().map(|c| c.name.clone()).collect(), ..Default::default() };
-    if e.fulltext.contains(&k.columns) {
-        Ok(k)
-    } else {
-        Err(format!("{} has no full-text index on {}", e.name, k.columns.join(", ")))
-    }
 }
 
 /// Parses an orderBy chain into (column, descending) keys.
@@ -295,7 +283,7 @@ pub fn parse_order(e: &Entity, name: &str) -> Result<Vec<(String, bool)>, String
 
 /// Parses `<L>With<R>` where L is a column of `left` and R of `right`; None
 /// accepts a column of any entity.
-pub fn split_pair(m: &Manifest, left: Option<&Entity>, right: Option<&Entity>, name: &str) -> Result<(String, String), String> {
+pub fn split_pair(m: &RuntimeModel, left: Option<&Entity>, right: Option<&Entity>, name: &str) -> Result<(String, String), String> {
     let ws = words(name);
     let mut found = Vec::new();
     for (i, w) in ws.iter().enumerate() {

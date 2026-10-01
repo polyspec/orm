@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use chrono::NaiveDateTime;
 use orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 
-static SCHEMA: Schema = Schema::new(include_bytes!("../../../../schema/schema.json"), "16198b563e2e3cae");
+static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbspec"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
 static ENTITY: Entity =
     Entity { name: "soft_record", schema: &SCHEMA, new: orm::model::new_boxed::<SoftRecord>, collect: orm::model::collect_boxed::<SoftRecord> };
@@ -81,7 +81,7 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
         ..Default::default()
     };
     let db = Db::connect(&dsn, 1, config).await.unwrap();
-    db.utils().schema().install(SCHEMA.json()).await.unwrap();
+    db.utils().schema().install(&SCHEMA).await.unwrap();
     let mut keep = record(&db);
     keep.core_mut().set("name", Param::Str("keep".into()));
     orm::model::create(&mut keep).await.unwrap();

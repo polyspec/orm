@@ -3,7 +3,7 @@
 //! test drops its tables there and installs the schema); the test fails when
 //! either is unset.
 //!
-//! Usage: integration <schema.json> [--case <case>]
+//! Usage: integration <bench.dbspec> [--case <case>]
 use std::cell::Cell;
 use std::path::PathBuf;
 
@@ -20,17 +20,17 @@ mod nonnull_model {
 
 #[test]
 fn generated_nonnull_styled_setter_rejects_sql_null() {
-    let err = match nonnull_model::AuditChange::new().set_entity_ref(orm::StyledValue::SqlNull) {
+    let err = match nonnull_model::NonnullDocument::new().set_body(orm::StyledValue::SqlNull) {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
     };
     assert_eq!(err.code(), orm::codes::CODEC_ENCODE);
     let value = orm::ordered_json::Value::null();
-    let row = match nonnull_model::AuditChange::new().set_entity_ref(orm::StyledValue::Value(value.clone())) {
+    let row = match nonnull_model::NonnullDocument::new().set_body(orm::StyledValue::Value(value.clone())) {
         Ok(row) => row,
         Err(err) => panic!("JSON null must be an encoded value: {err}"),
     };
-    let got = match row.get_entity_ref() {
+    let got = match row.get_body() {
         Ok(value) => value,
         Err(err) => panic!("assigned value must be readable: {err}"),
     };
@@ -71,7 +71,6 @@ const TABLES: &[&str] = &[
 ];
 
 struct Env {
-    schema: Vec<u8>,
     tmp: PathBuf,
 }
 
@@ -105,8 +104,8 @@ impl Env {
     async fn databases(&self, test: &str) -> Vec<Target> {
         let targets = self.without_tables(test).await;
         for t in &targets {
-            t.db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
-            t.db.utils().schema().install(&self.schema).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
+            t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
+            t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
         }
         targets
     }
@@ -180,7 +179,7 @@ async fn seed(db: &Db) -> Fixture {
             .set_service_member_seq(member.get_seq().unwrap())
             .set_start_dt(start() + chrono::Duration::hours(i))
             .set_end_dt(start() + chrono::Duration::hours(48))
-            .set_read_count(i * 10)
+            .set_read_count(i as i32 * 10)
             .set_is_close(i % 2 == 1);
         if i < 2 {
             b = b.set_photo_url(format!("cover-{name}"));
@@ -548,7 +547,7 @@ async fn read_only_sqlite(t: &Target, path: &std::path::Path) {
 
 /// Checks schema().empty() on a database without the test tables, with an
 /// empty PostgreSQL schema other than public, and with the installed tables.
-async fn schema_empty(t: &Target, schema: &[u8]) {
+async fn schema_empty(t: &Target) {
     let db = &t.db;
     assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
     if let Pool::Postgres(p) = db.pool() {
@@ -558,7 +557,7 @@ async fn schema_empty(t: &Target, schema: &[u8]) {
         assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
         assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
     }
-    db.utils().schema().install(schema).await.unwrap();
+    db.utils().schema().install(&model::SCHEMA).await.unwrap();
     assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
 }
 
@@ -698,18 +697,20 @@ async fn main() {
         [_, _] => None,
         [_, _, flag, case] if flag == "--case" && CASES.contains(&case.as_str()) => Some(case.as_str()),
         _ => {
-            eprintln!("usage: integration <schema.json> [--case <case>]; supported cases: {}", CASES.join(", "));
+            eprintln!("usage: integration <bench.dbspec> [--case <case>]; supported cases: {}", CASES.join(", "));
             std::process::exit(2);
         }
     };
     let tmp = std::env::temp_dir().join(format!("orm-rust-integration-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
-    let schema = std::fs::read(&args[1]).expect("schema.json");
-    assert_eq!(orm::Manifest::load(&schema).expect("schema manifest").schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
-    let env = Env { schema, tmp: tmp.clone() };
+    let text = std::fs::read_to_string(&args[1]).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
+    let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
+    let env = Env { tmp: tmp.clone() };
     if selected.is_none_or(|case| case == "schema_empty") {
         for t in env.without_tables("schema_empty").await {
-            schema_empty(&t, &env.schema).await;
+            schema_empty(&t).await;
             t.db.close().await;
             println!("ok schema_empty ({})", t.driver);
         }

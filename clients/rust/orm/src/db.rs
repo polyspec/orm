@@ -20,7 +20,7 @@ use crate::engine::{self, Dialect};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
-use crate::tx::TxShared;
+use crate::tx::{OperationId, TxShared};
 use crate::value::Param;
 use crate::{codes, Error, Result};
 
@@ -486,8 +486,9 @@ impl Db {
 
     /// Writes a datetime or date value in the text form SQLite stores, so a
     /// string value compares equal to the stored value. A datetime string with
-    /// an offset is converted to the connection time zone.
-    fn sqlite_time_value(&self, v: Param, col_type: &str) -> Result<Param> {
+    /// an offset is converted to the connection time zone. `datetime(p)` text는
+    /// 소수 p자리로 쓰고, p자리 뒤에 0이 아닌 자리가 있으면 CODEC_ENCODE다.
+    fn sqlite_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
         match v {
             Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
             Param::Str(text) if col_type == "date" => {
@@ -497,15 +498,18 @@ impl Db {
                     Err(invalid_time_text(&text, col_type))
                 }
             }
-            Param::Str(text) => sqlite_datetime_text(&text, &self.inner.zone).map(Param::Str).ok_or_else(|| invalid_time_text(&text, col_type)),
+            Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
+            Param::Str(text) => {
+                let full = sqlite_datetime_text(&text, &self.inner.zone).ok_or_else(|| invalid_time_text(&text, col_type))?;
+                datetime_digits(&full, precision).map(Param::Str)
+            }
             other => Ok(other),
         }
     }
 
-    /// Resolves the bind slots of a step.
-    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param]) -> Result<Vec<Param>> {
+    /// step의 bind slot 값을 정한다. `operation`은 step이 실행되는 transaction의 operation id다.
+    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], operation: Option<&OperationId>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
-        let postgres = matches!(self.inner.pool, Pool::Postgres(_));
         let sqlite = matches!(self.inner.pool, Pool::Sqlite(_));
         let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
         let mut clock: Option<String> = None;
@@ -515,7 +519,10 @@ impl Db {
                 "param" => {
                     let mut v = param_arg(b, params)?;
                     if sqlite && (b.col_type == "datetime" || b.col_type == "date") {
-                        v = self.sqlite_time_value(v, &b.col_type)?;
+                        v = self.sqlite_time_value(v, &b.col_type, b.precision)?;
+                    }
+                    if b.col_type == "time" {
+                        v = time_value(v, b.precision)?;
                     }
                     if b.col_type == "decimal" {
                         let precision = u8::try_from(b.precision)
@@ -532,19 +539,6 @@ impl Db {
                                     msg: format!("decimal bind requires exact text, received {other:?}"),
                                 })
                             }
-                        };
-                    }
-                    if b.col_type == "point" {
-                        v = match v {
-                            Param::Null => Param::Null,
-                            Param::Point(point) => {
-                                Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
-                            }
-                            Param::Str(text) => {
-                                let point = crate::value::parse_point(&text)?;
-                                Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
-                            }
-                            other => return Err(Error::Config(format!("point parameter requires two coordinates, received {other:?}"))),
                         };
                     }
                     out.push(if b.host_styles.is_empty() {
@@ -570,8 +564,21 @@ impl Db {
                 "now" => {
                     // One statement reads the clock once, so its clock columns are equal.
                     let text = clock.get_or_insert_with(|| self.now_text()).clone();
-                    out.push(Param::Str(text));
+                    out.push(Param::Str(clock_digits(&text, b.precision)));
                 }
+                "operation" => out.push(match (operation, b.col_type.as_str()) {
+                    (Some(OperationId::I64(id)), "i64") => Param::I64(*id),
+                    (Some(OperationId::Uuid(id)), "uuid") => Param::Str(id.clone()),
+                    (Some(other), column_type) => {
+                        return Err(Error::Config(format!("operation id {other:?} does not fit the {column_type} operation column {}", b.column)));
+                    }
+                    (None, _) => {
+                        return Err(Error::Config(format!(
+                            "a write of the audited column {} requires an operation id; run it in a transaction with operation(id)",
+                            b.column
+                        )))
+                    }
+                }),
                 other => return Err(Error::internal(format!("bind from {other}"))),
             }
         }
@@ -623,10 +630,17 @@ impl Db {
         Ok(t)
     }
 
-    pub(crate) async fn run_query(&self, mut target: Target<'_>, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+    pub(crate) async fn run_query(
+        &self,
+        mut target: Target<'_>,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+        operation: Option<&OperationId>,
+    ) -> Result<Vec<DriverRow>> {
         acquire_sqlite_row_lock(&mut target, &st.lock).await?;
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
-        let args = self.args(st, params, &parent_vals)?;
+        let args = self.args(st, params, &parent_vals, operation)?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
@@ -653,8 +667,8 @@ impl Db {
         r
     }
 
-    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.args(st, params, &[])?;
+    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param], operation: Option<&OperationId>) -> Result<(u64, u64)> {
+        let args = self.args(st, params, &[], operation)?;
         let sql = st.sql.as_str();
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
@@ -681,7 +695,8 @@ impl Db {
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
-        let args = self.args(st, &req.params, &[])?;
+        let operation = crate::tx::active_for(self).and_then(|t| t.operation.clone());
+        let args = self.args(st, &req.params, &[], operation.as_ref())?;
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
             binds.push(match b.from.as_str() {
@@ -725,12 +740,12 @@ impl Executor {
                 if !st.lock.is_empty() {
                     return Err(Error::Config("row locks are allowed only inside a transaction".into()));
                 }
-                d.run_query(Target::Pool(&d.inner.pool), st, params, parent_vals).await
+                d.run_query(Target::Pool(&d.inner.pool), st, params, parent_vals, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_query(Target::Tx(inner), st, params, parent_vals).await
+                t.db.run_query(Target::Tx(inner), st, params, parent_vals, t.operation.as_ref()).await
             }
         }
     }
@@ -741,12 +756,12 @@ impl Executor {
                 if d.inner.closed.load(Ordering::Acquire) {
                     return Err(Error::Config("database is closed".into()));
                 }
-                d.run_execute(Target::Pool(&d.inner.pool), st, params).await
+                d.run_execute(Target::Pool(&d.inner.pool), st, params, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_execute(Target::Tx(inner), st, params).await
+                t.db.run_execute(Target::Tx(inner), st, params, t.operation.as_ref()).await
             }
         }
     }
@@ -803,6 +818,57 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
             Some(format!("{}.{:0<6}", zone.local(instant).format("%Y-%m-%d %H:%M:%S"), fraction))
         }
     }
+}
+
+/// 소수 6자리 `YYYY-MM-DD HH:MM:SS.ffffff` text를 소수 p자리로 줄인다. 버리는 자리에
+/// 0이 아닌 숫자가 있으면 값이 바뀌므로 CODEC_ENCODE다.
+fn datetime_digits(text: &str, precision: i64) -> Result<String> {
+    let Some((whole, fraction)) = text.split_once('.') else {
+        return Ok(text.to_owned());
+    };
+    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
+    if fraction[p..].bytes().any(|b| b != b'0') {
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
+    }
+    Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
+}
+
+/// executor 시계의 소수 6자리 text를 `datetime(p)` column의 소수 p자리로 자른다.
+fn clock_digits(text: &str, precision: i64) -> String {
+    let Some((whole, fraction)) = text.split_once('.') else {
+        return text.to_owned();
+    };
+    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
+    if p == 0 {
+        whole.to_owned()
+    } else {
+        format!("{whole}.{}", &fraction[..p])
+    }
+}
+
+/// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model").
+fn time_value(v: Param, precision: i64) -> Result<Param> {
+    let text = match v {
+        Param::Null => return Ok(Param::Null),
+        Param::Str(text) => text,
+        other => return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value must be HH:MM:SS text, received {other:?}") }),
+    };
+    let p = usize::try_from(precision).unwrap_or(0);
+    let b = text.as_bytes();
+    let clock = b.len() >= 8
+        && digits(&b[0..2])
+        && b[2] == b':'
+        && digits(&b[3..5])
+        && b[5] == b':'
+        && digits(&b[6..8])
+        && &text[0..2] < "24"
+        && &text[3..5] < "60"
+        && &text[6..8] < "60";
+    let fraction = if p == 0 { b.len() == 8 } else { b.len() == 9 + p && b[8] == b'.' && digits(&b[9..]) };
+    if !clock || !fraction {
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS with {p} fraction digits") });
+    }
+    Ok(Param::Str(text))
 }
 
 fn invalid_time_text(text: &str, col_type: &str) -> Error {

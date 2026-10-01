@@ -2,7 +2,7 @@
 
 #[derive(Debug, Clone, Default)]
 pub struct Plan {
-    pub schema_hash: String,
+    pub manifest_hash: String,
     pub kind: String,
     pub steps: Vec<Step>,
 }

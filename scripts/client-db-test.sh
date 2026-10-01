@@ -29,5 +29,5 @@ case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked --workspace)
   (cd clients/rust && cargo test --locked -p orm-build --features cli)
   (cd clients/rust && cargo build --locked --release -p orm-tests --bin integration)
-  clients/rust/target/release/integration "$ROOT/schema/schema.json"
+  clients/rust/target/release/integration "$ROOT/schema/bench.dbspec"
 esac

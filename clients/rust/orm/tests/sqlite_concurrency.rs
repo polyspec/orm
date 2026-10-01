@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use futures_util::future::join_all;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
-static SCHEMA: Schema = Schema::new(include_bytes!("../../../../schema/schema.json"), "16198b563e2e3cae");
+static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbspec"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
 static ENTITY: Entity = Entity { name: "service", schema: &SCHEMA, new: orm::model::new_boxed::<Service>, collect: orm::model::collect_boxed::<Service> };
 
@@ -105,7 +105,7 @@ async fn database(name: &str) -> String {
     let _ = std::fs::remove_file(&path);
     let dsn = format!("sqlite://{}", path.display());
     let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap();
-    db.utils().schema().install(SCHEMA.json()).await.unwrap();
+    db.utils().schema().install(&SCHEMA).await.unwrap();
     db.close().await;
     dsn
 }

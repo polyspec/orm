@@ -1,17 +1,17 @@
 //! Operations outside the query syntax: `db.utils()`.
 
 use std::collections::BTreeMap;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::db::{Db, DbStats, Executor};
 use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
-use crate::schema::Manifest;
+use crate::schema::Schema;
 use crate::tx::{active_for, transaction_conflict, TxShared};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
+use orm_schema::dbspec::{self, Document};
 
 /// The utilities of a connection.
 pub struct Utils<'a> {
@@ -166,16 +166,8 @@ impl<'a> Utils<'a> {
             "mysql" => {
                 self.exec(&ex, format!("SET @`orm.{key}` = ?"), &params[1..]).await?;
             }
-            _ => {
-                self.exec(&ex, r#"CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)"#.into(), &[]).await?;
-                self.exec(
-                    &ex,
-                    r#"INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value""#.into(),
-                    &params,
-                )
-                .await?;
-                t.context_row.store(true, Ordering::Release);
-            }
+            // SQLite에는 transaction-local 값을 담는 database 기능이 없어 transaction이 값을 갖는다.
+            _ => {}
         }
         t.locals.lock().unwrap().insert(key.to_owned(), value.to_owned());
         Ok(())
@@ -210,19 +202,35 @@ pub struct SchemaUtils<'a> {
 }
 
 impl SchemaUtils<'_> {
-    /// Installs a schema manifest on the connection's database. Existing
-    /// tables and indexes are kept. PostgreSQL and SQLite apply it in the
-    /// active transaction or in a new one; MySQL commits schema statements
-    /// implicitly, so it applies them outside a transaction and returns CONFIG
-    /// inside one.
-    pub async fn install(&self, manifest_json: &[u8]) -> Result<()> {
-        Manifest::load(manifest_json)?;
-        let text = std::str::from_utf8(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let manifest = orm_schema::schema::Manifest::load(text).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let ddl = orm_schema::ddl::render_create_ddl(&manifest, self.u.db.driver()).map_err(|e| Error::Config(format!("render schema: {e}")))?;
-        let statements = orm_schema::sql::split_sql(&ddl);
-        if statements.is_empty() {
-            return Err(Error::Config("schema manifest produced no statements".into()));
+    /// schema의 dbspec document set을 연결의 dialect로 render한 statement를 적용한다
+    /// (docs/dialects.md, "Rendered statements"). document set의 table이 모두 있으면
+    /// 아무것도 하지 않고, 일부만 있으면 CONFIG를 돌려준다. PostgreSQL과 SQLite는 활성
+    /// transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를 암묵적으로
+    /// commit하므로 transaction 밖에서 적용하고, transaction 안에서는 CONFIG를 돌려준다.
+    pub async fn install(&self, schema: &Schema) -> Result<()> {
+        let documents = schema.documents()?;
+        let refs: Vec<&Document> = documents.iter().collect();
+        let dialect = match self.u.db.driver() {
+            "mysql" => dbspec::Dialect::MySql,
+            "postgres" => dbspec::Dialect::Postgres,
+            _ => dbspec::Dialect::Sqlite,
+        };
+        let statements = dbspec::render(&refs, dialect).map_err(|errors| Error::Engine {
+            code: codes::SCHEMA_INVALID.into(),
+            msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
+        })?;
+        let tables: Vec<String> = schema.manifest()?.model.entities.iter().map(|e| e.table.clone()).collect();
+        let existing = self.existing_tables(&tables).await?;
+        if existing.len() == tables.len() {
+            return Ok(());
+        }
+        if !existing.is_empty() {
+            return Err(Error::Config(format!(
+                "schema install creates every table of the document set or none; {} of {} tables exist: {}",
+                existing.len(),
+                tables.len(),
+                existing.join(", ")
+            )));
         }
         if let crate::db::Pool::MySql(pool) = self.u.db.pool() {
             // MySQL commits schema statements implicitly, so they run outside a transaction.
@@ -244,6 +252,25 @@ impl SchemaUtils<'_> {
                 Ok(())
             })
             .await
+    }
+
+    /// `tables` 중 연결의 database(MySQL), current schema(PostgreSQL), file(SQLite)에 있는 table.
+    async fn existing_tables(&self, tables: &[String]) -> Result<Vec<String>> {
+        let marks: Vec<String> = (1..=tables.len()).map(|i| self.u.ph(i)).collect();
+        let sql = match self.u.db.driver() {
+            "postgres" => format!(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ({}) ORDER BY table_name",
+                marks.join(", ")
+            ),
+            "mysql" => format!(
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ({}) ORDER BY TABLE_NAME",
+                marks.join(", ")
+            ),
+            _ => format!("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({}) ORDER BY name", marks.join(", ")),
+        };
+        let params: Vec<Param> = tables.iter().map(|t| Param::Str(t.clone())).collect();
+        let rows = self.u.query(&self.u.reader(), sql, &params).await?;
+        rows.into_iter().map(|mut row| row.swap_remove(0).take_string()).collect()
     }
 
     /// Whether a schema exists.
@@ -438,16 +465,12 @@ impl AesUtils<'_> {
     fn spec<M: Model>(&self, _m: &M) -> Result<AesSpec> {
         let name = M::entity().name;
         let ent = M::entity().entity_schema()?;
-        let columns: Vec<(String, Vec<String>)> = ent
-            .columns
-            .iter()
-            .filter(|c| c.is_aes())
-            .map(|c| (c.name.clone(), c.styles.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect()))
-            .collect();
-        if ent.aes_version.is_empty() || columns.is_empty() {
+        let columns: Vec<(String, Vec<String>)> =
+            ent.fields.iter().filter(|c| c.aes()).map(|c| (c.name.clone(), c.codec.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect())).collect();
+        let Some(version) = ent.aes_version.clone().filter(|_| !columns.is_empty()) else {
             return Err(Error::Config(format!("entity {name} has no AES columns with a key version")));
-        }
-        Ok(AesSpec { table: ent.table.clone(), keys: ent.pk.clone(), version: ent.aes_version.clone(), columns })
+        };
+        Ok(AesSpec { table: ent.table.clone(), keys: ent.primary_key.clone(), version, columns })
     }
 
     /// Reads the key version of every row of the model table.
