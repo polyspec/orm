@@ -15,7 +15,7 @@ TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check
+check: checklist-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check ts-check ts-min-check schema-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check client-db-check client-pooler-check dialect-facts-check conformance-check db-test perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check
 	$(WITH_TEST_ENV) go test ./...
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -111,6 +111,19 @@ dbspec-introspect-php-check:
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_introspect -- --nocapture
+
+# dbspec-introspect-compare-check applies the 2000-table stress document to
+# MySQL, PostgreSQL and SQLite, runs the Go, PHP, TypeScript and Rust
+# introspection runners of tests/dbspec/introspect on each database, and
+# requires equal outputs, the source schema text, no unsupported object and
+# each introspection within its budget.
+.PHONY: dbspec-introspect-compare-check
+dbspec-introspect-compare-check:
+	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
+	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect go test -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1 -timeout 30m -v
 
 # dbspec-compare-check runs the Go, PHP, TypeScript and Rust dbspec runners
 # twice each on tests/dbspec/cases.json and the stress document and fails on

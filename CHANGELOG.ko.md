@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.4: 모든 client에서 MySQL, PostgreSQL, SQLite를 dbspec으로 introspect한다.
+
+- T8.4.6: 네 client는 MySQL, PostgreSQL, SQLite에서 2000 table stress database를 각각 5초 안에 같은 문서로 introspect한다.
+
 - T8.4.3.1: PHP는 기본 128 MB memory limit 안에서 2000 table stress database를 introspect한다.
 
 - T8.4.2.3: MySQL introspection은 2000 table에서 1분이 넘던 join 대신 catalog query 두 개로 check를 읽는다.

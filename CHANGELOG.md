@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.4: MySQL, PostgreSQL and SQLite introspect into dbspec in every client.
+
+- T8.4.6: the four clients introspect the 2000-table stress database to the same document on MySQL, PostgreSQL and SQLite within 5 seconds each.
+
 - T8.4.3.1: PHP introspects the 2000-table stress database within the default 128 MB memory limit.
 
 - T8.4.2.3: MySQL introspection reads checks with two catalog queries instead of a join that took over a minute on 2000 tables.
