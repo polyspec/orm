@@ -331,7 +331,7 @@ where
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                        return Err(rollback_failed(&e, &rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -433,7 +433,7 @@ impl<'a, F> Transaction<'a, F> {
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(Error::Config(format!("transaction failed ({e}) and rollback failed ({rollback_error})")));
+                        return Err(rollback_failed(&e, &rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -451,27 +451,11 @@ async fn savepoint<T, F>(tx: Arc<TxShared>, f: &F) -> Result<T>
 where
     F: AsyncFn() -> Result<T>,
 {
-    let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
-    let name = format!("orm_sp_{n}");
-    let result = async {
-        tx.raw(&format!("SAVEPOINT {name}")).await?;
-        let mut stack = frames();
-        stack.push(tx.clone());
-        match FLOW.scope(stack, f()).await {
-            Ok(v) => {
-                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
-                Ok(v)
-            }
-            Err(e) => {
-                tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
-                let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
-                Err(e)
-            }
-        }
+    match run_savepoint(tx, f()).await? {
+        Ok(value) => Ok(value),
+        Err((callback, None)) => Err(callback),
+        Err((callback, Some(rollback))) => Err(rollback_failed(&callback, &rollback)),
     }
-    .await;
-    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-    result
 }
 
 async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b SendOperation<'a, T>) -> Result<T>
@@ -479,61 +463,79 @@ where
     'a: 'b,
     T: Send + 'a,
 {
-    let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
-    let name = format!("orm_sp_{n}");
-    let result = async {
-        tx.raw(&format!("SAVEPOINT {name}")).await?;
-        let mut stack = frames();
-        stack.push(tx.clone());
-        match FLOW.scope(stack, (f)()).await {
-            Ok(v) => {
-                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
-                Ok(v)
-            }
-            Err(e) => {
-                tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await?;
-                let _ = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
-                Err(e)
-            }
-        }
+    match run_savepoint(tx, (f)()).await? {
+        Ok(value) => Ok(value),
+        Err((callback, None)) => Err(callback),
+        Err((callback, Some(rollback))) => Err(rollback_failed(&callback, &rollback)),
     }
-    .await;
-    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-    result
 }
 
 async fn savepoint_once<F, T, E>(tx: Arc<TxShared>, f: F) -> std::result::Result<T, TransactionOnceError<E>>
 where
     F: AsyncFnOnce() -> std::result::Result<T, E>,
 {
+    match run_savepoint(tx, f()).await.map_err(TransactionOnceError::Orm)? {
+        Ok(value) => Ok(value),
+        Err((callback, None)) => Err(TransactionOnceError::Callback(callback)),
+        Err((callback, Some(rollback))) => Err(TransactionOnceError::Rollback { callback, rollback }),
+    }
+}
+
+/// savepoint를 끝낸 callback의 결과다.
+enum SavepointEnd<T, E> {
+    Returned(std::result::Result<T, (E, Option<Error>)>),
+    Panicked(Box<dyn std::any::Any + Send>, Option<Error>),
+}
+
+/// savepoint 안에서 callback을 실행한다. 성공한 callback은 savepoint를 풀고, 실패하거나 panic한
+/// callback은 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. callback 오류는 끝내지 못한 savepoint의
+/// 오류와 함께 돌려주고, panic은 그 오류가 있으면 transaction과 같은 형식의 오류로 이어 간다.
+async fn run_savepoint<T, E, Fut>(tx: Arc<TxShared>, callback: Fut) -> Result<std::result::Result<T, (E, Option<Error>)>>
+where
+    Fut: Future<Output = std::result::Result<T, E>>,
+{
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
-    let result = async {
-        tx.raw(&format!("SAVEPOINT {name}")).await.map_err(TransactionOnceError::Orm)?;
+    let ended = async {
+        tx.raw(&format!("SAVEPOINT {name}")).await?;
         let mut stack = frames();
         stack.push(tx.clone());
-        match FLOW.scope(stack, f()).await {
-            Ok(value) => {
-                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await.map_err(TransactionOnceError::Orm)?;
-                Ok(value)
+        Ok::<_, Error>(match std::panic::AssertUnwindSafe(FLOW.scope(stack, callback)).catch_unwind().await {
+            Ok(Ok(value)) => {
+                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
+                SavepointEnd::Returned(Ok(value))
             }
-            Err(callback) => {
-                let rolled_back = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await;
-                let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
-                match (rolled_back, released) {
-                    (Ok(()), Ok(())) => Err(TransactionOnceError::Callback(callback)),
-                    (Err(rollback), Ok(())) | (Ok(()), Err(rollback)) => Err(TransactionOnceError::Rollback { callback, rollback }),
-                    (Err(rollback), Err(release)) => Err(TransactionOnceError::Rollback {
-                        callback,
-                        rollback: Error::Config(format!("savepoint rollback failed ({rollback}) and release failed ({release})")),
-                    }),
-                }
-            }
-        }
+            Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
+            Err(payload) => SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err()),
+        })
     }
     .await;
     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
-    result
+    match ended? {
+        SavepointEnd::Returned(result) => Ok(result),
+        SavepointEnd::Panicked(payload, rollback) => resume_panic(payload, rollback),
+    }
+}
+
+/// savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두 statement를 모두 시도하고 실패를 모두 돌려준다.
+async fn rollback_savepoint(tx: &TxShared, name: &str) -> Result<()> {
+    let rolled_back = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await;
+    let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+    joined([rolled_back.err(), released.err()].into_iter().flatten().collect())
+}
+
+/// 원인과 실패한 transaction 끝을 함께 보고한다(docs/interfaces.md).
+fn rollback_failed(cause: &dyn std::fmt::Display, rollback: &Error) -> Error {
+    Error::Config(format!("transaction failed ({cause}) and rollback failed ({rollback})"))
+}
+
+/// 오류가 없으면 Ok, 하나면 그 오류, 여럿이면 message를 모은 CONFIG다.
+fn joined(mut errors: Vec<Error>) -> Result<()> {
+    match errors.len() {
+        0 => Ok(()),
+        1 => Err(errors.remove(0)),
+        _ => Err(Error::Config(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))),
+    }
 }
 
 async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, operation: Option<OperationId>) -> Result<TxShared> {
@@ -610,13 +612,19 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
 /// panic한 callback의 transaction을 rollback하고 panic을 이어 간다. rollback이 실패하면
 /// panic message가 원인과 실패한 rollback을 함께 담는다(docs/interfaces.md).
 async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Send>) -> std::convert::Infallible {
-    if let Err(rollback_error) = rollback(tx).await {
+    resume_panic(payload, rollback(tx).await.err())
+}
+
+/// panic을 이어 간다. transaction이나 savepoint를 끝내지 못했으면 panic 값은 원인과 그 오류를 담은
+/// CONFIG 오류의 text다.
+fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>) -> ! {
+    if let Some(rollback) = rollback {
         let cause = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
             (Some(text), _) => (*text).to_owned(),
             (None, Some(text)) => text.clone(),
             (None, None) => "a panic without a text payload".to_owned(),
         };
-        std::panic::resume_unwind(Box::new(Error::Config(format!("transaction failed ({cause}) and rollback failed ({rollback_error})")).to_string()));
+        std::panic::resume_unwind(Box::new(rollback_failed(&cause, &rollback).to_string()));
     }
     std::panic::resume_unwind(payload)
 }
@@ -659,11 +667,7 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
             }
         }
     }
-    match errors.len() {
-        0 => Ok(()),
-        1 => Err(errors.remove(0)),
-        _ => Err(Error::Config(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))),
-    }
+    joined(errors)
 }
 
 async fn raw_on_conn(conn: &mut sqlx::MySqlConnection, sql: &str) -> Result<()> {
@@ -1061,10 +1065,15 @@ mod tests {
     /// sqlite_denied가 고른 statement를 SQLite authorizer가 거부한다. 실제 SQLite는 transaction 끝의
     /// ROLLBACK과 PRAGMA를 거부하지 않으므로 이렇게 실패를 만든다.
     static SQLITE_DENIED: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(DENY_NOTHING);
+    /// SQLITE_DENIED는 process에 하나이므로 그것을 쓰는 test는 이 lock을 잡고 하나씩 실행한다.
+    static SQLITE_DENIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
     const DENY_NOTHING: u8 = 0;
     const DENY_ROLLBACK: u8 = 1;
     const DENY_QUERY_ONLY_ON: u8 = 2;
     const DENY_QUERY_ONLY_OFF: u8 = 3;
+    const DENY_SAVEPOINT_ROLLBACK: u8 = 4;
+    const DENY_SAVEPOINT_RELEASE: u8 = 5;
+    const DENY_SAVEPOINT_END: u8 = 6;
 
     unsafe extern "C" fn sqlite_authorizer(
         _: *mut std::ffi::c_void,
@@ -1080,6 +1089,9 @@ mod tests {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
             DENY_QUERY_ONLY_ON => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "1",
             DENY_QUERY_ONLY_OFF => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "0",
+            DENY_SAVEPOINT_ROLLBACK => action == libsqlite3_sys::SQLITE_SAVEPOINT && text(first) == "ROLLBACK",
+            DENY_SAVEPOINT_RELEASE => action == libsqlite3_sys::SQLITE_SAVEPOINT && text(first) == "RELEASE",
+            DENY_SAVEPOINT_END => action == libsqlite3_sys::SQLITE_SAVEPOINT && matches!(text(first), "ROLLBACK" | "RELEASE"),
             _ => false,
         };
         if denied {
@@ -1104,6 +1116,7 @@ mod tests {
     // 보고하고, 끝나지 않은 transaction의 connection은 닫혀 다음 transaction이 시작한다.
     #[tokio::test]
     async fn sqlite_transaction_end_failures_are_reported() {
+        let _denial = SQLITE_DENIAL.lock().await;
         let tmp = std::env::temp_dir().join(format!("orm-transaction-end-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         let db = Db::connect(&format!("sqlite://{}", tmp.join("end.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
@@ -1131,6 +1144,60 @@ mod tests {
         deny_on_sqlite(&db, DENY_QUERY_ONLY_OFF).await;
         let error = db.transaction(async || Err::<(), _>(Error::Config("callback failed".into()))).read_only().retry(0).await.expect_err("mode reset");
         both(&error, "CONFIG: callback failed");
+        SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
+        db.close().await;
+        std::fs::remove_dir_all(tmp).unwrap();
+    }
+
+    // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
+    // 오류, panic, transaction_send와 transaction_once의 중첩 호출이 그 오류를 함께 보고하고, 성공한
+    // callback은 실패한 RELEASE SAVEPOINT를 돌려준다.
+    #[tokio::test]
+    async fn savepoint_end_failures_are_reported() {
+        let _denial = SQLITE_DENIAL.lock().await;
+        let tmp = std::env::temp_dir().join(format!("orm-savepoint-end-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let db = Db::connect(&format!("sqlite://{}", tmp.join("savepoint.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
+        let both = |what: &str, text: &str| {
+            assert!(
+                text.starts_with("CONFIG: transaction failed (CONFIG: callback failed) and rollback failed (") && text.contains("not authorized"),
+                "{what}: {text}"
+            );
+        };
+        let failed = || async { Err::<(), _>(Error::Config("callback failed".into())) };
+        for denied in [DENY_SAVEPOINT_ROLLBACK, DENY_SAVEPOINT_RELEASE, DENY_SAVEPOINT_END] {
+            deny_on_sqlite(&db, denied).await;
+            let error = db.transaction(async || db.transaction(failed).await).retry(0).await.expect_err("callback error");
+            both(&format!("callback error {denied}"), &error.to_string());
+            if denied == DENY_SAVEPOINT_END {
+                assert_eq!(error.to_string().matches("not authorized").count(), 2, "both savepoint statements are reported: {error}");
+            }
+            let error = db.transaction(async || db.transaction_send(failed).await).retry(0).await.expect_err("send callback error");
+            both(&format!("send callback error {denied}"), &error.to_string());
+            let error = db
+                .transaction(async || match db.transaction_once(async || Err::<(), _>(DomainFailure::Rejected)).await {
+                    Err(TransactionOnceError::Rollback { callback: DomainFailure::Rejected, rollback }) => Err::<(), Error>(rollback),
+                    other => panic!("once {denied}: {other:?}"),
+                })
+                .retry(0)
+                .await
+                .expect_err("once callback error");
+            assert!(error.to_string().contains("not authorized"), "once {denied}: {error}");
+            let panicked = std::panic::AssertUnwindSafe(
+                db.transaction(async || db.transaction(async || -> Result<()> { panic!("callback panicked") }).await).retry(0).into_future(),
+            )
+            .catch_unwind()
+            .await;
+            let payload = panicked.expect_err("the callback panics");
+            let text = payload.downcast_ref::<String>().expect("the panic carries the savepoint failure");
+            assert!(
+                text.starts_with("CONFIG: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"),
+                "panic {denied}: {text}"
+            );
+        }
+        deny_on_sqlite(&db, DENY_SAVEPOINT_RELEASE).await;
+        let error = db.transaction(async || db.transaction(async || Ok(())).await).retry(0).await.expect_err("release");
+        assert!(error.to_string().contains("not authorized"), "release: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close().await;
         std::fs::remove_dir_all(tmp).unwrap();

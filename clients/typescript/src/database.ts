@@ -429,8 +429,12 @@ export class Db {
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
-        await frame.tx.control(`ROLLBACK TO SAVEPOINT ${name}`);
-        await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+        // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
+        const errors: unknown[] = [];
+        for (const statement of [`ROLLBACK TO SAVEPOINT ${name}`, `RELEASE SAVEPOINT ${name}`]) {
+          try { await frame.tx.control(statement); } catch (failure) { errors.push(failure); }
+        }
+        if (errors.length > 0) throw rollbackFailed(error, joinedErrors(errors));
         throw error;
       }
       await frame.tx.control(`RELEASE SAVEPOINT ${name}`);

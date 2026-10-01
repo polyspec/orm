@@ -388,23 +388,43 @@ final class Db
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
         try {
-            $this->pdo->exec("SAVEPOINT $name");
+            try {
+                $this->pdo->exec("SAVEPOINT $name");
+            } catch (\PDOException $e) {
+                throw OrmException::fromDriver($e, $this->driver);
+            }
             self::$frames[] = $frame;
             try {
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $this->pdo->exec("ROLLBACK TO SAVEPOINT $name");
-                $this->pdo->exec("RELEASE SAVEPOINT $name");
-                throw $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
+                $ended = self::joined(array_values(array_filter([
+                    $this->endSavepoint("ROLLBACK TO SAVEPOINT $name"),
+                    $this->endSavepoint("RELEASE SAVEPOINT $name"),
+                ])));
+                throw $ended === null ? $failure : self::rollbackFailed($failure, $ended);
             }
             array_pop(self::$frames);
-            $this->pdo->exec("RELEASE SAVEPOINT $name");
+            $released = $this->endSavepoint("RELEASE SAVEPOINT $name");
+            if ($released !== null) {
+                throw $released;
+            }
             return $v;
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->driver);
         } finally {
             $frame->savepoints--;
+        }
+    }
+
+    /** savepoint를 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
+    private function endSavepoint(string $statement): ?\Throwable
+    {
+        try {
+            $this->pdo->exec($statement);
+            return null;
+        } catch (\PDOException $e) {
+            return OrmException::fromDriver($e, $this->driver);
         }
     }
 

@@ -934,6 +934,33 @@ try {
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   console.log(`${current} done`);
+  // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
+  // 오류와 그 오류를 함께 보고하고, 성공한 callback은 실패한 RELEASE SAVEPOINT를 보고한다. 실제 SQLite는
+  // 이 statement를 거부하지 않으므로 transaction connection의 control이 실패시킨다.
+  current = 'sqlite/failedSavepointEnd';
+  try {
+    const db = await Db.connect(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
+    try {
+      const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
+        const tx = db.utils().active('transaction').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
+        try { return await db.transaction(callback); } finally { tx.control = control; }
+      }, { retry: 0 }));
+      for (const statement of ['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT']) {
+        const failed = await nested(sql => sql.startsWith(statement), async () => { throw new Error('callback failed'); });
+        checkBoth(statement, failed, 'callback failed', 'statement rejected by the test driver');
+      }
+      const released = await nested(sql => sql.startsWith('RELEASE SAVEPOINT'), async () => {});
+      check(released.includes('statement rejected by the test driver'), `a successful callback reports the failed release: ${released}`);
+      const both = await nested(sql => sql.startsWith('ROLLBACK TO SAVEPOINT') || sql.startsWith('RELEASE SAVEPOINT'), async () => { throw new Error('callback failed'); });
+      checkBoth('both statements', both, 'callback failed', 'statement rejected by the test driver');
+      check(both.split('statement rejected by the test driver').length === 3, `both savepoint statements are reported: ${both}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  console.log(`${current} done`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });
