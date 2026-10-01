@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.7.4: the TypeScript client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.6.4: the TypeScript client applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery, and its introspection leaves `dbspec$plans` out.
+
 - T8.7.5: the Rust client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
 
 - T8.6.5: the Rust client applies plan chains with `orm::dbspec::apply` under a lock, with history, drift checks, transactions, verification and events, and `orm::dbspec::recover` finishes an interrupted MySQL plan; Rust introspection leaves `dbspec$plans` out.

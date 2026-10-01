@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T8.7.4: TypeScript client가 dbspec 문서를 표준 Mermaid erDiagram으로 export하고, 각각이 빼는 것의 목록과 함께 import한다.
+
+- T8.6.4: TypeScript client가 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용하며, introspection은 `dbspec$plans`를 뺀다.
+
 - T8.7.5: Rust client는 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
 
 - T8.6.5: Rust client는 `orm::dbspec::apply`로 lock, history, drift 확인, transaction, 검증, event와 함께 plan chain을 적용하고, `orm::dbspec::recover`로 중단된 MySQL plan을 끝낸다. Rust introspection은 `dbspec$plans`를 뺀다.
