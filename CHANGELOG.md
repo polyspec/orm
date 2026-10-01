@@ -1,5 +1,9 @@
 # Changelog
 
+- T8.7.6.1: a failing Go Mermaid or plan vector case logs only its failure under an enforced deadline, and every dbspec runner rejects a missing or directory input with `<path>: <reason>` and a nonzero exit.
+
+- T8.5.6.1: the dbspec compare runners reject a missing or mistyped vector section, id, document or line with `<file>: <location> <problem>` and a nonzero exit instead of reading it as empty.
+
 - T8.2.6.1.1.1: closed with T8.2.6.1.3, which corrected the same links.
 
 - T8.6: every client applies and recovers plan chains with lock, history, verification and events, and any client continues a chain that another applied.
