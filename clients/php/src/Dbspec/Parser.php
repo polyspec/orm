@@ -8,8 +8,9 @@ namespace Orm\Dbspec;
  * Rules local to a line are checked on the line, rules of a whole table when
  * its block closes, and rules across tables (foreign key targets and audit
  * history tables) after the last line. Every diagnostic carries the line and
- * column, in characters, of its token; an encoding, header or limit error
- * stops parsing and is the only diagnostic.
+ * column, in Unicode code points, of its token. Diagnostics are ordered by
+ * line, column and the order of RULES; an encoding, header or limit error
+ * stops parsing and is reported after the diagnostics found before it.
  *
  * @internal Use Dbspec::parse.
  */
@@ -24,6 +25,11 @@ final class Parser
     private const MAX_TABLE_COLUMNS = 1000;
     private const MAX_KEY_COLUMNS = 16;
     private const MAX_KEY_VARCHAR = 640;
+    /** The rule table of docs/dbspec.md, in its order, which orders diagnostics at one position. */
+    private const RULES = ['header', 'syntax', 'order', 'name.format', 'name.length', 'name.duplicate', 'type', 'column', 'key', 'foreign_key', 'check', 'setting', 'use', 'diagram', 'limit', 'encoding'];
+    private const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false'];
+    /** Codec stages that produce text; the others produce bytes. */
+    private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
 
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $diagnostics = [];
@@ -37,8 +43,12 @@ final class Parser
     private array $usedDocuments = [];
     /** @var array<string, true> */
     private array $diagramNames = [];
-    /** @var array<string, array{0: ?Document, 1: ?string}> used document => [structure, reason it is unusable] */
-    private array $structures = [];
+    /** @var array<string, true> tables of failed `use` lines: references to them report nothing more */
+    private array $failedTables = [];
+    /** @var array<string, true> table names of the used documents, which constraint names must differ from */
+    private array $usedTableNames = [];
+    /** @var array<int, true> lines that already hold a syntax diagnostic */
+    private array $syntaxLines = [];
     /** @var array<string, ColumnType> */
     private array $types = [];
     private int $tableCount = 0;
@@ -88,28 +98,38 @@ final class Parser
     private array $deferredAudits = [];
 
     /**
-     * @param ?array<string, string> $documents the declared document set; null reads a used
-     *        document's structure without resolving its own `use` lines
+     * @param array<string, string> $documents the declared document set
+     * @param list<string> $using the documents whose `use` lines lead to this one, to find cycles
+     * @param \ArrayObject<string, array{0: ?Document, 1: ?string}> $used used document => [document, reason it is unusable]
      */
-    public function __construct(private readonly ?array $documents)
-    {
+    public function __construct(
+        private readonly array $documents,
+        private readonly array $using = [],
+        private ?\ArrayObject $used = null,
+    ) {
+        $this->used ??= new \ArrayObject();
     }
 
     /** @return array{0: ?Document, 1: list<Diagnostic>} */
     public function run(string $source): array
     {
+        $stop = null;
         try {
             $this->read($source);
         } catch (ParseStop) {
-            $stop = end($this->diagnostics);
-            return [null, [new Diagnostic($stop[0], $stop[1], $stop[2], $stop[3])]];
+            $stop = array_pop($this->diagnostics);
         }
-        if ($this->diagnostics === []) {
+        if ($this->diagnostics === [] && $stop === null) {
             return [$this->document, []];
         }
+        $rank = array_flip(self::RULES);
         $order = array_keys($this->diagnostics);
-        usort($order, fn(int $a, int $b): int => [$this->diagnostics[$a][1], $this->diagnostics[$a][2], $a] <=> [$this->diagnostics[$b][1], $this->diagnostics[$b][2], $b]);
-        return [null, array_map(fn(int $i): Diagnostic => new Diagnostic(...$this->diagnostics[$i]), $order)];
+        usort($order, fn(int $a, int $b): int => [$this->diagnostics[$a][1], $this->diagnostics[$a][2], $rank[$this->diagnostics[$a][0]], $a] <=> [$this->diagnostics[$b][1], $this->diagnostics[$b][2], $rank[$this->diagnostics[$b][0]], $b]);
+        $diagnostics = array_map(fn(int $i): Diagnostic => new Diagnostic(...$this->diagnostics[$i]), $order);
+        if ($stop !== null) {
+            $diagnostics[] = new Diagnostic(...$stop);
+        }
+        return [null, $diagnostics];
     }
 
     private function read(string $source): void
@@ -145,6 +165,9 @@ final class Parser
                 continue;
             }
             $this->tokenize();
+            if ($this->tabLine()) {
+                continue;
+            }
             match ($this->state) {
                 'top' => $this->topLine(),
                 'table' => $this->tableLine(),
@@ -202,6 +225,36 @@ final class Parser
         $this->tokens = $tokens;
     }
 
+    /**
+     * A tab is not a separator: the line is a `syntax` error and is not read
+     * further. A column it would declare is known as failed, so references to
+     * it report nothing more.
+     */
+    private function tabLine(): bool
+    {
+        foreach ($this->tokens as $i => [$token, $column]) {
+            if ($token !== "\t") {
+                continue;
+            }
+            $this->error('syntax', $this->line, $column, 'only the space character separates tokens');
+            $first = $this->tokens[0][0];
+            if ($this->state === 'table' && $i > 0 && self::isWord($first) && !in_array($first, ['primary', 'unique', 'index', 'foreign', 'check', 'settings'], true)) {
+                $this->failColumn($first);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** Knows a column whose line failed, so that references to it report nothing more. */
+    private function failColumn(string $name): void
+    {
+        if (!isset($this->columns[$name])) {
+            $this->columns[$name] = new Column($name, new ColumnType('invalid'), false, false, null);
+            $this->invalidTypes[$name] = true;
+        }
+    }
+
     private function header(): void
     {
         $t = $this->tokens;
@@ -220,6 +273,11 @@ final class Parser
         }
         if (isset($t[3])) {
             $this->stop('header', 1, $t[3][1], 'the header ends after the document name');
+        }
+        $exact = 'dbspec 1 ' . $t[2][0];
+        if ($this->text !== $exact) {
+            $differs = strspn($this->text ^ $exact, "\0");
+            $this->stop('header', 1, $differs + 1, 'the header is exactly `dbspec 1 <document>` with single spaces');
         }
         $this->name($t[2]);
         $this->document = new Document($t[2][0]);
@@ -257,7 +315,6 @@ final class Parser
         if ($document === null) {
             return;
         }
-        $this->name($document);
         if (!$this->expectAt(2, '{')) {
             return;
         }
@@ -284,73 +341,97 @@ final class Parser
         }
         $name = $document[0];
         $this->document->uses[] = new UseLine($name, array_map(static fn(array $table): string => $table[0], $tables), $this->takeComments());
+        $failed = function () use ($tables): void {
+            foreach ($tables as [$table]) {
+                $this->failedTables[$table] = true;
+            }
+        };
+        if (!$this->name($document)) {
+            $failed();
+            return;
+        }
         if (isset($this->usedDocuments[$name])) {
             $this->error('name.duplicate', $this->line, $document[1], "document `$name` is already used");
+            $failed();
             return;
         }
         $this->usedDocuments[$name] = true;
         $used = null;
-        if ($this->documents !== null) {
-            if ($name === $this->document->name) {
-                $this->error('use', $this->line, $document[1], 'a document cannot use itself');
-            } elseif (!array_key_exists($name, $this->documents)) {
-                $this->error('use', $this->line, $document[1], "document `$name` is not in the declared document set");
-            } else {
-                [$used, $reason] = $this->structure($name);
-                if ($used === null) {
-                    $this->error('use', $this->line, $document[1], $reason);
+        $reason = null;
+        if ($name === $this->document->name) {
+            $reason = 'a document cannot use itself';
+        } elseif (in_array($name, $this->using, true)) {
+            $reason = 'use cycle: ' . implode(' -> ', [...$this->using, $this->document->name, $name]);
+        } elseif (!array_key_exists($name, $this->documents)) {
+            $reason = "document `$name` is not in the declared document set";
+        } else {
+            [$used, $reason] = $this->usedDocument($name);
+        }
+        if ($reason !== null) {
+            $this->error('use', $this->line, $document[1], $reason);
+            $failed();
+            return;
+        }
+        $repeated = null;
+        foreach ($used->tables as $definition) {
+            $this->usedTableNames[$definition->name] = true;
+            foreach ([$definition->uniqueKeys, $definition->indexes, $definition->foreignKeys, $definition->checks] as $constraints) {
+                foreach ($constraints as $constraint) {
+                    if (isset($this->constraintNames[$constraint->name])) {
+                        $repeated ??= $constraint->name;
+                    }
+                    $this->constraintNames[$constraint->name] = true;
                 }
             }
         }
+        if ($repeated !== null) {
+            $this->error('name.duplicate', $this->line, $document[1], "document `$name` repeats the constraint name `$repeated` of an earlier used document");
+        }
         foreach ($tables as [$table, $column]) {
-            $this->name([$table, $column]);
+            if (!$this->name([$table, $column])) {
+                $this->failedTables[$table] = true;
+                continue;
+            }
             if (isset($this->tables[$table])) {
                 $this->error('name.duplicate', $this->line, $column, "table `$table` is already defined or used");
                 continue;
             }
             $definition = null;
-            if ($used !== null) {
-                foreach ($used->tables as $candidate) {
-                    if ($candidate->name === $table) {
-                        $definition = $candidate;
-                        break;
-                    }
-                }
-                if ($definition === null) {
-                    $this->error('use', $this->line, $column, "document `$name` does not define table `$table`");
+            foreach ($used->tables as $candidate) {
+                if ($candidate->name === $table) {
+                    $definition = $candidate;
+                    break;
                 }
             }
-            $this->tables[$table] = ['table' => $definition, 'columns' => $definition === null ? [] : self::columnMap($definition)];
+            if ($definition === null) {
+                $this->error('use', $this->line, $column, "document `$name` does not define table `$table`");
+                $this->failedTables[$table] = true;
+                continue;
+            }
+            $this->tables[$table] = ['table' => $definition, 'columns' => self::columnMap($definition)];
         }
     }
 
     /**
-     * Reads a used document of the declared set once.
+     * Parses and validates a used document of the declared set once, with its own `use` lines.
      *
-     * @return array{0: ?Document, 1: ?string}
+     * @return array{0: ?Document, 1: ?string} the document, or null and the reason it is unusable
      */
-    private function structure(string $name): array
+    private function usedDocument(string $name): array
     {
-        if (isset($this->structures[$name])) {
-            return $this->structures[$name];
+        if (isset($this->used[$name])) {
+            return $this->used[$name];
         }
-        [$document, $diagnostics] = (new self(null))->run($this->documents[$name]);
+        [$document, $diagnostics] = (new self($this->documents, [...$this->using, $this->document->name], $this->used))->run($this->documents[$name]);
         if ($document === null) {
             $first = $diagnostics[0];
             $result = [null, "used document `$name` is invalid: {$first->line}:{$first->column} {$first->rule} {$first->message}"];
         } elseif ($document->name !== $name) {
             $result = [null, "the declared document `$name` is named `{$document->name}` in its header"];
         } else {
-            foreach ($document->tables as $table) {
-                foreach ([$table->uniqueKeys, $table->indexes, $table->foreignKeys, $table->checks] as $constraints) {
-                    foreach ($constraints as $constraint) {
-                        $this->constraintNames[$constraint->name] ??= true;
-                    }
-                }
-            }
             $result = [$document, null];
         }
-        return $this->structures[$name] = $result;
+        return $this->used[$name] = $result;
     }
 
     private function openTable(): void
@@ -375,6 +456,9 @@ final class Parser
             if (isset($this->tables[$name[0]])) {
                 $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
             } else {
+                if (isset($this->constraintNames[$name[0]])) {
+                    $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is named like an index, key, foreign key or check");
+                }
                 $this->tables[$name[0]] = ['table' => $table, 'columns' => []];
             }
         }
@@ -455,6 +539,7 @@ final class Parser
         $this->name($name);
         if (!isset($t[1])) {
             $this->error('syntax', $this->line, $this->endColumn(), 'expected a column type');
+            $this->failColumn($name[0]);
             return;
         }
         [$type, $i] = $this->type(1);
@@ -634,6 +719,9 @@ final class Parser
         $seen = [];
         $varchar = 0;
         foreach ($columns as [$name, $position]) {
+            if (!$this->name([$name, $position])) {
+                continue;
+            }
             if (!isset($this->columns[$name])) {
                 $this->error('key', $this->line, $position, "$what lists unknown column `$name`");
                 continue;
@@ -706,7 +794,7 @@ final class Parser
         if (!$this->endAt($i)) {
             return;
         }
-        $this->name($target);
+        $resolvable = $this->name($target);
         $this->constraintName($name);
         $foreignKey = new ForeignKey(
             $name[0],
@@ -721,7 +809,9 @@ final class Parser
         $known = true;
         $seen = [];
         foreach ($children[0] as [$column, $position]) {
-            if (!isset($this->columns[$column])) {
+            if (!$this->name([$column, $position])) {
+                $known = false;
+            } elseif (!isset($this->columns[$column])) {
                 $this->error('foreign_key', $this->line, $position, "foreign key `{$name[0]}` lists unknown column `$column`");
                 $known = false;
             } elseif (isset($seen[$column])) {
@@ -733,7 +823,14 @@ final class Parser
             $seen[$column] = true;
         }
         $this->tableForeignKeys[] = [$foreignKey, $this->line, $name[1], $known];
-        $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1], $parents[0], $known];
+        foreach ($parents[0] as [$column, $position]) {
+            if (!$this->name([$column, $position])) {
+                $resolvable = false;
+            }
+        }
+        if ($resolvable) {
+            $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1], $parents[0], $known];
+        }
     }
 
     private function checkLine(): void
@@ -803,18 +900,18 @@ final class Parser
                 }
             }
             $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7]];
-        } elseif ($keyword === 'entity') {
-            $this->name($arguments[0]);
-        } elseif ($keyword === 'navigation') {
-            $this->name($arguments[1]);
-            $this->name($arguments[2]);
         }
-        $key = $kind === 'codec' || $kind === 'navigation' ? $kind . ' ' . $arguments[0][0] : $kind;
+        $perName = $kind === 'codec' || $kind === 'navigation' || $kind === 'blind_index';
+        $key = $perName ? $kind . ' ' . $arguments[0][0] : $kind;
         if (isset($this->settingKeys[$key])) {
-            $this->error('setting', $this->line, $at, $kind === 'codec' || $kind === 'navigation' ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+            $this->error('setting', $this->line, $at, $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
             return;
         }
         $this->settingKeys[$key] = true;
+        // Every argument is a name, except the stages of a codec.
+        foreach ($kind === 'codec' ? [$arguments[0]] : $arguments as $argument) {
+            $this->name($argument);
+        }
         $this->table->settings->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments());
         $this->tableSettings[] = [$kind, $arguments, $this->line, $at];
     }
@@ -873,8 +970,10 @@ final class Parser
         if (!$this->endAt($i)) {
             return;
         }
-        $valid = true;
-        if (!isset($this->tables[$table[0]])) {
+        $valid = $this->name($table);
+        if (!$valid || (!isset($this->tables[$table[0]]) && isset($this->failedTables[$table[0]]))) {
+            $valid = false;
+        } elseif (!isset($this->tables[$table[0]])) {
             $this->error('diagram', $this->line, $table[1], "diagram names unknown table `{$table[0]}`");
             $valid = false;
         } elseif (isset($this->diagramTables[$table[0]])) {
@@ -886,8 +985,8 @@ final class Parser
         foreach ($coordinates as [$text, $column]) {
             $integer = Literal::integer($text);
             $digits = ltrim((string) $integer, '-');
-            if ($integer === null || strlen($digits) > 19 || (strlen($digits) === 19 && strcmp($digits, $integer[0] === '-' ? '9223372036854775808' : '9223372036854775807') > 0)) {
-                $this->error('diagram', $this->line, $column, "coordinate `$text` is not an integer");
+            if ($integer === null || strlen($digits) > 10 || (strlen($digits) === 10 && strcmp($digits, $integer[0] === '-' ? '2147483648' : '2147483647') > 0)) {
+                $this->error('diagram', $this->line, $column, "coordinate `$text` is not an integer from -2147483648 to 2147483647");
                 $valid = false;
                 continue;
             }
@@ -904,6 +1003,9 @@ final class Parser
     {
         $table = $this->table;
         $primary = $table->primaryKey;
+        if ($this->columns === []) {
+            $this->error('column', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no column");
+        }
         if ($primary === null) {
             $this->error('key', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no primary key");
         }
@@ -969,82 +1071,111 @@ final class Parser
         $aes = [];
         foreach ($this->tableSettings as [$kind, $arguments]) {
             $kinds[$kind] = true;
-            if ($kind === 'codec' && in_array('aes', array_map(static fn(array $a): string => $a[0], $arguments), true)) {
+            if ($kind === 'codec' && in_array('aes', array_map(static fn(array $a): string => $a[0], array_slice($arguments, 1)), true)) {
                 $aes[$arguments[0][0]] = true;
             }
         }
+        $singleColumnKeys = [];
+        foreach ($this->table->uniqueKeys as $unique) {
+            if (count($unique->columns) === 1) {
+                $singleColumnKeys[$unique->columns[0]] = true;
+            }
+        }
+        foreach ($this->table->indexes as $index) {
+            if (count($index->columns) === 1) {
+                $singleColumnKeys[$index->columns[0]->name] = true;
+            }
+        }
         foreach ($this->tableSettings as [$kind, $arguments, $line, $at]) {
-            $column = $arguments[0] ?? null;
-            $known = $column !== null && isset($this->columns[$column[0]]);
-            $definition = $known ? $this->columns[$column[0]] : null;
-            $typed = $known && !isset($this->invalidTypes[$column[0]]);
-            $unknown = fn(array $token) => $this->error('setting', $line, $token[1], "setting `$kind` names unknown column `{$token[0]}`");
+            // A column reference: the column, or null after a diagnostic or a failed name or line.
+            $column = function (array $token) use ($kind, $line): ?Column {
+                if (!self::validName($token[0])) {
+                    return null;
+                }
+                if (!isset($this->columns[$token[0]])) {
+                    $this->error('setting', $line, $token[1], "setting `$kind` names unknown column `{$token[0]}`");
+                    return null;
+                }
+                return isset($this->invalidTypes[$token[0]]) ? null : $this->columns[$token[0]];
+            };
             switch ($kind) {
                 case 'updated':
                 case 'soft_delete':
-                    if (!$known) {
-                        $unknown($column);
-                    } elseif ($typed && $definition->type->name !== 'datetime') {
-                        $this->error('setting', $line, $column[1], "setting `$kind` needs a datetime column");
-                    } elseif ($kind === 'soft_delete' && !$definition->nullable) {
-                        $this->error('setting', $line, $column[1], 'setting `soft_delete` needs a null datetime column');
+                    $definition = $column($arguments[0]);
+                    if ($definition !== null && ($definition->type->name !== 'datetime' || ($kind === 'soft_delete' && !$definition->nullable))) {
+                        $this->error('setting', $line, $arguments[0][1], $kind === 'updated' ? 'setting `updated` needs a datetime column' : 'setting `soft_delete` needs a null datetime column');
                     }
                     break;
                 case 'select_explicit':
                     $seen = [];
                     foreach ($arguments as $token) {
-                        if (!isset($this->columns[$token[0]])) {
-                            $unknown($token);
-                        } elseif (isset($seen[$token[0]])) {
+                        if (isset($seen[$token[0]])) {
                             $this->error('setting', $line, $token[1], "setting `select explicit` repeats `{$token[0]}`");
+                            continue;
                         }
                         $seen[$token[0]] = true;
+                        $column($token);
                     }
                     break;
                 case 'codec':
-                    if (!$known) {
-                        $unknown($column);
-                    } elseif ($typed && !in_array($definition->type->name, ['text', 'varchar', 'bytes'], true)) {
-                        $this->error('setting', $line, $column[1], 'setting `codec` needs a text, varchar or bytes column');
-                    }
-                    foreach (array_slice($arguments, 1) as $stage) {
+                    $stages = array_slice($arguments, 1);
+                    $known = true;
+                    foreach ($stages as $n => $stage) {
                         if (!in_array($stage[0], Setting::CODEC_STAGES, true)) {
                             $this->error('setting', $line, $stage[1], "unknown codec stage `{$stage[0]}`");
+                            $known = false;
+                        } elseif ($stage[0] === 'ordered_json' && $n > 0) {
+                            $this->error('setting', $line, $stage[1], '`ordered_json` is the first codec stage');
                         }
                     }
-                    if (isset($aes[$column[0]]) && !isset($kinds['aes_version'])) {
+                    $definition = $column($arguments[0]);
+                    if ($definition !== null && $known) {
+                        $text = in_array(end($stages)[0], self::TEXT_STAGES, true);
+                        $type = $definition->type->name;
+                        if ($text ? $type !== 'varchar' && $type !== 'text' : $type !== 'bytes') {
+                            $this->error('setting', $line, $arguments[0][1], 'the last codec stage `' . end($stages)[0] . '` needs ' . ($text ? 'a varchar or text' : 'a bytes') . ' column');
+                        }
+                    }
+                    if (isset($aes[$arguments[0][0]]) && !isset($kinds['aes_version'])) {
                         $this->error('setting', $line, $at, 'a codec with `aes` needs the `aes_version` setting');
                     }
                     break;
                 case 'aes_version':
-                    if (!$known) {
-                        $unknown($column);
-                    } elseif ($typed && (!$definition->type->isInteger() || $definition->nullable)) {
-                        $this->error('setting', $line, $column[1], 'setting `aes_version` needs a non-null integer column');
+                    if ($aes === []) {
+                        $this->error('setting', $line, $at, 'setting `aes_version` needs a column with the `aes` codec');
+                    }
+                    $definition = $column($arguments[0]);
+                    if ($definition !== null && (!$definition->type->isInteger() || $definition->nullable)) {
+                        $this->error('setting', $line, $arguments[0][1], 'setting `aes_version` needs a non-null integer column');
                     }
                     break;
                 case 'blind_index':
-                    if (!isset($aes[$column[0]])) {
-                        $this->error('setting', $line, $column[1], "setting `blind_index` needs a column with the `aes` codec, not `{$column[0]}`");
+                    [$source, $target] = $arguments;
+                    $encrypted = $column($source);
+                    if (self::validName($source[0]) && isset($this->columns[$source[0]]) && !isset($aes[$source[0]])) {
+                        $this->error('setting', $line, $source[1], "setting `blind_index` needs a column with the `aes` codec, not `{$source[0]}`");
                     }
-                    $target = $arguments[1];
-                    $indexed = false;
-                    foreach ($leading as $columns) {
-                        $indexed = $indexed || $columns[0] === $target[0];
-                    }
-                    if (!isset($this->columns[$target[0]])) {
-                        $unknown($target);
-                    } elseif ($target[0] === $column[0] || !$indexed) {
-                        $this->error('setting', $line, $target[1], "setting `blind_index` needs a column that leads an index or unique key, not `{$target[0]}`");
+                    $index = $column($target);
+                    if ($index !== null) {
+                        $type = $index->type;
+                        if (!($type->name === 'varchar' && $type->parameters[0] >= 64)
+                            || ($encrypted !== null && $encrypted->nullable !== $index->nullable)
+                            || isset($aes[$target[0]])
+                            || !isset($singleColumnKeys[$target[0]])) {
+                            $this->error('setting', $line, $target[1], "blind index column `{$target[0]}` is a varchar(n >= 64) column with the AES column's nullability, not AES-encoded, and the only column of an index or unique key");
+                        }
                     }
                     break;
                 case 'navigation':
+                    if (!self::validName($arguments[0][0])) {
+                        break;
+                    }
                     $found = false;
                     foreach ($this->table->foreignKeys as $foreignKey) {
-                        $found = $found || $foreignKey->name === $column[0];
+                        $found = $found || $foreignKey->name === $arguments[0][0];
                     }
                     if (!$found) {
-                        $this->error('setting', $line, $column[1], "setting `navigation` names unknown foreign key `{$column[0]}`");
+                        $this->error('setting', $line, $arguments[0][1], "setting `navigation` names unknown foreign key `{$arguments[0][0]}`");
                     }
                     break;
                 case 'immutable':
@@ -1059,18 +1190,13 @@ final class Parser
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
                     }
-                    $operation = $arguments[1];
-                    $operationType = null;
-                    if (!isset($this->columns[$operation[0]])) {
-                        $unknown($operation);
-                    } else {
-                        $definition = $this->columns[$operation[0]];
-                        $operationType = isset($this->invalidTypes[$operation[0]]) ? null : $definition->type;
-                        if ($definition->nullable || ($operationType !== null && $operationType->name !== 'i64' && $operationType->name !== 'uuid')) {
-                            $this->error('setting', $line, $operation[1], 'the audit operation column is a non-null i64 or uuid column');
-                        }
+                    $operation = $column($arguments[1]);
+                    if ($operation !== null && ($operation->nullable || ($operation->type->name !== 'i64' && $operation->type->name !== 'uuid'))) {
+                        $this->error('setting', $line, $arguments[1][1], 'the audit operation column is a non-null i64 or uuid column');
                     }
-                    $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operationType, $line];
+                    if (self::validName($arguments[0][0]) && self::validName($arguments[2][0]) && self::validName($arguments[3][0])) {
+                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operation?->type, $line];
+                    }
                     break;
             }
         }
@@ -1082,6 +1208,9 @@ final class Parser
     {
         foreach ($this->deferredForeignKeys as [$columns, $foreignKey, $line, $at, $targetAt, $parents, $known]) {
             $target = $this->tables[$foreignKey->table] ?? null;
+            if ($target === null && isset($this->failedTables[$foreignKey->table])) {
+                continue;
+            }
             if ($target === null) {
                 $this->error('foreign_key', $line, $targetAt, "foreign key `{$foreignKey->name}` references unknown table `{$foreignKey->table}`");
                 continue;
@@ -1125,6 +1254,9 @@ final class Parser
         foreach ($this->deferredAudits as [$audited, $columns, $arguments, $operationType, $line]) {
             [$historyToken, , $actionToken, $previousToken] = $arguments;
             $entry = $this->tables[$historyToken[0]] ?? null;
+            if ($entry === null && isset($this->failedTables[$historyToken[0]])) {
+                continue;
+            }
             if ($entry === null) {
                 $this->error('setting', $line, $historyToken[1], "audit history table `{$historyToken[0]}` is unknown");
                 continue;
@@ -1139,8 +1271,8 @@ final class Parser
                 continue;
             }
             $action = $historyColumns[$actionToken[0]] ?? null;
-            if ($action === null || $action->type->text() !== 'varchar(8)') {
-                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a varchar(8) column of `{$history->name}`");
+            if ($action === null || $action->nullable || $action->type->text() !== 'varchar(8)') {
+                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a non-null varchar(8) column of `{$history->name}`");
             }
             $previous = $historyColumns[$previousToken[0]] ?? null;
             if ($previous === null || !$previous->nullable || ($operationType !== null && $previous->type->text() !== $operationType->text())) {
@@ -1186,6 +1318,11 @@ final class Parser
         return $map;
     }
 
+    private static function validName(string $name): bool
+    {
+        return preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, self::RESERVED, true) && strlen($name) <= 63;
+    }
+
     private static function isWord(string $token): bool
     {
         return preg_match('/^[A-Za-z0-9_]+$/D', $token) === 1;
@@ -1195,8 +1332,8 @@ final class Parser
     private function name(array $token): bool
     {
         [$name, $column] = $token;
-        if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || $name === 'primary') {
-            $this->error('name.format', $this->line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is `primary`");
+        if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || in_array($name, self::RESERVED, true)) {
+            $this->error('name.format', $this->line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a reserved word");
             return false;
         }
         if (strlen($name) > 63) {
@@ -1215,6 +1352,9 @@ final class Parser
         if (isset($this->constraintNames[$token[0]])) {
             $this->error('name.duplicate', $this->line, $token[1], "constraint name `{$token[0]}` is already used in the schema");
             return;
+        }
+        if (isset($this->tables[$token[0]]) || isset($this->usedTableNames[$token[0]])) {
+            $this->error('name.duplicate', $this->line, $token[1], "constraint name `{$token[0]}` is the name of a table");
         }
         $this->constraintNames[$token[0]] = true;
     }
@@ -1301,6 +1441,12 @@ final class Parser
 
     private function error(string $rule, int $line, int $column, string $message): void
     {
+        if ($rule === 'syntax') {
+            if (isset($this->syntaxLines[$line])) {
+                return;
+            }
+            $this->syntaxLines[$line] = true;
+        }
         $this->diagnostics[] = [$rule, $line, $column, $message];
     }
 
