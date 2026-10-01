@@ -1,5 +1,16 @@
 # Changelog
 
+Specify dbspec, the neutral schema language that replaces the Mermaid
+schema source (T8.1). docs/dbspec.md and its Korean pair define documents
+joined by name through a declared document set, the thirteen neutral types,
+keys, indexes, foreign keys, the neutral check expressions, settings with
+their schemaHash or manifestHash membership, audit through an operation
+column and a history table copied by row triggers, diagrams, the canonical
+form, limits and sixteen located diagnostic rules, and decide the fate of
+every Mermaid feature. docs/dialects.md records the audit decision. Shared
+vectors in tests/dbspec/cases.json hold 4 canonical, 2 normalization and 17
+invalid cases. No client implements dbspec yet.
+
 Record the schema facts of MySQL, PostgreSQL and SQLite and decide neutral
 support per feature (T8.0, T8.0.12). Add 239 shared probes in
 tests/dialects and the dialect-facts-check target; each probe runs in its

@@ -60,6 +60,7 @@ export default defineConfig({
         { text: 'DSL', link: '/dsl' },
         { text: 'IR and Plan protocol', link: '/protocol' },
         { text: 'Codecs', link: '/codec' },
+        { text: 'dbspec schema language', link: '/dbspec' },
         { text: 'Database dialects', link: '/dialects' },
       ] },
       { text: 'Development and verification', items: [
