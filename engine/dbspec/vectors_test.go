@@ -1,38 +1,34 @@
 package dbspec
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
 type vectorFile struct {
-	Version   int          `json:"version"`
-	Canonical []vectorCase `json:"canonical"`
-	Normalize []vectorCase `json:"normalize"`
-	Invalid   []vectorCase `json:"invalid"`
-	Hashes    []hashCase   `json:"hashes"`
-	Sets      []setCase    `json:"sets"`
+	Canonical []vectorCase
+	Normalize []vectorCase
+	Invalid   []vectorCase
+	Hashes    []hashCase
+	Sets      []setCase
 }
 
 type vectorCase struct {
-	ID        string              `json:"id"`
-	CRLF      bool                `json:"crlf"`
-	Mixed     bool                `json:"mixed"`
-	Documents map[string][]string `json:"documents"`
-	Main      string              `json:"main"`
-	Canonical []string            `json:"canonical"`
-	Errors    []vectorError       `json:"errors"`
+	ID        string
+	CRLF      bool
+	Mixed     bool
+	Documents map[string][]string
+	Main      string
+	Canonical []string
+	Errors    []vectorError
 }
 
 type vectorError struct {
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Rule   string `json:"rule"`
+	Line   int
+	Column int
+	Rule   string
 }
 
 func joinLines(lines []string, crlf bool) string {
@@ -43,8 +39,8 @@ func joinLines(lines []string, crlf bool) string {
 	return strings.Join(lines, end) + end
 }
 
-// join writes the lines of one case document: with LF, with CRLF, or for a
-// mixed case alternating CRLF and LF from CRLF without a final line end.
+// join은 case 문서 하나의 줄을 LF로, CRLF로, 또는 mixed case이면 CRLF부터 CRLF와 LF를
+// 번갈아 마지막 줄 끝 없이 잇는다.
 func (c vectorCase) join(lines []string) string {
 	if !c.Mixed {
 		return joinLines(lines, c.CRLF)
@@ -63,8 +59,7 @@ func (c vectorCase) join(lines []string) string {
 	return b.String()
 }
 
-// documentSet returns the main text and the declared document set: every
-// document of the case other than main.
+// documentSet은 main text와 선언한 문서 집합, 곧 main이 아닌 case의 모든 문서를 돌려준다.
 func (c vectorCase) documentSet() (string, map[string]string, error) {
 	main, ok := c.Documents[c.Main]
 	if !ok {
@@ -81,19 +76,10 @@ func (c vectorCase) documentSet() (string, map[string]string, error) {
 
 func loadVectors(t *testing.T) vectorFile {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "cases.json"))
+	r, object := readVectorFile(t, "cases.json")
+	vectors, err := decodeCaseVectors(r, object)
 	if err != nil {
 		t.Fatal(err)
-	}
-	var vectors vectorFile
-	if err := json.Unmarshal(data, &vectors); err != nil {
-		t.Fatalf("tests/dbspec/cases.json: %v", err)
-	}
-	if vectors.Version != 1 {
-		t.Fatalf("tests/dbspec/cases.json version = %d, want 1", vectors.Version)
-	}
-	if len(vectors.Canonical) == 0 || len(vectors.Normalize) == 0 || len(vectors.Invalid) == 0 {
-		t.Fatal("tests/dbspec/cases.json has an empty case group")
 	}
 	seen := map[string]bool{}
 	for _, group := range [][]vectorCase{vectors.Canonical, vectors.Normalize, vectors.Invalid} {
@@ -107,8 +93,98 @@ func loadVectors(t *testing.T) vectorFile {
 	return vectors
 }
 
-// emitStable parses text, emits it, and checks that parsing and emitting the
-// emission again reproduces it byte for byte.
+// decodeCaseVectors는 cases.json의 모든 section과 field를 읽고, 없거나 type이 다른
+// 값을 위치와 함께 거부한다. normalize case는 canonical을, invalid case는 errors를
+// 가지며, crlf와 mixed는 없으면 false다.
+func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
+	var v vectorFile
+	if err := r.version(object); err != nil {
+		return v, err
+	}
+	readCase := func(canonical, errors bool) func(c map[string]any, location, id string) (vectorCase, error) {
+		return func(c map[string]any, location, id string) (vectorCase, error) {
+			vc := vectorCase{ID: id}
+			var err error
+			if vc.Main, err = r.string(c, location, "main"); err != nil {
+				return vc, err
+			}
+			if vc.Documents, err = r.linesMap(c, location, "documents"); err != nil {
+				return vc, err
+			}
+			if _, ok := vc.Documents[vc.Main]; !ok {
+				return vc, r.fail(vectorAt(vectorAt(location, "documents"), vc.Main), "is missing")
+			}
+			if vc.CRLF, err = r.flag(c, location, "crlf"); err != nil {
+				return vc, err
+			}
+			if vc.Mixed, err = r.flag(c, location, "mixed"); err != nil {
+				return vc, err
+			}
+			if canonical {
+				if vc.Canonical, err = r.linesField(c, location, "canonical"); err != nil {
+					return vc, err
+				}
+			}
+			if errors {
+				vc.Errors, err = r.locatedErrors(c, location, "errors")
+			}
+			return vc, err
+		}
+	}
+	var err error
+	if v.Canonical, err = vectorCases(r, object, "canonical", readCase(false, false)); err != nil {
+		return v, err
+	}
+	if v.Normalize, err = vectorCases(r, object, "normalize", readCase(true, false)); err != nil {
+		return v, err
+	}
+	if v.Invalid, err = vectorCases(r, object, "invalid", readCase(false, true)); err != nil {
+		return v, err
+	}
+	if v.Hashes, err = vectorCases(r, object, "hashes", func(c map[string]any, location, id string) (hashCase, error) {
+		h := hashCase{ID: id}
+		var err error
+		if h.Documents, err = r.linesMap(c, location, "documents"); err != nil {
+			return h, err
+		}
+		if h.ManifestText, err = r.linesField(c, location, "manifestText"); err != nil {
+			return h, err
+		}
+		if h.SchemaText, err = r.linesField(c, location, "schemaText"); err != nil {
+			return h, err
+		}
+		if h.ManifestHash, err = r.string(c, location, "manifestHash"); err != nil {
+			return h, err
+		}
+		h.SchemaHash, err = r.string(c, location, "schemaHash")
+		return h, err
+	}); err != nil {
+		return v, err
+	}
+	v.Sets, err = vectorCases(r, object, "sets", func(c map[string]any, location, id string) (setCase, error) {
+		s := setCase{ID: id}
+		items, err := r.arrayField(c, location, "documents")
+		if err != nil {
+			return s, err
+		}
+		for i, item := range items {
+			lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "documents"), i))
+			if err != nil {
+				return s, err
+			}
+			s.Documents = append(s.Documents, lines)
+		}
+		if s.Parsing, err = r.linesMap(c, location, "parsing"); err != nil {
+			return s, err
+		}
+		s.Errors, err = r.locatedErrors(c, location, "errors")
+		return s, err
+	})
+	return v, err
+}
+
+// emitStable은 text를 parse해 emit하고, 그 emission을 다시 parse해 emit하면 byte까지 같은지
+// 확인한다.
 func emitStable(text string, set map[string]string) (string, error) {
 	document, diagnostics := Parse(text, set)
 	if err := expectDocument(document, diagnostics); err != nil {
@@ -186,8 +262,8 @@ func TestSharedVectors(t *testing.T) {
 	}
 }
 
-// expectDiagnostics parses text and compares rule, line and column of every
-// diagnostic, in order, with want.
+// expectDiagnostics는 text를 parse해 모든 diagnostic의 rule, 줄, 칸을 순서대로 want와
+// 비교한다.
 func expectDiagnostics(text string, set map[string]string, want []vectorError) error {
 	document, diagnostics := Parse(text, set)
 	if document != nil {

@@ -1,45 +1,55 @@
 package dbspec
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 	"time"
 )
 
-// ddlFile is tests/dbspec/ddl.json: document sets and the statements that
-// Render writes for each dialect (docs/dialects.md "Rendered statements").
+// ddlFile은 tests/dbspec/ddl.json이다. 문서 집합과 Render가 dialect마다 쓰는 statement를
+// 담는다(docs/dialects.md "Rendered statements").
 type ddlFile struct {
-	Version int       `json:"version"`
-	Cases   []ddlCase `json:"cases"`
+	Cases []ddlCase
 }
 
 type ddlCase struct {
-	ID         string              `json:"id"`
-	Documents  map[string][]string `json:"documents"`
-	Statements map[string][]string `json:"statements"`
+	ID         string
+	Documents  map[string][]string
+	Statements map[string][]string
 }
 
 func loadDDL(t *testing.T) ddlFile {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(repositoryRoot(t), "tests", "dbspec", "ddl.json"))
+	r, object := readVectorFile(t, "ddl.json")
+	f, err := decodeDDLVectors(r, object)
 	if err != nil {
 		t.Fatal(err)
-	}
-	var f ddlFile
-	if err := json.Unmarshal(raw, &f); err != nil {
-		t.Fatal(err)
-	}
-	if f.Version != 1 || len(f.Cases) == 0 {
-		t.Fatalf("tests/dbspec/ddl.json has version %d and %d cases", f.Version, len(f.Cases))
 	}
 	return f
 }
 
-// parseDDLSet parses every document of the case against the others.
+// decodeDDLVectors는 ddl.json의 case와 field를 읽고, 없거나 type이 다른 값을 위치와
+// 함께 거부한다.
+func decodeDDLVectors(r vectorReader, object map[string]any) (ddlFile, error) {
+	var f ddlFile
+	if err := r.version(object); err != nil {
+		return f, err
+	}
+	var err error
+	f.Cases, err = vectorCases(r, object, "cases", func(c map[string]any, location, id string) (ddlCase, error) {
+		d := ddlCase{ID: id}
+		var err error
+		if d.Documents, err = r.linesMap(c, location, "documents"); err != nil {
+			return d, err
+		}
+		d.Statements, err = r.linesMap(c, location, "statements")
+		return d, err
+	})
+	return f, err
+}
+
+// parseDDLSet은 case의 모든 문서를 나머지 문서에 대해 parse한다.
 func parseDDLSet(c ddlCase) ([]*Document, error) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {

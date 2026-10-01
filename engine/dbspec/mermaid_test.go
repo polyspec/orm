@@ -14,55 +14,113 @@ import (
 
 // mermaidVectors는 tests/dbspec/mermaid.json이다(docs/mermaid.md).
 type mermaidVectors struct {
-	Version   int                    `json:"version"`
-	Export    []mermaidExportCase    `json:"export"`
-	Import    []mermaidImportCase    `json:"import"`
-	Invalid   []mermaidInvalidCase   `json:"invalid"`
-	RoundTrip []mermaidRoundTripCase `json:"round_trip"`
+	Export    []mermaidExportCase
+	Import    []mermaidImportCase
+	Invalid   []mermaidInvalidCase
+	RoundTrip []mermaidRoundTripCase
 }
 
 type mermaidExportCase struct {
-	ID        string              `json:"id"`
-	Document  []string            `json:"document"`
-	Documents map[string][]string `json:"documents"`
-	Mermaid   []string            `json:"mermaid"`
-	Dropped   [][3]string         `json:"dropped"`
+	ID        string
+	Document  []string
+	Documents map[string][]string
+	Mermaid   []string
+	Dropped   [][3]string
 }
 
 type mermaidImportCase struct {
-	ID       string      `json:"id"`
-	Mermaid  []string    `json:"mermaid"`
-	Document []string    `json:"document"`
-	Dropped  [][3]string `json:"dropped"`
+	ID       string
+	Mermaid  []string
+	Document []string
+	Dropped  [][3]string
 }
 
 type mermaidInvalidCase struct {
-	ID      string   `json:"id"`
-	Mermaid []string `json:"mermaid"`
-	Errors  [][]any  `json:"errors"`
+	ID      string
+	Mermaid []string
+	Errors  [][]any
 }
 
 type mermaidRoundTripCase struct {
-	ID       string      `json:"id"`
-	Path     string      `json:"path"`
-	Dropped  [][3]string `json:"dropped"`
-	Imported [][3]string `json:"imported"`
+	ID       string
+	Path     string
+	Dropped  [][3]string
+	Imported [][3]string
 }
 
 func loadMermaidVectors(t *testing.T) mermaidVectors {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "mermaid.json"))
+	r, object := readVectorFile(t, "mermaid.json")
+	v, err := decodeMermaidVectors(r, object)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var v mermaidVectors
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
-	if v.Version != 1 || len(v.Export) == 0 || len(v.Import) == 0 || len(v.Invalid) == 0 || len(v.RoundTrip) == 0 {
-		t.Fatalf("tests/dbspec/mermaid.json has version %d and %d, %d, %d and %d cases", v.Version, len(v.Export), len(v.Import), len(v.Invalid), len(v.RoundTrip))
-	}
 	return v
+}
+
+// decodeMermaidVectors는 mermaid.json의 모든 section과 field를 읽고, 없거나 type이
+// 다른 값을 위치와 함께 거부한다.
+func decodeMermaidVectors(r vectorReader, object map[string]any) (mermaidVectors, error) {
+	var v mermaidVectors
+	if err := r.version(object); err != nil {
+		return v, err
+	}
+	var err error
+	if v.Export, err = vectorCases(r, object, "export", func(c map[string]any, location, id string) (mermaidExportCase, error) {
+		e := mermaidExportCase{ID: id}
+		var err error
+		if e.Document, err = r.linesField(c, location, "document"); err != nil {
+			return e, err
+		}
+		if e.Documents, err = r.linesMap(c, location, "documents"); err != nil {
+			return e, err
+		}
+		if e.Mermaid, err = r.linesField(c, location, "mermaid"); err != nil {
+			return e, err
+		}
+		e.Dropped, err = r.triples(c, location, "dropped")
+		return e, err
+	}); err != nil {
+		return v, err
+	}
+	if v.Import, err = vectorCases(r, object, "import", func(c map[string]any, location, id string) (mermaidImportCase, error) {
+		m := mermaidImportCase{ID: id}
+		var err error
+		if m.Mermaid, err = r.linesField(c, location, "mermaid"); err != nil {
+			return m, err
+		}
+		if m.Document, err = r.linesField(c, location, "document"); err != nil {
+			return m, err
+		}
+		m.Dropped, err = r.triples(c, location, "dropped")
+		return m, err
+	}); err != nil {
+		return v, err
+	}
+	if v.Invalid, err = vectorCases(r, object, "invalid", func(c map[string]any, location, id string) (mermaidInvalidCase, error) {
+		m := mermaidInvalidCase{ID: id}
+		var err error
+		if m.Mermaid, err = r.linesField(c, location, "mermaid"); err != nil {
+			return m, err
+		}
+		m.Errors, err = r.diagnostics(c, location, "errors", 3)
+		return m, err
+	}); err != nil {
+		return v, err
+	}
+	v.RoundTrip, err = vectorCases(r, object, "round_trip", func(c map[string]any, location, id string) (mermaidRoundTripCase, error) {
+		m := mermaidRoundTripCase{ID: id}
+		var err error
+		if m.Path, err = r.string(c, location, "path"); err != nil {
+			return m, err
+		}
+		if m.Dropped, err = r.triples(c, location, "dropped"); err != nil {
+			return m, err
+		}
+		m.Imported, err = r.triples(c, location, "imported")
+		return m, err
+	})
+	return v, err
 }
 
 func mermaidJoin(lines []string) string { return strings.Join(lines, "\n") + "\n" }

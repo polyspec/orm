@@ -1,6 +1,5 @@
-// Command go prints the Go dbspec result of every shared case, of the
-// stress document, of the statement vectors, of the plan vectors and of the
-// Mermaid vectors in the line format of tests/dbspec/compare/check.mjs.
+// Command go는 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의
+// Go dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
 //
 // Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 package main
@@ -36,8 +35,7 @@ type sharedCases struct {
 	Hashes    []hashCase
 }
 
-// join writes the lines with LF, with CRLF when crlf is true, or with
-// alternating CRLF and LF and no final line end when mixed is true.
+// join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
 func join(lines []string, crlf, mixed bool) string {
 	var b strings.Builder
 	for i, line := range lines {
@@ -53,7 +51,7 @@ func join(lines []string, crlf, mixed bool) string {
 	return b.String()
 }
 
-// write prints the diagnostics of text, or its emission when it has none.
+// write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
 func write(out *bufio.Writer, text string, set map[string]string, stress bool) {
 	document, diagnostics := dbspec.Parse(text, set)
 	if len(diagnostics) > 0 {
@@ -76,8 +74,7 @@ func write(out *bufio.Writer, text string, set map[string]string, stress bool) {
 	}
 }
 
-// writeManifest prints the hashes and texts of the case's document set, or
-// the diagnostics of a document or of the set.
+// writeManifest는 case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
 func writeManifest(out *bufio.Writer, c hashCase) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
@@ -118,8 +115,8 @@ func writeManifest(out *bufio.Writer, c hashCase) {
 	}
 }
 
-// writeRender prints the statements of the case's document set in every
-// dialect, or the diagnostics of a document or of the set.
+// writeRender는 case 문서 집합의 statement를 dialect마다, 또는 문서나 집합의 diagnostic을
+// 출력한다.
 func writeRender(out *bufio.Writer, c hashCase) {
 	names := make([]string, 0, len(c.Documents))
 	for name := range c.Documents {
@@ -156,9 +153,8 @@ func writeRender(out *bufio.Writer, c hashCase) {
 	}
 }
 
-// writeDiagnostics prints diagnostics; a plan or chain diagnostic ends with
-// its message, which every client shares, and a schema diagnostic of the
-// target or source does not.
+// writeDiagnostics는 diagnostic을 출력한다. plan, chain, compare diagnostic은 모든 client가
+// 공유하는 message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
 func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 	for _, d := range diagnostics {
 		if d.Rule == dbspec.RulePlan || d.Rule == dbspec.RuleChain || d.Rule == dbspec.RuleCompare {
@@ -169,7 +165,7 @@ func writeDiagnostics(out *bufio.Writer, diagnostics []dbspec.Diagnostic) {
 	}
 }
 
-// planVectors is tests/dbspec/plans.json (docs/plans.md).
+// planVectors는 tests/dbspec/plans.json이다(docs/plans.md).
 type planVectors struct {
 	Cases   []planCase
 	Invalid []planCase
@@ -202,8 +198,8 @@ type parseCase struct {
 	Plan []string
 }
 
-// planSource parses the source schema of a plan case, nil for the empty
-// schema, or prints its diagnostics and reports false.
+// planSource는 plan case의 source schema를 읽고 빈 schema이면 nil을 돌려주며, diagnostic이
+// 있으면 출력하고 false를 알린다.
 func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
 	if lines == nil {
 		return nil, true
@@ -216,17 +212,16 @@ func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
 	return document, true
 }
 
-// writeChanges prints the changes as "| kind table name".
+// writeChanges는 change를 "| kind table name"으로 출력한다.
 func writeChanges(out *bufio.Writer, changes []dbspec.Change) {
 	for _, c := range changes {
 		fmt.Fprintf(out, "| %s %s %s\n", c.Kind, c.Table, c.Name)
 	}
 }
 
-// writePlans prints, for every plan case, the emitted plan, the changes and
-// the statements of each dialect; for every invalid case its diagnostics; for
-// every chain case the chain order or its diagnostics; and for every parse
-// case its diagnostics or the emitted plan.
+// writePlans는 plan case마다 emit한 plan, change, dialect별 statement를, invalid case마다
+// diagnostic을, chain case마다 chain 순서나 diagnostic을, parse case마다 diagnostic이나 emit한
+// plan을, comparison마다 차이나 diagnostic을 출력한다.
 func writePlans(out *bufio.Writer, v planVectors) {
 	for _, c := range v.Cases {
 		fmt.Fprintf(out, "plans/cases/%s\n", c.ID)
@@ -317,7 +312,7 @@ func writePlans(out *bufio.Writer, v planVectors) {
 	}
 }
 
-// mermaidVectors is tests/dbspec/mermaid.json (docs/mermaid.md).
+// mermaidVectors는 tests/dbspec/mermaid.json이다(docs/mermaid.md).
 type mermaidVectors struct {
 	Export    []exportCase
 	Import    []importCase
@@ -341,15 +336,15 @@ type roundTripCase struct {
 	Path string
 }
 
-// writeDropped prints what an export or import left out as
-// "= kind<TAB>table<TAB>name"; reasons are not compared.
+// writeDropped는 export나 import가 뺀 것을 "= kind<TAB>table<TAB>name"으로 출력한다.
+// 이유는 비교하지 않는다.
 func writeDropped(out *bufio.Writer, dropped []dbspec.Unsupported) {
 	for _, u := range dropped {
 		fmt.Fprintf(out, "= %s\t%s\t%s\n", u.Kind, u.Table, u.Name)
 	}
 }
 
-// writeExport prints the Mermaid text and the dropped objects of a document.
+// writeExport는 문서의 Mermaid text와 빠진 객체를 출력한다.
 func writeExport(out *bufio.Writer, d *dbspec.Document) string {
 	text, dropped := dbspec.ExportMermaid(d)
 	for _, line := range strings.Split(text, "\n") {
@@ -359,8 +354,7 @@ func writeExport(out *bufio.Writer, d *dbspec.Document) string {
 	return text
 }
 
-// writeImport prints the emitted document and the dropped objects of an
-// import, or its diagnostics.
+// writeImport는 import의 emit한 문서와 빠진 객체를, 또는 diagnostic을 출력한다.
 func writeImport(out *bufio.Writer, text string) {
 	d, dropped, diagnostics := dbspec.ImportMermaid(text, "imported")
 	if len(diagnostics) > 0 {
@@ -373,9 +367,8 @@ func writeImport(out *bufio.Writer, text string) {
 	writeDropped(out, dropped)
 }
 
-// writeMermaid prints every export case, every import and invalid case, and
-// every round trip case: the export of its document, then "<case>/import"
-// with the import of that export.
+// writeMermaid는 모든 export case, import와 invalid case, round trip case를 출력한다. round
+// trip case는 문서의 export, 그다음 "<case>/import"와 그 export의 import다.
 func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 	for _, c := range v.Export {
 		fmt.Fprintf(out, "mermaid/export/%s\n", c.ID)
