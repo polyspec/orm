@@ -1,5 +1,9 @@
 # Changelog
 
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the Go engine (`dbspec.Render`), compared with tests/dbspec/ddl.json
+(T8.3.2).
+
 Specify the statements that dbspec renders for MySQL, PostgreSQL and
 SQLite in docs/dialects.md, and add tests/dbspec/ddl.json with `make
 dbspec-ddl-check`, which applies every vector to the three databases and
