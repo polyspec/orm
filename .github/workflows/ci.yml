@@ -108,10 +108,10 @@ jobs:
         run: go vet ./... && go test ./...
       - name: generated Go models are current
         run: make go-model-check
+      - name: generated TypeScript models are current
+        run: make ts-model-check
       - name: common interfaces
         run: make interface-check
-      - name: schema rules
-        run: make schema-check
       - name: PHP
         run: make client-unit-check
       - name: TypeScript
@@ -134,5 +134,3 @@ jobs:
           php tests/codec/check.php
       - name: hot-path regression gate
         run: make perf-check
-      - name: physical migration recovery
-        run: make db-test

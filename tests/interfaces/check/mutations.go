@@ -101,7 +101,7 @@ class Query {
 	if err := json.Unmarshal(raw, &owner); err != nil {
 		return err
 	}
-	if failures := checkOwners(lang, baseline, []Owner{owner}, nil); len(failures) != 0 {
+	if failures := checkOwners(lang, baseline, []Owner{owner}); len(failures) != 0 {
 		return fmt.Errorf("%s unmodified fixture failed the owner contract: %v", lang, failures)
 	}
 	for i, change := range f.changes {
@@ -119,7 +119,7 @@ class Query {
 			return fmt.Errorf("%s parser missed source mutation %d (%s)", lang, i, change[1])
 		}
 		if i == len(f.changes)-1 {
-			if len(checkOwners(lang, got, []Owner{owner}, nil)) == 0 {
+			if len(checkOwners(lang, got, []Owner{owner})) == 0 {
 				return fmt.Errorf("%s extra field passed the shared owner contract", lang)
 			}
 		}

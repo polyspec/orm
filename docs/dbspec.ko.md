@@ -238,8 +238,6 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 | `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | `string` | `String` |
 | `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` |
 
-Mermaid manifest field는 이 model에 다음처럼 대응한다: `auto`는 identity column, `lazy`는 `select explicit`, `styles`는 codec stage이며 `json`과 `jsons`는 둘 다 `ordered_json`이다. `timestamps.updated`는 `updated`이고 `timestamps.created`는 `default now` column이다. `relations`와 `ref`는 foreign key다. `unique`, `indexes`, `pk`, `nullable`, `default`, `precision`, `scale`은 뜻이 같다. `fulltext`, `unsigned`, `enum`, `point`, `inet`, `on_update`, `uk`, `raw`, `len`은 runtime 대응이 없으므로 fulltext 조건과 point 값은 client에서 사라진다.
-
 ## Diagram
 
 `diagram <name> { <table> at <x> <y> ... }`는 view를 위해 table을 배치한다. 좌표는 diagram 단위의 −2147483648 ~ 2147483647 정수다. table은 diagram에 최대 한 번 나오며, diagram은 table을 빼놓을 수 있다. diagram은 어떤 hash도, 어떤 렌더링도 바꾸지 않는다. 문서는 diagram을 여러 개 가질 수 있다.

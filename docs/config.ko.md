@@ -64,4 +64,4 @@ PgBouncer 설정:
 
 ProxySQL은 기본 multiplexing으로 실행하며 ORM 전용 설정이 필요 없다. ProxySQL은 클라이언트 연결마다 `time_zone`과 `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`과 감사 트리거는 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 
-스키마 도구(`ormgen`, `orm-gen`)는 pooler를 거치지 않고 primary에 직접 연결한다. migration은 세션 범위의 MySQL `GET_LOCK`을 잡고, 라이브 데이터베이스의 CHECK 제약을 읽을 때 임시 테이블을 만들어 이후 문에서 읽기 때문이다.
+migration plan 적용은 pooler를 거치지 않고 primary에 직접 연결한다. 적용이 세션 범위의 MySQL `GET_LOCK`이나 PostgreSQL advisory lock을 잡기 때문이다([plans](plans.md#apply)).

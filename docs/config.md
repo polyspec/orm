@@ -64,4 +64,4 @@ PgBouncer settings:
 
 ProxySQL runs with its default multiplexing and needs no ORM-specific setting. ProxySQL keeps the `time_zone` and `max_execution_time` of each client connection and applies them on every server connection it uses for it. A statement that contains a user variable, `GET_LOCK`, or `CREATE TEMPORARY TABLE` makes ProxySQL keep that client connection on one server connection until it disconnects. On MySQL, `utils().setLocal` and the audit triggers use the user variable `` @`orm.<key>` `` and `utils().lock` uses `GET_LOCK`, so a connection that uses them is no longer multiplexed; results do not change.
 
-The schema tools (`ormgen`, `orm-gen`) connect to the primary directly, not through a pooler: a migration holds a session-scoped MySQL `GET_LOCK`, and reading the CHECK constraints of a live database creates a temporary table and reads it in later statements.
+Applying migration plans connects to the primary directly, not through a pooler: the apply holds the session-scoped MySQL `GET_LOCK` or PostgreSQL advisory lock ([plans](plans.md#apply)).

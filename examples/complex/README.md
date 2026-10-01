@@ -11,7 +11,7 @@ The programs read the seeded MySQL bench database. Every program takes the DSN f
 
 ```sh
 go run ./examples/complex/go > go.json
-php examples/complex/php/main.php "$PWD/schema/schema.json" > php.json
+php examples/complex/php/main.php > php.json
 (cd clients/rust && cargo build --release -p orm-tests) && clients/rust/target/release/complex > rust.json
 diff go.json php.json && diff go.json rust.json                      # identical
 ```

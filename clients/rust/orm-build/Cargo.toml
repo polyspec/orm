@@ -27,18 +27,8 @@ futures-util = { version = "=0.3.34", optional = true }
 sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 
 [features]
-# The orm-gen command-line tool; its database commands need the drivers.
+# catalog과 tool_db의 database connection은 driver가 필요하다.
 live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
-cli = ["live-db"]
-
-[[bin]]
-name = "orm-gen"
-path = "src/bin/orm-gen/main.rs"
-required-features = ["cli"]
-
-[[test]]
-name = "cli"
-required-features = ["cli"]
 
 [[test]]
 name = "catalog"

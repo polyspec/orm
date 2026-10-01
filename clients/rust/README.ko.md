@@ -5,8 +5,8 @@
 | 크레이트 | 내용 |
 |---|---|
 | `orm` (`clients/rust/orm`) | 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
-| `orm-schema` (`clients/rust/orm-schema`) | 스키마 정의: 런타임과 `orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, runtime model. Mermaid 스키마 도구, DDL 및 변경 명령 렌더링, SQL 문장 분리는 `orm-build`가 `orm_build::schema`와 `orm_build::ddl`로 다시 공개한다. |
-| `orm-build` (`clients/rust/orm-build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `cli` 기능은 `orm-gen` 스키마 도구를 제공한다. |
+| `orm-schema` (`clients/rust/orm-schema`) | 스키마 정의: 런타임과 `orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, plan, Mermaid export와 import, runtime model, 그리고 SQL 문장 분리 |
+| `orm-build` (`clients/rust/orm-build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `live-db` 기능은 catalog과 tool database 연결을 제공한다. |
 | `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
 
 클라이언트에는 이 크레이트만 필요하다. 문장은 프로세스 안에서 계획하며 별도 서비스를 실행하지 않는다.
@@ -91,7 +91,7 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## 오류
 
-`orm::codes`는 `docs/errors.yaml`에서 생성한다(`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 드라이버 오류는 deadlock·중복 키·foreign key를 제외하고 `Error::Sqlx`로 유지한다. 세 경우에는 공통 코드와 드라이버 메시지를 담은 `Error::Engine`으로 변환한다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다.
+`orm::codes`는 `docs/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 드라이버 오류는 deadlock·중복 키·foreign key를 제외하고 `Error::Sqlx`로 유지한다. 세 경우에는 공통 코드와 드라이버 메시지를 담은 `Error::Engine`으로 변환한다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다.
 
 ## 문장 hook
 

@@ -5,8 +5,8 @@
 | Crate | Contents |
 |---|---|
 | `orm` (`clients/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
-| `orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer and runtime model, which the runtime and `orm-build` share; the Mermaid schema tools, the DDL and migration renderer, and SQL statement splitting, which `orm-build` re-exports as `orm_build::schema` and `orm_build::ddl` |
-| `orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `cli` feature, the `orm-gen` schema tool |
+| `orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `orm-build` share, and SQL statement splitting |
+| `orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
 | `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
 
 Adopting the client needs only these crates. Statements are planned in the process; there is no service to run.
@@ -126,7 +126,7 @@ of `Val::as_f64` for ordinary values.
 
 ## Errors
 
-`orm::codes` is generated from `docs/errors.yaml` (`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
+`orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
 
 ## The statement hook
 

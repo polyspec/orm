@@ -30,8 +30,7 @@ test('aggregate numeric TypeScript cases are owned by the client', { timeout: 10
 
 test('TypeScript behavior tests stay in their client directory', { timeout: 1000 }, async () => {
   const root = new URL('../..', import.meta.url);
-  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model',
-    'schema-cases', 'schema-tools', 'sqlite-auto-import', 'sqlite-concurrency'];
+  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
   const entries = await readdir(new URL('clients/typescript/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });

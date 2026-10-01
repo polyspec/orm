@@ -47,7 +47,7 @@
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
-          "when": "the generated models come from another schema.json"
+          "when": "the generated models come from another dbspec document set"
         }
       ],
       "clients": {
@@ -438,8 +438,7 @@
         "tests/conformance/vectors.json",
         "clients/php/tests/autoload.php",
         "contracts/fixtures/aggregate_numeric.json",
-        "contracts/fixtures/decimal_model.json",
-        "contracts/fixtures/decimal_schema.json"
+        "contracts/fixtures/decimal_model.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -617,8 +616,7 @@
       },
       "fixtures": [
         "tests/conformance/vectors.json",
-        "contracts/fixtures/decimal_model.json",
-        "contracts/fixtures/decimal_schema.json"
+        "contracts/fixtures/decimal_model.json"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -790,8 +788,8 @@
       "title": "Model generation",
       "title_ko": "모델 생성",
       "status": "implemented",
-      "description": "Generate the models from schema.json with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains. With `--check`, the Go, PHP, and TypeScript generators compare the models with the output directory without writing.",
-      "description_ko": "언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
+      "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; PHP resolves chains at run time and TypeScript types the scanned chains. With `--check`, the Go, PHP, and TypeScript generators compare the models with the output directory without writing.",
+      "description_ko": "언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.",
       "inputs": {
         "type": "GeneratorRequest",
         "fields": [
@@ -809,7 +807,7 @@
         ]
       },
       "state": [
-        "load schema.json and check its hash",
+        "parse the dbspec document set and compute its manifest hash",
         "scan calls",
         "reject names outside the chain rules",
         "write the models"
@@ -821,7 +819,7 @@
         },
         {
           "code": "SCHEMA_INVALID",
-          "when": "schema.json was edited by hand"
+          "when": "a document of the set breaks a dbspec rule"
         }
       ],
       "clients": {
@@ -832,15 +830,16 @@
       },
       "fixtures": [],
       "tests": [
-        "internal/ormgen/gen_go_test.go",
-        "internal/ormgen/gen_go_scan_test.go",
-        "internal/ormgen/gen_go_packages_test.go",
-        "internal/ormgen/gen_go_output_test.go",
-        "internal/ormgen/gen_go_check_test.go",
+        "generator/gen_go_check_test.go",
+        "generator/gen_go_output_test.go",
+        "generator/gen_go_packages_test.go",
+        "generator/gen_go_scan_test.go",
+        "generator/gen_go_test.go",
+        "generator/generator_test.go",
         "clients/php/tests/engine_test.php",
         "clients/typescript/tests/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
-        "internal/ormgen/fuzz_test.go"
+        "clients/php/tests/orm_gen_test.php"
       ],
       "docs": [
         "docs/dsl.md",
@@ -849,7 +848,7 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test ./internal/ormgen -run 'Gen' -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
+          "command": "go test ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
         },
         {
           "id": "generation-typescript",
@@ -866,42 +865,41 @@
       "title": "Schema definition and migration",
       "title_ko": "스키마 정의와 마이그레이션",
       "status": "implemented",
-      "description": "Build schema.json from Mermaid diagrams, render DDL for each dialect, import a database into a diagram, and compare two manifests into forward and rollback migrations.",
-      "description_ko": "Mermaid 다이어그램에서 schema.json을 만들고, dialect별 DDL을 렌더링하며, 데이터베이스를 다이어그램으로 가져오고, 두 manifest를 비교해 forward와 rollback migration을 만든다.",
+      "description": "Parse and emit dbspec documents, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams.",
+      "description_ko": "dbspec document를 parse하고 emit하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다.",
       "inputs": {
-        "type": "SchemaDocument",
+        "type": "DbspecDocumentSet",
         "fields": [
-          "entities",
-          "relations",
-          "indexes",
-          "checks",
-          "comments",
-          "renames"
+          "documents",
+          "plans",
+          "dialect"
         ]
       },
       "outputs": {
-        "type": "SchemaManifest",
+        "type": "DbspecResult",
         "fields": [
+          "document",
+          "diagnostics",
+          "manifest_hash",
           "schema_hash",
-          "entities",
-          "ddl",
-          "migration"
+          "statements"
         ]
       },
       "state": [
-        "parse diagrams",
-        "validate names, keys, and relations",
-        "compute the schema hash",
-        "render DDL or migration statements"
+        "parse documents with located diagnostics",
+        "validate names, keys, foreign keys, checks and settings",
+        "compute the manifest and schema hashes",
+        "render statements, plans or Mermaid diagrams",
+        "apply plans and verify the introspected schema"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "a diagram breaks a schema rule"
+          "when": "a document breaks a dbspec rule"
         },
         {
           "code": "CONFIG",
-          "when": "a command argument or database connection is invalid"
+          "when": "a database connection is invalid"
         }
       ],
       "clients": {
@@ -911,53 +909,85 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/schema.json",
         "schema/bench.dbspec",
-        "tests/schema/cases.json"
+        "tests/dbspec/cases.json",
+        "tests/dbspec/ddl.json",
+        "tests/dbspec/plans.json",
+        "tests/dbspec/mermaid.json"
       ],
       "tests": [
-        "engine/schema/manifest_test.go",
-        "engine/schema/mermaid_test.go",
-        "internal/ormgen/diff_test.go",
-        "internal/ormgen/import_test.go",
-        "internal/ormgen/migrate_test.go",
-        "clients/php/tests/schema_test.php",
-        "clients/php/tests/schema_tool_test.php",
-        "clients/php/tests/schema_db_test.php",
-        "clients/rust/orm-build/tests/schema_cases.rs",
-        "clients/rust/orm-build/tests/tools.rs",
-        "clients/rust/orm-build/tests/cli.rs",
-        "clients/typescript/tests/schema-cases.mjs",
-        "clients/typescript/tests/sqlite-auto-import.mjs",
-        "clients/typescript/tests/schema-tools.mjs",
-        "engine/schema/fuzz_test.go",
-        "engine/schema/manifest_property_test.go",
-        "internal/ormgen/ddl_uuid_test.go",
-        "internal/ormgen/ddl_bool_test.go",
-        "internal/ormgen/schema_features_test.go",
-        "internal/ormgen/schema_source_test.go",
-        "internal/ormgen/tooldb_test.go"
+        "clients/php/tests/dbspec_apply_cleanup_test.php",
+        "clients/php/tests/dbspec_apply_test.php",
+        "clients/php/tests/dbspec_cases.php",
+        "clients/php/tests/dbspec_introspect_stress_test.php",
+        "clients/php/tests/dbspec_introspect_test.php",
+        "clients/php/tests/dbspec_manifest_test.php",
+        "clients/php/tests/dbspec_mermaid_test.php",
+        "clients/php/tests/dbspec_plan_apply_test.php",
+        "clients/php/tests/dbspec_plan_test.php",
+        "clients/php/tests/dbspec_render_test.php",
+        "clients/php/tests/dbspec_rules_test.php",
+        "clients/php/tests/dbspec_stress_test.php",
+        "clients/php/tests/dbspec_test.php",
+        "clients/rust/orm-schema/tests/dbspec.rs",
+        "clients/rust/orm-schema/tests/dbspec_manifest.rs",
+        "clients/rust/orm-schema/tests/dbspec_mermaid.rs",
+        "clients/rust/orm-schema/tests/dbspec_model.rs",
+        "clients/rust/orm-schema/tests/dbspec_plan.rs",
+        "clients/rust/orm-schema/tests/dbspec_render.rs",
+        "clients/rust/orm-schema/tests/dbspec_rules.rs",
+        "clients/rust/orm-schema/tests/dbspec_runtime.rs",
+        "clients/rust/orm/tests/common/dbspec_probe.rs",
+        "clients/rust/orm/tests/dbspec_apply.rs",
+        "clients/rust/orm/tests/dbspec_introspect.rs",
+        "clients/rust/orm/tests/dbspec_plan_apply.rs",
+        "clients/typescript/tests/dbspec-apply-physical.mjs",
+        "clients/typescript/tests/dbspec-introspect.mjs",
+        "clients/typescript/tests/dbspec-mermaid.mjs",
+        "clients/typescript/tests/dbspec-plan-physical.mjs",
+        "clients/typescript/tests/dbspec-plan.mjs",
+        "clients/typescript/tests/dbspec-render.mjs",
+        "clients/typescript/tests/dbspec-rules.mjs",
+        "clients/typescript/tests/dbspec-stress.mjs",
+        "clients/typescript/tests/dbspec.mjs",
+        "clients/typescript/tests/dbspec_runtime_db.mjs",
+        "engine/dbspec/apply_test.go",
+        "engine/dbspec/harness_test.go",
+        "engine/dbspec/manifest_test.go",
+        "engine/dbspec/mermaid_test.go",
+        "engine/dbspec/plan_test.go",
+        "engine/dbspec/render_test.go",
+        "engine/dbspec/rules_test.go",
+        "engine/dbspec/stress_test.go",
+        "engine/dbspec/vectors_test.go"
       ],
       "docs": [
-        "docs/schema.md",
-        "docs/dialects.md"
+        "docs/dbspec.md",
+        "docs/dialects.md",
+        "docs/plans.md",
+        "docs/mermaid.md",
+        "docs/schema.md"
       ],
       "verification": [
         {
           "id": "schema-go",
-          "command": "go test ./engine/schema ./internal/ormgen -count=1"
+          "command": "make dbspec-go-check"
         },
         {
           "id": "schema-php",
-          "command": "php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php && php clients/php/tests/schema_db_test.php"
+          "command": "make dbspec-php-check"
         },
         {
           "id": "schema-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-build --features cli"
+          "command": "make dbspec-rust-check"
         },
         {
           "id": "schema-typescript",
-          "command": "npm run typescript:build && node clients/typescript/tests/schema-cases.mjs && node clients/typescript/tests/sqlite-auto-import.mjs && node clients/typescript/tests/schema-tools.mjs"
+          "command": "make dbspec-ts-check"
+        },
+        {
+          "id": "schema-compare",
+          "command": "make dbspec-compare-check"
         }
       ]
     },
@@ -966,12 +996,12 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a manifest through a connection: every client renders the create DDL of its dialect, creates the missing tables, and registers the manifest.",
-      "description_ko": "연결로 manifest를 설치한다. 모든 client가 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록한다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates the missing tables, and registers the manifest hash.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 없는 테이블을 만들고 manifest hash를 등록한다.",
       "inputs": {
-        "type": "ManifestJson",
+        "type": "DbspecDocumentSet",
         "fields": [
-          "schema_json"
+          "documents"
         ]
       },
       "outputs": {
@@ -979,14 +1009,14 @@
         "fields": []
       },
       "state": [
-        "render the create DDL",
-        "run it in one transaction where the dialect allows it",
-        "register the manifest with the connection"
+        "render the statements of the dialect",
+        "run them in one transaction where the dialect allows it",
+        "register the manifest hash with the connection"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "the manifest is invalid"
+          "when": "the document set is invalid"
         },
         {
           "code": "CONFIG",
@@ -1006,14 +1036,7 @@
         "clients/php/tests/model_test.php",
         "clients/typescript/tests/model.mjs",
         "clients/rust/orm/tests/zone.rs",
-        "clients/go/orm/install_test.go",
-        "internal/ormgen/live_diff_test.go",
-        "internal/ormgen/live_diff_server_test.go",
-        "internal/ormgen/migrate_physical_test.go",
-        "internal/ormgen/mysql_defects_test.go",
-        "internal/ormgen/rename_test.go",
-        "internal/ormgen/rollback_test.go",
-        "internal/ormgen/sqlite_rebuild_test.go"
+        "clients/go/orm/install_test.go"
       ],
       "docs": [
         "docs/schema.md",
@@ -1157,7 +1180,6 @@
       ],
       "tests": [
         "engine/composite_key_test.go",
-        "internal/ormgen/composite_migration_test.go",
         "clients/go/model/model_test.go",
         "clients/php/tests/model_test.php",
         "clients/rust/tests/src/integration.rs",
@@ -1170,7 +1192,7 @@
       "verification": [
         {
           "id": "composite-go",
-          "command": "go test ./engine ./internal/ormgen -run 'Composite' -count=1"
+          "command": "go test ./engine -run 'Composite' -count=1"
         }
       ]
     },
@@ -1346,7 +1368,7 @@
       "description": "Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.",
       "description_ko": "CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.",
       "inputs": {
-        "type": "SchemaDocument",
+        "type": "DbspecDocumentSet",
         "fields": [
           "checks",
           "indexes",
@@ -1356,21 +1378,21 @@
         ]
       },
       "outputs": {
-        "type": "SchemaManifest",
+        "type": "Statements",
         "fields": [
           "constraints",
-          "relations"
+          "triggers"
         ]
       },
       "state": [
-        "parse the directives",
+        "read the checks, keys and settings of the document",
         "render constraints and triggers",
         "exclude soft-deleted rows from reads"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "a directive names an unknown table or column"
+          "when": "a constraint or setting names an unknown table or column"
         }
       ],
       "clients": {
@@ -1380,23 +1402,18 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/schema.json",
-        "tests/schema/cases.json"
+        "schema/bench.dbspec"
       ],
       "tests": [
-        "engine/schema/external_fk_test.go",
-        "engine/schema/immutable_test.go",
-        "engine/schema/overlapping_foreign_keys_test.go",
         "engine/planner/soft_delete_test.go",
-        "internal/ormgen/ddl_external_fk_test.go",
-        "internal/ormgen/ddl_immutable_test.go",
         "clients/go/orm/sqlite/sqlite_test.go",
         "clients/go/orm/driver_error_test.go",
         "clients/go/orm/pg/pg_test.go",
-        "clients/php/tests/schema_test.php",
-        "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm/tests/soft_delete.rs",
-        "clients/typescript/tests/schema-cases.mjs"
+        "engine/dbspec/render_test.go",
+        "clients/php/tests/dbspec_render_test.php",
+        "clients/typescript/tests/dbspec-render.mjs",
+        "clients/rust/orm-schema/tests/dbspec_render.rs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1405,7 +1422,7 @@
       "verification": [
         {
           "id": "constraints-go",
-          "command": "go test ./engine/... ./internal/ormgen -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
+          "command": "go test ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
         }
       ]
     },
@@ -1414,31 +1431,30 @@
       "title": "Audit triggers",
       "title_ko": "감사 트리거",
       "status": "implemented",
-      "description": "Write an audit trail from schema directives. orm:audit_log declares the operation and change tables of another manifest installed on the same connection, and orm:audit attaches triggers that record every insert, update, and delete against the current operation.",
-      "description_ko": "스키마 지시문으로 감사 기록을 만든다. orm:audit_log는 같은 연결에 설치한 다른 매니페스트의 작업 테이블과 변경 테이블을 표시하고, orm:audit는 현재 작업 아래에서 모든 삽입·갱신·삭제를 기록하는 트리거를 만든다.",
+      "description": "The audit setting of a table installs row triggers that copy every inserted, updated and deleted row into the declared history table with the operation id that the transaction sets.",
+      "description_ko": "테이블의 audit 설정은 행 trigger를 설치해, 삽입·갱신·삭제된 모든 행을 트랜잭션이 정한 작업 id와 함께 선언한 history 테이블에 복사한다.",
       "inputs": {
-        "type": "SchemaDocument",
+        "type": "DbspecDocumentSet",
         "fields": [
-          "orm:audit_log",
-          "orm:audit"
+          "audit"
         ]
       },
       "outputs": {
-        "type": "SchemaManifest",
+        "type": "Statements",
         "fields": [
-          "audit_tables",
+          "history_tables",
           "audit_triggers"
         ]
       },
       "state": [
-        "declare the operation and change tables",
-        "install the triggers with the audited tables",
-        "record each changed row inside the named operation"
+        "render the audit triggers with the audited table",
+        "set the operation id inside the transaction",
+        "copy each changed row into the history table"
       ],
       "errors": [
         {
           "code": "SCHEMA_INVALID",
-          "when": "an audit directive names an unknown entity, a redacted path outside a JSON column, or a key column"
+          "when": "an audit setting names an unknown history table or a column that does not match"
         }
       ],
       "clients": {
@@ -1448,7 +1464,6 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "tests/schema/cases.json",
         "contracts/fixtures/audit.dbspec"
       ],
       "tests": [
@@ -1456,80 +1471,18 @@
         "clients/go/orm/audit_large_test.go",
         "clients/go/orm/audit_service_test.go",
         "clients/php/tests/audit_service_test.php",
-        "internal/ormgen/audit_test.go",
-        "internal/ormgen/audit_physical_test.go",
         "clients/php/tests/model_test.php",
-        "clients/php/tests/schema_test.php",
-        "clients/php/tests/schema_db_test.php",
         "clients/rust/orm/tests/audit.rs",
-        "clients/rust/orm-build/tests/schema_cases.rs",
-        "clients/typescript/tests/model.mjs",
-        "clients/typescript/tests/schema-cases.mjs"
+        "clients/typescript/tests/model.mjs"
       ],
       "docs": [
-        "docs/schema.md"
-      ],
-      "verification": [
-        {
-          "id": "audit-go",
-          "command": "go test ./clients/go/orm -run 'Audit' -count=1 && go test ./internal/ormgen -run 'Audit' -count=1"
-        }
-      ]
-    },
-    {
-      "id": "point_type",
-      "title": "Point type",
-      "title_ko": "point 타입",
-      "status": "partial",
-      "description": "A point column stores a coordinate pair. Every dialect renders the point literal and its text conversion, and the Go model client binds and reads typed point values. The PHP, Rust, and TypeScript schema tools render the same DDL without typed client values.",
-      "description_ko": "point 컬럼은 좌표 쌍을 담는다. 모든 dialect가 point 리터럴과 텍스트 변환을 만들고, Go 모델 클라이언트는 타입으로 된 point 값을 bind하고 읽는다. PHP, Rust, TypeScript 스키마 도구는 같은 DDL을 만들지만 타입으로 된 클라이언트 값은 없다.",
-      "inputs": {
-        "type": "SchemaDocument",
-        "fields": [
-          "point"
-        ]
-      },
-      "outputs": {
-        "type": "SchemaManifest",
-        "fields": [
-          "point_columns"
-        ]
-      },
-      "state": [
-        "accept the point type",
-        "render the dialect conversion",
-        "bind and read typed values in the Go client"
-      ],
-      "errors": [
-        {
-          "code": "SCHEMA_INVALID",
-          "when": "a column names a type outside the supported type list"
-        }
-      ],
-      "clients": {
-        "go": "pass",
-        "php": "partial",
-        "rust": "partial",
-        "typescript": "partial"
-      },
-      "fixtures": [
-        "tests/schema/cases.json"
-      ],
-      "tests": [
-        "engine/point_test.go",
-        "internal/ormgen/point_test.go",
-        "clients/go/orm/point_test.go",
-        "clients/php/tests/schema_test.php",
-        "clients/rust/orm-build/tests/schema_cases.rs",
-        "clients/typescript/tests/schema-cases.mjs"
-      ],
-      "docs": [
+        "docs/dbspec.md",
         "docs/dialects.md"
       ],
       "verification": [
         {
-          "id": "point-go",
-          "command": "go test ./engine -run Point -count=1 && go test ./internal/ormgen -run Point -count=1 && go test ./clients/go/orm -run Point -count=1"
+          "id": "audit-go",
+          "command": "go test ./clients/go/orm -run 'Audit' -count=1"
         }
       ]
     },
