@@ -38,6 +38,8 @@
 - 각 스키마 빌더는 `auto` 컬럼이 NULL을 허용하지 않는 부호 있는 `i64` 기본 키가 아니면 거부한다. 네 클라이언트는 동일한 허용·거부 스키마 사례를 실행한다.
 - SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
 - 오류와 입력값을 보존한다. 조용한 fallback이나 호환 계층을 추가하지 않는다.
+- 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
+- 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
 - Go 값 변환, host 인코딩, 생성 모델 대입은 잘못된 값에 오류를 반환한다. 행을 쓰기 전에 insert 필드 대입을 검증하고 행 조립 오류를 호출자에게 전파한다.
 - Go collection 식별자와 scalar 비교는 지원하는 값의 타입을 보존한다. 지원하지 않거나 손실되는 key는 실패하고 collection, relation, 분할 질의 호출자는 오류를 전파한다.
 - 값 스타일 컬럼의 setter와 getter는 SQL NULL, 인코딩된 null 값, 조회하지 않은 컬럼을 명시적 값 타입으로 구분한다. setter는 모델을 변경하기 전에 잘못된 입력을 거부하고, 명시적으로 요청한 미조회 컬럼은 `COLUMN_UNSELECTED`를 반환한다.
