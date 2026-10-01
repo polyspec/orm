@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. chains cases parse their plans and order them into one chain, or report exactly the listed chain diagnostics. docs/plans.md.",
+  "note": "Each case parses its plan against its source, a schema text, or the empty schema when source is null. changes are the diff as [kind, table, name]; statements are the statements of each dialect in order. A physical run applies the source, runs before, applies the statements (SQLite with foreign keys off, then PRAGMA foreign_key_check returns no row), runs after, and introspects the target schema text. Steps are those of ddl.json. invalid cases report exactly the listed plan diagnostics in order. chains cases parse their plans and order them into one chain, or report exactly the listed chain diagnostics. docs/plans.md. parse cases report exactly the listed [rule, line, column, message] diagnostics, with the message only for the rule plan.",
   "cases": [
     {
       "id": "create-from-empty",
@@ -1516,6 +1516,270 @@
       ],
       "errors": [
         "no chain reaches plans widen_columns"
+      ]
+    }
+  ],
+  "parse": [
+    {
+      "errors": [
+        [
+          "plan",
+          1,
+          1,
+          "the first line is exactly `dbplan 1 <name>`"
+        ]
+      ],
+      "id": "bad-header",
+      "plan": [
+        "dbplan 2 x",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          1,
+          1,
+          "the first line is exactly `dbplan 1 <name>`"
+        ]
+      ],
+      "id": "reserved-name",
+      "plan": [
+        "dbplan 1 table",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          1,
+          1,
+          "the first line is exactly `dbplan 1 <name>`"
+        ]
+      ],
+      "id": "name-too-long",
+      "plan": [
+        "dbplan 1 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          2,
+          1,
+          "the second line is `from empty` or `from <schemaHash>`"
+        ]
+      ],
+      "id": "bad-from",
+      "plan": [
+        "dbplan 1 p",
+        "from sha256:abc",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          3,
+          1,
+          "a header line is `rename table`, `rename column`, `allow drop table` or `allow drop column`"
+        ]
+      ],
+      "id": "unknown-header-line",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "drop table t",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          4,
+          1,
+          "line 3 repeats this line"
+        ]
+      ],
+      "id": "repeated-line",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "allow drop table x",
+        "allow drop table x",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          4,
+          1,
+          "line 3 renames another table to c"
+        ]
+      ],
+      "id": "two-renames-to-one-name",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "rename table a c",
+        "rename table b c",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          3,
+          1,
+          "name \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" is reserved or longer than 63 bytes"
+        ]
+      ],
+      "id": "rename-name-too-long",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "rename table a aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          3,
+          1,
+          "a blank line and the target schema text follow the header"
+        ]
+      ],
+      "id": "no-target",
+      "plan": [
+        "dbplan 1 p",
+        "from empty"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          4,
+          1,
+          "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ]
+      ],
+      "id": "target-not-canonical",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id  i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          4,
+          1,
+          "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
+        ]
+      ],
+      "id": "target-wrong-name",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "",
+        "dbspec 1 other",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "key",
+          6,
+          7,
+          null
+        ]
+      ],
+      "id": "target-diagnostic-located",
+      "plan": [
+        "dbplan 1 p",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "}"
       ]
     }
   ]

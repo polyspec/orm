@@ -169,3 +169,46 @@ func TestPlanChains(t *testing.T) {
 		})
 	}
 }
+
+// TestPlanParseErrors는 parse case가 plan diagnostic을 rule, 줄, 칸, message까지,
+// target diagnostic을 rule, 줄, 칸까지 vector와 같게 보고하는지 확인한다.
+func TestPlanParseErrors(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "plans.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v struct {
+		Parse []struct {
+			ID     string   `json:"id"`
+			Plan   []string `json:"plan"`
+			Errors [][]any  `json:"errors"`
+		} `json:"parse"`
+	}
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Parse) == 0 {
+		t.Fatal("tests/dbspec/plans.json has no parse cases")
+	}
+	for _, c := range v.Parse {
+		t.Run(c.ID, func(t *testing.T) {
+			t.Logf("RUN plan/parse/%s deadline=5s", c.ID)
+			start := time.Now()
+			_, diagnostics := ParsePlan(strings.Join(c.Plan, "\n") + "\n")
+			var got [][]any
+			for _, d := range diagnostics {
+				var message any
+				if d.Rule == RulePlan {
+					message = d.Message
+				}
+				got = append(got, []any{d.Rule, float64(d.Line), float64(d.Column), message})
+			}
+			gj, _ := json.Marshal(got)
+			wj, _ := json.Marshal(c.Errors)
+			if string(gj) != string(wj) {
+				t.Errorf("errors\nwant %s\ngot  %s", wj, gj)
+			}
+			t.Logf("PASS plan/parse/%s elapsed=%s", c.ID, time.Since(start))
+		})
+	}
+}
