@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.6.2.1: 실패한 Go apply는 정리 error를 실패와 함께 보고하고, row 없는 MySQL 효과 query는 error다.
+
 - T8.7.3: PHP client는 `Orm\Dbspec\Dbspec::exportMermaid`로 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 `Dbspec::importMermaid`로 import하며, 각각이 빼는 것을 알린다.
 
 - T8.6.3: PHP client는 `Orm\Dbspec\Dbspec::apply`로 lock, history, drift 검사, transaction, 검증, event와 함께 plan chain을 적용하고, `Dbspec::recover`로 중단된 MySQL plan을 복구한다. introspection은 `dbspec$plans`를 뺀다.
