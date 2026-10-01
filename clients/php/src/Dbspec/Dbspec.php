@@ -93,4 +93,53 @@ final class Dbspec
         $schemaText = Emitter::emit($schema, View::Schema);
         return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText), 'sha256:' . hash('sha256', $schemaText)));
     }
+
+    /**
+     * Reads a plan document (docs/plans.md "Plan document"): a plan and no
+     * diagnostics, or one diagnostic located in the plan.
+     */
+    public static function parsePlan(string $text): PlanParseResult
+    {
+        return PlanText::parse($text);
+    }
+
+    /** Writes a plan in its canonical text: `emitPlan(parsePlan(s)) === s` for canonical input. */
+    public static function emitPlan(Plan $plan): string
+    {
+        return PlanText::emit($plan);
+    }
+
+    /**
+     * The plans in chain order from the empty database, or the `chain`
+     * diagnostics that name the plans (docs/plans.md "Chain").
+     *
+     * @param list<Plan> $plans
+     */
+    public static function chain(array $plans): ChainResult
+    {
+        return PlanChain::chain($plans);
+    }
+
+    /**
+     * The changes from the source schema, null for the empty database, to the
+     * plan's target, or the `plan` diagnostics (docs/plans.md "Diff").
+     */
+    public static function diff(?Document $source, Plan $plan): DiffResult
+    {
+        [$diff, $diagnostics] = PlanDiff::of($source, $plan);
+        return $diff === null ? DiffResult::invalid($diagnostics) : DiffResult::valid($diff->changes);
+    }
+
+    /**
+     * The statements of the plan from the source schema, null for the empty
+     * database, in one dialect, `mysql`, `postgres` or `sqlite`, or the diff's
+     * diagnostics (docs/plans.md "Statements"). An unknown dialect is an
+     * InvalidArgumentException.
+     */
+    public static function planStatements(?Document $source, Plan $plan, string $dialect): PlanStatementsResult
+    {
+        $renderer = new Renderer($dialect);
+        [$diff, $diagnostics] = PlanDiff::of($source, $plan);
+        return $diff === null ? PlanStatementsResult::invalid($diagnostics) : PlanStatementsResult::valid(PlanStatements::write($diff, $renderer));
+    }
 }
