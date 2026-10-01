@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.4.2: the Go engine introspects MySQL, PostgreSQL and SQLite into a dbspec document with a constant number of catalog queries and reports unsupported objects; `make dbspec-introspect-check` runs the round trips and the unsupported cases.
+
 - T8.4.1: docs/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.
 
 - T13: `make git-check` checks commit subjects against AGENTS.md: `type(scope): Subject (#id)`, types feat, fix, docs, style, refactor, test and chore, a capitalized subject of at most 50 characters without a final period; merge commits keep the subject git writes.
