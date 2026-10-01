@@ -122,10 +122,7 @@ export class SchemaUtils {
    * and rejects a call inside one with CONFIG.
    */
   public async install(manifestJson: string): Promise<void> {
-    let engine: Engine;
-    try { engine = Engine.load(manifestJson, this.db.driver); } catch (error) {
-      throw config(`invalid schema manifest: ${(error as Error).message}`);
-    }
+    const engine = this.engine(manifestJson);
     const statements = engine.installStatements();
     if (statements.length === 0) throw config('schema manifest produced no statements');
     if (this.db.pool.unprepared) {
@@ -138,6 +135,22 @@ export class SchemaUtils {
       });
     }
     this.db.registerEngine(engine);
+  }
+
+  /**
+   * Adds the engine of an installed schema manifest to the connection, as
+   * install does after its statements, without running any statement. The
+   * manifest hash is verified against its content.
+   */
+  public async register(manifestJson: string): Promise<void> {
+    this.db.registerEngine(this.engine(manifestJson));
+  }
+
+  /** The engine of a manifest whose hash matches its content; CONFIG otherwise. */
+  private engine(manifestJson: string): Engine {
+    try { return Engine.load(manifestJson, this.db.driver); } catch (error) {
+      throw config(`invalid schema manifest: ${(error as Error).message}`);
+    }
   }
 
   public async exists(name: string): Promise<boolean> {

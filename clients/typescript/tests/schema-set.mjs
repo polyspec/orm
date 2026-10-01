@@ -4,7 +4,8 @@
 // each model request with the engine of that model's schema. A connection
 // that has not installed the module schema rejects a module model request
 // with SCHEMA_HASH_MISMATCH, and install rejects a manifest whose hash differs
-// from its content. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test
+// from its content. Register adds an installed schema to a connection without
+// creating anything. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test
 // databases; the test fails when either is unset.
 //
 // Usage: node clients/typescript/tests/schema-set.mjs [case ...] (after npm run typescript:build)
@@ -123,7 +124,45 @@ async function editedManifest(dsn) {
   } finally { await db.close(); }
 }
 
-const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest };
+/**
+ * Register adds the engine of an installed schema to a connection and creates
+ * nothing: before installation the module table stays absent, and after
+ * installation by another connection the module models read and write.
+ */
+async function registerSchemaCase(dsn) {
+  const fresh = await Db.connect(dsn, core.path);
+  try {
+    await fresh.utils().schema().register(module.json);
+    check(await code(() => new Item().connect(fresh).getCount()) === 'DRIVER', 'register creates no table');
+  } finally { await fresh.close(); }
+  const installer = await Db.connect(dsn, core.path);
+  try {
+    await installer.utils().schema().install(core.json);
+    await installer.utils().schema().install(module.json);
+  } finally { await installer.close(); }
+  const db = await Db.connect(dsn, core.path);
+  try {
+    check(await code(() => new Item().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'module read before register');
+    await db.utils().schema().register(module.json);
+    // A repeated register keeps the registered engine.
+    await db.utils().schema().register(module.json);
+    await item(db, 'registered', 3).create();
+    check(await new Item().connect(db).amount(3).getCount() === 1, 'module write and read after register');
+  } finally { await db.close(); }
+}
+
+/** Register verifies the manifest hash against its content and registers nothing when they differ. */
+async function registerEditedManifest(dsn) {
+  const edited = module.json.replaceAll('"schema_set_item"', '"schema_set_edit"');
+  const db = await Db.connect(dsn, core.path);
+  try {
+    check(await code(() => db.utils().schema().register(edited)) === 'CONFIG', 'register of an edited manifest');
+    check(await code(() => new Item().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'edited manifest is not registered');
+  } finally { await db.close(); }
+}
+
+const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest,
+  register_schema: registerSchemaCase, register_edited_manifest: registerEditedManifest };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 const targets = { sqlite: `sqlite://${join(work, 'schema-set.sqlite')}` };
 for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {

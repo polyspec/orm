@@ -5,7 +5,8 @@
 // schema installs both manifests and plans each model request with the
 // engine of that model's schema. A connection that has not installed the
 // module schema rejects a module model request with SCHEMA_HASH_MISMATCH, and
-// install rejects a manifest whose hash differs from its content.
+// install rejects a manifest whose hash differs from its content. Register adds
+// an installed schema to a connection without creating anything.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test databases; the test
 // fails when either is unset.
 // Usage: php clients/php/tests/schema_set_test.php [case ...]
@@ -142,7 +143,57 @@ function editedManifest(string $dsn): void
     }
 }
 
-$cases = ['several_schemas' => severalSchemas(...), 'unregistered_schema' => unregisteredSchema(...), 'edited_manifest' => editedManifest(...)];
+/**
+ * Register adds the engine of an installed schema to a connection and creates
+ * nothing: before installation the module table stays absent, and after
+ * installation by another connection the module models read and write.
+ */
+function registerSchema(string $dsn): void
+{
+    global $corePath, $coreJson, $moduleJson;
+    $fresh = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    try {
+        $fresh->utils()->schema()->register($moduleJson);
+        check(code(fn() => (new SchemaSetItem)($fresh)->getCount()) === Code::DRIVER, 'register creates no table');
+    } finally {
+        $fresh->close();
+    }
+    $installer = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    try {
+        $installer->utils()->schema()->install($coreJson);
+        $installer->utils()->schema()->install($moduleJson);
+    } finally {
+        $installer->close();
+    }
+    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    try {
+        check(code(fn() => (new SchemaSetItem)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'module read before register');
+        $db->utils()->schema()->register($moduleJson);
+        // A repeated register keeps the registered engine.
+        $db->utils()->schema()->register($moduleJson);
+        (new SchemaSetItem)($db)->setLabel('registered')->setAmount(3)->create();
+        check((new SchemaSetItem)($db)->amount(3)->getCount() === 1, 'module write and read after register');
+    } finally {
+        $db->close();
+    }
+}
+
+/** Register verifies the manifest hash against its content and registers nothing when they differ. */
+function registerEditedManifest(string $dsn): void
+{
+    global $corePath, $moduleJson;
+    $edited = str_replace('"schema_set_item"', '"schema_set_edit"', $moduleJson);
+    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    try {
+        check(code(fn() => $db->utils()->schema()->register($edited)) === Code::CONFIG, 'register of an edited manifest');
+        check(code(fn() => (new SchemaSetItem)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'edited manifest is not registered');
+    } finally {
+        $db->close();
+    }
+}
+
+$cases = ['several_schemas' => severalSchemas(...), 'unregistered_schema' => unregisteredSchema(...), 'edited_manifest' => editedManifest(...),
+    'register_schema' => registerSchema(...), 'register_edited_manifest' => registerEditedManifest(...)];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 $targets = ['sqlite' => "sqlite://$work/schema-set.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {

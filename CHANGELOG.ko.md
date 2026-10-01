@@ -1,5 +1,13 @@
 # 변경 이력
 
+네 클라이언트에 `utils().schema().register(manifestJson)`을 제공한다(N3.3).
+테이블이 이미 있는 스키마를 등록하려면 engine을 만들고 내부
+`registerEngine`을 호출해야 했다. register는 manifest hash를 내용과 대조하여 다르면
+`CONFIG`를 반환하고, 문장을 실행하지 않으며, `install`과 같이 engine을 연결에
+추가한다. `install`도 같은 등록을 사용한다. Rust 클라이언트의 연결은 아직
+스키마를 유지하지 않으므로(N3.2) manifest만 대조한다. `contracts/interfaces.json`이 이
+operation과 현재 symbol snapshot hash를 기록한다.
+
 TypeScript 생성기 scan에서 model chain의 method 호출만 타입으로 만든다(N12).
 scan은 소스 파일의 모든 method 호출 이름을 모아 그 이름을 받는 모든 model에
 선언했으므로, model이 아닌 class의 `this.enabled()` 같은 호출이 model method를
