@@ -1,0 +1,606 @@
+{
+  "version": 1,
+  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, and end with one line end. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order.",
+  "canonical": [
+    {
+      "id": "minimal-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  email varchar(191)",
+          "  primary key (id)",
+          "  unique uq_users_email (email)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "every-line-kind",
+      "documents": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  status varchar(32) default 'pending'",
+          "  total decimal(13,2) default 0.00",
+          "  coupon_code varchar(32) null",
+          "  placed_at datetime(6) default now",
+          "  primary key (id)",
+          "  unique uq_orders_coupon (coupon_code)",
+          "  index ix_orders_status (status, placed_at desc)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "  check ck_orders_total (total >= 0)",
+          "  settings {",
+          "    updated placed_at",
+          "    select explicit coupon_code",
+          "  }",
+          "}",
+          "",
+          "diagram main {",
+          "  orders at 120 340",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "audit-history",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (id)",
+          "  index ix_service_operation (operation_id)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_service_history_row (id)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "comments-and-diagrams",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "# accounts of the shop",
+          "table users {",
+          "  # surrogate key",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  users at 0 0",
+          "}",
+          "",
+          "diagram empty {",
+          "}"
+        ]
+      },
+      "main": "shop"
+    }
+  ],
+  "normalize": [
+    {
+      "id": "spacing-asc-and-order",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "table users {",
+          "    id   i64   identity",
+          "  email varchar( 191 )",
+          "  primary key ( id )",
+          "  index ix_b (email asc)",
+          "  index ix_a (email)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  email varchar(191)",
+        "  primary key (id)",
+        "  index ix_a (email)",
+        "  index ix_b (email)",
+        "}"
+      ]
+    },
+    {
+      "id": "crlf-actions-and-literals",
+      "crlf": true,
+      "documents": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "shop": [
+          "dbspec 1 shop",
+          "use core { users }",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(13,2) default 1",
+          "  placed_at datetime(0) default '2026-01-01 00:00:00'",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "use core { users }",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(13,2) default 1.00",
+        "  placed_at datetime(0) default '2026-01-01 00:00:00'",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "id": "missing-header",
+      "documents": {
+        "shop": [
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "upper-case-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table Users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "name-too-long",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa i64",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 3,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "unknown-type",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  flag tinyint",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "decimal-precision",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  amount decimal(19,2)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 10,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "identity-not-i64",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i32 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "missing-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "text-in-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  body text",
+          "  primary key (id)",
+          "  index ix_users_body (body)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "set-null-on-required-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "check-function",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(20)",
+          "  primary key (id)",
+          "  check ck_users_name (length(name) > 0)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-on-cascade-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete cascade",
+          "  check ck_orders_user (user_id > 0)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 25,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "unknown-setting",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  body text",
+          "  primary key (id)",
+          "  settings {",
+          "    lazy body",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "unknown-used-document",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use billing { invoices }",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 5,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "diagram-unknown-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  orders at 0 0",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "diagram"
+        }
+      ]
+    },
+    {
+      "id": "constraint-name-across-tables",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_code (code)",
+          "}",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_code (code)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 10,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "every-error-in-order",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  Flag bool",
+          "  size tinyint",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        },
+        {
+          "line": 6,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
+    }
+  ]
+}

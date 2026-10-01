@@ -1,5 +1,15 @@
 # 변경 이력
 
+Mermaid schema source를 대신할 neutral schema 언어 dbspec을 명세한다
+(T8.1). docs/dbspec.md와 한국어 짝 문서는 선언된 문서 집합에서 이름으로
+이어지는 문서, 열세 가지 neutral type, key, index, foreign key, neutral
+check 식, schemaHash 또는 manifestHash 소속이 있는 settings, operation
+column과 row trigger가 복사하는 이력 table로 하는 audit, diagram,
+canonical form, 한도, 위치가 있는 diagnostic 규칙 열여섯 가지를 정의하고,
+모든 Mermaid 기능의 처리를 판정한다. docs/dialects.md가 audit 판정을
+기록한다. tests/dbspec/cases.json의 공유 vector는 canonical 4개, 정규화
+2개, 잘못된 문서 17개다. 아직 dbspec을 구현한 client는 없다.
+
 MySQL, PostgreSQL, SQLite의 스키마 사실을 기록하고 기능별 중립 지원을
 결정한다(T8.0, T8.0.12). tests/dialects에 공통 probe 239개와
 dialect-facts-check target을 추가한다. 각 probe는 자기 일회용 database,
