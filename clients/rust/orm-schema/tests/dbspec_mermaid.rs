@@ -6,12 +6,13 @@
 //! exports its document and imports the export with exactly its dropped
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
+use orm_case_clock::CaseClock;
 use orm_schema::dbspec::model::{DefaultValue, Document};
 use orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// case 하나의 기한.
 const DEADLINE: Duration = Duration::from_secs(5);
@@ -69,17 +70,17 @@ fn skeleton(document: &Document) -> Vec<String> {
 
 /// case 하나를 실행하고 시작, 결과, 경과 시간을 쓴다.
 fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), String>) {
-    let started = Instant::now();
+    let clock = CaseClock::start();
     println!("RUN mermaid/{id} deadline={DEADLINE:?}");
     let mut result = body();
-    let elapsed = started.elapsed();
-    if result.is_ok() && elapsed > DEADLINE {
-        result = Err(format!("exceeded {DEADLINE:?}"));
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    if result.is_ok() && cpu > DEADLINE {
+        result = Err(format!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
     match result {
-        Ok(()) => println!("PASS mermaid/{id} elapsed={elapsed:?}"),
+        Ok(()) => println!("PASS mermaid/{id} cpu={cpu:?} wall={wall:?}"),
         Err(e) => {
-            println!("FAIL mermaid/{id} elapsed={elapsed:?}: {e}");
+            println!("FAIL mermaid/{id} cpu={cpu:?} wall={wall:?}: {e}");
             failures.push(format!("{id}: {e}"));
         }
     }

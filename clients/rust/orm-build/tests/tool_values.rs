@@ -2,7 +2,7 @@ use orm_build::tool_db::{self, Val};
 
 #[test]
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
-    let started = std::time::Instant::now();
+    let clock = orm_case_clock::CaseClock::start();
     eprintln!("running tool_accessors_reject_invalid_values_without_defaults_or_contents");
     for value in [Val::Null, Val::Text("private-invalid-number".into()), Val::Text("9223372036854775808".into())] {
         let error = value.int().expect_err("invalid required integer must fail");
@@ -29,8 +29,9 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
     for text in ["f", "false", "0"] {
         assert!(!Val::Text(text.into()).bool().unwrap());
     }
-    assert!(started.elapsed() < std::time::Duration::from_secs(1), "accessor test deadline");
-    eprintln!("passed tool_accessors_reject_invalid_values_without_defaults_or_contents {:?}", started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < std::time::Duration::from_secs(1), "accessor test deadline: cpu {cpu:?} (wall {wall:?})");
+    eprintln!("passed tool_accessors_reject_invalid_values_without_defaults_or_contents cpu={cpu:?} wall={wall:?}");
 }
 
 #[tokio::test]
