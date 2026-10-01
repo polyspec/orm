@@ -168,6 +168,11 @@ class PlanWriter {
     const create = statements[0]!;
     if (!create.startsWith(prefix)) throw new Error(`rendered table ${name} does not start with ${prefix}`);
     this.add(`CREATE TABLE ${this.q('$rebuild')} (${create.slice(prefix.length)}`);
+    // AUTOINCREMENT counter를 옮겨, 지운 row의 key까지 다시 쓰지 않는다. dbspec
+    // 이름에는 따옴표가 없으므로 문자열 literal로 그대로 쓴다.
+    for (const c of t.columns) {
+      if (c.identity) this.add(`INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = '${name}'`);
+    }
     const into: string[] = [];
     const from: string[] = [];
     const columns = d.columnOf.get(name)!;

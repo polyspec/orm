@@ -207,6 +207,11 @@ impl<'d> PlanWriter<'_, 'd> {
         let prefix = format!("CREATE TABLE {} (", self.q(name));
         let rest = statements[0].strip_prefix(&prefix).expect("the renderer starts a table with CREATE TABLE");
         self.add(format!("CREATE TABLE {} ({rest}", self.q("$rebuild")));
+        // AUTOINCREMENT counter를 옮겨, 지운 row의 key까지 다시 쓰지 않는다. dbspec
+        // 이름에는 따옴표가 없으므로 문자열 literal로 그대로 쓴다.
+        if t.columns.iter().any(|c| c.identity.is_some()) {
+            self.add(format!("INSERT INTO sqlite_sequence (name, seq) SELECT '$rebuild', seq FROM sqlite_sequence WHERE name = '{name}'"));
+        }
         let mut into = Vec::new();
         let mut from = Vec::new();
         for c in &t.columns {
