@@ -40,6 +40,7 @@
 - [ ] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
 - [ ] T8.8 `feat/dbspec-T8`을 `main`에 merge하고 worktree를 제거한다(T8.0–T8.7 선행). 완료 기준: 낡은 개발 규칙(`auto`, `COLUMN_UNSELECTED`, Mermaid가 source라는 규칙, full suite 실행 시점)을 다시 쓴다.
 - [ ] T9 dbspec 인터페이스를 PHP 확장으로, 같은 contract의 다섯 번째 구현으로 만든다(T8.2.5 선행). 원인: native PHP 확장을 계획한다. 다른 client처럼 `Dbspec.parse`, `Dbspec.emit`, `DbspecDiagnostic`과 모든 공유 case를 만족해야 한다.
+- [ ] T10 package의 Cargo manifest가 하나인 ordered-json revision에 의존한다. 원인: clients/rust의 모든 cargo 명령이 "skipping duplicate package `ordered-json`"을 경고한다. clients/rust/orm/Cargo.toml의 ordered-json revision과 ordered-json main 모두 Cargo.toml(library rust/src/lib.rs)과 rust/Cargo.toml에서 같은 package를 정의하고, cargo는 앞의 것을 쓰고 뒤의 것을 건너뛴다. 완료 조건: ordered-json이 package의 manifest를 하나만 두고, clients/rust/orm/Cargo.toml이 그 revision을 고정하며, clients/rust의 cargo test가 duplicate package 경고를 출력하지 않는다.
 
 ## 물리 스키마 완성
 

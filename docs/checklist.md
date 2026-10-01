@@ -40,6 +40,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [ ] T8.7 Export standard Mermaid `erDiagram` and import it with a complete list of dropped information (requires T8.2).
 - [ ] T8.8 Merge `feat/dbspec-T8` into `main` and remove the worktree (requires T8.0–T8.7). Acceptance: obsolete development rules (`auto`, `COLUMN_UNSELECTED`, Mermaid as source, full-suite timing) are rewritten.
 - [ ] T9 Implement the dbspec interface in a PHP extension as a fifth implementation of the same interface (requires T8.2.5). Cause: a native PHP extension is planned; it must satisfy `Dbspec.parse`, `Dbspec.emit` and `DbspecDiagnostic` and every shared case like the other clients.
+- [ ] T10 Depend on an ordered-json revision with one Cargo manifest for its package. Cause: every cargo command in clients/rust warns "skipping duplicate package `ordered-json`", because the ordered-json revision of clients/rust/orm/Cargo.toml and ordered-json main both define the package in Cargo.toml (library rust/src/lib.rs) and again in rust/Cargo.toml; cargo uses the first and skips the second. Acceptance: ordered-json keeps one manifest for the package, clients/rust/orm/Cargo.toml pins that revision, and cargo test in clients/rust prints no duplicate package warning.
 
 ## Physical schema completion
 
