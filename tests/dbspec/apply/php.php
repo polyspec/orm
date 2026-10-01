@@ -12,6 +12,7 @@ declare(strict_types=1);
 // Usage: php tests/dbspec/apply/php.php <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../input.php';
 
 use Orm\Dbspec\ApplyError;
 use Orm\Dbspec\ApplyEvent;
@@ -26,7 +27,12 @@ if ($argc !== 5) {
     exit(2);
 }
 [, $action, $dialect, $uri, $vectorsPath] = $argv;
-$vectors = json_decode(file_get_contents($vectorsPath), true, 512, JSON_THROW_ON_ERROR);
+try {
+    $vectors = json_decode(dbspec_read_input($vectorsPath), true, 512, JSON_THROW_ON_ERROR);
+} catch (JsonException $e) {
+    fwrite(STDERR, "$vectorsPath: {$e->getMessage()}\n");
+    exit(1);
+}
 $plans = [];
 foreach ($vectors['cases'] as $case) {
     if ($case['id'] === 'create-from-empty' || $case['id'] === 'rename-table-and-column') {

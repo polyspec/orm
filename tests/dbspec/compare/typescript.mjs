@@ -4,7 +4,7 @@
 //
 // Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (after the TypeScript build)
-import { readFileSync } from 'node:fs';
+import { readInput } from '../input.mjs';
 import {
   chainPlans,
   dbspecManifest,
@@ -33,9 +33,10 @@ function fail(path, location, problem) {
 
 // readVectors는 vector file을 JSON으로 읽고 check로 모양을 확인한다.
 function readVectors(path, check) {
+  const text = readInput(path);
   let value;
   try {
-    value = JSON.parse(readFileSync(path, 'utf8'));
+    value = JSON.parse(text);
   } catch (error) {
     console.error(`${path}: ${error.message}`);
     process.exit(1);
@@ -166,7 +167,7 @@ for (const kind of ['canonical', 'normalize', 'invalid']) {
   }
 }
 out.push('stress');
-write(readFileSync(stressPath, 'utf8'), {}, true);
+write(readInput(stressPath), {}, true);
 
 // writeManifest prints the hashes and texts of the case's document set, or the
 // diagnostics of a document or of the set.
@@ -346,7 +347,7 @@ for (const kind of ['import', 'invalid']) {
 }
 for (const c of mermaid.round_trip) {
   out.push(`mermaid/round_trip/${c.id}`);
-  const parsed = parseDbspec(readFileSync(c.path, 'utf8'), {});
+  const parsed = parseDbspec(readInput(c.path), {});
   if (parsed.document === null) {
     writePlanDiagnostics(parsed.diagnostics);
     continue;

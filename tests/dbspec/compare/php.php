@@ -9,6 +9,7 @@ declare(strict_types=1);
 // Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../input.php';
 
 if ($argc !== 6) {
     fwrite(STDERR, "usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>\n");
@@ -28,11 +29,7 @@ function dbspec_vector_fail(string $path, string $location, string $problem): ne
  */
 function dbspec_read_vectors(string $path, callable $read): array
 {
-    $text = file_get_contents($path);
-    if ($text === false) {
-        fwrite(STDERR, "$path: cannot be read\n");
-        exit(1);
-    }
+    $text = dbspec_read_input($path);
     try {
         $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
     } catch (JsonException $e) {
@@ -196,11 +193,7 @@ $cases = dbspec_read_vectors($argv[1], static function (string $path, stdClass $
     ]);
     return $cases;
 });
-$stress = file_get_contents($argv[2]);
-if ($stress === false) {
-    fwrite(STDERR, "cannot read {$argv[2]}\n");
-    exit(1);
-}
+$stress = dbspec_read_input($argv[2]);
 foreach (['canonical', 'normalize', 'invalid'] as $kind) {
     foreach ($cases[$kind] as $case) {
         $crlf = $case['crlf'];
@@ -517,11 +510,7 @@ foreach (['import', 'invalid'] as $kind) {
 }
 foreach ($mermaid['round_trip'] as $case) {
     echo "mermaid/round_trip/{$case['id']}\n";
-    $source = file_get_contents($case['path']);
-    if ($source === false) {
-        fwrite(STDERR, "{$case['path']}: cannot be read\n");
-        exit(1);
-    }
+    $source = dbspec_read_input($case['path']);
     $parsed = Orm\Dbspec\Dbspec::parse($source, []);
     if ($parsed->document === null) {
         dbspec_plan_diagnostics($parsed->diagnostics);

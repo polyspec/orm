@@ -6,10 +6,10 @@
 // "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //
 // Usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>
-import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
 import { DbspecApplyError, applyPlans, parsePlan, recoverPlans } from '../../../clients/typescript/dist/dbspec/index.js';
+import { readInput } from '../input.mjs';
 
 const require = createRequire(new URL('../../../clients/typescript/package.json', import.meta.url));
 const mysql = require('mysql2/promise');
@@ -29,7 +29,7 @@ if (process.argv.length !== 6) {
 const [action, dialect, uri, vectorsPath] = process.argv.slice(2);
 const url = new URL(uri);
 
-const plans = JSON.parse(readFileSync(vectorsPath, 'utf8'))
+const plans = JSON.parse(readInput(vectorsPath))
   .cases.filter(c => c.id === 'create-from-empty' || c.id === 'rename-table-and-column')
   .map(c => {
     const parsed = parsePlan(c.plan.join('\n') + '\n');
