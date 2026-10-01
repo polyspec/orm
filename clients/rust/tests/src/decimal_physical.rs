@@ -30,18 +30,21 @@ async fn decimal_physical(env: &str) {
 
 #[cfg(test)]
 #[tokio::test]
+#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_mysql() {
     decimal_physical("DECIMAL_MYSQL_DSN").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
+#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_postgres() {
     decimal_physical("DECIMAL_POSTGRES_DSN").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
+#[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_sqlite() {
     decimal_physical("DECIMAL_SQLITE_DSN").await;
 }

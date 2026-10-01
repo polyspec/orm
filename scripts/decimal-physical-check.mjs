@@ -37,7 +37,7 @@ function command(language, database) {
   }
   if (language === 'php') return ['php', ['clients/php/tests/decimal_model_db.php', '--dialect', database]];
   if (language === 'rust') {
-    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'clients/rust/Cargo.toml', '-p', 'orm-tests', '--bin', 'decimal_physical', id, '--', '--exact']];
+    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'clients/rust/Cargo.toml', '-p', 'orm-tests', '--bin', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
   }
   return ['node', ['clients/typescript/tests/decimal_model_db.mjs', '--dialect', database]];
 }

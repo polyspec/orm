@@ -45,6 +45,7 @@ use orm::db::Pool;
 use orm::{AesKeyring, Collection, Db, Isolation, Null};
 
 #[tokio::test]
+#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_generated_model_connection() {
     let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
