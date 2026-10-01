@@ -2124,6 +2124,7 @@
   "clients/go/orm/tx.go::txConn#field.tx": "*sql.Tx",
   "clients/go/orm/tx.go::txConn.base": "receiver=*txConn func() *DB",
   "clients/go/orm/tx.go::txConn.beginSQLiteMode": "receiver=*txConn func() error",
+  "clients/go/orm/tx.go::txConn.closeSession": "receiver=*txConn func() error",
   "clients/go/orm/tx.go::txConn.closeStatements": "receiver=*txConn func()",
   "clients/go/orm/tx.go::txConn.commit": "receiver=*txConn func() error",
   "clients/go/orm/tx.go::txConn.connectionClosed": "receiver=*txConn func() (bool, error)",

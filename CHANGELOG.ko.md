@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.0.14.4: context가 취소된 Go transaction은 connection을 pool에 돌려주지 않고 닫으므로 named lock, user variable, SQLite mode가 남지 않으며 `CANCELED`만 보고한다.
+
 - T8.0.14.3: 모든 client는 실패하거나 panic한 중첩 transaction 뒤에 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 실행하고 둘 중 하나의 실패를 원인과 함께 보고하며, transaction이 취소되었거나 connection을 잃은 Go savepoint는 원인만 돌려준다.
 
 - T8.0.14.2: 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 connection을 바로 닫으므로, TLS에서도 server에서 session과 함께 트랜잭션과 named lock이 끝난다.

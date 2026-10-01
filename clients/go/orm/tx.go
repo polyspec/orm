@@ -423,10 +423,18 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 }
 
 // rollback은 SQLite mode 복원, named lock 해제, local 값 reset, native
-// rollback을 모두 시도하고 실패한 것을 모두 돌려준다.
+// rollback을 모두 시도하고 실패한 것을 모두 돌려준다. transaction의 context가
+// 취소되었으면 그 context로 statement를 실행할 수 없으므로 connection을 닫는다.
 func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
+	}
+	if t.ctx.Err() != nil {
+		t.finished.Store(true)
+		t.closeStatements()
+		err := t.closeSession()
+		t.cancel()
+		return err
 	}
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
 	t.finished.Store(true)
@@ -434,6 +442,20 @@ func (t *txConn) rollback() error {
 	errs = append(errs, t.rollbackNative(), t.conn.Close())
 	t.cancel()
 	return errors.Join(errs...)
+}
+
+// closeSession은 transaction connection을 pool에 돌려주지 않고 닫는다. 취소된
+// transaction은 database/sql이 rollback하지만, driver.SessionResetter와
+// driver.Validator를 구현한 driver(go-sql-driver)의 connection은 pool에 남아 named
+// lock, user variable, SQLite mode를 다음 사용자에게 넘긴다. 닫힌 connection의
+// session은 server가 transaction과 그 상태와 함께 끝낸다. database/sql이 이미 닫은
+// connection은 sql.ErrConnDone이다.
+func (t *txConn) closeSession() error {
+	err := t.conn.Raw(func(any) error { return driver.ErrBadConn })
+	if errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {
+		return nil
+	}
+	return err
 }
 
 // rollbackNative는 native transaction을 rollback한다. 다음 둘은 실패가 아니다.
