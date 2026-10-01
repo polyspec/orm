@@ -124,7 +124,7 @@ pub(crate) struct Column {
     pub default: Option<DefaultValue>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum DefaultValue {
     /// `default now` of a `datetime(p)` column.
     Now,
