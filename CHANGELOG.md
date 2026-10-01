@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.6: every client applies and recovers plan chains with lock, history, verification and events, and any client continues a chain that another applied.
+
 - T8.7.5.1: `make dbspec-rust-check` runs every Rust dbspec test twice.
 
 - T8.6.6: `make dbspec-apply-pairs-check` applies the first plan of a chain with one client and the rest with another, for every ordered pair of the Go, PHP, TypeScript and Rust clients on MySQL, PostgreSQL and SQLite, and finishes on MySQL with one client a plan another one stopped.
