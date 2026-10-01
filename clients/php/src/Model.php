@@ -67,10 +67,7 @@ abstract class Model implements \JsonSerializable
      */
     private ?array $row = null;
 
-    /**
-     * The model metadata: entity, pk, auto, updated, aes_version, columns
-     * (name => [type, nullable, styles]), fulltext, indexes.
-     */
+    /** model의 entity다: RuntimeModel이 정의하는 runtime model entity 배열이다. */
     abstract public static function meta(): array;
 
     // ---- connection and fixed builder methods ----
@@ -386,7 +383,7 @@ abstract class Model implements \JsonSerializable
             }
             $value = Decimal::normalize($value, $col['precision'], $col['scale']);
         }
-        if (self::isStyledValueColumn($col)) {
+        if (RuntimeModel::styled($col)) {
             if (!$value instanceof StyledValue) {
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires StyledValue");
             }
@@ -398,16 +395,6 @@ abstract class Model implements \JsonSerializable
         $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');
         $this->putSet($column, $sqlNull ? ['null' => true] : ['value' => $value]);
         return $this;
-    }
-
-    private static function isStyledValueColumn(array $column): bool
-    {
-        foreach ($column['styles'] as $style) {
-            if (in_array($style, ['json', 'jsons', 'serialize', 'yaml'], true)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** A loaded or set column value; loaded date text is converted on first read. */
@@ -443,17 +430,15 @@ abstract class Model implements \JsonSerializable
         if (is_resource($v)) {
             $v = stream_get_contents($v);
         }
-        if (Chain::clientStyled($col)) {
+        if ($col['codec'] !== []) {
             return $v;
         }
         return match ($col['type']) {
-            'i32', 'i64' => (int) $v,
+            'i16', 'i32', 'i64' => (int) $v,
             'f64' => (float) $v,
             'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale']) : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
             'bool' => (bool) $v,
             'date', 'datetime' => self::timeValue($v, $zone),
-            'point' => Codec::point($v),
-            'jsontext' => $v,
             default => is_string($v) ? $v : (string) $v,
         };
     }
@@ -574,7 +559,7 @@ abstract class Model implements \JsonSerializable
             if ($column === '') {
                 continue;
             }
-            $numeric = !Chain::clientStyled($meta['columns'][$column]) && in_array($meta['columns'][$column]['type'], ['i32', 'i64', 'f64', 'decimal'], true);
+            $numeric = RuntimeModel::numeric($meta['columns'][$column]);
             if (in_array($prefix, ['plus', 'minus', 'sum', 'avg'], true) && !$numeric) {
                 throw new OrmException(Code::CONFIG, "$name requires a numeric column");
             }
@@ -623,7 +608,7 @@ abstract class Model implements \JsonSerializable
         if (self::prefixed($name, 'forceIndex')) {
             self::arity($name, $args, 0);
             $index = Chain::snake(substr($name, 10));
-            if (!in_array($index, $meta['indexes'], true)) {
+            if (!isset($meta['indexes'][$index])) {
                 throw new OrmException(Code::CONFIG, "{$meta['entity']} has no index $index");
             }
             $this->index = $index;
@@ -771,12 +756,6 @@ abstract class Model implements \JsonSerializable
         $column = $key['column'];
         $p = ['column' => $column];
         switch ($key['op']) {
-            case 'fulltext':
-            case 'fulltext_boolean':
-                if (!is_string($value)) {
-                    throw new OrmException(Code::CONFIG, 'a full-text value must be a string');
-                }
-                return [['op' => $key['op'] === 'fulltext' ? 'match' : 'match_boolean', 'cols' => $key['columns'], 'value' => $value, 'kind' => 'fulltext'], 0];
             case 'tuple':
             case 'ne_tuple':
                 if (!is_array($value) || !array_is_list($value)) {
@@ -1083,15 +1062,11 @@ abstract class Model implements \JsonSerializable
     private function predIr(array $p, Request $r, Frame $f): array
     {
         $out = [];
-        if (!in_array($p['kind'], ['fulltext', 'tuple'], true)) {
+        if ($p['kind'] !== 'tuple') {
             $out['column'] = $p['column'];
         }
         $out['op'] = $p['op'];
         switch ($p['kind']) {
-            case 'fulltext':
-                $out['match'] = $p['cols'];
-                $out['p'] = $r->param($p['value']);
-                break;
             case 'tuple':
                 $out['cols'] = $p['cols'];
                 foreach ($p['value'] as $row) {
@@ -1166,7 +1141,7 @@ abstract class Model implements \JsonSerializable
             $shapes = [];
         }
         $meta = static::meta();
-        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => [], 'extra' => [],
+        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'codec' => [], 'extra' => [],
             'names' => [], 'hidden' => [], 'original' => [], 'key' => null];
         foreach ($asm['columns'] as $col) {
             $name = $col['name'];
@@ -1176,14 +1151,15 @@ abstract class Model implements \JsonSerializable
             }
             if (($col['column'] ?? '') === $name && isset($meta['columns'][$name])) {
                 $mc = $meta['columns'][$name];
-                $kind = Chain::clientStyled($mc) ? 'json' : $mc['type'];
+                // codec column은 Codec::decodeRows가 이미 값으로 바꿨다.
+                $kind = $mc['codec'] !== [] ? 'codec' : $mc['type'];
                 $group = match ($kind) {
-                    'i32', 'i64' => 'int',
+                    'i16', 'i32', 'i64' => 'int',
                     'f64' => 'float',
                     'decimal' => 'decimal',
                     'bool' => 'bool',
                     'date', 'datetime' => 'date',
-                    'point', 'json', 'jsontext' => 'other',
+                    'codec' => 'codec',
                     default => 'string',
                 };
                 $shape[$group][] = [$col['index'], $name, $kind];
@@ -1243,12 +1219,8 @@ abstract class Model implements \JsonSerializable
             $v = $vals[$index];
             $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
         }
-        foreach ($shape['other'] as [$index, $name, $kind]) {
-            $v = $vals[$index];
-            if (is_resource($v)) {
-                $v = stream_get_contents($v);
-            }
-            $values[$name] = $v === null || $kind === 'json' ? $v : Codec::point($v);
+        foreach ($shape['codec'] as [$index, $name]) {
+            $values[$name] = $vals[$index];
         }
         $m->values = $values;
         foreach ($shape['extra'] as [$index, $name, $kind]) {
@@ -1257,7 +1229,7 @@ abstract class Model implements \JsonSerializable
                 $v = stream_get_contents($v);
             }
             $st['extra'][$name] = $v === null ? null : match ($kind) {
-                'i32', 'i64' => is_numeric($v) ? (int) $v : $v,
+                'i16', 'i32', 'i64' => is_numeric($v) ? (int) $v : $v,
                 'f64' => is_numeric($v) ? (float) $v : $v,
                 'date', 'datetime' => self::timeValue($v, $zone),
                 default => $v,
@@ -1505,12 +1477,12 @@ abstract class Model implements \JsonSerializable
             if ($raw === false) throw new OrmException(Code::CODEC_DECODE, "group column $name could not be read");
         }
         $type = $declared['type'] ?? $column['type'];
-        if ($declared !== null && Chain::clientStyled($declared)) {
+        if ($declared !== null && RuntimeModel::styled($declared)) {
             if (!$raw instanceof StyledValue) throw new OrmException(Code::CODEC_DECODE, "group column $name is not StyledValue");
             return $raw;
         }
         return match ($type) {
-            'i32', 'i64' => self::groupInteger($raw, $type, $name),
+            'i16', 'i32', 'i64' => self::groupInteger($raw, $type, $name),
             'bool' => match ($raw) {
                 true, 1, '1', 't', 'true' => true,
                 false, 0, '0', 'f', 'false' => false,
@@ -1523,8 +1495,7 @@ abstract class Model implements \JsonSerializable
                     ? Decimal::fromScaled($raw, $declared['precision'], $declared['scale'])
                     : Decimal::decode($raw, $declared['precision'], $declared['scale'])),
             'date', 'datetime' => self::timeValue($raw, $db->zone()),
-            'point' => Codec::point($raw),
-            'string', 'text', 'enum', 'inet', 'time', 'uuid', 'jsontext', 'bytes' => is_string($raw)
+            'varchar', 'text', 'time', 'uuid', 'bytes' => is_string($raw)
                 ? $raw : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
             default => throw new OrmException(Code::INTERNAL, "group column $name has unsupported type $type"),
         };
@@ -1542,6 +1513,9 @@ abstract class Model implements \JsonSerializable
         }
         if ($type === 'i32' && ($value < -2147483648 || $value > 2147483647)) {
             throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i32 range");
+        }
+        if ($type === 'i16' && ($value < -32768 || $value > 32767)) {
+            throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i16 range");
         }
         return $value;
     }
@@ -1659,7 +1633,7 @@ abstract class Model implements \JsonSerializable
 
     private static function encodeValue(array $col, mixed $v): mixed
     {
-        $codec = array_values(array_filter($col['styles'], static fn(string $s): bool => !Codec::isHostStyle($s)));
+        $codec = array_values(array_filter($col['codec'], static fn(string $s): bool => !Codec::isHostStyle($s)));
         if ($codec === []) {
             return $v;
         }
@@ -1700,11 +1674,11 @@ abstract class Model implements \JsonSerializable
                 $m->values[$column] = null;
             }
         }
-        if ($meta['auto'] !== '') {
-            if (!in_array($meta['auto'], $st['names'], true)) {
-                $st['names'][] = $meta['auto'];
+        if ($meta['identity'] !== '') {
+            if (!in_array($meta['identity'], $st['names'], true)) {
+                $st['names'][] = $meta['identity'];
             }
-            $m->values[$meta['auto']] = self::columnValue($meta['columns'][$meta['auto']], $id, $db->zone());
+            $m->values[$meta['identity']] = self::columnValue($meta['columns'][$meta['identity']], $id, $db->zone());
         }
         foreach ($meta['pk'] as $pk) {
             $v = $m->values[$pk] ?? null;
@@ -1817,7 +1791,7 @@ abstract class Model implements \JsonSerializable
         }
         $changed = false;
         foreach ($sets as $column => $_) {
-            if (in_array('aes', $meta['columns'][$column]['styles'], true)) {
+            if (RuntimeModel::encrypted($meta['columns'][$column])) {
                 $changed = true;
             }
         }
@@ -1825,7 +1799,7 @@ abstract class Model implements \JsonSerializable
             return $sets;
         }
         foreach ($meta['columns'] as $column => $col) {
-            if (!in_array('aes', $col['styles'], true) || isset($sets[$column])) {
+            if (!RuntimeModel::encrypted($col) || isset($sets[$column])) {
                 continue;
             }
             if ($this->row === null || !in_array($column, $this->row['names'], true)) {
@@ -2148,7 +2122,7 @@ final class Request
 
     public function __construct(string $kind, Db $db)
     {
-        $this->ir = ['ir_version' => 1, 'schema_hash' => Registry::schemaHash(), 'kind' => $kind];
+        $this->ir = ['ir_version' => 1, 'manifest_hash' => Registry::manifestHash(), 'kind' => $kind];
     }
 
     public function param(mixed $v): int

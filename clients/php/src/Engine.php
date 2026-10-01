@@ -4,12 +4,12 @@ declare(strict_types=1);
 namespace Orm;
 
 /**
- * Compiles requests of one schema for one database: validation, planning,
- * and a bounded plan cache keyed by the request shape.
+ * 한 runtime model과 한 database의 요청을 compile한다: 검증, planning, 요청
+ * shape를 key로 하는 크기 제한 plan cache.
  */
 final class Engine
 {
-    /** @var array<string, Engine> engines by schema path and dialect */
+    /** @var array<string, Engine> manifest hash와 dialect별 engine */
     private static array $engines = [];
 
     /** @var array<string, array> plans by request shape */
@@ -17,16 +17,17 @@ final class Engine
     private readonly Validator $validator;
     private readonly Planner $planner;
 
-    public function __construct(public readonly Manifest $manifest, string $dialect, private readonly int $cacheSize)
+    public function __construct(public readonly RuntimeModel $model, string $dialect, private readonly int $cacheSize)
     {
-        $this->validator = new Validator($manifest);
-        $this->planner = new Planner($manifest, new Dialect($dialect));
+        $this->validator = new Validator($model);
+        $this->planner = new Planner($model, new Dialect($dialect));
     }
 
-    /** The shared engine of a schema file and dialect. */
-    public static function for(string $schemaPath, string $dialect, int $cacheSize): self
+    /** 등록된 generated model과 dialect가 공유하는 engine이다. */
+    public static function for(string $dialect, int $cacheSize): self
     {
-        return self::$engines[$schemaPath . "\0" . $dialect] ??= new self(Manifest::file($schemaPath), $dialect, $cacheSize);
+        $model = Registry::model();
+        return self::$engines[$model->manifestHash . "\0" . $dialect] ??= new self($model, $dialect, $cacheSize);
     }
 
     /** The plan of a value-free request (docs/protocol.md). */
@@ -37,7 +38,7 @@ final class Engine
             return $this->plans[$shape];
         }
         $plan = $this->compile($ir);
-        Assemble::index($plan, hash('xxh3', $shape));
+        Assemble::index($plan, hash('xxh3', $shape), $this->model);
         $this->plans[$shape] = $plan;
         if (count($this->plans) > $this->cacheSize) {
             unset($this->plans[array_key_first($this->plans)]);
@@ -60,28 +61,30 @@ final class Assemble
     /**
      * Stamps every step with 'plan_id' (the cache key suffix, for the on_query hook), 'decode'
      * (the styled cells Codec::decodeRows converts) and adds 'idx' => [name => position] and a
-     * process-unique 'node' number to every assemble node in place. A styled column's styles are
+     * process-unique 'node' number to every assemble node in place. A styled column's stages are
      * split once into 'host' (aes/hex/ip, the stages the dialect left to the executor) and 'codec'
      * (docs/codec.md), in write order.
      */
-    public static function index(array &$plan, string $id): void
+    public static function index(array &$plan, string $id, RuntimeModel $model): void
     {
         foreach ($plan['steps'] as &$step) {
             $step['plan_id'] = $id;
             $step['decode'] = [];
             if (isset($step['assemble'])) {
                 self::indexNode($step['assemble']);
-                self::decodeCells($step['assemble'], $step['decode']);
+                self::decodeCells($step['assemble'], $step['decode'], $model);
             }
         }
     }
 
     /** Collects the styled cells of a node and its joined nodes for Codec::decodeRows. */
-    private static function decodeCells(array $a, array &$out): void
+    private static function decodeCells(array $a, array &$out, RuntimeModel $model): void
     {
+        // AES column을 읽는 node는 entity의 aes_version column을 함께 읽는다.
+        $name = $model->entities[$a['entity']]['aes_version'];
         $version = null;
         foreach ($a['columns'] as $c) {
-            if (!empty($c['hidden']) && ($c['column'] ?? '') === 'aes_key_version') {
+            if ($name !== '' && ($c['column'] ?? '') === $name) {
                 $version = $c['index'];
                 break;
             }
@@ -93,7 +96,7 @@ final class Assemble
         }
         foreach ($a['children'] ?? [] as $ch) {
             if ($ch['kind'] === 'join') {
-                self::decodeCells($ch['assemble'], $out);
+                self::decodeCells($ch['assemble'], $out, $model);
             }
         }
     }

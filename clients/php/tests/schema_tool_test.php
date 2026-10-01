@@ -311,10 +311,9 @@ $tests['build --check compares schema.json without writing'] = function () use (
 $tests['gen --check compares the models without writing'] = function () use ($work): void {
     $dir = "$work/gen-check";
     @mkdir("$dir/model", 0o700, true);
-    $m = manifest("erDiagram\n  item {\n    bigint seq PK\n    varchar(32) name\n  }\n  tag {\n    bigint seq PK\n  }\n");
-    file_put_contents("$dir/schema.json", SchemaBuilder::json($m));
-    $args = ['gen', '--schema', "$dir/schema.json", '--out', "$dir/model", '--namespace', 'Example\\Model', '--check'];
-    [$code] = tool(array_slice($args, 0, -1));
+    file_put_contents("$dir/example.dbspec", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n");
+    $args = ['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', '--check', "$dir/example.dbspec"];
+    [$code] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', "$dir/example.dbspec"]);
     check($code === 0, 'gen');
     file_put_contents("$dir/model/Notes.php", "<?php\n");
     [$code, $out, $err] = tool($args);

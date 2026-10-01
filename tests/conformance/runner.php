@@ -1,6 +1,6 @@
 <?php
 // Conformance runner (PHP). Runs the chains of runner_go/main.go and prints the same document.
-// Usage: php tests/conformance/runner.php <schema.json> --dsn URI
+// Usage: php tests/conformance/runner.php <bench.dbspec> --dsn URI
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
@@ -21,7 +21,12 @@ use Orm\Orm;
 use Orm\OrmException;
 use Orm\StyledValue;
 
-$schema = $argv[1] ?? throw new RuntimeException('schema.json required');
+$schema = $argv[1] ?? throw new RuntimeException('the dbspec document of the generated models is required');
+// 주어진 문서는 generated model을 만든 문서여야 한다.
+$manifest = \Orm\Dbspec\Dbspec::manifest(\Orm\RuntimeModel::files([$schema]))->manifest;
+if ($manifest === null || $manifest->manifestHash !== \Orm\Registry::manifestHash()) {
+    throw new RuntimeException("$schema is not the document set of the generated models");
+}
 $dsn = null;
 for ($i = 2; $i < $argc; $i++) {
     match ($argv[$i]) {
@@ -117,7 +122,6 @@ function picks(Collection $c, string ...$names): array
 }
 
 $db = Orm::connect($dsn, new Config(
-    schemaPath: $schema,
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$log): void {

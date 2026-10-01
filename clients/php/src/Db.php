@@ -30,7 +30,6 @@ final class Db
         private readonly \PDO $pdo,
         private readonly string $driver,
         private readonly Config $config,
-        private readonly Engine $engine,
         private readonly \DateTimeZone $zone,
     ) {
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -172,8 +171,13 @@ final class Db
      * back; models without connect inside $fn use this transaction. A
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
+     *
+     * $operation은 이 작업 단위의 operation id다. executor는 transaction 안에서
+     * insert하거나 update하는 모든 감사 대상 행의 operation column에 그 값을 쓴다
+     * (docs/dbspec.md "Audit"). 감사 대상 table의 operation column이 i64면 int,
+     * uuid면 string이다. 중첩 transaction은 바깥 transaction의 operation id를 쓴다.
      */
-    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3): mixed
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, int|string|null $operation = null): mixed
     {
         if ($retry < 0) {
             throw new OrmException(Code::CONFIG, 'transaction retry must not be negative');
@@ -186,14 +190,14 @@ final class Db
         }
         $outer = self::activeFor($this);
         if ($outer !== null) {
-            if ($isolation !== '' || $readOnly || $timeoutMs !== 0) {
+            if ($isolation !== '' || $readOnly || $timeoutMs !== 0 || $operation !== null) {
                 throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the retry option');
             }
             return $this->savepoint($outer, $fn);
         }
         for ($attempt = 0; ; $attempt++) {
             try {
-                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
+                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs, $operation);
             } catch (OrmException $e) {
                 if ($e->code_ !== Code::DEADLOCK || $attempt >= $retry) {
                     throw $e;
@@ -203,9 +207,10 @@ final class Db
         }
     }
 
-    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
+    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs, int|string|null $operation): mixed
     {
         $frame = $this->begin($isolation, $readOnly, $timeoutMs);
+        $frame->operation = $operation;
         self::$frames[] = $frame;
         try {
             $v = $fn();
@@ -286,9 +291,6 @@ final class Db
                     $this->pdo->exec('SET @`orm.' . $key . '` = NULL');
                 }
             }
-            if ($commit && $frame->contextRow) {
-                $this->pdo->exec('DELETE FROM "orm__context"');
-            }
             if ($this->driver === 'sqlite') {
                 if ($frame->readOnly) {
                     $this->pdo->exec('PRAGMA query_only = 0');
@@ -347,7 +349,7 @@ final class Db
 
     private function plan(Request $r): array
     {
-        return $this->engine->plan($r->shape());
+        return Engine::for($this->driver, $this->config->planCacheSize)->plan($r->shape());
     }
 
     /** @internal @return array{0: array, 1: array} the plan and its positional result */
@@ -415,7 +417,7 @@ final class Db
     {
         $this->enter($frame, $r->ir);
         $step = $this->plan($r)['steps'][0];
-        $args = $this->args($step, $r->params);
+        $args = $this->args($step, $r->params, [], $frame);
         $insert = $r->ir['kind'] === 'insert';
         $start = microtime(true);
         $st = null;
@@ -428,8 +430,8 @@ final class Db
                 $affected = 1;
             } else {
                 $affected = $st->rowCount();
-                $entity = $this->engine->manifest->entity($r->ir['entity']);
-                $id = $insert && !isset($r->ir['rows']) && ($entity['auto'] ?? '') !== ''
+                $entity = Registry::model()->entity($r->ir['entity']);
+                $id = $insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
                     ? $this->pdo->lastInsertId() : null;
             }
         } catch (\PDOException $e) {
@@ -460,26 +462,24 @@ final class Db
         return ['sql' => $step['sql'], 'binds' => $args];
     }
 
-    /**
-     * The executor clock in the connection time zone. PostgreSQL receives the
-     * offset because its columns store instants.
-     */
-    private function now(): string
+    /** 'Y-m-d H:i:s'에 precision 자리의 소수를 붙인 text다. */
+    private static function timeText(\DateTimeImmutable $t, int $precision): string
     {
-        return (new \DateTimeImmutable('now', $this->zone))->format($this->driver === 'postgres' ? 'Y-m-d H:i:s.uP' : 'Y-m-d H:i:s.u');
+        return $t->format('Y-m-d H:i:s') . ($precision > 0 ? '.' . substr($t->format('u'), 0, $precision) : '');
     }
 
     /**
-     * Writes a datetime or date value in the text form SQLite stores, so a
-     * string value compares equal to the stored value. A datetime string with
-     * an offset is converted to the connection time zone.
+     * datetime이나 date 값을 offset 없는 text로 쓴다. datetime은 UTC로 바꾸고
+     * column precision 자리의 소수를 가지므로, SQLite에 저장된 text와 같고
+     * MySQL과 PostgreSQL은 offset literal을 받지 않는다(docs/dialects.md). date는
+     * 값의 달력 날짜다.
      */
-    private function sqliteTimeValue(mixed $v, string $colType): mixed
+    private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
     {
         if ($v instanceof \DateTimeInterface) {
             return $colType === 'date'
-                ? \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d')
-                : $v;
+                ? $v->format('Y-m-d')
+                : self::timeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone), $precision);
         }
         if (!is_string($v)) {
             return $v;
@@ -502,13 +502,13 @@ final class Db
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
                 throw self::invalidTimeText($v, $colType);
             }
-            return $text;
+            return self::timeText($t, $precision);
         }
         $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($zone === 'Z' ? '+00:00' : $zone));
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
             throw self::invalidTimeText($v, $colType);
         }
-        return $t->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
+        return self::timeText($t->setTimezone($this->zone), $precision);
     }
 
     private static function invalidTimeText(string $v, string $colType): OrmException
@@ -517,13 +517,14 @@ final class Db
         return new OrmException(Code::CODEC_ENCODE, "$colType value \"$v\" is not $form");
     }
 
-    private function args(array $step, array $params, array $parentVals = []): array
+    private function args(array $step, array $params, array $parentVals = [], ?TxFrame $frame = null): array
     {
         $out = [];
         $this->masks = [];
         $this->typed = $this->driver === 'sqlite';
         $cfg = $this->config;
         // One statement reads the clock once, so its clock columns are equal.
+        /** @var ?\DateTimeImmutable $clock */
         $clock = null;
         foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
@@ -535,8 +536,8 @@ final class Db
                 case 'param':
                     $v = $params[$b['param']];
                     $colType = $b['col_type'] ?? '';
-                    if ($this->driver === 'sqlite' && ($colType === 'datetime' || $colType === 'date') && $v !== null) {
-                        $v = $this->sqliteTimeValue($v, $colType);
+                    if (($colType === 'datetime' || $colType === 'date') && $v !== null) {
+                        $v = $this->bindTimeValue($v, $colType, $b['precision'] ?? 0);
                     }
                     if ($colType === 'decimal' && $v !== null) {
                         if (!is_string($v)) {
@@ -559,9 +560,6 @@ final class Db
                     } elseif (is_bool($v) || $v instanceof Bytes) {
                         $this->typed = true;
                     }
-                    if ($colType === 'point' && $v !== null) {
-                        $v = $this->driver === 'postgres' ? Codec::postgresPointText($v) : Codec::pointText($v);
-                    }
                     $out[] = $v;
                     break;
                 case 'secret':
@@ -579,7 +577,18 @@ final class Db
                     break;
                 case 'now':
                     $this->masks[count($out)] = self::NOW;
-                    $out[] = $clock ??= $this->now();
+                    $clock ??= new \DateTimeImmutable('now', $this->zone);
+                    $out[] = self::timeText($clock, $b['precision']);
+                    break;
+                case 'operation':
+                    $operation = $frame?->operation ?? throw new OrmException(Code::CONFIG, 'an insert or update of an audited table needs an operation id: run it in transaction(..., operation: $id)');
+                    $valid = $b['col_type'] === 'i64'
+                        ? is_int($operation)
+                        : is_string($operation) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $operation) === 1;
+                    if (!$valid) {
+                        throw new OrmException(Code::CONFIG, 'operation id ' . var_export($operation, true) . " is not a value of the {$b['col_type']} operation column");
+                    }
+                    $out[] = $operation;
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
@@ -973,7 +982,8 @@ final class TxFrame
     public array $locals = [];
     /** @var list<string> */
     public array $locks = [];
-    public bool $contextRow = false;
+    /** 작업 단위의 operation id다. 감사 대상 행의 operation column에 쓴다. */
+    public int|string|null $operation = null;
 
     public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation) {}
 }
@@ -984,9 +994,6 @@ final class Transform
     public static function apply(string $kind, string $s): string
     {
         switch ($kind) {
-            case 'fulltext_boolean':
-                $s = trim($s);
-                return $s === '' ? $s : '+' . str_replace(' ', ' +', $s) . '*';
             case 'like_contains':
                 return '%' . self::esc($s) . '%';
             case 'like_starts':

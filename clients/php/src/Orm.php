@@ -10,19 +10,13 @@ final class Orm
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
     /**
-     * Opens the database selected by the DSN URI (mysql://, postgres://, sqlite://).
-     * The optional `timezone` parameter sets the connection time zone; without
-     * it the server environment time zone is used.
+     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다.
+     * 모든 connection은 datetime을 UTC로 읽고 쓴다(docs/dialects.md): MySQL과
+     * PostgreSQL session의 time zone은 UTC다.
      */
     public static function connect(string $dsn, Config $config): Db
     {
-        [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = $parsed = self::parseDsn($dsn);
-        $pragmas = $parsed[6] ?? [];
-        $engine = Engine::for($config->schemaPath, $driver, $config->planCacheSize);
-        $generated = Registry::schemaHash();
-        if ($engine->manifest->schemaHash !== $generated) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated models are from schema $generated, {$config->schemaPath} is {$engine->manifest->schemaHash}");
-        }
+        [$driver, $pdoDsn, $user, $password, $pragmas] = self::parseDsn($dsn);
         if ($config->poolSize < 0) {
             throw new OrmException(Code::CONFIG, 'pool size must not be negative');
         }
@@ -44,24 +38,14 @@ final class Orm
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             switch ($driver) {
                 case 'mysql':
-                    if ($zoneName !== null) {
-                        try {
-                            $pdo->prepare('SET time_zone = ?')->execute([$zoneName]);
-                        } catch (\PDOException $e) {
-                            if ((int) ($e->errorInfo[1] ?? 0) === 1298) {
-                                throw new OrmException(Code::CONFIG, 'dsn timezone: ' . ($e->errorInfo[2] ?? $e->getMessage()) . '; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)', $e);
-                            }
-                            throw $e;
-                        }
-                    }
+                    $pdo->exec("SET time_zone = '+00:00'");
                     if ($config->statementTimeoutMs > 0) {
                         // MySQL bounds SELECT statements with max_execution_time.
                         $pdo->exec('SET SESSION max_execution_time = ' . $config->statementTimeoutMs);
                     }
                     break;
                 case 'postgres':
-                    // Bound times carry no offset, so the session always uses the connection zone.
-                    $pdo->exec('SET TIME ZONE ' . $pdo->quote(self::postgresZone($zoneName ?? $zone->getName())));
+                    $pdo->exec("SET TIME ZONE 'UTC'");
                     break;
                 default:
                     $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();
@@ -77,13 +61,15 @@ final class Orm
         } catch (\PDOException $e) {
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
-        return new Db($pdo, $driver, $config, $engine, $zone);
+        return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
     /**
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string, 6?: list<array{0: string, 1: string}>}
-     *     driver, PDO DSN, user, password, time zone, the time zone parameter, and the SQLite
-     *     `_pragma=name(value)` parameters
+     * `timezone` parameter는 UTC(`+00:00`, `UTC`)만 받는다. 다른 zone은 UTC 규칙과
+     * 맞지 않으므로 CONFIG로 실패한다.
+     *
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>}
+     *     driver, PDO DSN, user, password, and the SQLite `_pragma=name(value)` parameters
      */
     public static function parseDsn(string $dsn): array
     {
@@ -100,11 +86,8 @@ final class Orm
         }
         $query = [];
         parse_str((string) ($parts['query'] ?? ''), $query);
-        $zoneName = isset($query['timezone']) ? (string) $query['timezone'] : null;
-        try {
-            $zone = new \DateTimeZone($zoneName ?? date_default_timezone_get());
-        } catch (\Exception $e) {
-            throw new OrmException(Code::CONFIG, "dsn timezone $zoneName: " . $e->getMessage());
+        if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
+            throw new OrmException(Code::CONFIG, 'dsn timezone ' . (is_string($query['timezone']) ? $query['timezone'] : '') . ': every connection reads and writes datetime values in UTC');
         }
         $user = isset($parts['user']) ? rawurldecode($parts['user']) : null;
         $password = isset($parts['pass']) ? rawurldecode($parts['pass']) : null;
@@ -118,7 +101,7 @@ final class Orm
                 $pdo = isset($query['socket'])
                     ? 'mysql:unix_socket=' . $query['socket']
                     : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
-                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', $zone, $zoneName];
+                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', []];
             case 'postgres':
                 if ($name === '') {
                     throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
@@ -131,7 +114,7 @@ final class Orm
                 if (isset($query['sslmode'])) {
                     $pdo .= ';sslmode=' . $query['sslmode'];
                 }
-                return [$driver, $pdo, $user, $password, $zone, $zoneName];
+                return [$driver, $pdo, $user, $password, []];
             default:
                 if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
@@ -152,20 +135,8 @@ final class Orm
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];
                 }
-                return [$driver, 'sqlite:' . $path, null, null, $zone, $zoneName, $pragmas];
+                return [$driver, 'sqlite:' . $path, null, null, $pragmas];
         }
-    }
-
-    /**
-     * A fixed offset in the POSIX form PostgreSQL expects, where the sign after
-     * the name is inverted: +09:00 becomes <+09:00>-09:00.
-     */
-    public static function postgresZone(string $zone): string
-    {
-        if (preg_match('/^[+-]\d\d:\d\d$/', $zone) === 1) {
-            return '<' . $zone . '>' . ($zone[0] === '-' ? '+' : '-') . substr($zone, 1);
-        }
-        return $zone;
     }
 
     /** The retryable DEADLOCK error. */
@@ -253,21 +224,6 @@ final class Orm
     {
         return new Func('date', [], true);
     }
-
-    public static function distance(float $longitude, float $latitude): Func
-    {
-        return new Func('distance', [$longitude, $latitude], true);
-    }
-
-    public static function pointX(): Func
-    {
-        return new Func('point_x', [], true);
-    }
-
-    public static function pointY(): Func
-    {
-        return new Func('point_y', [], true);
-    }
 }
 
 /** Connection options. */
@@ -277,8 +233,6 @@ final class Config
     public readonly string $aesKey;
 
     public function __construct(
-        /** absolute path of schema.json the models were generated from */
-        public readonly string $schemaPath,
         string $aesKey = '',
         public readonly string $blindIndexKey = '',
         public readonly int $aesVersion = 1,
@@ -300,9 +254,6 @@ final class Config
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,
     ) {
-        if (!str_starts_with($schemaPath, '/')) {
-            throw new OrmException(Code::CONFIG, 'schemaPath must be absolute');
-        }
         if ($aesVersion < 1 || $planCacheSize < 1 || $statementCacheSize < 1) {
             throw new OrmException(Code::CONFIG, 'AES version and cache sizes must be positive');
         }

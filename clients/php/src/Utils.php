@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Orm;
 
+use Orm\Dbspec\Dbspec;
+
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
 {
@@ -59,7 +61,10 @@ final class Utils
         }
     }
 
-    /** Sets a transaction-local value. */
+    /**
+     * transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은 사용자
+     * 변수에도 쓰며, SQLite는 transaction 안에서만 값을 가진다.
+     */
     public function setLocal(string $key, string $value): void
     {
         $frame = $this->active('setLocal');
@@ -75,10 +80,6 @@ final class Utils
                 case 'mysql':
                     $pdo->prepare('SET @`orm.' . $key . '` = ?')->execute([$value]);
                     break;
-                default:
-                    $pdo->exec('CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)');
-                    $pdo->prepare('INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"')->execute([$key, $value]);
-                    $frame->contextRow = true;
             }
         } catch (\PDOException $e) {
             throw $this->driverError($e);
@@ -169,28 +170,51 @@ final class SchemaUtils
     public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
 
     /**
-     * Installs the canonical schema manifest on the connection's database:
-     * missing tables, keys, indexes, comments, and triggers are created. The
-     * statements run in one transaction; MySQL commits each DDL statement
-     * itself, so they run outside a transaction there.
+     * dbspec document set을 connection의 database에 설치한다. client의
+     * renderer가 만든 statement(docs/dialects.md "Rendered statements")로
+     * table, key, index, foreign key, check, trigger를 만든다. $documents는
+     * 집합의 각 문서 text다. 집합에 diagnostic이 있으면 SCHEMA_INVALID로
+     * 실패한다. 집합의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면
+     * CONFIG로 실패하므로 같은 집합의 반복 설치는 같은 상태를 남긴다. 있는
+     * table의 정의는 비교하지 않는다. statement는 한 transaction에서 실행하며,
+     * MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행한다.
+     *
+     * @param list<string> $documents
      */
-    public function install(string $manifestJson): void
+    public function install(array $documents): void
     {
         $driver = $this->db->driver();
-        try {
-            $manifest = SchemaBuilder::load($manifestJson);
-        } catch (\InvalidArgumentException $e) {
-            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage());
+        $texts = [];
+        foreach ($documents as $i => $text) {
+            if (!is_string($text)) {
+                throw new OrmException(Code::CONFIG, "document $i is not a dbspec text");
+            }
+            $texts["document $i"] = $text;
         }
-        try {
-            $statements = SchemaDdl::createStatements($manifest, $driver);
-        } catch (\RuntimeException $e) {
-            throw new OrmException(Code::CONFIG, 'render schema: ' . $e->getMessage());
+        $parsed = RuntimeModel::parse($texts);
+        $rendered = Dbspec::render($parsed, $driver);
+        if ($rendered->statements === null) {
+            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $rendered->diagnostics);
+            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
+        $statements = $rendered->statements;
         if ($statements === []) {
-            throw new OrmException(Code::CONFIG, 'schema manifest produced no statements');
+            throw new OrmException(Code::CONFIG, 'the document set has no tables');
         }
-        $apply = function () use ($statements, $driver): void {
+        $tables = [];
+        foreach ($parsed as $document) {
+            foreach ($document->tables as $table) {
+                $tables[] = $table->name;
+            }
+        }
+        $apply = function () use ($statements, $driver, $tables): void {
+            $present = array_values(array_filter($tables, $this->tableExists(...)));
+            if ($present === $tables) {
+                return;
+            }
+            if ($present !== []) {
+                throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
+            }
             try {
                 foreach ($statements as $statement) {
                     $this->db->pdo()->exec($statement);
@@ -207,6 +231,16 @@ final class SchemaUtils
             throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
         }
         $apply();
+    }
+
+    /** connection의 현재 database나 search_path에 table이 있는지 여부다. */
+    private function tableExists(string $table): bool
+    {
+        return match ($this->db->driver()) {
+            'postgres' => $this->bool('SELECT to_regclass(quote_ident(?)) IS NOT NULL', [$table]),
+            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [$table]),
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [$table]),
+        };
     }
 
     private function bool(string $sql, array $args): bool
@@ -331,8 +365,8 @@ final class AesUtils
         $meta = $model::meta();
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {
-            if (in_array('aes', $col['styles'], true)) {
-                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['styles'], static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
+            if (RuntimeModel::encrypted($col)) {
+                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['codec'], static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
             }
         }
         if ($meta['aes_version'] === '' || $columns === []) {

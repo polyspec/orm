@@ -15,12 +15,11 @@ use Orm\Db;
 use Orm\Orm;
 use Orm\OrmException;
 
-$schema = dirname(__DIR__, 3) . '/schema/schema.json';
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbspec')];
 
 function connect(string $dsn): Db
 {
-    global $schema;
-    return Orm::connect($dsn, new Config(schemaPath: $schema));
+    return Orm::connect($dsn, new Config());
 }
 
 /** Runs $count transactions that read the service count and then insert one service. */
@@ -66,9 +65,9 @@ register_shutdown_function(static function () use ($work): void {
 /** A new SQLite file with the schema installed and its DSN. */
 function database(string $name): string
 {
-    global $schema, $work;
+    global $documents, $work;
     $dsn = "sqlite://$work/$name.sqlite";
-    connect($dsn)->utils()->schema()->install((string) file_get_contents($schema));
+    connect($dsn)->utils()->schema()->install($documents);
     return $dsn;
 }
 

@@ -7,11 +7,11 @@ namespace Orm;
  * An ORM function value. It carries the function kind and its arguments; the
  * model method that receives it records the column and the operator, and the
  * engine renders SQL for the connection dialect. Created by Orm::now(),
- * Orm::daysAgo(), Orm::distance(), and the other Orm function factories.
+ * Orm::daysAgo(), and the other Orm function factories.
  */
 final readonly class Func
 {
-    /** @param list<int|float> $args */
+    /** @param list<int> $args */
     public function __construct(public string $name, public array $args, public bool $column) {}
 
     /** @param callable(mixed): int $param */

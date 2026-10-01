@@ -11,20 +11,21 @@ final class SoftRecord extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'soft_record',
             'table' => 'soft_record',
             'pk' => ['seq'],
-            'auto' => 'seq',
+            'identity' => 'seq',
             'updated' => '',
+            'soft_delete' => 'deleted_at',
             'aes_version' => '',
+            'audit' => '',
             'columns' => [
-                'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'name' => ['type' => 'string', 'nullable' => false, 'styles' => []],
-                'deleted_at' => ['type' => 'datetime', 'nullable' => true, 'styles' => []],
+                'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
+                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
+                'deleted_at' => ['name' => 'deleted_at', 'type' => 'datetime', 'nullable' => true, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 6],
             ],
-            'fulltext' => [],
+            'unique' => [],
             'indexes' => [],
         ];
     }

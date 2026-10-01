@@ -23,12 +23,12 @@ final class Generator
     ];
 
     /** Column naming rules of the DSL. */
-    private const RESERVED_SEGMENTS = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext', 'tuple'];
-    private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext'];
+    private const RESERVED_SEGMENTS = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
+    private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
     private const RESERVED_COLUMNS = ['and', 'or', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'save', 'raw', 'on', 'random'];
 
-    /** Generates the models of $m into $outDir, replacing earlier generated files. */
-    public static function generate(Manifest $m, string $outDir, string $namespace): void
+    /** $m의 model을 $outDir에 생성하고 이전에 생성한 파일을 바꾼다. */
+    public static function generate(RuntimeModel $m, string $outDir, string $namespace): void
     {
         $files = self::files($m, $namespace);
         if (!is_dir($outDir) && !mkdir($outDir, 0o755, true)) {
@@ -43,12 +43,11 @@ final class Generator
     }
 
     /**
-     * Generates the models of $m without writing and returns one line for each
-     * generated file of $outDir that differs, is missing, or is extra, ordered
-     * by path.
+     * $m의 model을 쓰지 않고 생성해, $outDir의 generated 파일 중 다르거나
+     * 없거나 남는 파일마다 한 줄을 경로 순서로 돌려준다.
      * @return list<string>
      */
-    public static function check(Manifest $m, string $outDir, string $namespace): array
+    public static function check(RuntimeModel $m, string $outDir, string $namespace): array
     {
         $files = self::files($m, $namespace);
         $lines = [];
@@ -79,21 +78,25 @@ final class Generator
     }
 
     /** @return array<string, string> the generated file bodies by file name */
-    private static function files(Manifest $m, string $namespace): array
+    private static function files(RuntimeModel $m, string $namespace): array
     {
-        foreach ($m->order as $name) {
-            foreach ($m->entities[$name]['columns'] as $c) {
-                self::checkColumnName($name, $c['name']);
+        foreach ($m->entities as $e) {
+            foreach ($e['columns'] as $c) {
+                self::checkColumnName($e['entity'], $c['name']);
             }
         }
-        foreach ($m->order as $name) {
-            self::checkNames($m->entities[$name]);
+        foreach ($m->entities as $e) {
+            self::checkNames($e);
         }
         $files = [];
-        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Registry;\n\nRegistry::generated(" . self::str($m->schemaHash) . ");\n";
-        foreach ($m->order as $name) {
-            $class = self::pascal($name);
-            $files["$class.php"] = self::model($m->entities[$name], $class, $namespace);
+        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Registry;\n\n"
+            . 'Registry::generated(' . self::str($m->manifestHash) . ', ' . self::str($m->manifestText) . ");\n";
+        foreach ($m->entities as $e) {
+            $class = self::pascal($e['entity']);
+            if (isset($files["$class.php"])) {
+                throw new OrmException(Code::SCHEMA_INVALID, "entities {$e['entity']} and another entity generate the class $class");
+            }
+            $files["$class.php"] = self::model($e, $class, $namespace);
             $boot .= "Registry::register($class::class);\n";
         }
         $files['bootstrap.php'] = $boot;
@@ -109,43 +112,65 @@ final class Generator
 
     private static function model(array $e, string $class, string $namespace): string
     {
-        $name = $e['name'];
+        $name = $e['entity'];
         $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
-        $b .= "    public static function meta(): array\n    {\n        static \$meta = null;\n        return \$meta ??= [\n";
-        $b .= '            \'entity\' => ' . self::str($name) . ",\n"
-            . '            \'table\' => ' . self::str($e['table']) . ",\n"
-            . '            \'pk\' => ' . self::list($e['pk']) . ",\n"
-            . '            \'auto\' => ' . self::str($e['auto'] ?? '') . ",\n"
-            . '            \'updated\' => ' . self::str($e['timestamps']['updated'] ?? '') . ",\n"
-            . '            \'aes_version\' => ' . self::str($e['aes_version'] ?? '') . ",\n";
-        $b .= "            'columns' => [\n";
-        foreach ($e['columns'] as $c) {
-            $b .= '                ' . self::str($c['name']) . ' => [\'type\' => ' . self::str($c['type']) . ', \'nullable\' => ' . (!empty($c['nullable']) ? 'true' : 'false') . ', \'styles\' => ' . self::list($c['styles'] ?? []);
-            if ($c['type'] === 'decimal') {
-                $b .= ', \'precision\' => ' . (int) ($c['precision'] ?? 0) . ', \'scale\' => ' . (int) ($c['scale'] ?? 0);
-            }
-            $b .= "],\n";
-        }
-        $b .= "            ],\n            'fulltext' => [" . implode(', ', array_map(self::list(...), $e['fulltext'] ?? [])) . '],';
-        $indexes = array_map('strval', array_keys($e['indexes'] ?? []));
-        sort($indexes, SORT_STRING);
-        $b .= "\n            'indexes' => " . self::list($indexes) . ",\n        ];\n    }\n";
+        $b .= "    public static function meta(): array\n    {\n        return " . self::export($e, 2) . ";\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
-            $styled = array_intersect($c['styles'] ?? [], ['json', 'jsons', 'serialize', 'yaml']) !== [];
+            $styled = RuntimeModel::styled($c);
             $t = $styled ? '\\Orm\\StyledValue' : self::type($c);
-            $nullable = !empty($c['nullable']);
-            $nt = !$styled && $nullable && $t !== 'mixed' ? "?$t" : $t;
+            $nt = !$styled && $c['nullable'] ? "?$t" : $t;
             $b .= "\n    public function get$p(): $nt\n    {\n        return \$this->readColumn(" . self::str($c['name']) . ");\n    }\n";
             $param = $nt;
             $value = '$v';
             if ($t === '\\DateTimeImmutable') {
-                $param = $nullable ? '?\\DateTimeInterface' : '\\DateTimeInterface';
-                $value = $nullable ? '$v === null ? null : \\DateTimeImmutable::createFromInterface($v)' : '\\DateTimeImmutable::createFromInterface($v)';
+                $param = $c['nullable'] ? '?\\DateTimeInterface' : '\\DateTimeInterface';
+                $value = $c['nullable'] ? '$v === null ? null : \\DateTimeImmutable::createFromInterface($v)' : '\\DateTimeImmutable::createFromInterface($v)';
             }
             $b .= "\n    public function set$p($param \$v): static\n    {\n        return \$this->writeColumn(" . self::str($c['name']) . ", $value);\n    }\n";
         }
         return $b . "}\n";
+    }
+
+    /**
+     * PHP 배열 literal이다. 값이 scalar이거나 scalar list뿐인 배열은 한 줄에,
+     * 그 밖의 배열은 원소마다 한 줄에 쓴다.
+     */
+    private static function export(mixed $v, int $depth): string
+    {
+        if (is_bool($v)) {
+            return $v ? 'true' : 'false';
+        }
+        if (is_int($v)) {
+            return (string) $v;
+        }
+        if (is_string($v)) {
+            return self::str($v);
+        }
+        if (!is_array($v)) {
+            throw new OrmException(Code::INTERNAL, 'the runtime model holds a ' . get_debug_type($v));
+        }
+        $list = array_is_list($v);
+        $item = static fn(int|string $k, mixed $x, int $d): string => ($list ? '' : self::export((string) $k, $d) . ' => ') . self::export($x, $d);
+        $flat = true;
+        foreach ($v as $x) {
+            if (is_array($x) && ($x !== [] && (!array_is_list($x) || array_filter($x, 'is_array') !== []))) {
+                $flat = false;
+            }
+        }
+        if ($flat) {
+            $parts = [];
+            foreach ($v as $k => $x) {
+                $parts[] = $item($k, $x, $depth + 1);
+            }
+            return '[' . implode(', ', $parts) . ']';
+        }
+        $pad = str_repeat('    ', $depth + 1);
+        $out = "[\n";
+        foreach ($v as $k => $x) {
+            $out .= $pad . $item($k, $x, $depth + 1) . ",\n";
+        }
+        return $out . str_repeat('    ', $depth) . ']';
     }
 
     public static function pascal(string $s): string
@@ -169,29 +194,17 @@ final class Generator
         return '[' . implode(', ', array_map(self::str(...), $items)) . ']';
     }
 
-    /** The executor-side styles: aes, hex, and ip are handled apart from the codec stages. */
-    private static function clientStyles(array $c): array
-    {
-        return array_values(array_diff($c['styles'] ?? [], ['aes', 'hex', 'ip']));
-    }
-
-    private static function numeric(array $c): bool
-    {
-        return self::clientStyles($c) === [] && in_array($c['type'], ['i32', 'i64', 'f64', 'decimal'], true);
-    }
-
-    /** The PHP value type of a column. */
+    /** codec이 없는 column, 또는 aes, hex, ip stage만 가진 column의 PHP 값 type이다. */
     private static function type(array $c): string
     {
-        if (self::clientStyles($c) !== [] || $c['type'] === 'jsontext') {
-            return 'mixed';
+        if ($c['codec'] !== []) {
+            return 'string';
         }
         return match ($c['type']) {
-            'i32', 'i64' => 'int',
+            'i16', 'i32', 'i64' => 'int',
             'f64' => 'float',
             'bool' => 'bool',
             'date', 'datetime' => '\\DateTimeImmutable',
-            'point' => 'array',
             default => 'string',
         };
     }
@@ -231,7 +244,7 @@ final class Generator
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
             $derived = ['get', 'set', 'setRaw', 'addColumn', 'removeColumn', 'groupBy', 'keyName'];
-            if (self::numeric($c)) {
+            if (RuntimeModel::numeric($c)) {
                 array_push($derived, 'plus', 'minus', 'sum', 'avg');
             }
             foreach ($derived as $prefix) {
@@ -240,18 +253,18 @@ final class Generator
             $names[strtolower("orderBy{$p}Asc")] = "orderBy{$p}Asc";
             $names[strtolower("orderBy{$p}Desc")] = "orderBy{$p}Desc";
         }
-        foreach ($e['indexes'] ?? [] as $index => $_) {
+        foreach ($e['indexes'] as $index => $_) {
             $names[strtolower('forceIndex' . self::pascal((string) $index))] = 'forceIndex' . self::pascal((string) $index);
         }
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
             foreach (["get$p", "set$p"] as $accessor) {
                 if (isset($fixed[strtolower($accessor)])) {
-                    throw new OrmException(Code::SCHEMA_INVALID, "{$e['name']}.{$c['name']}: $accessor is a fixed model method");
+                    throw new OrmException(Code::SCHEMA_INVALID, "{$e['entity']}.{$c['name']}: $accessor is a fixed model method");
                 }
             }
             if (isset($names[strtolower($p)])) {
-                throw new OrmException(Code::SCHEMA_INVALID, "{$e['name']}.{$c['name']}: the condition method " . self::camel($c['name']) . ' is also the model method ' . $names[strtolower($p)]);
+                throw new OrmException(Code::SCHEMA_INVALID, "{$e['entity']}.{$c['name']}: the condition method " . self::camel($c['name']) . ' is also the model method ' . $names[strtolower($p)]);
             }
         }
     }
