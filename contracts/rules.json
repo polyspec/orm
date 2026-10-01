@@ -130,20 +130,18 @@
       "id": "git.subject-format",
       "source": "git history",
       "checker": "git-check",
-      "failure": "a new commit subject does not use type: concise English description",
+      "failure": "a commit subject after the baseline does not use type(scope): Subject (#id)",
       "baseline": "main",
       "types": [
         "feat",
         "fix",
         "docs",
-        "test",
-        "build",
-        "chore",
+        "style",
         "refactor",
-        "perf",
-        "merge"
+        "test",
+        "chore"
       ],
-      "subject_max": 72
+      "subject_max": 50
     }
   ]
 }

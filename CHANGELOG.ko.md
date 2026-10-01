@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T13: `make git-check`는 commit 제목을 AGENTS.md로 검사한다. `type(scope): Subject (#id)`, type feat, fix, docs, style, refactor, test, chore, 대문자로 시작하고 끝 마침표가 없는 50자 이내 제목이다. merge commit은 git이 쓰는 제목을 둔다.
+
 - T8.2.6.1.1: Korean manifest heading은 anchor `manifest-and-hashes`를 가지며 link가 이를 쓴다. 분해된 Hangul id에는 어느 link도 닿지 않았다.
 
 - T8.1.8: `audit`은 더 이상 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, 이 요구는 introspect한 모든 audit table을 잘못된 문서로 만들었다. physical delete는 여전히 `BEFORE DELETE` trigger가 실패시킨다.

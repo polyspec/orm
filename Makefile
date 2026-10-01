@@ -379,4 +379,5 @@ typescript-build:
 	npm run typescript:build
 
 git-check:
+	node --test scripts/git/check.test.mjs
 	node scripts/git/check.mjs

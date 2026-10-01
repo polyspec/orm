@@ -1,5 +1,7 @@
 # Changelog
 
+- T13: `make git-check` checks commit subjects against AGENTS.md: `type(scope): Subject (#id)`, types feat, fix, docs, style, refactor, test and chore, a capitalized subject of at most 50 characters without a final period; merge commits keep the subject git writes.
+
 - T8.2.6.1.1: the Korean manifest heading has the anchor `manifest-and-hashes`, which its links use; the decomposed Hangul id reached no link.
 
 - T8.1.8: `audit` no longer requires `soft_delete`. A schema setting is read back from the database and a manifest setting is not, so the requirement made every introspected audited table invalid; the `BEFORE DELETE` trigger still makes a physical delete fail.
