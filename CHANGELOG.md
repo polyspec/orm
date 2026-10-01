@@ -1,5 +1,18 @@
 # Changelog
 
+Record the schema facts of MySQL, PostgreSQL and SQLite and decide neutral
+support per feature (T8.0, T8.0.12). Add 239 shared probes in
+tests/dialects and the dialect-facts-check target; each probe runs in its
+own disposable database, schema or file with its own deadline, and a SQLite
+file-name case shows that PDO, node:sqlite and the sqlite3 shell keep a DSN
+query in the file name. Two runs pass with no failure on MySQL 8.4.11,
+PostgreSQL 17.11 and SQLite 3.53.4. docs/dialects.md records syntax,
+meaning, probes, the neutral rendering or unsupported reason and the
+catalog source per feature, the decisions for a local datetime with a
+UTC connection rule and executor update-time stamping, and leaves the audit
+context definition for T8.1 review. Thirteen defects of the current schema
+tools and clients are recorded as T8.0.1-T8.0.11, T8.0.13 and T8.0.14.
+
 Verify physical document input bounds through all four parsers
 (T7.17.2.10.3.4). Keep 64 MiB, 200000 lines and 4096 blocks unchanged;
 execute each upper bound and excess twice per owner with exact retention

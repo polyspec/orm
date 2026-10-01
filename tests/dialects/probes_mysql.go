@@ -478,6 +478,16 @@ func mysqlProbes() []Probe {
 			e.Fails("INSERT INTO t VALUES ('24:00:00')", "3819")
 			e.Fails("INSERT INTO t VALUES ('-00:00:01')", "3819")
 		}),
+		p("render.datetime_utc_session", "with time_zone '+00:00', NOW(6) and a DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) value equal UTC_TIMESTAMP(6) in the same statement", func(e *Env) {
+			e.Exec(utc, "CREATE TABLE t (a int, d datetime(6) DEFAULT CURRENT_TIMESTAMP(6))", "INSERT INTO t (a) VALUES (1)")
+			e.Want("SELECT NOW(6) = UTC_TIMESTAMP(6)", "1")
+			e.Want("SELECT d <= UTC_TIMESTAMP(6) AND d > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE FROM t", "1")
+		}),
+		p("render.timestamp_conversion", "MODIFY from TIMESTAMP to DATETIME in a '+00:00' session keeps the UTC wall clock of each instant", func(e *Env) {
+			e.Exec("SET time_zone = '+09:00'", "CREATE TABLE t (d timestamp(6) NULL)", "INSERT INTO t VALUES ('2020-01-01 09:00:00')",
+				utc, "ALTER TABLE t MODIFY d datetime(6) NULL")
+			e.Want("SELECT CONCAT(COLUMN_TYPE, ' ', (SELECT d FROM t)) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 't'", "datetime(6) 2020-01-01 00:00:00.000000")
+		}),
 		p("render.uuid_check", "CHAR(36) ascii_bin with a REGEXP_LIKE CHECK accepts only lower-case canonical UUID text (3819)", func(e *Env) {
 			e.Exec("CREATE TABLE t (u char(36) CHARACTER SET ascii COLLATE ascii_bin, CONSTRAINT t_u_uuid CHECK (REGEXP_LIKE(u, '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', 'c')))",
 				"INSERT INTO t VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')")

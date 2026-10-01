@@ -37,6 +37,12 @@ The target first checks probe IDs without a database, then runs
 probe connection uses `modernc.org/sqlite`, and `sqlite.env.library`
 reports the library version it links.
 
+`TestSQLiteFileNameWithQuery` runs with the probes and records which SQLite
+openers keep a DSN query in the file name: it opens
+`<dir>/bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00` with Go
+`modernc.org/sqlite`, PHP PDO, `node:sqlite` and the `sqlite3` shell and
+asserts the file names created in its own temporary directory.
+
 Every probe logs `start`, `observed` values, and `result … PASS|FAIL after
 <elapsed>`; `go test -v` also reports each subtest with its elapsed time.
 Each probe has its own 30-second deadline and its cleanup has another 30
