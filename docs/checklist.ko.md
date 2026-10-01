@@ -2,13 +2,26 @@
 
 표기: `[ ]` 대기, `[~]` 진행 중, `[o]` 완료, `[!]` 일시 우회.
 
+## dbspec schema language
+
+- [~] T8 Mermaid schema source를 schema의 source of truth인 neutral schema language dbspec으로 교체한다. 우선순위: 최우선. 원인: Mermaid 방언은 physical schema를 손실 없이 표현하지 못하고, field 이름이 동작을 고르며, 생성된 이름이 변형되고, dialect 기능이 조용히 빠지며, hidden marker로 trigger와 `.sql` source를 복원한다. 완료 기준: T8.0–T8.8이 Go/PHP/Rust/TypeScript에서 conformance와 MySQL/PostgreSQL/SQLite evidence로 완료된다. 작업은 worktree `orm-dbspec-T8`에서 하고, 모든 항목이 통과한 뒤에만 `main`에 merge한다.
+- [~] T8.0 MySQL, PostgreSQL, SQLite 사이의 schema 문법과 의미 차이를 모두 기록하고 기능별 neutral 지원 여부를 판정한다(T8 선행). 원인: dbspec은 공통 정의가 하나 있고, 세 DB에서 의미가 같고, introspection으로 복원되는 기능만 지원한다. 이 규칙을 적용하려면 완전한 사실이 필요하다. 완료 기준: `docs/dialects.md`와 한국어 짝 문서가 type, length/precision, null, default, identity, generated column, key, index, FK, CHECK, comment, collation, namespace와 식별자 규칙, 시간 type과 time zone, enum, unsigned, trigger, DDL transaction, catalog 원천을 다룬다. 각 행은 DB별 문법과 의미, neutral 정의와 렌더링 또는 미지원 사유, introspection 원천을 적는다. 각 판정은 `.runtime` DB에 대한 추적되는 공유 `tests/*` case로 검증한다.
+- [ ] T8.1 dbspec을 `docs/dbspec.md`와 한국어 짝 문서에 명세한다(T8.0 선행). 완료 기준: grammar, 정의·`settings`·`diagram` 분리, `schemaHash`/`manifestHash` 소속을 적은 settings key 표, neutral type과 식 집합, 이름 교정표, 문서 간 import, canonical order, 한도, diagnostic, 기존 모든 schema 기능의 유지/이동/제거 판정(dialect SQL 원문을 가진 PhysicalGraph record 포함), 공유 vector와 client별 budget.
+- [ ] T8.2 모든 client에 dbspec parse와 canonical emit을 구현한다(T8.1 선행). 완료 기준: canonical 입력에서 `emit(parse(s)) == s`, 위치가 있는 diagnostic, 2000-table/60000-column/10000-FK case가 budget 안, Mermaid source 경로와 T7.17.2.10.x 문서 경로 제거, 언어 공통 CLI 이름 하나.
+- [ ] T8.3 모든 client에서 dbspec으로부터 dialect DDL을 렌더링한다(T8.2 선행). 완료 기준: neutral 정의와 trigger 계열 settings가 T8.0 표대로 렌더링되고, 미지원 정의는 명시적으로 실패하며, 기존 audit/immutable directive 경로가 교체된다.
+- [ ] T8.4 모든 client에서 MySQL, PostgreSQL, SQLite를 dbspec으로 introspect한다(T8.3 선행). 완료 기준: query 수가 table 수와 무관, CHECK 정규형과 SQLite CREATE parsing, marker 없이 renderer 결과와의 정확한 일치로 렌더링된 settings 복원, 미지원 객체를 위치와 함께 보고.
+- [ ] T8.5 모든 client에서 schema diff와 migration plan chain을 만든다(T8.4 선행). 완료 기준: 의존 순서 plan, plan chain 안의 명시적 rename, destructive 변경에 대한 명시적 허용.
+- [ ] T8.6 모든 client에서 lock, step journal, step event, 검증, 복구를 갖춘 plan apply를 만든다(T8.5 선행). 완료 기준: 세 DB 모두에서 apply → introspect → diff가 비어 있고, 중단된 non-transactional step을 catalog로 감지한다.
+- [ ] T8.7 표준 Mermaid `erDiagram` export와, 버린 정보의 전체 목록을 보고하는 import를 만든다(T8.2 선행).
+- [ ] T8.8 `feat/dbspec-T8`을 `main`에 merge하고 worktree를 제거한다(T8.0–T8.7 선행). 완료 기준: 낡은 개발 규칙(`auto`, `COLUMN_UNSELECTED`, Mermaid가 source라는 규칙, full suite 실행 시점)을 다시 쓴다.
+
 ## 물리 스키마 완성
 
 - [o] T7.17.2.10.2 펜스 예제를 해석하지 않고 물리 마크다운 블록 위치를 확인한다(T7.17.2.10.1 선행). 우선순위: 실행 가능한 문서 파싱의 첫 단계. 원인: 주석 문자열 검색만으로 예제를 실제 스키마로 오인하며 주변 원문을 보존할 수 없다. 증거: Go/PHP/Rust/TypeScript의 빠진 스캐너 Red가 Green이다. physical-envelope-check가 소유별 공통 범위·진단 21개, 소스·줄·블록 제한·초과 6개와 네이티브 인코딩을 두 번 실행했다. 모든 원문 조각이 앞뒤·본문 UTF-8과 CRLF 바이트를 정확히 보존한다. PHP는 기존 128M 제한에서 64 MiB 소스를 받으며 최대 할당량은 71319552바이트다. RSS가 아니다. macOS arm64에서 Go vet, Rust 1.98.1 범위 내 엄격한 Clippy·포맷, TypeScript 컴파일, PHP 문법과 문서 쌍·diff 검사가 통과했다. 어휘 스캐너이며 마크다운 AST·그림 공동 검증·임포트 기능 결과는 아니다.
   - [o] T7.17.2.10.2.1 소유 시작 펜스와 들여쓴 목록 예제를 구분한다. 원인: 공백 0–3개를 허용하는 시작 규칙이 목록 안의 예제를 실제 스키마로 인식한다. 증거: 네 스캐너 모두 list-example이 수정 전에 실패하고 소유 시작의 들여쓰기를 금지한 뒤 두 번 통과했다. 다른 펜스 예제는 해석하지 않는다.
   - [o] T7.17.2.10.2.2 표현 검사기가 거절한 새 소스 블록 설명을 고친다. 원인: 새 영문 제목과 작업 설명이 금지 단어를 사용했다. 증거: 기술적 기준이나 검사기 규칙을 바꾸지 않고 같은 문서 쌍 검사를 통과했다.
 
-- [~] T7.17.2.10.3 물리 주석과 그림을 함께 파싱한다(T7.17.2.10.2 선행). 우선순위: 다음 물리 문서 단계. 원인: 원문 범위만으로 그래프 메타데이터·표시 이스케이프·모순된 참조를 검증할 수 없다. 완료 기준: 전체 문법을 명시하고 모든 그래프 필드·주변 마크다운을 보존하며 안전한 위치로 모순을 거절한다. 기능 활성화 전에 네 클라이언트의 연결 부하와 실제 그림 파싱·렌더링을 검증한다.
+- [!] T7.17.2.10.3 물리 주석과 그림을 함께 파싱한다(T7.17.2.10.2 선행). 우선순위: 다음 물리 문서 단계. 원인: 원문 범위만으로 그래프 메타데이터·표시 이스케이프·모순된 참조를 검증할 수 없다. 완료 기준: 전체 문법을 명시하고 모든 그래프 필드·주변 마크다운을 보존하며 안전한 위치로 모순을 거절한다. 기능 활성화 전에 네 클라이언트의 연결 부하와 실제 그림 파싱·렌더링을 검증한다. 원인: T8이 Mermaid physical 문서를 dbspec으로 대체하므로 주석이 달린 Markdown 경로를 이어가지 않는다. 재시도: T8.1이 physical Markdown 문서를 유지하기로 판정하면.
   - [o] T7.17.2.10.3.4 전체 파서 호출로 문서 입력 자원 제한을 검증한다. 원인: 스캐너 검사만으로 보존한 문서의 할당량을 증명하지 못했고 PHP가 주변 본문을 복제해 허용한 64 MiB에서 기존 128M을 초과했다. 증거: 원문·범위를 copy-on-write로 유지하고 즉시 할당하는 prefix/suffix 필드를 제거해 관리되는 Red가 Green이다. `physical-document-limits-check`가 네 소유별 바이트·줄·블록 상한과 초과 6개를 두 번 실행하며 정확한 원문·안전한 루트 자원 오류를 유지한다. 제한은 64 MiB/200000줄/4096블록 그대로다. PHP 최대 할당량은 71319552바이트이며 RSS가 아니다. 관련 PHP 메타데이터·진단과 연결된 2000테이블/60000컬럼/10000FK 문서 왕복도 두 번 통과했다. 범위 내 vet·Clippy·컴파일·문법·문서 쌍 검사가 통과했다. 부분/출력의 명시적인 할당은 별도 메모리 예산이 필요하며 128M에서 완전한 편집 사본 두 개를 보존한다고 주장하지 않는다. 소유·남은 문법/출력 기준·임포트 활성화는 미완료다.
   - [ ] T7.17.2.10.3.1 권위 있는 임포트 활성화 전에 실제 물리 문서 소유를 검증한다. 원인: 어휘 원문 범위만으로 권위 있는 문서를 검증하지 못한다. 완료 기준: 명시한 물리 문법이 실제 블록을 구분하고 모호한/미지원 소유를 안전하게 거절하며 네 클라이언트에서 펜스 예제·본문을 보존한다. 기존 HTML 보호는 회귀 검증이며 일반 HTML 파서를 만들라는 요구사항이 아니다. 원문 범위만으로 임포트를 활성화하지 않는다.
     - [o] T7.17.2.10.3.1.1 소스 스캐너에서 명시적 종료를 가진 HTML 블록을 보호한다. 원인: HTML 주석·원시 요소·처리 지시·선언·CDATA에 스키마 모양 펜스가 들어갈 수 있다. 증거: 네 기존 스캐너 모두 공통 주석 사례가 실패하고 HTML 내부를 해석하지 않는 구현 뒤 통과했다. `physical-envelope-check`가 Go/PHP/Rust/TypeScript 소유별 새 HTML 보존·진단 29개, 100000줄 주석·원시 요소 부하 2개, 기존 원문 21개, 제한·초과 6개와 네이티브 인코딩을 두 번 실행했다. 블록마다 종료를 한 번 검색하며 줄·본문 목록을 할당하지 않는다. macOS arm64에서 범위 내 Go vet, Rust 1.98.1 엄격한 Clippy·포맷, PHP 문법, TypeScript 컴파일, 문서 쌍·체크리스트와 diff 검사가 통과했다. 표현 검사기가 거절한 새 한글 표현을 규칙 약화 없이 고쳤다. 빈 줄로 끝나는 HTML·일반 컨테이너·그래프/그림 검증·임포트·네이티브/플랫폼 증거는 미완료다.
