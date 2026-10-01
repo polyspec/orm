@@ -1268,7 +1268,7 @@ class DocumentParser {
   }
 
   private validateTable(table: ITable, available: Map<string, ITable | null>): void {
-    // A column whose type CHECK the renderer writes (not text, bytes or identity) makes the name <table>$<column>.
+    // 렌더러가 타입 CHECK를 쓰는 열(text, bytes, identity 제외)은 <table>$<column> 이름을 만든다.
     for (const column of table.columns) {
       if (column.identity !== null || column.type === null || column.type.kind === 'text' || column.type.kind === 'bytes') continue;
       this.generatedName(table, column.name, column.name.t, true);
@@ -1365,14 +1365,14 @@ class DocumentParser {
   private check(table: ITable, check: ICheck, banned: Set<string>): void {
     const toks = check.expr;
     const out: string[] = [];
-    // The predicate is read first. Only the first reading diagnostic is reported, and then types are not checked.
+    // 술어를 먼저 읽는다. 읽기 진단은 처음 하나만 보고하고, 그 경우 타입은 검사하지 않는다.
     let flagged = false;
     const flag = (rule: DbspecRule, tok: Tk, message: string): void => {
       if (flagged) return;
       flagged = true;
       this.at(rule, tok, message);
     };
-    // Column and type diagnostics of a predicate that read completely: only the first in source order is reported.
+    // 끝까지 읽힌 술어의 열과 타입 진단: 원본 순서로 첫 번째만 보고한다.
     const issues: { readonly tok: Tk; readonly message: string }[] = [];
     const issue = (tok: Tk, message: string): void => {
       issues.push({ tok, message });
@@ -1408,7 +1408,7 @@ class DocumentParser {
       const tok: Tk = { k: K.Word, t: '-' + number.t, s: t.s, e: number.e, line: t.line };
       return literalOperand(tok, numberText(tok.t));
     };
-    // Literals of an in list and of between bounds; null is an operand unknown after a diagnostic.
+    // in 목록과 between 경계의 리터럴. null은 진단 뒤의 알 수 없는 피연산자다.
     const literal = (): Operand | null => {
       const signed = negative();
       if (signed !== null) return signed;
@@ -1443,7 +1443,7 @@ class DocumentParser {
       if (EXPRESSION_WORDS.has(t.t)) throw new ExpressionSyntax(t);
       if (isPunct(peek(), '(')) {
         flag('check', t, `function ${t.t} is not part of a predicate`);
-        // The diagnostic is reported already, so the arguments are skipped by matching parentheses.
+        // 진단이 이미 보고되었으므로 인자는 괄호 짝만 맞춰 건너뛴다.
         let depth = 0;
         do {
           const u = take();
@@ -1458,9 +1458,9 @@ class DocumentParser {
       }
       out.push(t.t);
       const column = table.colMap.get(t.t);
-      // A column whose own line failed was reported on that line.
+      // 자기 줄이 실패한 열은 그 줄에서 보고되었다.
       if (column === undefined && table.failed.has(t.t)) return null;
-      // Column diagnostics are ordered with the type diagnostics in source order.
+      // 열의 진단은 타입 진단과 함께 원본 순서로 고른다.
       if (column === undefined) issue(t, `${t.t} is not a column of table ${table.name.t}`);
       else if (banned.has(t.t)) issue(t, `column ${t.t} belongs to a cascade or set_null foreign key`);
       else if (column.type !== null && column.type.kind === 'bytes') issue(t, `bytes column ${t.t} is not part of a predicate`);
@@ -1479,7 +1479,7 @@ class DocumentParser {
     };
     const isBool = (o: Operand): boolean =>
       o.column !== null ? o.type !== null && o.type.kind === 'bool' : o.tok.t === 'true' || o.tok.t === 'false';
-    // Checks a literal as a default of the column and rewrites it in canonical form; a diagnostic points at the literal.
+    // 리터럴을 열의 default 형식으로 검사하고 정규형으로 바꾼다. 진단은 리터럴에 둔다.
     const fit = (column: Operand, value: Operand): void => {
       if (column.type === null) return;
       const fitted = defaultOf(column.type, value.tok);
@@ -1496,7 +1496,7 @@ class DocumentParser {
       } else if (left.column !== null) fit(left, right);
       else if (right.column !== null) fit(right, left);
     };
-    // The operand before in, between and is is a column.
+    // in, between, is 앞의 피연산자는 열이다.
     const subject = (left: Operand | null, word: Tk): Operand | null => {
       if (left !== null && left.column === null) {
         flag('check', left.tok, `${word.t} takes a column, not a literal`);
@@ -1677,7 +1677,7 @@ class DocumentParser {
           break;
         case 'immutable':
           if (actionChild) this.at('setting', s.kw, 'immutable is rejected on a child of a cascade or set_null foreign key');
-          // The longest trigger name stands for all names of the setting.
+          // 가장 긴 trigger 이름이 설정의 모든 이름을 대신한다.
           this.generatedName(table, s.kw, 'immutable_update', false);
           break;
         case 'audit':

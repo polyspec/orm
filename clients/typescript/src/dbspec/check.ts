@@ -1,7 +1,6 @@
-// Reads the canonical text of a validated check (DbspecCheck.expression) into a
-// predicate tree. The model keeps only the canonical text, so the renderer finds
-// operands and columns in this tree. Input that is not canonical text is rejected
-// with an Error that gives its position.
+// 검증된 check의 정규 텍스트(DbspecCheck.expression)를 술어 트리로 읽는다.
+// 모델은 정규 텍스트만 보관하므로, 렌더러는 이 트리에서 피연산자와 열을 찾는다.
+// 정규 텍스트가 아닌 입력은 위치를 담은 Error로 거부한다.
 
 export type CheckExpr =
   | { readonly kind: 'column'; readonly name: string }

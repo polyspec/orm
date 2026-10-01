@@ -603,7 +603,7 @@ final class Parser
             }
         }
         $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null, $canonical, $this->takeComments());
-        // A column whose type CHECK the renderer writes keeps its name <table>$<column> within the name limit.
+        // renderer 가 type CHECK 를 쓰는 컬럼은 그 이름 <table>$<column> 이 이름 한도를 지킨다.
         if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes' && $wellFormed) {
             $this->generatedName($this->line, $name[1], $this->table->name . '$' . $name[0]);
         }
