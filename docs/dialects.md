@@ -319,3 +319,62 @@ A generated trigger is named `<table>$<event>`: `immutable_update`, `immutable_d
 - `immutable`: `BEFORE UPDATE` and `BEFORE DELETE` row triggers that reject.
 - `audit`: an `AFTER INSERT` row trigger inserts into the history table the action `'insert'`, a NULL previous operation and every `NEW` column; an `AFTER UPDATE` row trigger inserts `'update'`, `OLD.<operation column>` and every `NEW` column; a `BEFORE DELETE` row trigger rejects. The insert names the action, previous and audited columns in that order and leaves the history key to its identity.
 - A MySQL trigger body is the single statement; a PostgreSQL function body is `BEGIN … RETURN NULL; END` in `LANGUAGE plpgsql` (a `BEFORE` rejection never returns); a SQLite body is `BEGIN …; END`.
+
+## Introspection
+
+Introspection reads the current database (MySQL), the current schema (PostgreSQL) or the `main` database (SQLite) of a connection and returns one dbspec document, named by the caller, and the list of objects it cannot read. Every query reads all tables at once, so their number does not depend on the table count. `make dbspec-introspect-check` renders and applies every vector of `tests/dbspec/ddl.json` and every schema document, introspects the database, and requires the schema text of the result to equal the schema text of the source with its tables in name order and no unsupported object. It also runs `tests/dbspec/introspect.json`: each case renders its documents and runs its statements in an empty database of its dialect, then expects the introspected document in canonical form and the unsupported objects as `[kind, table, name]`; reasons are not compared.
+
+### Document
+
+- Tables come in name order, columns in catalog position, constraints and indexes by name; a document holds no diagram and no comment.
+- Only the settings that render in the database are read: `immutable` and `audit`, recognized from their triggers. The manifest settings live only in documents; a tool that synchronizes keeps them from the document it compares.
+
+### Types and columns
+
+| Catalog | MySQL `COLUMN_TYPE` | PostgreSQL `format_type` | SQLite declared type | dbspec |
+| --- | --- | --- | --- | --- |
+| 16, 32, 64-bit integer | `smallint`, `int`, `bigint` | `smallint`, `integer`, `bigint` | `smallint`, `integer`, `bigint` with its renderer CHECK | `i16`, `i32`, `i64` |
+| boolean | `tinyint(1)` with its renderer CHECK | `boolean` | `BOOLEAN` with its renderer CHECK | `bool` |
+| decimal | `decimal(p,s)` | `numeric(p,s)` | `DECIMALINT(p,s)` with its renderer CHECK | `decimal(p,s)` |
+| float | `double` | `double precision` | `REAL` with its renderer CHECK | `f64` |
+| bounded text | `varchar(n)` in `utf8mb4_0900_bin` | `character varying(n)` with collation `C` | `varchar(n)` with its renderer CHECK | `varchar(n)` |
+| text | `longtext` in `utf8mb4_0900_bin` | `text` with collation `C` | `TEXT` without CHECK | `text` |
+| bytes | `longblob` | `bytea` | `BLOB` | `bytes` |
+| uuid | `char(36)` in `ascii_bin` with its renderer CHECK | `uuid` | `TEXT` with its renderer CHECK | `uuid` |
+| date | `date` | `date` | `DATE` with its renderer CHECK | `date` |
+| time of day | `time` or `time(p)` with its renderer CHECK | `time(p) without time zone` with its renderer CHECK | `TIME` with the renderer CHECK of one p | `time(p)` |
+| date-time | `datetime` or `datetime(p)` | `timestamp(p) without time zone` | `DATETIME` with the renderer CHECK of one p | `datetime(p)` |
+
+MySQL writes precision 0 without parentheses (`time`, `datetime`). A column whose type, collation or character set is not in this table, a MySQL `tinyint(1)`, `char(36)` or `time` column without its renderer CHECK, and a SQLite column whose CHECK is not the renderer output of one dbspec type are reported as unsupported.
+
+- **Null.** `IS_NULLABLE`, `attnotnull` and `pragma_table_xinfo.notnull` give `null`.
+- **Identity.** A single-column `bigint` primary key with MySQL `EXTRA` `auto_increment`, PostgreSQL `attidentity` `d`, or SQLite `INTEGER PRIMARY KEY AUTOINCREMENT` is `identity`; PostgreSQL `attidentity` `a` (`ALWAYS`) is unsupported.
+- **Defaults.** A literal default is read in the column's canonical default form: MySQL `COLUMN_DEFAULT` is the unescaped value (a string, a number, `1` or `0` for `bool`); PostgreSQL `pg_get_expr` gives a literal with a cast, such as `'-5'::integer`, `'a''b'::character varying` or `'2026-01-01'::date`, whose cast is removed; SQLite `dflt_value` is the rendered literal, a scaled integer for a decimal. A clock default is `default now` when it equals the renderer output: MySQL `CURRENT_TIMESTAMP` or `CURRENT_TIMESTAMP(p)` with `DEFAULT_GENERATED`, PostgreSQL `statement_timestamp()`, SQLite the `strftime` expression of that precision. Any other expression is unsupported.
+
+### Keys, indexes and foreign keys
+
+- The primary key keeps its column order. A MySQL `UNIQUE` index, a PostgreSQL `UNIQUE` constraint and a SQLite unique index whose origin is `c` are unique keys; any other index is an index, with `DESC` read from `COLLATION`, `indoption` or `pragma_index_xinfo.desc`.
+- A prefix, partial, expression or full-text index, a PostgreSQL unique index without its constraint, a SQLite `sqlite_autoindex` other than the primary key, and an index whose name contains `$` are unsupported.
+- A foreign key reads its name, columns, referenced table and columns and both actions; `NO ACTION`, `SET DEFAULT`, a deferrable key and `MATCH FULL` are unsupported. SQLite foreign key names come from the `CREATE TABLE` text in `sqlite_master`.
+
+### Checks
+
+A check named `<table>$<column>` is a renderer CHECK. It must equal the catalog form of the renderer output for the column's type: MySQL `` (`c` in (0,1)) `` for `bool`, `` regexp_like(`c`,_utf8mb4\'^…$\',_utf8mb4\'c\') `` for `uuid`, `` ((`c` >= _utf8mb4\'00:00:00\') and (`c` < _utf8mb4\'24:00:00\')) `` for `time(p)`; PostgreSQL `CHECK ((c < '24:00:00'::time without time zone))` with the column name as `quote_ident` writes it; SQLite the rendered text itself. A renderer CHECK that differs, and a name with `$` that is no renderer CHECK, are unsupported.
+
+Every other check is read into a predicate of [dbspec](dbspec.md#checks) and written in canonical form:
+
+- **MySQL** `CHECK_CLAUSE`: fully parenthesized, lower-case keywords, backquoted columns, `in (a,b)` without spaces, a negative number as `-(n)`, and a string as `_utf8mb4` followed by the MySQL string literal, whose text is escaped a second time (`\'` and `\\` in the clause).
+- **PostgreSQL** `pg_get_constraintdef`: `CHECK (…)` around a fully parenthesized expression, columns quoted only where `quote_ident` needs it, casts on literals and columns (`'x'::text`, `(s)::text`, `'-1.50'::numeric`, `(1.5)::double precision`), `= ANY (ARRAY[…])` for `in` and `<> ALL (ARRAY[…])` for `not in`, and a time or date-time literal without trailing zero fractions.
+- **SQLite**: the text inside `CHECK (…)` of the `CREATE TABLE` statement, which is the rendered text; a decimal literal is the scaled integer.
+
+A literal is read as the value of the column it meets and written in its canonical default form, so `'2100-01-01 00:00:00'` of a `datetime(6)` column becomes `'2100-01-01 00:00:00.000000'` and `1` of a `bool` column `true`. A check that does not read as a predicate, or whose predicate breaks a dbspec rule, is unsupported.
+
+### Triggers
+
+The triggers named `<table>$immutable_update` and `<table>$immutable_delete`, or `<table>$audit_insert`, `<table>$audit_update` and `<table>$audit_delete`, give the `immutable` or `audit` setting when every one of them equals the renderer output: MySQL timing, event and `ACTION_STATEMENT`; PostgreSQL `pg_get_triggerdef` with the schema prefix of the table removed and the `prosrc` of its function; SQLite the `CREATE TRIGGER` text. The `audit` parameters are read from the insert statement of `audit_insert` and the `OLD` column of `audit_update` before the comparison. A set that is incomplete or differs, and every other trigger, are unsupported.
+
+### Unsupported objects
+
+Each unsupported object is reported with its kind, its table and name where it has them, and the reason; the document leaves it out. The list is ordered by table, kind and name, and objects without a table come first. The kinds are `column`, `index`, `unique`, `foreign_key`, `check`, `trigger` (one per set for an `immutable` or `audit` setting that does not parse), `view`, `routine`, `sequence`, `event`, `partition` (a MySQL or PostgreSQL partitioned table and a PostgreSQL partition) and `table` (a SQLite `WITHOUT ROWID` or virtual table, and a table without a primary key).
+
+An object that refers to a left-out object is reported and left out too: an index or a key on an unsupported column, a foreign key to a table that is left out, a check that names an unsupported column. The introspected document is parsed, and each object on a line that the parse rejects is reported with the diagnostic as its reason and left out, until the document parses.

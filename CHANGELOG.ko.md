@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.4.1: docs/dialects.md는 MySQL, PostgreSQL, SQLite를 dbspec 문서 하나로 introspect하는 방법과 미지원으로 보고하는 객체를 정한다. tests/dbspec/introspect.json이 미지원 case를 가진다.
+
 - T13: `make git-check`는 commit 제목을 AGENTS.md로 검사한다. `type(scope): Subject (#id)`, type feat, fix, docs, style, refactor, test, chore, 대문자로 시작하고 끝 마침표가 없는 50자 이내 제목이다. merge commit은 git이 쓰는 제목을 둔다.
 
 - T8.2.6.1.1: Korean manifest heading은 anchor `manifest-and-hashes`를 가지며 link가 이를 쓴다. 분해된 Hangul id에는 어느 link도 닿지 않았다.
