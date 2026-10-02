@@ -1,5 +1,6 @@
 //! 기술된 table의 read: time과 datetime cell을 column이 선언한 precision p만큼의 소수
 //! 자릿수로 쓴다(docs/dbspec.md). grid decode는 여섯 자리를 쓰므로 나머지 자리는 0이어야 한다.
+//! SQLite는 선언된 temporal column의 dbspec text를 같은 temporal cell로 바꾼다.
 use super::TableMetadata;
 use crate::tool_db::{Conn, GridCell, GridQueryResult, QueryLimits, P};
 
@@ -30,11 +31,59 @@ fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
 }
 
-/// result의 time과 datetime cell을 metadata column의 precision으로 쓴다.
+/// dbspec date `YYYY-MM-DD`: 0001-01-01부터 9999-12-31까지의 달력 날짜.
+fn is_date(text: &str) -> bool {
+    use orm::chrono::{Datelike, NaiveDate};
+    text.len() == 10
+        && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
+}
+
+/// dbspec time `HH:MM:SS`와 0~6자리 소수: 하루 안의 시각.
+pub(super) fn is_time(text: &str) -> bool {
+    use orm::chrono::NaiveTime;
+    let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
+    whole.len() == 8
+        && NaiveTime::parse_from_str(whole, "%H:%M:%S").is_ok_and(|time| time.format("%H:%M:%S").to_string() == whole)
+        && digits.is_none_or(|digits| (1..=6).contains(&digits.len()) && digits.bytes().all(|digit| digit.is_ascii_digit()))
+}
+
+/// dbspec text 형식의 date, time, datetime 값. `kind`는 date, time, datetime 중 하나다.
+pub(super) fn is_temporal(kind: &str, text: &str) -> bool {
+    match kind {
+        "date" => is_date(text),
+        "time" => is_time(text),
+        _ => text.split_once(' ').is_some_and(|(date, time)| is_date(date) && is_time(time)),
+    }
+}
+
+/// SQLite의 선언된 `DATE`, `TIME`, `DATETIME` column의 dbspec 종류. SQLite에는 temporal storage
+/// class가 없고 renderer CHECK가 text 형식과 p자리 소수를 강제한다.
+fn sqlite_kind(native_type: &str) -> Option<&'static str> {
+    match native_type.to_ascii_uppercase().as_str() {
+        "DATE" => Some("date"),
+        "TIME" => Some("time"),
+        "DATETIME" => Some("datetime"),
+        _ => None,
+    }
+}
+
+/// result의 time과 datetime cell을 metadata column의 precision으로 쓴다. SQLite의 선언된
+/// temporal column은 저장된 dbspec text를 MySQL, PostgreSQL과 같은 temporal cell로 바꾼다.
 pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, result: &mut GridQueryResult) -> Result<(), String> {
     for row in &mut result.rows {
         for (cell, column) in row.iter_mut().zip(&metadata.columns) {
-            if let GridCell::Time(text) | GridCell::DateTime(text) = cell {
+            if dialect == "sqlite" {
+                let Some(kind) = sqlite_kind(&column.native_type) else { continue };
+                *cell = match cell {
+                    GridCell::Null => GridCell::Null,
+                    GridCell::Text(text) if is_temporal(kind, text) => match kind {
+                        "date" => GridCell::Date(std::mem::take(text)),
+                        "time" => GridCell::Time(std::mem::take(text)),
+                        _ => GridCell::DateTime(std::mem::take(text)),
+                    },
+                    _ => return Err(format!("GRID_TEMPORAL_VALUE: {} holds a value that is not a dbspec {kind}", column.name)),
+                };
+            } else if let GridCell::Time(text) | GridCell::DateTime(text) = cell {
                 *text = fraction(text, precision(&column.native_type, dialect)?, &column.name)?;
             }
         }
@@ -68,6 +117,28 @@ mod tests {
         assert_eq!(precision("timestamp without time zone", "postgres"), Ok(6));
         assert!(precision("DATETIME", "sqlite").is_err());
         assert!(precision("datetime(7)", "mysql").is_err());
+    }
+
+    #[test]
+    fn temporal_text_follows_the_dbspec_forms() {
+        use super::is_temporal;
+        for (kind, text) in
+            [("date", "0001-01-01"), ("date", "9999-12-31"), ("time", "23:59:59.999999"), ("time", "00:00:00"), ("datetime", "2026-01-02 03:04:05.1")]
+        {
+            assert!(is_temporal(kind, text), "{kind} {text}");
+        }
+        for (kind, text) in [
+            ("date", "2026-02-30"),
+            ("date", "2026-1-02"),
+            ("date", "0000-01-01"),
+            ("time", "24:00:00"),
+            ("time", "03:04:05."),
+            ("time", "03:04:05.1234567"),
+            ("datetime", "2026-01-02T03:04:05"),
+            ("datetime", "2026-01-02 03:04:05Z"),
+        ] {
+            assert!(!is_temporal(kind, text), "{kind} {text}");
+        }
     }
 
     #[test]
