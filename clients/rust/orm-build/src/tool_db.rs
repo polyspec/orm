@@ -181,6 +181,8 @@ macro_rules! grid_mysql {
             "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED"
         ) {
             row.try_get::<Option<u64>, _>(i).map(|value| value.map_or(GridCell::Null, GridCell::Unsigned))
+        } else if let Some(cell) = grid::mysql_temporal(row, i)? {
+            Ok(cell)
         } else if <String as sqlx::Type<MySql>>::compatible(row.columns()[i].type_info()) {
             // `_bin` collation의 문자열 column은 BINARY flag 때문에 VARBINARY로 이름이
             // 붙지만 collation이 binary가 아니므로 text다.
@@ -195,6 +197,8 @@ macro_rules! grid_pg {
         let (row, i) = ($row, $i);
         if row.columns()[i].type_info().name() == "NUMERIC" {
             grid::postgres_decimal(row, i)
+        } else if let Some(cell) = grid::postgres_temporal(row, i)? {
+            Ok(cell)
         } else {
             grid_cell!(row, i, cell_pg, "BYTEA")
         }

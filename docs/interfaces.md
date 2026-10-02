@@ -312,6 +312,20 @@ binary floats or fixed-precision model codecs. SQLite has no native decimal
 storage class: its actual text/integer/real values keep their existing tags.
 Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.
 
+Temporal grid cells hold the dbspec text forms: `Date` is `YYYY-MM-DD`, `Time`
+is `HH:MM:SS` and `DateTime` is `YYYY-MM-DD HH:MM:SS` in UTC, the latter two with
+fraction digits. MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`,
+`time` and `timestamp` without time zone decode into them; MySQL `TIMESTAMP` and
+PostgreSQL `timestamptz` and `timetz` remain unsupported. A read of a described
+table (table page, row lookup, insert reads) writes exactly the declared
+precision p of the column, where MySQL `time` and `datetime` without p have 0 and
+PostgreSQL `time` and `timestamp` without p have 6; a read-only grid query has
+no column declaration and writes six digits. A time outside 00:00:00 to
+23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL
+infinity fail. A temporal primary key cannot be bound as a row identity and
+fails with `ROW_UPDATE_INVALID`. SQLite has no temporal storage class, so its
+cells keep the tag of the stored value; a dbspec column stores its checked text.
+
 ### Qualified native Rust table metadata
 
 `CatalogConnection::current_namespace()` reports the selected namespace.

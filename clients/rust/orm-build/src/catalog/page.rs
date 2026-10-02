@@ -1,5 +1,5 @@
 //! Explicit table pages retain native column/key provenance, not edit authority.
-use super::{metadata, read_only, TableMetadata, TableRef};
+use super::{metadata, read_only, temporal, TableMetadata, TableRef};
 use crate::tool_db::{Conn, GridQueryResult, QueryLimits};
 
 #[derive(Debug)]
@@ -47,7 +47,7 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
         limit + 1
     );
     read_only::validate(&sql, dialect)?;
-    let result = connection.grid_query_bounded(&sql, &[], QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }).await.map_err(|e| e.to_string())?;
+    let result = temporal::read(connection, &metadata, dialect, &sql, &[], QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }).await?;
     let after = metadata::describe(connection, dialect, table).await?;
     assemble(metadata, result, after, limit, offset)
 }

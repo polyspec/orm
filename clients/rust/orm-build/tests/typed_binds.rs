@@ -123,6 +123,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                             GridCell::Text(_) => "text",
                             GridCell::Boolean(_) => "boolean",
                             GridCell::Binary(_) => "binary",
+                            GridCell::Date(_) => "date",
+                            GridCell::Time(_) => "time",
+                            GridCell::DateTime(_) => "datetime",
                         };
                         eprintln!("failed typed_roundtrip:{dialect}:column-{index}:kind-{kind}");
                     }

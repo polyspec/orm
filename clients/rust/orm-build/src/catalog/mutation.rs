@@ -53,6 +53,8 @@ pub(super) fn bind(value: &GridCell) -> Result<P, String> {
         GridCell::Boolean(v) => P::Boolean(*v),
         GridCell::Binary(v) => P::Binary(v.clone()),
         GridCell::Null => return Err("ROW_UPDATE_INVALID: NULL row identity".into()),
+        // P에는 temporal bind가 없으므로 text로 바꿔 비교하지 않고 거부한다.
+        GridCell::Date(_) | GridCell::Time(_) | GridCell::DateTime(_) => return Err("ROW_UPDATE_INVALID: temporal row identity is not supported".into()),
     })
 }
 pub(super) fn placeholder(index: usize, dialect: &str) -> String {
@@ -78,7 +80,7 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
     let columns = metadata.columns.iter().map(|column| quote(&column.name, dialect)).collect::<Result<Vec<_>, _>>()?.join(",");
     let suffix = if lock && dialect != "sqlite" { " FOR UPDATE" } else { "" };
     let sql = format!("SELECT {columns} FROM {} WHERE {} LIMIT 2{suffix}", qualified(metadata, dialect)?, predicate(metadata, dialect, 1)?);
-    connection.grid_query_bounded(&sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await.map_err(|error| error.to_string())
+    super::temporal::read(connection, metadata, dialect, &sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await
 }
 pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), String> {
     let revokes = connection
