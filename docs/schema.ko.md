@@ -24,9 +24,11 @@
 | document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
 | 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
 | plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `orm_schema::dbspec::diff` |
-| plan의 statement 작성([plans](plans.md)) | `PlanStatements` | `planStatements` | `planStatements` | `orm_schema::dbspec::plan_statements` |
+| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `orm_schema::dbspec::plan_steps` |
 | plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `orm::dbspec::apply` |
-| 중단된 MySQL 적용 복구([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
+| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
+| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `orm::dbspec::rollback` |
+| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `orm::dbspec::finalize` |
 
 [mermaid.md](mermaid.md)는 document를 Mermaid `erDiagram`으로 내보내는 방법과 diagram을 document로 가져오는 방법을 정한다.
 

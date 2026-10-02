@@ -24,9 +24,11 @@ The schema operations are functions of each client library. They take parsed doc
 | Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
 | Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
 | Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `orm_schema::dbspec::diff` |
-| Write the statements of a plan ([plans](plans.md)) | `PlanStatements` | `planStatements` | `planStatements` | `orm_schema::dbspec::plan_statements` |
+| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `orm_schema::dbspec::plan_steps` |
 | Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `orm::dbspec::apply` |
-| Recover an interrupted MySQL apply ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
+| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
+| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `orm::dbspec::rollback` |
+| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `orm::dbspec::finalize` |
 
 [mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 
