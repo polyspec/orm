@@ -443,11 +443,13 @@ impl Db {
         if let Some(e) = req.error() {
             return Err(e);
         }
+        // plan cache는 manifest_hash로 구분되므로, 같은 hash를 선언하고 다른 text를 가진
+        // generated code가 다른 model의 plan을 쓰지 않게 cache를 보기 전에 그 text를 확인한다.
+        let manifest = req.schema.manifest()?;
         let key = req.shape_key();
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let manifest = req.schema.manifest()?;
         let mut plan = engine::compile(&manifest, self.inner.dialect, &req.ir)?;
         for st in &mut plan.steps {
             st.plan_id = key;

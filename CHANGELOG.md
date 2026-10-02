@@ -325,6 +325,103 @@ UTC connection rule and executor update-time stamping, and leaves the audit
 context definition for T8.1 review. Thirteen defects of the current schema
 tools and clients are recorded as T8.0.1-T8.0.11, T8.0.13 and T8.0.14.
 
+Store the times of the migration ledger with microseconds on every
+database (N15). The ledger `orm_schema_migrations` declared `timestamp`
+on MySQL and `TEXT` written with `CURRENT_TIMESTAMP` on SQLite, so its
+`started_at` and `finished_at` kept whole seconds there, while
+PostgreSQL kept microseconds. The schema tools of Go, PHP, Rust and
+TypeScript now create `timestamp(6)` columns written with
+`CURRENT_TIMESTAMP(6)` on MySQL, and on SQLite `TEXT` columns with a
+`CHECK` for six fraction digits that take the tool clock in UTC. Before
+a command uses an existing ledger, the tool verifies its time columns;
+a ledger with whole-second columns fails with
+`MIGRATION_HISTORY_PRECISION` and stays unchanged. `docs/usage.md`
+states the statements that convert a MySQL or SQLite ledger created
+before this change. The cases `migration_ledger_microseconds`,
+`migration_ledger_whole_seconds` and `migration_ledger_earlier` pass in
+Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
+Write the database clock with microseconds on MySQL and keep the
+fraction of the client clock in SQLite relative value functions (N14).
+The MySQL dialect rendered soft deletion as `CURRENT_TIMESTAMP` and the
+`now` value function and its relative forms with `NOW()`, so a soft
+deletion stored whole seconds in a `datetime(6)` column and
+`created_ts <= now()` missed a row created earlier in the same second.
+The SQLite relative forms rendered `datetime(clock, modifier)`, which
+drops the fraction of the bound clock. Soft deletion now assigns the
+clock with the declared fraction digits of its column, as the update
+time does: `CURRENT_TIMESTAMP(p)` on MySQL. The MySQL value functions
+use `NOW(6)`, and the SQLite relative forms append the six fraction
+digits of the clock to the `datetime` result. The cases
+`clock_soft_delete_microseconds` and `clock_now_condition` pass in Go,
+PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
+Report both errors when a transaction or savepoint callback fails and its
+rollback fails too (N13). The PHP client replaced the callback error with
+the rollback error, the TypeScript client dropped the rollback error, the
+Go client discarded the transaction rollback error, and the Rust client
+reported both only as `CONFIG` text. Each client now returns one error
+with the catalog code `ROLLBACK` that names both errors and keeps them. A
+checked-out TypeScript PostgreSQL connection now keeps a connection error
+that the server reports between statements instead of ending the process
+with an unhandled error event. The ORM tests end a transaction on SQLite
+with a fixture trigger that raises `ROLLBACK` while the callback runs only
+model calls, and on MySQL and PostgreSQL by ending the server session from
+a test connection. In Go, a cancelled statement inside a transaction on
+MySQL or PostgreSQL closes its connection, so the transaction reports
+`ROLLBACK`, which keeps the cancellation.
+
+Provide `utils().schema().register(manifestJson)` in the four clients
+(N3.3). Registering a schema whose tables already exist required
+constructing the engine and calling the internal `registerEngine`. Register
+verifies the manifest hash against its content and returns `CONFIG` when
+they differ, runs no statement, and adds the engine to the connection as
+`install` does; `install` uses the same registration. The Rust client
+verifies the manifest only, because its connections do not yet keep their
+schemas (N3.2). `contracts/interfaces.json` records the operation and the
+current symbol snapshot hashes.
+
+Type only the method calls of model chains in the TypeScript generator
+scan (N12). The scan collected the name of every method call of a source
+file and declared it on every model whose schema accepted it, so a call
+such as `this.enabled()` of a class that is not a model added a model method and
+removing the call removed it. The scan now resolves each receiver from
+the source: `new` of a generated class, bindings, typed parameters,
+functions that return a model, model chains, model callbacks, and rows
+and collections of models. It declares a method only on the model its
+receiver resolves to. The usage guide states the rule.
+
+Report every driver error as an ORM error with a catalog code (N11). The
+PHP client returned a driver error that the catalog does not list, such as
+a write that an `orm:audit` or `orm:immutable` trigger refuses, as a raw
+`PDOException`; the Go client returned it unchanged, and the Rust client
+reported the code `SQLX`. The catalog now holds `DRIVER` for every such
+error, and each client keeps the driver message and the driver error as
+the cause: PHP `OrmException::fromDriver` always returns an
+`OrmException`, Go `orm.Error` unwraps to the driver error, and Rust
+reports `Error::Driver { code, msg, source }`. SQLite 1811 is a trigger
+refusal, not `FOREIGN_KEY`, and PHP, Rust and TypeScript map a CHECK
+violation to `CONSTRAINT`. The `trigger_refused` and `check_refused`
+cases pass in Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and
+SQLite.
+
+Write the client clock with microseconds in every client (N10). The
+TypeScript client read its clock from `Date`, so the SQLite `now` bind
+slot stored `.mmm000`. It now adds the microseconds of the monotonic
+clock, anchored to the wall clock, and moves the anchor when the two
+clocks differ by more than one millisecond. The protocol states the rule
+of the `now` slot for all clients. The `clock_microseconds` case passes
+in Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
+Load the generated PHP models of several schemas in one process (N3.1).
+Each generated model class carries its schema hash, and a connection keeps
+one engine per registered schema: the schema it opened with and every
+manifest installed through `utils()->schema()->install()`. Install verifies
+the manifest hash against its content before any statement runs, and a
+request of a schema the connection has not registered fails with
+`SCHEMA_HASH_MISMATCH`. Owner cases in Go, PHP, Rust and TypeScript use two
+schemas on one connection on MySQL, PostgreSQL and SQLite.
+
 Verify physical document input bounds through all four parsers
 (T7.17.2.10.3.4). Keep 64 MiB, 200000 lines and 4096 blocks unchanged;
 execute each upper bound and excess twice per owner with exact retention

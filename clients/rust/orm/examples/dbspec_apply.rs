@@ -81,8 +81,9 @@ fn chain(path: &str) -> Result<Vec<Plan>, String> {
     Ok(plans)
 }
 
+/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
 fn fixed_now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time")
+    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
 /// connection에 연결 규칙을 실행한 뒤 action을 실행하고 결과 줄을 돌려준다.

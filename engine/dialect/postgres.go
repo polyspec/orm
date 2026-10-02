@@ -18,7 +18,7 @@ func (Postgres) Limit(offset, count int) string {
 }
 func (Postgres) ForceIndex(string) string { return "" } // planner hints are not a thing in PostgreSQL
 func (Postgres) InsertReturningID() bool  { return true }
-func (Postgres) Now() string              { return "CURRENT_TIMESTAMP" }
+func (Postgres) Now(int) string           { return "CURRENT_TIMESTAMP" }
 func (Postgres) CurrentTime() string      { return "clock_timestamp()" }
 
 // HandlesStyle은 false다. ip stage도 bytea column에 넣을 packed byte를

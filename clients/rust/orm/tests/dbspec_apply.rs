@@ -57,8 +57,9 @@ fn apply_chain() -> Vec<Plan> {
     plans
 }
 
+/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
 fn fixed_now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time")
+    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
 /// 지정한 statement `after`를 실행한 직후 statement `then`을 같은 connection에서
@@ -240,6 +241,8 @@ async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], targ
     run(conn, false, plans, None, &mut record).await.map_err(|e| format!("apply: {e}"))?;
     schema_is(conn, target).await?;
     want(conn, &format!("SELECT COUNT(*) FROM {} WHERE state = 'done'", history(db)), "2").await?;
+    // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버린 text다.
+    want(conn, &format!("SELECT COUNT(*) FROM {} WHERE applied_at = '2026-10-01T00:00:00.123456Z'", history(db)), "2").await?;
     let count = |k: &str| counts.get(k).copied().unwrap_or(0);
     if count("plan") != 2 || count("verified") != 2 || count("done") != 2 || count("statement") != count("applied") || count("statement") == 0 {
         return Err(format!("events {counts:?}"));

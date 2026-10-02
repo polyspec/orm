@@ -53,6 +53,8 @@ pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 pub const CONFIG: &str = "CONFIG";
 /// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
 pub const CANCELED: &str = "CANCELED";
+/// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
+pub const ROLLBACK: &str = "ROLLBACK";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: a NOWAIT lock could not be acquired immediately
@@ -61,9 +63,11 @@ pub const LOCK_NOT_AVAILABLE: &str = "LOCK_NOT_AVAILABLE";
 pub const DEADLOCK: &str = "DEADLOCK";
 /// driver: MySQL 1062 / SQLSTATE 23000
 pub const DUPLICATE_KEY: &str = "DUPLICATE_KEY";
-/// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
+/// driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787
 pub const FOREIGN_KEY: &str = "FOREIGN_KEY";
 /// driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
 pub const CONSTRAINT: &str = "CONSTRAINT";
 /// driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
 pub const READ_ONLY: &str = "READ_ONLY";
+/// driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811
+pub const DRIVER: &str = "DRIVER";

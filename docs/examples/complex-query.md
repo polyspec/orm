@@ -141,7 +141,7 @@ step 0  query   (root + joins)
   LEFT  JOIN `product_brand_lang` AS `c` ON `a`.`product_brand_seq` = `c`.`product_brand_seq`
   LEFT  JOIN `product_lang` AS `d` ON `a`.`seq` = `d`.`product_seq`
   WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND `a`.`is_display` = ?
-    AND (`a`.`is_allday` = ? OR (`a`.`is_allday` = ? AND `a`.`display_start_dt` <= NOW() AND `a`.`display_end_dt` >= NOW()))
+    AND (`a`.`is_allday` = ? OR (`a`.`is_allday` = ? AND `a`.`display_start_dt` <= NOW(6) AND `a`.`display_end_dt` >= NOW(6)))
     AND (MATCH(`a`.`name`, `a`.`short_description`, `a`.`content`) AGAINST (? IN BOOLEAN MODE)
          OR (MATCH(`c`.`name`, `c`.`description`) AGAINST (? IN BOOLEAN MODE))
          OR (MATCH(`d`.`name`, `d`.`short_description`, `d`.`content`) AGAINST (? IN BOOLEAN MODE)))

@@ -313,6 +313,89 @@ node:sqlite, sqlite3 shell이 DSN query를 파일 이름에 남긴다는 것을 
 남긴다. 현재 스키마 도구와 client의 결함 13개를 T8.0.1-T8.0.11, T8.0.13,
 T8.0.14로 기록한다.
 
+migration ledger의 시각을 모든 database에서 마이크로초로 저장한다(N15).
+ledger `orm_schema_migrations`는 MySQL에서 `timestamp`를 선언했고 SQLite에서
+`CURRENT_TIMESTAMP`로 쓴 `TEXT`를 썼으므로, 그 `started_at`과 `finished_at`은
+두 database에서 초 단위로 저장되었고 PostgreSQL에서만 마이크로초를 유지했다.
+이제 Go, PHP, Rust, TypeScript의 schema tool은 MySQL에서
+`CURRENT_TIMESTAMP(6)`으로 쓰는 `timestamp(6)` column을 만들고, SQLite에서
+소수 여섯 자리를 요구하는 `CHECK`가 있고 tool clock을 UTC로 받는 `TEXT`
+column을 만든다. command가 기존 ledger를 쓰기 전에 tool은 그 시각 column을
+검증하며, 초 단위 column을 가진 ledger는 `MIGRATION_HISTORY_PRECISION`으로
+실패하고 바뀌지 않는다. `docs/usage.ko.md`는 이 변경 이전에 만든 MySQL 또는
+SQLite ledger를 변환하는 statement를 적는다. `migration_ledger_microseconds`,
+`migration_ledger_whole_seconds`, `migration_ledger_earlier` case가 Go, PHP,
+Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
+MySQL에서 database clock을 마이크로초로 기록하고, SQLite 상대 value
+function에서 클라이언트 clock의 소수부를 유지한다(N14). MySQL dialect는 soft
+delete를 `CURRENT_TIMESTAMP`로, `now` value function과 그 상대 형식을
+`NOW()`로 렌더링했으므로 soft delete가 `datetime(6)` column에 초 단위 값을
+저장했고, `created_ts <= now()`가 같은 초에 먼저 만든 row를 놓쳤다. SQLite
+상대 형식은 `datetime(clock, modifier)`를 렌더링하여 bind한 clock의 소수부를
+버렸다. 이제 soft delete는 update 시각처럼 column이 선언한 소수 자릿수로
+clock을 대입한다(MySQL `CURRENT_TIMESTAMP(p)`). MySQL value function은
+`NOW(6)`을 쓰고, SQLite 상대 형식은 `datetime` 결과에 clock의 소수 여섯
+자리를 붙인다. `clock_soft_delete_microseconds`와 `clock_now_condition`
+case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
+트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 두 오류를
+모두 보고한다(N13). PHP 클라이언트는 callback 오류를 rollback 오류로 바꾸었고,
+TypeScript 클라이언트는 rollback 오류를 버렸으며, Go 클라이언트는 트랜잭션
+rollback 오류를 버렸고, Rust 클라이언트는 두 오류를 `CONFIG` 문자열로만
+보고했다. 이제 모든 클라이언트가 catalog code `ROLLBACK`을 가진 오류 하나를
+반환하며, 그 오류는 두 오류를 적고 유지한다. checkout된 TypeScript PostgreSQL
+연결은 서버가 문장 사이에 보고한 연결 오류를 처리되지 않은 error event로
+process를 종료하지 않고 보관한다. ORM test는 SQLite에서 callback이 model 호출만
+하는 동안 `ROLLBACK`을 일으키는 fixture trigger로 트랜잭션을 종료하고, MySQL과
+PostgreSQL에서는 test 연결이 server session을 종료한다. Go에서 MySQL이나
+PostgreSQL 트랜잭션 안의 취소된 문장은 연결을 닫으므로, 트랜잭션은 취소를 유지한
+`ROLLBACK`을 보고한다.
+
+네 클라이언트에 `utils().schema().register(manifestJson)`을 제공한다(N3.3).
+테이블이 이미 있는 스키마를 등록하려면 engine을 만들고 내부
+`registerEngine`을 호출해야 했다. register는 manifest hash를 내용과 대조하여 다르면
+`CONFIG`를 반환하고, 문장을 실행하지 않으며, `install`과 같이 engine을 연결에
+추가한다. `install`도 같은 등록을 사용한다. Rust 클라이언트의 연결은 아직
+스키마를 유지하지 않으므로(N3.2) manifest만 대조한다. `contracts/interfaces.json`이 이
+operation과 현재 symbol snapshot hash를 기록한다.
+
+TypeScript 생성기 scan에서 model chain의 method 호출만 타입으로 만든다(N12).
+scan은 소스 파일의 모든 method 호출 이름을 모아 그 이름을 받는 모든 model에
+선언했으므로, model이 아닌 class의 `this.enabled()` 같은 호출이 model method를
+더했고 그 호출을 지우면 method도 사라졌다. 이제 scan은 소스에서 각 receiver를
+해석한다: 생성 class의 `new`, binding, 타입이 있는 parameter, model을 돌려주는
+function, model chain, model callback, model의 row와 collection. method는
+receiver가 해석된 model에만 선언한다. 사용 안내서가 규칙을 적는다.
+
+모든 driver 오류를 catalog code를 가진 ORM 오류로 보고한다(N11). PHP
+클라이언트는 `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기처럼 catalog에
+없는 driver 오류를 `PDOException` 그대로 돌려주었고, Go 클라이언트는 바꾸지 않고
+돌려주었으며, Rust 클라이언트는 code `SQLX`를 보고했다. 이제 catalog가 그런
+오류에 `DRIVER`를 두고, 모든 클라이언트가 driver 메시지와 원인인 driver 오류를
+유지한다. PHP `OrmException::fromDriver`는 항상 `OrmException`을 돌려주고, Go
+`orm.Error`는 driver 오류로 unwrap되며, Rust는 `Error::Driver { code, msg,
+source }`를 보고한다. SQLite 1811은 `FOREIGN_KEY`가 아니라 trigger 거부이고,
+PHP, Rust, TypeScript는 CHECK 위반을 `CONSTRAINT`로 바꾼다. `trigger_refused`와
+`check_refused` case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL,
+SQLite로 통과한다.
+
+모든 클라이언트에서 클라이언트 clock을 마이크로초로 기록한다(N10).
+TypeScript 클라이언트는 `Date`로 clock을 읽어 SQLite `now` bind slot에
+`.mmm000`을 저장했다. 이제 wall clock에 맞춘 monotonic clock의 마이크로초를
+더하고, 두 clock의 차이가 1밀리초를 넘으면 기준점을 옮긴다. protocol이 모든
+클라이언트의 `now` slot 규칙을 적는다. `clock_microseconds` case가 Go, PHP,
+Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
+한 process에서 여러 schema의 생성 PHP model을 읽는다(N3.1).
+생성된 model class마다 자기 schema hash를 가지며, 연결은 등록된 schema마다
+engine 하나를 유지한다. 연결을 열 때의 schema와
+`utils()->schema()->install()`로 설치한 모든 manifest가 등록된다. install은
+문장을 실행하기 전에 manifest hash를 내용과 대조하고, 연결에 등록되지 않은
+schema의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. Go, PHP, Rust,
+TypeScript owner case가 MySQL, PostgreSQL, SQLite에서 schema 두 개를 한
+연결에서 사용한다.
+
 네 파서에서 물리 문서 입력 상한을 검증한다(T7.17.2.10.3.4).
 64 MiB·200000줄·4096블록을 유지하며 소유별 상한·초과를 두 번 실행해
 정확한 보존·안전한 자원 진단을 확인했다. PHP 상한 Red는 즉시 할당하는

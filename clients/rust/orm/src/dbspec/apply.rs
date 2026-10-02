@@ -506,7 +506,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 q("applied_at"),
                 placeholders.join(", ")
             );
-            let applied_at = (self.now)().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버린 text다 (docs/plans.md "Apply").
+            let applied_at = (self.now)().format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
             let args = [
                 CatalogValue::Text(p.name().to_owned()),
                 CatalogValue::Text(hash_or_empty(p.from()).to_owned()),

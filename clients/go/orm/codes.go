@@ -30,11 +30,13 @@ const (
 	CodeCodecUnsupported      = "CODEC_UNSUPPORTED"      // executor: PHP objects/references in serialize, unknown style
 	CodeConfig                = "CONFIG"                 // executor: missing secret, bad DSN/paths, transaction misuse
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
+	CodeRollback              = "ROLLBACK"               // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 	CodeInternal              = "INTERNAL"               // executor
 	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
 	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions
 	CodeDuplicateKey          = "DUPLICATE_KEY"          // driver: MySQL 1062 / SQLSTATE 23000
-	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811
+	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787
 	CodeConstraint            = "CONSTRAINT"             // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
 	CodeReadOnly              = "READ_ONLY"              // driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+	CodeDriver                = "DRIVER"                 // driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811
 )

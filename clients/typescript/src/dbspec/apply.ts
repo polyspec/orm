@@ -170,7 +170,7 @@ class Applier {
     readonly connection: unknown,
     readonly dialect: DbspecDialect,
     readonly chain: readonly DbspecPlan[],
-    readonly now: () => Date,
+    readonly now: () => number,
     readonly events: DbspecApplyHandler | null,
   ) {
     this.s = session(connection, dialect);
@@ -457,10 +457,16 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** applied_at은 UTC의 YYYY-MM-DDTHH:MM:SSZ다. */
-function appliedAt(date: Date): string {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new TypeError('now must return a valid Date');
-  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+/**
+ * applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 자른 YYYY-MM-DDTHH:MM:SS.ffffffZ다.
+ * micros는 epoch 이후 microsecond(wallMicros와 같은 단위)다.
+ */
+function appliedAt(micros: number): string {
+  if (!Number.isSafeInteger(micros)) throw new TypeError('now must return the microseconds since the epoch as a safe integer');
+  const fraction = ((micros % 1_000_000) + 1_000_000) % 1_000_000;
+  const date = new Date((micros - fraction) / 1000);
+  if (Number.isNaN(date.getTime())) throw new TypeError('now must return a time that Date can hold');
+  return `${date.toISOString().slice(0, 19)}.${String(fraction).padStart(6, '0')}Z`;
 }
 
 type EffectKind = 'trigger' | 'constraint' | 'index' | 'index_on' | 'table' | 'column' | 'repeat';
@@ -486,9 +492,9 @@ const MYSQL_EFFECTS: readonly { pattern: RegExp; kind: EffectKind; present: bool
   { pattern: /^CREATE TRIGGER `([^`]+)` /, kind: 'trigger', present: true },
 ];
 
-function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => Date, events: DbspecApplyHandler | null | undefined): Applier {
+function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events: DbspecApplyHandler | null | undefined): Applier {
   if (dialect !== 'mysql' && dialect !== 'postgres' && dialect !== 'sqlite') throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
-  if (typeof now !== 'function') throw new TypeError('now must be a function that returns the current Date');
+  if (typeof now !== 'function') throw new TypeError('now must be a function that returns the microseconds since the epoch');
   if (events !== undefined && events !== null && typeof events !== 'function') throw new TypeError('events must be a function or null');
   const { plans: chain, diagnostics } = chainPlans(plans);
   if (chain === null) throw new DbspecApplyError('chain', '', 0, diagnostics[0]!.message);
@@ -499,7 +505,8 @@ function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly
  * Applies, in chain order, the plans that the database has not applied, on
  * one connection under the dialect's lock (docs/plans.md "Apply"). A
  * database that has applied the whole chain is left unchanged. `now` gives
- * the time recorded in `applied_at`; `events` receives each event. A
+ * the microseconds since the epoch recorded in `applied_at` (as wallMicros
+ * returns them); `events` receives each event. A
  * failure rejects unchanged with a DbspecApplyError, the handler's error or
  * the driver's error; an advisory unlock that released nothing and a catalog
  * query without a row are errors. When releasing the lock, ending the
@@ -507,14 +514,14 @@ function newApplier(connection: unknown, dialect: DbspecDialect, plans: readonly
  * with an AggregateError whose `errors` are the failure and then the cleanup
  * errors in order.
  */
-export function applyPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
-export function applyPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
-export function applyPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
+export function applyPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function applyPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function applyPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
 export async function applyPlans(
   connection: DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | DbspecApplySqliteConnection,
   dialect: DbspecDialect,
   plans: readonly DbspecPlan[],
-  now: () => Date,
+  now: () => number,
   events?: DbspecApplyHandler | null,
 ): Promise<void> {
   const a = newApplier(connection, dialect, plans, now, events);
@@ -530,14 +537,14 @@ export async function applyPlans(
  * "Apply", recovery). Without a running plan nothing changes. Failures
  * are reported as for applyPlans.
  */
-export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
-export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => Date, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplyMySqlConnection, dialect: 'mysql', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplyPostgresConnection, dialect: 'postgres', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
+export function recoverPlans(connection: DbspecApplySqliteConnection, dialect: 'sqlite', plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>;
 export async function recoverPlans(
   connection: DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | DbspecApplySqliteConnection,
   dialect: DbspecDialect,
   plans: readonly DbspecPlan[],
-  now: () => Date,
+  now: () => number,
   events?: DbspecApplyHandler | null,
 ): Promise<void> {
   const a = newApplier(connection, dialect, plans, now, events);

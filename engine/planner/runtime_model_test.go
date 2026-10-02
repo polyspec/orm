@@ -106,16 +106,24 @@ func TestI16FieldPlansAsI16(t *testing.T) {
 	}
 }
 
-// insert가 빼먹은 default column은 database default를 받는다. executor가
-// now를 채우지 않으므로 SQLite에도 now slot이 없다.
+// insert가 빼먹은 default column은 database default를 받는다. 단 SQLite의
+// clock은 millisecond만 가지므로 `default now` column에는 executor의
+// microsecond clock을 now slot으로 쓴다(docs/protocol.md).
 func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	for _, d := range []dialect.Dialect{dialect.MySQL{}, dialect.Postgres{}, dialect.SQLite{}} {
 		p, err := compileRuntime(t, d, &ir.Request{Kind: "insert", Query: ir.Query{Entity: "note"}, Set: []ir.Assign{{Column: "rank", P: intp(0)}, {Column: "body", P: intp(1)}}, NParams: 2})
 		if err != nil {
 			t.Fatalf("%s: %v", d.Name(), err)
 		}
-		if strings.Contains(p.Steps[0].SQL, "created_at") || len(p.Steps[0].BindSlots) != 2 {
-			t.Fatalf("%s insert fills a default: %s %+v", d.Name(), p.Steps[0].SQL, p.Steps[0].BindSlots)
+		slots := p.Steps[0].BindSlots
+		if d.HostNow() {
+			if !strings.Contains(p.Steps[0].SQL, `"created_at"`) || len(slots) != 3 || slots[2].From != "now" {
+				t.Fatalf("%s insert does not bind the clock of created_at: %s %+v", d.Name(), p.Steps[0].SQL, slots)
+			}
+			continue
+		}
+		if strings.Contains(p.Steps[0].SQL, "created_at") || len(slots) != 2 {
+			t.Fatalf("%s insert fills a default: %s %+v", d.Name(), p.Steps[0].SQL, slots)
 		}
 	}
 	_, err := compileRuntime(t, dialect.SQLite{}, &ir.Request{Kind: "insert", Query: ir.Query{Entity: "note"}, Set: []ir.Assign{{Column: "rank", P: intp(0)}}, NParams: 1})

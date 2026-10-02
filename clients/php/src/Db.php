@@ -88,8 +88,12 @@ final class Db
             return;
         }
         $this->closed = true;
-        foreach ($this->stmts as $st) {
-            $st->closeCursor();
+        try {
+            foreach ($this->stmts as $st) {
+                $st->closeCursor();
+            }
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
         }
         $this->stmts = [];
         $this->stmtOrder = [];
@@ -221,7 +225,7 @@ final class Db
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
                 // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
-                throw new OrmException(Code::CONFIG, "transaction failed ({$failure->getMessage()}) and rollback failed ({$cleanup->getMessage()})", $failure);
+                throw OrmException::rollback($failure, $cleanup);
             }
             throw $failure;
         }
@@ -288,16 +292,10 @@ final class Db
                     $this->pdo->rollBack();
                 }
             } catch (\Throwable $cleanup) {
-                throw self::rollbackFailed($failure, $cleanup);
+                throw OrmException::rollback($failure, $cleanup);
             }
             throw $failure;
         }
-    }
-
-    /** 원인과 실패한 transaction 끝을 함께 보고한다(docs/interfaces.md). */
-    private static function rollbackFailed(\Throwable $failure, \Throwable $cleanup): OrmException
-    {
-        return new OrmException(Code::CONFIG, "transaction failed ({$failure->getMessage()}) and rollback failed ({$cleanup->getMessage()})", $failure);
     }
 
     /**
@@ -320,14 +318,17 @@ final class Db
         }
         $rollback = null;
         try {
-            if ($this->pdo->inTransaction()) {
+            // 실패한 COMMIT은 server가 transaction을 끝냈을 수 있으므로 남은 transaction만
+            // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
+            // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
+            if (!$commit || $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
         } catch (\PDOException $e) {
             $rollback = OrmException::fromDriver($e, $this->driver);
         }
         if ($commit) {
-            throw $rollback === null ? $failure : self::rollbackFailed($failure, $rollback);
+            throw $rollback === null ? $failure : OrmException::rollback($failure, $rollback);
         }
         $failure = self::joined(array_values(array_filter([$failure, $rollback])));
         if ($failure !== null) {
@@ -404,7 +405,7 @@ final class Db
                     $this->endSavepoint("ROLLBACK TO SAVEPOINT $name"),
                     $this->endSavepoint("RELEASE SAVEPOINT $name"),
                 ])));
-                throw $ended === null ? $failure : self::rollbackFailed($failure, $ended);
+                throw $ended === null ? $failure : OrmException::rollback($failure, $ended);
             }
             array_pop(self::$frames);
             $released = $this->endSavepoint("RELEASE SAVEPOINT $name");
@@ -445,7 +446,8 @@ final class Db
 
     private function plan(Request $r): array
     {
-        return Engine::for($this->driver, $this->config->planCacheSize)->plan($r->shape());
+        // 요청의 manifest hash를 등록한 generated model의 engine이 plan한다.
+        return Engine::for($r->ir['manifest_hash'], $this->driver, $this->config->planCacheSize)->plan($r->shape());
     }
 
     /** @internal @return array{0: array, 1: array} the plan and its positional result */
@@ -526,7 +528,7 @@ final class Db
                 $affected = 1;
             } else {
                 $affected = $st->rowCount();
-                $entity = Registry::model()->entity($r->ir['entity']);
+                $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
                 $id = $insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
                     ? $this->pdo->lastInsertId() : null;
             }
@@ -674,6 +676,7 @@ final class Db
                 case 'now':
                     $this->masks[count($out)] = self::NOW;
                     $clock ??= new \DateTimeImmutable('now', $this->zone);
+                    // 한 statement는 clock을 한 번 읽고 slot의 소수 자리로 자른다.
                     $out[] = self::timeText($clock, $b['precision']);
                     break;
                 case 'operation':
@@ -731,7 +734,7 @@ final class Db
         $st->execute();
     }
 
-    private function failed(?\PDOStatement $st, \PDOException $e): \Throwable
+    private function failed(?\PDOStatement $st, \PDOException $e): OrmException
     {
         try {
             $st?->closeCursor();
@@ -765,21 +768,28 @@ final class Db
             return;
         }
         $noWait = str_ends_with($mode, '_nowait');
-        $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
+        try {
+            $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $this->driver);
+        }
         try {
             if ($noWait) {
                 $this->pdo->exec('PRAGMA busy_timeout=0');
             }
             $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
         } catch (\PDOException $e) {
-            $mapped = OrmException::fromDriver($e, $this->driver);
             if ($noWait && (((int) ($e->errorInfo[1] ?? 0)) & 0xff) === 5) {
                 throw new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e);
             }
-            throw $mapped;
+            throw OrmException::fromDriver($e, $this->driver);
         } finally {
             if ($noWait) {
-                $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+                try {
+                    $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
+                } catch (\PDOException $e) {
+                    throw OrmException::fromDriver($e, $this->driver);
+                }
             }
         }
     }

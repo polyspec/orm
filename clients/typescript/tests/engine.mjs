@@ -21,7 +21,11 @@ check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.mani
 const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
 check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
 check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task', 'entities in document order');
-check(code(() => registerModel(MANIFEST_TEXT.replace('table author', 'table authors'), MANIFEST_HASH)) === 'SCHEMA_INVALID', 'an edited manifest text is rejected');
+// 선언한 hash로 가지 않는 text는 그 hash가 이미 등록되어 있어도 SCHEMA_HASH_MISMATCH다.
+const edited = MANIFEST_TEXT.replace('table author', 'table authors');
+check(edited !== MANIFEST_TEXT, 'the edited manifest text differs');
+check(code(() => registerModel(edited, MANIFEST_HASH)) === 'SCHEMA_HASH_MISMATCH', 'an edited manifest text is rejected');
+check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'a rejected text leaves the registered model');
 check(code(() => registerModel(`${MANIFEST_TEXT}# note\n`, manifest.manifestHash.replace(/.$/, '0'))) === 'SCHEMA_INVALID', 'a text that is not a manifest text is rejected');
 check(code(() => registerModel('{', 'sha256:00')) === 'SCHEMA_INVALID', 'a text that is not dbspec is rejected');
 check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');

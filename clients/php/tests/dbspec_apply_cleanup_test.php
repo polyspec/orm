@@ -90,7 +90,7 @@ foreach ($vectors['cases'] as $case) {
 if (count($plans) !== 1) {
     throw new RuntimeException('plans.json has no create-from-empty case');
 }
-$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00Z');
+$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
 $run = 'apply_cleanup_php_' . getmypid();
 $fileIndex = 0;
 

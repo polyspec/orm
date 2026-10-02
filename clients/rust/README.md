@@ -126,7 +126,7 @@ of `Val::as_f64` for ordinary values.
 
 ## Errors
 
-`orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Driver errors stay `Error::Sqlx` except deadlocks, duplicate keys, and foreign keys, which become `Error::Engine` with the shared code and the driver's message. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
+`orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried.
 
 ## The statement hook
 
