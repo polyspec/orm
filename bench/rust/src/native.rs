@@ -52,9 +52,15 @@ async fn list100(pool: &MySqlPool, service_seq: i64) -> Vec<Author> {
     rows.iter().map(|r| from_row(r).expect("list row")).collect()
 }
 
+/// insert workload가 `aes_hex_email`에 쓰는 값: Go baseline의 `HostEncode`처럼
+/// `bench-salt`의 AES envelope를 hex text로 쓴다.
+fn insert_email() -> String {
+    orm::codec::hex_upper(&orm::codec::aes_encrypt(b"ins@example.com", "bench-salt"))
+}
+
 async fn insert(pool: &MySqlPool, i: usize) -> u64 {
     let r = sqlx::query("INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_hex_email`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(format!("bench-insert-{i}")).bind(1i64).bind(999i64).bind(1i64).bind(1i64).bind("2026-06-01").bind("2026-12-31").bind("ins@example.com").bind(1i32)
+        .bind(format!("bench-insert-{i}")).bind(1i64).bind(999i64).bind(1i64).bind(1i64).bind("2026-06-01").bind("2026-12-31").bind(insert_email()).bind(1i32)
         .execute(pool).await.expect("insert");
     r.last_insert_id()
 }
@@ -138,4 +144,17 @@ async fn main() {
     let mut s = Vec::new();
     for i in 0..(iters / 3) { let t = Instant::now(); let v = relation4(&pool, (i % 100 + 1) as i64).await; assert!(!v.is_empty()); s.push(t.elapsed().as_nanos() as u64); }
     stats("sqlx relation4 + rust assembly", s);
+}
+
+#[cfg(test)]
+mod tests {
+    // Go baseline의 `HostEncode(..., []string{"aes", "hex"}, "bench-salt")`처럼
+    // insert 값은 key version 1의 AES envelope를 hex로 쓴 text다.
+    #[test]
+    fn insert_email_is_an_aes_hex_envelope() {
+        let text = super::insert_email();
+        let envelope = orm::codec::hex_decode(&text).expect("insert email is hex");
+        let plain = orm::codec::aes_decrypt(&envelope, "bench-salt").expect("insert email is an AES envelope of bench-salt");
+        assert_eq!(plain, b"ins@example.com");
+    }
 }
