@@ -1,20 +1,25 @@
 //! Plan chains applied to MySQL, PostgreSQL and SQLite through
-//! `orm::dbspec::apply` and `orm::dbspec::recover` (docs/plans.md, "Apply"):
-//! the chain with its history and a second apply without events, drift, the
-//! lock of a second session, an apply to a second database, schema or file
-//! while the first holds its lock, the empty chain, rollback after a stopped
-//! statement, an unlock
-//! that released nothing on PostgreSQL, a failed verification, and MySQL
-//! recovery after a stop before and after a statement. The chain is create-from-empty and rename-table-and-column of
-//! tests/dbspec/plans.json. A test fails when ORM_TEST_MYSQL_DSN or
-//! ORM_TEST_POSTGRES_DSN is unset.
+//! `orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/plans.md,
+//! "Apply"): the chain of create-from-empty and rename-table-and-column of
+//! tests/dbspec/plans.json with its history and a second apply without
+//! events, drift, the lock of a second session, an apply to a second
+//! database, schema or file while the first holds its lock, the empty chain,
+//! an unlock that released nothing on PostgreSQL, a failed verification; for
+//! every step of the representative case a stop after its statement followed
+//! by rollback, a stop followed by recover and a stopped rollback that
+//! continues; rows written between apply, rollback and a second apply; the
+//! null check of a dropped required column; and finalize. A test fails when
+//! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
 use chrono::{DateTime, TimeZone, Utc};
 use dbspec_probe::{connection_rules, lines, repository, run_probe, Conn, Servers, Session, DIALECTS};
-use orm::dbspec::{self, apply, parse_plan, recover, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan};
+use orm::dbspec::{
+    self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
+    Dialect, Plan,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -62,7 +67,7 @@ fn fixed_now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
-/// 지정한 statement `after`를 실행한 직후 statement `then`을 같은 connection에서
+/// `after`로 시작하는 statement를 실행한 직후 statement `then`을 같은 connection에서
 /// 한 번 실행한다. event 처리기는 apply가 빌린 connection을 쓸 수 없으므로, Go
 /// test가 event에서 실행하는 statement를 이 시점에 실행한다.
 struct RunAfter<'c, C> {
@@ -81,7 +86,7 @@ impl<C: CatalogQuerier + Send> CatalogQuerier for RunAfter<'_, C> {
 impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         self.inner.execute(statement).await?;
-        if !self.done && statement == self.after {
+        if !self.done && statement.starts_with(&self.after) {
             self.done = true;
             self.inner.execute(&self.then).await?;
         }
@@ -139,19 +144,42 @@ impl<C: ApplyConnection + Send> ApplyConnection for ApplyOtherUnderLock<'_, C> {
     }
 }
 
-/// probe connection 하나에 apply 또는 recover를 실행한다. `run_after`가
-/// `(after, then)`이면 statement `after` 뒤에 statement `then`을 실행한다.
+/// 명령의 종류.
+#[derive(Clone, Copy)]
+enum Command {
+    Apply,
+    Recover,
+    Rollback,
+    Finalize,
+}
+
+/// probe connection 하나에 명령을 실행한다. `run_after`가 `(after, then)`이면
+/// `after`로 시작하는 statement 뒤에 statement `then`을 실행한다.
 async fn run(
     conn: &mut Conn,
-    recovering: bool,
+    command: Command,
     plans: &[Plan],
     run_after: Option<(&str, &str)>,
     events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
 ) -> Result<(), ApplyError> {
+    async fn command_on<C: ApplyConnection + Send + ?Sized>(
+        c: &mut C,
+        dialect: Dialect,
+        command: Command,
+        plans: &[Plan],
+        events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
+    ) -> Result<(), ApplyError> {
+        match command {
+            Command::Apply => apply(c, dialect, plans, &fixed_now, events).await,
+            Command::Recover => recover(c, dialect, plans, &fixed_now, events).await,
+            Command::Rollback => rollback(c, dialect, plans, &fixed_now, events).await,
+            Command::Finalize => finalize(c, dialect, plans, &fixed_now, events).await,
+        }
+    }
     async fn on<C: ApplyConnection + Send>(
         c: &mut C,
         dialect: Dialect,
-        recovering: bool,
+        command: Command,
         plans: &[Plan],
         run_after: Option<(&str, &str)>,
         events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
@@ -159,20 +187,15 @@ async fn run(
         match run_after {
             Some((after, then)) => {
                 let mut wrapped = RunAfter { inner: c, after: after.to_owned(), then: then.to_owned(), done: false };
-                if recovering {
-                    recover(&mut wrapped, dialect, plans, &fixed_now, events).await
-                } else {
-                    apply(&mut wrapped, dialect, plans, &fixed_now, events).await
-                }
+                command_on(&mut wrapped, dialect, command, plans, events).await
             }
-            None if recovering => recover(c, dialect, plans, &fixed_now, events).await,
-            None => apply(c, dialect, plans, &fixed_now, events).await,
+            None => command_on(c, dialect, command, plans, events).await,
         }
     }
     match conn {
-        Conn::MySql(c) => on(c, Dialect::MySql, recovering, plans, run_after, events).await,
-        Conn::Postgres(c) => on(c, Dialect::Postgres, recovering, plans, run_after, events).await,
-        Conn::Sqlite(c) => on(c, Dialect::Sqlite, recovering, plans, run_after, events).await,
+        Conn::MySql(c) => on(c, Dialect::MySql, command, plans, run_after, events).await,
+        Conn::Postgres(c) => on(c, Dialect::Postgres, command, plans, run_after, events).await,
+        Conn::Sqlite(c) => on(c, Dialect::Sqlite, command, plans, run_after, events).await,
     }
 }
 
@@ -196,6 +219,36 @@ async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
         },
         _ => Err(format!("{query}: {} rows; want one", rows.len())),
     }
+}
+
+/// `query`의 모든 row를 `a|b`로, row를 쉼표로 잇는다.
+async fn rows_text(conn: &mut Conn, query: &str) -> Result<String, String> {
+    let rows = match conn {
+        Conn::MySql(c) => c.query_bound(query, &[]).await,
+        Conn::Postgres(c) => c.query_bound(query, &[]).await,
+        Conn::Sqlite(c) => c.query_bound(query, &[]).await,
+    }
+    .map_err(|e| format!("{query}: {e}"))?;
+    let cell = |v: &CatalogValue| match v {
+        CatalogValue::Null => "NULL".to_owned(),
+        CatalogValue::Text(s) => s.clone(),
+        CatalogValue::Int(n) => n.to_string(),
+        CatalogValue::Bool(b) => b.to_string(),
+    };
+    Ok(rows.iter().map(|r| r.iter().map(cell).collect::<Vec<_>>().join("|")).collect::<Vec<_>>().join(","))
+}
+
+async fn rows_are(conn: &mut Conn, query: &str, expected: &str) -> Result<(), String> {
+    let got = rows_text(conn, query).await?;
+    if got == expected {
+        Ok(())
+    } else {
+        Err(format!("{query}: got {got:?}; want {expected:?}"))
+    }
+}
+
+async fn history_is(conn: &mut Conn, db: &str, expected: &str) -> Result<(), String> {
+    rows_are(conn, &format!("SELECT name, state, step FROM {} ORDER BY name", history(db)), expected).await
 }
 
 async fn want(conn: &mut Conn, query: &str, expected: &str) -> Result<(), String> {
@@ -232,19 +285,74 @@ fn history(db: &str) -> &'static str {
     }
 }
 
-async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], target: &str) -> Result<(), String> {
+/// dialect마다 chain plan의 (step 수, finalize 앞 step 수).
+type Counts = BTreeMap<&'static str, Vec<(usize, usize)>>;
+
+fn counts(chain: &[Plan]) -> Counts {
+    DIALECTS
+        .iter()
+        .map(|&(name, dialect)| {
+            let list = chain
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    let source = (i > 0).then(|| chain[i - 1].schema());
+                    let steps = plan_steps(source, p, dialect).unwrap_or_else(|e| panic!("{}: {e:?}", p.name()));
+                    (steps.len(), steps.iter().position(|s| s.finalize).unwrap_or(steps.len()))
+                })
+                .collect();
+            (name, list)
+        })
+        .collect()
+}
+
+/// case의 source를 만드는 첫 plan base와 case의 plan으로 된 chain.
+fn case_chain(id: &str) -> Vec<Plan> {
+    let path = repository().join("tests/dbspec/plans.json");
+    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
+    let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == id).unwrap_or_else(|| panic!("plans.json has no case {id}"));
+    let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{}", lines(&case["source"]))).unwrap_or_else(|e| panic!("{id} base: {e:?}"));
+    let plan = parse_plan(&lines(&case["plan"])).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+    assert_eq!(plan.from(), Some(base.to()), "the source of {id} does not start its plan");
+    vec![base, plan]
+}
+
+fn schema_text(p: &Plan) -> String {
+    dbspec::manifest(&[p.schema()]).expect("plan manifest").schema_text
+}
+
+/// 이름이 dbspec$로 시작하는 table과 column 중 history table이 아닌 것의 수.
+fn hidden_left(db: &str) -> &'static str {
+    match db {
+        "mysql" => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%') AND TABLE_NAME <> 'dbspec$plans'",
+        "postgres" => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%') AND c.relname <> 'dbspec$plans'",
+        _ => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%') AND m.name <> 'dbspec$plans'",
+    }
+}
+
+/// plan의 step 번째 statement를 실행한 뒤, step을 기록하기 전에 명령을 멈추는 event 처리기.
+fn stop_after(plan: String, step: usize) -> impl FnMut(&ApplyEvent) -> Result<(), EventError> + Send {
+    move |e: &ApplyEvent| {
+        if e.kind == ApplyEventKind::Applied && e.plan == plan && e.step == step {
+            return Err(Box::new(Stop));
+        }
+        Ok(())
+    }
+}
+
+async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], target: &str, c: &[(usize, usize)]) -> Result<(), String> {
     let mut counts: BTreeMap<&'static str, usize> = BTreeMap::new();
     let mut record = |e: &ApplyEvent| -> Result<(), EventError> {
         *counts.entry(e.kind.as_str()).or_default() += 1;
         Ok(())
     };
-    run(conn, false, plans, None, &mut record).await.map_err(|e| format!("apply: {e}"))?;
+    run(conn, Command::Apply, plans, None, &mut record).await.map_err(|e| format!("apply: {e}"))?;
     schema_is(conn, target).await?;
-    want(conn, &format!("SELECT COUNT(*) FROM {} WHERE state = 'done'", history(db)), "2").await?;
+    history_is(conn, db, &format!("create_from_empty|applied|{},rename_table_and_column|applied|{}", c[0].1, c[1].1)).await?;
     // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버린 text다.
     want(conn, &format!("SELECT COUNT(*) FROM {} WHERE applied_at = '2026-10-01T00:00:00.123456Z'", history(db)), "2").await?;
     let count = |k: &str| counts.get(k).copied().unwrap_or(0);
-    if count("plan") != 2 || count("verified") != 2 || count("done") != 2 || count("statement") != count("applied") || count("statement") == 0 {
+    if count("plan") != 2 || count("verified") != 2 || count("done") != 2 || count("statement") != count("applied") || count("statement") != c[0].1 + c[1].1 {
         return Err(format!("events {counts:?}"));
     }
     let mut again = 0;
@@ -252,7 +360,7 @@ async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], targ
         again += 1;
         Ok(())
     };
-    let result = run(conn, false, plans, None, &mut record_again).await;
+    let result = run(conn, Command::Apply, plans, None, &mut record_again).await;
     if result.is_err() || again != 0 {
         return Err(format!("apply again: {result:?}, {again} events"));
     }
@@ -260,9 +368,9 @@ async fn chain_history_and_again(conn: &mut Conn, db: &str, plans: &[Plan], targ
 }
 
 async fn drift(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> {
-    run(conn, false, &plans[..1], None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
+    run(conn, Command::Apply, &plans[..1], None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
     conn.exec("CREATE TABLE extra (id integer PRIMARY KEY)").await?;
-    let result = run(conn, false, plans, None, &mut quiet).await;
+    let result = run(conn, Command::Apply, plans, None, &mut quiet).await;
     match code(&result) {
         Some("drift") => Ok(()),
         _ => Err(format!("apply after a change outside plans: {result:?}, want drift")),
@@ -278,7 +386,7 @@ async fn lock(conn: &mut Conn, db: &str, plans: &[Plan], session: &Session) -> R
     };
     let checked = async {
         other.exec(&hold).await.map_err(|e| format!("hold: {e}"))?;
-        let result = run(conn, false, plans, None, &mut quiet).await;
+        let result = run(conn, Command::Apply, plans, None, &mut quiet).await;
         if code(&result) != Some("locked") {
             return Err(format!("apply under another session's lock: {result:?}, want locked"));
         }
@@ -339,41 +447,27 @@ async fn empty_chain(conn: &mut Conn, db: &str) -> Result<(), String> {
         events += 1;
         Ok(())
     };
-    run(conn, false, &[], None, &mut record).await.map_err(|e| format!("apply of the empty chain: {e}"))?;
-    run(conn, true, &[], None, &mut record).await.map_err(|e| format!("recover of the empty chain: {e}"))?;
+    for command in [Command::Apply, Command::Recover, Command::Rollback, Command::Finalize] {
+        run(conn, command, &[], None, &mut record).await.map_err(|e| format!("the empty chain: {e}"))?;
+    }
     if events != 0 {
         return Err(format!("the empty chain reported {events} events"));
     }
     schema_is(conn, "").await?;
     want(conn, &format!("SELECT COUNT(*) FROM {}", history(db)), "0").await?;
     conn.exec("CREATE TABLE extra (id integer PRIMARY KEY)").await?;
-    let result = run(conn, false, &[], None, &mut quiet).await;
+    let result = run(conn, Command::Apply, &[], None, &mut quiet).await;
     match code(&result) {
         Some("drift") => Ok(()),
         _ => Err(format!("apply of the empty chain to a database with a table: {result:?}, want drift")),
     }
 }
 
-async fn rollback_on_failure(conn: &mut Conn, plans: &[Plan], target: &str) -> Result<(), String> {
-    let mut fail = |e: &ApplyEvent| -> Result<(), EventError> {
-        if e.kind == ApplyEventKind::Applied && e.step == 1 {
-            return Err(Box::new(Stop));
-        }
-        Ok(())
-    };
-    let result = run(conn, false, plans, None, &mut fail).await;
-    if !stopped(&result) {
-        return Err(format!("apply stopped by an event: {result:?}"));
-    }
-    schema_is(conn, "").await?;
-    run(conn, false, plans, None, &mut quiet).await.map_err(|e| format!("apply after the rollback: {e}"))?;
-    schema_is(conn, target).await
-}
-
 async fn unlock_not_held(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> {
-    // 첫 transaction을 연 뒤 advisory lock을 먼저 풀면 apply 끝의 unlock은 아무것도
+    // history table을 만든 뒤 advisory lock을 먼저 풀면 명령 끝의 unlock은 아무것도
     // 풀지 않는다.
-    let result = run(conn, false, plans, Some(("BEGIN", &format!("SELECT pg_advisory_unlock({POSTGRES_APPLY_LOCK})"))), &mut quiet).await;
+    let result =
+        run(conn, Command::Apply, plans, Some(("CREATE TABLE IF NOT EXISTS", &format!("SELECT pg_advisory_unlock({POSTGRES_APPLY_LOCK})"))), &mut quiet).await;
     let want = "the advisory lock of dbspec$plans was not held at unlock";
     match &result {
         Err(e) if e.to_string() == want => Ok(()),
@@ -382,58 +476,109 @@ async fn unlock_not_held(conn: &mut Conn, plans: &[Plan]) -> Result<(), String> 
 }
 
 async fn verify_failure(conn: &mut Conn, db: &str, plans: &[Plan]) -> Result<(), String> {
-    // 첫 plan의 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패한다.
+    // 첫 plan의 마지막 statement 뒤에 plan 밖의 table을 만들면 검증이 실패하고 row는
+    // 모든 step을 기록한 채 applying으로 남는다.
     let dialect = DIALECTS.iter().find(|(name, _)| *name == db).map(|(_, d)| *d).ok_or_else(|| format!("unknown database {db}"))?;
-    let statements = dbspec::plan_statements(None, &plans[0], dialect).map_err(|e| format!("statements: {e:?}"))?;
-    let last = statements.last().ok_or("the first plan has no statement")?;
-    let result = run(conn, false, plans, Some((last, "CREATE TABLE sneak (id integer PRIMARY KEY)")), &mut quiet).await;
+    let steps = plan_steps(None, &plans[0], dialect).map_err(|e| format!("steps: {e:?}"))?;
+    let last = &steps.last().ok_or("the first plan has no step")?.statement;
+    let result = run(conn, Command::Apply, plans, Some((last, "CREATE TABLE sneak (id integer PRIMARY KEY)")), &mut quiet).await;
     if code(&result) != Some("verify") {
         return Err(format!("apply with a table outside the plan: {result:?}, want verify"));
     }
-    if db == "mysql" {
-        want(conn, "SELECT state FROM `dbspec$plans`", "running").await
-    } else {
-        schema_is(conn, "").await
-    }
+    history_is(conn, db, &format!("{}|applying|{}", plans[0].name(), steps.len())).await
 }
 
-/// MySQL recovery: statement이 commit된 뒤 기록 전에 멈춘 경우(`applied`)와 실행
-/// 전에 멈춘 경우(`statement`).
-async fn recover_after(conn: &mut Conn, kind: ApplyEventKind, plans: &[Plan], target: &str) -> Result<(), String> {
-    let name = plans[1].name().to_owned();
-    let mut fail = |e: &ApplyEvent| -> Result<(), EventError> {
-        if e.kind == kind && e.plan == name && e.step == 1 {
-            return Err(Box::new(Stop));
-        }
-        Ok(())
-    };
-    let result = run(conn, false, plans, None, &mut fail).await;
+/// 적용한 plan에 쓴 row는 rollback 뒤에도 남고 지운 column의 값과 default가
+/// 돌아오며, 다시 적용하면 더한 column의 값이 돌아온다. finalize 뒤 rollback은
+/// 되돌릴 수 없다.
+async fn rows_between(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) -> Result<(), String> {
+    let (source, target) = (schema_text(&chain[0]), schema_text(&chain[1]));
+    run(conn, Command::Apply, &chain[..1], None, &mut quiet).await.map_err(|e| format!("apply base: {e}"))?;
+    conn.exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')").await?;
+    run(conn, Command::Apply, chain, None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
+    conn.exec("INSERT INTO clients (email, age) VALUES ('b@x', 5)").await?;
+    conn.exec("UPDATE clients SET status = 'vip' WHERE email = 'a@x'").await?;
+    run(conn, Command::Rollback, chain, None, &mut quiet).await.map_err(|e| format!("rollback: {e}"))?;
+    schema_is(conn, &source).await?;
+    history_is(conn, db, &format!("base|applied|{}", c[0].1)).await?;
+    rows_are(conn, "SELECT mail, legacy_code, nick FROM users ORDER BY mail", "a@x|7|n1,b@x|0|x").await?;
+    run(conn, Command::Apply, chain, None, &mut quiet).await.map_err(|e| format!("apply again: {e}"))?;
+    schema_is(conn, &target).await?;
+    rows_are(conn, "SELECT email, status FROM clients ORDER BY email", "a@x|vip,b@x|new").await?;
+    history_is(conn, db, &format!("base|applied|{},representative|applied|{}", c[0].1, c[1].1)).await?;
+    run(conn, Command::Finalize, chain, None, &mut quiet).await.map_err(|e| format!("finalize: {e}"))?;
+    history_is(conn, db, &format!("base|done|{},representative|done|{}", c[0].0, c[1].0)).await?;
+    want(conn, hidden_left(db), "0").await?;
+    schema_is(conn, &target).await?;
+    let result = run(conn, Command::Rollback, chain, None, &mut quiet).await;
+    if code(&result) != Some("irreversible") {
+        return Err(format!("rollback of a finalized plan: {result:?}, want irreversible"));
+    }
+    schema_is(conn, &target).await
+}
+
+/// 숨긴 non-null default 없는 column에 그사이 NULL row가 생기면 rollback은
+/// 아무것도 바꾸지 않고 row 수를 적은 nulls error로 멈춘다.
+async fn nulls(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)]) -> Result<(), String> {
+    run(conn, Command::Apply, chain, None, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
+    conn.exec("INSERT INTO t (a) VALUES ('y')").await?;
+    let result = run(conn, Command::Rollback, chain, None, &mut quiet).await;
+    match &result {
+        Err(e) if e.code() == Some("nulls") && e.to_string().contains("has 1 NULL rows") => {}
+        _ => return Err(format!("rollback with a NULL row: {result:?}, want nulls with the count")),
+    }
+    schema_is(conn, &schema_text(&chain[1])).await?;
+    history_is(conn, db, &format!("base|applied|{},drop_required_column|applied|{}", c[0].1, c[1].1)).await
+}
+
+/// representative plan의 step k: apply를 statement 뒤에 멈추고 rollback하고, 다시
+/// 멈추고 recover하고, 적용한 plan의 rollback을 step k의 rollback statement 뒤에
+/// 멈추고 rollback을 이어 간다.
+async fn interrupt(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize)], k: usize) -> Result<(), String> {
+    let (source, target) = (schema_text(&chain[0]), schema_text(&chain[1]));
+    let name = chain[1].name().to_owned();
+    let base = format!("base|applied|{}", c[0].1);
+    run(conn, Command::Apply, &chain[..1], None, &mut quiet).await.map_err(|e| format!("apply base: {e}"))?;
+    let result = run(conn, Command::Apply, chain, None, &mut stop_after(name.clone(), k)).await;
     if !stopped(&result) {
         return Err(format!("apply stopped by an event: {result:?}"));
     }
-    want(conn, &format!("SELECT CONCAT(state, ' ', step) FROM `dbspec$plans` WHERE name = '{}'", plans[1].name()), "running 1").await?;
-    let result = run(conn, false, plans, None, &mut quiet).await;
+    history_is(conn, db, &format!("{base},representative|applying|{k}")).await?;
+    let result = run(conn, Command::Apply, chain, None, &mut quiet).await;
     if code(&result) != Some("interrupted") {
-        return Err(format!("apply over a running plan: {result:?}, want interrupted"));
+        return Err(format!("apply over an interrupted plan: {result:?}, want interrupted"));
     }
-    run(conn, true, plans, None, &mut quiet).await.map_err(|e| format!("recover: {e}"))?;
-    schema_is(conn, target).await?;
-    want(conn, "SELECT COUNT(*) FROM `dbspec$plans` WHERE state = 'done'", "2").await?;
-    run(conn, true, plans, None, &mut quiet).await.map_err(|e| format!("recover again: {e}"))
+    run(conn, Command::Rollback, chain, None, &mut quiet).await.map_err(|e| format!("rollback of the interrupted plan: {e}"))?;
+    schema_is(conn, &source).await?;
+    history_is(conn, db, &base).await?;
+    let result = run(conn, Command::Apply, chain, None, &mut stop_after(name.clone(), k)).await;
+    if !stopped(&result) {
+        return Err(format!("apply stopped again: {result:?}"));
+    }
+    run(conn, Command::Recover, chain, None, &mut quiet).await.map_err(|e| format!("recover: {e}"))?;
+    schema_is(conn, &target).await?;
+    history_is(conn, db, &format!("{base},representative|applied|{}", c[1].1)).await?;
+    let result = run(conn, Command::Rollback, chain, None, &mut stop_after(name, k)).await;
+    if !stopped(&result) {
+        return Err(format!("rollback stopped by an event: {result:?}"));
+    }
+    history_is(conn, db, &format!("{base},representative|rolling_back|{}", k + 1)).await?;
+    run(conn, Command::Rollback, chain, None, &mut quiet).await.map_err(|e| format!("rollback continued: {e}"))?;
+    schema_is(conn, &source).await?;
+    history_is(conn, db, &base).await
 }
 
 /// scenario 이름과 그 database.
-const SCENARIOS: [(&str, &[&str]); 10] = [
+const SCENARIOS: [(&str, &[&str]); 9] = [
     ("chain_history_and_again", &["mysql", "postgres", "sqlite"]),
     ("drift", &["mysql", "postgres", "sqlite"]),
     ("lock", &["mysql", "postgres", "sqlite"]),
     ("other_database", &["mysql", "postgres", "sqlite"]),
     ("empty_chain", &["mysql", "postgres", "sqlite"]),
-    ("rollback_on_failure", &["postgres", "sqlite"]),
     ("unlock_not_held", &["postgres"]),
     ("verify_failure", &["mysql", "postgres", "sqlite"]),
-    ("recover_after_applied", &["mysql"]),
-    ("recover_after_statement", &["mysql"]),
+    ("rows_between", &["mysql", "postgres", "sqlite"]),
+    ("nulls", &["mysql", "postgres", "sqlite"]),
 ];
 
 #[tokio::test]
@@ -442,44 +587,62 @@ async fn apply_chain_on_three_databases() {
     println!("RUN dbspec apply");
     let plans = apply_chain();
     let target = dbspec::manifest(&[plans[1].schema()]).expect("target manifest").schema_text;
+    let plan_counts = counts(&plans);
+    let representative = case_chain("representative");
+    let rep_counts = counts(&representative);
+    let required = case_chain("drop-required-column");
+    let required_counts = counts(&required);
+    let mut runs_list: Vec<(String, &'static str, Option<usize>)> = Vec::new();
+    for (scenario, dbs) in SCENARIOS {
+        for &db in dbs {
+            runs_list.push((scenario.to_owned(), db, None));
+        }
+    }
+    for &(db, _) in DIALECTS.iter() {
+        for k in 0..rep_counts[db][1].1 {
+            runs_list.push((format!("interrupt_{k:02}"), db, Some(k)));
+        }
+    }
     let mut servers = Servers::open("apply").await;
     let mut failures = Vec::new();
     let mut runs = 0;
-    for (scenario, dbs) in SCENARIOS {
-        for &db in dbs {
-            runs += 1;
-            let id = format!("{db}.apply.{scenario}");
-            let session = servers.session(db, runs);
-            // probe body는 'static future이므로 chain과 target을 복사해 가져간다.
-            let (plans, target) = (plans.clone(), target.clone());
-            let result = run_probe(&mut servers, &id, db, runs, |conn| {
-                Box::pin(async move {
-                    let (plans, target) = (plans.as_slice(), target.as_str());
-                    conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
-                    match scenario {
-                        "chain_history_and_again" => chain_history_and_again(conn, db, plans, target).await,
-                        "drift" => drift(conn, plans).await,
-                        "lock" => lock(conn, db, plans, &session).await,
-                        "other_database" => other_database(conn, db, plans, target, &session).await,
-                        "empty_chain" => empty_chain(conn, db).await,
-                        "rollback_on_failure" => rollback_on_failure(conn, plans, target).await,
-                        "unlock_not_held" => unlock_not_held(conn, plans).await,
-                        "verify_failure" => verify_failure(conn, db, plans).await,
-                        "recover_after_applied" => recover_after(conn, ApplyEventKind::Applied, plans, target).await,
-                        "recover_after_statement" => recover_after(conn, ApplyEventKind::Statement, plans, target).await,
-                        other => Err(format!("unknown scenario {other}")),
-                    }
-                })
+    for (scenario, db, k) in runs_list {
+        runs += 1;
+        let id = format!("{db}.apply.{scenario}");
+        let session = servers.session(db, runs);
+        // probe body는 'static future이므로 chain과 target을 복사해 가져간다.
+        let (plans, target, representative, required) = (plans.clone(), target.clone(), representative.clone(), required.clone());
+        let (pc, rc, qc) = (plan_counts[db].clone(), rep_counts[db].clone(), required_counts[db].clone());
+        let result = run_probe(&mut servers, &id, db, runs, |conn| {
+            Box::pin(async move {
+                let (plans, target) = (plans.as_slice(), target.as_str());
+                conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
+                if let Some(k) = k {
+                    return interrupt(conn, db, &representative, &rc, k).await;
+                }
+                match scenario.as_str() {
+                    "chain_history_and_again" => chain_history_and_again(conn, db, plans, target, &pc).await,
+                    "drift" => drift(conn, plans).await,
+                    "lock" => lock(conn, db, plans, &session).await,
+                    "other_database" => other_database(conn, db, plans, target, &session).await,
+                    "empty_chain" => empty_chain(conn, db).await,
+                    "unlock_not_held" => unlock_not_held(conn, plans).await,
+                    "verify_failure" => verify_failure(conn, db, plans).await,
+                    "rows_between" => rows_between(conn, db, &representative, &rc).await,
+                    "nulls" => nulls(conn, db, &required, &qc).await,
+                    other => Err(format!("unknown scenario {other}")),
+                }
             })
-            .await;
-            if let Err(e) = result {
-                failures.push(format!("{id}: {e}"));
-            }
+        })
+        .await;
+        if let Err(e) = result {
+            failures.push(format!("{id}: {e}"));
         }
     }
     servers.close().await;
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    assert_eq!(runs, 23, "apply runs");
+    let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
+    assert_eq!(runs, want, "apply runs");
     println!("PASS dbspec apply: {runs} runs on three databases in {:?}", started.elapsed());
     assert!(started.elapsed() < Duration::from_secs(600), "apply exceeded 600s");
 }

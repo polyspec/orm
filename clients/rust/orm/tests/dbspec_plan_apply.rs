@@ -1,15 +1,18 @@
 //! Every case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and
 //! SQLite through the Rust client (docs/plans.md, "Verification"): the source
-//! rendered by `dbspec::render`, the `before` steps, the statements of
-//! `dbspec::plan_statements`, the `after` steps, and `orm::dbspec::introspect`
-//! reading the plan's target schema text with no unsupported object. A test
+//! rendered by `dbspec::render`, the `before` steps and the `dbspec::plan_steps`
+//! steps before finalize, after which `orm::dbspec::introspect` reads the
+//! plan's target schema text with no unsupported object; without an
+//! irreversible step the rollback statements return to the source schema text
+//! and the steps run again; then the `after` steps and the finalize steps
+//! run, the target is read again and no `dbspec$` table or column remains. A test
 //! fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
 use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Conn, Servers, DIALECTS};
-use orm_schema::dbspec::{self, parse_plan, plan_statements, Document};
+use orm_schema::dbspec::{self, parse_plan, plan_steps, Document};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Row, SqlSafeStr, TypeInfo, ValueRef};
 use std::collections::BTreeMap;
@@ -99,6 +102,44 @@ fn sqlite_other(_: &sqlx::sqlite::SqliteRow, name: &str) -> Result<String, sqlx:
     Err(no_text_form(name))
 }
 
+/// 이름이 dbspec$로 시작하는 table과 column의 수를 읽는 query.
+fn hidden_left(db: &str) -> &'static str {
+    match db {
+        "mysql" => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
+        "postgres" => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
+        _ => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
+    }
+}
+
+/// SQLite에서 foreign key를 어기는 row가 없는지 확인한다.
+async fn foreign_key_check(conn: &mut Conn, db: &str) -> Result<(), String> {
+    if db != "sqlite" {
+        return Ok(());
+    }
+    let violations = value(conn, "SELECT COUNT(*) FROM pragma_foreign_key_check").await?;
+    if violations != "0" {
+        return Err(format!("PRAGMA foreign_key_check returns {violations} rows"));
+    }
+    Ok(())
+}
+
+/// introspect한 schema text가 `want`(빈 database이면 빈 문자열)인지 확인한다.
+async fn schema_is(conn: &mut Conn, what: &str, want: &str) -> Result<(), String> {
+    let (introspection, _) = conn.introspect().await.map_err(|e| format!("{what}: introspect: {e}"))?;
+    if !introspection.unsupported.is_empty() {
+        return Err(format!("{what}: unsupported: {:?}", introspection.unsupported));
+    }
+    let got = if introspection.document.tables.is_empty() {
+        String::new()
+    } else {
+        dbspec::manifest(&[&introspection.document]).map_err(|e| format!("{what}: manifest: {e:?}"))?.schema_text
+    };
+    if got != want {
+        return Err(format!("{what}: schema text differs\n--- want\n{want}--- got\n{got}"));
+    }
+    Ok(())
+}
+
 async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), String> {
     for step in steps.iter().filter(|s| s.dialects.is_empty() || s.dialects.iter().any(|d| d == db)) {
         match (&step.query, &step.sql) {
@@ -141,37 +182,65 @@ async fn plan_apply() {
                 None => Vec::new(),
                 Some(source) => dbspec::render(&[source], dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}")),
             };
-            let statements = plan_statements(source.as_ref(), &plan, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+            let steps_of = plan_steps(source.as_ref(), &plan, dialect).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
+            let reversible = steps_of.iter().all(|s| s.finalize || !s.rollback.is_empty());
             let want = plan.schema_text().to_owned();
+            let source_text = source.as_ref().map(|d| dbspec::manifest(&[d]).expect("source manifest").schema_text).unwrap_or_default();
             let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
             runs += 1;
             let (before, after) = (steps(&case["before"]), steps(&case["after"]));
-            println!("{id}: {} statements", statements.len());
+            println!("{id}: {} steps, reversible {reversible}", steps_of.len());
             let result = run_probe(&mut servers, &id, db, runs, |conn| {
                 Box::pin(async move {
+                    let forward: Vec<String> = steps_of.iter().take_while(|s| !s.finalize).map(|s| s.statement.clone()).collect();
+                    let again: Vec<String> = steps_of
+                        .iter()
+                        .take_while(|s| !s.finalize)
+                        .map(|s| if s.restore.is_empty() { s.statement.clone() } else { s.restore.clone() })
+                        .collect();
+                    // 끝까지 되돌리는 rollback은 옛 table을 숨긴 더한 column과 함께 다시 만든다.
+                    let back: Vec<String> = steps_of
+                        .iter()
+                        .rev()
+                        .filter(|s| !s.finalize)
+                        .map(|s| if s.rollback_restore.is_empty() { s.rollback.clone() } else { s.rollback_restore.clone() })
+                        .collect();
+                    let finalize: Vec<String> = steps_of.iter().filter(|s| s.finalize).map(|s| s.statement.clone()).collect();
                     conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
                     conn.exec_all(&setup).await?;
                     run_steps(conn, db, &before).await?;
                     // SQLite는 table을 다시 만드는 동안 foreign key를 끄고, 끝난 뒤 검사한다.
                     if db == "sqlite" {
                         conn.exec("PRAGMA foreign_keys = OFF").await?;
+                        conn.exec("PRAGMA legacy_alter_table = OFF").await?;
                     }
-                    conn.exec_all(&statements).await?;
+                    conn.exec_all(&forward).await?;
+                    foreign_key_check(conn, db).await?;
+                    schema_is(conn, "applied", &want).await?;
+                    if reversible {
+                        conn.exec_all(&back).await?;
+                        foreign_key_check(conn, db).await?;
+                        schema_is(conn, "rolled back", &source_text).await?;
+                        conn.exec_all(&again).await?;
+                        foreign_key_check(conn, db).await?;
+                        schema_is(conn, "applied again", &want).await?;
+                    }
                     if db == "sqlite" {
-                        let violations = value(conn, "SELECT COUNT(*) FROM pragma_foreign_key_check").await?;
-                        if violations != "0" {
-                            return Err(format!("PRAGMA foreign_key_check returns {violations} rows"));
-                        }
                         conn.exec("PRAGMA foreign_keys = ON").await?;
                     }
                     run_steps(conn, db, &after).await?;
-                    let (introspection, _) = conn.introspect().await.map_err(|e| format!("introspect: {e}"))?;
-                    if !introspection.unsupported.is_empty() {
-                        return Err(format!("unsupported: {:?}", introspection.unsupported));
+                    // finalize도 apply처럼 SQLite foreign key를 끄고 실행한다.
+                    if db == "sqlite" {
+                        conn.exec("PRAGMA foreign_keys = OFF").await?;
                     }
-                    let got = dbspec::manifest(&[&introspection.document]).map_err(|e| format!("manifest: {e:?}"))?.schema_text;
-                    if got != want {
-                        return Err(format!("schema text differs\n--- want\n{want}--- got\n{got}"));
+                    conn.exec_all(&finalize).await?;
+                    if db == "sqlite" {
+                        conn.exec("PRAGMA foreign_keys = ON").await?;
+                    }
+                    schema_is(conn, "finalized", &want).await?;
+                    let hidden = value(conn, hidden_left(db)).await?;
+                    if hidden != "0" {
+                        return Err(format!("{hidden} hidden tables or columns remain after finalize"));
                     }
                     Ok(())
                 })

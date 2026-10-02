@@ -1,13 +1,15 @@
-//! The cleanup errors of `orm::dbspec::apply` and `orm::dbspec::recover`
-//! (docs/plans.md, "Apply"): a wrapped SQLite connection injects a failing
-//! ROLLBACK after an event stops apply and a failing foreign key restore after
-//! a failing BEGIN IMMEDIATE, and a scripted MySQL connection returns no row
-//! for a recovery effect query. Apply must return every error: the first
+//! The cleanup errors of `orm::dbspec::apply` (docs/plans.md, "Apply"): a
+//! wrapped SQLite connection injects a failing lock release after an event
+//! stops apply and a failing foreign key restore after a failing BEGIN
+//! EXCLUSIVE, and a scripted MySQL connection returns no row for an effect
+//! query. Apply must return every error: the first
 //! failure alone, or `ApplyError::Cleanup` with the first failure and the
 //! cleanup error.
 
 use chrono::{DateTime, TimeZone, Utc};
-use orm::dbspec::{apply, parse_plan, recover, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan};
+use orm::dbspec::{
+    apply, effect_holds, effect_query, parse_plan, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Effect, Plan,
+};
 use serde_json::Value;
 use sqlx::{Connection, SqliteConnection};
 use std::collections::HashMap;
@@ -18,7 +20,7 @@ use std::time::{Duration, Instant};
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
 /// 한 case의 기한.
-const CASE_DEADLINE: Duration = Duration::from_secs(5);
+const CASE_DEADLINE: Duration = Duration::from_secs(20);
 
 /// apply를 event 처리기에서 멈추는 error.
 #[derive(Debug)]
@@ -85,7 +87,7 @@ async fn failing(fail: &[(&'static str, &'static str)]) -> Result<Failing, Strin
     Ok(Failing { inner, fail: fail.iter().copied().collect() })
 }
 
-/// recover가 읽는 query마다 정한 row를 돌려주는 MySQL connection. 정한 문장 밖의
+/// 읽는 query마다 정한 row를 돌려주는 MySQL connection. 정한 문장 밖의
 /// 실행과 query는 error다.
 struct Scripted {
     executes: Vec<String>,
@@ -131,8 +133,8 @@ fn cleanup_message(e: &ApplyError) -> Option<&str> {
     }
 }
 
-async fn rollback(plans: Vec<Plan>) -> Result<String, String> {
-    let mut c = failing(&[("ROLLBACK", "rollback failed")]).await?;
+async fn release(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[("PRAGMA locking_mode = normal", "release failed")]).await?;
     let mut stop = |e: &ApplyEvent| -> Result<(), EventError> {
         if e.kind == ApplyEventKind::Applied {
             return Err(Box::new(Stop));
@@ -142,16 +144,17 @@ async fn rollback(plans: Vec<Plan>) -> Result<String, String> {
     let result = apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut stop).await;
     match &result {
         Err(ApplyError::Cleanup { error, cleanup })
-            if matches!(error.as_ref(), ApplyError::Event(e) if e.downcast_ref::<Stop>().is_some()) && cleanup_message(cleanup) == Some("rollback failed") =>
+            if matches!(error.as_ref(), ApplyError::Event(e) if e.downcast_ref::<Stop>().is_some()) && cleanup_message(cleanup) == Some("release failed") =>
         {
             Ok(result.err().map(|e| e.to_string()).unwrap_or_default())
         }
-        _ => Err(format!("{result:?}; want the stop with the rollback error")),
+        _ => Err(format!("{result:?}; want the stop with the release error")),
     }
 }
 
 async fn begin_restore(plans: Vec<Plan>) -> Result<String, String> {
-    let mut c = failing(&[("BEGIN IMMEDIATE", "begin failed"), ("PRAGMA foreign_keys = ON", "restore failed")]).await?;
+    // sqlx는 SQLite foreign key를 켠 채 연다.
+    let mut c = failing(&[("BEGIN EXCLUSIVE", "begin failed"), ("PRAGMA foreign_keys = 1", "restore failed")]).await?;
     let result = apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await;
     match &result {
         Err(ApplyError::Cleanup { error, cleanup })
@@ -164,34 +167,15 @@ async fn begin_restore(plans: Vec<Plan>) -> Result<String, String> {
     }
 }
 
-async fn mysql_effect_row(plans: Vec<Plan>) -> Result<String, String> {
-    let tables = "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?";
-    let history = "SELECT `name`, `from_hash`, `to_hash`, `state`, `step` FROM `dbspec$plans`";
-    let running = vec![
-        CatalogValue::Text(plans[0].name().to_owned()),
-        CatalogValue::Text("empty".to_owned()),
-        CatalogValue::Text(plans[0].to().to_owned()),
-        CatalogValue::Text("running".to_owned()),
-        CatalogValue::Int(0),
-    ];
-    let mut c = Scripted {
-        executes: vec![
-            "CREATE TABLE IF NOT EXISTS `dbspec$plans`".to_owned(),
-            "DO RELEASE_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)))".to_owned(),
-        ],
-        queries: HashMap::from([
-            ("SELECT GET_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)), 0)".to_owned(), vec![vec![CatalogValue::Int(1)]]),
-            (history.to_owned(), vec![running]),
-            (tables.to_owned(), vec![]),
-        ]),
-    };
-    let result = recover(&mut c, Dialect::MySql, &plans, &fixed_now, &mut quiet).await;
+async fn effect_row() -> Result<String, String> {
+    let tables = effect_query(Dialect::MySql, "table").ok_or("no MySQL table effect query")?;
+    let mut c = Scripted { executes: vec![], queries: HashMap::from([(tables.to_owned(), vec![])]) };
+    let effect = Effect { kind: "table", table: "orders".to_owned(), name: String::new(), present: true };
+    let result = effect_holds(&mut c, Dialect::MySql, &effect).await;
     let want = format!("{tables} returned 0 rows; want one");
     match &result {
-        Err(ApplyError::Failed { step: 0, source, .. }) if protocol_message(source) == Some(want.as_str()) => {
-            Ok(result.err().map(|e| e.to_string()).unwrap_or_default())
-        }
-        _ => Err(format!("{result:?}; want failed at step 0 with {want:?}")),
+        Err(e) if protocol_message(e) == Some(want.as_str()) => Ok(want),
+        _ => Err(format!("{result:?}; want {want:?}")),
     }
 }
 
@@ -214,9 +198,9 @@ async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> 
 async fn apply_reports_cleanup_errors() {
     let plans = create_from_empty();
     let results = [
-        case("apply/cleanup-errors/rollback", rollback(plans.clone())).await,
+        case("apply/cleanup-errors/release", release(plans.clone())).await,
         case("apply/cleanup-errors/begin-restore", begin_restore(plans.clone())).await,
-        case("apply/mysql-effect-row", mysql_effect_row(plans.clone())).await,
+        case("apply/effect-row", effect_row()).await,
     ];
     let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();
     assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());

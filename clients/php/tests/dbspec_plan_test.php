@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 // The plan vectors of tests/dbspec/plans.json through Orm\Dbspec\Dbspec
-// (docs/plans.md): every case's canonical emission, changes and statements
-// of three dialects, every invalid case's `plan` diagnostics, every chain
+// (docs/plans.md): every case's canonical emission, changes and steps of
+// three dialects, every invalid case's `plan` diagnostics, every chain
 // case's order or `chain` diagnostics, every parse case's diagnostics with
 // rule, line, column and the message of a `plan` diagnostic, every
 // comparison's differences or `compare` diagnostics, and the unknown dialect
@@ -16,8 +16,41 @@ use Orm\Dbspec\Diagnostic;
 use Orm\Dbspec\Difference;
 use Orm\Dbspec\Document;
 use Orm\Dbspec\Plan;
+use Orm\Dbspec\PlanStep;
 
 const CASE_DEADLINE_MS = 5000;
+
+/**
+ * step 의 plans.json object 다(docs/plans.md "Steps"). key 는 이름 순이다.
+ *
+ * @return array<string, mixed>
+ */
+function step_fields(PlanStep $s): array
+{
+    $out = ['statement' => $s->statement, 'effect' => $s->effect->text()];
+    if ($s->rollback !== '') {
+        $out['rollback'] = $s->rollback;
+    } elseif ($s->irreversible !== '') {
+        $out['irreversible'] = $s->irreversible;
+    }
+    if ($s->restore !== '') {
+        $out['restore'] = $s->restore;
+    }
+    if ($s->rollbackRestore !== '') {
+        $out['rollback_restore'] = $s->rollbackRestore;
+    }
+    if ($s->restore !== '' || $s->rollbackRestore !== '') {
+        $out['restore_if'] = $s->restoreIf?->text();
+    }
+    if ($s->nullChecks !== []) {
+        $out['null_checks'] = array_map(static fn($c): array => [$c->table, $c->column, $c->default], $s->nullChecks);
+    }
+    if ($s->finalize) {
+        $out['finalize'] = true;
+    }
+    ksort($out);
+    return $out;
+}
 
 $started = hrtime(true);
 echo "RUN dbspec_plan\n";
@@ -94,12 +127,17 @@ foreach ($vectors['cases'] as $case) {
         throw new RuntimeException("$id: changes\nwant " . json_encode($case['changes']) . "\ngot  " . json_encode($got));
     }
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-        $want = $case['statements'][$dialect] ?? throw new RuntimeException("$id: no $dialect statements");
-        $result = Dbspec::planStatements($source, $plan, $dialect);
-        $statements = $result->statements ?? throw new RuntimeException("$id/$dialect: diagnostics " . plan_diagnostics($result->diagnostics));
-        for ($i = 0; $i < max(count($statements), count($want)); $i++) {
-            if (($statements[$i] ?? null) !== ($want[$i] ?? null)) {
-                throw new RuntimeException("$id/$dialect: statement $i differs\n--- want\n" . ($want[$i] ?? '(none)') . "\n--- got\n" . ($statements[$i] ?? '(none)'));
+        $want = $case['steps'][$dialect] ?? throw new RuntimeException("$id: no $dialect steps");
+        $result = Dbspec::planSteps($source, $plan, $dialect);
+        $steps = $result->steps ?? throw new RuntimeException("$id/$dialect: diagnostics " . plan_diagnostics($result->diagnostics));
+        for ($i = 0; $i < max(count($steps), count($want)); $i++) {
+            $got = isset($steps[$i]) ? step_fields($steps[$i]) : null;
+            $expected = $want[$i] ?? null;
+            if ($expected !== null) {
+                ksort($expected);
+            }
+            if ($got !== $expected) {
+                throw new RuntimeException("$id/$dialect: step $i differs\n--- want\n" . json_encode($expected, JSON_UNESCAPED_SLASHES) . "\n--- got\n" . json_encode($got, JSON_UNESCAPED_SLASHES));
             }
         }
     }
@@ -117,11 +155,11 @@ foreach ($vectors['invalid'] as $case) {
     if ($got !== $case['errors']) {
         throw new RuntimeException("$id: errors\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
     }
-    // statement 도 diff 와 같은 diagnostic 으로 거절한다.
+    // step 도 diff 와 같은 diagnostic 으로 거절한다.
     if ($parsed->plan !== null) {
-        $statements = Dbspec::planStatements($source, $parsed->plan, 'postgres');
-        if ($statements->statements !== null || plan_messages($id, 'plan', $statements->diagnostics) !== $case['errors']) {
-            throw new RuntimeException("$id: planStatements does not report the diff diagnostics: " . plan_diagnostics($statements->diagnostics));
+        $steps = Dbspec::planSteps($source, $parsed->plan, 'postgres');
+        if ($steps->steps !== null || plan_messages($id, 'plan', $steps->diagnostics) !== $case['errors']) {
+            throw new RuntimeException("$id: planSteps does not report the diff diagnostics: " . plan_diagnostics($steps->diagnostics));
         }
     }
     finish_plan_case($id, $caseStarted);
@@ -177,7 +215,7 @@ foreach ($vectors['comparisons'] as $case) {
 
 echo "RUN plan/unknown-dialect\n";
 try {
-    Dbspec::planStatements(null, plan_of('plan/unknown-dialect', $vectors['cases'][0]['plan']), 'oracle');
+    Dbspec::planSteps(null, plan_of('plan/unknown-dialect', $vectors['cases'][0]['plan']), 'oracle');
     throw new RuntimeException('unknown dialect oracle was accepted');
 } catch (InvalidArgumentException $e) {
     if (!str_contains($e->getMessage(), 'oracle')) {

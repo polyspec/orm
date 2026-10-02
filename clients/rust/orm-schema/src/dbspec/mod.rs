@@ -19,7 +19,7 @@ mod parser;
 mod plan;
 mod plan_diff;
 mod plan_objects;
-mod plan_statements;
+mod plan_steps;
 mod render;
 mod runtime;
 mod validate;
@@ -30,7 +30,7 @@ pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
 pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, TableRename, RULE_CHAIN, RULE_PLAN};
 pub use plan_diff::{diff, Change};
-pub use plan_statements::plan_statements;
+pub use plan_steps::{plan_steps, Effect, NullCheck, PlanStep};
 pub use render::{render, Dialect};
 pub use runtime::{parse_manifest, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
 

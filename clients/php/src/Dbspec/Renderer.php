@@ -142,11 +142,38 @@ final class Renderer
     /** @return list<string> */
     public function table(Table $t): array
     {
+        $create = $this->createTable($t, $t->name, static fn(string $column): string => $t->name . '$' . $column, []);
+        $out = [$create];
+        if ($this->dialect === 'sqlite') {
+            foreach (self::byName($t->uniqueKeys) as $unique) {
+                $out[] = 'CREATE UNIQUE INDEX ' . $this->q($unique->name) . ' ON ' . $this->q($t->name) . ' (' . $this->list($unique->columns) . ')';
+            }
+        }
+        foreach (self::byName($t->indexes) as $index) {
+            $columns = array_map(fn(IndexColumn $c): string => $this->q($c->name) . ($c->descending ? ' DESC' : ''), $index->columns);
+            $out[] = 'CREATE INDEX ' . $this->q($index->name) . ' ON ' . $this->q($t->name) . ' (' . implode(', ', $columns) . ')';
+        }
+        return $out;
+    }
+
+    /**
+     * table t 를 name 으로 만드는 CREATE TABLE 이다. checkName 은 column 의 renderer
+     * CHECK 이름이고, hidden 은 t 의 column 뒤에 nullable 이며 CHECK 없이 더하는
+     * column 이다(docs/plans.md "Steps"의 SQLite 다시 만들기).
+     *
+     * @param \Closure(string): string $checkName
+     * @param list<Column> $hidden
+     */
+    public function createTable(Table $t, string $name, \Closure $checkName, array $hidden): string
+    {
         $parts = [];
         $identity = false;
         foreach ($t->columns as $column) {
             $parts[] = $this->column($column);
             $identity = $identity || $column->identity;
+        }
+        foreach ($hidden as $column) {
+            $parts[] = $this->column(new Column($column->name, $column->type, true, false, $column->default));
         }
         if ($t->primaryKey === null) {
             throw new \InvalidArgumentException("Table {$t->name} has no primary key");
@@ -166,27 +193,17 @@ final class Renderer
         foreach ($t->columns as $column) {
             $check = $this->typeCheck($column);
             if ($check !== '') {
-                $parts[] = 'CONSTRAINT ' . $this->q($t->name . '$' . $column->name) . " CHECK ($check)";
+                $parts[] = 'CONSTRAINT ' . $this->q($checkName($column->name)) . " CHECK ($check)";
             }
         }
         foreach (self::byName($t->checks) as $check) {
             $parts[] = 'CONSTRAINT ' . $this->q($check->name) . ' CHECK (' . $this->checkText($t, $check) . ')';
         }
-        $create = 'CREATE TABLE ' . $this->q($t->name) . ' (' . implode(', ', $parts) . ')';
+        $create = 'CREATE TABLE ' . $this->q($name) . ' (' . implode(', ', $parts) . ')';
         if ($this->dialect === 'mysql') {
             $create .= ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin';
         }
-        $out = [$create];
-        if ($this->dialect === 'sqlite') {
-            foreach (self::byName($t->uniqueKeys) as $unique) {
-                $out[] = 'CREATE UNIQUE INDEX ' . $this->q($unique->name) . ' ON ' . $this->q($t->name) . ' (' . $this->list($unique->columns) . ')';
-            }
-        }
-        foreach (self::byName($t->indexes) as $index) {
-            $columns = array_map(fn(IndexColumn $c): string => $this->q($c->name) . ($c->descending ? ' DESC' : ''), $index->columns);
-            $out[] = 'CREATE INDEX ' . $this->q($index->name) . ' ON ' . $this->q($t->name) . ' (' . implode(', ', $columns) . ')';
-        }
-        return $out;
+        return $create;
     }
 
     public function column(Column $c): string

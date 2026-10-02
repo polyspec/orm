@@ -4,9 +4,9 @@
 // the schema text and their hashes of a document set; renderDbspec writes the
 // statements of a document set in one dialect; introspectDbspec reads a
 // database into a document and the objects it cannot read. parsePlan,
-// emitPlan, chainPlans, diffPlan and planStatements read, write, order, diff
-// and render schema plans, applyPlans and recoverPlans apply them to a
-// database, and compareSchemas lists every difference of two schemas
+// emitPlan, chainPlans, diffPlan and planSteps read, write, order, diff
+// and render schema plans, applyPlans, recoverPlans, rollbackPlans and
+// finalizePlans apply, continue, undo and finalize them on a database, and compareSchemas lists every difference of two schemas
 // (docs/plans.md). exportMermaid and importMermaid write and read
 // standard Mermaid erDiagrams (docs/mermaid.md).
 import { createHash } from 'node:crypto';
@@ -39,7 +39,9 @@ export {
 export {
   applyPlans,
   DbspecApplyError,
+  finalizePlans,
   recoverPlans,
+  rollbackPlans,
   type DbspecApplyErrorCode,
   type DbspecApplyEvent,
   type DbspecApplyEventKind,
@@ -51,7 +53,7 @@ export {
 export { exportMermaid, importMermaid, type DbspecMermaidExport, type DbspecMermaidImport } from './mermaid.js';
 export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
 export { compareSchemas, type DbspecComparisonResult, type DbspecDifference } from './compare.js';
-export { planStatements, type DbspecPlanStatementsResult } from './plan_statements.js';
+export { planSteps, effectText, type DbspecPlanStepsResult, type DbspecPlanStep, type DbspecEffect, type DbspecNullCheck } from './plan_steps.js';
 
 export type * from './model.js';
 

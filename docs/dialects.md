@@ -327,7 +327,7 @@ Introspection reads the current database (MySQL), the current schema (PostgreSQL
 ### Document
 
 - Tables come in name order, columns in catalog position, constraints and indexes by name; a document holds no diagram and no comment.
-- The plan history table `dbspec$plans` ([plans](plans.md#apply)) is left out and not reported.
+- Every table and column whose name begins with `dbspec$` is left out and not reported: the plan history table `dbspec$plans`, the hidden tables and columns of a plan and the SQLite work table ([plans](plans.md#steps)).
 - Only the settings that render in the database are read: `immutable` and `audit`, recognized from their triggers. The manifest settings live only in documents; a tool that synchronizes keeps them from the document it compares.
 
 ### Types and columns

@@ -173,6 +173,47 @@ func (r vectorReader) linesMap(object map[string]any, location, key string) (map
 	return out, nil
 }
 
+// stepsMap은 dialect마다 step object array를 가진 object를 돌려준다. step object는
+// statement와 effect string을 가지며, docs/plans.md "Steps"의 key만 가진다.
+func (r vectorReader) stepsMap(object map[string]any, location, key string) (map[string][]any, error) {
+	value, err := r.field(object, location, key)
+	if err != nil {
+		return nil, err
+	}
+	items, ok := value.(map[string]any)
+	if !ok {
+		return nil, r.fail(vectorAt(location, key), "is not an object")
+	}
+	allowed := map[string]bool{"statement": true, "rollback": true, "irreversible": true, "effect": true, "restore": true, "rollback_restore": true, "restore_if": true, "null_checks": true, "finalize": true}
+	out := make(map[string][]any, len(items))
+	for name, item := range items {
+		at := vectorAt(vectorAt(location, key), name)
+		steps, err := r.array(item, at)
+		if err != nil {
+			return nil, err
+		}
+		for i, step := range steps {
+			stepAt := fmt.Sprintf("%s[%d]", at, i)
+			fields, ok := step.(map[string]any)
+			if !ok {
+				return nil, r.fail(stepAt, "is not an object")
+			}
+			for k := range fields {
+				if !allowed[k] {
+					return nil, r.fail(stepAt, "has the unknown key "+k)
+				}
+			}
+			for _, k := range []string{"statement", "effect"} {
+				if _, err := r.string(fields, stepAt, k); err != nil {
+					return nil, err
+				}
+			}
+		}
+		out[name] = steps
+	}
+	return out, nil
+}
+
 // triples는 [kind, table, name] string 세 개짜리 array의 array를 돌려준다.
 func (r vectorReader) triples(object map[string]any, location, key string) ([][3]string, error) {
 	items, err := r.arrayField(object, location, key)

@@ -20,7 +20,7 @@ const ROUTINES: usize = 6;
 
 pub(super) const QUERIES: [&str; 7] = [
     "SELECT c.relname, c.relkind::text, c.relispartition FROM pg_class c
-WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname <> 'dbspec$plans' ORDER BY c.relname",
+WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind IN ('r', 'p', 'v', 'm', 'f') AND c.relname NOT LIKE 'dbspec$%' ORDER BY c.relname",
     "SELECT c.relname FROM pg_class c WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'S'
 AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.deptype = 'i') ORDER BY c.relname",
     "SELECT c.relname, a.attname, quote_ident(a.attname), format_type(a.atttypid, a.atttypmod), a.attnotnull,
@@ -28,7 +28,7 @@ pg_get_expr(d.adbin, d.adrelid), a.attidentity::text, a.attgenerated::text, coal
 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
 LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
 LEFT JOIN pg_collation co ON co.oid = a.attcollation
-WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
+WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped AND a.attname NOT LIKE 'dbspec$%'
 ORDER BY c.relname, a.attnum",
     "SELECT c.relname, con.conname, con.contype::text, pg_get_constraintdef(con.oid), con.condeferrable,
 con.convalidated, con.confmatchtype::text, con.confdeltype::text, con.confupdtype::text, CASE WHEN r.relnamespace = c.relnamespace THEN r.relname ELSE '' END,

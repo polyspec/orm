@@ -1,14 +1,14 @@
 //! plans.json(tests/dbspec/plans.json)의 chain(create-from-empty와
 //! rename-table-and-column)을 Rust client로 한 database에 적용한다
 //! (docs/plans.md "Apply"). action은 apply-first(첫 plan만), apply(chain 전체),
-//! stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 MySQL plan을
-//! 끝냄) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
+//! stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 plan을 이어
+//! 끝냄), rollback(history의 마지막 plan을 되돌림) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
 //! "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //!
-//! Usage: dbspec_apply <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>
+//! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
 use chrono::{DateTime, TimeZone, Utc};
-use orm::dbspec::{apply, parse_plan, recover, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, Dialect, Plan};
+use orm::dbspec::{apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, Dialect, Plan};
 use serde_json::Value;
 use sqlx::Connection;
 
@@ -30,7 +30,7 @@ impl std::error::Error for Stop {}
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let [action, dialect, uri, vectors] = args.as_slice() else {
-        eprintln!("usage: dbspec_apply <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>");
+        eprintln!("usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>");
         std::process::exit(2);
     };
     match run(action, dialect, uri, vectors).await {
@@ -103,6 +103,7 @@ async fn on<C: ApplyConnection + Send>(mut c: C, dialect: Dialect, rules: &[&str
         "apply-first" => apply(&mut c, dialect, &plans[..1], &fixed_now, &mut quiet).await,
         "apply" => apply(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
         "recover" => recover(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
+        "rollback" => rollback(&mut c, dialect, plans, &fixed_now, &mut quiet).await,
         "stop" => match apply(&mut c, dialect, plans, &fixed_now, &mut stop).await {
             Err(ApplyError::Event(e)) if e.downcast_ref::<Stop>().is_some() => return Ok("stopped".to_owned()),
             Ok(()) => return Err("stop: apply did not stop".to_owned()),

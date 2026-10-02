@@ -23,7 +23,8 @@ export {
   introspectDbspec,
   parseDbspec,
   parsePlan,
-  planStatements,
+  planSteps,
+  effectText,
   renderDbspec,
 } from './dbspec/index.js';
 export type * from './dbspec/index.js';

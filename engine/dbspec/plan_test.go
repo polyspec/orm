@@ -21,11 +21,12 @@ type planVectors struct {
 
 // planCase의 Source가 nil이면 빈 schema다.
 type planCase struct {
-	ID         string
-	Source     []string
-	Plan       []string
-	Changes    [][3]string
-	Statements map[string][]string
+	ID      string
+	Source  []string
+	Plan    []string
+	Changes [][3]string
+	// Steps는 dialect마다 step object의 array다(docs/plans.md "Steps").
+	Steps map[string][]any
 }
 
 type planInvalidCase struct {
@@ -87,7 +88,7 @@ func decodePlanVectors(r vectorReader, object map[string]any) (planVectors, erro
 		if p.Changes, err = r.triples(c, location, "changes"); err != nil {
 			return p, err
 		}
-		p.Statements, err = r.linesMap(c, location, "statements")
+		p.Steps, err = r.stepsMap(c, location, "steps")
 		return p, err
 	}); err != nil {
 		return v, err
@@ -212,13 +213,17 @@ func checkPlanCase(t *testing.T, c planCase) {
 			problems = append(problems, fmt.Errorf("changes\nwant %v\ngot  %v", c.Changes, got))
 		}
 		for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
-			statements, diagnostics := PlanStatements(source, p, dialect)
+			steps, diagnostics := PlanSteps(source, p, dialect)
 			if len(diagnostics) > 0 {
-				problems = append(problems, fmt.Errorf("%s statements: %v", dialect, diagnostics))
+				problems = append(problems, fmt.Errorf("%s steps: %v", dialect, diagnostics))
 				continue
 			}
-			if !slices.Equal(statements, c.Statements[string(dialect)]) {
-				problems = append(problems, fmt.Errorf("%s statements\nwant %q\ngot  %q", dialect, c.Statements[string(dialect)], statements))
+			got := make([]any, len(steps))
+			for i, step := range steps {
+				got[i] = stepFields(step)
+			}
+			if err := jsonEqual(string(dialect)+" steps", got, c.Steps[string(dialect)]); err != nil {
+				problems = append(problems, err)
 			}
 		}
 		return errors.Join(problems...)
@@ -362,4 +367,39 @@ func checkComparison(t *testing.T, c comparisonCase) {
 		}
 		return errors.Join(problems...)
 	})
+}
+
+// stepFields는 step의 plans.json object다(docs/plans.md "Steps").
+func stepFields(s PlanStep) map[string]any {
+	out := map[string]any{"statement": s.Statement, "effect": s.Effect.String()}
+	switch {
+	case s.Rollback != "":
+		out["rollback"] = s.Rollback
+	case s.Irreversible != "":
+		out["irreversible"] = s.Irreversible
+	}
+	if s.Restore != "" {
+		out["restore"] = s.Restore
+	}
+	if s.RollbackRestore != "" {
+		out["rollback_restore"] = s.RollbackRestore
+	}
+	if s.Restore != "" || s.RollbackRestore != "" {
+		out["restore_if"] = s.RestoreIf.String()
+	}
+	if len(s.NullChecks) > 0 {
+		var checks []any
+		for _, c := range s.NullChecks {
+			var def any
+			if c.HasDefault {
+				def = c.Default
+			}
+			checks = append(checks, []any{c.Table, c.Column, def})
+		}
+		out["null_checks"] = checks
+	}
+	if s.Finalize {
+		out["finalize"] = true
+	}
+	return out
 }
