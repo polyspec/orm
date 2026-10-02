@@ -4135,6 +4135,7 @@
         "clients/rust/orm-build/tests/grid_cells.rs",
         "clients/rust/orm-build/tests/grid_decimals.rs",
         "clients/rust/orm-build/tests/grid_numbers.rs",
+        "clients/rust/orm-build/tests/grid_temporal.rs",
         "clients/rust/orm-build/tests/read_only_query.rs",
         "clients/rust/orm-build/tests/row_commit_permit.rs",
         "clients/rust/orm-build/tests/row_insert_identity.rs",

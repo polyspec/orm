@@ -19,7 +19,7 @@ impl RowSnapshot {
                 return Err(invalid());
             }
             let size = match cell {
-                GridCell::Text(value) | GridCell::Decimal(value) => value.len(),
+                GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => value.len(),
                 GridCell::Binary(value) => value.len(),
                 _ => 16,
             };

@@ -309,6 +309,19 @@ MySQL unsigned 전체 범위를 보존한다. 이 Rust 값은 wire로 전달할 
 SQLite는 네이티브 decimal 저장 클래스가 없으므로 실제 텍스트/정수/실수 태그를
 그대로 유지한다. 이번 단계에서 PostgreSQL 비유한 numeric은 명시적 미지원이다.
 
+시간 그리드 셀은 dbspec 텍스트 형식을 담는다. `Date`는 `YYYY-MM-DD`, `Time`은
+`HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 뒤의 둘은 소수 자릿수를
+가진다. MySQL `DATE`, `TIME`, `DATETIME`과 PostgreSQL `date`, `time`, time zone
+없는 `timestamp`가 이 셀로 디코딩되고, MySQL `TIMESTAMP`와 PostgreSQL
+`timestamptz`, `timetz`는 미지원으로 남는다. 기술된 테이블의 읽기(테이블 페이지,
+행 조회, insert 읽기)는 컬럼이 선언한 precision p만큼 정확히 소수 자릿수를 쓰며,
+p 없는 MySQL `time`과 `datetime`은 0, p 없는 PostgreSQL `time`과 `timestamp`는
+6이다. read-only 그리드 조회에는 컬럼 선언이 없으므로 여섯 자리를 쓴다.
+00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜,
+PostgreSQL infinity는 실패한다. 시간 primary key는 행 식별자로 bind할 수 없으며
+`ROW_UPDATE_INVALID`로 실패한다. SQLite에는 시간 저장 클래스가 없으므로 셀이
+저장된 값의 태그를 유지하고, dbspec 컬럼은 CHECK된 텍스트를 저장한다.
+
 ### 한정된 네이티브 Rust 테이블 메타데이터
 
 `CatalogConnection::current_namespace()`는 선택된 namespace를 보고한다.

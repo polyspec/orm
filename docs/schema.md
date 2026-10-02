@@ -36,7 +36,7 @@ The schema operations are functions of each client library. They take parsed doc
 
 ## 3. Rust catalog connections
 
-Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
+Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values (grid cells also decimal, binary, date, time and datetime values; see [interfaces](interfaces.md)), but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
 
 Tool `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through catalog operations, including transaction cleanup.
 
