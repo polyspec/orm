@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.
+
 - T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.
 
 - T17.7: hot-path check의 Go 네이티브 기준 코드가 생성 클라이언트와 같은 statement를 실행하고, relation과 list workload는 key만 bind하며, Rust 네이티브 insert는 AES column에 AES ciphertext를 쓴다.
@@ -324,6 +326,13 @@ node:sqlite, sqlite3 shell이 DSN query를 파일 이름에 남긴다는 것을 
 실행기 수정 시각 기록을 기록하고 audit context 정의는 T8.1 review로
 남긴다. 현재 스키마 도구와 client의 결함 13개를 T8.0.1-T8.0.11, T8.0.13,
 T8.0.14로 기록한다.
+
+PHP 클라이언트에서 PDO driver 확장을 요구하지 않는다(N17). `composer.json`이
+`ext-pdo_mysql`을 요구했으므로, 클라이언트가 MySQL driver를 `mysql://` DSN에서만
+참조하는데도 공식 PHP image처럼 그것이 없는 PHP에서 `composer install`이
+거부되었다. 이제 `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`를 제안하고 어느 것도
+요구하지 않으며, `make php-without-mysql-check`가 공식 PHP image에서 SQLite로
+클라이언트를 실행한다.
 
 모든 database에서 트랜잭션 rollback을 실패시키는 test fault를 제공한다(N16).
 orm에는 rollback을 실패시키는 지원 방법이 없었다. ORM
