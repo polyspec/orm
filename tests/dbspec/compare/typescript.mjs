@@ -3,6 +3,7 @@
 //
 // Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (TypeScript build 뒤)
+import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
 import { readInput } from '../input.mjs';
 import {
@@ -18,6 +19,7 @@ import {
   parsePlan,
   planSteps,
   effectText,
+  readDbspecBytes,
   readDbspecFile,
   renderDbspec,
 } from '../../../clients/typescript/dist/dbspec/index.js';
@@ -192,25 +194,28 @@ for (const kind of ['canonical', 'normalize', 'invalid']) {
 }
 out.push('stress');
 write(readDocument(stressPath), {}, true);
-// files case는 readDbspecFile로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
-// message 앞의 path는 "<path>"로 쓴다.
+// files case는 readDbspecFile에 path를 주어 "files/<id>"로, readDbspecBytes에 파일 byte와
+// case path를 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를, 없으면
+// emission을 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
 for (const c of shared.files) {
-  out.push(`files/${c.id}`);
   const path = joinPath(dirname(casesPath), c.path);
-  let read;
+  let reads;
   try {
-    read = readDbspecFile(path);
+    reads = [[`files/${c.id}`, path, readDbspecFile(path)], [`files/${c.id}/bytes`, c.path, readDbspecBytes(c.path, readFileSync(path))]];
   } catch (error) {
     console.error(`${path}: ${error.message}`);
     process.exit(1);
   }
-  if (read.text !== null) {
-    write(read.text, {}, false);
-    continue;
-  }
-  for (const d of read.diagnostics) {
-    out.push(`! ${d.rule} ${d.line} ${d.column}`);
-    out.push(`= ${d.message.startsWith(path) ? '<path>' + d.message.slice(path.length) : d.message}`);
+  for (const [label, name, read] of reads) {
+    out.push(label);
+    if (read.text !== null) {
+      write(read.text, {}, false);
+      continue;
+    }
+    for (const d of read.diagnostics) {
+      out.push(`! ${d.rule} ${d.line} ${d.column}`);
+      out.push(`= ${d.message.startsWith(name) ? '<name>' + d.message.slice(name.length) : d.message}`);
+    }
   }
 }
 

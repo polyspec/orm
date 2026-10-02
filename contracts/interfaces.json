@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:f449787660821ac4413eacd5bd0ba82d48e63e3ab8c56820c50e9c50e809b05b",
-    "php": "sha256:e778dc83ee7b5e23cf0b7515725fb7fa6c9e9cacfc269c169af0a3172971cfa3",
-    "rust": "sha256:1f1c7643851d20ad752adc397e2194db30c8583dfa593028b0309cd5eb4d9181",
-    "typescript": "sha256:bc5f3a6950a73185d3daaac31eef46f2f7713578aad3f45ae0db88e07acaaa8e"
+    "go": "sha256:888b43ad6ad26b58fe6b5f678e2a9cb4ea1579119fe1c0e298af770a2baeda26",
+    "php": "sha256:117f46e65e78e7e9c2fe856b4a43d9728fe89eaac603eb5b8fe53e48532d9879",
+    "rust": "sha256:43b77c5672cb8cc113f6deab0b9ccbd9d966add3276680a6f36de34228ba22d2",
+    "typescript": "sha256:e13b599c0c534db33b1deec609450f65bb72a5bbe620b6aed891a251fa3cd8e3"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -359,13 +359,14 @@
       "fields": {},
       "methods": [
         "readFile",
+        "readBytes",
         "parse",
         "emit",
         "manifest",
         "render"
       ],
-      "ownership": "Reads a dbspec document file after checking its signature, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md).",
-      "ownership_ko": "signature를 확인한 뒤 dbspec 문서 파일을 읽고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md)."
+      "ownership": "Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md).",
+      "ownership_ko": "signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md)."
     },
     {
       "id": "DbspecDocument",
@@ -1308,7 +1309,7 @@
       ],
       "output": "DbspecReadResult",
       "errors": [],
-      "state": "Reads the document file at the path for parsing. A file that does not start with the bytes `dbspec ` returns exactly one signature diagnostic at line 1, column 1 with the message `<path> is not a dbspec document` and no text, before any parse; otherwise the bytes of the file and no diagnostic. A file that cannot be read is the read error of the platform",
+      "state": "Reads the document file at the path and gives its bytes to Dbspec.readBytes with the path as name. A file that cannot be read is the read error of the platform",
       "native": {
         "go": {
           "symbol": "engine/dbspec/file.go::ReadFile",
@@ -1325,6 +1326,34 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/file.ts::readDbspecFile",
           "signature": "export function readDbspecFile(path: string): DbspecReadResult"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.readBytes",
+      "for": "once",
+      "inputs": [
+        "DbspecFileBytes"
+      ],
+      "output": "DbspecBytesResult",
+      "errors": [],
+      "state": "Checks the bytes of a document file that the caller read, before any parse. Bytes that do not start with `dbspec ` return exactly one signature diagnostic at line 1, column 1 with the message `<name> is not a dbspec document` and no text; bytes that are not UTF-8 return exactly one encoding diagnostic at the line and column of the first invalid byte with the message `<name> is not valid UTF-8` and no text; otherwise the bytes as text and no diagnostic",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/file.go::ReadBytes",
+          "signature": "func(name string, b []byte) (string, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readBytes",
+          "signature": "public static function readBytes(string $name, string $bytes): Orm\\Dbspec\\ReadResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_bytes",
+          "signature": "pub fn read_bytes(name: &str, bytes: Vec<u8>) -> Result<String, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/file.ts::readDbspecBytes",
+          "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
         }
       }
     },

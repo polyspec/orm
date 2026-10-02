@@ -29,10 +29,9 @@ final class Dbspec
     public const SIGNATURE = 'dbspec ';
 
     /**
-     * parse할 $path의 dbspec document 파일을 읽는다(docs/dbspec.md "Files"). SIGNATURE로
-     * 시작하지 않는 파일은 text 없이 line 1, column 1의 `signature` diagnostic 하나와 message
-     * "<path> is not a dbspec document"를 돌려주며 parse하지 않는다. directory나 읽을 수
-     * 없는 파일은 "cannot read <path>: <reason>" RuntimeException이다.
+     * parse할 $path의 dbspec document 파일을 읽고 그 byte를 path를 이름으로 readBytes로
+     * 확인한다(docs/dbspec.md "Files"). directory나 읽을 수 없는 파일은
+     * "cannot read <path>: <reason>" RuntimeException이다.
      */
     public static function readFile(string $path): ReadResult
     {
@@ -40,15 +39,92 @@ final class Dbspec
         if (is_dir($path)) {
             throw new \RuntimeException("cannot read $path: is a directory");
         }
-        $text = @file_get_contents($path);
-        if ($text === false) {
+        $bytes = @file_get_contents($path);
+        if ($bytes === false) {
             $reason = error_get_last()['message'] ?? 'cannot be read';
             throw new \RuntimeException("cannot read $path: $reason");
         }
-        if (!str_starts_with($text, self::SIGNATURE)) {
-            return ReadResult::invalid([new Diagnostic('signature', 1, 1, "$path is not a dbspec document")]);
+        return self::readBytes($path, $bytes);
+    }
+
+    /**
+     * 호출자가 자기 규칙으로 읽은 dbspec document 파일의 byte를 parse 전에 확인한다.
+     * $name은 message가 파일을 가리키는 이름이다. SIGNATURE로 시작하지 않는 byte는 text 없이
+     * line 1, column 1의 `signature` diagnostic 하나와 message "<name> is not a dbspec
+     * document"를, UTF-8이 아닌 byte는 첫 잘못된 byte의 줄과 칸에서 `encoding` diagnostic
+     * 하나와 message "<name> is not valid UTF-8"을 돌려준다. 그 밖의 byte는 diagnostic 없이
+     * 그대로 text가 된다.
+     */
+    public static function readBytes(string $name, string $bytes): ReadResult
+    {
+        if (!str_starts_with($bytes, self::SIGNATURE)) {
+            return ReadResult::invalid([new Diagnostic('signature', 1, 1, "$name is not a dbspec document")]);
         }
-        return ReadResult::valid($text);
+        if (preg_match('//u', $bytes) !== 1) {
+            [$line, $column] = self::invalidUtf8Position($bytes);
+            return ReadResult::invalid([new Diagnostic('encoding', $line, $column, "$name is not valid UTF-8")]);
+        }
+        return ReadResult::valid($bytes);
+    }
+
+    /**
+     * 첫 잘못된 UTF-8 byte의 줄과 칸(code point 단위)이다. 줄은 LF로 나눈다.
+     *
+     * @return array{int, int}
+     */
+    private static function invalidUtf8Position(string $bytes): array
+    {
+        $line = 1;
+        $column = 1;
+        $length = strlen($bytes);
+        for ($i = 0; $i < $length;) {
+            $size = self::utf8Size($bytes, $i, $length);
+            if ($size === 0) {
+                break;
+            }
+            if ($bytes[$i] === "\n") {
+                $line++;
+                $column = 1;
+            } else {
+                $column++;
+            }
+            $i += $size;
+        }
+        return [$line, $column];
+    }
+
+    /** $i에서 시작하는 올바른 UTF-8 문자의 byte 수, 잘못된 byte이면 0이다. */
+    private static function utf8Size(string $bytes, int $i, int $length): int
+    {
+        $b = ord($bytes[$i]);
+        [$size, $low, $high] = match (true) {
+            $b < 0x80 => [1, 0, 0],
+            $b >= 0xC2 && $b <= 0xDF => [2, 0x80, 0xBF],
+            $b === 0xE0 => [3, 0xA0, 0xBF],
+            $b === 0xED => [3, 0x80, 0x9F],
+            $b >= 0xE1 && $b <= 0xEF => [3, 0x80, 0xBF],
+            $b === 0xF0 => [4, 0x90, 0xBF],
+            $b >= 0xF1 && $b <= 0xF3 => [4, 0x80, 0xBF],
+            $b === 0xF4 => [4, 0x80, 0x8F],
+            default => [0, 0, 0],
+        };
+        if ($size <= 1) {
+            return $size;
+        }
+        if ($i + $size > $length) {
+            return 0;
+        }
+        $second = ord($bytes[$i + 1]);
+        if ($second < $low || $second > $high) {
+            return 0;
+        }
+        for ($k = 2; $k < $size; $k++) {
+            $next = ord($bytes[$i + $k]);
+            if ($next < 0x80 || $next > 0xBF) {
+                return 0;
+            }
+        }
+        return $size;
     }
 
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */

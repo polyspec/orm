@@ -17,7 +17,7 @@ import { parseDocument } from './parse.js';
 import { checkSet } from './set.js';
 
 export { renderDbspec, type DbspecDialect, type DbspecRenderResult } from './render.js';
-export { DBSPEC_SIGNATURE, readDbspecFile, type DbspecReadResult } from './file.js';
+export { DBSPEC_SIGNATURE, readDbspecBytes, readDbspecFile, type DbspecReadResult } from './file.js';
 export {
   introspectDbspec,
   type DbspecIntrospection,

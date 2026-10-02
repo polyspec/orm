@@ -451,26 +451,40 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 	return nil
 }
 
-// writeFile은 path를 dbspec.ReadFile로 읽어 diagnostic과 그 message를, 없으면 그
-// text의 emission을 출력한다. message 앞의 path는 "<path>"로 쓴다.
-func writeFile(out *bufio.Writer, path string) error {
+// writeFile은 files case 하나를 두 번 읽는다: dbspec.ReadFile에 path를 주어 "files/<id>"로,
+// dbspec.ReadBytes에 파일 byte와 case path를 이름으로 주어 "files/<id>/bytes"로. 각 결과는
+// diagnostic과 message("<name>"으로 바꾼 이름), 없으면 emission이다.
+func writeFile(out *bufio.Writer, id, path, name string) error {
+	fmt.Fprintf(out, "files/%s\n", id)
 	text, diagnostics, err := dbspec.ReadFile(path)
 	if err != nil {
 		return err
 	}
+	writeRead(out, text, diagnostics, path)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "files/%s/bytes\n", id)
+	text, diagnostics = dbspec.ReadBytes(name, raw)
+	writeRead(out, text, diagnostics, name)
+	return nil
+}
+
+// writeRead는 reader 결과의 diagnostic과 message를, 없으면 text의 emission을 출력한다.
+func writeRead(out *bufio.Writer, text string, diagnostics []dbspec.Diagnostic, name string) {
 	if len(diagnostics) == 0 {
 		write(out, text, nil, false)
-		return nil
+		return
 	}
 	for _, d := range diagnostics {
 		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
-		if rest, ok := strings.CutPrefix(d.Message, path); ok {
-			fmt.Fprintf(out, "= <path>%s\n", rest)
+		if rest, ok := strings.CutPrefix(d.Message, name); ok {
+			fmt.Fprintf(out, "= <name>%s\n", rest)
 		} else {
 			fmt.Fprintf(out, "= %s\n", d.Message)
 		}
 	}
-	return nil
 }
 
 func main() {
@@ -511,8 +525,7 @@ func main() {
 	fmt.Fprintln(out, "stress")
 	write(out, stress, nil, true)
 	for _, c := range all.Files {
-		fmt.Fprintf(out, "files/%s\n", c.ID)
-		if err := writeFile(out, filepath.Join(filepath.Dir(os.Args[1]), c.Path)); err != nil {
+		if err := writeFile(out, c.ID, filepath.Join(filepath.Dir(os.Args[1]), c.Path), c.Path); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

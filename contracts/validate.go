@@ -45,6 +45,7 @@ var outputs = map[string]map[string]string{
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
 	// dbspec parse returns the document or every diagnostic, never both.
 	"DbspecReadResult":     {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult"},
+	"DbspecBytesResult":    {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult"},
 	"DbspecParseResult":    {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult"},
 	"DbspecText":           {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
 	"DbspecRenderResult":   {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
@@ -71,6 +72,7 @@ var inputs = map[string]map[string]string{
 	"ManifestJson":        {"go": "manifestTextstring", "php": "array$documents", "rust": "schema:&Schema", "typescript": "texts:readonlystring[]"},
 	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},
 	"DbspecFilePath":      {"go": "pathstring", "php": "string$path", "rust": "path:&Path", "typescript": "path:string"},
+	"DbspecFileBytes":     {"go": "namestring,b[]byte", "php": "string$name,string$bytes", "rust": "name:&str,bytes:Vec<u8>", "typescript": "name:string,bytes:Uint8Array"},
 	"DbspecSource":        {"go": "textstring,documentsmap[string]string", "php": "string$text,array$documents", "rust": "text:&str,documents:&BTreeMap<String,String>", "typescript": "text:string,documents:Readonly<Record<string,string>>"},
 	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument"},
 	"DbspecRenderSource":  {"go": "documents[]*Document,dialectDialect", "php": "array$documents,string$dialect", "rust": "documents:&[&Document],dialect:Dialect", "typescript": "documents:readonlyDbspecDocument[],dialect:DbspecDialect"},
