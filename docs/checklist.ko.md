@@ -146,6 +146,7 @@
 - [ ] T20 Rust `client_bench`의 잘못된 반복 횟수 인자를 거부한다. Cause: clients/rust/tests/src/client_bench.rs는 숫자가 아닌 인자를 3000으로 바꾼다(`.parse().ok().unwrap_or(3000)`). 어느 명세도 이 기본값을 정하지 않는다.
 - [ ] T21 Rust catalog grid에서 MySQL과 PostgreSQL의 날짜와 시간 cell을 decode한다. Cause: `GridCell`에 시간 값이 없어 `datetime` column이 있는 table의 `table_page`가 MySQL과 PostgreSQL에서 "Unsupported catalog cell type"으로 실패한다. 그래서 T15의 `catalog_read` case는 `user`의 page를 읽는다.
 - [ ] T22 root의 `schema:check` npm script를 제거한다. Cause: package.json이 T8.2.6.4가 제거한 `node scripts/schema/check.mjs`를 실행한다.
+- [ ] T24 모든 check가 case마다 실행 중에 결과를 보고하고 case마다 시간 한도를 갖게 한다(AGENTS testing 규칙). Cause: `make feature-check`는 약 25분 돌고 coverage.mjs가 끝날 때까지 아무것도 출력하지 않는다. `dbspec-introspect-compare-check`는 5-11분 돌고 database마다 시작과 끝만 출력한다. Makefile의 physical Go check는 전체 실행 한도로만 묶여 있다(dbspec-apply-check는 `-timeout 70m`, conformance runner check는 `40m`과 `35m`, dialect facts check는 `0`). 완료 기준: 모든 check가 실행 중에 case마다 시작, 결과(성공, 또는 이유와 함께 실패), 경과 시간을 출력한다. 모든 case가 자기 시간 한도를 가지며 전체 실행 한도가 그것을 대신하지 않는다. 1분보다 오래 도는 case는 단계와 경과 시간을 출력한다. test가 각 runner의 출력 형식을 검사한다.
 
 ## 물리 스키마 완성
 
