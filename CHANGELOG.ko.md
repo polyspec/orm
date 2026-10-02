@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T22: root package.json에 script file이 제거된 `schema:check` script가 더 이상 없고, root npm script가 tracked file이나 directory가 아닌 path를 쓰면 `make repo-check`가 실패한다.
+
 - T21: Rust catalog grid는 MySQL `DATE`, `TIME`, `DATETIME`과 PostgreSQL `date`, `time`, `timestamp` cell을 dbspec text 형식의 `Date`, `Time`, `DateTime`으로 decode한다. table page는 선언된 소수 자릿수를, read-only grid query는 여섯 자리를 쓰므로 datetime column이 있는 table의 page를 모든 database에서 읽는다.
 
 - T20: Rust `client_bench`와 bench/rust의 `native`, `driver_compare`는 iterations 인자를 요구한다. 인자가 없거나 program의 최소값 이상의 정수가 아니면 3000번이나 1000번을 반복하는 대신 인자 이름과 값을 담은 error와 함께 status 1로 끝난다.
