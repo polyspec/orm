@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T10: 네 client가 package의 Cargo manifest를 하나만 둔 ordered-json을 쓰므로, cargo가 중복 `ordered-json` package를 경고하지 않는다.
+
 - T17.6: test가 자기 계산에 두는 모든 시간 한도가 CPU 시간(Rust, Go, TypeScript의 case thread, PHP process)을 제한하고 CPU와 wall-clock 시간을 출력한다. `make timing-check`는 stress, Rust vector, PHP dbspec test를 그 process group이 wall-clock 시간의 10분의 1만 받는 상태로 실행한다.
 
 - T17.5: Rust native benchmark `native`와 `driver_compare`가 bench schema 형을 decode해 모든 workload의 row를 읽고, `make rust-driver-check`가 시드된 bench database에서 이들을 실행한다.

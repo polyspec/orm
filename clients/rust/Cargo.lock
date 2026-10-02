@@ -1039,7 +1039,12 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 [[package]]
 name = "ordered-json"
 version = "0.0.1"
-source = "git+https://github.com/polyspec/ordered-json.git?rev=6d23a2a#6d23a2a5e7c0c5d501d759b6d32a439661f153f2"
+source = "git+https://github.com/polyspec/ordered-json.git?rev=b4c1c61#b4c1c61cf2a29e58dcdcaf89f6460978a279020e"
+dependencies = [
+ "serde",
+ "serde_ignored",
+ "serde_json",
+]
 
 [[package]]
 name = "orm"
@@ -1535,6 +1540,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.5",
+]
+
+[[package]]
+name = "serde_ignored"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "115dffd5f3853e06e746965a20dcbae6ee747ae30b543d91b0e089668bb07798"
+dependencies = [
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
