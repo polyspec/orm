@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:724563fcc3219540e3b4057de96eee746ed5aaf34578095fd9199ff9182dac57",
-    "php": "sha256:e59e3dff043d56f3d364eef54771ac40cd16e0ff99e1c0e3d643d81cf4cace96",
-    "rust": "sha256:d4d1a2b4ff4757fa869102f065b4519720f80501abd37bd180782dc711de38ad",
-    "typescript": "sha256:08c272a4f5cd68df587f3850c5436dd1f43d41fe0e0a88cd6a57cf9747a660da"
+    "go": "sha256:35e10a7eeade82a239fd0eaa14fe72474fed87f3f2541b89c41025e303838c28",
+    "php": "sha256:81a9878a686afe12dc6a3e01d7bb446a1f9b5655a39190ee6bea50e9f6c051cd",
+    "rust": "sha256:bc0125b25e42a4823f9f63feaee1448b8384d3634e2a21673d161292a0fcdf40",
+    "typescript": "sha256:97cf60103dc9ec49ce7f10fa34869a7cad5dfcbc5de6b4b5fe25c2a1b4cf64ee"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1191,7 +1191,7 @@
         "SCHEMA_INVALID",
         "driver error"
       ],
-      "state": "Creates the missing tables of the manifest and registers the manifest with the connection",
+      "state": "Creates the tables of the document set when none of them exists and changes nothing when all exist",
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",

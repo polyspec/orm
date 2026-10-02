@@ -32,7 +32,11 @@ fn documents(text: &str, hash: &str) -> Result<Vec<Document>> {
         return Err(invalid("the embedded text is not the manifest text of its documents".into()));
     }
     if manifest.manifest_hash != hash {
-        return Err(invalid(format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash)));
+        // text는 manifest지만 선언한 hash로 hash되지 않는다 (docs/dbspec.md, "Manifest and hashes").
+        return Err(Error::Engine {
+            code: codes::SCHEMA_HASH_MISMATCH.into(),
+            msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
+        });
     }
     Ok(documents)
 }
@@ -56,7 +60,8 @@ impl Manifest {
 pub struct Schema {
     text: &'static str,
     hash: &'static str,
-    manifest: OnceLock<std::result::Result<Arc<Manifest>, String>>,
+    /// 처음 만든 runtime model, 또는 그때 난 오류의 code와 message.
+    manifest: OnceLock<std::result::Result<Arc<Manifest>, (String, String)>>,
 }
 
 impl Schema {
@@ -82,8 +87,49 @@ impl Schema {
     /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest
-            .get_or_init(|| Manifest::load(self.text, self.hash).map(Arc::new).map_err(|e| e.to_string()))
+            .get_or_init(|| {
+                Manifest::load(self.text, self.hash).map(Arc::new).map_err(|e| match e {
+                    Error::Engine { code, msg } => (code, msg),
+                    other => (codes::SCHEMA_INVALID.to_owned(), other.to_string()),
+                })
+            })
             .clone()
-            .map_err(|msg| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg })
+            .map_err(|(code, msg)| Error::Engine { code, msg })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// contracts/fixtures/rollback.dbspec의 manifest text와 manifestHash.
+    fn rollback_manifest() -> (String, String) {
+        let text = include_str!("../../../../contracts/fixtures/rollback.dbspec");
+        let document = dbspec::parse(text, &Default::default()).expect("rollback.dbspec parses");
+        let manifest = dbspec::manifest(&[&document]).expect("rollback.dbspec manifest");
+        (manifest.manifest_text, manifest.manifest_hash)
+    }
+
+    fn leak(text: String) -> &'static str {
+        Box::leak(text.into_boxed_str())
+    }
+
+    // 선언한 hash로 hash되지 않는 manifest text는 SCHEMA_HASH_MISMATCH이고, manifest가 아닌 text는 SCHEMA_INVALID다.
+    #[test]
+    fn manifest_hash_mismatch_is_reported() {
+        let (text, hash) = rollback_manifest();
+        assert_eq!(Manifest::load(&text, &hash).expect("matching manifest").manifest_hash, hash);
+        let edited = text.replace("label varchar(32)", "label varchar(64)");
+        assert_ne!(edited, text, "the fixture declares label varchar(32)");
+        for schema in [Schema::new(leak(edited.clone()), leak(hash.clone())), Schema::new(leak(text.clone()), "0000000000000000")] {
+            let error = schema.manifest().expect_err("edited manifest");
+            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+            let error = schema.documents().expect_err("edited manifest documents");
+            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+        }
+        for invalid in ["not a manifest", "dbspec 1 rollback\n\ntable rollback_probe {\n"] {
+            let error = Schema::new(invalid, leak(hash.clone())).manifest().expect_err("invalid manifest");
+            assert_eq!(error.code(), codes::SCHEMA_INVALID, "{error}");
+        }
     }
 }

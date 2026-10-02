@@ -76,9 +76,13 @@ final class Dialect
         return $this->name !== 'mysql';
     }
 
-    public function now(): string
+    /**
+     * precision 자리 소수 초로 column에 쓰는 database clock이다: MySQL은 p > 0이면
+     * CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
+     */
+    public function now(int $precision): string
     {
-        return 'CURRENT_TIMESTAMP';
+        return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
     }
 
     public function currentTime(): string
@@ -222,10 +226,10 @@ final class Dialect
         switch ($this->name) {
             case 'mysql':
                 return match (true) {
-                    $fn === 'now' => 'NOW()',
+                    $fn === 'now' => 'NOW(6)',
                     $fn === 'today' => 'CURDATE()',
                     $unit === null => null,
-                    default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
+                    default => ($later ? 'DATE_ADD' : 'DATE_SUB') . '(NOW(6), INTERVAL ' . $arg() . ' ' . strtoupper($unit) . ')',
                 };
             case 'postgres':
                 if ($fn === 'now') {
@@ -251,9 +255,11 @@ final class Dialect
                 if ($unit === null) {
                     return null;
                 }
+                // datetime은 초 단위를 돌려주므로 한 statement에서 첫 slot과 같은
+                // 두 번째 clock slot의 소수 여섯 자리를 붙인다.
                 $clock = $now();
-                $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'";
-                return $unit === 'month' ? "datetime($clock, $modifier, 'floor')" : "datetime($clock, $modifier)";
+                $modifier = ($later ? "'+'" : "'-'") . ' || CAST(' . $arg() . " AS TEXT) || ' {$unit}s'" . ($unit === 'month' ? ", 'floor'" : '');
+                return "(datetime($clock, $modifier) || substr(" . $now() . ', 20))';
         }
     }
 }

@@ -82,10 +82,11 @@ runCase('default select set excludes only select explicit', function () use ($be
 
 runCase('generated models carry the manifest hash and the model', function () use ($root, $bench): void {
     $manifest = Dbspec::manifest(RuntimeModel::files(["$root/schema/bench.dbspec"]))->manifest;
-    want(Registry::manifestHash() === $manifest->manifestHash, 'manifest hash ' . Registry::manifestHash());
-    want(str_starts_with(Registry::manifestHash(), 'sha256:'), 'manifest hash form');
-    want(Registry::manifestText() === $manifest->manifestText, 'manifest text');
-    want(Registry::model()->entities === $bench->entities, 'generated model differs from the document model');
+    $hash = Author::meta()['manifest_hash'];
+    want($hash === $manifest->manifestHash, "manifest hash $hash");
+    want(str_starts_with($hash, 'sha256:'), 'manifest hash form');
+    want(Registry::manifestText($hash) === $manifest->manifestText, 'manifest text');
+    want(Registry::model($hash)->entities === $bench->entities, 'generated model differs from the document model');
 });
 
 runCase('generated files are current', function () use ($root, $bench): void {
@@ -119,6 +120,33 @@ runCase('i16 field', function () use ($root): void {
     $ir = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash, 'kind' => 'all', 'entity' => 'small_value',
         'where' => ['items' => [['pred' => ['column' => 'level', 'op' => 'between', 'ps' => [0, 1]]]]], 'n_params' => 2];
     want(str_contains($engine->compile($ir)['steps'][0]['sql'], '"a"."level" BETWEEN $1 AND $2'), 'i16 condition');
+});
+
+runCase('insert binds the clock of an omitted default now column only on SQLite', function (): void {
+    $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
+    $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbspec' => $doc]));
+    want($model->entities['note']['columns']['created_at']['default_now'] && !$model->entities['note']['columns']['rank']['default_now'], 'default_now flag');
+    $set = [['column' => 'rank', 'p' => 0], ['column' => 'body', 'p' => 1]];
+    $single = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash, 'kind' => 'insert', 'entity' => 'note', 'set' => $set, 'n_params' => 4];
+    $multi = $single + ['rows' => [[2, 3]]];
+    $q = ['mysql' => '`', 'postgres' => '"', 'sqlite' => '"'];
+    foreach ($q as $dialect => $quote) {
+        $engine = new Engine($model, $dialect, 4);
+        foreach (['single' => [$single, 1], 'multi' => [$multi, 2]] as $kind => [$ir, $rows]) {
+            $step = $engine->compile($ir)['steps'][0];
+            $now = array_values(array_filter($step['bind_slots'], static fn(array $b): bool => $b['from'] === 'now'));
+            if ($dialect === 'sqlite') {
+                want(str_contains($step['sql'], '("rank", "body", "created_at")') && count($now) === $rows && count($step['bind_slots']) === 3 * $rows, "$dialect $kind insert binds created_at: {$step['sql']}");
+            } else {
+                want(!str_contains($step['sql'], 'created_at') && $now === [] && count($step['bind_slots']) === 2 * $rows, "$dialect $kind insert leaves created_at to the database: {$step['sql']}");
+            }
+        }
+        $assigned = $single;
+        $assigned['set'][] = ['column' => 'created_at', 'p' => 2];
+        $assigned['n_params'] = 3;
+        $step = $engine->compile($assigned)['steps'][0];
+        want(array_filter($step['bind_slots'], static fn(array $b): bool => $b['from'] === 'now') === [], "$dialect an assigned created_at binds no clock: {$step['sql']}");
+    }
 });
 
 runCase('configuration without a schema path', function (): void {

@@ -22,8 +22,13 @@ runs beside it. PHP 8.4 or later. Version 0.0.1.
   call time with the grammar of `docs/dsl.md`. orm does not autoload the generated namespace;
   the runtime needs `gen/bootstrap.php` required once — it registers the
   models with the manifest text and `manifestHash` of the document set they were generated from.
+  A process may load the generated models of several document sets; each model class carries the
+  `manifestHash` of its own set, and a bootstrap whose manifest text does not hash to its declared
+  `manifestHash` fails with `SCHEMA_HASH_MISMATCH` before any statement.
 - `tests/` — `model_test.php` (the model integration test), `runtime_model_test.php` and
-  `runtime_db_test.php` (the runtime model, installation and audit), `engine_test.php`, `hostcodec.php`, `dsn.php`,
+  `runtime_db_test.php` (the runtime model, installation and audit), `schema_set_test.php` (several
+  document sets in one process), `clock_test.php`, `driver_error_test.php`, `rollback_test.php`,
+  `engine_test.php`, `hostcodec.php`, `dsn.php`,
   `relation_keys.php`, `perf_gate.php`, `orm_gen_test.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is
   `tests/conformance/runner.php`.
@@ -68,11 +73,16 @@ connection reads and writes datetime values in UTC: MySQL and PostgreSQL session
 `timezone` parameter accepts only `+00:00` and `UTC`; another zone is a `CONFIG` error. MySQL
 accepts `?socket=`, PostgreSQL `?host=` (a socket directory) and `?sslmode=`.
 
-`Orm::connect` takes no schema path: the engine reads the runtime model from the registered
-generated models, and every request carries their `manifestHash`.
+`Orm::connect` takes no schema path: every request carries the `manifestHash` of its model class,
+and any connection plans it with the runtime model of the generated models that registered that
+hash. A request whose `manifestHash` no loaded generated models registered fails with
+`SCHEMA_HASH_MISMATCH` before execution; no other model plans it. A document set installed by
+another connection needs no call on this one: loading its generated models is enough.
 
 `onQuery` is `fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err)`:
-secret binds read `"$SECRET"` and the SQLite update-time bind reads `"$NOW"`.
+secret binds read `"$SECRET"` and the SQLite clock bind reads `"$NOW"`. The clock bind is the
+client wall clock in UTC with six fraction digits, read once per statement. On SQLite it is also
+bound for a column with the default `now` that an insert omits.
 
 ## Transactions
 
@@ -108,7 +118,12 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
 (MySQL 1213 / SQLSTATE 40001, PostgreSQL 40P01 / 40001, SQLite locked), `DUPLICATE_KEY`, and
 `CANCELED` (MySQL 1317 / 3024, PostgreSQL 57014, SQLite 9: a statement stopped before it finished,
 such as one past `statementTimeoutMs`; SQLite busy: another connection held the lock when
-`busy_timeout` ended); other driver errors keep the driver message.
+`busy_timeout` ended), `FOREIGN_KEY`, `CONSTRAINT` (a CHECK violation), `READ_ONLY`, and
+`LOCK_NOT_AVAILABLE`; every other driver error, such as a write a trigger refuses, is `DRIVER`.
+Each keeps the driver message and the driver error as its previous exception. A transaction or
+savepoint whose callback fails and whose rollback fails too raises `ROLLBACK` with the message
+`transaction failed (<cause>) and rollback failed (<rollback error>)`; its previous exception is
+the cause and `$rollback` is the rollback error. A `ROLLBACK` error is not retried.
 
 ## Tests
 

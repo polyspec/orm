@@ -10,7 +10,7 @@ use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
 use crate::schema::Manifest;
 use crate::Result;
-use orm_schema::dbspec::{Entity, Field, Type};
+use orm_schema::dbspec::{Entity, Field, FieldDefault, Type};
 
 pub(crate) struct Planner<'m> {
     pub m: &'m Manifest,
@@ -124,7 +124,7 @@ impl Builder {
         self.slot(BindSlot { from: "config".into(), name: name.into(), ..Default::default() })
     }
 
-    /// executor가 주는 시각. `precision`은 값을 쓰는 `datetime(p)` column의 p다.
+    /// executor가 주는 시각. `precision`은 slot의 소수 자리다(`clock_precision`).
     fn now(&mut self, precision: u8) -> String {
         self.slot(BindSlot { from: "now".into(), precision: precision.into(), ..Default::default() })
     }
@@ -203,6 +203,15 @@ fn datetime_precision(col: &Field) -> u8 {
     match col.ty {
         Type::DateTime(p) => p,
         _ => 0,
+    }
+}
+
+/// column에 쓰거나 column과 비교하는 `now` slot의 소수 자리: `datetime(p)` column은 p,
+/// 그 밖의 column은 6이다. executor는 한 statement의 clock을 slot마다 이 자리로 버린다.
+fn clock_precision(col: &Field) -> u8 {
+    match col.ty {
+        Type::DateTime(p) => p,
+        _ => 6,
     }
 }
 
@@ -816,7 +825,7 @@ impl<'m> Planner<'m> {
                 Some(i) => cell.borrow_mut().param(i),
                 None => String::new(),
             };
-            let precision = datetime_precision(col);
+            let precision = clock_precision(col);
             let mut now = || cell.borrow_mut().now(precision);
             let value = self
                 .d
@@ -1063,13 +1072,12 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(&a.column));
             vals.push(self.render_assign(&mut b, ent, col, a)?);
         }
-        if !version.is_empty() && !assigned(&set, version) {
-            cols.push(self.d.quote(version));
-            vals.push(b.config("aes_version"));
-        }
-        if !operation.is_empty() {
-            cols.push(self.d.quote(operation));
-            vals.push(b.operation(self.column_of(ent, operation)?));
+        // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation,
+        // `default now` 순서로 쓴다.
+        let managed = self.managed_insert_columns(ent, &set)?;
+        for c in &managed {
+            cols.push(self.d.quote(c.column()));
+            vals.push(c.value(&mut b));
         }
         let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", self.d.quote(&ent.table), cols.join(", "), vals.join(", "));
         if !r.rows.is_empty() {
@@ -1089,11 +1097,8 @@ impl<'m> Planner<'m> {
                     let assign = ir::Assign { column: a.column.clone(), p: Some(row[source[i]]), ..Default::default() };
                     more.push(self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, &assign)?);
                 }
-                if !version.is_empty() && !assigned(&set, version) {
-                    more.push(b.config("aes_version"));
-                }
-                if !operation.is_empty() {
-                    more.push(b.operation(self.column_of(ent, operation)?));
+                for c in &managed {
+                    more.push(c.value(&mut b));
                 }
                 sql.push_str(&format!(", ({})", more.join(", ")));
             }
@@ -1127,15 +1132,38 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }
 
-    /// `datetime(p)` column에 쓰는 statement 시각.
-    fn statement_time(&self, b: &mut Builder, col: &Field) -> String {
-        let precision = datetime_precision(col);
+    /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit operation column,
+    /// sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
+    fn managed_insert_columns<'e>(&self, ent: &'e Entity, set: &[ir::Assign]) -> Result<Vec<Managed<'e>>> {
+        let mut out = Vec::new();
+        let version = aes_version_column(ent);
+        if !version.is_empty() && !assigned(set, version) {
+            out.push(Managed::AesVersion(version));
+        }
+        let operation = operation_column(ent);
+        if !operation.is_empty() {
+            out.push(Managed::Operation(self.column_of(ent, operation)?));
+        }
+        // SQLite database clock은 millisecond까지만 가지므로 `default now` column에 executor의
+        // microsecond clock을 쓴다. MySQL과 PostgreSQL은 database default에 맡긴다.
         if self.d.host_now() {
-            b.now(precision)
-        } else if precision > 0 && self.d == Dialect::MySql {
-            format!("CURRENT_TIMESTAMP({precision})")
+            for f in &ent.fields {
+                if matches!(f.default, Some(FieldDefault::Now)) && !assigned(set, &f.name) {
+                    out.push(Managed::Now(f));
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// updated와 soft delete가 `datetime(p)` column에 쓰는 statement 시각이다.
+    /// sub-second clock이 없는 dialect는 executor의 microsecond clock을 bind하고,
+    /// 나머지는 column의 소수 자리로 dialect의 database clock을 쓴다.
+    fn statement_time(&self, b: &mut Builder, col: &Field) -> String {
+        if self.d.host_now() {
+            b.now(clock_precision(col))
         } else {
-            self.d.now().to_owned()
+            self.d.now(datetime_precision(col).into())
         }
     }
 
@@ -1206,6 +1234,30 @@ impl<'m> Planner<'m> {
             None => format!("DELETE FROM {} WHERE {where_}", self.d.quote(&ent.table)),
         };
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+    }
+}
+
+/// insert마다 executor가 값을 주는 column과 그 bind slot.
+enum Managed<'e> {
+    AesVersion(&'e str),
+    Operation(&'e Field),
+    Now(&'e Field),
+}
+
+impl Managed<'_> {
+    fn column(&self) -> &str {
+        match self {
+            Managed::AesVersion(name) => name,
+            Managed::Operation(f) | Managed::Now(f) => &f.name,
+        }
+    }
+
+    fn value(&self, b: &mut Builder) -> String {
+        match self {
+            Managed::AesVersion(_) => b.config("aes_version"),
+            Managed::Operation(f) => b.operation(f),
+            Managed::Now(f) => b.now(clock_precision(f)),
+        }
     }
 }
 

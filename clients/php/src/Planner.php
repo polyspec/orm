@@ -514,7 +514,9 @@ final class Planner
         }
         if (isset($p['value'])) {
             $fn = $p['value']['name'];
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0]), static fn(): string => $b->now(6))
+            // datetime column과 비교하는 clock은 그 column의 소수 자리를 쓴다.
+            $precision = ($col['type'] ?? '') === 'datetime' ? $col['precision'] : 6;
+            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0]), static fn(): string => $b->now($precision))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             return $lhs . ' ' . self::cmp($op) . ' ' . $value;
         }
@@ -815,6 +817,16 @@ final class Planner
         self::checkRequiredAssignments($ent, $set);
         $versioned = self::hasAes($ent);
         $audited = $ent['audit'] !== '';
+        // sub-second clock이 없는 dialect의 `default now`는 millisecond만 가지므로
+        // 사용자가 assign하지 않은 그 column에 executor의 microsecond clock을 쓴다.
+        $clocked = [];
+        if ($this->d->hostNow()) {
+            foreach ($ent['columns'] as $c) {
+                if ($c['default_now'] && !self::assigned($set, $c['name'])) {
+                    $clocked[] = $c;
+                }
+            }
+        }
         $cols = [];
         $vals = [];
         foreach ($set as $a) {
@@ -832,6 +844,10 @@ final class Planner
         if ($audited) {
             $cols[] = $this->d->quote($ent['audit']);
             $vals[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
+        }
+        foreach ($clocked as $c) {
+            $cols[] = $this->d->quote($c['name']);
+            $vals[] = $b->now($c['precision']);
         }
         $sql = 'INSERT INTO ' . $this->d->quote($ent['table']) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
         $rows = $r['rows'] ?? [];
@@ -852,6 +868,9 @@ final class Planner
                 }
                 if ($audited) {
                     $more[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
+                }
+                foreach ($clocked as $c) {
+                    $more[] = $b->now($c['precision']);
                 }
                 $sql .= ', (' . implode(', ', $more) . ')';
             }
@@ -920,6 +939,16 @@ final class Planner
         return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
     }
 
+    /**
+     * updated와 soft delete가 datetime column에 쓰는 statement 시각이다.
+     * sub-second clock이 없는 dialect는 executor clock의 `now` slot을, 나머지는
+     * column의 소수 자리로 dialect의 database clock을 쓴다.
+     */
+    private function clock(PlanBinds $b, array $col): string
+    {
+        return $this->d->hostNow() ? $b->now($col['precision']) : $this->d->now($col['precision']);
+    }
+
     private function deleteStep(array $r): PlanStep
     {
         $b = new PlanBinds($this->d);
@@ -940,18 +969,6 @@ final class Planner
             return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots);
         }
         return new PlanStep('main', 'DELETE FROM ' . $this->d->quote($ent['table']) . ' WHERE ' . $where, '', $b->slots);
-    }
-
-    /** datetime column에 쓰는 statement 시각이다. SQLite는 executor가 시각을 bind한다. */
-    private function clock(PlanBinds $b, array $col): string
-    {
-        if ($this->d->hostNow()) {
-            return $b->now($col['precision']);
-        }
-        if ($this->d->name === 'mysql' && $col['precision'] > 0) {
-            return "CURRENT_TIMESTAMP({$col['precision']})";
-        }
-        return $this->d->now();
     }
 
     private function columnFunction(PlanScope $s, string $column, array $f): string
@@ -1084,7 +1101,11 @@ final class PlanBinds
         return $this->add(['from' => 'config', 'param' => 0, 'name' => $name]);
     }
 
-    /** precision 자리의 소수를 가진 executor 시각이다(sub-second 시각 함수가 없는 dialect). */
+    /**
+     * executor의 UTC 시각이다. 한 statement는 clock을 한 번 읽고 microsecond에서
+     * precision 자리로 자른다. column에 쓰는 시각은 column의 소수 자리를, 비교
+     * 값은 여섯 자리를 쓴다.
+     */
     public function now(int $precision): string
     {
         return $this->add(['from' => 'now', 'param' => 0, 'precision' => $precision]);

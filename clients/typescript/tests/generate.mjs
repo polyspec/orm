@@ -19,7 +19,7 @@ try {
   const usage = join(work, 'usage.ts');
   // The names are interpolated so that scans of this file do not see them.
   const calls = ['getsByNotAColumn(1)', 'orderByNotAColumnAsc()', 'gtIsClose(1)', 'lkReadCount(1)', 'getsByServiceSeqAndLtStartDt(1, 2)', 'andNeUuid(null)', 'joinServiceSeqWithSeq(s)'];
-  await writeFile(usage, `${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
+  await writeFile(usage, `import { Author } from './models/models.js';\ndeclare const x: Author;\n${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
   const out = join(work, 'models');
   const bench = join(root, 'schema/bench.dbspec');
   const result = run('gen', '--schema', bench, '--out', out, '--scan', usage);

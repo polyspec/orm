@@ -125,15 +125,17 @@ func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	if s == nil {
 		return nil, configErr("the model has no schema")
 	}
+	// engine은 manifestHash로 cache되므로, 같은 hash를 선언하고 다른 text를 가진
+	// schema가 다른 schema의 engine으로 plan되지 않게 먼저 그 text를 확인한다.
+	m, err := s.Model()
+	if err != nil {
+		return nil, err
+	}
 	d.m.engineMu.RLock()
 	eng := d.m.engines[s.Hash]
 	d.m.engineMu.RUnlock()
 	if eng != nil {
 		return eng, nil
-	}
-	m, err := s.Model()
-	if err != nil {
-		return nil, err
 	}
 	eng, err = engine.New(m, d.driver)
 	if err != nil {
@@ -236,8 +238,9 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	sqlDriver, ok := lookupDriver(dsn.driver)
 	if !ok {
 		msg := fmt.Sprintf("driver %q is not registered", dsn.driver)
-		if dsn.driver == "postgres" || dsn.driver == "sqlite" {
-			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/clients/go/orm/%s"`, dsn.driver)
+		// driver package 이름은 pg와 sqlite다.
+		if pkg := map[string]string{"postgres": "pg", "sqlite": "sqlite"}[dsn.driver]; pkg != "" {
+			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/clients/go/orm/%s"`, pkg)
 		}
 		return nil, configErr("%s", msg)
 	}
@@ -441,24 +444,33 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-// mapDriverErr converts driver errors named by the error catalog into coded
-// errors and keeps the driver message.
+// mapDriverErr는 error catalog가 이름 붙인 driver 오류를 그 code로, 나머지
+// driver 오류를 DRIVER로 보고한다. code가 붙은 오류는 driver message와 driver
+// 오류를 cause로 유지한다.
 func mapDriverErr(err error) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return &ir.Error{Code: CodeCanceled, Msg: err.Error()}
+		return &ir.Error{Code: CodeCanceled, Msg: err.Error(), Cause: err}
+	}
+	var coded *ir.Error
+	if errors.As(err, &coded) {
+		return err
 	}
 	driverMu.RLock()
 	mappers := errMappers
 	driverMu.RUnlock()
 	for _, m := range mappers {
 		if mapped := m(err); mapped != err {
+			if errors.As(mapped, &coded) && coded.Cause == nil {
+				coded.Cause = err
+			}
 			return mapped
 		}
 	}
-	return err
+	// trigger가 거절한 write 같은 나머지 driver 오류는 DRIVER다.
+	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
 func mapMySQLErr(err error) error {

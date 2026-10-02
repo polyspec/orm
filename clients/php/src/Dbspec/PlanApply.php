@@ -357,7 +357,8 @@ final class PlanApply
         $q = $this->r->q(...);
         $steps = count($statements);
         if (!$resume) {
-            $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
+            // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 버림한 text다(docs/plans.md "Apply").
+            $appliedAt = \DateTimeImmutable::createFromInterface(($this->now)())->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s.u\Z');
             $this->c->prepare('INSERT INTO ' . $q(self::HISTORY) . ' (' . $q('name') . ', ' . $q('from_hash') . ', ' . $q('to_hash') . ', ' .
                 $q('state') . ', ' . $q('step') . ', ' . $q('steps') . ', ' . $q('applied_at') . ') VALUES (?, ?, ?, ?, ?, ?, ?)')
                 ->execute([$plan->name, $plan->from ?? 'empty', $plan->to, 'running', 0, $steps, $appliedAt]);

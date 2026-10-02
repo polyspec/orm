@@ -1,0 +1,12 @@
+dbspec 1 clock_mark
+
+table clock_mark {
+  seq i64 identity
+  label varchar(32)
+  created_ts datetime(6) default now
+  deleted_at datetime(6) null
+  primary key (seq)
+  settings {
+    soft_delete deleted_at
+  }
+}
