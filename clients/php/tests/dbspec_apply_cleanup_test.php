@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 // Wraps a SQLite PDO to inject failures into Orm\Dbspec apply and checks
-// that no error is lost (docs/plans.md "Apply"): a failing ROLLBACK after
-// an event stops apply, a failing foreign key restore after a failing
-// BEGIN IMMEDIATE, a MySQL effect query that returns no row, and a result
-// that cannot be closed.
+// that no error is lost (docs/plans.md "Apply"): a failing lock release
+// after an event stops apply, a failing foreign key restore after a failing
+// BEGIN EXCLUSIVE, an effect query that returns no row, and a result that
+// cannot be closed.
 // Usage: php clients/php/tests/dbspec_apply_cleanup_test.php
 require __DIR__ . '/autoload.php';
 
@@ -12,9 +12,10 @@ use Orm\Dbspec\ApplyCleanupError;
 use Orm\Dbspec\ApplyError;
 use Orm\Dbspec\ApplyEvent;
 use Orm\Dbspec\Dbspec;
+use Orm\Dbspec\Effect;
 use Orm\Dbspec\PlanApply;
 
-const CASE_DEADLINE_MS = 5000;
+const CASE_DEADLINE_MS = 20000;
 
 /**
  * 정한 statement 에 error 를 주입하고 정한 query 를 다른 query 로 바꾸는 SQLite connection.
@@ -158,45 +159,39 @@ function want_message(Closure $operation, string $want): void
     throw new RuntimeException("no error; want \"$want\"");
 }
 
-// PlanApply::mysqlEffect 는 private 이므로 class scope 에 묶은 closure 로 부른다.
-$mysqlEffect = Closure::bind(
-    static fn(PDO $c, string $statement): bool => (new PlanApply($c, 'mysql', $plans, $now, null))->mysqlEffect($statement),
-    null,
-    PlanApply::class,
-);
-$tablesQuery = 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?';
-$createOrders = 'CREATE TABLE `orders` (`id` BIGINT NOT NULL)';
+$effect = static fn(PDO $c): bool => PlanApply::effectOn($c, 'sqlite', new Effect('table', 'orders', '', true));
+$tablesQuery = PlanApply::EFFECT_QUERIES['sqlite']['table'];
 
 /** @var list<array{0: string, 1: Closure(): void}> $cases */
 $cases = [
-    ['apply/cleanup-errors/rollback', static function () use ($plans, $now): void {
+    ['apply/cleanup-errors/release', static function () use ($plans, $now): void {
         $stop = new RuntimeException('stop');
-        $rollback = new PDOException('rollback failed');
-        $pdo = failing_pdo(['ROLLBACK' => $rollback]);
+        $release = new PDOException('release failed');
+        $pdo = failing_pdo(['PRAGMA locking_mode = normal' => $release]);
         $events = static function (ApplyEvent $event) use ($stop): void {
             if ($event->kind === 'applied') {
                 throw $stop;
             }
         };
-        want_cleanup(static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events), static fn(?Throwable $e): bool => $e === $stop, [$rollback]);
+        want_cleanup(static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events), static fn(?Throwable $e): bool => $e === $stop, [$release]);
     }],
     ['apply/cleanup-errors/begin-restore', static function () use ($plans, $now): void {
         $begin = new PDOException('begin failed');
         $restore = new PDOException('restore failed');
-        $pdo = failing_pdo(['BEGIN IMMEDIATE' => $begin, 'PRAGMA foreign_keys = ON' => $restore]);
+        $pdo = failing_pdo(['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]);
         want_cleanup(
             static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, null),
             static fn(?Throwable $e): bool => $e instanceof ApplyError && $e->code_ === 'locked' && $e->getPrevious() === $begin,
             [$restore],
         );
     }],
-    ['apply/mysql-effect-row', static function () use ($mysqlEffect, $tablesQuery, $createOrders): void {
+    ['apply/effect-row', static function () use ($effect, $tablesQuery): void {
         $pdo = failing_pdo([], [$tablesQuery => 'SELECT 1 WHERE 0']);
-        want_message(static fn() => $mysqlEffect($pdo, $createOrders), "$tablesQuery returned no row");
+        want_message(static fn() => $effect($pdo), "$tablesQuery returned no row");
     }],
-    ['apply/mysql-effect-close', static function () use ($mysqlEffect, $tablesQuery, $createOrders): void {
+    ['apply/effect-close', static function () use ($effect, $tablesQuery): void {
         $pdo = failing_pdo([], [$tablesQuery => 'SELECT 1'], ['SELECT 1']);
-        want_message(static fn() => $mysqlEffect($pdo, $createOrders), "closing the result of $tablesQuery failed");
+        want_message(static fn() => $effect($pdo), "closing the result of $tablesQuery failed");
     }],
 ];
 

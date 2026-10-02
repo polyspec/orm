@@ -1,14 +1,16 @@
 <?php
 declare(strict_types=1);
-// Applies the chain of the plans.json cases create-from-empty and
-// rename-table-and-column through Orm\Dbspec\Dbspec::apply and ::recover on
-// MySQL, PostgreSQL and SQLite (docs/plans.md "Apply"): the chain with its
-// history, events and a second apply without events; drift; the lock of a
-// second session; an apply to a second database, schema or file while the
+// Applies the plans.json chains through Orm\Dbspec\Dbspec::apply, ::recover,
+// ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/plans.md
+// "Apply"): the chain of create-from-empty and rename-table-and-column with
+// its history, events and a second apply without events; drift; the lock of
+// a second session; an apply to a second database, schema or file while the
 // first holds its lock; the empty chain; a PostgreSQL unlock that releases
-// nothing; rollback after
-// a stop on PostgreSQL and SQLite; verification; and MySQL recovery after a
-// stop before and after a statement. Every run gets a fresh database, schema or file.
+// nothing; verification; for every step of the representative case a stop
+// after its statement followed by rollback, a stop followed by recover, and
+// a stopped rollback that continues; rows written between apply, rollback
+// and a second apply; the null check of a dropped required column; and
+// finalize. Every run gets a fresh database, schema or file.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the servers; the test
 // fails when either is unset.
 // Usage: php clients/php/tests/dbspec_apply_test.php
@@ -160,39 +162,121 @@ function apply_stopped(RuntimeException $stop, Closure $operation): void
 }
 
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/plans.json"), true, 512, JSON_THROW_ON_ERROR);
-$plans = [];
+$cases = [];
 foreach ($vectors['cases'] as $case) {
-    if ($case['id'] !== 'create-from-empty' && $case['id'] !== 'rename-table-and-column') {
-        continue;
-    }
-    $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
-    $plans[] = $parsed->plan ?? apply_failure($case['id'], $parsed->diagnostics);
+    $cases[$case['id']] = $case;
 }
-if (count($plans) !== 2 || $plans[1]->from !== $plans[0]->to) {
+$parse = static function (string $id, string $text): Plan {
+    $parsed = Dbspec::parsePlan($text);
+    return $parsed->plan ?? apply_failure($id, $parsed->diagnostics);
+};
+$plans = [
+    $parse('create-from-empty', implode("\n", $cases['create-from-empty']['plan']) . "\n"),
+    $parse('rename-table-and-column', implode("\n", $cases['rename-table-and-column']['plan']) . "\n"),
+];
+if ($plans[1]->from !== $plans[0]->to) {
     throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
 }
-$targetManifest = Dbspec::manifest([$plans[1]->schema]);
-$target = $targetManifest->manifest?->schemaText ?? apply_failure('target', $targetManifest->diagnostics);
+/**
+ * case 의 source 를 만드는 첫 plan base 와 case 의 plan 으로 된 chain.
+ *
+ * @return list<Plan>
+ */
+$caseChain = static function (string $id) use ($cases, $parse): array {
+    $base = $parse($id, "dbplan 1 base\nfrom empty\n\n" . implode("\n", $cases[$id]['source']) . "\n");
+    $plan = $parse($id, implode("\n", $cases[$id]['plan']) . "\n");
+    if ($plan->from !== $base->to) {
+        throw new RuntimeException("the source of $id does not start its plan");
+    }
+    return [$base, $plan];
+};
+$schemaText = static function (Plan $plan): string {
+    $manifest = Dbspec::manifest([$plan->schema]);
+    return $manifest->manifest?->schemaText ?? apply_failure('schema', $manifest->diagnostics);
+};
+/**
+ * dialect 마다 chain plan 의 [step 수, finalize 앞 step 수].
+ *
+ * @param list<Plan> $chain
+ * @return array<string, list<array{0: int, 1: int}>>
+ */
+$counts = static function (array $chain): array {
+    $out = [];
+    foreach (['mysql', 'postgres', 'sqlite'] as $db) {
+        foreach ($chain as $i => $plan) {
+            $steps = Dbspec::planSteps($i > 0 ? $chain[$i - 1]->schema : null, $plan, $db)->steps ?? throw new RuntimeException("{$plan->name}: no steps");
+            $end = count($steps);
+            foreach ($steps as $k => $step) {
+                if ($step->finalize) {
+                    $end = $k;
+                    break;
+                }
+            }
+            $out[$db][] = [count($steps), $end];
+        }
+    }
+    return $out;
+};
+$target = $schemaText($plans[1]);
+$planCounts = $counts($plans);
+$representative = $caseChain('representative');
+$repSource = $schemaText($representative[0]);
+$repTarget = $schemaText($representative[1]);
+$repCounts = $counts($representative);
+$required = $caseChain('drop-required-column');
+$requiredTarget = $schemaText($required[1]);
+$requiredCounts = $counts($required);
 // history의 applied_at은 이 clock을 소수 여섯 자리로 버림한 UTC text다.
 $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
 $history = static fn(string $dialect): string => $dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
 // docs/plans.md "Apply" 의 lock 이름과 key.
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
 const POSTGRES_APPLY_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
+// 이름이 dbspec$ 로 시작하는 table 과 column 중 history table 이 아닌 것의 수.
+const HIDDEN_LEFT = [
+    'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%') AND TABLE_NAME <> 'dbspec\$plans'",
+    'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%') AND c.relname <> 'dbspec\$plans'",
+    'sqlite' => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%') AND m.name <> 'dbspec\$plans'",
+];
 
+/** history row 의 name, state, step 이 want 인지 확인한다. */
+$historyIs = static function (PDO $pdo, string $db, string $want) use ($history): void {
+    $rows = $pdo->query('SELECT name, state, step FROM ' . $history($db) . ' ORDER BY name')->fetchAll(PDO::FETCH_NUM);
+    $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map('strval', $r)), $rows));
+    if ($got !== $want) {
+        throw new RuntimeException("history rows: got \"$got\"; want \"$want\"");
+    }
+};
+/** 열의 모든 row 를 `a|b` 로 이어 확인한다. */
+$rowsAre = static function (PDO $pdo, string $query, string $want): void {
+    $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
+    $got = implode(',', array_map(static fn(array $r): string => implode('|', array_map(static fn($v): string => $v === null ? 'NULL' : (string) $v, $r)), $rows));
+    if ($got !== $want) {
+        throw new RuntimeException("$query: got \"$got\"; want \"$want\"");
+    }
+};
+/** 명령이 plan 의 step 번째 statement 를 실행한 뒤, step 을 기록하기 전에 멈추는 event handler. */
+$stopAfter = static fn(string $plan, int $step, RuntimeException $stop): Closure => static function (ApplyEvent $event) use ($plan, $step, $stop): void {
+    if ($event->kind === 'applied' && $event->plan === $plan && $event->step === $step) {
+        throw $stop;
+    }
+};
+
+$all = ['mysql', 'postgres', 'sqlite'];
 /** @var list<array{0: string, 1: list<string>, 2: Closure(Closure(): PDO, PDO, string): void}> $scenarios */
 $scenarios = [
-    ['chain_history_and_again', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target, $history): void {
+    ['chain_history_and_again', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target, $history, $historyIs, $planCounts): void {
         $events = [];
         $record = static function (ApplyEvent $event) use (&$events): void {
             $events[] = $event->kind;
         };
         Dbspec::apply($pdo, $db, $plans, $now, $record);
         apply_schema_is($pdo, $db, $target);
-        apply_want($pdo, 'SELECT COUNT(*) FROM ' . $history($db) . " WHERE state = 'done'", '2');
+        $c = $planCounts[$db];
+        $historyIs($pdo, $db, "create_from_empty|applied|{$c[0][1]},rename_table_and_column|applied|{$c[1][1]}");
         apply_want($pdo, 'SELECT COUNT(*) FROM ' . $history($db) . " WHERE applied_at = '2026-10-01T00:00:00.123456Z'", '2');
         $counts = array_count_values($events);
-        if (($counts['plan'] ?? 0) !== 2 || ($counts['verified'] ?? 0) !== 2 || ($counts['done'] ?? 0) !== 2 || ($counts['statement'] ?? 0) !== ($counts['applied'] ?? 0) || ($counts['statement'] ?? 0) === 0) {
+        if (($counts['plan'] ?? 0) !== 2 || ($counts['verified'] ?? 0) !== 2 || ($counts['done'] ?? 0) !== 2 || ($counts['statement'] ?? 0) !== ($counts['applied'] ?? 0) || ($counts['statement'] ?? 0) !== $c[0][1] + $c[1][1]) {
             throw new RuntimeException('events ' . json_encode($counts));
         }
         echo '  events ' . json_encode($counts) . "\n";
@@ -202,12 +286,12 @@ $scenarios = [
             throw new RuntimeException('apply again: events ' . json_encode($events));
         }
     }],
-    ['drift', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
+    ['drift', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
         Dbspec::apply($pdo, $db, [$plans[0]], $now, null);
         $pdo->exec('CREATE TABLE extra (id integer PRIMARY KEY)');
         apply_code('drift', static fn() => Dbspec::apply($pdo, $db, $plans, $now, null));
     }],
-    ['lock', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
+    ['lock', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
         $other = $session();
         $other->exec(['mysql' => 'SELECT GET_LOCK(' . MYSQL_APPLY_LOCK . ', 0)', 'postgres' => 'SELECT pg_advisory_lock(' . POSTGRES_APPLY_LOCK . ')', 'sqlite' => 'BEGIN IMMEDIATE'][$db]);
         apply_code('locked', static fn() => Dbspec::apply($pdo, $db, $plans, $now, null));
@@ -215,7 +299,7 @@ $scenarios = [
             $other->exec('ROLLBACK');
         }
     }],
-    ['other_database', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
+    ['other_database', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
         // 첫 database 의 apply 가 lock 을 잡은 동안 두 번째 database, schema 또는 file 에
         // 같은 chain 을 적용한다. lock 은 database 하나만 덮으므로 locked 가 아니다.
         [$secondSession, $dropSecond] = open_apply_database($db);
@@ -243,7 +327,7 @@ $scenarios = [
             $dropSecond();
         }
     }],
-    ['empty_chain', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($now, $history): void {
+    ['empty_chain', $all, static function (Closure $session, PDO $pdo, string $db) use ($now, $history): void {
         // plan 이 없는 chain 은 table 이 없는 database 에 아무것도 적용하지 않는다.
         $events = [];
         $record = static function (ApplyEvent $event) use (&$events): void {
@@ -251,6 +335,8 @@ $scenarios = [
         };
         Dbspec::apply($pdo, $db, [], $now, $record);
         Dbspec::recover($pdo, $db, [], $now, $record);
+        Dbspec::rollback($pdo, $db, [], $now, $record);
+        Dbspec::finalize($pdo, $db, [], $now, $record);
         if ($events !== []) {
             throw new RuntimeException('empty chain: events ' . json_encode($events));
         }
@@ -259,20 +345,8 @@ $scenarios = [
         $pdo->exec('CREATE TABLE extra (id integer PRIMARY KEY)');
         apply_code('drift', static fn() => Dbspec::apply($pdo, $db, [], $now, null));
     }],
-    ['rollback_on_failure', ['postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target): void {
-        $stop = new RuntimeException('stop');
-        $fail = static function (ApplyEvent $event) use ($stop): void {
-            if ($event->kind === 'applied' && $event->step === 1) {
-                throw $stop;
-            }
-        };
-        apply_stopped($stop, static fn() => Dbspec::apply($pdo, $db, $plans, $now, $fail));
-        apply_schema_is($pdo, $db, '');
-        Dbspec::apply($pdo, $db, $plans, $now, null);
-        apply_schema_is($pdo, $db, $target);
-    }],
     ['unlock_not_held', ['postgres'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now): void {
-        // event 에서 advisory lock 을 먼저 풀면 apply 끝의 unlock 은 아무것도 풀지 않는다.
+        // event 에서 advisory lock 을 먼저 풀면 명령 끝의 unlock 은 아무것도 풀지 않는다.
         $release = static function (ApplyEvent $event) use ($pdo, $plans): void {
             if ($event->kind === 'plan' && $event->plan === $plans[0]->name) {
                 $pdo->query('SELECT pg_advisory_unlock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
@@ -290,38 +364,89 @@ $scenarios = [
         }
         throw new RuntimeException("succeeded; want \"$want\"");
     }],
-    ['verify_failure', ['mysql', 'postgres', 'sqlite'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $history): void {
-        // 마지막 statement 뒤에 plan 밖의 table 을 만들면 검증이 실패한다.
-        $sneak = static function (ApplyEvent $event) use ($pdo, $plans): void {
-            if ($event->kind === 'applied' && $event->plan === $plans[0]->name && $event->step === $event->steps - 1) {
+    ['verify_failure', $all, static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $historyIs, $planCounts): void {
+        // 마지막 statement 뒤에 plan 밖의 table 을 만들면 검증이 실패하고 row 는 모든 step 을
+        // 기록한 채 applying 으로 남는다.
+        $n = $planCounts[$db][0][1];
+        $sneak = static function (ApplyEvent $event) use ($pdo, $plans, $n): void {
+            if ($event->kind === 'applied' && $event->plan === $plans[0]->name && $event->step === $n - 1) {
                 $pdo->exec('CREATE TABLE sneak (id integer PRIMARY KEY)');
             }
         };
         apply_code('verify', static fn() => Dbspec::apply($pdo, $db, $plans, $now, $sneak));
-        if ($db === 'mysql') {
-            apply_want($pdo, 'SELECT state FROM ' . $history($db), 'running');
-        } else {
-            apply_schema_is($pdo, $db, '');
+        $historyIs($pdo, $db, "{$plans[0]->name}|applying|$n");
+    }],
+    ['rows_between', $all, static function (Closure $session, PDO $pdo, string $db) use ($representative, $now, $repSource, $repTarget, $repCounts, $historyIs, $rowsAre): void {
+        // 적용한 plan 에 쓴 row 는 rollback 뒤에도 남고 지운 column 의 값과 default 가 돌아오며,
+        // 다시 적용하면 더한 column 의 값이 돌아온다. finalize 뒤 rollback 은 되돌릴 수 없다.
+        $c = $repCounts[$db];
+        Dbspec::apply($pdo, $db, [$representative[0]], $now, null);
+        $pdo->exec("INSERT INTO users (mail, legacy_code, age, nick) VALUES ('a@x', 7, 3, 'n1')");
+        Dbspec::apply($pdo, $db, $representative, $now, null);
+        $pdo->exec("INSERT INTO clients (email, age) VALUES ('b@x', 5)");
+        $pdo->exec("UPDATE clients SET status = 'vip' WHERE email = 'a@x'");
+        Dbspec::rollback($pdo, $db, $representative, $now, null);
+        apply_schema_is($pdo, $db, $repSource);
+        $historyIs($pdo, $db, "base|applied|{$c[0][1]}");
+        $rowsAre($pdo, 'SELECT mail, legacy_code, nick FROM users ORDER BY mail', 'a@x|7|n1,b@x|0|x');
+        Dbspec::apply($pdo, $db, $representative, $now, null);
+        apply_schema_is($pdo, $db, $repTarget);
+        $rowsAre($pdo, 'SELECT email, status FROM clients ORDER BY email', 'a@x|vip,b@x|new');
+        $historyIs($pdo, $db, "base|applied|{$c[0][1]},representative|applied|{$c[1][1]}");
+        Dbspec::finalize($pdo, $db, $representative, $now, null);
+        $historyIs($pdo, $db, "base|done|{$c[0][0]},representative|done|{$c[1][0]}");
+        apply_want($pdo, HIDDEN_LEFT[$db], '0');
+        apply_schema_is($pdo, $db, $repTarget);
+        apply_code('irreversible', static fn() => Dbspec::rollback($pdo, $db, $representative, $now, null));
+        apply_schema_is($pdo, $db, $repTarget);
+    }],
+    ['nulls', $all, static function (Closure $session, PDO $pdo, string $db) use ($required, $now, $requiredTarget, $requiredCounts, $historyIs): void {
+        // 숨긴 non-null default 없는 column 에 그사이 NULL row 가 생기면 rollback 은 아무것도
+        // 바꾸지 않고 row 수를 적은 nulls error 로 멈춘다.
+        $c = $requiredCounts[$db];
+        Dbspec::apply($pdo, $db, $required, $now, null);
+        $pdo->exec("INSERT INTO t (a) VALUES ('y')");
+        try {
+            Dbspec::rollback($pdo, $db, $required, $now, null);
+            throw new RuntimeException('rollback with a NULL row succeeded; want nulls');
+        } catch (ApplyError $e) {
+            if ($e->code_ !== 'nulls' || !str_contains($e->getMessage(), 'has 1 NULL rows')) {
+                throw new RuntimeException("rollback with a NULL row: {$e->getMessage()}, want nulls with the count", 0, $e);
+            }
+            echo "  {$e->getMessage()}\n";
         }
+        apply_schema_is($pdo, $db, $requiredTarget);
+        $historyIs($pdo, $db, "base|applied|{$c[0][1]},drop_required_column|applied|{$c[1][1]}");
     }],
 ];
-// MySQL recovery: statement 이 commit 된 뒤 기록 전에 멈춘 경우와 실행 전에 멈춘 경우.
-foreach (['applied', 'statement'] as $kind) {
-    $scenarios[] = ["recover_after_$kind", ['mysql'], static function (Closure $session, PDO $pdo, string $db) use ($plans, $now, $target, $kind): void {
-        $stop = new RuntimeException('stop');
-        $fail = static function (ApplyEvent $event) use ($stop, $plans, $kind): void {
-            if ($event->kind === $kind && $event->plan === $plans[1]->name && $event->step === 1) {
-                throw $stop;
-            }
-        };
-        apply_stopped($stop, static fn() => Dbspec::apply($pdo, $db, $plans, $now, $fail));
-        apply_want($pdo, "SELECT CONCAT(state, ' ', step) FROM `dbspec\$plans` WHERE name = '{$plans[1]->name}'", 'running 1');
-        apply_code('interrupted', static fn() => Dbspec::apply($pdo, $db, $plans, $now, null));
-        Dbspec::recover($pdo, $db, $plans, $now, null);
-        apply_schema_is($pdo, $db, $target);
-        apply_want($pdo, "SELECT COUNT(*) FROM `dbspec\$plans` WHERE state = 'done'", '2');
-        Dbspec::recover($pdo, $db, $plans, $now, null);
-    }];
+// representative plan 의 step k 마다: apply 를 statement 뒤에 멈추고 rollback 하고, 다시
+// 멈추고 recover 하고, 적용한 plan 의 rollback 을 step k 의 rollback statement 뒤에 멈추고
+// rollback 을 이어 간다.
+foreach ($all as $db) {
+    $c = $repCounts[$db];
+    $baseRow = "base|applied|{$c[0][1]}";
+    for ($k = 0; $k < $c[1][1]; $k++) {
+        $scenarios[] = [sprintf('interrupt_%02d', $k), [$db], static function (Closure $session, PDO $pdo, string $db) use ($k, $c, $baseRow, $representative, $now, $repSource, $repTarget, $historyIs, $stopAfter): void {
+            $stop = new RuntimeException('stop');
+            $name = $representative[1]->name;
+            Dbspec::apply($pdo, $db, [$representative[0]], $now, null);
+            apply_stopped($stop, static fn() => Dbspec::apply($pdo, $db, $representative, $now, $stopAfter($name, $k, $stop)));
+            $historyIs($pdo, $db, "$baseRow,representative|applying|$k");
+            apply_code('interrupted', static fn() => Dbspec::apply($pdo, $db, $representative, $now, null));
+            Dbspec::rollback($pdo, $db, $representative, $now, null);
+            apply_schema_is($pdo, $db, $repSource);
+            $historyIs($pdo, $db, $baseRow);
+            apply_stopped($stop, static fn() => Dbspec::apply($pdo, $db, $representative, $now, $stopAfter($name, $k, $stop)));
+            Dbspec::recover($pdo, $db, $representative, $now, null);
+            apply_schema_is($pdo, $db, $repTarget);
+            $historyIs($pdo, $db, "$baseRow,representative|applied|{$c[1][1]}");
+            apply_stopped($stop, static fn() => Dbspec::rollback($pdo, $db, $representative, $now, $stopAfter($name, $k, $stop)));
+            $historyIs($pdo, $db, "$baseRow,representative|rolling_back|" . ($k + 1));
+            Dbspec::rollback($pdo, $db, $representative, $now, null);
+            apply_schema_is($pdo, $db, $repSource);
+            $historyIs($pdo, $db, $baseRow);
+        }];
+    }
 }
 
 $runs = 0;
@@ -352,7 +477,8 @@ foreach ($scenarios as [$name, $dbs, $scenario]) {
         echo "PASS $id elapsedMs=$elapsed\n";
     }
 }
-if ($runs !== 23) {
-    throw new RuntimeException("runs=$runs, want 23");
+$want = 25 + array_sum(array_map(static fn(string $db): int => $repCounts[$db][1][1], $all));
+if ($runs !== $want) {
+    throw new RuntimeException("runs=$runs, want $want");
 }
 echo "PASS dbspec_apply runs=$runs elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";

@@ -1,14 +1,14 @@
 // plans.json(tests/dbspec/plans.json)의 chain(create-from-empty와
 // rename-table-and-column)을 TypeScript client로 한 database에 적용한다
 // (docs/plans.md "Apply"). action은 apply-first(첫 plan만), apply(chain 전체),
-// stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 MySQL plan을
-// 끝냄) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
+// stop(둘째 plan의 statement 1이 실행된 뒤 멈춤), recover(중단된 plan을 이어
+// 끝냄), rollback(history의 마지막 plan을 되돌림) 중 하나다. stdout에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
 // "error <code>". 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //
-// Usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
-import { DbspecApplyError, applyPlans, parsePlan, recoverPlans } from '../../../clients/typescript/dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans } from '../../../clients/typescript/dist/dbspec/index.js';
 import { readInput } from '../input.mjs';
 
 const require = createRequire(new URL('../../../clients/typescript/package.json', import.meta.url));
@@ -23,7 +23,7 @@ const CONNECTION_RULES = {
 };
 
 if (process.argv.length !== 6) {
-  console.error('usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>');
+  console.error('usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>');
   process.exit(2);
 }
 const [action, dialect, uri, vectorsPath] = process.argv.slice(2);
@@ -75,6 +75,9 @@ try {
       break;
     case 'recover':
       await recoverPlans(connection, dialect, plans, now, null);
+      break;
+    case 'rollback':
+      await rollbackPlans(connection, dialect, plans, now, null);
       break;
     case 'stop':
       await applyPlans(connection, dialect, plans, now, event => {

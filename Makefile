@@ -69,66 +69,67 @@ dbspec-introspect-php-check:
 dbspec-introspect-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_introspect -- --nocapture
 
-# dbspec-plan-check는 tests/dbspec/plans.json의 모든 case를 MySQL, PostgreSQL, SQLite에
-# 적용하고 introspect한 schema text가 plan의 target과 같기를 요구한다(docs/plans.md
-# "Verification").
+# dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
+# 적용해 plan의 target을, rollback statement로 source를, 다시 적용해 target을, finalize 뒤 target과
+# 숨긴 이름 없음을 요구한다(docs/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
 	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1 -timeout 10m -v
 
 # dbspec-apply-check는 plan chain을 MySQL, PostgreSQL, SQLite에 history, 두 번째 apply, drift,
-# lock, rollback, 아무것도 풀지 않은 unlock, 검증, MySQL recovery와 함께 적용한다
-# (docs/plans.md "Apply").
+# lock, 아무것도 풀지 않은 unlock, 검증, representative plan의 모든 step 뒤 중단에서 recover와
+# rollback, 그사이 쓴 row, null 검사, finalize와 함께 적용하고, 2000 table 문서를 첫 plan으로
+# 세 database에 적용한다(docs/plans.md "Apply", "Verification"). 2000 table plan은 MySQL에서
+# statement와 history step 22000개씩을 따로 commit하므로 기한이 길다.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyStressPlan)$$' -count=1 -timeout 70m -v
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
 # tests/dbspec/apply의 Go, PHP, TypeScript, Rust runner의 모든 순서쌍마다 MySQL, PostgreSQL,
-# SQLite에서 chain의 첫 plan을 한 client로, 나머지를 다른 client로 적용하며, MySQL에서는 첫
-# client가 멈춘 plan을 둘째 client가 마친다. history row와 introspect한 schema text가 chain의
-# 것과 같아야 한다.
+# SQLite에서 chain의 첫 plan을 한 client로, 나머지를 다른 client로 적용하고, 첫 client가 멈춘
+# plan을 둘째 client가 recover로 마치며, 다시 멈춘 plan을 둘째 client가 rollback한다. history
+# row와 introspect한 schema text가 chain의 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply go test -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1 -timeout 10m -v
 
-# dbspec-apply-rust-check는 같은 chain scenario를 Rust client의 orm::dbspec::apply와
-# orm::dbspec::recover로 적용한다.
+# dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
+# orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
-# 그 renderDbspec, planStatements, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
+# 그 renderDbspec, planSteps, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
 .PHONY: dbspec-plan-ts-check
 dbspec-plan-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-plan-physical.mjs
 
-# dbspec-apply-ts-check는 TypeScript client를 build하고 dbspec-apply-check의 plan chain을 그
-# applyPlans와 recoverPlans로 같은 history, drift, lock, rollback, 검증, MySQL recovery run과
-# 함께 적용한다.
+# dbspec-apply-ts-check는 TypeScript client를 build하고 2000 table plan을 뺀 dbspec-apply-check의
+# scenario를 그 applyPlans, recoverPlans, rollbackPlans, finalizePlans로 실행한다.
 .PHONY: dbspec-apply-ts-check
 dbspec-apply-ts-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-apply-physical.mjs
 
-# dbspec-plan-rust-check는 같은 case를 Rust client의 plan statement, renderer,
+# dbspec-plan-rust-check는 같은 case를 Rust client의 plan step, renderer,
 # orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check:
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_plan_apply -- --nocapture
 
-# dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planStatements와
+# dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
 # Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_plan_apply_test.php
 
-# dbspec-apply-php-check는 dbspec-apply-check의 scenario를 PHP client의
-# Orm\Dbspec\Dbspec::apply와 Dbspec::recover로 MySQL, PostgreSQL, SQLite에서 실행한다.
+# dbspec-apply-php-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 PHP client의
+# Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php

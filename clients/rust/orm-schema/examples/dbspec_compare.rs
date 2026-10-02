@@ -3,7 +3,7 @@
 //!
 //! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
 
-use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, Unsupported};
+use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, Unsupported};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
@@ -384,6 +384,32 @@ fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Re
 /// plan case마다 emit한 plan, change, dialect별 statement를, invalid case마다 diagnostic을,
 /// chain case마다 chain 순서나 diagnostic을, parse case마다 diagnostic이나 emit한 plan을,
 /// comparison마다 차이나 diagnostic을 출력한다.
+/// step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs).
+fn write_step(out: &mut impl Write, s: &PlanStep) -> std::io::Result<()> {
+    writeln!(out, "| {}", s.statement)?;
+    if s.finalize {
+        writeln!(out, "  finalize")?;
+    } else if !s.rollback.is_empty() {
+        writeln!(out, "  rollback: {}", s.rollback)?;
+    } else {
+        writeln!(out, "  irreversible: {}", s.irreversible)?;
+    }
+    writeln!(out, "  effect: {}", s.effect)?;
+    if !s.restore.is_empty() {
+        writeln!(out, "  restore: {}", s.restore)?;
+    }
+    if !s.rollback_restore.is_empty() {
+        writeln!(out, "  rollback_restore: {}", s.rollback_restore)?;
+    }
+    if let Some(e) = s.restore_if.as_ref().filter(|_| !s.restore.is_empty() || !s.rollback_restore.is_empty()) {
+        writeln!(out, "  restore_if: {e}")?;
+    }
+    for c in &s.null_checks {
+        writeln!(out, "  null_check: {} {} {}", c.table, c.column, c.default.as_deref().unwrap_or("none"))?;
+    }
+    Ok(())
+}
+
 fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()> {
     for case in &plans.cases {
         let id = &case.id;
@@ -404,10 +430,10 @@ fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()>
         }
         for (name, dialect) in [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)] {
             writeln!(out, "plans/cases/{id}/{name}")?;
-            match orm_schema::dbspec::plan_statements(source.as_ref(), &plan, dialect) {
-                Ok(statements) => {
-                    for statement in statements {
-                        writeln!(out, "| {statement}")?;
+            match orm_schema::dbspec::plan_steps(source.as_ref(), &plan, dialect) {
+                Ok(steps) => {
+                    for step in &steps {
+                        write_step(out, step)?;
                     }
                 }
                 Err(diagnostics) => write_plan_diagnostics(out, &diagnostics)?,
