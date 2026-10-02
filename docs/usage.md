@@ -419,6 +419,7 @@ $row->newIsMember(true);                                                        
 - Transaction options select `isolation`, `readOnly`, and `timeoutMs`. The supported isolation names are `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, and `serializable`. PostgreSQL applies transaction settings after `BEGIN`; MySQL applies them before `START TRANSACTION` on the retained connection. SQLite applies `readOnly` through `PRAGMA query_only` and maps portable isolation modes to its transaction connection; the ORM restores connection state before commit or rollback. A positive `timeoutMs` applies PostgreSQL `statement_timeout`; MySQL and SQLite return `CAPABILITY_UNSUPPORTED`.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL execute the selected row lock; `NoWait` fails immediately when the row is unavailable. SQLite emits no lock suffix and uses an ORM transaction-scoped database lock row for all four modes. A SQLite write transaction takes the database write lock when it begins, so a lock request inside it succeeds without waiting, and the lock wait happens when the transaction begins ([runtime connection](config.md)).
 - There is no common in-flight cancellation method. `timeoutMs` limits PostgreSQL statements.
+- A test makes the rollback of a transaction fail on every database with the test fault of its client, which a production build does not contain or load ([protocol §3.1](protocol.md#_3-1-test-faults)): Go `orm.FailNextRollback(db)` with `-tags ormtest`, Rust `orm::testing::fail_next_rollback(&db)` with the feature `test-faults`, TypeScript `failNextRollback(db)` of `@polyspec/orm-typescript/testing` under `node --conditions=orm-test`, and PHP `Orm\Testing\Faults::failNextRollback($db)` after `require 'vendor/orm/php-client/testing/Faults.php'`. The next transaction whose callback fails is rolled back and returns `ROLLBACK` with the callback error and a `FAULT` error.
 
 ```go
 err := master.Transaction(func() error {
@@ -502,6 +503,7 @@ psql … -f schema.pg.sql
 | `CONSTRAINT` | A CHECK constraint refused the row; the error keeps the driver message and the driver error |
 | `DRIVER` | Any other driver error, such as a write that an `orm:audit` or `orm:immutable` trigger refuses; the error keeps the driver message and the driver error as its cause |
 | `ROLLBACK` | The callback of a transaction or savepoint failed and its rollback failed too, for example because the server ended the session; the error keeps both errors and is not retried |
+| `FAULT` | A test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran; it is the rollback error of a `ROLLBACK` error ([protocol §3.1](protocol.md#_3-1-test-faults)) |
 | `CODEC_DECODE` | Stored bytes do not match the declared column styles |
 
 ---

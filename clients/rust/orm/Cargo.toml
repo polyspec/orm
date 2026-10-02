@@ -10,6 +10,11 @@ readme = "../README.md"
 keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
+[features]
+# The test entry point orm::testing. A build has it only when it enables this
+# feature; no default feature enables it.
+test-faults = []
+
 [dependencies]
 orm-schema = { version = "=0.0.1", path = "../orm-schema" }
 ordered-json = { version = "=0.0.1", git = "https://github.com/polyspec/ordered-json.git" }

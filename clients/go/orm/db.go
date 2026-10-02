@@ -95,6 +95,10 @@ type dbMutable struct {
 	keyringOnce sync.Once
 	keyring     AESKeyring
 	keyringErr  error
+
+	// rollbackFault is the test fault that FailNextRollback arms; only a
+	// build with the tag ormtest can set it.
+	rollbackFault atomic.Bool
 }
 
 var processSchemas = struct {

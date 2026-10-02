@@ -1,5 +1,19 @@
 # 변경 이력
 
+모든 database에서 트랜잭션 rollback을 실패시키는 test fault를 제공한다(N16).
+orm에는 rollback을 실패시키는 지원 방법이 없었다. ORM
+test는 MySQL과 PostgreSQL에서 server session을 종료하거나 SQL로 쓴 SQLite
+trigger를 설치한다. 이제 각 클라이언트의 test entry point가 연결에 rollback
+fault를 설정한다. Go는 build tag `ormtest`의 `orm.FailNextRollback(db)`, Rust는
+feature `test-faults`의 `orm::testing::fail_next_rollback(&db)`, TypeScript는
+Node condition `orm-test`에서 `@polyspec/orm-typescript/testing`의
+`failNextRollback(db)`, PHP는 package autoloader가 load하지 않는
+`testing/Faults.php`의 `Orm\Testing\Faults::failNextRollback($db)`를 쓴다.
+DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다. callback이 실패한 다음
+트랜잭션의 rollback은 실행된 뒤 새 catalog code `FAULT`로 보고되어, 트랜잭션은
+callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다. `rollback_fault`
+case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
 migration ledger의 시각을 모든 database에서 마이크로초로 저장한다(N15).
 ledger `orm_schema_migrations`는 MySQL에서 `timestamp`를 선언했고 SQLite에서
 `CURRENT_TIMESTAMP`로 쓴 `TEXT`를 썼으므로, 그 `started_at`과 `finished_at`은

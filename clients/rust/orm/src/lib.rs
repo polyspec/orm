@@ -17,6 +17,8 @@ pub mod plan;
 mod request;
 pub mod row;
 pub mod schema;
+#[cfg(feature = "test-faults")]
+pub mod testing;
 pub mod tx;
 pub mod utils;
 pub mod value;

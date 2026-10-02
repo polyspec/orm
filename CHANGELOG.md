@@ -1,5 +1,23 @@
 # Changelog
 
+Provide a test fault that makes the rollback of a transaction fail on
+every database (N16). orm had no
+supported way to make a rollback fail: the ORM tests end the server
+session on MySQL and PostgreSQL or install a SQLite trigger written in
+SQL. The test entry point of each client now arms a rollback fault on a
+connection: Go `orm.FailNextRollback(db)` with the build tag `ormtest`,
+Rust `orm::testing::fail_next_rollback(&db)` with the feature
+`test-faults`, TypeScript `failNextRollback(db)` of
+`@polyspec/orm-typescript/testing` under the Node condition `orm-test`,
+and PHP `Orm\Testing\Faults::failNextRollback($db)` from
+`testing/Faults.php`, which the package autoloader does not load. No
+DSN, configuration value or environment variable arms the fault. The
+next rollback of a transaction whose callback failed runs and is then
+reported with the new catalog code `FAULT`, so the transaction returns
+`ROLLBACK` with the callback error and the `FAULT` error. The case
+`rollback_fault` passes in Go, PHP, Rust and TypeScript on MySQL,
+PostgreSQL and SQLite.
+
 Store the times of the migration ledger with microseconds on every
 database (N15). The ledger `orm_schema_migrations` declared `timestamp`
 on MySQL and `TEXT` written with `CURRENT_TIMESTAMP` on SQLite, so its

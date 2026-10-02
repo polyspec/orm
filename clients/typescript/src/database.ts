@@ -211,10 +211,19 @@ export function keyValue(value: unknown): Key {
   return scalarKey(value);
 }
 
+/**
+ * Arms the rollback fault of a connection. Only the test entry point
+ * `src/testing.ts` calls it; the package entry point does not export it.
+ */
+export function armRollbackFault(db: Db): void {
+  db['shared'].rollbackFault = true;
+}
+
 /** A database connection with its schemas, plan cache, and statement cache. */
 export class Db {
-  // State every handle of one connection shares.
-  private readonly shared = { closed: false };
+  // State every handle of one connection shares. rollbackFault is the test
+  // fault that failNextRollback of the test entry point arms.
+  private readonly shared = { closed: false, rollbackFault: false };
   public readonly signal: AbortSignal | undefined = undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
@@ -347,6 +356,10 @@ export class Db {
       result = await flow.run([...frames(), frame], callback);
     } catch (error) {
       try { await this.finish(frame, false); } catch (rollback) { throw rollbackError(error, rollback); }
+      if (this.shared.rollbackFault) {
+        this.shared.rollbackFault = false;
+        throw rollbackError(error, new OrmError('FAULT', 'test fault: the rollback of the transaction ran and is reported as failed'));
+      }
       throw error;
     }
     await this.finish(frame, true);

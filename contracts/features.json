@@ -703,8 +703,8 @@
       "title": "Transactions",
       "title_ko": "트랜잭션",
       "status": "implemented",
-      "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values. A SQLite write transaction takes the write lock at its start and waits for it up to busy_timeout.",
-      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다.",
+      "description": "Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values. A SQLite write transaction takes the write lock at its start and waits for it up to busy_timeout. A test entry point of each client arms a rollback fault: the next rollback of a transaction whose callback failed runs and is reported as FAULT, so the transaction returns ROLLBACK.",
+      "description_ko": "현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다. 각 클라이언트의 test entry point는 rollback fault를 설정한다. callback이 실패한 다음 트랜잭션의 rollback은 실행된 뒤 FAULT로 보고되어 트랜잭션이 ROLLBACK을 반환한다.",
       "inputs": {
         "type": "TransactionRequest",
         "fields": [
@@ -747,6 +747,10 @@
         {
           "code": "ROLLBACK",
           "when": "the callback of a transaction or savepoint failed and its rollback failed too; the error keeps both errors"
+        },
+        {
+          "code": "FAULT",
+          "when": "a test fault armed through the test entry point reported the rollback of a transaction whose callback failed as failed after the rollback ran; it is the rollback error of a ROLLBACK error"
         }
       ],
       "clients": {
@@ -774,12 +778,15 @@
         "clients/go/orm/rollback_test.go",
         "clients/php/tests/rollback_test.php",
         "clients/rust/orm/tests/rollback.rs",
-        "clients/typescript/tests/rollback.mjs"
+        "clients/typescript/tests/rollback.mjs",
+        "clients/go/orm/rollback_fault_test.go",
+        "clients/go/orm/rollback_fault_entry_test.go"
       ],
       "docs": [
         "docs/config.md",
         "docs/dsl.md",
-        "docs/errors.yaml"
+        "docs/errors.yaml",
+        "docs/protocol.md"
       ],
       "verification": [
         {
@@ -789,6 +796,10 @@
         {
           "id": "transactions-sqlite-locking-go",
           "command": "go test ./clients/go/model -run 'TestSQLite' -count=1"
+        },
+        {
+          "id": "transactions-rollback-fault-go",
+          "command": "go test ./clients/go/orm -tags ormtest -run '^TestRollbackFault' -count=1"
         }
       ],
       "public_constraints": [

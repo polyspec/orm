@@ -3,7 +3,9 @@
 # ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
 # ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for the
 # schema tools; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects
-# clients (default: all).
+# clients (default: all). The rollback fault cases run with the test entry
+# points of their clients: the Go build tag ormtest, the Rust feature
+# test-faults and the Node condition orm-test.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -14,6 +16,7 @@ LANGS=,${ORM_CLIENT_DB_LANGS:-go,php,rust,typescript},
 
 case "$LANGS" in *,go,*)
   go test -count=1 ./clients/go/...
+  go test -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
 esac
 case "$LANGS" in *,php,*)
   php clients/php/tests/model_test.php
@@ -32,6 +35,7 @@ case "$LANGS" in *,typescript,*)
 esac
 case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked --workspace)
+  (cd clients/rust && cargo test --locked -p orm --features test-faults --test rollback)
   (cd clients/rust && cargo test --locked -p orm-build --features cli)
   (cd clients/rust && cargo build --locked --release -p orm-tests --bin integration)
   clients/rust/target/release/integration "$ROOT/schema/schema.json"

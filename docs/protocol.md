@@ -143,6 +143,19 @@ A raw order expression carries its own direction. `minus_p` never stores a negat
 
 Errors carry a code from [errors.yaml](errors.yaml) and a message, for example `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, and `COLUMN_ALIAS_CONFLICT`. Executors add `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, and `DRIVER`. The client returns every driver error as an ORM error: a condition that the catalog lists has its code, every other driver error has `DRIVER`, and each keeps the driver message and the driver error as its cause. A write that an `orm:audit` or `orm:immutable` trigger refuses is `DRIVER`. When the callback of a transaction or savepoint fails and its rollback fails too, the client returns one error with the code `ROLLBACK`; its message names both errors, and it keeps the callback error and the rollback error (PHP: the previous exception and `rollback`, TypeScript: `cause` and `rollback`, Go: `errors.Join` of both in that order, Rust: `Error::Rollback { callback, rollback }`). A `ROLLBACK` error is not retried. A NOWAIT lock failure is always `LOCK_NOT_AVAILABLE` and is not retried as a transaction conflict.
 
+### 3.1 Test faults
+
+A test makes the rollback of a transaction fail deterministically on every database through the test entry point of its client; a production process cannot arm the fault. The entry point arms a rollback fault on the connection of a handle, and every handle of that connection shares it. The next rollback of a transaction whose callback failed runs as usual, so the database discards the transaction, and the client then reports the rollback as failed with a `FAULT` error: the transaction returns one `ROLLBACK` error that keeps the callback error and the `FAULT` error. A commit, a savepoint rollback, and a rollback after a failed begin or commit do not consume the fault; it stays armed until a transaction rollback after a failed callback consumes it, and the next transaction whose callback fails returns its callback error alone.
+
+The fault exists only in the test entry point of each client. No DSN, configuration value, or environment variable arms it.
+
+| Client | Entry point | How a production build excludes it |
+|---|---|---|
+| Go | `orm.FailNextRollback(db)` | The file is compiled only with the build tag `ormtest` (`go test -tags ormtest`); without the tag the function does not exist and a call does not compile |
+| Rust | `orm::testing::fail_next_rollback(&db)` | The module is compiled only with the cargo feature `test-faults`, which no default feature enables; it is enabled in `[dev-dependencies]` |
+| TypeScript | `failNextRollback(db)` of `@polyspec/orm-typescript/testing` | The package exports the subpath only under the condition `orm-test`; without `node --conditions=orm-test` the import fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`, and the package entry point does not export the function. A type check of the test resolves the subpath with `customConditions: ["orm-test"]` |
+| PHP | `Orm\Testing\Faults::failNextRollback($db)` | The class is in `testing/Faults.php` of the package, which the package autoloader does not map; a process has it only after it requires that file by its path |
+
 ## 4. Planning in the client
 
 Every client validates and plans requests in the calling process. No compiler service, daemon, or extension is involved.
