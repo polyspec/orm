@@ -55,22 +55,7 @@ export class Renderer {
   }
 
   table(t: DbspecTable): string[] {
-    const parts = t.columns.map(c => this.column(c));
-    if (!(this.d === 'sqlite' && t.columns.some(c => c.identity))) parts.push(`PRIMARY KEY (${this.list(t.primaryKey.columns)})`);
-    if (this.d !== 'sqlite') {
-      for (const u of sorted(t.uniques, u => u.name)) parts.push(`CONSTRAINT ${this.q(u.name)} UNIQUE (${this.list(u.columns)})`);
-    } else {
-      for (const f of sorted(t.foreignKeys, f => f.name)) parts.push(this.foreignKey(f));
-    }
-    for (const c of t.columns) {
-      const check = this.typeCheck(c);
-      if (check !== '') parts.push(`CONSTRAINT ${this.q(`${t.name}$${c.name}`)} CHECK (${check})`);
-    }
-    for (const k of sorted(t.checks, k => k.name)) {
-      parts.push(`CONSTRAINT ${this.q(k.name)} CHECK (${this.predicate(t, readCheck(k.expression, k.name))})`);
-    }
-    let create = `CREATE TABLE ${this.q(t.name)} (${parts.join(', ')})`;
-    if (this.d === 'mysql') create += ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin';
+    const create = this.createTable(t, t.name, c => `${t.name}$${c}`, []);
     const out = [create];
     if (this.d === 'sqlite') {
       for (const u of sorted(t.uniques, u => u.name)) {
@@ -82,6 +67,32 @@ export class Renderer {
       out.push(`CREATE INDEX ${this.q(x.name)} ON ${this.q(t.name)} (${columns.join(', ')})`);
     }
     return out;
+  }
+
+  /**
+   * The CREATE TABLE of table t under name. checkName names the renderer
+   * CHECK of a column, and hidden columns follow t's columns, nullable and
+   * without a CHECK (docs/plans.md "Steps", the SQLite rebuild).
+   */
+  createTable(t: DbspecTable, name: string, checkName: (column: string) => string, hidden: readonly DbspecColumn[]): string {
+    const parts = t.columns.map(c => this.column(c));
+    for (const c of hidden) parts.push(this.column({ ...c, nullable: true, identity: false }));
+    if (!(this.d === 'sqlite' && t.columns.some(c => c.identity))) parts.push(`PRIMARY KEY (${this.list(t.primaryKey.columns)})`);
+    if (this.d !== 'sqlite') {
+      for (const u of sorted(t.uniques, u => u.name)) parts.push(`CONSTRAINT ${this.q(u.name)} UNIQUE (${this.list(u.columns)})`);
+    } else {
+      for (const f of sorted(t.foreignKeys, f => f.name)) parts.push(this.foreignKey(f));
+    }
+    for (const c of t.columns) {
+      const check = this.typeCheck(c);
+      if (check !== '') parts.push(`CONSTRAINT ${this.q(checkName(c.name))} CHECK (${check})`);
+    }
+    for (const k of sorted(t.checks, k => k.name)) {
+      parts.push(`CONSTRAINT ${this.q(k.name)} CHECK (${this.predicate(t, readCheck(k.expression, k.name))})`);
+    }
+    let create = `CREATE TABLE ${this.q(name)} (${parts.join(', ')})`;
+    if (this.d === 'mysql') create += ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin';
+    return create;
   }
 
   column(c: DbspecColumn): string {

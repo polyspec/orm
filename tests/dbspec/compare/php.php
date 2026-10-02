@@ -289,6 +289,32 @@ function dbspec_write_render(array $case): void
     }
 }
 
+/** step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs). */
+function dbspec_step(Orm\Dbspec\PlanStep $s): void
+{
+    echo "| {$s->statement}\n";
+    if ($s->finalize) {
+        echo "  finalize\n";
+    } elseif ($s->rollback !== '') {
+        echo "  rollback: {$s->rollback}\n";
+    } else {
+        echo "  irreversible: {$s->irreversible}\n";
+    }
+    echo '  effect: ' . $s->effect->text() . "\n";
+    if ($s->restore !== '') {
+        echo "  restore: {$s->restore}\n";
+    }
+    if ($s->rollbackRestore !== '') {
+        echo "  rollback_restore: {$s->rollbackRestore}\n";
+    }
+    if ($s->restore !== '' || $s->rollbackRestore !== '') {
+        echo '  restore_if: ' . $s->restoreIf?->text() . "\n";
+    }
+    foreach ($s->nullChecks as $c) {
+        echo "  null_check: {$c->table} {$c->column} " . ($c->default ?? 'none') . "\n";
+    }
+}
+
 $ddl = dbspec_read_vectors($argv[3], static fn(string $path, stdClass $v): array => dbspec_vector_cases(
     $path,
     $v,
@@ -395,10 +421,10 @@ foreach ($plans['cases'] as $case) {
     dbspec_changes($diff->changes ?? []);
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         echo "plans/cases/{$case['id']}/$dialect\n";
-        $result = Orm\Dbspec\Dbspec::planStatements($source, $parsed->plan, $dialect);
+        $result = Orm\Dbspec\Dbspec::planSteps($source, $parsed->plan, $dialect);
         dbspec_plan_diagnostics($result->diagnostics);
-        foreach ($result->statements ?? [] as $statement) {
-            echo "| $statement\n";
+        foreach ($result->steps ?? [] as $step) {
+            dbspec_step($step);
         }
     }
 }

@@ -1,6 +1,6 @@
 //! The cases of tests/dbspec/plans.json through the plan functions of
 //! `orm_schema::dbspec` (docs/plans.md): every case diffs to its changes,
-//! writes its statements for MySQL, PostgreSQL and SQLite and emits its plan
+//! writes its steps for MySQL, PostgreSQL and SQLite and emits its plan
 //! text again; every invalid case reports its `plan` diagnostics; every chain
 //! case orders its plans or reports its `chain` diagnostics; every parse case
 //! reports its diagnostics with rule, line, column and the message of a `plan`
@@ -8,8 +8,41 @@
 //! diagnostics.
 
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_statements, Dialect, Document, Plan};
+use orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use serde_json::Value;
+
+/// step의 plans.json object다(docs/plans.md "Steps").
+fn step_fields(s: &PlanStep) -> Value {
+    let mut out = serde_json::Map::new();
+    out.insert("statement".into(), Value::from(s.statement.clone()));
+    out.insert("effect".into(), Value::from(s.effect.to_string()));
+    if !s.rollback.is_empty() {
+        out.insert("rollback".into(), Value::from(s.rollback.clone()));
+    } else if !s.irreversible.is_empty() {
+        out.insert("irreversible".into(), Value::from(s.irreversible.clone()));
+    }
+    if !s.restore.is_empty() {
+        out.insert("restore".into(), Value::from(s.restore.clone()));
+    }
+    if !s.rollback_restore.is_empty() {
+        out.insert("rollback_restore".into(), Value::from(s.rollback_restore.clone()));
+    }
+    if let Some(e) = s.restore_if.as_ref().filter(|_| !s.restore.is_empty() || !s.rollback_restore.is_empty()) {
+        out.insert("restore_if".into(), Value::from(e.to_string()));
+    }
+    if !s.null_checks.is_empty() {
+        let checks = s
+            .null_checks
+            .iter()
+            .map(|c| Value::Array(vec![c.table.clone().into(), c.column.clone().into(), c.default.clone().map_or(Value::Null, Value::from)]))
+            .collect();
+        out.insert("null_checks".into(), Value::Array(checks));
+    }
+    if s.finalize {
+        out.insert("finalize".into(), Value::Bool(true));
+    }
+    Value::Object(out)
+}
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -81,10 +114,11 @@ fn plan_vectors() {
                 return Err(format!("changes\nwant {want:?}\ngot  {changes:?}"));
             }
             for (name, dialect) in DIALECTS {
-                let statements = plan_statements(source.as_ref(), &plan, dialect).map_err(|e| format!("{name}: {e:?}"))?;
-                let want = strings(&case["statements"][name]);
-                if statements != want {
-                    return Err(format!("{name} statements\nwant {want:#?}\ngot  {statements:#?}"));
+                let steps = plan_steps(source.as_ref(), &plan, dialect).map_err(|e| format!("{name}: {e:?}"))?;
+                let got: Vec<Value> = steps.iter().map(step_fields).collect();
+                let want = case["steps"][name].as_array().cloned().unwrap_or_default();
+                if got != want {
+                    return Err(format!("{name} steps\nwant {}\ngot  {}", Value::Array(want), Value::Array(got)));
                 }
             }
             Ok(())

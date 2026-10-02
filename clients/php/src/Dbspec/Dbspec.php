@@ -140,33 +140,36 @@ final class Dbspec
     }
 
     /**
-     * The statements of the plan from the source schema, null for the empty
-     * database, in one dialect, `mysql`, `postgres` or `sqlite`, or the diff's
-     * diagnostics (docs/plans.md "Statements"). An unknown dialect is an
+     * The steps of the plan from the source schema, null for the empty
+     * database, in one dialect, `mysql`, `postgres` or `sqlite`, each with its
+     * statement, rollback statement or irreversible reason, effect, restore
+     * statements, null checks and finalize mark, or the diff's diagnostics
+     * (docs/plans.md "Steps"). An unknown dialect is an
      * InvalidArgumentException.
      */
-    public static function planStatements(?Document $source, Plan $plan, string $dialect): PlanStatementsResult
+    public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult
     {
         $renderer = new Renderer($dialect);
         [$diff, $diagnostics] = PlanDiff::of($source, $plan);
-        return $diff === null ? PlanStatementsResult::invalid($diagnostics) : PlanStatementsResult::valid(PlanStatements::write($diff, $renderer));
+        return $diff === null ? PlanStepsResult::invalid($diagnostics) : PlanStepsResult::valid(PlanSteps::write($diff, $renderer, $plan));
     }
 
     /**
-     * Applies the plans of the chain that the database of the connection has
-     * not applied, one plan at a time (docs/plans.md "Apply"): it takes the
-     * lock, keeps the history table `dbspec$plans`, checks the state, runs
-     * the statements and verifies each plan. `$now` gives the time recorded
+     * Applies, step by step, the plans of the chain that the database of the
+     * connection has not applied, up to their finalize steps (docs/plans.md
+     * "Apply"): it takes the lock, keeps the history table `dbspec$plans`,
+     * checks the state, reports the steps without rollback, runs and records
+     * each statement and verifies each plan. `$now` gives the time recorded
      * as `applied_at`; `$events` receives each ApplyEvent, and an exception it
      * throws stops apply there. A failure propagates unchanged: an ApplyError
-     * with its code, the PDOException of a history, lock or transaction
+     * with its code, the PDOException of a history, lock or setting
      * statement, a RuntimeException for an advisory unlock that released
-     * nothing or a catalog query without a row or whose result cannot be
-     * closed, or the exception of `$events`. When releasing the lock, ending
-     * the transaction, restoring SQLite foreign keys or closing a result
-     * fails after it, apply throws an ApplyCleanupError whose previous
-     * throwable is that failure and whose `cleanup` lists the cleanup errors
-     * in order. An unknown dialect, or a connection whose error mode is not
+     * nothing or a query without a row or whose result cannot be closed, or
+     * the exception of `$events`. When restoring the session settings or
+     * SQLite foreign keys, releasing the lock or closing a result fails after
+     * it, apply throws an ApplyCleanupError whose previous throwable is that
+     * failure and whose `cleanup` lists the cleanup errors in order. An
+     * unknown dialect, or a connection whose error mode is not
      * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
      * has applied the whole chain stays unchanged.
      *
@@ -180,11 +183,10 @@ final class Dbspec
     }
 
     /**
-     * Finishes the plan that a stopped MySQL apply left `running`: it checks
-     * in the catalog the effect of the statement at the recorded step,
-     * continues after it when the effect is there and from it when not, then
-     * verifies the plan and records it `done` (docs/plans.md "Apply",
-     * recovery). Without a running plan nothing changes. Failures and
+     * Continues the interrupted plan forward: it reads in the catalog whether
+     * the statement after the recorded step took effect and runs the rest,
+     * up to `applied`, or to `done` for a finalizing plan (docs/plans.md
+     * "Apply"). Without an interrupted plan nothing changes. Failures and
      * arguments are as for apply.
      *
      * @param list<Plan> $plans
@@ -194,6 +196,36 @@ final class Dbspec
     public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
         PlanApply::recover($connection, $dialect, $plans, $now, $events);
+    }
+
+    /**
+     * Undoes the last plan of the history with its rollback statements, down
+     * to its first step, and deletes its row (docs/plans.md "Apply"). An
+     * applied plan is checked for drift and NULL rows first; a step without
+     * rollback stops it with an `irreversible` ApplyError. Without a row
+     * nothing changes. Failures and arguments are as for apply.
+     *
+     * @param list<Plan> $plans
+     * @param \Closure(): \DateTimeInterface $now
+     * @param ?\Closure(ApplyEvent): void $events
+     */
+    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    {
+        PlanApply::rollback($connection, $dialect, $plans, $now, $events);
+    }
+
+    /**
+     * Runs the finalize steps of every applied plan in chain order, dropping
+     * the hidden tables and columns, and records the plans `done`
+     * (docs/plans.md "Apply"). Failures and arguments are as for apply.
+     *
+     * @param list<Plan> $plans
+     * @param \Closure(): \DateTimeInterface $now
+     * @param ?\Closure(ApplyEvent): void $events
+     */
+    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
+    {
+        PlanApply::finalize($connection, $dialect, $plans, $now, $events);
     }
 
     /**

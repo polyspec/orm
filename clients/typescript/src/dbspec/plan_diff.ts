@@ -18,7 +18,7 @@ export type DbspecDiffResult =
   | { readonly changes: readonly DbspecChange[]; readonly diagnostics: readonly [] }
   | { readonly changes: null; readonly diagnostics: readonly DbspecDiagnostic[] };
 
-/** The diff that diffPlan and planStatements share. */
+/** The diff that diffPlan and planSteps share. */
 export interface PlanDiff {
   readonly source: Map<string, DbspecTable>;
   readonly target: Map<string, DbspecTable>;

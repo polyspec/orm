@@ -111,37 +111,7 @@ func (r renderer) list(names []string) string {
 }
 
 func (r renderer) table(t *Table) []string {
-	var parts []string
-	for _, c := range t.Columns {
-		parts = append(parts, r.column(c))
-	}
-	identityInline := r.d == DialectSQLite && t.identity() != nil
-	if !identityInline {
-		parts = append(parts, "PRIMARY KEY ("+r.list(t.PrimaryKey.Columns)+")")
-	}
-	if r.d != DialectSQLite {
-		for _, u := range sortedBy(t.Uniques, func(u Unique) string { return u.Name }) {
-			parts = append(parts, "CONSTRAINT "+r.q(u.Name)+" UNIQUE ("+r.list(u.Columns)+")")
-		}
-	} else {
-		for _, f := range sortedBy(t.ForeignKeys, func(f ForeignKey) string { return f.Name }) {
-			parts = append(parts, r.foreignKey(f))
-		}
-	}
-	for _, c := range t.Columns {
-		if check := r.typeCheck(c); check != "" {
-			parts = append(parts, "CONSTRAINT "+r.q(t.Name+"$"+c.Name)+" CHECK ("+check+")")
-		}
-	}
-	for _, k := range sortedBy(t.Checks, func(k Check) string { return k.Name }) {
-		var b strings.Builder
-		r.predicate(&b, t, k.Expression)
-		parts = append(parts, "CONSTRAINT "+r.q(k.Name)+" CHECK ("+b.String()+")")
-	}
-	create := "CREATE TABLE " + r.q(t.Name) + " (" + strings.Join(parts, ", ") + ")"
-	if r.d == DialectMySQL {
-		create += " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
-	}
+	create := r.createTable(t, t.Name, func(column string) string { return t.Name + "$" + column }, nil)
 	out := []string{create}
 	if r.d == DialectSQLite {
 		for _, u := range sortedBy(t.Uniques, func(u Unique) string { return u.Name }) {
@@ -159,6 +129,48 @@ func (r renderer) table(t *Table) []string {
 		out = append(out, "CREATE INDEX "+r.q(x.Name)+" ON "+r.q(t.Name)+" ("+strings.Join(columns, ", ")+")")
 	}
 	return out
+}
+
+// createTable은 table t를 name으로 만드는 CREATE TABLE이다. checkName은 column의
+// renderer CHECK 이름이고, hidden은 t의 column 뒤에 nullable이며 CHECK 없이 더하는
+// column이다(docs/plans.md "Steps"의 SQLite 다시 만들기).
+func (r renderer) createTable(t *Table, name string, checkName func(column string) string, hidden []Column) string {
+	var parts []string
+	for _, c := range t.Columns {
+		parts = append(parts, r.column(c))
+	}
+	for _, c := range hidden {
+		c.Null, c.Identity = true, false
+		parts = append(parts, r.column(c))
+	}
+	identityInline := r.d == DialectSQLite && t.identity() != nil
+	if !identityInline {
+		parts = append(parts, "PRIMARY KEY ("+r.list(t.PrimaryKey.Columns)+")")
+	}
+	if r.d != DialectSQLite {
+		for _, u := range sortedBy(t.Uniques, func(u Unique) string { return u.Name }) {
+			parts = append(parts, "CONSTRAINT "+r.q(u.Name)+" UNIQUE ("+r.list(u.Columns)+")")
+		}
+	} else {
+		for _, f := range sortedBy(t.ForeignKeys, func(f ForeignKey) string { return f.Name }) {
+			parts = append(parts, r.foreignKey(f))
+		}
+	}
+	for _, c := range t.Columns {
+		if check := r.typeCheck(c); check != "" {
+			parts = append(parts, "CONSTRAINT "+r.q(checkName(c.Name))+" CHECK ("+check+")")
+		}
+	}
+	for _, k := range sortedBy(t.Checks, func(k Check) string { return k.Name }) {
+		var b strings.Builder
+		r.predicate(&b, t, k.Expression)
+		parts = append(parts, "CONSTRAINT "+r.q(k.Name)+" CHECK ("+b.String()+")")
+	}
+	create := "CREATE TABLE " + r.q(name) + " (" + strings.Join(parts, ", ") + ")"
+	if r.d == DialectMySQL {
+		create += " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"
+	}
+	return create
 }
 
 // identity returns the identity column of the table, or nil.

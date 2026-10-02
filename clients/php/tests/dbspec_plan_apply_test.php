@@ -3,10 +3,13 @@ declare(strict_types=1);
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
 // SQLite through Orm\Dbspec\Dbspec (docs/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
-// `before` steps, applies the plan statements (on SQLite with foreign keys
-// off and no foreign_key_check row afterwards), runs the `after` steps and
-// requires the introspected schema text to equal the plan's target with no
-// unsupported object. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the
+// `before` steps, runs the plan steps before finalize (on SQLite with
+// foreign keys off and no foreign_key_check row afterwards) and requires the
+// introspected schema text to equal the plan's target with no unsupported
+// object; without an irreversible step it runs the rollback statements back
+// to the source schema text and the steps again; then it runs the `after`
+// steps and the finalize steps and requires the target again and no table
+// or column named dbspec$. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the
 // servers; the test fails when either is unset.
 // Usage: php clients/php/tests/dbspec_plan_apply_test.php
 require __DIR__ . '/autoload.php';
@@ -155,10 +158,51 @@ foreach ($vectors['cases'] as $case) {
             $rendered = Dbspec::render([$source], $dialect);
             $setup = $rendered->statements ?? plan_failure($id, $rendered->diagnostics);
         }
-        $result = Dbspec::planStatements($source, $plan, $dialect);
-        $statements = $result->statements ?? plan_failure($id, $result->diagnostics);
-        echo "RUN $id statements=" . count($statements) . ' deadlineMs=' . RUN_DEADLINE_MS . "\n";
+        $result = Dbspec::planSteps($source, $plan, $dialect);
+        $steps = $result->steps ?? plan_failure($id, $result->diagnostics);
+        $reversible = true;
+        foreach ($steps as $step) {
+            if (!$step->finalize && $step->rollback === '') {
+                $reversible = false;
+            }
+        }
+        $sourceText = '';
+        if ($source !== null) {
+            $sourceManifest = Dbspec::manifest([$source]);
+            $sourceText = $sourceManifest->manifest?->schemaText ?? plan_failure($id, $sourceManifest->diagnostics);
+        }
+        echo "RUN $id steps=" . count($steps) . ' reversible=' . ($reversible ? 'true' : 'false') . ' deadlineMs=' . RUN_DEADLINE_MS . "\n";
         [$pdo, $drop] = open_plan_database($dialect);
+        $schemaIs = static function (string $what, string $wantText) use (&$pdo, $dialect, $id): void {
+            $introspected = Dbspec::introspect($pdo, $dialect, 'introspected');
+            if ($introspected->unsupported !== []) {
+                throw new RuntimeException("$id $what: unsupported " . json_encode(array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $introspected->unsupported)));
+            }
+            $gotText = '';
+            if ($introspected->document->tables !== []) {
+                $got = Dbspec::manifest([$introspected->document]);
+                $gotText = $got->manifest?->schemaText ?? plan_failure($id, $got->diagnostics);
+            }
+            if ($gotText !== $wantText) {
+                throw new RuntimeException("$id $what: schema text differs\n--- want\n$wantText--- got\n$gotText");
+            }
+        };
+        // forward 는 finalize 앞의 step 을 실행한다. restore 이면 restore statement 가 있는
+        // step 은 그것을 실행한다(rollback 이 숨긴 더한 column 이 있다).
+        $forward = static function (bool $restore) use (&$pdo, $steps, $dialect, $id): void {
+            foreach ($steps as $step) {
+                if ($step->finalize) {
+                    break;
+                }
+                $pdo->exec($restore && $step->restore !== '' ? $step->restore : $step->statement);
+            }
+            if ($dialect === 'sqlite') {
+                $violations = plan_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
+                if ($violations !== '0') {
+                    throw new RuntimeException("$id: $violations foreign key violations");
+                }
+            }
+        };
         try {
             foreach ([...CONNECTION_RULES[$dialect], ...$setup] as $statement) {
                 $pdo->exec($statement);
@@ -167,26 +211,51 @@ foreach ($vectors['cases'] as $case) {
             // SQLite 는 table 을 다시 만드는 동안 foreign key 를 끄고, 끝난 뒤 검사한다.
             if ($dialect === 'sqlite') {
                 $pdo->exec('PRAGMA foreign_keys = OFF');
+                $pdo->exec('PRAGMA legacy_alter_table = OFF');
             }
-            foreach ($statements as $statement) {
-                $pdo->exec($statement);
+            $forward(false);
+            $schemaIs('applied', $want);
+            if ($reversible) {
+                // 끝까지 되돌리는 rollback 은 옛 table 을 숨긴 더한 column 과 함께 다시 만든다.
+                for ($i = count($steps) - 1; $i >= 0; $i--) {
+                    if (!$steps[$i]->finalize) {
+                        $pdo->exec($steps[$i]->rollbackRestore !== '' ? $steps[$i]->rollbackRestore : $steps[$i]->rollback);
+                    }
+                }
+                if ($dialect === 'sqlite') {
+                    $violations = plan_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
+                    if ($violations !== '0') {
+                        throw new RuntimeException("$id: $violations foreign key violations after rollback");
+                    }
+                }
+                $schemaIs('rolled back', $sourceText);
+                $forward(true);
+                $schemaIs('applied again', $want);
             }
             if ($dialect === 'sqlite') {
-                $violations = plan_value($pdo, 'SELECT COUNT(*) FROM pragma_foreign_key_check');
-                if ($violations !== '0') {
-                    throw new RuntimeException("$id: $violations foreign key violations");
-                }
                 $pdo->exec('PRAGMA foreign_keys = ON');
             }
             plan_steps($pdo, $dialect, $case['after'] ?? []);
-            $introspected = Dbspec::introspect($pdo, $dialect, 'introspected');
-            if ($introspected->unsupported !== []) {
-                throw new RuntimeException("$id: unsupported " . json_encode(array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $introspected->unsupported)));
+            // finalize 도 apply 처럼 SQLite foreign key 를 끄고 실행한다.
+            if ($dialect === 'sqlite') {
+                $pdo->exec('PRAGMA foreign_keys = OFF');
             }
-            $got = Dbspec::manifest([$introspected->document]);
-            $gotText = $got->manifest?->schemaText ?? plan_failure($id, $got->diagnostics);
-            if ($gotText !== $want) {
-                throw new RuntimeException("$id: schema text differs\n--- want\n$want--- got\n$gotText");
+            foreach ($steps as $step) {
+                if ($step->finalize) {
+                    $pdo->exec($step->statement);
+                }
+            }
+            if ($dialect === 'sqlite') {
+                $pdo->exec('PRAGMA foreign_keys = ON');
+            }
+            $schemaIs('finalized', $want);
+            $hidden = plan_value($pdo, [
+                'mysql' => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec\$%' OR COLUMN_NAME LIKE 'dbspec\$%')",
+                'postgres' => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec\$%' OR a.attname LIKE 'dbspec\$%')",
+                'sqlite' => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec\$%' OR p.name LIKE 'dbspec\$%')",
+            ][$dialect]);
+            if ($hidden !== '0') {
+                throw new RuntimeException("$id: $hidden hidden columns remain after finalize");
             }
         } finally {
             $pdo = null;
