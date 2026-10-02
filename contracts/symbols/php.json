@@ -246,6 +246,7 @@
   "clients/php/src/Db.php::Orm\\Db::$frames": "private static array",
   "clients/php/src/Db.php::Orm\\Db::$masks": "private array",
   "clients/php/src/Db.php::Orm\\Db::$pdo": "private readonly PDO",
+  "clients/php/src/Db.php::Orm\\Db::$rollbackFault": "private bool",
   "clients/php/src/Db.php::Orm\\Db::$stmtOrder": "private array",
   "clients/php/src/Db.php::Orm\\Db::$stmts": "private array",
   "clients/php/src/Db.php::Orm\\Db::$typed": "private bool",

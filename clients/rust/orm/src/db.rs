@@ -266,6 +266,9 @@ pub(crate) struct DbInner {
     pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
+    /// The test fault that `orm::testing::fail_next_rollback` arms; only a
+    /// build with the feature `test-faults` can set it.
+    pub(crate) rollback_fault: AtomicBool,
 }
 
 /// A database connection. Cloning is cheap and keeps the identity.
@@ -398,6 +401,7 @@ impl Db {
                 pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
+                rollback_fault: AtomicBool::new(false),
             }),
         };
         let _ = owner.set(Arc::downgrade(&db.inner));

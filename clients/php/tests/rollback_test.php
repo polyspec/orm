@@ -15,6 +15,11 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+// The package autoloader does not load the test entry point; this test
+// requires it by its path.
+$faultsAutoloaded = class_exists(\Orm\Testing\Faults::class);
+require dirname(__DIR__) . '/testing/Faults.php';
+
 use Orm\Code;
 use Orm\Config;
 use Orm\Db;
@@ -22,6 +27,7 @@ use Orm\Generator;
 use Orm\Manifest;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\Testing\Faults;
 use RollbackCase\Orm\RollbackProbe;
 
 const CASE_DEADLINE_SECONDS = 30;
@@ -163,7 +169,43 @@ function savepointRollbackFailed(string $dsn): void
     $db->close();
 }
 
-$cases = ['rollback_failed' => rollbackFailed(...), 'savepoint_rollback_failed' => savepointRollbackFailed(...)];
+/**
+ * The rollback fault of the test entry point. A committed transaction keeps
+ * the fault armed; the next transaction whose callback fails is rolled back,
+ * its rollback reports FAULT, and the transaction throws ROLLBACK with the
+ * callback error and the fault. The fault is consumed: the transaction after
+ * it throws the callback error alone, and the connection serves later
+ * requests.
+ */
+function rollbackFault(string $dsn): void
+{
+    global $faultsAutoloaded;
+    check($faultsAutoloaded === false, 'the package autoloader loads Orm\\Testing\\Faults');
+    $db = connect($dsn);
+    Faults::failNextRollback($db);
+    $committed = raised(fn() => $db->transaction(function () use ($db): void {
+        (new RollbackProbe)($db)->setLabel('committed')->create();
+    }, retry: 0));
+    check($committed === null, 'a committed transaction with an armed fault raises ' . ($committed === null ? '' : $committed->getMessage()));
+    $callback = new RuntimeException('rollback fault callback failed');
+    $failing = function () use ($db, $callback): void {
+        (new RollbackProbe)($db)->setLabel('rolled back')->create();
+        throw $callback;
+    };
+    $e = raised(fn() => $db->transaction($failing, retry: 0));
+    checkRollback($e, 'transaction');
+    if ($e instanceof OrmException) {
+        check($e->getPrevious() === $callback, 'the ROLLBACK error keeps the callback error itself');
+        check($e->rollback instanceof OrmException && $e->rollback->code_ === Code::FAULT, 'the rollback error is FAULT: ' . ($e->rollback === null ? 'none' : $e->rollback->getMessage()));
+    }
+    check((new RollbackProbe)($db)->getCount() === 1, 'the faulted rollback keeps only the committed row');
+    $again = raised(fn() => $db->transaction($failing, retry: 0));
+    check($again === $callback, 'the transaction after the consumed fault raises the callback error: ' . ($again === null ? 'nothing' : $again->getMessage()));
+    check((new RollbackProbe)($db)->getCount() === 1, 'the second rollback keeps only the committed row');
+    $db->close();
+}
+
+$cases = ['rollback_failed' => rollbackFailed(...), 'savepoint_rollback_failed' => savepointRollbackFailed(...), 'rollback_fault' => rollbackFault(...)];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 $targets = ['sqlite' => "sqlite://$work/rollback.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {

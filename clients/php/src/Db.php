@@ -26,6 +26,8 @@ final class Db
     private bool $typed = false;
     /** @var array<string, Engine> the engines of the registered schemas by schema hash */
     private array $engines = [];
+    /** The test fault that Orm\Testing\Faults::failNextRollback arms; only that test entry point sets it. */
+    private bool $rollbackFault = false;
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
@@ -223,6 +225,10 @@ final class Db
                 $this->finish($frame, false);
             } catch (\Throwable $rollback) {
                 throw OrmException::rollback($e, $rollback);
+            }
+            if ($this->rollbackFault) {
+                $this->rollbackFault = false;
+                throw OrmException::rollback($e, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $e;
         }

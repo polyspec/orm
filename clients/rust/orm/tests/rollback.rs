@@ -7,6 +7,10 @@
 //! and PostgreSQL a test connection ends the server session that holds the
 //! transaction, so the next statement and the rollback fail. The test fails
 //! when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
+//!
+//! The cases `rollback_fault_*` arm the rollback fault of the test entry point
+//! `orm::testing` and run with the feature `test-faults`:
+//! `cargo test -p orm --features test-faults --test rollback`.
 
 use std::time::Duration;
 
@@ -190,6 +194,79 @@ async fn savepoint_rollback_failed(driver: &str) {
     db.close().await;
 }
 
+/// The callback error of the rollback fault cases.
+#[cfg(feature = "test-faults")]
+fn fault_callback() -> orm::Error {
+    orm::Error::Config("rollback fault callback failed".into())
+}
+
+/// Checks a ROLLBACK error of the rollback fault: it keeps the callback
+/// error and a FAULT error.
+#[cfg(feature = "test-faults")]
+fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
+    let callback = check_rollback(driver, error, subject);
+    assert_eq!(callback.to_string(), fault_callback().to_string(), "{driver}: {subject}: callback error");
+    let orm::Error::Rollback { rollback, .. } = error else { unreachable!() };
+    assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
+}
+
+/// The rollback fault of the test entry point. A committed transaction keeps
+/// the fault armed; the next transaction whose callback fails is rolled back,
+/// its rollback reports FAULT, and the transaction returns ROLLBACK with the
+/// callback error and the fault. The fault is consumed: the transaction
+/// after it returns the callback error alone. `transaction_send` and
+/// `transaction_once` consume an armed fault in the same way, and the
+/// connection serves later requests.
+#[cfg(feature = "test-faults")]
+async fn rollback_fault(driver: &str) {
+    let (db, _) = installed(driver).await;
+    orm::testing::fail_next_rollback(&db);
+    db.transaction(async || create("committed").await).retry(0).await.unwrap_or_else(|e| panic!("{driver}: a committed transaction with an armed fault: {e}"));
+    let failing = async || -> orm::Result<()> {
+        create("rolled back").await?;
+        Err(fault_callback())
+    };
+    let error = db.transaction(failing).retry(0).await.expect_err("transaction");
+    check_fault(driver, &error, "transaction");
+    let count = async || orm::model::get_count(connected(&db).core()).await.unwrap();
+    assert_eq!(count().await, 1, "{driver}: the faulted rollback keeps only the committed row");
+    let again = db.transaction(failing).retry(0).await.expect_err("transaction");
+    assert!(
+        matches!(again, orm::Error::Config(_)) && again.to_string() == fault_callback().to_string(),
+        "{driver}: the transaction after the consumed fault = {again}"
+    );
+    assert_eq!(count().await, 1, "{driver}: the second rollback keeps only the committed row");
+
+    orm::testing::fail_next_rollback(&db);
+    let error = db
+        .transaction_send(|| async {
+            create("rolled back").await?;
+            Err::<(), _>(fault_callback())
+        })
+        .retry(0)
+        .await
+        .expect_err("transaction_send");
+    check_fault(driver, &error, "transaction_send");
+
+    orm::testing::fail_next_rollback(&db);
+    let error = db
+        .transaction_once(async || -> Result<(), std::io::Error> {
+            create("rolled back").await.map_err(std::io::Error::other)?;
+            Err(std::io::Error::other("rollback fault callback failed"))
+        })
+        .await
+        .expect_err("transaction_once");
+    match error {
+        orm::TransactionOnceError::Rollback { callback, rollback } => {
+            assert_eq!(callback.to_string(), "rollback fault callback failed", "{driver}: transaction_once callback error");
+            assert_eq!(rollback.code(), "FAULT", "{driver}: transaction_once rollback error {rollback}");
+        }
+        other => panic!("{driver}: transaction_once = {other}, want Rollback"),
+    }
+    assert_eq!(count().await, 1, "{driver}: the faulted rollbacks keep only the committed row");
+    db.close().await;
+}
+
 /// The cases of one database share its rollback_probe table, so they run one at a time.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
@@ -226,4 +303,33 @@ async fn savepoint_rollback_failed_mysql() {
 #[tokio::test]
 async fn savepoint_rollback_failed_postgres() {
     bounded("postgres", savepoint_rollback_failed("postgres")).await;
+}
+
+#[cfg(feature = "test-faults")]
+#[tokio::test]
+async fn rollback_fault_sqlite() {
+    bounded("sqlite", rollback_fault("sqlite")).await;
+}
+
+#[cfg(feature = "test-faults")]
+#[tokio::test]
+async fn rollback_fault_mysql() {
+    bounded("mysql", rollback_fault("mysql")).await;
+}
+
+#[cfg(feature = "test-faults")]
+#[tokio::test]
+async fn rollback_fault_postgres() {
+    bounded("postgres", rollback_fault("postgres")).await;
+}
+
+/// The test entry point exists only with the feature `test-faults`, which no
+/// default feature of the crate enables.
+#[test]
+fn rollback_fault_entry() {
+    let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
+    let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
+    assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");
+    let default = features.lines().find(|line| line.trim_start().starts_with("default"));
+    assert!(default.is_none_or(|line| !line.contains("test-faults")), "a default feature enables test-faults: {default:?}");
 }

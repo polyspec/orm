@@ -321,9 +321,18 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 		if rbErr := t.rollback(); rbErr != nil {
 			return rollbackErr(err, rbErr)
 		}
+		if d.m.rollbackFault.CompareAndSwap(true, false) {
+			return rollbackErr(err, rollbackFaultErr())
+		}
 		return err
 	}
 	return t.commit()
+}
+
+// rollbackFaultErr is the rollback error that an armed test fault reports
+// after the rollback ran (FailNextRollback, build tag ormtest).
+func rollbackFaultErr() error {
+	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
 }
 
 // rollbackErr reports a callback that failed and whose rollback failed too.

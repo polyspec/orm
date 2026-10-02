@@ -199,7 +199,7 @@ impl Db {
                 commit(&tx).await.map_err(TransactionOnceError::Orm)?;
                 Ok(value)
             }
-            Err(callback) => match rollback(&tx).await {
+            Err(callback) => match rollback(&tx).await.and_then(|()| rollback_fault(self)) {
                 Ok(()) => Err(TransactionOnceError::Callback(callback)),
                 Err(rollback) => Err(TransactionOnceError::Rollback { callback, rollback }),
             },
@@ -275,7 +275,7 @@ where
                     return Ok(v);
                 }
                 Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await {
+                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
@@ -365,7 +365,7 @@ impl<'a, F> Transaction<'a, F> {
                     return Ok(v);
                 }
                 Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await {
+                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
@@ -601,6 +601,16 @@ async fn commit(tx: &TxShared) -> Result<()> {
             sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
             t.completed();
         }
+    }
+    Ok(())
+}
+
+/// Consumes an armed test fault after a transaction rolled back: the
+/// rollback is then reported as failed with `FAULT`
+/// (`orm::testing::fail_next_rollback`, feature `test-faults`).
+fn rollback_fault(db: &Db) -> Result<()> {
+    if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {
+        return Err(Error::Engine { code: codes::FAULT.into(), msg: "test fault: the rollback of the transaction ran and is reported as failed".into() });
     }
     Ok(())
 }

@@ -419,6 +419,7 @@ $row->newIsMember(true);                                                        
 - 트랜잭션 옵션은 `isolation`, `readOnly`, `timeoutMs`를 선택한다. 지원하는 격리 수준은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후에, MySQL은 유지한 연결에서 `START TRANSACTION` 전에 설정을 적용한다. SQLite는 `PRAGMA query_only`로 `readOnly`를 적용하고 공통 격리 수준을 트랜잭션 연결에 대응시키며, ORM은 commit이나 rollback 전에 연결 상태를 복원한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`을 적용하고 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](config.md)).
 - 공통 실행 중 취소 메서드는 없다. `timeoutMs`가 PostgreSQL 문장 실행 시간을 제한한다.
+- test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm-typescript/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/orm/php-client/testing/Faults.php'` 뒤의 `Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
 
 ```go
 err := master.Transaction(func() error {
@@ -502,6 +503,7 @@ psql … -f schema.pg.sql
 | `CONSTRAINT` | CHECK 제약이 행을 거부했다. 오류는 드라이버 메시지와 드라이버 오류를 유지한다 |
 | `DRIVER` | `orm:audit`나 `orm:immutable` trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류. 오류는 드라이버 메시지와 원인인 드라이버 오류를 유지한다 |
 | `ROLLBACK` | 서버가 session을 종료한 경우처럼 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패했다. 오류는 두 오류를 유지하며 재시도하지 않는다 |
+| `FAULT` | 클라이언트의 test entry point로 설정한 test fault가 rollback을 실행한 뒤 트랜잭션의 rollback을 실패로 보고했다. `ROLLBACK` 오류의 rollback 오류다([protocol §3.1](protocol.md#_3-1-test-faults)) |
 | `CODEC_DECODE` | 저장 바이트가 선언된 컬럼 스타일과 다르다 |
 
 ---
