@@ -1059,6 +1059,7 @@ dependencies = [
  "indexmap",
  "libsqlite3-sys",
  "ordered-json",
+ "orm-case-clock",
  "orm-schema",
  "rand 0.10.2",
  "regex",

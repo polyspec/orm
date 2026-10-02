@@ -3,8 +3,8 @@
 // Workloads: PK get, 100-row list, INSERT, 4-step relation chain (1 parent +
 // 3 IN-batched children, assembled in Go). Run:
 //
-//	ORM_BENCH_MYSQL_DSN=mysql://… go test ./bench/go -run xxx -bench . -benchmem -benchtime 3s
-//	ORM_BENCH_MYSQL_DSN=mysql://… ORM_BENCH_PAR=64 go test ./bench/go -run xxx -bench Par -benchmem
+//	ORM_BENCH_MYSQL_DSN=mysql://… go test ./clients/go/bench -run xxx -bench . -benchmem -benchtime 3s
+//	ORM_BENCH_MYSQL_DSN=mysql://… ORM_BENCH_PAR=64 go test ./clients/go/bench -run xxx -bench Par -benchmem
 package bench
 
 import (
@@ -62,7 +62,9 @@ func nativeDSN(raw string) (string, error) {
 	return cfg.FormatDSN(), nil
 }
 
-const listCols = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`, `a`.`price`, `a`.`ip`"
+// listCols는 generated client가 author의 기본 select set으로 만드는 column 목록과
+// 같다. TestNativeStatementsEqualClient가 두 statement text를 비교한다.
+const listCols = "`a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`"
 
 type author struct {
 	Seq                      int64
@@ -85,30 +87,46 @@ type author struct {
 	IsSingleWork             bool
 	LikeCount                int32
 	Email, Phone             sql.NullString
-	Price                    sql.NullFloat64
-	IP                       sql.NullString
+	Price                    sql.NullString
+	AESKeyVersion            int32
 }
 
+// nativeKeyring은 client가 연결마다 한 번 만드는 것처럼 한 번 만든 AES keyring이다.
+var nativeKeyring = sync.OnceValues(func() (orm.AESKeyring, error) {
+	return orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
+})
+
 func scan(rows *sql.Rows, b *author) error {
+	var email, phone []byte
 	if err := rows.Scan(&b.Seq, &b.Name, &b.CreatedTs, &b.UpdatedTs, &b.IsClose, &b.IsDisplay, &b.DisplayStart, &b.DisplayEnd,
 		&b.IsAllday, &b.TargetClubReaderCount, &b.SuccessCount, &b.ReaderCount, &b.ReadCount, &b.PhotoURL, &b.UserSeq,
 		&b.ServiceSeq, &b.ServiceRegionSeq, &b.ServiceMemberSeq, &b.StartDt, &b.EndDt, &b.UUID, &b.IsSingleWork, &b.LikeCount,
-		&b.Email, &b.Phone, &b.Price, &b.IP); err != nil {
+		&email, &phone, &b.Price, &b.AESKeyVersion); err != nil {
 		return err
 	}
-	keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
+	keyring, err := nativeKeyring()
 	if err != nil {
 		return err
 	}
-	for name, value := range map[string]*sql.NullString{"aes_hex_email": &b.Email, "aes_hex_phone": &b.Phone} {
-		if !value.Valid {
+	// UNHEX가 hex를 server에서 풀었으므로 client처럼 aes stage만 decode한다.
+	for _, column := range []struct {
+		name   string
+		cipher []byte
+		value  *sql.NullString
+	}{{"aes_hex_email", email, &b.Email}, {"aes_hex_phone", phone, &b.Phone}} {
+		if column.cipher == nil {
+			*column.value = sql.NullString{}
 			continue
 		}
-		plain, err := orm.HostDecodeVersioned(value.String, []string{"aes", "hex"}, 1, keyring)
+		plain, err := orm.HostDecodeVersioned(column.cipher, []string{"aes"}, b.AESKeyVersion, keyring)
 		if err != nil {
-			return fmt.Errorf("native %s decode: %w", name, err)
+			return fmt.Errorf("native %s decode: %w", column.name, err)
 		}
-		value.String = plain.(string)
+		text, ok := plain.(string)
+		if !ok {
+			return fmt.Errorf("native %s decode: got %T, want text", column.name, plain)
+		}
+		*column.value = sql.NullString{String: text, Valid: true}
 	}
 	return nil
 }
@@ -158,8 +176,13 @@ func open(tb testing.TB) *sql.DB {
 	return db
 }
 
+const (
+	pkSQL      = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100"
+)
+
 func pkGet(ctx context.Context, db *sql.DB, seq int64) (*author, error) {
-	rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1").QueryContext(ctx, seq)
+	rows, err := prep(db, pkSQL).QueryContext(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +198,7 @@ func pkGet(ctx context.Context, db *sql.DB, seq int64) (*author, error) {
 }
 
 func list100(ctx context.Context, db *sql.DB, serviceSeq int64) ([]author, error) {
-	rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100").QueryContext(ctx, serviceSeq, 0)
+	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -209,8 +232,7 @@ func relation4(ctx context.Context, db *sql.DB, serviceSeq int64) (map[int64][]a
 	}
 	out := make(map[int64][]author, len(parents))
 	for step := 0; step < 3; step++ {
-		args := append([]any{"bench-salt", "bench-salt"}, keys...)
-		rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`user_seq` IN ("+sb.String()+") AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 0, 200").QueryContext(ctx, args...)
+		rows, err := prep(db, "SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`user_seq` IN ("+sb.String()+") AND `a`.`is_close` = 0 ORDER BY `a`.`seq` DESC LIMIT 0, 200").QueryContext(ctx, keys...)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +250,7 @@ func relation4(ctx context.Context, db *sql.DB, serviceSeq int64) (map[int64][]a
 }
 
 func listN(ctx context.Context, db *sql.DB, serviceSeq int64, n int) ([]author, error) {
-	rows, err := prep(db, fmt.Sprintf("SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, %d", n)).QueryContext(ctx, "bench-salt", "bench-salt", serviceSeq)
+	rows, err := prep(db, fmt.Sprintf("SELECT "+listCols+" FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, %d", n)).QueryContext(ctx, serviceSeq)
 	if err != nil {
 		return nil, err
 	}

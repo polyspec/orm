@@ -7,10 +7,10 @@ fn decimal_model_fixture() {
         let column = fixture["columns"].as_array().unwrap().iter().find(|column| column["id"] == case["column"]).unwrap();
         let input = case["input"].as_str().unwrap();
         let actual = normalize(input, column["precision"].as_u64().unwrap() as u8, column["scale"].as_u64().unwrap() as u8);
-        if let Some(expected) = case["expected"].as_str() {
+        if let Some(expected) = case["expected"]["value"].as_str() {
             assert_eq!(actual.unwrap(), expected, "{}", case["id"]);
         } else {
-            assert_eq!(actual.unwrap_err().code(), case["error"].as_str().unwrap(), "{}", case["id"]);
+            assert_eq!(actual.unwrap_err().code(), case["expected"]["error"].as_str().unwrap(), "{}", case["id"]);
         }
     }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+- T17.7: the Go native baseline of the hot-path check runs the statements the generated client runs, its relation and list workloads bind only their keys, and the Rust native insert writes an AES ciphertext into the AES column.
+
+- T15: every feature of contracts/features.json declares its coverage, and `make feature-check` executes each client's owner cases twice on MySQL, PostgreSQL and SQLite or once without a database; a SQLite RESTRICT foreign key violation is FOREIGN_KEY and a CHECK violation is CONSTRAINT in every client.
+
 - T8.8.2: main is merged into the dbspec branch again with N16: each client's test entry point arms a rollback fault, and the next failed rollback is reported as `FAULT` through the single transaction-end form `transaction failed (<cause>) and rollback failed (<error>)` on MySQL, PostgreSQL and SQLite. Measured one client and one database at a time on an idle machine, the 2000-table introspection takes 0.73-2.56 s in every client, within the 5 s budget.
 
 - T8.6.8: every client applies a plan step by step on MySQL, PostgreSQL and SQLite: each statement commits on its own with its recorded history step, recover continues an interrupted plan from the catalog effect of the next step, and rollback undoes the last plan with the rollback statement of every step. Dropped tables and columns stay hidden under `dbspec$hold$` names until finalize drops them, added columns are hidden on rollback and come back on a second apply, a rollback of an applied plan fills or refuses the NULL rows of columns it makes non-null, lock waits end after 5 seconds, and `PlanSteps` replaces `PlanStatements` with each step's rollback statement, effect and finalize mark.

@@ -462,3 +462,9 @@ var chainCompositeAccountGetByTenantIdAndAccountId = []orm.ChainKey{{Column: "te
 var chainCompositeAccountTenantId = []orm.ChainKey{{Column: "tenant_id"}}
 
 var chainCompositeAccountTupleTenantIdWithAccountId = []orm.ChainKey{{Op: "tuple", Columns: []string{"tenant_id", "account_id"}}}
+
+// GetMemberships returns the composite_membership relation result.
+func (x *CompositeAccountModel) GetMemberships() *orm.Collection[*CompositeMembershipModel] {
+	v, _ := x.m.Related("memberships").(*orm.Collection[*CompositeMembershipModel])
+	return v
+}
