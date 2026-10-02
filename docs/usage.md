@@ -94,6 +94,21 @@ SQLite rebuilds a table for column removal or definition changes and for primary
 
 `ormgen migrate` reads the live schema, creates `orm_schema_migrations`, computes a plan, applies supported non-destructive changes, verifies the live schema, and records the result. Verification compares tables and columns by name; column order is not a schema property, and a database appends an added column wherever the declaration places it. A column added with a comment receives the comment in the same migration.
 
+The ledger `orm_schema_migrations` stores its start and finish times with six fraction digits on every database (`docs/protocol.md` §2). A command that finds a ledger with other time columns fails with `MIGRATION_HISTORY_PRECISION` and changes nothing. A MySQL or SQLite ledger created by an earlier tool keeps whole seconds; its owner converts it once with the statements below. A recorded time keeps its seconds and gets the fraction `000000`. The SQLite statements assume the earlier SQLite time text `YYYY-MM-DD HH:MM:SS`; the `CHECK` rejects any other row, and the owner then rolls the transaction back.
+
+```sql
+-- MySQL
+ALTER TABLE orm_schema_migrations MODIFY started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), MODIFY finished_at timestamp(6) NULL;
+
+-- SQLite
+BEGIN;
+ALTER TABLE orm_schema_migrations RENAME TO orm_schema_migrations_seconds;
+CREATE TABLE orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL CHECK (started_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'), finished_at TEXT NULL CHECK (finished_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'));
+INSERT INTO orm_schema_migrations SELECT migration_id, name, from_schema_hash, to_schema_hash, plan_checksum, status, operations, error_detail, started_at || '.000000', finished_at || '.000000' FROM orm_schema_migrations_seconds;
+DROP TABLE orm_schema_migrations_seconds;
+COMMIT;
+```
+
 The update-time attribute (`onupdate`) is a column property only on MySQL; PostgreSQL and SQLite have no such property, and the ORM assigns the column in each update, so the attribute alone is no PostgreSQL or SQLite change. MySQL and PostgreSQL store CHECK expressions in their own normalized form. The comparison creates the declared expression on a temporary table in the same database, reads it back, and treats equal forms as unchanged. Repeating the same `migration-id` is a no-op only when the recorded migration and live schema match. Use `--dry-run` to print the plan without changing the database.
 
 ### 2.2 Schema source matrix

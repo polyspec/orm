@@ -8,7 +8,7 @@ import type { ToolDb } from './db.js';
 import { renderDiff } from './diff.js';
 import { liveManifest } from './introspect.js';
 import {
-  checksumText, ensureMigrationTable, executeClaimedMigration, insertMigration, introspect, markMigrationFailed, message,
+  checksumText, ensureMigrationTable, ledgerClock, executeClaimedMigration, insertMigration, introspect, markMigrationFailed, message,
   migrationById, migrationLog, placeholder, schemaMatches, ToolError, transitionMigration, updateMigration,
   verifyMigrationLog, withMigrationLock, writeMigrationLog, type MigrationLog, type MigrationRecord,
 } from './migrate.js';
@@ -363,9 +363,10 @@ export async function recoverMigrationById(db: ToolDb, id: string, want: SchemaM
 
 async function markRollbackFailed(db: ToolDb, id: string, detail: string): Promise<void> {
   const d = db.driver;
-  const q = `UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=CURRENT_TIMESTAMP WHERE migration_id=${placeholder(d, 3)} AND status IN (${placeholder(d, 4)},${placeholder(d, 5)})`;
+  const [clock, at] = ledgerClock(d);
+  const q = `UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=${clock} WHERE migration_id=${placeholder(d, 3)} AND status IN (${placeholder(d, 4)},${placeholder(d, 5)})`;
   let rows: number;
-  try { rows = await db.exec(q, ['rollback_failed', detail, id, 'applied', 'rolling_back']); } catch (error) {
+  try { rows = await db.exec(q, ['rollback_failed', detail, ...at, id, 'applied', 'rolling_back']); } catch (error) {
     throw new ToolError(`MIGRATION_HISTORY_WRITE: migration_id=${id} mark_rollback_failed: ${message(error)}`);
   }
   if (rows !== 1) throw new ToolError(`MIGRATION_STATE_CHANGED: migration_id=${id} rollback failure status was not written affected_rows=${rows}`);

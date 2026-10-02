@@ -3,6 +3,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { wallMicros } from '../clock.js';
 import { ddlErrorText, renderCreateDDL, splitSQL } from '../engine/ddl.js';
 import { indentJson, type Manifest } from '../engine/manifest.js';
 import { sameTriggers } from '../engine/triggers.js';
@@ -52,19 +53,79 @@ export function message(error: unknown): string {
   return (error as Error).message;
 }
 
+/** The SQLite form of a ledger time: UTC text with six fraction digits. */
+const SQLITE_TIME_GLOB = "'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'";
+
+/**
+ * The SQLite definitions of the ledger time columns. SQLite keeps a column
+ * definition only in the table statement, so an existing ledger is verified
+ * against these texts.
+ */
+const SQLITE_TIME_COLUMNS: readonly (readonly [string, string])[] = [
+  ['started_at', `started_at TEXT NOT NULL CHECK (started_at GLOB ${SQLITE_TIME_GLOB})`],
+  ['finished_at', `finished_at TEXT NULL CHECK (finished_at GLOB ${SQLITE_TIME_GLOB})`],
+];
+
+/**
+ * Creates the migration ledger when it is missing and verifies the time
+ * columns of an existing ledger; other time columns fail with
+ * MIGRATION_HISTORY_PRECISION and the ledger stays unchanged.
+ */
 export async function ensureMigrationTable(db: ToolDb): Promise<void> {
   let q: string;
   switch (db.driver) {
     case 'mysql':
-      q = 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamp NULL)';
+      q = 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), finished_at timestamp(6) NULL)';
       break;
     case 'postgres':
       q = 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)';
       break;
     default:
-      q = 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT NULL)';
+      q = `CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, ${SQLITE_TIME_COLUMNS.map(c => c[1]).join(', ')})`;
   }
   try { await db.exec(q); } catch (error) { throw new ToolError(`MIGRATION_HISTORY_CREATE: driver=${db.driver}: ${message(error)}`); }
+  await verifyLedgerTimes(db);
+}
+
+async function verifyLedgerTimes(db: ToolDb): Promise<void> {
+  const driver = db.driver;
+  if (driver === 'sqlite') {
+    let rows: unknown[][];
+    try { rows = await db.query("SELECT sql FROM sqlite_master WHERE type='table' AND name='orm_schema_migrations'"); } catch (error) {
+      throw new ToolError(`MIGRATION_HISTORY_READ: driver=sqlite definition: ${message(error)}`);
+    }
+    const statement = String(rows[0]?.[0] ?? '');
+    for (const [column, definition] of SQLITE_TIME_COLUMNS) {
+      if (!statement.includes(definition)) throw new ToolError(`MIGRATION_HISTORY_PRECISION: driver=sqlite column=${column} required=${quoted(definition)}`);
+    }
+    return;
+  }
+  const [q, required] = driver === 'postgres'
+    ? ["SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = to_regclass('orm_schema_migrations') AND attname = $1 AND attnum > 0 AND NOT attisdropped", ['timestamp with time zone', 'timestamp(6) with time zone']]
+    : ["SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orm_schema_migrations' AND COLUMN_NAME = ?", ['timestamp(6)']];
+  for (const column of ['started_at', 'finished_at']) {
+    let rows: unknown[][];
+    try { rows = await db.query(q, [column]); } catch (error) {
+      throw new ToolError(`MIGRATION_HISTORY_READ: driver=${driver} column=${column}: ${message(error)}`);
+    }
+    const definition = rows.length === 0 ? 'missing' : String(rows[0]![0]);
+    if (!required.includes(definition)) {
+      throw new ToolError(`MIGRATION_HISTORY_PRECISION: driver=${driver} column=${column} definition=${quoted(definition)} required=${quoted(required[0]!)}`);
+    }
+  }
+}
+
+/**
+ * The clock a ledger write assigns and its bound values: the database clock
+ * with microseconds on MySQL and PostgreSQL, and on SQLite, which has no clock
+ * with microseconds, the tool clock in UTC.
+ */
+export function ledgerClock(driver: string): [string, ToolValue[]] {
+  if (driver === 'mysql') return ['CURRENT_TIMESTAMP(6)', []];
+  if (driver === 'postgres') return ['CURRENT_TIMESTAMP', []];
+  const micros = wallMicros();
+  const text = new Date(Math.floor(micros / 1000)).toISOString().slice(0, 19).replace('T', ' ');
+  return ['?', [`${text}.${String(micros % 1_000_000).padStart(6, '0')}`]];
 }
 
 export async function migrationById(db: ToolDb, id: string): Promise<MigrationRecord | undefined> {
@@ -81,22 +142,25 @@ export async function migrationById(db: ToolDb, id: string): Promise<MigrationRe
 
 export async function insertMigration(db: ToolDb, r: MigrationRecord): Promise<void> {
   const args: ToolValue[] = [r.migrationId, r.name, r.fromHash, r.toHash, r.checksum, r.status, r.operations];
-  const q = `INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail) VALUES (${args.map((_, i) => placeholder(db.driver, i + 1)).join(',')}, '')`;
-  try { await db.exec(q, args); } catch (error) { throw new ToolError(`MIGRATION_HISTORY_WRITE: migration_id=${r.migrationId}: ${message(error)}`); }
+  const [clock, at] = ledgerClock(db.driver);
+  const q = `INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at) VALUES (${args.map((_, i) => placeholder(db.driver, i + 1)).join(',')}, '', ${clock})`;
+  try { await db.exec(q, [...args, ...at]); } catch (error) { throw new ToolError(`MIGRATION_HISTORY_WRITE: migration_id=${r.migrationId}: ${message(error)}`); }
 }
 
 export async function updateMigration(db: ToolDb, id: string, status: string, detail: string): Promise<void> {
   const d = db.driver;
-  await db.exec(`UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=CURRENT_TIMESTAMP WHERE migration_id=${placeholder(d, 3)}`, [status, detail, id]);
+  const [clock, at] = ledgerClock(d);
+  await db.exec(`UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=${clock} WHERE migration_id=${placeholder(d, 3)}`, [status, detail, ...at, id]);
 }
 
 export async function transitionMigration(db: ToolDb, id: string, from: string, to: string, detail: string): Promise<void> {
   const d = db.driver;
+  const [clock, at] = ledgerClock(d);
   let q = `UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}`;
-  q += to === 'applying' ? ', started_at=CURRENT_TIMESTAMP, finished_at=NULL' : ', finished_at=CURRENT_TIMESTAMP';
+  q += to === 'applying' ? `, started_at=${clock}, finished_at=NULL` : `, finished_at=${clock}`;
   q += ` WHERE migration_id=${placeholder(d, 3)} AND status=${placeholder(d, 4)}`;
   let rows: number;
-  try { rows = await db.exec(q, [to, detail, id, from]); } catch (error) {
+  try { rows = await db.exec(q, [to, detail, ...at, id, from]); } catch (error) {
     throw new ToolError(`MIGRATION_HISTORY_WRITE: migration_id=${id} transition=${from}_to_${to}: ${message(error)}`);
   }
   if (rows !== 1) throw new ToolError(`MIGRATION_STATE_CHANGED: migration_id=${id} expected_status=${from} requested_status=${to} affected_rows=${rows}`);
@@ -104,9 +168,10 @@ export async function transitionMigration(db: ToolDb, id: string, from: string, 
 
 export async function markMigrationFailed(db: ToolDb, id: string, detail: string): Promise<void> {
   const d = db.driver;
-  const q = `UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=CURRENT_TIMESTAMP WHERE migration_id=${placeholder(d, 3)} AND status IN (${placeholder(d, 4)},${placeholder(d, 5)},${placeholder(d, 6)})`;
+  const [clock, at] = ledgerClock(d);
+  const q = `UPDATE orm_schema_migrations SET status=${placeholder(d, 1)}, error_detail=${placeholder(d, 2)}, finished_at=${clock} WHERE migration_id=${placeholder(d, 3)} AND status IN (${placeholder(d, 4)},${placeholder(d, 5)},${placeholder(d, 6)})`;
   let rows: number;
-  try { rows = await db.exec(q, ['failed', detail, id, 'queued', 'retryable', 'applying']); } catch (error) {
+  try { rows = await db.exec(q, ['failed', detail, ...at, id, 'queued', 'retryable', 'applying']); } catch (error) {
     throw new ToolError(`MIGRATION_HISTORY_WRITE: migration_id=${id} mark_failed: ${message(error)}`);
   }
   if (rows !== 1) throw new ToolError(`MIGRATION_STATE_CHANGED: migration_id=${id} failure status was not written affected_rows=${rows}`);

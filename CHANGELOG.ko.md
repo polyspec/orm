@@ -1,5 +1,19 @@
 # 변경 이력
 
+migration ledger의 시각을 모든 database에서 마이크로초로 저장한다(N15).
+ledger `orm_schema_migrations`는 MySQL에서 `timestamp`를 선언했고 SQLite에서
+`CURRENT_TIMESTAMP`로 쓴 `TEXT`를 썼으므로, 그 `started_at`과 `finished_at`은
+두 database에서 초 단위로 저장되었고 PostgreSQL에서만 마이크로초를 유지했다.
+이제 Go, PHP, Rust, TypeScript의 schema tool은 MySQL에서
+`CURRENT_TIMESTAMP(6)`으로 쓰는 `timestamp(6)` column을 만들고, SQLite에서
+소수 여섯 자리를 요구하는 `CHECK`가 있고 tool clock을 UTC로 받는 `TEXT`
+column을 만든다. command가 기존 ledger를 쓰기 전에 tool은 그 시각 column을
+검증하며, 초 단위 column을 가진 ledger는 `MIGRATION_HISTORY_PRECISION`으로
+실패하고 바뀌지 않는다. `docs/usage.ko.md`는 이 변경 이전에 만든 MySQL 또는
+SQLite ledger를 변환하는 statement를 적는다. `migration_ledger_microseconds`,
+`migration_ledger_whole_seconds`, `migration_ledger_earlier` case가 Go, PHP,
+Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
+
 MySQL에서 database clock을 마이크로초로 기록하고, SQLite 상대 value
 function에서 클라이언트 clock의 소수부를 유지한다(N14). MySQL dialect는 soft
 delete를 `CURRENT_TIMESTAMP`로, `now` value function과 그 상대 형식을
