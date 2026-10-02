@@ -154,7 +154,7 @@ func Query(db *orm.DB) (*orm.Collection[*model.ProductModel], error) {
 		Gets()
 }
 
-func Owner(p *model.ProductModel) *model.BrandModel { return p.GetOwner() }
+func Owner(p *model.ProductModel) (*model.BrandModel, error) { return p.GetOwner() }
 `)
 	write("example/tagged_test.go", `//go:build integration && !short
 

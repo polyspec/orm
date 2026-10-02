@@ -24,7 +24,7 @@ async fn coverage_composite_key_rows() {
             .get_by_tenant_id_and_account_id(TENANT, 2)
             .await
             .unwrap();
-        let memberships = loaded.get_memberships().expect("the memberships relation");
+        let memberships = loaded.get_memberships().unwrap().expect("the memberships relation");
         let roles: Vec<(i64, &str)> = memberships.models().map(|m| (m.get_account_id().unwrap(), m.get_role().unwrap())).collect();
         assert_eq!(roles, [(2, "owner")], "memberships of account ({TENANT}, 2)");
         account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().delete(false).await.unwrap();

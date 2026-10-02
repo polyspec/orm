@@ -333,9 +333,8 @@ var chainUserNeName = []orm.ChainKey{{Op: "ne", Column: "name"}}
 var chainUserSeq = []orm.ChainKey{{Column: "seq"}}
 
 // GetAuthorModels returns the author relation result.
-func (x *UserModel) GetAuthorModels() *orm.Collection[*AuthorModel] {
-	v, _ := x.m.Related("author_models").(*orm.Collection[*AuthorModel])
-	return v
+func (x *UserModel) GetAuthorModels() (*orm.Collection[*AuthorModel], error) {
+	return orm.RelatedAs[*orm.Collection[*AuthorModel]](x.m, "author_models")
 }
 
 // GetDoubled returns the column added with AddRawColumnDoubled.

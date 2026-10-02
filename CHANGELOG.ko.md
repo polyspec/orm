@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T19: 생성된 Go relation getter는 `(<result>, error)`를, Rust relation getter는 `orm::Result<Option<..>>`를 돌려준다. related row가 없는 row는 결과 없음으로 읽히고, 다른 type으로 저장된 relation 값은 버려지는 type assertion이나 `None` 대신 `INTERNAL`이다.
+
 - T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.
 
 - T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.

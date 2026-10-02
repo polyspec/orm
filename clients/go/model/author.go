@@ -2342,67 +2342,55 @@ func (x *AuthorModel) GetDoubled() any { return x.m.NewValue("doubled") }
 func (x *AuthorModel) GetLabel() any { return x.m.NewValue("label") }
 
 // GetMembers returns the service_member relation result.
-func (x *AuthorModel) GetMembers() *orm.Collection[*ServiceMemberModel] {
-	v, _ := x.m.Related("members").(*orm.Collection[*ServiceMemberModel])
-	return v
+func (x *AuthorModel) GetMembers() (*orm.Collection[*ServiceMemberModel], error) {
+	return orm.RelatedAs[*orm.Collection[*ServiceMemberModel]](x.m, "members")
 }
 
 // GetModule returns the service_region relation result.
-func (x *AuthorModel) GetModule() *ServiceRegionModel {
-	v, _ := x.m.Related("module").(*ServiceRegionModel)
-	return v
+func (x *AuthorModel) GetModule() (*ServiceRegionModel, error) {
+	return orm.RelatedAs[*ServiceRegionModel](x.m, "module")
 }
 
 // GetOwner returns the user relation result.
-func (x *AuthorModel) GetOwner() *UserModel {
-	v, _ := x.m.Related("owner").(*UserModel)
-	return v
-}
+func (x *AuthorModel) GetOwner() (*UserModel, error) { return orm.RelatedAs[*UserModel](x.m, "owner") }
 
 // GetOwnerService returns the service relation result.
-func (x *AuthorModel) GetOwnerService() *ServiceModel {
-	v, _ := x.m.Related("owner_service").(*ServiceModel)
-	return v
+func (x *AuthorModel) GetOwnerService() (*ServiceModel, error) {
+	return orm.RelatedAs[*ServiceModel](x.m, "owner_service")
 }
 
 // GetReadText returns the column added with AddColumnReadCountAliasReadText.
 func (x *AuthorModel) GetReadText() any { return x.m.NewValue("read_text") }
 
 // GetServiceMemberModel returns the service_member relation result.
-func (x *AuthorModel) GetServiceMemberModel() *ServiceMemberModel {
-	v, _ := x.m.Related("service_member_model").(*ServiceMemberModel)
-	return v
+func (x *AuthorModel) GetServiceMemberModel() (*ServiceMemberModel, error) {
+	return orm.RelatedAs[*ServiceMemberModel](x.m, "service_member_model")
 }
 
 // GetServiceMemberModels returns the service_member relation result.
-func (x *AuthorModel) GetServiceMemberModels() *orm.Collection[*ServiceMemberModel] {
-	v, _ := x.m.Related("service_member_models").(*orm.Collection[*ServiceMemberModel])
-	return v
+func (x *AuthorModel) GetServiceMemberModels() (*orm.Collection[*ServiceMemberModel], error) {
+	return orm.RelatedAs[*orm.Collection[*ServiceMemberModel]](x.m, "service_member_models")
 }
 
 // GetServiceModel returns the service relation result.
-func (x *AuthorModel) GetServiceModel() *ServiceModel {
-	v, _ := x.m.Related("service_model").(*ServiceModel)
-	return v
+func (x *AuthorModel) GetServiceModel() (*ServiceModel, error) {
+	return orm.RelatedAs[*ServiceModel](x.m, "service_model")
 }
 
 // GetServiceRegionModel returns the service_region relation result.
-func (x *AuthorModel) GetServiceRegionModel() *ServiceRegionModel {
-	v, _ := x.m.Related("service_region_model").(*ServiceRegionModel)
-	return v
+func (x *AuthorModel) GetServiceRegionModel() (*ServiceRegionModel, error) {
+	return orm.RelatedAs[*ServiceRegionModel](x.m, "service_region_model")
 }
 
 // GetStartMonth returns the column added with AddColumnStartDtAliasStartMonth.
 func (x *AuthorModel) GetStartMonth() any { return x.m.NewValue("start_month") }
 
 // GetUserModel returns the user relation result.
-func (x *AuthorModel) GetUserModel() *UserModel {
-	v, _ := x.m.Related("user_model").(*UserModel)
-	return v
+func (x *AuthorModel) GetUserModel() (*UserModel, error) {
+	return orm.RelatedAs[*UserModel](x.m, "user_model")
 }
 
 // GetWriter returns the user relation result.
-func (x *AuthorModel) GetWriter() *UserModel {
-	v, _ := x.m.Related("writer").(*UserModel)
-	return v
+func (x *AuthorModel) GetWriter() (*UserModel, error) {
+	return orm.RelatedAs[*UserModel](x.m, "writer")
 }

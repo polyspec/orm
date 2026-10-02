@@ -476,6 +476,7 @@
         "clients/typescript/tests/decimal_model.test.ts",
         "clients/typescript/tests/decimal_model_db.mjs",
         "clients/go/orm/group_rows_test.go",
+        "clients/go/orm/related_test.go",
         "clients/go/orm/value_types_test.go",
         "clients/php/tests/unselected_column.php",
         "clients/php/tests/unselected_column_db.php",
