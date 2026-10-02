@@ -15,7 +15,8 @@ import {
   importMermaid,
   parseDbspec,
   parsePlan,
-  planStatements,
+  planSteps,
+  effectText,
   renderDbspec,
 } from '../../../clients/typescript/dist/dbspec/index.js';
 
@@ -227,6 +228,19 @@ function writeRender(c) {
 
 for (const c of readVectors(ddlPath, checkDdl).cases) writeRender(c);
 
+// writeStep은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs).
+function writeStep(s) {
+  out.push(`| ${s.statement}`);
+  if (s.finalize) out.push('  finalize');
+  else if (s.rollback !== '') out.push(`  rollback: ${s.rollback}`);
+  else out.push(`  irreversible: ${s.irreversible}`);
+  out.push(`  effect: ${effectText(s.effect)}`);
+  if (s.restore !== '') out.push(`  restore: ${s.restore}`);
+  if (s.rollbackRestore !== '') out.push(`  rollback_restore: ${s.rollbackRestore}`);
+  if (s.restore !== '' || s.rollbackRestore !== '') out.push(`  restore_if: ${effectText(s.restoreIf)}`);
+  for (const c of s.nullChecks) out.push(`  null_check: ${c.table} ${c.column} ${c.default ?? 'none'}`);
+}
+
 // writePlanDiagnostics는 diagnostic을 출력한다. plan, chain, compare diagnostic은 모든
 // client가 공유하는 message로 끝나고, target이나 source의 schema diagnostic은 그렇지 않다.
 function writePlanDiagnostics(diagnostics) {
@@ -273,9 +287,9 @@ for (const c of plans.cases) {
   writeChanges(diff.changes ?? []);
   for (const dialect of ['mysql', 'postgres', 'sqlite']) {
     out.push(`plans/cases/${c.id}/${dialect}`);
-    const result = planStatements(source, parsed.plan, dialect);
+    const result = planSteps(source, parsed.plan, dialect);
     writePlanDiagnostics(result.diagnostics);
-    for (const s of result.statements ?? []) out.push(`| ${s}`);
+    for (const s of result.steps ?? []) writeStep(s);
   }
 }
 for (const c of plans.invalid) {

@@ -27,8 +27,11 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 	}{
 		{"plans.json", "version", "is missing", func(o map[string]any) { delete(o, "version") }},
 		{"plans.json", "cases[0].changes", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "changes") }},
-		{"plans.json", "cases[0].statements.mysql", "is not an array", func(o map[string]any) {
-			vectorCaseOf(o, "cases", 0)["statements"].(map[string]any)["mysql"] = "CREATE TABLE"
+		{"plans.json", "cases[0].steps.mysql", "is not an array", func(o map[string]any) {
+			vectorCaseOf(o, "cases", 0)["steps"].(map[string]any)["mysql"] = "CREATE TABLE"
+		}},
+		{"plans.json", "cases[0].steps.mysql[0]", "has the unknown key statements", func(o map[string]any) {
+			vectorCaseOf(o, "cases", 0)["steps"].(map[string]any)["mysql"].([]any)[0].(map[string]any)["statements"] = "CREATE TABLE"
 		}},
 		{"plans.json", "invalid[0].source", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "invalid", 0), "source") }},
 		{"plans.json", "chains[0]", "has neither or both of order and errors", func(o map[string]any) { delete(vectorCaseOf(o, "chains", 0), "order") }},

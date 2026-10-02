@@ -28,8 +28,9 @@ var applyClients = []string{"go", "php", "typescript", "rust"}
 // TestApplyChainAcrossClients는 한 client가 적용한 chain을 다른 client가 이어
 // 적용하는지 모든 순서쌍에서 확인한다(docs/plans.md "Apply"). 세 database에서
 // client A가 tests/dbspec/plans.json chain의 첫 plan을, client B가 나머지를 적용한
-// 뒤 history row와 introspect한 schema text가 기대와 같아야 한다. MySQL에서는 A가
-// 둘째 plan 중간에 멈춘 apply를 B가 interrupted로 거부하고 recover로 끝내야 한다.
+// 뒤 history row와 introspect한 schema text가 기대와 같아야 한다. A가 둘째 plan
+// 중간에 멈춘 apply를 B가 interrupted로 거부하고 recover로 끝내야 하며, 다시 멈춘
+// apply를 B가 rollback으로 되돌려야 한다.
 func TestApplyChainAcrossClients(t *testing.T) {
 	rustRunner := os.Getenv("DBSPEC_APPLY_RUST")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
@@ -124,49 +125,68 @@ func TestApplyChainAcrossClients(t *testing.T) {
 			}
 		}
 	}
-	// MySQL recovery: A가 둘째 plan의 statement 1을 실행한 뒤 멈추고 B가 끝낸다.
-	want := chainHistory(t, plans, "mysql", "")
-	running := chainHistory(t, plans, "mysql", "running 1")
-	for _, a := range applyClients {
-		for _, b := range applyClients {
-			if a == b {
-				continue
+	// 세 database에서 A가 둘째 plan의 statement 1을 실행한 뒤 멈추고, B가 그것을 이어
+	// 끝내거나 되돌린다.
+	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
+		want := chainHistory(t, plans, dialect, "")
+		running := chainHistory(t, plans, dialect, "applying 1")
+		first := chainHistory(t, plans[:1], dialect, "")
+		firstTarget, _ := dbspec.ManifestOf([]*dbspec.Document{plans[0].Schema})
+		for _, a := range applyClients {
+			for _, b := range applyClients {
+				if a == b {
+					continue
+				}
+				pair(dialect+".recover."+a+"-"+b, dialect, func(t *testing.T, uri string) {
+					step(t, a, "stop", dialect, uri, "stopped")
+					checkHistory(t, dialect, uri, running)
+					step(t, b, "apply", dialect, uri, "error interrupted")
+					step(t, b, "recover", dialect, uri, "ok")
+					checkChainState(t, dialect, uri, want, target.SchemaText)
+				})
+				pair(dialect+".rollback."+a+"-"+b, dialect, func(t *testing.T, uri string) {
+					step(t, a, "stop", dialect, uri, "stopped")
+					checkHistory(t, dialect, uri, running)
+					step(t, b, "rollback", dialect, uri, "ok")
+					checkChainState(t, dialect, uri, first, firstTarget.SchemaText)
+				})
 			}
-			pair("mysql.recover."+a+"-"+b, "mysql", func(t *testing.T, uri string) {
-				step(t, a, "stop", "mysql", uri, "stopped")
-				checkHistory(t, "mysql", uri, running)
-				step(t, b, "apply", "mysql", uri, "error interrupted")
-				step(t, b, "recover", "mysql", uri, "ok")
-				checkChainState(t, "mysql", uri, want, target.SchemaText)
-			})
 		}
 	}
-	if runs != 48 {
-		t.Errorf("ran %d pairs, want 12 pairs on three databases and 12 MySQL recoveries", runs)
+	if runs != 108 {
+		t.Errorf("ran %d pairs, want 12 pairs of chain, recover and rollback on three databases", runs)
 	}
 	t.Logf("pairs: %d", runs)
 }
 
-// chainHistory는 chain을 끝까지 적용한 dialect database의 history row다. last가
-// "running <step>"이면 마지막 plan의 row가 그 step에서 running이다.
+// chainHistory는 chain을 끝까지 적용한 dialect database의 history row다. 각 row는
+// finalize 앞의 step까지 applied다. last가 "<state> <step>"이면 마지막 plan의 row가
+// 그 state와 step이다.
 func chainHistory(t *testing.T, plans []*dbspec.Plan, dialect, last string) []string {
 	t.Helper()
 	var rows []string
 	var source *dbspec.Document
 	for i, p := range plans {
-		statements, diagnostics := dbspec.PlanStatements(source, p, dbspec.Dialect(dialect))
+		steps, diagnostics := dbspec.PlanSteps(source, p, dbspec.Dialect(dialect))
 		if len(diagnostics) > 0 {
 			t.Fatal(diagnostics)
+		}
+		applied := len(steps)
+		for k, s := range steps {
+			if s.Finalize {
+				applied = k
+				break
+			}
 		}
 		from := p.From
 		if from == "" {
 			from = "empty"
 		}
-		state, step := "done", strconv.Itoa(len(statements))
+		state, step := "applied", strconv.Itoa(applied)
 		if i == len(plans)-1 && last != "" {
 			state, step, _ = strings.Cut(last, " ")
 		}
-		rows = append(rows, strings.Join([]string{p.Name, from, p.To, state, step, strconv.Itoa(len(statements)), "2026-10-01T00:00:00.123456Z"}, "|"))
+		rows = append(rows, strings.Join([]string{p.Name, from, p.To, state, step, strconv.Itoa(len(steps)), "2026-10-01T00:00:00.123456Z"}, "|"))
 		source = p.Schema
 	}
 	return rows

@@ -1,10 +1,12 @@
 // dbspec schema plans on MySQL, PostgreSQL and SQLite (docs/plans.md
 // "Verification"). Every case of tests/dbspec/plans.json is applied to an
 // empty database, schema or file: the source rendered by renderDbspec, the
-// before steps, the statements of planStatements (SQLite with foreign keys
-// off, then PRAGMA foreign_key_check returns no row), the after steps; then
-// introspectDbspec reads the database, whose schema text equals the plan's
-// target with nothing unsupported.
+// before steps and the planSteps steps before finalize (SQLite with foreign
+// keys off, then PRAGMA foreign_key_check returns no row), after which
+// introspectDbspec reads the plan's target with nothing unsupported; without
+// an irreversible step the rollback statements return to the source schema
+// text and the steps run again; then the after steps and the finalize steps
+// run, the target is read again and no dbspec$ table or column remains.
 //
 // Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test clients/typescript/tests/dbspec-plan-physical.mjs (after the build)
 import test from 'node:test';
@@ -16,7 +18,7 @@ import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planStatements, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planSteps, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 60000;
@@ -193,25 +195,59 @@ for (const c of cases) {
         assert.deepEqual(rendered.diagnostics, [], 'source render diagnostics');
         setup = rendered.statements;
       }
-      const planned = planStatements(source, parsed.plan, dialect);
-      assert.deepEqual(planned.diagnostics, [], 'plan statement diagnostics');
-      console.log(`${dialect}.plan.${c.id}: ${planned.statements.length} statements`);
+      const planned = planSteps(source, parsed.plan, dialect);
+      assert.deepEqual(planned.diagnostics, [], 'plan step diagnostics');
+      const steps = planned.steps;
+      const reversible = steps.every(s => s.finalize || s.rollback !== '');
+      const sourceText = source === null ? '' : dbspecManifest([source]).manifest.schemaText;
+      console.log(`${dialect}.plan.${c.id}: ${steps.length} steps, reversible ${reversible}`);
       await withDatabase(dialect, async session => {
+        const schemaIs = async (what, want) => {
+          const { document, unsupported } = await introspectDbspec(session.connection, dialect, 'introspected');
+          assert.deepEqual(unsupported, [], `${what}: unsupported objects`);
+          const got = document.tables.length > 0 ? dbspecManifest([document]).manifest.schemaText : '';
+          assert.equal(got, want, `${what}: introspected schema text`);
+        };
+        // forward는 finalize 앞의 step을 실행한다. restore이면 restore statement가 있는 step은
+        // 그것을 실행한다(rollback이 숨긴 더한 column이 있다).
+        const forward = async restore => {
+          for (const s of steps) {
+            if (s.finalize) break;
+            await session.exec(restore && s.restore !== '' ? s.restore : s.statement);
+          }
+          if (dialect === 'sqlite') assert.equal(await firstValue(session, 'SELECT COUNT(*) FROM pragma_foreign_key_check'), '0', 'foreign key check');
+        };
         for (const sql of [...CONNECTION_RULES[dialect], ...setup]) await session.exec(sql);
         await runSteps(session, dialect, c.before ?? []);
         // SQLite는 table을 다시 만드는 동안 foreign key를 끄고, 끝난 뒤 검사한다.
-        if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = OFF');
-        for (const sql of planned.statements) await session.exec(sql);
         if (dialect === 'sqlite') {
-          assert.equal(await firstValue(session, 'SELECT COUNT(*) FROM pragma_foreign_key_check'), '0', 'foreign key check');
-          await session.exec('PRAGMA foreign_keys = ON');
+          await session.exec('PRAGMA foreign_keys = OFF');
+          await session.exec('PRAGMA legacy_alter_table = OFF');
         }
+        await forward(false);
+        await schemaIs('applied', target);
+        if (reversible) {
+          // 끝까지 되돌리는 rollback은 옛 table을 숨긴 더한 column과 함께 다시 만든다.
+          for (const s of [...steps].reverse()) if (!s.finalize) await session.exec(s.rollbackRestore !== '' ? s.rollbackRestore : s.rollback);
+          if (dialect === 'sqlite') assert.equal(await firstValue(session, 'SELECT COUNT(*) FROM pragma_foreign_key_check'), '0', 'foreign key check after rollback');
+          await schemaIs('rolled back', sourceText);
+          await forward(true);
+          await schemaIs('applied again', target);
+        }
+        if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = ON');
         await runSteps(session, dialect, c.after ?? []);
-        const { document, unsupported } = await introspectDbspec(session.connection, dialect, 'introspected');
-        assert.deepEqual(unsupported, [], 'unsupported objects');
-        const manifest = dbspecManifest([document]);
-        assert.deepEqual(manifest.diagnostics, []);
-        assert.equal(manifest.manifest.schemaText, target, 'introspected schema text');
+        // finalize도 apply처럼 SQLite foreign key를 끄고 실행한다.
+        if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = OFF');
+        for (const s of steps) if (s.finalize) await session.exec(s.statement);
+        if (dialect === 'sqlite') await session.exec('PRAGMA foreign_keys = ON');
+        await schemaIs('finalized', target);
+        const hidden = {
+          mysql: "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%')",
+          postgres:
+            "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%')",
+          sqlite: "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%')",
+        }[dialect];
+        assert.equal(await firstValue(session, hidden), '0', 'hidden tables and columns after finalize');
       });
       runs++;
     });

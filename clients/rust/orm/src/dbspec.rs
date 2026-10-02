@@ -7,7 +7,10 @@
 
 mod apply;
 
-pub use apply::{apply, recover, ApplyClock, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, ApplyEventKind, ApplyEvents};
+pub use apply::{
+    apply, effect_holds, effect_query, finalize, recover, rollback, ApplyClock, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, ApplyEventKind,
+    ApplyEvents,
+};
 pub use orm_schema::dbspec::*;
 use sqlx::mysql::MySqlRow;
 use sqlx::postgres::PgRow;

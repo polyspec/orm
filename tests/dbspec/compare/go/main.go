@@ -222,6 +222,36 @@ func writeChanges(out *bufio.Writer, changes []dbspec.Change) {
 // writePlans는 plan case마다 emit한 plan, change, dialect별 statement를, invalid case마다
 // diagnostic을, chain case마다 chain 순서나 diagnostic을, parse case마다 diagnostic이나 emit한
 // plan을, comparison마다 차이나 diagnostic을 출력한다.
+// writeStep은 step 하나를 statement 줄과 그 속성 줄로 쓴다(tests/dbspec/compare/check.mjs).
+func writeStep(out *bufio.Writer, s dbspec.PlanStep) {
+	fmt.Fprintf(out, "| %s\n", s.Statement)
+	switch {
+	case s.Finalize:
+		fmt.Fprintln(out, "  finalize")
+	case s.Rollback != "":
+		fmt.Fprintf(out, "  rollback: %s\n", s.Rollback)
+	default:
+		fmt.Fprintf(out, "  irreversible: %s\n", s.Irreversible)
+	}
+	fmt.Fprintf(out, "  effect: %s\n", s.Effect)
+	if s.Restore != "" {
+		fmt.Fprintf(out, "  restore: %s\n", s.Restore)
+	}
+	if s.RollbackRestore != "" {
+		fmt.Fprintf(out, "  rollback_restore: %s\n", s.RollbackRestore)
+	}
+	if s.Restore != "" || s.RollbackRestore != "" {
+		fmt.Fprintf(out, "  restore_if: %s\n", s.RestoreIf)
+	}
+	for _, c := range s.NullChecks {
+		def := "none"
+		if c.HasDefault {
+			def = c.Default
+		}
+		fmt.Fprintf(out, "  null_check: %s %s %s\n", c.Table, c.Column, def)
+	}
+}
+
 func writePlans(out *bufio.Writer, v planVectors) {
 	for _, c := range v.Cases {
 		fmt.Fprintf(out, "plans/cases/%s\n", c.ID)
@@ -243,10 +273,10 @@ func writePlans(out *bufio.Writer, v planVectors) {
 		writeChanges(out, changes)
 		for _, dialect := range []dbspec.Dialect{dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite} {
 			fmt.Fprintf(out, "plans/cases/%s/%s\n", c.ID, dialect)
-			statements, diagnostics := dbspec.PlanStatements(source, p, dialect)
+			steps, diagnostics := dbspec.PlanSteps(source, p, dialect)
 			writeDiagnostics(out, diagnostics)
-			for _, s := range statements {
-				fmt.Fprintf(out, "| %s\n", s)
+			for _, s := range steps {
+				writeStep(out, s)
 			}
 		}
 	}

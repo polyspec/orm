@@ -204,7 +204,7 @@ final class PlanObjects
      *
      * @param callable(string): string $f
      */
-    private static function checkText(string $expression, callable $f): string
+    public static function checkText(string $expression, callable $f): string
     {
         return preg_replace_callback(self::CHECK_TOKEN, static fn(array $m): string => self::isColumn($m[0]) ? $f($m[0]) : $m[0], $expression)
             ?? throw new \LogicException("Check text `$expression` cannot be read");

@@ -13,9 +13,9 @@ import (
 // table을 한 번에 읽는다.
 const (
 	sqliteMasterQuery = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
-WHERE name NOT LIKE 'sqlite_%' AND tbl_name <> 'dbspec$plans' ORDER BY type, name`
+WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`
 	sqliteColumnsQuery = `SELECT m.name, p.name, p.type, p."notnull", p.dflt_value, p.pk, p.hidden FROM sqlite_master m
-JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' ORDER BY m.name, p.cid`
+JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid`
 	sqliteIndexesQuery = `SELECT m.name, l.name, l."unique", l.origin, l.partial,
 IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),
 IFNULL((SELECT group_concat(x."desc", ',') FROM (SELECT "desc" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')

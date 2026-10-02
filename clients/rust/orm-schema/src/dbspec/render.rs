@@ -93,36 +93,7 @@ impl Renderer {
     }
 
     pub fn table(&self, t: &Table) -> Vec<String> {
-        let mut parts: Vec<String> = t.columns.iter().map(|c| self.column(c)).collect();
-        let identity_inline = self.d == Dialect::Sqlite && t.columns.iter().any(|c| c.identity.is_some());
-        if !identity_inline {
-            for key in &t.primary {
-                parts.push(format!("PRIMARY KEY ({})", self.list(key.columns.iter().map(|n| &n.text))));
-            }
-        }
-        if self.d == Dialect::Sqlite {
-            for key in sorted_by(&t.foreign_keys, |f| &f.name.text) {
-                parts.push(self.foreign_key(key));
-            }
-        } else {
-            for u in sorted_by(&t.uniques, |u| &u.name.text) {
-                parts.push(format!("CONSTRAINT {} UNIQUE ({})", self.q(&u.name.text), self.list(u.columns.iter().map(|n| &n.text))));
-            }
-        }
-        for c in &t.columns {
-            if let Some(check) = self.type_check(c) {
-                parts.push(format!("CONSTRAINT {} CHECK ({check})", self.q(&format!("{}${}", t.name.text, c.name.text))));
-            }
-        }
-        for k in sorted_by(&t.checks, |k| &k.name.text) {
-            let mut b = String::new();
-            self.predicate(&mut b, t, &k.expr);
-            parts.push(format!("CONSTRAINT {} CHECK ({b})", self.q(&k.name.text)));
-        }
-        let mut create = format!("CREATE TABLE {} ({})", self.q(&t.name.text), parts.join(", "));
-        if self.d == Dialect::MySql {
-            create.push_str(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
-        }
+        let create = self.create_table(t, &t.name.text, &|c: &str| format!("{}${c}", t.name.text), &[]);
         let mut out = vec![create];
         if self.d == Dialect::Sqlite {
             for u in sorted_by(&t.uniques, |u| &u.name.text) {
@@ -140,6 +111,50 @@ impl Renderer {
             out.push(format!("CREATE INDEX {} ON {} ({})", self.q(&x.name.text), self.q(&t.name.text), columns.join(", ")));
         }
         out
+    }
+
+    /// The CREATE TABLE of table `t` under `name`. `check_name` names the
+    /// renderer CHECK of a column, and `hidden` columns follow `t`'s columns,
+    /// nullable and without a CHECK (docs/plans.md, "Steps", the SQLite
+    /// rebuild).
+    pub fn create_table(&self, t: &Table, name: &str, check_name: &dyn Fn(&str) -> String, hidden: &[Column]) -> String {
+        let mut parts: Vec<String> = t.columns.iter().map(|c| self.column(c)).collect();
+        for c in hidden {
+            let mut c = c.clone();
+            c.nullable = true;
+            c.identity = None;
+            parts.push(self.column(&c));
+        }
+        let identity_inline = self.d == Dialect::Sqlite && t.columns.iter().any(|c| c.identity.is_some());
+        if !identity_inline {
+            for key in &t.primary {
+                parts.push(format!("PRIMARY KEY ({})", self.list(key.columns.iter().map(|n| &n.text))));
+            }
+        }
+        if self.d == Dialect::Sqlite {
+            for key in sorted_by(&t.foreign_keys, |f| &f.name.text) {
+                parts.push(self.foreign_key(key));
+            }
+        } else {
+            for u in sorted_by(&t.uniques, |u| &u.name.text) {
+                parts.push(format!("CONSTRAINT {} UNIQUE ({})", self.q(&u.name.text), self.list(u.columns.iter().map(|n| &n.text))));
+            }
+        }
+        for c in &t.columns {
+            if let Some(check) = self.type_check(c) {
+                parts.push(format!("CONSTRAINT {} CHECK ({check})", self.q(&check_name(&c.name.text))));
+            }
+        }
+        for k in sorted_by(&t.checks, |k| &k.name.text) {
+            let mut b = String::new();
+            self.predicate(&mut b, t, &k.expr);
+            parts.push(format!("CONSTRAINT {} CHECK ({b})", self.q(&k.name.text)));
+        }
+        let mut create = format!("CREATE TABLE {} ({})", self.q(name), parts.join(", "));
+        if self.d == Dialect::MySql {
+            create.push_str(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin");
+        }
+        create
     }
 
     pub fn column(&self, c: &Column) -> String {

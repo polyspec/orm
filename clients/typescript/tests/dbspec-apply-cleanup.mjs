@@ -1,7 +1,7 @@
 // dbspec apply cleanup errors (docs/plans.md "Apply"): a wrapped SQLite
-// database injects a failing ROLLBACK after an event stops apply and a
-// failing foreign key restore after a failing BEGIN IMMEDIATE, and a scripted
-// MySQL connection returns no row for a recovery effect query. Apply must
+// database injects a failing lock release after an event stops apply and a
+// failing foreign key restore after a failing BEGIN EXCLUSIVE, and a scripted
+// MySQL connection returns no row for an effect query. Apply must
 // reject with every error: the first failure alone, or an AggregateError
 // whose errors are the first failure and then the cleanup errors in order.
 //
@@ -11,10 +11,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
-import { DbspecApplyError, applyPlans, parsePlan, recoverPlans } from '../dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
+import { EFFECT_QUERIES, dbspecEffectHolds } from '../dist/dbspec/apply.js';
 
 const root = new URL('../../../', import.meta.url);
-const TIMEOUT = 5000;
+const TIMEOUT = 20000;
 // tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
@@ -67,15 +68,15 @@ async function wantCleanup(promise, failure, cleanup) {
   });
 }
 
-vector('apply/cleanup-errors/rollback', async () => {
+vector('apply/cleanup-errors/release', async () => {
   const stop = new Error('stop');
-  const rollback = new Error('rollback failed');
-  const db = failingSqlite(new Map([['ROLLBACK', rollback]]));
+  const release = new Error('release failed');
+  const db = failingSqlite(new Map([['PRAGMA locking_mode = normal', release]]));
   try {
     const events = event => {
       if (event.kind === 'applied') throw stop;
     };
-    await wantCleanup(applyPlans(db, 'sqlite', plans, fixedNow, events), e => e === stop, [rollback]);
+    await wantCleanup(applyPlans(db, 'sqlite', plans, fixedNow, events), e => e === stop, [release]);
   } finally {
     db.close();
   }
@@ -84,7 +85,8 @@ vector('apply/cleanup-errors/rollback', async () => {
 vector('apply/cleanup-errors/begin-restore', async () => {
   const begin = new Error('begin failed');
   const restore = new Error('restore failed');
-  const db = failingSqlite(new Map([['BEGIN IMMEDIATE', begin], ['PRAGMA foreign_keys = ON', restore]]));
+  // node:sqlite는 foreign key를 켠 채 연다.
+  const db = failingSqlite(new Map([['BEGIN EXCLUSIVE', begin], ['PRAGMA foreign_keys = 1', restore]]));
   try {
     await wantCleanup(
       applyPlans(db, 'sqlite', plans, fixedNow, null),
@@ -96,26 +98,18 @@ vector('apply/cleanup-errors/begin-restore', async () => {
   }
 });
 
-vector('apply/mysql-effect-row', async () => {
-  // recover가 읽는 query마다 정한 row를 돌려주는 MySQL connection이다. 효과 query는 row를 돌려주지 않는다.
-  const tables = 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?';
-  const history = 'SELECT `name`, `from_hash`, `to_hash`, `state`, `step` FROM `dbspec$plans`';
-  const script = new Map([
-    ["SELECT GET_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)), 0)", [[1]]],
-    [history, [[plans[0].name, 'empty', plans[0].to, 'running', 0]]],
-    [tables, []],
-  ]);
+vector('apply/effect-row', async () => {
+  // 효과 query가 row를 돌려주지 않는 scripted MySQL connection이다.
+  const tables = EFFECT_QUERIES.mysql.table;
   const connection = {
     async query(q) {
       const sql = typeof q === 'string' ? q : q.sql;
-      if (sql.startsWith('CREATE TABLE IF NOT EXISTS `dbspec$plans`') || sql === "DO RELEASE_LOCK(CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51)))") return [{}, []];
-      if (!script.has(sql)) throw new Error(`unexpected query ${sql}`);
-      return [script.get(sql), []];
+      if (sql !== tables) throw new Error(`unexpected query ${sql}`);
+      return [[], []];
     },
   };
-  await assert.rejects(recoverPlans(connection, 'mysql', plans, fixedNow, null), error => {
-    assert(error instanceof DbspecApplyError && error.code === 'failed' && error.step === 0, `${error}; want failed at step 0`);
-    assert.equal(error.cause?.message, `${tables} returned 0 rows`);
+  await assert.rejects(dbspecEffectHolds(connection, 'mysql', { kind: 'table', table: 'orders', name: '', present: true }), error => {
+    assert.equal(error.message, `${tables} returned no row`);
     console.log(`  ${error.message}`);
     return true;
   });

@@ -228,3 +228,8 @@ function exprText(e: CheckExpr, f: Rename): string {
       return `${operandText(e.operand, f)} is ${e.negated ? 'not null' : 'null'}`;
   }
 }
+
+/** The canonical text of a check expression with its column names mapped by f. */
+export function renameCheck(k: DbspecCheck, f: Rename): string {
+  return exprText(checkTree(k), f);
+}

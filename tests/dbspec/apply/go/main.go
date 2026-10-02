@@ -5,12 +5,13 @@
 //   - apply-first: chain의 첫 plan만 적용한다.
 //   - apply: chain 전체를 적용한다.
 //   - stop: chain 전체를 적용하다가 둘째 plan의 statement 1이 실행된 뒤 멈춘다.
-//   - recover: 중단된 MySQL plan을 이어서 끝낸다.
+//   - recover: 중단된 plan을 이어서 끝낸다.
+//   - rollback: history의 마지막 plan을 되돌린다.
 //
 // stdout에는 결과 한 줄을 쓴다: 성공은 "ok", stop이 멈춘 것은 "stopped", apply
 // error는 "error <code>"다. 그 밖의 error는 stderr에 쓰고 1로 끝난다.
 //
-// Usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>
+// Usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 package main
 
 import (
@@ -44,7 +45,7 @@ var errStop = errors.New("stop")
 
 func main() {
 	if len(os.Args) != 5 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover> <mysql|postgres|sqlite> <uri> <plans.json>")
+		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/apply/go <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>")
 		os.Exit(2)
 	}
 	action, dialect, uri, vectors := os.Args[1], os.Args[2], os.Args[3], os.Args[4]
@@ -87,6 +88,8 @@ func run(action, dialect, uri, vectors string) (string, error) {
 		err = dbspec.Apply(ctx, conn, d, plans, now, nil)
 	case "recover":
 		err = dbspec.Recover(ctx, conn, d, plans, now, nil)
+	case "rollback":
+		err = dbspec.Rollback(ctx, conn, d, plans, now, nil)
 	case "stop":
 		err = dbspec.Apply(ctx, conn, d, plans, now, func(ev dbspec.ApplyEvent) error {
 			if ev.Kind == "applied" && ev.Plan == plans[1].Name && ev.Step == 1 {
