@@ -326,7 +326,6 @@ var chainServiceGtSeq = []orm.ChainKey{{Op: "gt", Column: "seq"}}
 var chainServiceName = []orm.ChainKey{{Column: "name"}}
 
 // GetServiceMemberModels returns the service_member relation result.
-func (x *ServiceModel) GetServiceMemberModels() *orm.Collection[*ServiceMemberModel] {
-	v, _ := x.m.Related("service_member_models").(*orm.Collection[*ServiceMemberModel])
-	return v
+func (x *ServiceModel) GetServiceMemberModels() (*orm.Collection[*ServiceMemberModel], error) {
+	return orm.RelatedAs[*orm.Collection[*ServiceMemberModel]](x.m, "service_member_models")
 }

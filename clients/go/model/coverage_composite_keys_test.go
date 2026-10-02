@@ -38,7 +38,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	loaded := must(account().
 		Relations(model.CompositeMembership().MatchAccountIdWithAccountId().TenantId(compositeTenant).AliasMemberships()).
 		GetByTenantIdAndAccountId(compositeTenant, 2))
-	members := loaded.GetMemberships()
+	members := must(loaded.GetMemberships())
 	if members.Len() != 1 || members.First().GetRole() != "owner" ||
 		members.First().GetTenantId() != compositeTenant || members.First().GetAccountId() != 2 {
 		t.Fatalf("memberships of (%d, 2) = %d rows", compositeTenant, members.Len())

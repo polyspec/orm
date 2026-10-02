@@ -387,7 +387,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         Ok::<Value, orm::Error>(json!({
             "rows": rows.to_array()?,
             "compared": compared,
-            "module": pick(left.first().and_then(|b| b.get_module()), &["seq", "name"]),
+            "module": pick(left.first().map(|b| b.get_module()).transpose()?.flatten(), &["seq", "name"]),
         }))
     });
     run!("relations", async {
@@ -608,7 +608,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 seqs.push(member.get_seq().unwrap());
             }
             let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
-            let members = loaded.get_service_member_models().expect("selected service members").len();
+            let members = loaded.get_service_member_models()?.expect("selected service members").len();
             mask(shared, &seqs, &[]);
             loaded.delete(true).await?;
             let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;

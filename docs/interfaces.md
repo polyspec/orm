@@ -193,7 +193,7 @@ Assembly uses `{alias, column, output_name, index}`. Join aliases remain separat
 
 A model row stores declared fields, added columns, relation results, and values attached with `new<Name>` in one name space; duplicate names are rejected. Getters return the declared type. Setters update the field and mark it dirty. Update operations send dirty fields only, except fields required by optimistic locking. The original version is read before mutation and is used in the update predicate.
 
-A relation result is either one row or a collection according to the schema. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
+A relation result is either one row or a collection according to the schema. The Go and Rust relation getters also return an error: a row without a related row reads as no result, and a stored relation value of another type than the getter's result is `INTERNAL`. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
 
 ## 9. Collection, key, and page — IF-25 to IF-27
 
