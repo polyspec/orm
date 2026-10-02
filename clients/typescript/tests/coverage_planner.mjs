@@ -1,0 +1,40 @@
+// planner coverage: contracts/fixtures/planner.json 의 request 를 schema/bench.dbspec 의 manifest hash
+// 와 함께 dialect 마다 client engine 으로 compile 해서 statement (role, sql, bind slot param 순서)
+// 또는 오류 code 가 기대값과 같은지 확인한다.
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { repositoryRoot, runCases } from './coverage_case.mjs';
+
+const fixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
+const parsed = parseDbspec(await readFile(join(repositoryRoot, 'schema/bench.dbspec'), 'utf8'), {});
+assert.deepEqual(parsed.diagnostics, [], 'schema/bench.dbspec parses');
+const { manifest } = dbspecManifest([parsed.document]);
+const model = registerModel(manifest.manifestText, manifest.manifestHash);
+const dialects = ['mysql', 'postgres', 'sqlite'];
+
+/** Compiles the request of a fixture case in every dialect and compares the expectation. */
+function compileCase(id) {
+  const found = fixture.cases.filter(c => c.id === id);
+  assert.equal(found.length, 1, `planner.json holds case ${id} once`);
+  const c = found[0];
+  assert.equal(c.operation, 'compile', `operation of case ${id}`);
+  const request = { ...c.input, manifest_hash: manifest.manifestHash };
+  for (const dialect of dialects) {
+    const engine = new Engine(model, dialect);
+    if (Object.hasOwn(c.expected, 'error')) {
+      assert.throws(() => engine.compile(request), error => error?.code === c.expected.error, `${dialect} rejects with ${c.expected.error}`);
+      continue;
+    }
+    const plan = engine.compile(request);
+    const statements = plan.steps.map(step => ({ params: step.bind_slots.map(slot => slot.param), role: step.role, sql: step.sql }));
+    assert.deepEqual(statements, c.expected[dialect], `${dialect} statements`);
+  }
+}
+
+await runCases('coverage_planner.mjs', {
+  async planner_statement() { compileCase('planner_statement'); },
+  async planner_count() { compileCase('planner_count'); },
+  async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
+}, 60_000);

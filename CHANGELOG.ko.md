@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T15: contracts/features.json의 모든 feature가 coverage를 선언하고 `make feature-check`가 각 client의 owner case를 MySQL, PostgreSQL, SQLite에서 두 번씩, 또는 database 없이 실행한다. 모든 client에서 SQLite RESTRICT foreign key 위반은 FOREIGN_KEY이고 CHECK 위반은 CONSTRAINT다.
+
 - T8.8.1: main을 dbspec branch에 merge했고, Mermaid source path는 제거된 채로 main의 기능이 dbspec path에서 동작한다. 한 process가 여러 document set의 generated code를 읽고 연결은 모든 요청을 그 manifest hash의 model로 계획한다. 읽힌 code가 등록하지 않은 manifest의 요청과 text의 hash가 선언한 hash와 다른 code는 `SCHEMA_HASH_MISMATCH`로 실패하며, generated code가 자기 set을 등록하므로 `utils().schema().register()`는 없다. rollback도 실패한 transaction이나 savepoint는 server가 닫은 connection에서도 모든 client에서 `ROLLBACK` 오류 `transaction failed (<cause>) and rollback failed (<error>)` 하나를 보고하고, 두 오류를 유지하며, 재시도하지 않는다. `docs/protocol.md`가 clock 규칙을 한 번 쓴다: client clock은 마이크로초의 UTC이고, MySQL은 `CURRENT_TIMESTAMP(p)`와 `NOW(6)`을 쓰며, SQLite 상대 형식은 소수 여섯 자리를 유지하고, SQLite는 생략한 `default now` column에 client clock을 bind하며, 모든 `now` slot은 그 column의 소수 자리를 가진다. plan history는 `applied_at`을 `YYYY-MM-DDTHH:MM:SS.ffffffZ`로 쓰고, TypeScript apply clock은 epoch 이후 마이크로초다.
 
 - T10: 네 client가 package의 Cargo manifest를 하나만 둔 ordered-json을 쓰므로, cargo가 중복 `ordered-json` package를 경고하지 않는다.

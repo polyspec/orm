@@ -604,6 +604,7 @@ export interface Author {
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   startDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
+  userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
@@ -611,6 +612,8 @@ export interface Author {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -663,6 +666,7 @@ export interface User {
   addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
   aliasOwner(): this;
   aliasWriter(): this;
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   matchUserSeqWithSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
@@ -675,6 +679,8 @@ export interface User {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -734,6 +740,8 @@ export interface Service {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -806,6 +814,8 @@ export interface ServiceRegion {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -885,6 +895,8 @@ export interface ServiceMember {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Name. */
@@ -947,6 +959,7 @@ export class CompositeAccount extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface CompositeAccount {
+  andAccountId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
@@ -958,6 +971,8 @@ export interface CompositeAccount {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -1018,6 +1033,10 @@ export class CompositeMembership extends Model {
   public orderByRoleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('role', true, fn); return this; }
 }
 export interface CompositeMembership {
+  accountId(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  aliasMemberships(): this;
+  matchTenantIdWithTenantId(): this;
+  tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
@@ -1027,6 +1046,8 @@ export interface CompositeMembership {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Name. */
@@ -1093,6 +1114,8 @@ export interface SoftRecord {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -1150,6 +1173,8 @@ export interface Account {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -1205,6 +1230,8 @@ export interface Project {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Owner. */
@@ -1265,6 +1292,8 @@ export interface AccountProject {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Name. */
@@ -1331,6 +1360,8 @@ export interface Task {
   getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Memberships. */
+  getMemberships<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
   getModule<T = unknown>(): T;
   /** Returns the value or relation result named Name. */

@@ -73,7 +73,9 @@ function driverError(name: DriverName, error: unknown): OrmError {
     return new OrmError('CANCELED', `${name}: ${message}`, error);
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
-  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787;
+  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
+    // SQLite는 RESTRICT action의 FK 위반을 CONSTRAINT_TRIGGER(1811)로 보고한다. trigger RAISE의 1811은 DRIVER다.
+    (source.errcode === 1811 && message.includes('FOREIGN KEY constraint failed'));
   const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 6 || source.errcode === 262;
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
   // extended codes report a write the read-only server or connection rejects.

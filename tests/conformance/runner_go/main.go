@@ -2,7 +2,10 @@
 // prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 // other runners print the same document for the same chains.
 //
-// Usage: runner_go -dsn URI
+// Usage: runner_go -dsn URI [-vector NAME]...
+//
+// -vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행해 출력한다.
+// 선언되지 않은 이름은 아무 vector도 실행하기 전에 error로 끝난다.
 package main
 
 import (
@@ -178,12 +181,14 @@ func executeVector(name string, fn func() (any, error), transaction func(func() 
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) != 2 || args[0] != "-dsn" || args[1] == "" {
-		fmt.Fprintln(os.Stderr, "usage: runner_go -dsn URI")
+	var err error
+	var selected map[string]bool
+	dsn, selected, err = parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "runner_go:", err)
+		fmt.Fprintln(os.Stderr, "usage: runner_go -dsn URI [-vector NAME]...")
 		os.Exit(2)
 	}
-	dsn = args[1]
 	db, err := model.Connect(dsn, orm.Config{
 		AESKey:        "bench-salt",
 		BlindIndexKey: "bench-blind-index",
@@ -203,7 +208,12 @@ func main() {
 		"write_cycle": true, "now_defaults": true, "required_columns": true,
 		"creates_and_save": true, "delete_recursive": true,
 	}
+	// vector는 선언 순서대로 모은 뒤, 선택을 검사하고 그 순서로 실행한다.
+	var declared []declaredVector
 	run := func(name string, fn func() (any, error)) {
+		declared = append(declared, declaredVector{name: name, fn: fn})
+	}
+	execute := func(name string, fn func() (any, error)) {
 		log, maskSeqs, maskTs = nil, map[int64]bool{}, map[string]bool{}
 		var transaction func(func() error) error
 		if writeVectors[name] {
@@ -733,9 +743,81 @@ func main() {
 		return map[string]any{"current": status.Current, "pending": status.Pending, "versions": strings.Join(versions, ",")}, nil
 	})
 
+	vectors, err := selectVectors(declared, selected)
+	check(err)
+	for _, v := range vectors {
+		execute(v.name, v.fn)
+	}
+
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	check(enc.Encode(out))
+}
+
+// declaredVector는 runner가 선언한 vector 하나다.
+type declaredVector struct {
+	name string
+	fn   func() (any, error)
+}
+
+// parseArgs는 -dsn URI 한 번과 반복할 수 있는 -vector NAME을 읽는다.
+// selected가 nil이면 모든 vector를 실행한다.
+func parseArgs(args []string) (string, map[string]bool, error) {
+	uri := ""
+	var selected map[string]bool
+	for i := 0; i < len(args); i += 2 {
+		if i+1 >= len(args) || args[i+1] == "" {
+			return "", nil, fmt.Errorf("flag %s requires a value", args[i])
+		}
+		switch value := args[i+1]; args[i] {
+		case "-dsn":
+			if uri != "" {
+				return "", nil, errors.New("flag -dsn is given twice")
+			}
+			uri = value
+		case "-vector":
+			if selected == nil {
+				selected = map[string]bool{}
+			}
+			if selected[value] {
+				return "", nil, fmt.Errorf("vector %s is selected twice", value)
+			}
+			selected[value] = true
+		default:
+			return "", nil, fmt.Errorf("unknown flag %s", args[i])
+		}
+	}
+	if uri == "" {
+		return "", nil, errors.New("flag -dsn is required")
+	}
+	return uri, selected, nil
+}
+
+// selectVectors는 선택된 vector를 선언 순서로 반환한다. selected가 nil이면
+// 모든 vector이고, 선언되지 않은 이름은 error다.
+func selectVectors(declared []declaredVector, selected map[string]bool) ([]declaredVector, error) {
+	if selected == nil {
+		return declared, nil
+	}
+	known := map[string]bool{}
+	var out []declaredVector
+	for _, v := range declared {
+		known[v.name] = true
+		if selected[v.name] {
+			out = append(out, v)
+		}
+	}
+	var unknown []string
+	for name := range selected {
+		if !known[name] {
+			unknown = append(unknown, name)
+		}
+	}
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return nil, fmt.Errorf("unknown vector %s", strings.Join(unknown, ", "))
+	}
+	return out, nil
 }
 
 func check(err error) {
