@@ -24,7 +24,7 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	inject(t, injectedFailure{statement: func(query string) bool {
 		return strings.HasPrefix(query, "SET @`orm.") && strings.HasSuffix(query, "= NULL")
 	}})
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbspec"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

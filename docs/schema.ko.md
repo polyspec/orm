@@ -1,6 +1,6 @@
 # 스키마
 
-스키마 source는 dbspec document(`.dbspec`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `schema/bench.dbspec`은 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
+스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `schema/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
 
 ## 1. 모델 생성 {#_1-model-generation}
 
@@ -8,10 +8,12 @@
 
 | 언어 | 도구 |
 |---|---|
-| Go | `orm-gen gen --document <file.dbspec>... --lang go --out <directory> --scan <package pattern>...` |
-| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbspec...>` |
-| TypeScript | `@polyspec/orm-typescript`의 `orm-gen gen --schema <file.dbspec> --out <directory> --scan <path>` |
-| Rust | `build.rs`의 `orm_build::Builder::new([<files.dbspec>]).scan("src").generate()` |
+| Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
+| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
+| TypeScript | `@polyspec/orm-typescript`의 `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` |
+| Rust | `build.rs`의 `orm_build::Builder::new([<files.dbs>]).scan("src").generate()` |
+
+각 도구는 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
 
 `github.com/polyspec/orm/generator` 패키지는 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
 

@@ -1,5 +1,6 @@
 // tests/dbspec의 모든 runner와 Rust stress harness가 읽을 수 없는 input(없는 file,
-// directory)을 그 경로와 0이 아닌 exit로 거부하는지 확인한다.
+// directory)을 그 경로와 0이 아닌 exit로, signature가 없는 stress 문서를 그 diagnostic
+// message와 0이 아닌 exit로 거부하는지 확인한다.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mjs
 // (after the TypeScript build and the release builds of the Rust dbspec_compare,
@@ -61,6 +62,23 @@ for (const unreadable of [missing, folder]) {
     cases.push({ name: `${runner.name} rejects a ${kind} plans file`, runner, inputs: ['apply', 'sqlite', uri, unreadable], unreadable });
   }
   cases.push({ name: `${stressHarness.name} rejects a ${kind} document`, runner: stressHarness, inputs: [unreadable], unreadable });
+}
+
+// signature가 없는 stress 문서는 parse하지 않고 "<path> is not a dbspec document"로 거부한다.
+const unsigned = join(root, 'tests/dbspec/files/dbschema.dbs');
+const signatureCases = runners.map(runner => {
+  const inputs = compareInputs.slice();
+  inputs[1] = unsigned;
+  return { name: `${runner.name} rejects a stress document without the signature`, runner, inputs };
+});
+signatureCases.push({ name: `${stressHarness.name} rejects a document without the signature`, runner: stressHarness, inputs: [unsigned] });
+for (const c of signatureCases) {
+  test(c.name, { timeout: TIMEOUT }, async () => {
+    const result = await runRunner(c.runner, c.inputs, TIMEOUT);
+    assert.equal(result.signal, null, `ended by ${result.signal}`);
+    assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);
+    assert.ok(result.stderr.includes(`${unsigned} is not a dbspec document`), `stderr does not reject ${unsigned}: ${result.stderr}`);
+  });
 }
 
 for (const c of cases) {

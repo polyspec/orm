@@ -39,9 +39,9 @@ function tool(array $args): array
 $tests['gen --check compares the models without writing'] = function () use ($work): void {
     $dir = "$work/gen-check";
     @mkdir("$dir/model", 0o700, true);
-    file_put_contents("$dir/example.dbspec", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n");
-    $args = ['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', '--check', "$dir/example.dbspec"];
-    [$code] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', "$dir/example.dbspec"]);
+    file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag {\n  seq i64\n  primary key (seq)\n}\n");
+    $args = ['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', '--check', "$dir/example.dbs"];
+    [$code] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', "$dir/example.dbs"]);
     check($code === 0, 'gen');
     file_put_contents("$dir/model/Notes.php", "<?php\n");
     [$code, $out, $err] = tool($args);
@@ -53,6 +53,17 @@ $tests['gen --check compares the models without writing'] = function () use ($wo
     [$code, $out] = tool($args);
     check($code === 1 && $out === "differs: $dir/model/Item.php\nextra: $dir/model/Removed.php\nmissing: $dir/model/Tag.php\n", "differences: $code $out");
     check(array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before, 'gen --check wrote files');
+};
+
+$tests['gen rejects a file without the dbspec signature'] = function () use ($work): void {
+    // Dbspec::readFile이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
+    foreach (['dbschema.dbs', 'empty.dbs'] as $name) {
+        $path = dirname(__DIR__, 3) . "/tests/dbspec/files/$name";
+        $dir = "$work/signature-$name";
+        [$code, $out, $err] = tool(['gen', '--out', $dir, '--namespace', 'Example\\Model', $path]);
+        check($code === 1 && $out === '' && $err === "orm-gen: SCHEMA_INVALID: $path:1:1: signature: $path is not a dbspec document\n", "$name: $code $out $err");
+        check(!file_exists($dir), "$name: gen wrote $dir");
+    }
 };
 
 $tests['gen is the only command'] = function (): void {

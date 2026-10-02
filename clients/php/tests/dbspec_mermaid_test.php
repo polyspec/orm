@@ -110,7 +110,11 @@ foreach ($vectors['invalid'] as $case) {
 }
 foreach ($vectors['round_trip'] as $case) {
     mermaid_case("round_trip/{$case['id']}", static function () use ($case, $drops): void {
-        $parsed = Dbspec::parse(file_get_contents(dirname(__DIR__, 3) . '/' . $case['path']), []);
+        $read = Dbspec::readFile(dirname(__DIR__, 3) . '/' . $case['path']);
+        if ($read->text === null) {
+            throw new RuntimeException("round_trip/{$case['id']}: " . json_encode($read->diagnostics));
+        }
+        $parsed = Dbspec::parse($read->text, []);
         if ($parsed->document === null) {
             throw new RuntimeException("round_trip/{$case['id']}: " . json_encode($parsed->diagnostics));
         }

@@ -1,6 +1,6 @@
 # Schema
 
-The schema source is a set of dbspec documents (`.dbspec`). [dbspec.md](dbspec.md) defines the language, its validation rules, the manifest text and the two hashes; `schema/bench.dbspec` is the schema of the tests and benchmarks. No other schema file exists: every generator, runtime and schema operation reads the document set.
+The schema source is a set of dbspec documents (`.dbs`). [dbspec.md](dbspec.md) defines the language, its validation rules, the manifest text and the two hashes; `schema/bench.dbs` is the schema of the tests and benchmarks. No other schema file exists: every generator, runtime and schema operation reads the document set.
 
 ## 1. Model generation
 
@@ -8,10 +8,12 @@ Each language generates its models from the document set with its own tool ([usa
 
 | Language | Tool |
 |---|---|
-| Go | `orm-gen gen --document <file.dbspec>... --lang go --out <directory> --scan <package pattern>...` |
-| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbspec...>` |
-| TypeScript | `orm-gen gen --schema <file.dbspec> --out <directory> --scan <path>` of `@polyspec/orm-typescript` |
-| Rust | `orm_build::Builder::new([<files.dbspec>]).scan("src").generate()` in `build.rs` |
+| Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
+| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
+| TypeScript | `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` of `@polyspec/orm-typescript` |
+| Rust | `orm_build::Builder::new([<files.dbs>]).scan("src").generate()` in `build.rs` |
+
+Each tool reads every document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
 The `github.com/polyspec/orm/generator` package exposes Go generation to other programs. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
 

@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.
+
 - T8.8.2: N16과 함께 main을 dbspec branch에 다시 merge했다. 각 client의 test entry point가 rollback fault를 설정하고, 그다음 실패한 rollback은 MySQL, PostgreSQL, SQLite에서 하나뿐인 transaction 종료 형태 `transaction failed (<cause>) and rollback failed (<error>)` 안의 `FAULT`로 보고된다. idle machine에서 client 하나와 database 하나씩 잰 2000 table introspection은 모든 client에서 0.73-2.56 s로 5 s budget 안이다.
 
 - T8.6.8: 모든 client가 MySQL, PostgreSQL, SQLite에서 plan을 step 하나씩 적용한다: statement마다 따로 commit하고 history step을 기록하며, recover는 다음 step의 catalog 효과로 중단된 plan을 이어 가고, rollback은 모든 step의 rollback statement로 마지막 plan을 되돌린다. 지우는 table과 column은 finalize가 지울 때까지 `dbspec$hold$` 이름을 받아 숨고, 더한 column은 rollback에서 숨었다가 다시 적용하면 돌아오며, 적용한 plan의 rollback은 non-null로 되돌릴 column의 NULL row를 채우거나 거부하고, lock 대기는 5초에 끝나며, `PlanSteps`가 각 step의 rollback statement, 효과, finalize 표시와 함께 `PlanStatements`를 대신한다.

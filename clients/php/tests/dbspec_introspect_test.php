@@ -189,10 +189,14 @@ foreach ($ddl['cases'] as $case) {
     $sets['ddl_' . str_replace('-', '_', $case['id'])] = array_map(lines_text(...), $case['documents']);
 }
 // tests/dialects 의 schemaDocumentPatterns 와 같은 목록.
-foreach (["$root/schema/*.dbspec", "$root/contracts/fixtures/*.dbspec"] as $pattern) {
+foreach (["$root/schema/*.dbs", "$root/contracts/fixtures/*.dbs"] as $pattern) {
     foreach (glob($pattern) ?: throw new RuntimeException("no document matches $pattern") as $path) {
-        $name = basename($path, '.dbspec');
-        $sets["schema_$name"] = [$name => file_get_contents($path)];
+        $name = basename($path, '.dbs');
+        $read = Dbspec::readFile($path);
+        if ($read->text === null) {
+            throw new RuntimeException("$path: " . json_encode($read->diagnostics));
+        }
+        $sets["schema_$name"] = [$name => $read->text];
     }
 }
 $counts = [];

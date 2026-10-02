@@ -3,7 +3,7 @@
 // with the same chains, result shapes, and masking as runner_go.
 //
 // Usage: node runner_typescript.mjs --dsn URI
-// The models embed the manifest of schema/bench.dbspec.
+// The models embed the manifest of schema/bench.dbs.
 import {
   AesKeyring, Author, CompositeAccount, Db, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, orm,
 } from '../../clients/typescript/dist/index.js';

@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
-const text = await readFile(new URL('../../../schema/bench.dbspec', import.meta.url), 'utf8');
+const text = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
 let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
@@ -15,9 +15,9 @@ async function codeOf(promise) {
   try { await promise; return null; } catch (error) { return error.code ?? String(error); }
 }
 
-// The generated models embed the manifest of schema/bench.dbspec.
+// The generated models embed the manifest of schema/bench.dbs.
 const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbspec');
+check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash, 'the generated models embed the manifest of bench.dbs');
 const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);
 check(registerModel(MANIFEST_TEXT, MANIFEST_HASH) === model, 'registering the same manifest returns the registered model');
 check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,account,project,account_project,task', 'entities in document order');
@@ -36,7 +36,7 @@ check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_he
 check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
 // A request names a manifest that no imported model registered.
-check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/bench.dbspec')) === 'CONFIG', 'connect rejects a string in place of the options object');
+check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'schema/bench.dbs')) === 'CONFIG', 'connect rejects a string in place of the options object');
 
 const engine = new Engine(model, 'postgres');
 const base = { ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'author' };

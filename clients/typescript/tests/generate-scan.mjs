@@ -23,7 +23,7 @@ async function generate(source) {
     const usage = join(work, 'usage.ts');
     await writeFile(usage, source);
     const out = join(work, 'models');
-    const result = spawnSync(process.execPath, [bin, 'gen', '--schema', join(root, 'schema/bench.dbspec'), '--out', out, '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    const result = spawnSync(process.execPath, [bin, 'gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out, '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
     if (result.status !== 0) throw new Error(`orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     const members = new Map();

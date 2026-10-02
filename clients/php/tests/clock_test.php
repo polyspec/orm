@@ -4,7 +4,7 @@
 // the client clock of the `now` slot, MySQL and PostgreSQL apply the database
 // default. Either way the stored fraction holds the microseconds of the wall
 // clock; a clock with millisecond resolution stores every value as `.mmm000`.
-// The fixtures are contracts/fixtures/clock.dbspec and clock_mark.dbspec. ORM_TEST_MYSQL_DSN and
+// The fixtures are contracts/fixtures/clock.dbs and clock_mark.dbs. ORM_TEST_MYSQL_DSN and
 // ORM_TEST_POSTGRES_DSN name test databases; the test fails when either is
 // unset.
 // Usage: php clients/php/tests/clock_test.php [case ...]
@@ -27,16 +27,16 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbspec')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbspec' => $documents[0]])), "$work/models", 'ClockCase\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => $documents[0]])), "$work/models", 'ClockCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'ClockCase\\Orm\\')) {
         require "$work/models/" . substr($class, strlen('ClockCase\\Orm\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
-$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbspec')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbspec' => $markDocuments[0]])), "$work/mark-models", 'ClockMarkCase\\Orm');
+$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => $markDocuments[0]])), "$work/mark-models", 'ClockMarkCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'ClockMarkCase\\Orm\\')) {
         require "$work/mark-models/" . substr($class, strlen('ClockMarkCase\\Orm\\')) . '.php';

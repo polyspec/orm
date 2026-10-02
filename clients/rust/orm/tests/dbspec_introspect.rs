@@ -33,7 +33,7 @@ fn schema_documents(directory: &Path) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(directory)
         .unwrap_or_else(|e| panic!("{}: {e}", directory.display()))
         .map(|entry| entry.expect("directory entry").path())
-        .filter(|path| path.extension().is_some_and(|e| e == "dbspec"))
+        .filter(|path| path.extension().is_some_and(|e| e == "dbs"))
         .collect();
     paths.sort();
     paths
@@ -52,7 +52,7 @@ fn round_trip_sets() -> Vec<RoundTripSet> {
     for directory in SCHEMA_DOCUMENT_DIRECTORIES {
         for path in schema_documents(&root.join(directory)) {
             let name = path.file_stem().expect("stem").to_string_lossy().into_owned();
-            let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+            let text = dbspec::read_file(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
             out.push(RoundTripSet { id: format!("schema_{name}"), documents: BTreeMap::from([(name, text)]) });
         }
     }

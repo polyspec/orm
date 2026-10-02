@@ -1,6 +1,6 @@
 <?php
 // Encrypted JSON value test on SQLite, MySQL and PostgreSQL: the
-// `ordered_json aes` column of contracts/fixtures/secret_config.dbspec takes an
+// `ordered_json aes` column of contracts/fixtures/secret_config.dbs takes an
 // ordered-json value, reads it back with the same text, rotates to another key
 // version, and takes an update. The models are generated from the document into
 // a temporary directory, so the test runs in its own process.
@@ -31,8 +31,8 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbspec')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbspec' => $documents[0]])), "$work/gen", 'AesJson\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => $documents[0]])), "$work/gen", 'AesJson\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'AesJson\\Orm\\')) {
         require "$work/gen/" . substr($class, strlen('AesJson\\Orm\\')) . '.php';

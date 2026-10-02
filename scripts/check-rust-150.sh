@@ -22,7 +22,7 @@ awk 'BEGIN {
     print "  primary key (seq)"
     print "}"
   }
-}' > "$WORK/rust-150.dbspec"
+}' > "$WORK/rust-150.dbs"
 
 cd "$ROOT"
 mkdir -p "$WORK/crate/src"
@@ -43,7 +43,7 @@ orm-build = { path = "$ROOT/clients/rust/orm-build" }
 TOML
 cat > "$WORK/crate/build.rs" <<'RS'
 fn main() {
-    orm_build::Builder::new(["../rust-150.dbspec"]).scan("src").generate();
+    orm_build::Builder::new(["../rust-150.dbs"]).scan("src").generate();
 }
 RS
 {

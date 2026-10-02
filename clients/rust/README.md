@@ -26,7 +26,7 @@ orm-build = { path = "…/clients/rust/orm-build" }
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -161,8 +161,8 @@ cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… cargo test --workspace
 cargo build --release -p orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbspec
-./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbspec
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbs
+./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```
 
 `integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. The tests drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.

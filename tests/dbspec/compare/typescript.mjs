@@ -3,6 +3,7 @@
 //
 // Usage: node tests/dbspec/compare/typescript.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (TypeScript build 뒤)
+import { dirname, join as joinPath } from 'node:path';
 import { readInput } from '../input.mjs';
 import {
   chainPlans,
@@ -17,6 +18,7 @@ import {
   parsePlan,
   planSteps,
   effectText,
+  readDbspecFile,
   renderDbspec,
 } from '../../../clients/typescript/dist/dbspec/index.js';
 
@@ -108,6 +110,7 @@ function checkCases(path, v) {
     });
   }
   cases(path, v, 'hashes', (c, at) => documents(path, c, at, 'documents'));
+  cases(path, v, 'files', (c, at) => field(path, c, at, 'path', 'string'));
 }
 
 function checkDdl(path, v) {
@@ -159,6 +162,23 @@ function write(text, set, stress) {
   else for (const line of emitted.split('\n')) out.push(`| ${line}`);
 }
 
+// readDocument는 path의 dbspec document 파일을 readDbspecFile로 읽는다. 읽을 수 없는 파일은
+// "<path>: <reason>"을, signature가 없는 파일은 그 diagnostic message를 stderr에 쓰고 1로 끝낸다.
+function readDocument(path) {
+  let read;
+  try {
+    read = readDbspecFile(path);
+  } catch (error) {
+    console.error(`${path}: ${error.message}`);
+    process.exit(1);
+  }
+  if (read.text === null) {
+    console.error(read.diagnostics[0].message);
+    process.exit(1);
+  }
+  return read.text;
+}
+
 const shared = readVectors(casesPath, checkCases);
 for (const kind of ['canonical', 'normalize', 'invalid']) {
   for (const c of shared[kind]) {
@@ -171,7 +191,28 @@ for (const kind of ['canonical', 'normalize', 'invalid']) {
   }
 }
 out.push('stress');
-write(readInput(stressPath), {}, true);
+write(readDocument(stressPath), {}, true);
+// files case는 readDbspecFile로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
+// message 앞의 path는 "<path>"로 쓴다.
+for (const c of shared.files) {
+  out.push(`files/${c.id}`);
+  const path = joinPath(dirname(casesPath), c.path);
+  let read;
+  try {
+    read = readDbspecFile(path);
+  } catch (error) {
+    console.error(`${path}: ${error.message}`);
+    process.exit(1);
+  }
+  if (read.text !== null) {
+    write(read.text, {}, false);
+    continue;
+  }
+  for (const d of read.diagnostics) {
+    out.push(`! ${d.rule} ${d.line} ${d.column}`);
+    out.push(`= ${d.message.startsWith(path) ? '<path>' + d.message.slice(path.length) : d.message}`);
+  }
+}
 
 // writeManifest는 case 문서 집합의 hash와 text를, 또는 문서나 집합의 diagnostic을 출력한다.
 function writeManifest(c) {
@@ -372,7 +413,18 @@ for (const kind of ['import', 'invalid']) {
 }
 for (const c of mermaid.round_trip) {
   out.push(`mermaid/round_trip/${c.id}`);
-  const parsed = parseDbspec(readInput(c.path), {});
+  let read;
+  try {
+    read = readDbspecFile(c.path);
+  } catch (error) {
+    console.error(`${c.path}: ${error.message}`);
+    process.exit(1);
+  }
+  if (read.text === null) {
+    writePlanDiagnostics(read.diagnostics);
+    continue;
+  }
+  const parsed = parseDbspec(read.text, {});
   if (parsed.document === null) {
     writePlanDiagnostics(parsed.diagnostics);
     continue;

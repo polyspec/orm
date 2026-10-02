@@ -874,7 +874,7 @@
           "ix_service_region_service_seq"
         ]
       ],
-      "path": "schema/bench.dbspec"
+      "path": "schema/bench.dbs"
     }
   ]
 }

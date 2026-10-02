@@ -20,7 +20,7 @@ type historyRow struct {
 	deleted   bool
 }
 
-// TestAuditOperationID는 contracts/fixtures/audit.dbspec을 세 database에
+// TestAuditOperationID는 contracts/fixtures/audit.dbs를 세 database에
 // 설치하고, transaction의 operation id가 audit table의 insert, update, soft
 // delete에서 operation column에 쓰이며 database trigger가 그 version을
 // history table에 남기는지 확인한다. operation id가 없거나 column type에

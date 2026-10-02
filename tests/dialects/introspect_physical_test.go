@@ -64,12 +64,15 @@ func roundTripSets(t *testing.T) []roundTripSet {
 			t.Fatal(err)
 		}
 		for _, path := range paths {
-			text, err := os.ReadFile(path)
+			text, diagnostics, err := dbspec.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)
 			}
-			name := strings.TrimSuffix(filepath.Base(path), ".dbspec")
-			out = append(out, roundTripSet{id: "schema_" + name, documents: map[string]string{name: string(text)}})
+			if len(diagnostics) > 0 {
+				t.Fatal(diagnostics)
+			}
+			name := strings.TrimSuffix(filepath.Base(path), ".dbs")
+			out = append(out, roundTripSet{id: "schema_" + name, documents: map[string]string{name: text}})
 		}
 	}
 	return out

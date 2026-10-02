@@ -41,11 +41,12 @@ function databaseUri(string $uri, string $database): string
 // decimal fixture document를 dialect의 문장으로 렌더링해 설치한다.
 function install(PDO $pdo, string $dialect): void
 {
-    $file = dirname(__DIR__) . '/contracts/fixtures/decimal_schema.dbspec';
-    $text = file_get_contents($file);
-    if ($text === false) {
-        throw new RuntimeException("cannot read $file");
+    $file = dirname(__DIR__) . '/contracts/fixtures/decimal_schema.dbs';
+    $read = Orm\Dbspec\Dbspec::readFile($file);
+    if ($read->text === null) {
+        throw new RuntimeException("$file: " . json_encode($read->diagnostics));
     }
+    $text = $read->text;
     $parsed = Orm\Dbspec\Dbspec::parse($text, ['decimal_schema' => $text]);
     if ($parsed->document === null) {
         throw new RuntimeException("$file: " . json_encode($parsed->diagnostics));

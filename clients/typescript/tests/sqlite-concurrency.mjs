@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Db, OrmError, Service } from '../dist/index.js';
 
-const benchPath = fileURLToPath(new URL('../../../schema/bench.dbspec', import.meta.url));
+const benchPath = fileURLToPath(new URL('../../../schema/bench.dbs', import.meta.url));
 
 /** Runs count transactions that read the service count and then insert one service. */
 async function writeServices(db, name, count) {
