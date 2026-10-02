@@ -1,5 +1,7 @@
 # Changelog
 
+- T10: all four clients use an ordered-json that keeps one Cargo manifest for its package, so cargo does not warn about a duplicate `ordered-json` package.
+
 - T17.6: every time limit that a test sets on its own computation bounds CPU time (the case thread in Rust, Go and TypeScript, the PHP process) and prints CPU and wall-clock time; `make timing-check` runs the stress, Rust vector and PHP dbspec tests while their process group receives one tenth of wall-clock time.
 
 - T17.5: the Rust native benchmarks `native` and `driver_compare` decode the bench schema types and read every workload's rows, and `make rust-driver-check` runs them against the seeded bench database.
