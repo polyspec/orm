@@ -476,6 +476,11 @@ func (x *CompositeMembershipModel) MatchAccountIdWithAccountId() *CompositeMembe
 	return x
 }
 
+func (x *CompositeMembershipModel) MatchTenantIdWithTenantId() *CompositeMembershipModel {
+	x.m.Match("tenant_id", "tenant_id")
+	return x
+}
+
 func (x *CompositeMembershipModel) TenantId[T0 argIntEq](v0 T0) *CompositeMembershipModel {
 	x.m.Where("", chainCompositeMembershipTenantId, v0)
 	return x

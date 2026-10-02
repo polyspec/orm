@@ -48,6 +48,23 @@ check(compileCode({ ...base, kind: 'all', n_params: 0, where: { items: [{ pred: 
 check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: { column: 'json_setting', op: 'eq', p: 0 } }] } }) === 'OPERATOR_NOT_ALLOWED', 'operator on a json column');
 check(compileCode({ ...base, kind: 'delete', n_params: 0 }) === 'IR_INVALID', 'delete without where');
 check(compileCode({ ...base, manifest_hash: 'x', kind: 'all', n_params: 0 }) === 'SCHEMA_HASH_MISMATCH', 'request of another manifest');
+
+// relation 은 foreign key 의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+const compositeRelation = keys => ({ ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'composite_account', kind: 'all', n_params: 0, relations: [{ rel: 'memberships', kind: 'many', keys, query: { entity: 'composite_membership' } }] });
+{
+  const plan = engine.compile(compositeRelation([{ left: 'tenant_id', right: 'tenant_id' }, { left: 'account_id', right: 'account_id' }]));
+  check(plan.steps.length === 2 && plan.steps[1].parent?.keys.length === 2, 'the composite relation step binds two parent keys');
+  check(plan.steps[1].sql.includes('WHERE ("a"."tenant_id", "a"."account_id") IN (($1))'), `composite relation SQL: ${plan.steps[1].sql}`);
+  const child = plan.steps[0].assemble.children[0];
+  check(child.parent_keys.map(k => k.column).join(',') === 'tenant_id,account_id' && child.child_keys.map(k => k.column).join(',') === 'tenant_id,account_id', 'composite relation keys in key order');
+}
+for (const [keys, want] of [
+  [[], 'IR_INVALID'],
+  [[{ left: 'tenant_id', right: 'tenant_id' }, { left: 'tenant_id', right: 'account_id' }], 'IR_INVALID'],
+  [[{ left: 'tenant_id', right: 'tenant_id' }, { left: 'account_id', right: 'tenant_id' }], 'IR_INVALID'],
+  [[{ left: 'tenant_id', right: '' }], 'IR_INVALID'],
+  [[{ left: 'tenant_id', right: 'tenant_id' }, { left: 'nope', right: 'account_id' }], 'COLUMN_UNKNOWN'],
+]) check(compileCode(compositeRelation(keys)) === want, `relation keys ${JSON.stringify(keys)}: want ${want}`);
 check(compileCode({ ...base, kind: 'all', n_params: 0, force_index: 'nope' }) === 'INDEX_UNKNOWN', 'unknown index');
 
 // insert는 identity column 값을, update와 duplicate update는 primary key와 identity

@@ -174,7 +174,7 @@ $orders = (new Order)->connect($slave1)
 |---|---|
 | `relation(child)` | attach one related row |
 | `relations(child)` | attach a collection of related rows |
-| `match<L>With<R>()` | parent column `L` equals child column `R` |
+| `match<L>With<R>()` | parent column `L` equals child column `R`; a composite key calls one per component, in key order, e.g. `matchTenantIdWithTenantId().matchAccountIdWithAccountId()` |
 | `alias<Name>()` | result name of the relation |
 | `parentNode()` | merge child columns into the parent row |
 | `possible<Col>(value)` | load the child only when the parent column equals the value |

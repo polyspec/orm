@@ -174,7 +174,7 @@ $orders = (new Order)->connect($slave1)
 |---|---|
 | `relation(child)` | 관련 행 하나 연결 |
 | `relations(child)` | 관련 행 컬렉션 연결 |
-| `match<L>With<R>()` | 부모 컬럼 `L`과 자식 컬럼 `R`이 같음 |
+| `match<L>With<R>()` | 부모 컬럼 `L`과 자식 컬럼 `R`이 같음. composite key는 성분마다 key 순서대로 한 번씩 부른다. 예: `matchTenantIdWithTenantId().matchAccountIdWithAccountId()` |
 | `alias<Name>()` | 관계 결과 명칭 |
 | `parentNode()` | 자식 컬럼을 부모 행에 병합 |
 | `possible<Col>(value)` | 부모 컬럼이 값과 같을 때만 자식 조회 |

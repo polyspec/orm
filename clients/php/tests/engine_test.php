@@ -93,6 +93,24 @@ foreach ($engines as $d => $engine) {
     }
 }
 
+// relation 은 foreign key 의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+$compositeRelation = static fn(array $keys): array => $request(['kind' => 'all', 'entity' => 'composite_account', 'n_params' => 0,
+    'relations' => [['rel' => 'memberships', 'kind' => 'many', 'keys' => $keys, 'query' => ['entity' => 'composite_membership']]]]);
+$plan = $mysql->plan($compositeRelation([['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'account_id', 'right' => 'account_id']]));
+expect(count($plan['steps']) === 2 && count($plan['steps'][1]['parent']['keys']) === 2, 'the composite relation step binds two parent keys');
+expect(str_contains($plan['steps'][1]['sql'], 'WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?))'), "composite relation SQL: {$plan['steps'][1]['sql']}");
+$child = $plan['steps'][0]['assemble']['children'][0];
+expect(array_column($child['parent_keys'], 'column') === ['tenant_id', 'account_id'] && array_column($child['child_keys'], 'column') === ['tenant_id', 'account_id'], 'composite relation keys in key order');
+foreach ([
+    [[], Code::IR_INVALID],
+    [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'tenant_id', 'right' => 'account_id']], Code::IR_INVALID],
+    [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'account_id', 'right' => 'tenant_id']], Code::IR_INVALID],
+    [[['left' => 'tenant_id', 'right' => '']], Code::IR_INVALID],
+    [[['left' => 'tenant_id', 'right' => 'tenant_id'], ['left' => 'nope', 'right' => 'account_id']], Code::COLUMN_UNKNOWN],
+] as [$keys, $code]) {
+    expect(code(fn() => $mysql->compile($compositeRelation($keys))) === $code, 'relation keys ' . json_encode($keys) . ": want $code");
+}
+
 $softRead = $request(['kind' => 'all', 'entity' => 'soft_record', 'n_params' => 0]);
 $softDelete = $request(['kind' => 'delete', 'entity' => 'soft_record', 'n_params' => 1, 'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 0]]]]]);
 foreach ($engines as $d => $engine) {

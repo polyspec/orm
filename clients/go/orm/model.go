@@ -424,6 +424,39 @@ func (a *assembler) external(r *request) error {
 	return nil
 }
 
+// matchColumns는 relation key의 부모 column이나(child가 false) 자식 column을 key 순서로 반환한다.
+func matchColumns(matches []ir.KeyPair, child bool) []string {
+	out := make([]string, len(matches))
+	for i, k := range matches {
+		out[i] = k.Left
+		if child {
+			out[i] = k.Right
+		}
+	}
+	return out
+}
+
+// matchKey는 model의 relation key 값과 그 collection key를 반환한다. 한 성분이면
+// 값 하나, composite key이면 성분 값의 slice다. 성분 하나라도 null이면 false다.
+func matchKey(m *Core, matches []ir.KeyPair, child bool) (any, Key, bool, error) {
+	columns := matchColumns(matches, child)
+	values := make([]any, len(columns))
+	for i, column := range columns {
+		values[i] = m.value(column)
+		if values[i] == nil {
+			return nil, Key{}, false, nil
+		}
+	}
+	key, err := keyFromValues(values)
+	if err != nil {
+		return nil, Key{}, false, err
+	}
+	if len(values) == 1 {
+		return values[0], key, true, nil
+	}
+	return values, key, true, nil
+}
+
 func attachExternal(parents []*Core, rel relSpec) error {
 	ch := rel.child
 	var values []any
@@ -438,15 +471,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 				continue
 			}
 		}
-		v := p.value(ch.matchLeft)
-		if v == nil {
-			continue
-		}
-		key, err := KeyOf(v)
+		v, key, ok, err := matchKey(p, ch.matches, false)
 		if err != nil {
 			return err
 		}
-		if seen[key] {
+		if !ok || seen[key] {
 			continue
 		}
 		seen[key] = true
@@ -459,8 +488,16 @@ func attachExternal(parents []*Core, rel relSpec) error {
 	byKey := map[Key][]entry{}
 	if len(values) > 0 {
 		q := ch.Clone()
-		q.matchLeft, q.alias = "", ""
-		match := condNode{pred: &predSpec{column: ch.matchRight, op: "in", value: values, list: true}}
+		q.matches, q.alias = nil, ""
+		match := condNode{pred: &predSpec{column: ch.matches[0].Right, op: "in", value: values, list: true}}
+		if len(ch.matches) > 1 {
+			// composite key는 자식 key column 전체를 tuple로 거른다.
+			rows := make([][]any, len(values))
+			for i, v := range values {
+				rows[i] = v.([]any)
+			}
+			match = condNode{pred: &predSpec{op: "tuple_in", cols: matchColumns(ch.matches, true), value: rows, tuple: true}}
+		}
 		if len(q.where.items) > 0 {
 			q.where = condGroup{items: []condNode{{group: &condGroup{items: q.where.items}}}}
 			match.conn = "and"
@@ -472,9 +509,12 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		}
 		for _, k := range rows.keys {
 			m := rows.items[k]
-			key, err := KeyOf(m.value(ch.matchRight))
+			_, key, ok, err := matchKey(m, ch.matches, true)
 			if err != nil {
 				return err
+			}
+			if !ok {
+				continue
 			}
 			if ch.groupLimit > 0 && len(byKey[key]) >= ch.groupLimit {
 				continue
@@ -488,11 +528,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 			return configErr("relation result name %s is used twice", name)
 		}
 		var matched []entry
-		if value := p.value(ch.matchLeft); value != nil {
-			key, err := KeyOf(value)
-			if err != nil {
-				return err
-			}
+		_, key, ok, err := matchKey(p, ch.matches, false)
+		if err != nil {
+			return err
+		}
+		if ok {
 			matched = byKey[key]
 		}
 		if ch.possible != nil {

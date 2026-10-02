@@ -246,8 +246,7 @@ fn relation(r: &mut Req, rel: &RelSpec) -> Option<ir::Relation> {
         rel: result_name(ch, rel.many),
         query: Box::new(q),
         kind: if rel.many { "many" } else { "one" }.into(),
-        left: ch.match_left.clone(),
-        right: ch.match_right.clone(),
+        keys: ch.matches.iter().map(|&(left, right)| ir::KeyPair { left: left.into(), right: right.into() }).collect(),
     })
 }
 

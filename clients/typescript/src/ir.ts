@@ -78,9 +78,11 @@ export interface Relation {
   rel: string;
   query: RequestQuery;
   kind?: 'one' | 'many';
-  left?: string;
-  right?: string;
+  keys?: KeyPair[];
 }
+
+/** 한 relation key 성분: 부모 column left와 자식 column right가 같다. composite key는 성분마다 한 쌍을 key 순서로 담는다. */
+export interface KeyPair { left: string; right: string; }
 
 export interface Join {
   rel: string;

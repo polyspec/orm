@@ -1,49 +1,66 @@
 <?php
 declare(strict_types=1);
 // composite_keys feature coverage: 두 column primary key의 composite_account와
-// 그 key를 참조하는 composite_membership(ON DELETE CASCADE)을 tenant 990004로
-// 쓰고 읽고 지운다.
-// PHP model의 relation은 한 column 쌍(match<L>With<R>)으로 맞추므로,
-// memberships relation은 account_id로 맞추고 child 조건으로 tenant를 고정한다.
+// 그 key를 참조하는 composite_membership(ON DELETE CASCADE)을 tenant 990004와
+// 990006으로 쓰고 읽고 지운다. memberships relation은 foreign key의 두 성분
+// (tenant_id, account_id)을 key 순서대로 잇는다. 다른 tenant에도 account 2가
+// 있어야 account_id 한 성분만으로 잇는 relation이 드러난다.
 
 require __DIR__ . '/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\CompositeMembership;
-use Orm\Collection;
 
 const COMPOSITE_TENANT = 990004;
+const COMPOSITE_OTHER_TENANT = 990006;
 
 runCoverageCases($argv, [
     'composite_key_rows' => function (): void {
         [, $dsn] = coverageDatabase();
         $db = coverageConnect($dsn);
-        $accounts = static fn() => (new CompositeAccount)($db)->tenantId(COMPOSITE_TENANT)->getCount();
-        $memberships = static fn() => (new CompositeMembership)($db)->tenantId(COMPOSITE_TENANT)->getCount();
+        $accounts = static fn(int $tenant) => (new CompositeAccount)($db)->tenantId($tenant)->getCount();
+        $memberships = static fn(int $tenant) => (new CompositeMembership)($db)->tenantId($tenant)->getCount();
+        $tenants = [COMPOSITE_TENANT, COMPOSITE_OTHER_TENANT];
         try {
-            coverageWant($accounts() === 0 && $memberships() === 0, 'tenant ' . COMPOSITE_TENANT . ' has rows before the case');
-            coverageRestoring(function () use ($db, $accounts, $memberships): void {
+            foreach ($tenants as $tenant) {
+                coverageWant($accounts($tenant) === 0 && $memberships($tenant) === 0, "tenant $tenant has rows before the case");
+            }
+            coverageRestoring(function () use ($db, $accounts, $memberships, $tenants): void {
                 (new CompositeAccount)($db)->setTenantId(COMPOSITE_TENANT)->setAccountId(1)->setName('a')->create();
                 (new CompositeAccount)($db)->setTenantId(COMPOSITE_TENANT)->setAccountId(2)->setName('b')->create();
+                (new CompositeAccount)($db)->setTenantId(COMPOSITE_OTHER_TENANT)->setAccountId(2)->setName('c')->create();
+                (new CompositeMembership)($db)->setTenantId(COMPOSITE_TENANT)->setAccountId(1)->setRole('member')->create();
                 (new CompositeMembership)($db)->setTenantId(COMPOSITE_TENANT)->setAccountId(2)->setRole('owner')->create();
+                (new CompositeMembership)($db)->setTenantId(COMPOSITE_OTHER_TENANT)->setAccountId(2)->setRole('guest')->create();
                 $name = (new CompositeAccount)($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2)->getName();
                 coverageWant($name === 'b', "account by both key components is $name, want b");
-                $account = (new CompositeAccount)($db)
-                    ->relations((new CompositeMembership)->matchAccountIdWithAccountId()->tenantId(COMPOSITE_TENANT)->aliasMemberships())
-                    ->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2);
-                $loaded = $account->getMemberships();
-                coverageWant($loaded instanceof Collection && count($loaded) === 1 && $loaded->first()->getRole() === 'owner'
-                    && $loaded->first()->getTenantId() === COMPOSITE_TENANT && $loaded->first()->getAccountId() === 2,
-                    'memberships relation ' . json_encode($loaded));
-                $account->delete();
-                coverageWant($memberships() === 0, 'the membership of the deleted account remains');
-                (new CompositeAccount)($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 1)->delete();
-                coverageWant($accounts() === 0 && $memberships() === 0, 'tenant rows remain after the deletes');
-            }, function () use ($db): void {
+                // 자식이 자기 연결을 가진 relation은 부모 row를 읽은 뒤 따로 읽는다. 두 경로가 같은 결과를 낸다.
+                foreach (['same statement' => new CompositeMembership(), 'own connection' => (new CompositeMembership)($db)] as $path => $child) {
+                    $loaded = (new CompositeAccount)($db)->tenantId(COMPOSITE_TENANT)
+                        ->relations($child->matchTenantIdWithTenantId()->matchAccountIdWithAccountId()->aliasMemberships())
+                        ->gets();
+                    $got = [];
+                    foreach ($loaded as $a) {
+                        foreach ($a->getMemberships() as $m) {
+                            $got[] = "{$a->getTenantId()}/{$a->getAccountId()}:{$m->getTenantId()}/{$m->getAccountId()}/{$m->getRole()}";
+                        }
+                    }
+                    $want = [COMPOSITE_TENANT . '/1:' . COMPOSITE_TENANT . '/1/member', COMPOSITE_TENANT . '/2:' . COMPOSITE_TENANT . '/2/owner'];
+                    coverageWant($got === $want, "$path: memberships of tenant " . COMPOSITE_TENANT . ' accounts ' . json_encode($got));
+                }
+                (new CompositeAccount)($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2)->delete();
+                coverageWant($memberships(COMPOSITE_TENANT) === 1, 'ON DELETE CASCADE removed the membership of account 2');
+                foreach ($tenants as $tenant) {
+                    (new CompositeAccount)($db)->tenantId($tenant)->gets()->delete();
+                    coverageWant($accounts($tenant) === 0 && $memberships($tenant) === 0, "tenant $tenant rows remain after the deletes");
+                }
+            }, function () use ($db, $tenants): void {
                 // membership은 account 삭제의 cascade로 지워지지만, account 없이 남은 행도 지운다.
-                (new CompositeMembership)($db)->tenantId(COMPOSITE_TENANT)->gets()->delete();
-                (new CompositeAccount)($db)->tenantId(COMPOSITE_TENANT)->gets()->delete();
+                foreach ($tenants as $tenant) {
+                    (new CompositeMembership)($db)->tenantId($tenant)->gets()->delete();
+                    (new CompositeAccount)($db)->tenantId($tenant)->gets()->delete();
+                }
             });
         } finally {
             $db->close();

@@ -422,6 +422,17 @@ async function assemble(c: Core, ex: Executor, external: Map<Core, Array<{ many:
   return out;
 }
 
+/** model의 relation key 성분 값을 key 순서로 반환한다. 성분 하나라도 null이면 undefined다. */
+function matchValues(m: Core, ch: Core, side: 'left' | 'right'): unknown[] | undefined {
+  const values: unknown[] = [];
+  for (const k of ch.matches) {
+    const v = valueOf(m, k[side]);
+    if (v === null || v === undefined) return undefined;
+    values.push(v);
+  }
+  return values;
+}
+
 async function attachExternal(parents: Core[], rel: { many: boolean; child: Core }): Promise<void> {
   const ch = rel.child;
   const possible = (p: Core) => ch.possible === undefined || scalarKey(valueOf(p, ch.possible.column)) === scalarKey(ch.possible.value);
@@ -429,20 +440,26 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
   const seen = new Set<string>();
   for (const p of parents) {
     if (!possible(p)) continue;
-    const v = valueOf(p, ch.matchLeft);
-    if (v === null || seen.has(keyText(v))) continue;
-    seen.add(keyText(v));
-    values.push(v);
+    const v = matchValues(p, ch, 'left');
+    if (v === undefined || seen.has(keyOfValues(v))) continue;
+    seen.add(keyOfValues(v));
+    values.push(v.length === 1 ? v[0] : v);
   }
   const byKey = new Map<string, Array<[Key, Core]>>();
   if (values.length > 0) {
     const q = ch.clone();
-    q.matchLeft = '';
+    q.matches = [];
     q.alias = '';
-    const keys: ChainKey[] = [{ conn: '', op: '', column: ch.matchRight, columns: [], compare: '' }];
+    // composite key는 자식 key column 전체를 tuple로 거른다.
+    const rights = ch.matches.map(k => k.right);
+    const keys: ChainKey[] = rights.length === 1
+      ? [{ conn: '', op: '', column: rights[0]!, columns: [], compare: '' }]
+      : [{ conn: '', op: 'tuple', column: '', columns: rights, compare: '' }];
     const rows = await load(q.by(keys, [values]), 'all');
     for (const [key, row] of rows.entries()) {
-      const k = keyText(valueOf(row[CORE], ch.matchRight));
+      const v = matchValues(row[CORE], ch, 'right');
+      if (v === undefined) continue;
+      const k = keyOfValues(v);
       const list = byKey.get(k) ?? [];
       if (ch.groupLimit > 0 && list.length >= ch.groupLimit) continue;
       list.push([key, row[CORE]]);
@@ -452,7 +469,8 @@ async function attachExternal(parents: Core[], rel: { many: boolean; child: Core
   const name = ch.resultName(rel.many);
   for (const p of parents) {
     if (p.row!.related.has(name)) throw configError(`relation result name ${name} is used twice`);
-    const matched = possible(p) ? byKey.get(keyText(valueOf(p, ch.matchLeft))) ?? [] : [];
+    const v = matchValues(p, ch, 'left');
+    const matched = possible(p) && v !== undefined ? byKey.get(keyOfValues(v)) ?? [] : [];
     if (rel.many) {
       const coll = new Collection();
       for (const [key, m] of matched) coll.put(key, m.self as Model);
@@ -805,7 +823,7 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
     }
     if (P.startsWith('Match') && P.length > 5) {
       const [left, right] = splitPair(set, undefined, schema, P.slice(5));
-      return function () { this[CORE].matchLeft = left; this[CORE].matchRight = right; return this; };
+      return function () { this[CORE].matches.push({ left, right }); return this; };
     }
     if (P.startsWith('Alias') && P.length > 5) {
       const alias = snake(P.slice(5));

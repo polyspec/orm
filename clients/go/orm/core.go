@@ -176,15 +176,15 @@ type statement struct {
 	agg       string
 	aggFn     string
 
-	matchLeft, matchRight string
-	alias                 string
-	parentNode            bool
-	possible              *setSpec
-	groupLimit            int
-	deleteLock            bool
-	keyName               string
-	fetchKey              func(Model) any
-	fetchValue            func(Model) any
+	matches    []ir.KeyPair
+	alias      string
+	parentNode bool
+	possible   *setSpec
+	groupLimit int
+	deleteLock bool
+	keyName    string
+	fetchKey   func(Model) any
+	fetchValue func(Model) any
 }
 
 // NewCore creates the core of a new model of ent. Generated constructors call it.
@@ -527,15 +527,19 @@ func (c *Core) Relation(many bool, child Model) {
 		return
 	}
 	ch := child.Orm_()
-	if ch.matchLeft == "" {
+	if len(ch.matches) == 0 {
 		c.fail("relation child %s requires match<L>With<R>()", ch.ent.Name)
 		return
 	}
 	c.relations = append(c.relations, relSpec{many: many, child: ch})
 }
 
-// Match sets the relation key: parent column left equals child column right.
-func (c *Core) Match(left, right string) { c.matchLeft, c.matchRight = left, right }
+// Match adds a component to the relation key: parent column left equals
+// child column right. A composite key calls it once per component, in key
+// order.
+func (c *Core) Match(left, right string) {
+	c.matches = append(c.matches, ir.KeyPair{Left: left, Right: right})
+}
 
 // Alias sets the result name of a relation or join.
 func (c *Core) Alias(name string) { c.alias = name }
@@ -810,6 +814,7 @@ func (c *Core) clone() *Core {
 	out.where = condGroup{items: slices.Clone(c.where.items), pending: c.where.pending}
 	out.joins = slices.Clone(c.joins)
 	out.relations = slices.Clone(c.relations)
+	out.matches = slices.Clone(c.matches)
 	out.order = slices.Clone(c.order)
 	out.groupBy = slices.Clone(c.groupBy)
 	out.groupRaw = slices.Clone(c.groupRaw)

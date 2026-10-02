@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:888b43ad6ad26b58fe6b5f678e2a9cb4ea1579119fe1c0e298af770a2baeda26",
-    "php": "sha256:117f46e65e78e7e9c2fe856b4a43d9728fe89eaac603eb5b8fe53e48532d9879",
-    "rust": "sha256:43b77c5672cb8cc113f6deab0b9ccbd9d966add3276680a6f36de34228ba22d2",
-    "typescript": "sha256:e13b599c0c534db33b1deec609450f65bb72a5bbe620b6aed891a251fa3cd8e3"
+    "go": "sha256:18baf806c4b5fe4bd93e863b268661912ad292934b4ab93741ebd08fc020a520",
+    "php": "sha256:7add1909db7dd4feca21b0d6f2bb8ad5c389237ca2b5219f0ca015950ae46113",
+    "rust": "sha256:c77394306b32d30072f9f6eafc2dd85f35c6bada9654f3d866a35b112e58003e",
+    "typescript": "sha256:eb2bd20648f13aaeabfa8d8f688b5f4092d0739c0442c714552dfe43c75a41c6"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1857,13 +1857,24 @@
         "rel": "text",
         "query": "IRQuery",
         "kind": "text",
-        "left": "text",
-        "right": "text"
+        "keys": "list<IRKeyPair>"
       },
       "optional": [
-        "left",
-        "right"
+        "keys"
       ]
+    },
+    {
+      "id": "IRKeyPair",
+      "native": {
+        "go": "engine/ir/ir.go::KeyPair",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::KeyPair",
+        "rust": "clients/rust/orm/src/ir.rs::KeyPair",
+        "typescript": "clients/typescript/src/ir.ts::KeyPair"
+      },
+      "fields": {
+        "left": "text",
+        "right": "text"
+      }
     },
     {
       "id": "IRGroup",

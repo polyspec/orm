@@ -321,7 +321,7 @@ export class Planner {
   /** A step per relation of s (and of its joins); records how rows attach. */
   private relationSteps(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], s: Scope, asm: Assemble, stepId: number): void {
     for (const r of s.q.relations ?? []) {
-      const rc: RelationContext = { parentStep: stepId, parentAsm: asm, parentKeys: [r.left!], childKeys: [r.right!], kind: r.kind! };
+      const rc: RelationContext = { parentStep: stepId, parentAsm: asm, parentKeys: r.keys!.map(k => k.left), childKeys: r.keys!.map(k => k.right), kind: r.kind! };
       const target = this.entity(r.query.entity);
       const st = this.selectStep(add, steps, r.query, 'all', '', rc);
       const child: Child = {
@@ -459,7 +459,7 @@ export class Planner {
     // Columns relation steps bind or key on are always selected.
     for (const x of s.extra) push(x);
     for (const r of s.q.relations ?? []) {
-      push(r.left!);
+      for (const k of r.keys!) push(k.left);
       if (r.query.if_parent) push(r.query.if_parent.column);
     }
     // The primary key is always selected.

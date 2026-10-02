@@ -493,7 +493,9 @@ impl<'m> Planner<'m> {
     /// rows attach.
     fn relation_steps(&self, steps: &mut Vec<Step>, s: &Scope<'_>, asm: &mut Asm, step_id: usize) -> Result<()> {
         for r in &s.q.relations {
-            let (parent_keys, child_keys, kind, target) = (vec![r.left.clone()], vec![r.right.clone()], r.kind.clone(), self.entity(&r.query.entity)?);
+            let parent_keys: Vec<String> = r.keys.iter().map(|k| k.left.clone()).collect();
+            let child_keys: Vec<String> = r.keys.iter().map(|k| k.right.clone()).collect();
+            let (kind, target) = (r.kind.clone(), self.entity(&r.query.entity)?);
             let if_parent = match &r.query.if_parent {
                 Some(ip) => Some(IfParent { column: ip.column.clone(), index: asm.index_of(&ip.column)?, param: ip.p }),
                 None => None,
@@ -710,7 +712,9 @@ impl<'m> Planner<'m> {
             add(&mut base, x);
         }
         for r in &s.q.relations {
-            add(&mut base, &r.left);
+            for k in &r.keys {
+                add(&mut base, &k.left);
+            }
             if let Some(ip) = &r.query.if_parent {
                 add(&mut base, &ip.column);
             }
