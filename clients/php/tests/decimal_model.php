@@ -16,19 +16,19 @@ foreach ($fixture['cases'] as $case) {
     $column = $columns[$case['column']] ?? throw new RuntimeException("unknown column {$case['column']}");
     try {
         $actual = Decimal::normalize($case['input'], $column['precision'], $column['scale']);
-        if (isset($case['error'])) {
-            throw new RuntimeException("{$case['id']}: expected {$case['error']}");
+        if (isset($case['expected']['error'])) {
+            throw new RuntimeException("{$case['id']}: expected {$case['expected']['error']}");
         }
-        if ($actual !== $case['expected']) {
-            throw new RuntimeException("{$case['id']}: got $actual; expected {$case['expected']}");
+        if ($actual !== $case['expected']['value']) {
+            throw new RuntimeException("{$case['id']}: got $actual; expected {$case['expected']['value']}");
         }
         $stored = Decimal::scaled($case['input'], $column['precision'], $column['scale']);
         $decoded = Decimal::fromScaled($stored, $column['precision'], $column['scale']);
-        if ($decoded !== $case['expected']) {
+        if ($decoded !== $case['expected']['value']) {
             throw new RuntimeException("{$case['id']}: SQLite round trip got $decoded");
         }
     } catch (OrmException $error) {
-        if (($case['error'] ?? null) !== $error->code_) {
+        if (($case['expected']['error'] ?? null) !== $error->code_) {
             throw new RuntimeException("{$case['id']}: unexpected {$error->code_}", 0, $error);
         }
     }

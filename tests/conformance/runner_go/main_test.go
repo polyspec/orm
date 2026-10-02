@@ -55,3 +55,37 @@ func TestBindRenderingRejectsInvalidBytes(t *testing.T) {
 		t.Fatalf("valid encrypted bytes rendered as %v", got)
 	}
 }
+
+func TestVectorSelection(t *testing.T) {
+	uri, selected, err := parseArgs([]string{"-dsn", "sqlite://x", "-vector", "relations", "-vector", "columns"})
+	if err != nil || uri != "sqlite://x" || len(selected) != 2 || !selected["relations"] || !selected["columns"] {
+		t.Fatalf("parseArgs = %q %v %v", uri, selected, err)
+	}
+	if _, all, err := parseArgs([]string{"-dsn", "sqlite://x"}); err != nil || all != nil {
+		t.Fatalf("parseArgs without -vector = %v %v", all, err)
+	}
+	for _, args := range [][]string{
+		{},
+		{"-vector", "relations"},
+		{"-dsn", "sqlite://x", "-vector"},
+		{"-dsn", "sqlite://x", "-vector", ""},
+		{"-dsn", "sqlite://x", "-vector", "a", "-vector", "a"},
+		{"-dsn", "sqlite://x", "-dsn", "sqlite://y"},
+		{"-dsn", "sqlite://x", "--vector", "a"},
+	} {
+		if _, _, err := parseArgs(args); err == nil {
+			t.Fatalf("parseArgs(%q) was accepted", args)
+		}
+	}
+	declared := []declaredVector{{name: "a"}, {name: "b"}, {name: "c"}}
+	got, err := selectVectors(declared, map[string]bool{"c": true, "a": true})
+	if err != nil || len(got) != 2 || got[0].name != "a" || got[1].name != "c" {
+		t.Fatalf("selectVectors = %v %v", got, err)
+	}
+	if got, err := selectVectors(declared, nil); err != nil || len(got) != 3 {
+		t.Fatalf("selectVectors without a selection = %v %v", got, err)
+	}
+	if _, err := selectVectors(declared, map[string]bool{"a": true, "missing": true}); err == nil || err.Error() != "unknown vector missing" {
+		t.Fatalf("unknown vector = %v", err)
+	}
+}

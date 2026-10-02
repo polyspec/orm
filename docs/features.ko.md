@@ -20,16 +20,17 @@
 | interface_contract | 공통 인터페이스 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | performance_gate | hot-path 성능 기준 | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned |
 | conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
+| catalog_connection | Rust catalog 연결 | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported |
 
 ## 현재 동작
 
-- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 timezone 파라미터가 연결 시간대를 정하며, client는 자기 process에서 statement를 계획한다.
+- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다.
 - `model_queries`: 생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.
 - `model_writes`: 생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다.
 - `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다. 각 클라이언트의 test entry point는 rollback fault를 설정한다. callback이 실패한 다음 트랜잭션의 rollback은 실행된 뒤 FAULT로 보고되어 트랜잭션이 ROLLBACK을 반환한다.
 - `model_generation`: 언어별 생성기로 dbspec document set에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.
 - `schema_definition`: dbspec document를 parse하고 emit하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다.
-- `schema_install`: 연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 테이블이 하나도 없으면 만든다. 한 process는 여러 document set의 generated code를 읽고, 연결 하나가 각 요청을 그 manifest hash의 model로 처리해 그 모두를 처리한다.
+- `schema_install`: 연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다.
 - `planner`: 값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보를 client process에서 만든다. 네 planner는 같은 statement를 만든다.
 - `composite_keys`: 선언된 모든 primary key와 foreign key 구성 요소를 식별, 쓰기, 관계, tuple 조건, 페이지에서 유지한다.
 - `authenticated_encryption`: 인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.
@@ -39,5 +40,6 @@
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
 - `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
+- `catalog_connection`: live-db feature가 켜진 orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

@@ -17,8 +17,8 @@
       "title": "DSN URI connection",
       "title_ko": "DSN URI 연결",
       "status": "implemented",
-      "description": "Open a database from one URI DSN. The URI scheme selects the driver, the timezone parameter sets the connection time zone, and the client plans statements in its own process.",
-      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 timezone 파라미터가 연결 시간대를 정하며, client는 자기 process에서 statement를 계획한다.",
+      "description": "Open a database from one URI DSN. The URI scheme selects the driver, every connection reads and writes datetime values in UTC, and the client plans statements in its own process.",
+      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다.",
       "inputs": {
         "type": "DsnConnectionRequest",
         "fields": [
@@ -35,15 +35,15 @@
         ]
       },
       "state": [
-        "parse DSN scheme and time zone",
+        "parse the DSN scheme and parameters",
         "select native driver",
         "load and check the schema manifest",
-        "open connection pool"
+        "open connection pool with UTC sessions"
       ],
       "errors": [
         {
           "code": "CONFIG",
-          "when": "the DSN scheme, the parameters, or a named MySQL time zone is invalid"
+          "when": "the DSN scheme or a parameter is invalid, or the timezone parameter is neither UTC nor +00:00"
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
@@ -57,7 +57,9 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "clients/go/orm/test_helpers_test.go"
+        "clients/go/orm/test_helpers_test.go",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php"
       ],
       "tests": [
         "clients/go/orm/dsn_test.go",
@@ -73,7 +75,9 @@
         "clients/php/tests/coverage_dsn.php",
         "clients/rust/orm/tests/coverage_dsn.rs",
         "clients/rust/tests/src/integration.rs",
-        "clients/typescript/tests/coverage_dsn.mjs"
+        "clients/typescript/tests/coverage_dsn.mjs",
+        "clients/go/orm/sqlite_path_test.go",
+        "clients/rust/tests/tests/example_dsn.rs"
       ],
       "docs": [
         "docs/config.md",
@@ -438,7 +442,10 @@
         "tests/conformance/vectors.json",
         "clients/php/tests/autoload.php",
         "contracts/fixtures/aggregate_numeric.json",
-        "contracts/fixtures/decimal_model.json"
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -467,7 +474,17 @@
         "clients/rust/tests/src/decimal_physical.rs",
         "clients/typescript/tests/decimal_model.mjs",
         "clients/typescript/tests/decimal_model.test.ts",
-        "clients/typescript/tests/decimal_model_db.mjs"
+        "clients/typescript/tests/decimal_model_db.mjs",
+        "clients/go/orm/group_rows_test.go",
+        "clients/go/orm/value_types_test.go",
+        "clients/php/tests/unselected_column.php",
+        "clients/php/tests/unselected_column_db.php",
+        "clients/rust/orm/tests/value_types.rs",
+        "clients/rust/tests/src/result_chains.rs",
+        "clients/go/model/coverage_model_queries_test.go",
+        "clients/php/tests/coverage_model_queries.php",
+        "clients/rust/tests/src/coverage_model_queries.rs",
+        "clients/typescript/tests/coverage_model_queries.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -549,7 +566,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "clients/typescript/node_modules/.bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+          "command": "node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
         },
         {
           "id": "decimal-typescript-mysql",
@@ -563,7 +580,186 @@
           "id": "decimal-typescript-sqlite",
           "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "model_query_rows"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_model_queries_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_queries_test.go",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "TestCoverageModelQueryRows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_queries_test.go",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "TestCoverageModelQueryRows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_queries_test.go",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "TestCoverageModelQueryRows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_model_queries.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_queries.php",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_queries.php",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_queries.php",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_model_queries.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_queries.rs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_queries.rs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_queries.rs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "symbols": {
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_model_queries.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_queries.mjs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_queries.mjs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_queries.mjs",
+                  "cases": [
+                    "model_query_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "model_writes",
@@ -618,7 +814,11 @@
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/clock.dbspec",
-        "contracts/fixtures/clock_mark.dbspec"
+        "contracts/fixtures/clock_mark.dbspec",
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -637,7 +837,19 @@
         "clients/go/orm/clock_test.go",
         "clients/php/tests/clock_test.php",
         "clients/rust/orm/tests/clock.rs",
-        "clients/typescript/tests/clock.mjs"
+        "clients/typescript/tests/clock.mjs",
+        "clients/go/orm/decimal_model_test.go",
+        "clients/go/orm/write_set_test.go",
+        "clients/go/model/decimal_field_test.go",
+        "clients/go/orm/styled_state_test.go",
+        "clients/go/orm/styled_state_physical_test.go",
+        "clients/go/model/styled_state_test.go",
+        "clients/php/tests/styled_value_test.php",
+        "clients/rust/orm/tests/decimal_model.rs",
+        "clients/go/model/coverage_model_writes_test.go",
+        "clients/php/tests/coverage_model_writes.php",
+        "clients/rust/tests/src/coverage_model_writes.rs",
+        "clients/typescript/tests/coverage_model_writes.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -682,7 +894,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "clients/typescript/node_modules/.bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+          "command": "node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
         },
         {
           "id": "decimal-typescript-mysql",
@@ -696,7 +908,186 @@
           "id": "decimal-typescript-sqlite",
           "command": ". .runtime/decimal-env && npm run typescript:build && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "model_write_cycle"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_model_writes_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_writes_test.go",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_writes_test.go",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_writes_test.go",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_model_writes.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_writes.php",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_writes.php",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_writes.php",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_model_writes.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_writes.rs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_writes.rs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_model_writes.rs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "symbols": {
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_model_writes.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_writes.mjs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_writes.mjs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_writes.mjs",
+                  "cases": [
+                    "model_write_cycle"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "transactions",
@@ -761,7 +1152,12 @@
       },
       "fixtures": [
         "clients/php/tests/deadlock_child.php",
-        "contracts/fixtures/rollback.dbspec"
+        "contracts/fixtures/rollback.dbspec",
+        "clients/go/orm/failing_driver_test.go",
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -780,6 +1176,12 @@
         "clients/php/tests/rollback_test.php",
         "clients/rust/orm/tests/rollback.rs",
         "clients/typescript/tests/rollback.mjs",
+        "clients/go/orm/cancelled_session_test.go",
+        "clients/go/orm/transaction_end_test.go",
+        "clients/go/model/coverage_transactions_test.go",
+        "clients/php/tests/coverage_transactions.php",
+        "clients/rust/tests/src/coverage_transactions.rs",
+        "clients/typescript/tests/coverage_transactions.mjs",
         "clients/go/orm/rollback_fault_test.go",
         "clients/go/orm/rollback_fault_entry_test.go"
       ],
@@ -807,7 +1209,205 @@
         "The chain declares no cancellation operation: a flow cancels through the host language primitive on a connection handle (Go WithContext, TypeScript withSignal, Rust dropping the statement future), and a cancelled statement returns CANCELED.",
         "PHP cancellation is not implemented yet.",
         "The interface manifest prohibits query_cancel, transaction_cancel, and in_flight_cancellation symbols."
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "transaction_rollback",
+          "transaction_savepoint"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_transactions_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_transactions_test.go",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "TestCoverageTransactionRollback",
+                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_transactions_test.go",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "TestCoverageTransactionRollback",
+                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_transactions_test.go",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "TestCoverageTransactionRollback",
+                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_transactions.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_transactions.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_transactions.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_transactions.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_transactions.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_transactions.rs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
+                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_transactions.rs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
+                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_transactions.rs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "symbols": {
+                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
+                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_transactions.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_transactions.mjs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_transactions.mjs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_transactions.mjs",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "model_generation",
@@ -854,7 +1454,12 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/tests/common/mod.rs",
+        "clients/typescript/tests/coverage_case.mjs"
+      ],
       "tests": [
         "generator/gen_go_check_test.go",
         "generator/gen_go_output_test.go",
@@ -866,7 +1471,12 @@
         "clients/typescript/tests/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
         "clients/php/tests/orm_gen_test.php",
-        "clients/typescript/tests/generate-scan.mjs"
+        "clients/typescript/tests/generate-scan.mjs",
+        "clients/typescript/tests/models-scan.mjs",
+        "clients/go/model/coverage_model_generation_test.go",
+        "clients/php/tests/coverage_model_generation.php",
+        "clients/rust/tests/tests/coverage_model_generation.rs",
+        "clients/typescript/tests/coverage_model_generation.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -885,7 +1495,90 @@
           "id": "generation-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-build"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "model_generation_check"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_model_generation_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_model_generation_test.go",
+                  "cases": [
+                    "model_generation_check"
+                  ],
+                  "symbols": {
+                    "model_generation_check": "TestCoverageModelGenerationCheck"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_model_generation.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_model_generation.php",
+                  "cases": [
+                    "model_generation_check"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/tests/coverage_model_generation.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_model_generation.rs",
+                  "cases": [
+                    "model_generation_check"
+                  ],
+                  "symbols": {
+                    "model_generation_check": "coverage_model_generation_check"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_model_generation.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_model_generation.mjs",
+                  "cases": [
+                    "model_generation_check"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "schema_definition",
@@ -940,7 +1633,13 @@
         "tests/dbspec/cases.json",
         "tests/dbspec/ddl.json",
         "tests/dbspec/plans.json",
-        "tests/dbspec/mermaid.json"
+        "tests/dbspec/mermaid.json",
+        "engine/dbspec/case_clock_test.go",
+        "clients/php/tests/case_clock.php",
+        "contracts/fixtures/schema_definition.json",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/php/tests/dbspec_apply_cleanup_test.php",
@@ -986,7 +1685,16 @@
         "engine/dbspec/render_test.go",
         "engine/dbspec/rules_test.go",
         "engine/dbspec/stress_test.go",
-        "engine/dbspec/vectors_test.go"
+        "engine/dbspec/vectors_test.go",
+        "engine/runtimemodel/runtimemodel_test.go",
+        "engine/dbspec/vector_loaders_test.go",
+        "engine/dbspec/vector_reader_test.go",
+        "clients/rust/orm/tests/dbspec_apply_cleanup.rs",
+        "clients/typescript/tests/dbspec-apply-cleanup.mjs",
+        "clients/go/orm/coverage_schema_definition_test.go",
+        "clients/php/tests/coverage_schema_definition.php",
+        "clients/rust/orm-schema/tests/coverage_schema_definition.rs",
+        "clients/typescript/tests/coverage_schema_definition.mjs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -1016,15 +1724,112 @@
           "id": "schema-compare",
           "command": "make dbspec-compare-check"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "dbspec_emit_round_trip",
+          "dbspec_manifest_hash",
+          "dbspec_render_ddl"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_schema_definition_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_schema_definition_test.go",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl"
+                  ],
+                  "symbols": {
+                    "dbspec_emit_round_trip": "TestCoverageDbspecEmitRoundTrip",
+                    "dbspec_manifest_hash": "TestCoverageDbspecManifestHash",
+                    "dbspec_render_ddl": "TestCoverageDbspecRenderDdl"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_schema_definition.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_schema_definition.php",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm-schema",
+            "tests": [
+              "clients/rust/orm-schema/tests/coverage_schema_definition.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm-schema/tests/coverage_schema_definition.rs",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl"
+                  ],
+                  "symbols": {
+                    "dbspec_emit_round_trip": "coverage_dbspec_emit_round_trip",
+                    "dbspec_manifest_hash": "coverage_dbspec_manifest_hash",
+                    "dbspec_render_ddl": "coverage_dbspec_render_ddl"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_schema_definition.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_schema_definition.mjs",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "schema_install",
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect and creates the tables when none of them exists. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 테이블이 하나도 없으면 만든다. 한 process는 여러 document set의 generated code를 읽고, 연결 하나가 각 요청을 그 manifest hash의 model로 처리해 그 모두를 처리한다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1037,7 +1842,8 @@
       },
       "state": [
         "render the statements of the dialect",
-        "run them in one transaction where the dialect allows it",
+        "check which tables of the set exist",
+        "apply the statements in one transaction where the dialect allows it",
         "change nothing when every table of the set exists"
       ],
       "errors": [
@@ -1047,7 +1853,7 @@
         },
         {
           "code": "CONFIG",
-          "when": "the installation cannot run on the connection"
+          "when": "only some tables of the set exist, or MySQL installs inside a transaction"
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
@@ -1060,7 +1866,12 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
+      ],
       "tests": [
         "clients/go/orm/keyword_test.go",
         "clients/go/orm/timezone_test.go",
@@ -1071,7 +1882,11 @@
         "clients/php/tests/schema_set_test.php",
         "clients/typescript/tests/schema-set.mjs",
         "clients/go/decimalmodel/schema_set_test.go",
-        "clients/rust/tests/src/decimal_physical.rs"
+        "clients/rust/tests/src/decimal_physical.rs",
+        "clients/go/model/coverage_schema_install_test.go",
+        "clients/php/tests/coverage_schema_install.php",
+        "clients/rust/tests/src/coverage_schema_install.rs",
+        "clients/typescript/tests/coverage_schema_install.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1086,7 +1901,205 @@
           "id": "install-php",
           "command": "php clients/php/tests/engine_test.php"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "schema_install_existing",
+          "schema_install_partial"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_schema_install_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_schema_install_test.go",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_schema_install_test.go",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_schema_install_test.go",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "TestCoverageSchemaInstallExisting",
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_schema_install.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_schema_install.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_schema_install.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_schema_install.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_schema_install.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_schema_install.rs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_schema_install.rs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_schema_install.rs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "symbols": {
+                    "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_schema_install.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_schema_install.mjs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_schema_install.mjs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_schema_install.mjs",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "planner",
@@ -1138,7 +2151,12 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "contracts/fixtures/planner.json",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/typescript/tests/coverage_case.mjs"
+      ],
       "tests": [
         "engine/engine_test.go",
         "engine/query_forms_test.go",
@@ -1151,7 +2169,13 @@
         "engine/ir/fuzz_test.go",
         "engine/ir/operators_test.go",
         "engine/dialect/sqlite_test.go",
-        "clients/rust/tests/src/conformance.rs"
+        "clients/rust/tests/src/conformance.rs",
+        "engine/planner/runtime_model_test.go",
+        "clients/php/tests/runtime_model_test.php",
+        "clients/go/orm/coverage_planner_test.go",
+        "clients/php/tests/coverage_planner.php",
+        "clients/rust/orm/tests/unit/coverage_planner.rs",
+        "clients/typescript/tests/coverage_planner.mjs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -1170,7 +2194,104 @@
           "id": "planner-typescript",
           "command": "npm run typescript:build && node clients/typescript/tests/engine.mjs"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "planner_statement",
+          "planner_count",
+          "planner_rejects_unknown_column"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_planner_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_planner_test.go",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column"
+                  ],
+                  "symbols": {
+                    "planner_statement": "TestCoveragePlannerStatement",
+                    "planner_count": "TestCoveragePlannerCount",
+                    "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_planner.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_planner.php",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm",
+            "tests": [
+              "clients/rust/orm/tests/unit/coverage_planner.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/unit/coverage_planner.rs",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column"
+                  ],
+                  "symbols": {
+                    "planner_statement": "engine::coverage_planner::coverage_planner_statement",
+                    "planner_count": "engine::coverage_planner::coverage_planner_count",
+                    "planner_rejects_unknown_column": "engine::coverage_planner::coverage_planner_rejects_unknown_column"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_planner.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_planner.mjs",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "composite_keys",
@@ -1211,14 +2332,21 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "tests/conformance/vectors.json"
+        "tests/conformance/vectors.json",
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
-        "engine/composite_key_test.go",
         "clients/go/model/model_test.go",
         "clients/php/tests/model_test.php",
         "clients/rust/tests/src/integration.rs",
-        "clients/typescript/tests/model.mjs"
+        "clients/typescript/tests/model.mjs",
+        "clients/go/model/coverage_composite_keys_test.go",
+        "clients/php/tests/coverage_composite_keys.php",
+        "clients/rust/tests/src/coverage_composite_keys.rs",
+        "clients/typescript/tests/coverage_composite_keys.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1229,7 +2357,186 @@
           "id": "composite-go",
           "command": "go test ./engine -run 'Composite' -count=1"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "composite_key_rows"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_composite_keys_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_composite_keys.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_composite_keys.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_composite_keys.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_composite_keys.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_composite_keys.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_composite_keys.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "authenticated_encryption",
@@ -1277,7 +2584,11 @@
       },
       "fixtures": [
         "tests/codec/aes-vectors.json",
-        "tests/codec/vectors.json"
+        "tests/codec/vectors.json",
+        "contracts/fixtures/authenticated_encryption.json",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/go/orm/codec_test.go",
@@ -1292,7 +2603,11 @@
         "clients/php/tests/hostcodec.php",
         "clients/typescript/tests/codec-vector.mjs",
         "clients/go/orm/fuzz_test.go",
-        "clients/rust/tests/src/integration.rs"
+        "clients/rust/tests/src/integration.rs",
+        "clients/go/orm/coverage_authenticated_encryption_test.go",
+        "clients/php/tests/coverage_authenticated_encryption.php",
+        "clients/rust/orm/tests/coverage_authenticated_encryption.rs",
+        "clients/typescript/tests/coverage_authenticated_encryption.mjs"
       ],
       "docs": [
         "docs/codec.md",
@@ -1315,7 +2630,118 @@
           "id": "encryption-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test aes_keys"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "aes_envelope_decrypt",
+          "aes_round_trip",
+          "aes_tamper_rejected",
+          "aes_wrong_key_rejected",
+          "blind_index_vector"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_authenticated_encryption_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_authenticated_encryption_test.go",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ],
+                  "symbols": {
+                    "aes_envelope_decrypt": "TestCoverageAesEnvelopeDecrypt",
+                    "aes_round_trip": "TestCoverageAesRoundTrip",
+                    "aes_tamper_rejected": "TestCoverageAesTamperRejected",
+                    "aes_wrong_key_rejected": "TestCoverageAesWrongKeyRejected",
+                    "blind_index_vector": "TestCoverageBlindIndexVector"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_authenticated_encryption.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_authenticated_encryption.php",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm",
+            "tests": [
+              "clients/rust/orm/tests/coverage_authenticated_encryption.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/coverage_authenticated_encryption.rs",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ],
+                  "symbols": {
+                    "aes_envelope_decrypt": "coverage_aes_envelope_decrypt",
+                    "aes_round_trip": "coverage_aes_round_trip",
+                    "aes_tamper_rejected": "coverage_aes_tamper_rejected",
+                    "aes_wrong_key_rejected": "coverage_aes_wrong_key_rejected",
+                    "blind_index_vector": "coverage_blind_index_vector"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_authenticated_encryption.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_authenticated_encryption.mjs",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "parameter_chunking",
@@ -1360,13 +2786,22 @@
         "rust": "pass",
         "typescript": "pass"
       },
-      "fixtures": [],
+      "fixtures": [
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
+      ],
       "tests": [
         "clients/go/model/chunk_test.go",
         "clients/rust/tests/src/integration.rs",
         "clients/php/tests/relation_keys.php",
         "clients/php/tests/model_test.php",
-        "clients/typescript/tests/model.mjs"
+        "clients/typescript/tests/model.mjs",
+        "clients/go/model/coverage_parameter_chunking_test.go",
+        "clients/php/tests/coverage_parameter_chunking.php",
+        "clients/rust/tests/src/coverage_parameter_chunking.rs",
+        "clients/typescript/tests/coverage_parameter_chunking.mjs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -1393,7 +2828,186 @@
           "id": "chunking-typescript",
           "command": "npm run typescript:build >/dev/null && node clients/typescript/tests/model.mjs"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "root_in_chunking"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_parameter_chunking_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_parameter_chunking_test.go",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "TestCoverageRootInChunking"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_parameter_chunking_test.go",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "TestCoverageRootInChunking"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_parameter_chunking_test.go",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "TestCoverageRootInChunking"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_parameter_chunking.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_parameter_chunking.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_parameter_chunking.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_parameter_chunking.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_parameter_chunking.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_parameter_chunking.rs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_parameter_chunking.rs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_parameter_chunking.rs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "symbols": {
+                    "root_in_chunking": "coverage_parameter_chunking::coverage_root_in_chunking"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_parameter_chunking.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_parameter_chunking.mjs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_parameter_chunking.mjs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_parameter_chunking.mjs",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "constraints_and_relations",
@@ -1446,7 +3060,11 @@
       },
       "fixtures": [
         "schema/bench.dbspec",
-        "contracts/fixtures/refusal.dbspec"
+        "contracts/fixtures/refusal.dbspec",
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/src/coverage_env.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "engine/planner/soft_delete_test.go",
@@ -1461,7 +3079,11 @@
         "clients/go/orm/refusal_test.go",
         "clients/php/tests/driver_error_test.php",
         "clients/rust/orm/tests/refusal.rs",
-        "clients/typescript/tests/driver-error.mjs"
+        "clients/typescript/tests/driver-error.mjs",
+        "clients/go/model/coverage_constraints_and_relations_test.go",
+        "clients/php/tests/coverage_constraints_and_relations.php",
+        "clients/rust/tests/src/coverage_constraints_and_relations.rs",
+        "clients/typescript/tests/coverage_constraints_and_relations.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1472,7 +3094,186 @@
           "id": "constraints-go",
           "command": "go test ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "constraint_errors"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_constraints_and_relations_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_constraints_and_relations_test.go",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestCoverageConstraintErrors"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_constraints_and_relations_test.go",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestCoverageConstraintErrors"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_constraints_and_relations_test.go",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestCoverageConstraintErrors"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_constraints_and_relations.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_constraints_and_relations.php",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_constraints_and_relations.php",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_constraints_and_relations.php",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/src/coverage_constraints_and_relations.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/src/coverage_constraints_and_relations.rs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_constraints_and_relations.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_constraints_and_relations.mjs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_constraints_and_relations.mjs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_constraints_and_relations.mjs",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "audit_triggers",
@@ -1512,16 +3313,24 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/fixtures/audit.dbspec"
+        "contracts/fixtures/audit.dbspec",
+        "clients/go/orm/schema_helpers_test.go",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/orm/tests/common/audit_rows.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
-        "clients/go/orm/audit_test.go",
-        "clients/go/orm/audit_large_test.go",
-        "clients/go/orm/audit_service_test.go",
-        "clients/php/tests/audit_service_test.php",
         "clients/php/tests/model_test.php",
         "clients/rust/orm/tests/audit.rs",
-        "clients/typescript/tests/model.mjs"
+        "clients/typescript/tests/model.mjs",
+        "clients/go/orm/audit_operation_test.go",
+        "clients/php/tests/runtime_db_test.php",
+        "clients/typescript/tests/dbspec_runtime_db.mjs",
+        "clients/go/orm/coverage_audit_triggers_test.go",
+        "clients/php/tests/coverage_audit_triggers.php",
+        "clients/rust/orm/tests/coverage_audit_triggers.rs",
+        "clients/typescript/tests/coverage_audit_triggers.mjs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -1532,7 +3341,186 @@
           "id": "audit-go",
           "command": "go test ./clients/go/orm -run 'Audit' -count=1"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "audit_history"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_audit_triggers_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "TestCoverageAuditHistory"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "TestCoverageAuditHistory"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "TestCoverageAuditHistory"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_audit_triggers.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_audit_triggers.php",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_audit_triggers.php",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_audit_triggers.php",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm",
+            "tests": [
+              "clients/rust/orm/tests/coverage_audit_triggers.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "coverage_audit_history"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "coverage_audit_history"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "symbols": {
+                    "audit_history": "coverage_audit_history"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_audit_triggers.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "audit_history"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "interface_contract",
@@ -1572,14 +3560,21 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/interfaces.json"
+        "contracts/interfaces.json",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "engine/interface_test.go",
         "clients/go/orm/shape_test.go",
         "tests/interfaces/php.php",
         "tests/interfaces/rust/src/main.rs",
-        "tests/interfaces/typescript.mjs"
+        "tests/interfaces/typescript.mjs",
+        "clients/go/orm/coverage_interface_contract_test.go",
+        "clients/php/tests/coverage_interface_contract.php",
+        "clients/rust/orm/tests/coverage_interface_contract.rs",
+        "clients/typescript/tests/coverage_interface_contract.mjs"
       ],
       "docs": [
         "docs/interfaces.md",
@@ -1590,7 +3585,90 @@
           "id": "interface-self-test",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" go run ./tests/interfaces/check --self-test"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "interface_symbols"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_interface_contract_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_interface_contract_test.go",
+                  "cases": [
+                    "interface_symbols"
+                  ],
+                  "symbols": {
+                    "interface_symbols": "TestCoverageInterfaceSymbols"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_interface_contract.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_interface_contract.php",
+                  "cases": [
+                    "interface_symbols"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm",
+            "tests": [
+              "clients/rust/orm/tests/coverage_interface_contract.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/coverage_interface_contract.rs",
+                  "cases": [
+                    "interface_symbols"
+                  ],
+                  "symbols": {
+                    "interface_symbols": "coverage_interface_symbols"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_interface_contract.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_interface_contract.mjs",
+                  "cases": [
+                    "interface_symbols"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "performance_gate",
@@ -1633,16 +3711,22 @@
       "fixtures": [
         "docs/perf-raw-go-native.txt",
         "docs/perf-raw-rust-native.txt",
-        "docs/perf-raw-rust-native-2.txt"
+        "docs/perf-raw-rust-native-2.txt",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/tests/common/mod.rs"
       ],
       "tests": [
-        "bench/go/dsn_test.go",
-        "bench/go/client_test.go",
-        "bench/go/gate_test.go",
-        "bench/go/native_test.go",
+        "clients/go/bench/dsn_test.go",
+        "clients/go/bench/client_test.go",
+        "clients/go/bench/gate_test.go",
+        "clients/go/bench/native_test.go",
         "clients/php/tests/perf_gate.php",
         "clients/rust/tests/src/client_bench.rs",
-        "clients/rust/tests/tests/client_bench_dsn.rs"
+        "clients/rust/tests/tests/client_bench_dsn.rs",
+        "clients/go/bench/coverage_performance_gate_test.go",
+        "clients/php/tests/coverage_performance_gate.php",
+        "clients/rust/tests/tests/coverage_performance_gate.rs",
+        "clients/go/bench/statements_test.go"
       ],
       "docs": [
         "docs/perf.md"
@@ -1652,7 +3736,73 @@
           "id": "perf-gates",
           "command": "./scripts/perf-test.sh"
         }
-      ]
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "hot_path_gate"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/bench",
+            "tests": [
+              "clients/go/bench/coverage_performance_gate_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/bench/coverage_performance_gate_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGate"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_performance_gate.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_performance_gate.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/tests/coverage_performance_gate.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_performance_gate.rs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "symbols": {
+                    "hot_path_gate": "coverage_hot_path_gate"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "conformance_verification",
@@ -1698,7 +3848,11 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
-        "tests/conformance/vectors.sqlite.json"
+        "tests/conformance/vectors.sqlite.json",
+        "clients/go/model/coverage_helpers_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/rust/tests/tests/common/mod.rs",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "tests/conformance/check/main.go",
@@ -1708,7 +3862,11 @@
         "tests/conformance/check/rust_group_physical_test.go",
         "tests/conformance/runner.php",
         "tests/conformance/runner_typescript.mjs",
-        "clients/rust/tests/src/conformance.rs"
+        "clients/rust/tests/src/conformance.rs",
+        "clients/go/model/coverage_conformance_verification_test.go",
+        "clients/php/tests/coverage_conformance_verification.php",
+        "clients/rust/tests/tests/coverage_conformance_verification.rs",
+        "clients/typescript/tests/coverage_conformance_verification.mjs"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -1743,6 +3901,333 @@
           "sqlite"
         ],
         "minimum_vectors": 22
+      },
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "conformance_vector"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/model",
+            "tests": [
+              "clients/go/model/coverage_conformance_verification_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_conformance_verification_test.go",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "TestCoverageConformanceVector"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_conformance_verification_test.go",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "TestCoverageConformanceVector"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/model/coverage_conformance_verification_test.go",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "TestCoverageConformanceVector"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_conformance_verification.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_conformance_verification.php",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_conformance_verification.php",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_conformance_verification.php",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/tests/coverage_conformance_verification.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_conformance_verification.rs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "coverage_conformance_vector"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_conformance_verification.rs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "coverage_conformance_vector"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_conformance_verification.rs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "symbols": {
+                    "conformance_vector": "coverage_conformance_vector"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_conformance_verification.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_conformance_verification.mjs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_conformance_verification.mjs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_conformance_verification.mjs",
+                  "cases": [
+                    "conformance_vector"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
+    },
+    {
+      "id": "catalog_connection",
+      "title": "Rust catalog connection",
+      "title_ko": "Rust catalog 연결",
+      "status": "partial",
+      "description": "With the live-db feature, orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.",
+      "description_ko": "live-db feature가 켜진 orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.",
+      "inputs": {
+        "type": "CatalogRequest",
+        "fields": [
+          "dsn",
+          "table_ref",
+          "limits",
+          "statement"
+        ]
+      },
+      "outputs": {
+        "type": "CatalogResult",
+        "fields": [
+          "table_metadata",
+          "table_page",
+          "grid_rows",
+          "row_snapshot"
+        ]
+      },
+      "state": [
+        "connect without creating a missing SQLite file",
+        "read metadata and pages through bound catalog names",
+        "run read-only statements under validated budgets",
+        "change rows in a transaction that compares and verifies snapshots"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "the DSN, the table reference or a limit is invalid, or a read-only statement writes"
+        }
+      ],
+      "clients": {
+        "go": "unsupported",
+        "php": "unsupported",
+        "rust": "pass",
+        "typescript": "unsupported"
+      },
+      "fixtures": [
+        "clients/rust/tests/tests/common/mod.rs"
+      ],
+      "tests": [
+        "clients/rust/orm-build/tests/catalog.rs",
+        "clients/rust/orm-build/tests/grid_cells.rs",
+        "clients/rust/orm-build/tests/grid_decimals.rs",
+        "clients/rust/orm-build/tests/grid_numbers.rs",
+        "clients/rust/orm-build/tests/read_only_query.rs",
+        "clients/rust/orm-build/tests/row_commit_permit.rs",
+        "clients/rust/orm-build/tests/row_insert_identity.rs",
+        "clients/rust/orm-build/tests/row_insert_identity/expression.rs",
+        "clients/rust/orm-build/tests/row_mutation.rs",
+        "clients/rust/orm-build/tests/row_snapshot.rs",
+        "clients/rust/orm-build/tests/table_metadata.rs",
+        "clients/rust/orm-build/tests/table_page.rs",
+        "clients/rust/orm-build/tests/tool_cells.rs",
+        "clients/rust/orm-build/tests/tool_columns.rs",
+        "clients/rust/orm-build/tests/tool_limits.rs",
+        "clients/rust/orm-build/tests/tool_statement.rs",
+        "clients/rust/orm-build/tests/tool_values.rs",
+        "clients/rust/orm-build/tests/typed_binds.rs",
+        "clients/rust/orm-build/tests/unit/mutation_commit.rs",
+        "clients/rust/orm-build/tests/unit/mutation_safety.rs",
+        "clients/rust/orm-build/tests/unit/read_only_disposal.rs",
+        "clients/rust/orm-build/tests/unit/read_only_policy.rs",
+        "clients/rust/orm-build/tests/unit/table_page_validation.rs",
+        "clients/rust/orm-build/tests/unit/tool_column_budgets.rs",
+        "clients/rust/orm-build/tests/unit/typed_bind_validation.rs",
+        "clients/rust/tests/tests/coverage_catalog_connection.rs"
+      ],
+      "docs": [
+        "docs/schema.md",
+        "docs/interfaces.md"
+      ],
+      "verification": [
+        {
+          "id": "catalog-rust",
+          "command": "cd clients/rust && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked -p orm-build --features live-db"
+        }
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "catalog_read",
+          "catalog_row_mutation"
+        ],
+        "owners": {
+          "rust": {
+            "part": "clients/rust/tests",
+            "tests": [
+              "clients/rust/tests/tests/coverage_catalog_connection.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_catalog_connection.rs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "coverage_catalog_read",
+                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_catalog_connection.rs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "coverage_catalog_read",
+                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/tests/tests/coverage_catalog_connection.rs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "coverage_catalog_read",
+                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
       }
     }
   ]

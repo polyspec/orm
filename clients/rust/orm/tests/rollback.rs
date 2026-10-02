@@ -266,6 +266,7 @@ async fn rollback_fault(driver: &str) {
         other => panic!("{driver}: transaction_once = {other}, want Rollback"),
     }
     assert_eq!(count().await, 1, "{driver}: the faulted rollbacks keep only the committed row");
+    drop_table(&db).await;
     db.close().await;
 }
 

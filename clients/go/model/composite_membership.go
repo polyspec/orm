@@ -466,9 +466,26 @@ func (x *CompositeMembershipModel) OrderByRoleDesc(fn ...orm.Func) *CompositeMem
 	return x
 }
 
+func (x *CompositeMembershipModel) AliasMemberships() *CompositeMembershipModel {
+	x.m.Alias("Memberships")
+	return x
+}
+
+func (x *CompositeMembershipModel) MatchAccountIdWithAccountId() *CompositeMembershipModel {
+	x.m.Match("account_id", "account_id")
+	return x
+}
+
+func (x *CompositeMembershipModel) TenantId[T0 argIntEq](v0 T0) *CompositeMembershipModel {
+	x.m.Where("", chainCompositeMembershipTenantId, v0)
+	return x
+}
+
 func (x *CompositeMembershipModel) TupleTenantIdWithAccountId(v0 []CompositeMembershipTenantIdWithAccountId) *CompositeMembershipModel {
 	x.m.Where("", chainCompositeMembershipTupleTenantIdWithAccountId, v0)
 	return x
 }
+
+var chainCompositeMembershipTenantId = []orm.ChainKey{{Column: "tenant_id"}}
 
 var chainCompositeMembershipTupleTenantIdWithAccountId = []orm.ChainKey{{Op: "tuple", Columns: []string{"tenant_id", "account_id"}}}

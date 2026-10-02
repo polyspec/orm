@@ -453,7 +453,16 @@ final class Db
     private function plan(Request $r): array
     {
         // 요청의 manifest hash를 등록한 generated model의 engine이 plan한다.
-        return Engine::for($r->ir['manifest_hash'], $this->driver, $this->config->planCacheSize)->plan($r->shape());
+        $engine = Engine::for($r->ir['manifest_hash'], $this->driver, $this->config->planCacheSize);
+        $shape = $r->shape();
+        if (count($r->params) <= self::bindLimit($this->driver)) {
+            return $engine->plan($shape);
+        }
+        // bind 한도보다 많은 값의 요청은 나뉜 요청(rootInParts)의 plan으로 실행된다.
+        // 값마다 bind slot을 가진 이 plan은 수십 MB이므로 plan cache에 남기지 않는다.
+        $plan = $engine->compile($shape);
+        Assemble::index($plan, hash('xxh3', json_encode($shape, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)), $engine->model);
+        return $plan;
     }
 
     /** @internal @return array{0: array, 1: array} the plan and its positional result */

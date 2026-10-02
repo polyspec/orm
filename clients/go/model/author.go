@@ -2235,6 +2235,11 @@ func (x *AuthorModel) ServiceSeq[T0 argIntEq](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) UserSeq[T0 argIntEq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorUserSeq, v0)
+	return x
+}
+
 func (x *AuthorModel) UserSeqEqSeq[T0 hasSeq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorUserSeqEqSeq, v0)
 	return x
@@ -2325,6 +2330,8 @@ var chainAuthorReadCountGtSeq = []orm.ChainKey{{Op: "gt", Column: "read_count", 
 var chainAuthorSeq = []orm.ChainKey{{Column: "seq"}}
 
 var chainAuthorServiceSeq = []orm.ChainKey{{Column: "service_seq"}}
+
+var chainAuthorUserSeq = []orm.ChainKey{{Column: "user_seq"}}
 
 var chainAuthorUserSeqEqSeq = []orm.ChainKey{{Column: "user_seq", Compare: "seq"}}
 

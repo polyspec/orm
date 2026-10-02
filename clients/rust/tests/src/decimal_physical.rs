@@ -56,7 +56,11 @@ async fn decimal_sqlite() {
 /// returns its DSN and name; SQLite uses a new file.
 #[cfg(test)]
 async fn schema_set_database(driver: &str) -> (String, String) {
-    let name = format!("orm_schema_set_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+    // 병렬 test가 같은 microsecond에 이름을 만들 수 있으므로 process id와 counter로 이름을 구분한다.
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let count = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    let name = format!("orm_schema_set_{}_{nanos}_{count}", std::process::id());
     if driver == "sqlite" {
         return (format!("sqlite://{}/{name}.sqlite", std::env::temp_dir().display()), name);
     }
