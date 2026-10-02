@@ -176,8 +176,8 @@ pub struct Core {
     pub(crate) agg: String,
     pub(crate) agg_fn: &'static str,
 
-    pub(crate) match_left: String,
-    pub(crate) match_right: String,
+    /// relation key 성분 (부모 column, 자식 column): `add_match`마다 한 쌍을 호출 순서로 더한다.
+    pub(crate) matches: Vec<(&'static str, &'static str)>,
     pub(crate) alias: String,
     pub(crate) parent_node: bool,
     pub(crate) possible: Option<(String, Param)>,
@@ -223,8 +223,7 @@ impl Core {
             lock: "",
             agg: String::new(),
             agg_fn: "",
-            match_left: String::new(),
-            match_right: String::new(),
+            matches: Vec::new(),
             alias: String::new(),
             parent_node: false,
             possible: None,
@@ -436,16 +435,18 @@ impl Core {
             self.fail("relation is not allowed inside a group callback");
             return;
         }
-        if child.match_left.is_empty() {
+        if child.matches.is_empty() {
             self.fail(format!("relation child {} requires match_<l>_with_<r>()", child.ent.name));
             return;
         }
         self.relations.push(RelSpec { many, child: Box::new(child) });
     }
 
-    pub fn set_match(&mut self, left: &str, right: &str) {
-        self.match_left = left.into();
-        self.match_right = right.into();
+    /// Adds a component to the relation key: parent column `left` equals
+    /// child column `right`. A composite key adds one per component, in key
+    /// order.
+    pub fn add_match(&mut self, left: &'static str, right: &'static str) {
+        self.matches.push((left, right));
     }
 
     pub fn set_alias(&mut self, name: &str) {

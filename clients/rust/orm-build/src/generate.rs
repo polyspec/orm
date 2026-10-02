@@ -565,7 +565,7 @@ impl<'m> Gen<'m> {
                 Err(err) => return self.fail(r, format!("{typ}::{name}: {err}")),
             };
             let code = format!(
-                "    /// Matches parent.{left} = {right}.\n    pub fn {name}(mut self) -> Self {{\n        self.__orm.set_match({left:?}, {right:?});\n        self\n    }}\n"
+                "    /// Adds the relation key component parent.{left} = {right}.\n    pub fn {name}(mut self) -> Self {{\n        self.__orm.add_match({left:?}, {right:?});\n        self\n    }}\n"
             );
             return self.add_method(gi, r, name, argc, code);
         }

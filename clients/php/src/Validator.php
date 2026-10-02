@@ -35,7 +35,8 @@ final class Validator
         'ColFunc' => ['column' => 'string', 'fn' => 'Func'],
         'Sub' => ['query' => 'Query', 'column' => 'string', 'agg' => 'string'],
         'Join' => ['rel' => 'string', 'kind' => 'string', 'query' => 'Query', 'left' => 'string', 'right' => 'string'],
-        'Relation' => ['rel' => 'string', 'query' => 'Query', 'kind' => 'string', 'left' => 'string', 'right' => 'string'],
+        'Relation' => ['rel' => 'string', 'query' => 'Query', 'kind' => 'string', 'keys' => 'list<KeyPair>'],
+        'KeyPair' => ['left' => 'string', 'right' => 'string'],
         'Group' => ['conn' => 'string', 'items' => 'list<Item>'],
         'Item' => ['pred' => 'Pred', 'group' => 'Group', 'joined' => 'JoinedRef'],
         'JoinedRef' => ['conn' => 'string', 'join' => 'string'],
@@ -352,17 +353,31 @@ final class Validator
             }
             $child = $r['query'] ?? throw self::err(Code::IR_INVALID, "relation $rel needs a query");
             $kind = $r['kind'] ?? '';
-            $left = $r['left'] ?? '';
-            $right = $r['right'] ?? '';
-            if ($left === '' || $right === '' || ($kind !== 'one' && $kind !== 'many')) {
-                throw self::err(Code::IR_INVALID, "relation $rel: left, right and kind one|many are required");
+            $keys = $r['keys'] ?? [];
+            if ($keys === [] || ($kind !== 'one' && $kind !== 'many')) {
+                throw self::err(Code::IR_INVALID, "relation $rel: keys and kind one|many are required");
             }
             $target = $this->m->entities[$child['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $child['entity'] ?? '');
-            if (RuntimeModel::column($ent, $left) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "$entity.$left");
-            }
-            if (RuntimeModel::column($target, $right) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
+            $lefts = [];
+            $rights = [];
+            foreach ($keys as $k) {
+                $left = $k['left'] ?? '';
+                $right = $k['right'] ?? '';
+                if ($left === '' || $right === '') {
+                    throw self::err(Code::IR_INVALID, "relation $rel: every key needs left and right");
+                }
+                if (RuntimeModel::column($ent, $left) === null) {
+                    throw self::err(Code::COLUMN_UNKNOWN, "$entity.$left");
+                }
+                if (RuntimeModel::column($target, $right) === null) {
+                    throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
+                }
+                // 한 column이 두 성분에 나오면 key가 아니다.
+                if (isset($lefts[$left]) || isset($rights[$right])) {
+                    throw self::err(Code::IR_INVALID, "relation $rel: key column $left or $right is used twice");
+                }
+                $lefts[$left] = true;
+                $rights[$right] = true;
             }
             if (isset($child['limit'])) {
                 throw self::err(Code::LIMIT_IN_RELATION, "$rel: use limit_per_parent");

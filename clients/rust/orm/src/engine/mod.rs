@@ -53,6 +53,49 @@ mod tests {
         assert!(!asm.columns[at].hidden);
     }
 
+    // relation은 foreign key의 모든 성분을 key 순서대로 잇고, 잘못된 key 목록은 거절된다.
+    #[test]
+    fn composite_relation_keys() {
+        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
+        let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
+        let set = crate::dbspec::manifest(&[&document]).unwrap();
+        let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
+        let request = |keys: &[(&str, &str)]| ir::Request {
+            ir_version: 1,
+            manifest_hash: set.manifest_hash.clone(),
+            kind: "all".into(),
+            query: ir::Query {
+                entity: "composite_account".into(),
+                relations: vec![ir::Relation {
+                    rel: "memberships".into(),
+                    kind: "many".into(),
+                    keys: keys.iter().map(|&(left, right)| ir::KeyPair { left: left.into(), right: right.into() }).collect(),
+                    query: Box::new(ir::Query { entity: "composite_membership".into(), ..Default::default() }),
+                }],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let plan = compile(&manifest, Dialect::MySql, &request(&[("tenant_id", "tenant_id"), ("account_id", "account_id")])).unwrap();
+        assert_eq!(plan.steps.len(), 2);
+        assert_eq!(plan.steps[1].parent.as_ref().expect("relation parent").keys.len(), 2);
+        assert!(plan.steps[1].sql.contains("WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?))"), "{}", plan.steps[1].sql);
+        let child = &plan.steps[0].assemble.as_ref().unwrap().children[0];
+        let columns = |keys: &[crate::plan::KeyRef]| keys.iter().map(|k| k.column.clone()).collect::<Vec<_>>();
+        assert_eq!(columns(&child.parent_keys), ["tenant_id", "account_id"]);
+        assert_eq!(columns(&child.child_keys), ["tenant_id", "account_id"]);
+        for (keys, code) in [
+            (vec![], crate::codes::IR_INVALID),
+            (vec![("tenant_id", "tenant_id"), ("tenant_id", "account_id")], crate::codes::IR_INVALID),
+            (vec![("tenant_id", "tenant_id"), ("account_id", "tenant_id")], crate::codes::IR_INVALID),
+            (vec![("tenant_id", "")], crate::codes::IR_INVALID),
+            (vec![("tenant_id", "tenant_id"), ("nope", "account_id")], crate::codes::COLUMN_UNKNOWN),
+        ] {
+            let error = compile(&manifest, Dialect::MySql, &request(&keys)).expect_err("invalid relation keys");
+            assert_eq!(error.code(), code, "keys {keys:?}: {error}");
+        }
+    }
+
     // insert는 identity column 값을, update와 duplicate update는 primary key와
     // identity column 값을 쓰지 못한다. PostgreSQL identity는 명시한 key를 지나
     // 나아가지 않으므로(postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.

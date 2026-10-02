@@ -1,5 +1,5 @@
 import type { Db } from './database.js';
-import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
+import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { ChainKey } from './names.js';
 import { OrmError } from './runtime_error.js';
@@ -149,8 +149,8 @@ export class Core {
   public agg = '';
   public aggFn = '';
 
-  public matchLeft = '';
-  public matchRight = '';
+  /** relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다. */
+  public matches: KeyPair[] = [];
   public alias = '';
   public parentNode = false;
   public possible: { column: string; value: unknown } | undefined;
@@ -312,7 +312,7 @@ export class Core {
     if (this.group) return this.fail('relation is not allowed inside a group callback');
     if (!isModel(child)) return this.fail('relation requires a model');
     const ch = child[CORE];
-    if (ch.matchLeft === '') return this.fail(`relation child ${ch.ent.entity.name} requires match<L>With<R>()`);
+    if (ch.matches.length === 0) return this.fail(`relation child ${ch.ent.entity.name} requires match<L>With<R>()`);
     this.relations.push({ many, child: ch });
   }
 
@@ -407,6 +407,7 @@ export class Core {
     out.where.pending = this.where.pending;
     out.joins = [...this.joins];
     out.relations = [...this.relations];
+    out.matches = [...this.matches];
     out.columns = this.columns.clone();
     out.order = [...this.order];
     out.groupBy = [...this.groupBy];
@@ -559,7 +560,7 @@ export class BuiltRequest {
     if (ch.deleteLock) q.no_cascade_delete = true;
     if (ch.keyName !== '') q.key_by = ch.keyName;
     if (ch.possible) q.if_parent = { column: ch.possible.column, p: this.param(ch.possible.value) };
-    return { rel: ch.resultName(rel.many), kind: rel.many ? 'many' : 'one', left: ch.matchLeft, right: ch.matchRight, query: q };
+    return { rel: ch.resultName(rel.many), kind: rel.many ? 'many' : 'one', keys: ch.matches.map(k => ({ ...k })), query: q };
   }
 
   private columns(c: Core): RequestQuery['columns'] {

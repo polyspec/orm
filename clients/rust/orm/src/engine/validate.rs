@@ -238,15 +238,27 @@ impl<'m> Validator<'m> {
             if ent.field(&r.rel).is_some() {
                 return Err(err(codes::COLUMN_ALIAS_CONFLICT, format!("{}.{} is already a column", q.entity, r.rel)));
             }
-            if r.left.is_empty() || r.right.is_empty() || (r.kind != "one" && r.kind != "many") {
-                return Err(err(codes::IR_INVALID, format!("relation {}: left, right and kind one|many are required", r.rel)));
+            if r.keys.is_empty() || (r.kind != "one" && r.kind != "many") {
+                return Err(err(codes::IR_INVALID, format!("relation {}: keys and kind one|many are required", r.rel)));
             }
             let target = self.m.entity(&r.query.entity)?;
-            if ent.field(&r.left).is_none() {
-                return Err(unknown_column(&q.entity, &r.left));
-            }
-            if target.field(&r.right).is_none() {
-                return Err(unknown_column(&target.name, &r.right));
+            let (mut lefts, mut rights) = (Vec::new(), Vec::new());
+            for k in &r.keys {
+                if k.left.is_empty() || k.right.is_empty() {
+                    return Err(err(codes::IR_INVALID, format!("relation {}: every key needs left and right", r.rel)));
+                }
+                if ent.field(&k.left).is_none() {
+                    return Err(unknown_column(&q.entity, &k.left));
+                }
+                if target.field(&k.right).is_none() {
+                    return Err(unknown_column(&target.name, &k.right));
+                }
+                // 한 column이 두 성분에 나오면 key가 아니다.
+                if lefts.contains(&k.left) || rights.contains(&k.right) {
+                    return Err(err(codes::IR_INVALID, format!("relation {}: key column {} or {} is used twice", r.rel, k.left, k.right)));
+                }
+                lefts.push(k.left.clone());
+                rights.push(k.right.clone());
             }
             let kind = r.kind.clone();
             if r.query.limit.is_some() {

@@ -133,7 +133,7 @@ func TestJoinedReferenceErrors(t *testing.T) {
 func TestExplicitKeyRelation(t *testing.T) {
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
-	 "relations":[{"rel":"visits","kind":"many","left":"seq","right":"place_seq",
+	 "relations":[{"rel":"visits","kind":"many","keys":[{"left":"seq","right":"place_seq"}],
 	   "query":{"entity":"visit","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
 	if len(p.Steps) != 2 {
 		t.Fatalf("steps %d", len(p.Steps))
@@ -143,10 +143,10 @@ func TestExplicitKeyRelation(t *testing.T) {
 	if child.Rel != "visits" || child.Kind != "many" || !child.Cascade {
 		t.Fatalf("child %+v", child)
 	}
-	formsError(t, e, `"kind":"all","entity":"place","relations":[{"rel":"name","kind":"one","left":"seq","right":"place_seq","query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
+	formsError(t, e, `"kind":"all","entity":"place","relations":[{"rel":"name","kind":"one","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
 	formsError(t, e, `"kind":"all","entity":"place","relations":[
-	 {"rel":"v","kind":"one","left":"seq","right":"place_seq","query":{"entity":"visit"}},
-	 {"rel":"v","kind":"many","left":"seq","right":"place_seq","query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
+	 {"rel":"v","kind":"one","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}},
+	 {"rel":"v","kind":"many","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
 }
 
 func TestColumnComparisonWithJoinedModel(t *testing.T) {

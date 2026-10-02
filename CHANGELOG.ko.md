@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T18: relation request는 key의 모든 성분을 담는다. 성분마다 `{left, right}` 한 쌍을 key 순서대로 담고(`left`와 `right` 대신 `keys`), `match<L>With<R>()`는 호출마다 쌍 하나를 더하므로 Go, PHP, Rust, TypeScript에서 `composite_account`의 `composite_membership`을 `tenant_id`와 `account_id`로 함께 읽는다. 자기 연결을 가진 자식으로 읽어도 같다. 빈 key 목록, column이 없는 쌍, 한쪽에 두 번 나오는 column은 `IR_INVALID`다. Rust `Core::add_match`가 `set_match`를 대신한다.
+
 - T8.9.1: 각 client가 호출자가 읽은 bytes에서 message에 쓸 이름과 함께 dbspec signature를 확인한다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`이며 path reader가 이것을 쓴다. signature 뒤의 UTF-8이 아닌 bytes는 모든 client에서 첫 잘못된 byte의 `encoding` error 하나(`<name> is not valid UTF-8`)다. TypeScript는 더 이상 U+FFFD로 바꾸지 않고 Rust는 더 이상 I/O error를 돌려주지 않는다.
 
 - T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.

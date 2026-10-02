@@ -191,7 +191,9 @@ final class Planner
     {
         foreach ($s->q['relations'] ?? [] as $r) {
             $rc = new PlanRelation($stepId, $asm);
-            [$rc->parentKeys, $rc->childKeys, $rc->kind] = [[$r['left']], [$r['right']], $r['kind']];
+            $rc->parentKeys = array_column($r['keys'], 'left');
+            $rc->childKeys = array_column($r['keys'], 'right');
+            $rc->kind = $r['kind'];
             $target = $this->m->entities[$r['query']['entity']];
             $st = $this->selectStep($steps, $r['query'], 'all', '', $rc);
             $child = new PlanChild($r['rel'], $rc->kind);
@@ -378,7 +380,7 @@ final class Planner
         // columns relation steps bind or key on are always selected
         $need = $s->extra;
         foreach ($s->q['relations'] ?? [] as $r) {
-            $need[] = $r['left'];
+            array_push($need, ...array_column($r['keys'], 'left'));
             if (isset($r['query']['if_parent'])) {
                 $need[] = $r['query']['if_parent']['column'];
             }

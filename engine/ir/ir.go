@@ -110,11 +110,17 @@ type Join struct {
 // Relation은 별도 statement로 행을 읽는다. Rel은 결과 이름이고 Left, Right,
 // Kind가 key와 종류를 정한다.
 type Relation struct {
-	Rel   string `json:"rel"`
-	Query *Query `json:"query"`
-	Kind  string `json:"kind,omitempty"` // one | many
-	Left  string `json:"left,omitempty"`
-	Right string `json:"right,omitempty"`
+	Rel   string    `json:"rel"`
+	Query *Query    `json:"query"`
+	Kind  string    `json:"kind,omitempty"` // one | many
+	Keys  []KeyPair `json:"keys,omitempty"`
+}
+
+// KeyPair는 relation key의 한 성분이다: 부모 column Left와 자식 column Right가
+// 같다. composite key의 relation은 성분마다 한 쌍을 key 순서대로 담는다.
+type KeyPair struct {
+	Left  string `json:"left"`
+	Right string `json:"right"`
 }
 
 // Group is a parenthesised list. Conn joins the group to its previous
@@ -527,18 +533,29 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("IR_INVALID", "relation %s needs a query", r.Rel)
 		}
 		kind := r.Kind
-		if r.Left == "" || r.Right == "" || (kind != "one" && kind != "many") {
-			return errf("IR_INVALID", "relation %s: left, right and kind one|many are required", r.Rel)
+		if len(r.Keys) == 0 || (kind != "one" && kind != "many") {
+			return errf("IR_INVALID", "relation %s: keys and kind one|many are required", r.Rel)
 		}
 		target, ok := v.m.Entities[r.Query.Entity]
 		if !ok {
 			return errf("ENTITY_UNKNOWN", "%s", r.Query.Entity)
 		}
-		if ent.Field(r.Left) == nil {
-			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, r.Left)
-		}
-		if target.Field(r.Right) == nil {
-			return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, r.Right)
+		lefts, rights := map[string]bool{}, map[string]bool{}
+		for _, k := range r.Keys {
+			if k.Left == "" || k.Right == "" {
+				return errf("IR_INVALID", "relation %s: every key needs left and right", r.Rel)
+			}
+			if ent.Field(k.Left) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, k.Left)
+			}
+			if target.Field(k.Right) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, k.Right)
+			}
+			// 한 column이 두 성분에 나오면 key가 아니다.
+			if lefts[k.Left] || rights[k.Right] {
+				return errf("IR_INVALID", "relation %s: key column %s or %s is used twice", r.Rel, k.Left, k.Right)
+			}
+			lefts[k.Left], rights[k.Right] = true, true
 		}
 		if r.Query.Limit != nil {
 			return errf("LIMIT_IN_RELATION", "%s: use limit_per_parent", r.Rel)

@@ -42,8 +42,8 @@ abstract class Model implements \JsonSerializable
     private string $aggFn = '';
     private string $agg = '';
 
-    private string $matchLeft = '';
-    private string $matchRight = '';
+    /** @var list<array{left: string, right: string}> relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다 */
+    private array $matches = [];
     private string $alias = '';
     private bool $parentNode = false;
     private ?array $possible = null;
@@ -243,7 +243,7 @@ abstract class Model implements \JsonSerializable
     {
         if ($this->groupOf !== null) {
             $this->fail('relation is not allowed inside a group callback');
-        } elseif ($child->matchLeft === '') {
+        } elseif ($child->matches === []) {
             $this->fail('relation child ' . $child::meta()['entity'] . ' requires match<L>With<R>()');
         } else {
             $this->relations[] = ['many' => $many, 'child' => $child];
@@ -521,7 +521,8 @@ abstract class Model implements \JsonSerializable
         }
         if (self::prefixed($name, 'match')) {
             self::arity($name, $args, 0);
-            [$this->matchLeft, $this->matchRight] = Chain::pair(null, $meta, substr($name, 5));
+            [$left, $right] = Chain::pair(null, $meta, substr($name, 5));
+            $this->matches[] = ['left' => $left, 'right' => $right];
             return $this;
         }
         if (self::prefixed($name, 'alias')) {
@@ -955,7 +956,7 @@ abstract class Model implements \JsonSerializable
         if ($this->possible !== null) {
             $q['if_parent'] = ['column' => $this->possible['column'], 'p' => $r->param($this->possible['value'])];
         }
-        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one', 'left' => $this->matchLeft, 'right' => $this->matchRight];
+        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one', 'keys' => $this->matches];
     }
 
     private function columnsIr(Request $r): ?array
@@ -1338,6 +1339,38 @@ abstract class Model implements \JsonSerializable
         return $out;
     }
 
+    /**
+     * model의 relation key 성분 값을 key 순서로 반환한다. 성분 하나라도 null이면 null이다.
+     *
+     * @return list<mixed>|null
+     */
+    private function matchValues(Model $m, string $side): ?array
+    {
+        $values = [];
+        foreach ($this->matches as $k) {
+            $v = $m->columnOrExtra($k[$side]);
+            if ($v === null) {
+                return null;
+            }
+            $values[] = $v;
+        }
+        return $values;
+    }
+
+    /** @param list<mixed> $values relation key 성분 값의 collection key. */
+    private static function matchKey(array $values): string
+    {
+        if (count($values) === 1) {
+            return Db::scalarText($values[0]);
+        }
+        $out = '';
+        foreach ($values as $v) {
+            $part = Db::scalarText($v);
+            $out .= strlen($part) . ':' . $part;
+        }
+        return $out;
+    }
+
     /** @param list<Model> $parents */
     private function attachExternal(array $parents, bool $many): void
     {
@@ -1347,26 +1380,34 @@ abstract class Model implements \JsonSerializable
             if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 continue;
             }
-            $v = $p->columnOrExtra($this->matchLeft);
-            if ($v === null || isset($seen[Db::scalarText($v)])) {
+            $v = $this->matchValues($p, 'left');
+            if ($v === null || isset($seen[self::matchKey($v)])) {
                 continue;
             }
-            $seen[Db::scalarText($v)] = true;
-            $values[] = $v;
+            $seen[self::matchKey($v)] = true;
+            $values[] = count($v) === 1 ? $v[0] : $v;
         }
         $byKey = [];
         if ($values !== []) {
             $q = clone $this;
-            $q->matchLeft = '';
+            $q->matches = [];
             $q->alias = '';
-            $match = ['pred' => ['column' => $this->matchRight, 'op' => 'in', 'value' => $values, 'kind' => 'list']];
+            $rights = array_column($this->matches, 'right');
+            // composite key는 자식 key column 전체를 tuple로 거른다.
+            $match = count($rights) === 1
+                ? ['pred' => ['column' => $rights[0], 'op' => 'in', 'value' => $values, 'kind' => 'list']]
+                : ['pred' => ['op' => 'tuple_in', 'cols' => $rights, 'value' => $values, 'kind' => 'tuple']];
             if ($q->where['items'] !== []) {
                 $q->where['items'] = [['conn' => '', 'group' => $q->where['items']], $match + ['conn' => 'and']];
             } else {
                 $q->where['items'] = [$match + ['conn' => '']];
             }
             foreach ($q->gets()->entries() as [$key, $m]) {
-                $k = Db::scalarText($m->columnOrExtra($this->matchRight));
+                $v = $this->matchValues($m, 'right');
+                if ($v === null) {
+                    continue;
+                }
+                $k = self::matchKey($v);
                 if ($this->groupLimit > 0 && count($byKey[$k] ?? []) >= $this->groupLimit) {
                     continue;
                 }
@@ -1378,7 +1419,8 @@ abstract class Model implements \JsonSerializable
             if (array_key_exists($name, $p->row['related'])) {
                 throw new OrmException(Code::CONFIG, "relation result name $name is used twice");
             }
-            $matched = $byKey[Db::scalarText($p->columnOrExtra($this->matchLeft))] ?? [];
+            $v = $this->matchValues($p, 'left');
+            $matched = $v === null ? [] : $byKey[self::matchKey($v)] ?? [];
             if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 $matched = [];
             }

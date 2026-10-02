@@ -206,7 +206,7 @@ func (r *request) relation(rel relSpec) *ir.Relation {
 	if ch.possible != nil {
 		q.IfParent = &ir.IfParent{Column: ch.possible.column, P: r.param(ch.possible.value)}
 	}
-	out := &ir.Relation{Rel: ch.resultName(rel.many), Kind: kind, Left: ch.matchLeft, Right: ch.matchRight, Query: q}
+	out := &ir.Relation{Rel: ch.resultName(rel.many), Kind: kind, Keys: slices.Clone(ch.matches), Query: q}
 	r.relations[out] = ch
 	return out
 }

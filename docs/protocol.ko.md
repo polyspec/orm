@@ -64,12 +64,12 @@ Columns = {
 
 ```json
 Join = {"rel": "service_model", "kind": "inner | left", "left": "service_seq", "right": "seq", "query": Query}
-Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": "seq", "query": Query,
+Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq", "right": "seq"}], "query": Query,
             "key_by": "user_seq", "flatten": false, "limit_per_parent": 2,
             "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
 ```
 
-- `rel`은 결과 명칭이다. `left`는 부모의 컬럼이고 `right`는 자식의 컬럼이며 둘 다 필수다. 관계는 `kind`도 필수다. 클라이언트는 이름이나 외래 키에서 키를 추론하지 않는다.
+- `rel`은 결과 명칭이다. join에서 `left`는 부모의 컬럼이고 `right`는 자식의 컬럼이며 둘 다 필수다. 관계는 `kind`와 `keys`가 필수다. `keys`는 key 성분마다 `{"left", "right"}` 한 쌍을 key 순서대로 담으므로, composite foreign key의 관계는 모든 성분을 담는다. `composite_account`에서 `composite_membership`은 `[{"left": "tenant_id", "right": "tenant_id"}, {"left": "account_id", "right": "account_id"}]`로 읽는다. 빈 `keys`, `left`나 `right`가 없는 쌍, 같은 쪽의 두 쌍에 나오는 컬럼은 `IR_INVALID`다. 클라이언트는 이름이나 외래 키에서 키를 추론하지 않는다.
 - 조인 자식의 `on` 그룹은 `ON` 절에 추가한다. `where` 그룹은 `joined` 항목이 지정한 위치에 두며, 지정하지 않으면 부모 `WHERE`에 `AND`로 붙인다.
 - 관계는 별도 문장으로 실행한다. `limit_per_parent`는 부모 키마다 자식 행 수를 제한하고, `if_parent`는 컬럼 값이 매개변수와 같은 부모에 대해서만 자식을 읽는다. `flatten`은 자식 컬럼을 부모 행에 합치고, `key_by`는 자식 컬렉션의 키를 정하며, `no_cascade_delete`는 재귀 삭제에서 관계를 제외한다.
 

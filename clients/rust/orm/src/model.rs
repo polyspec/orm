@@ -522,6 +522,31 @@ fn value_key(v: &Option<Val>) -> Result<String> {
     })
 }
 
+/// model의 relation key 성분 값을 key 순서로 반환한다. 부모 쪽은 `child`가 false,
+/// 자식 쪽은 true다. 성분 하나라도 null이면 None이다.
+fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
+    ch.matches
+        .iter()
+        .map(|&(left, right)| match m.value_dyn(if child { right } else { left }) {
+            None | Some(Val::Null) => None,
+            Some(v) => Some(v),
+        })
+        .collect()
+}
+
+/// relation key 성분 값의 key. 성분 하나는 그 값의 key이고, composite key는 성분 key를 길이와 함께 잇는다.
+fn match_key(values: &[Val]) -> Result<String> {
+    if let [v] = values {
+        return value_key(&Some(v.clone()));
+    }
+    let mut out = String::new();
+    for v in values {
+        let part = value_key(&Some(v.clone()))?;
+        out.push_str(&format!("{}:{part}", part.len()));
+    }
+    Ok(out)
+}
+
 /// Runs a relation whose child has its own connection and attaches the rows.
 async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Result<()> {
     let ch = &rel.child;
@@ -540,18 +565,25 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         if !allowed(p.as_ref())? {
             continue;
         }
-        let v = p.value_dyn(&ch.match_left);
-        if matches!(v, None | Some(Val::Null)) || !seen.insert(value_key(&v)?) {
+        let Some(v) = match_values(p.as_ref(), ch, false) else { continue };
+        if !seen.insert(match_key(&v)?) {
             continue;
         }
-        values.push(val_param(v.as_ref().unwrap()));
+        values.push(v.iter().map(val_param).collect::<Vec<_>>());
     }
     let mut by_key: HashMap<String, Boxed> = HashMap::new();
     if !values.is_empty() {
         let mut q = (**ch).clone();
-        q.match_left.clear();
+        q.matches.clear();
         q.alias.clear();
-        let pred = CondNode { conn: "", kind: CondKind::Pred(PredSpec { column: ch.match_right.clone(), op: "in", value: PredValue::List(values) }) };
+        let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
+        // composite key는 자식 key column 전체를 tuple로 거른다.
+        let spec = if rights.len() == 1 {
+            PredSpec { column: rights[0].into(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
+        } else {
+            PredSpec { column: String::new(), op: "tuple_in", value: PredValue::Tuples(rights, values) }
+        };
+        let pred = CondNode { conn: "", kind: CondKind::Pred(spec) };
         if q.where_.items.is_empty() {
             q.where_ = CondGroup { items: vec![pred], pending: "" };
         } else {
@@ -560,7 +592,8 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         }
         let rows = Box::pin(load(&q, "all")).await?;
         for (k, m) in rows.items {
-            let key = value_key(&m.value_dyn(&ch.match_right))?;
+            let Some(v) = match_values(m.as_ref(), ch, true) else { continue };
+            let key = match_key(&v)?;
             let list = by_key.entry(key).or_default();
             if ch.group_limit > 0 && list.len() >= ch.group_limit as usize {
                 continue;
@@ -571,8 +604,10 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
     let shared: HashMap<String, Shared> = by_key.into_iter().map(|(k, v)| (k, v.into_iter().map(|(key, m)| (key, Arc::from(m))).collect())).collect();
     let name = result_name(ch, rel.many);
     for p in parents.iter_mut() {
-        let matched: Shared =
-            if allowed(p.as_ref())? { shared.get(&value_key(&p.value_dyn(&ch.match_left))?).cloned().unwrap_or_default() } else { Vec::new() };
+        let matched: Shared = match (allowed(p.as_ref())?, match_values(p.as_ref(), ch, false)) {
+            (true, Some(v)) => shared.get(&match_key(&v)?).cloned().unwrap_or_default(),
+            _ => Vec::new(),
+        };
         let st = p.core_dyn_mut().row.get_or_insert_with(RowState::default);
         if st.related.contains_key(&name) {
             return Err(config(format!("relation result name {name} is used twice")));

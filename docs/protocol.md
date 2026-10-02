@@ -64,12 +64,12 @@ Columns = {
 
 ```json
 Join = {"rel": "service_model", "kind": "inner | left", "left": "service_seq", "right": "seq", "query": Query}
-Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": "seq", "query": Query,
+Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq", "right": "seq"}], "query": Query,
             "key_by": "user_seq", "flatten": false, "limit_per_parent": 2,
             "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
 ```
 
-- `rel` is the result name. `left` is a column of the parent and `right` a column of the child; both are required, and a relation also requires `kind`. The client never infers keys from names or foreign keys.
+- `rel` is the result name. In a join, `left` is a column of the parent and `right` a column of the child; both are required. A relation requires `kind` and `keys`, one `{"left", "right"}` pair per key component in key order, so a relation over a composite foreign key carries every component: `composite_membership` loads from `composite_account` with `[{"left": "tenant_id", "right": "tenant_id"}, {"left": "account_id", "right": "account_id"}]`. An empty `keys`, a pair without `left` or `right`, or a column that appears in two pairs on the same side is `IR_INVALID`. The client never infers keys from names or foreign keys.
 - A join child's `on` group is added to the `ON` clause. Its `where` group is placed where a `joined` item names it, otherwise it is appended to the parent `WHERE` with `AND`.
 - A relation runs as a separate statement. `limit_per_parent` limits child rows per parent key, `if_parent` loads the child only for parents whose column equals the parameter, `flatten` merges the child columns into the parent row, `key_by` keys the child collection, and `no_cascade_delete` excludes the relation from recursive delete.
 

@@ -177,8 +177,11 @@ func (s *shape) query(q *ir.Query) {
 		s.byte(1)
 		s.str(rl.Rel)
 		s.str(rl.Kind)
-		s.str(rl.Left)
-		s.str(rl.Right)
+		s.int(len(rl.Keys))
+		for _, k := range rl.Keys {
+			s.str(k.Left)
+			s.str(k.Right)
+		}
 		s.queryPtr(rl.Query)
 	}
 	s.int(len(q.Order))

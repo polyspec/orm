@@ -127,10 +127,19 @@ class Validator {
       if (columnOf(ent, r.rel)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${r.rel} is already a column`);
       if (!r.query) fail('IR_INVALID', `relation ${r.rel} needs a query`);
       const kind = r.kind ?? '';
-      if (!r.left || !r.right || (kind !== 'one' && kind !== 'many')) fail('IR_INVALID', `relation ${r.rel}: left, right and kind one|many are required`);
+      if (!Array.isArray(r.keys) || r.keys.length === 0 || (kind !== 'one' && kind !== 'many')) fail('IR_INVALID', `relation ${r.rel}: keys and kind one|many are required`);
       const target = this.entity(r.query.entity);
-      if (!columnOf(ent, r.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.left}`);
-      if (!columnOf(target, r.right)) fail('COLUMN_UNKNOWN', `${target.name}.${r.right}`);
+      const lefts = new Set<string>();
+      const rights = new Set<string>();
+      for (const k of r.keys!) {
+        if (!k.left || !k.right) fail('IR_INVALID', `relation ${r.rel}: every key needs left and right`);
+        if (!columnOf(ent, k.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${k.left}`);
+        if (!columnOf(target, k.right)) fail('COLUMN_UNKNOWN', `${target.name}.${k.right}`);
+        // 한 column이 두 성분에 나오면 key가 아니다.
+        if (lefts.has(k.left) || rights.has(k.right)) fail('IR_INVALID', `relation ${r.rel}: key column ${k.left} or ${k.right} is used twice`);
+        lefts.add(k.left);
+        rights.add(k.right);
+      }
       if (r.query.limit) fail('LIMIT_IN_RELATION', `${r.rel}: use limit_per_parent`);
       if (r.query.flatten && kind !== 'one') fail('IR_INVALID', `relation ${r.rel}: flatten needs a one relation`);
       if ((r.query.key_by ?? '') !== '' && kind !== 'many') fail('IR_INVALID', `relation ${r.rel}: key_by needs a many relation`);

@@ -357,7 +357,11 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 func (p *Planner) relationSteps(ps *stepSet, s *scope, asm *plan.Assemble, stepID int) error {
 	for _, r := range s.q.Relations {
 		rc := &relCtx{parentStep: stepID, parentAsm: asm}
-		rc.parentKeys, rc.childKeys, rc.kind = []string{r.Left}, []string{r.Right}, r.Kind
+		for _, k := range r.Keys {
+			rc.parentKeys = append(rc.parentKeys, k.Left)
+			rc.childKeys = append(rc.childKeys, k.Right)
+		}
+		rc.kind = r.Kind
 		target := p.M.Entities[r.Query.Entity]
 		parentKeys, childKeys := rc.parentKeys, rc.childKeys
 		st, err := p.selectStep(ps, r.Query, "all", "", rc)
@@ -667,8 +671,10 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		}
 	}
 	for _, r := range s.q.Relations {
-		if !contains(base, r.Left) {
-			base = append(base, r.Left)
+		for _, k := range r.Keys {
+			if !contains(base, k.Left) {
+				base = append(base, k.Left)
+			}
 		}
 		if r.Query.IfParent != nil && !contains(base, r.Query.IfParent.Column) {
 			base = append(base, r.Query.IfParent.Column)

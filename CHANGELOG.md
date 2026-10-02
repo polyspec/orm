@@ -1,5 +1,7 @@
 # Changelog
 
+- T18: a relation request carries every component of its key, one `{left, right}` pair per component in key order (`keys` in place of `left` and `right`), and each `match<L>With<R>()` adds one pair, so `composite_membership` loads from `composite_account` by `tenant_id` and `account_id` together in Go, PHP, Rust and TypeScript, also through a child with its own connection. An empty key list, a pair without a column or a column used twice on one side is `IR_INVALID`. Rust `Core::add_match` replaces `set_match`.
+
 - T8.9.1: each client checks the dbspec signature on bytes that the caller read, with the name its messages use: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes` and Rust `dbspec::read_bytes`, and the path readers use it. Bytes that are not UTF-8 after the signature are one `encoding` error `<name> is not valid UTF-8` at the first invalid byte in every client; TypeScript no longer replaces them with U+FFFD and Rust no longer returns an I/O error.
 
 - T8.8.3: main is merged into the dbspec branch again with N17: the PHP client requires no PDO driver extension, and `make php-without-mysql-check` installs `schema/bench.dbs` and creates and reads a row on SQLite in the official PHP image, which has no `pdo_mysql`.
