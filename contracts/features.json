@@ -17,8 +17,8 @@
       "title": "DSN URI connection",
       "title_ko": "DSN URI 연결",
       "status": "implemented",
-      "description": "Open a database from one URI DSN. The URI scheme selects the driver, every connection reads and writes datetime values in UTC, and the client plans statements in its own process.",
-      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다.",
+      "description": "Open a database from one URI DSN. The URI scheme selects the driver, every connection reads and writes datetime values in UTC, and the client plans statements in its own process. The PHP client requires no PDO driver extension, so a PHP without pdo_mysql runs it on SQLite.",
+      "description_ko": "하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다. PHP client는 PDO driver 확장을 요구하지 않으므로 pdo_mysql이 없는 PHP도 SQLite로 실행한다.",
       "inputs": {
         "type": "DsnConnectionRequest",
         "fields": [
@@ -77,7 +77,8 @@
         "clients/rust/tests/src/integration.rs",
         "clients/typescript/tests/coverage_dsn.mjs",
         "clients/go/orm/sqlite_path_test.go",
-        "clients/rust/tests/tests/example_dsn.rs"
+        "clients/rust/tests/tests/example_dsn.rs",
+        "clients/php/tests/sqlite_without_mysql.php"
       ],
       "docs": [
         "docs/config.md",
@@ -99,6 +100,10 @@
         {
           "id": "dsn-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test zone --test sqlite_file_name"
+        },
+        {
+          "id": "dsn-php-without-mysql",
+          "command": "make php-without-mysql-check"
         }
       ],
       "coverage": {
