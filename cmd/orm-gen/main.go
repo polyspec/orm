@@ -1,7 +1,7 @@
 // orm-gen은 dbspec document set에서 Go model을 만들고 docs/errors.yaml에서 각
 // 언어의 오류 코드 file을 만든다.
 //
-//	orm-gen gen --document <file.dbspec>... --lang go --out <directory> [--scan <package pattern>...] [--check]
+//	orm-gen gen --document <file.dbs>... --lang go --out <directory> [--scan <package pattern>...] [--check]
 //	orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]
 package main
 
@@ -31,7 +31,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --document <file.dbspec>... --lang go --out <directory> [--scan <package pattern>...] [--check]")
+	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --document <file.dbs>... --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]")
 	os.Exit(2)
 }

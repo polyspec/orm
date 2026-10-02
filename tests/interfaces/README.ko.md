@@ -34,7 +34,7 @@ go run ./tests/interfaces/check --results tests/conformance/out/sqlite
 
 ```sh
 (cd clients/go/model && go generate ./)
-php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbspec
+php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```

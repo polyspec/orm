@@ -41,7 +41,7 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 `get` returns one row and returns `NO_ROWS` when no row matches, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
-- **Schema**: a hand-written set of dbspec documents (`schema/*.dbspec`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
+- **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
 - **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
@@ -52,7 +52,7 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
 (cd clients/go/model && go generate)                                # Go models
-php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbspec
+php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 (cd clients/typescript && npm run build)                            # TypeScript models and library
 (cd clients/rust && cargo build --release)                          # build.rs generates the Rust models
 go test ./...

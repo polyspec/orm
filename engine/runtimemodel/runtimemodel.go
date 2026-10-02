@@ -6,7 +6,6 @@ package runtimemodel
 
 import (
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
@@ -293,17 +292,20 @@ func DiagnosticsError(diagnostics []dbspec.Diagnostic) string {
 	return strings.Join(parts, "; ")
 }
 
-// LoadFiles는 dbspec document 파일을 하나의 document set으로 읽어 runtime
-// model을 반환한다. 잘못된 set은 SCHEMA_INVALID와 각 diagnostic을 담은
-// error다.
+// LoadFiles는 dbspec document 파일을 dbspec.ReadFile로 읽어 하나의 document set의
+// runtime model을 반환한다. signature가 없는 파일과 잘못된 set은 SCHEMA_INVALID와
+// 각 diagnostic을 담은 error다.
 func LoadFiles(paths ...string) (*Model, error) {
 	texts := make([]string, len(paths))
 	for i, path := range paths {
-		b, err := os.ReadFile(path)
+		text, diagnostics, err := dbspec.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
-		texts[i] = string(b)
+		if len(diagnostics) > 0 {
+			return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+		}
+		texts[i] = text
 	}
 	m, diagnostics := LoadDocuments(texts)
 	if len(diagnostics) > 0 {

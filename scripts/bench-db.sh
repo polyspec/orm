@@ -1,6 +1,6 @@
 #!/bin/sh
 # Recreates the bench databases named by BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and
-# BENCH_SQLITE_DSN: installs schema/bench.dbspec through the generated Go model,
+# BENCH_SQLITE_DSN: installs schema/bench.dbs through the generated Go model,
 # runs the seed of each dialect and fills the AES and blind-index columns.
 set -eu
 
@@ -43,4 +43,4 @@ rm -f "$sqlite_path" "$sqlite_path-wal" "$sqlite_path-shm"
 go run ./bench/install -dsn "$BENCH_SQLITE_DSN"
 sqlite3 "$sqlite_path" < bench/sql/seed.sqlite.sql
 go run ./bench/seedaes -driver sqlite -dsn "file:$sqlite_path"
-echo "bench-db: $mysql_db, $pg_db and $sqlite_path installed from schema/bench.dbspec and seeded"
+echo "bench-db: $mysql_db, $pg_db and $sqlite_path installed from schema/bench.dbs and seeded"

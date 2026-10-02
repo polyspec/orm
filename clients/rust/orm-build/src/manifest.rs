@@ -17,7 +17,7 @@ fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
     errors.iter().map(|e| format!("{path}: {e}")).collect::<Vec<_>>().join("\n")
 }
 
-/// `paths`의 dbspec document를 읽는다. 각 document는 나머지 document를 declared
+/// `paths`의 dbspec document를 `dbspec::read_file`로 읽는다. 각 document는 나머지 document를 declared
 /// document set으로 삼아 parse한다.
 pub fn load(paths: &[&Path]) -> Result<DocumentSet, String> {
     if paths.is_empty() {
@@ -25,7 +25,11 @@ pub fn load(paths: &[&Path]) -> Result<DocumentSet, String> {
     }
     let mut texts = Vec::with_capacity(paths.len());
     for path in paths {
-        let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        // signature가 없는 파일은 parse 전에 dbspec::read_file의 diagnostic으로 실패한다.
+        let text = dbspec::read_file(path).map_err(|e| match e {
+            dbspec::ReadError::Io(error) => format!("{}: {error}", path.display()),
+            dbspec::ReadError::Diagnostics(errors) => diagnostics(&path.display().to_string(), errors),
+        })?;
         let name = text.lines().next().and_then(|header| header.split(' ').nth(2)).unwrap_or("").to_owned();
         texts.push((path.display().to_string(), name, text));
     }

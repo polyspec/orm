@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// audit_triggers feature coverage: contracts/fixtures/audit.dbspec을 bench
+// audit_triggers feature coverage: contracts/fixtures/audit.dbs을 bench
 // database에 설치하고 clients/go/orm/audit_operation_test.go의 순서로 쓴 뒤,
 // trigger가 남긴 item_history를 확인하고 설치한 table과 PostgreSQL function을
 // 지운다. audit document의 model은 임시 directory에 생성하므로 bench model을
@@ -79,7 +79,7 @@ function auditHistory(Db $db): array
 /** audit document의 model을 $work에 생성하고 설치, 쓰기, history 확인, 정리를 실행한다. */
 function auditCase(string $dsn, string $document, string $work): void
 {
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbspec' => $document])), "$work/gen", 'CoverageAudit\\Orm');
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $document])), "$work/gen", 'CoverageAudit\\Orm');
     spl_autoload_register(static function (string $class) use ($work): void {
         if (str_starts_with($class, 'CoverageAudit\\Orm\\')) {
             require "$work/gen/" . substr($class, strlen('CoverageAudit\\Orm\\')) . '.php';
@@ -120,9 +120,9 @@ runCoverageCases($argv, [
     'audit_history' => function (): void {
         [, $dsn] = coverageDatabase();
         $root = dirname(__DIR__, 3);
-        $document = file_get_contents("$root/contracts/fixtures/audit.dbspec");
+        $document = file_get_contents("$root/contracts/fixtures/audit.dbs");
         if ($document === false) {
-            throw new RuntimeException('cannot read contracts/fixtures/audit.dbspec');
+            throw new RuntimeException('cannot read contracts/fixtures/audit.dbs');
         }
         $work = sys_get_temp_dir() . '/orm-php-coverage-audit-' . getmypid();
         if (!mkdir($work, 0o700, true)) {

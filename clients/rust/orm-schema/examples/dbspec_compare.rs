@@ -3,10 +3,11 @@
 //!
 //! Usage: `cargo run --release -p orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
 
-use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, Unsupported};
+use orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::io::{BufWriter, Write};
+use std::path::Path;
 use std::process::ExitCode;
 
 type Documents = BTreeMap<String, Vec<String>>;
@@ -29,6 +30,13 @@ struct SharedCases {
     normalize: Vec<TestCase>,
     invalid: Vec<TestCase>,
     hashes: Vec<HashCase>,
+    files: Vec<FileCase>,
+}
+
+/// cases.json 기준 상대 경로로 파일을 이름 짓는 files case.
+struct FileCase {
+    id: String,
+    path: String,
 }
 
 /// `source`가 `None`이면 빈 schema이다.
@@ -190,6 +198,7 @@ fn read_cases(path: &str) -> Result<SharedCases, String> {
         normalize: r.cases(&v, "normalize", test_case)?,
         invalid: r.cases(&v, "invalid", test_case)?,
         hashes: r.cases(&v, "hashes", |case, location, id| r.hash_case(case, location, id))?,
+        files: r.cases(&v, "files", |case, location, id| Ok(FileCase { id, path: r.string(case, location, "path")? }))?,
     })
 }
 
@@ -561,7 +570,14 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
         let id = &case.id;
         writeln!(out, "mermaid/round_trip/{id}").map_err(io)?;
         let path = &case.path;
-        let source = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+        let source = match orm_schema::dbspec::read_file(Path::new(path)) {
+            Ok(source) => source,
+            Err(ReadError::Io(e)) => return Err(format!("{path}: {e}")),
+            Err(ReadError::Diagnostics(diagnostics)) => {
+                write_plan_diagnostics(out, &diagnostics).map_err(io)?;
+                continue;
+            }
+        };
         match orm_schema::dbspec::parse(&source, &BTreeMap::new()) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
             Ok(document) => {
@@ -576,7 +592,11 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
 
 fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
     let cases = read_cases(cases_path)?;
-    let stress = std::fs::read_to_string(stress_path).map_err(|e| format!("{stress_path}: {e}"))?;
+    let stress = match orm_schema::dbspec::read_file(Path::new(stress_path)) {
+        Ok(text) => text,
+        Err(ReadError::Io(e)) => return Err(format!("{stress_path}: {e}")),
+        Err(ReadError::Diagnostics(diagnostics)) => return Err(diagnostics[0].message.clone()),
+    };
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
     let io = |e: std::io::Error| e.to_string();
@@ -594,6 +614,27 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     }
     writeln!(out, "stress").map_err(io)?;
     write(&mut out, &stress, &BTreeMap::new(), true).map_err(io)?;
+    // files case는 read_file로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
+    // message 앞의 path는 "<path>"로 쓴다.
+    let directory = Path::new(cases_path).parent().unwrap_or(Path::new(""));
+    for case in &cases.files {
+        writeln!(out, "files/{}", case.id).map_err(io)?;
+        let path = directory.join(&case.path);
+        match orm_schema::dbspec::read_file(&path) {
+            Ok(text) => write(&mut out, &text, &BTreeMap::new(), false).map_err(io)?,
+            Err(ReadError::Io(e)) => return Err(format!("{}: {e}", path.display())),
+            Err(ReadError::Diagnostics(diagnostics)) => {
+                let shown = path.display().to_string();
+                for d in &diagnostics {
+                    writeln!(out, "! {} {} {}", d.rule, d.line, d.column).map_err(io)?;
+                    match d.message.strip_prefix(shown.as_str()) {
+                        Some(rest) => writeln!(out, "= <path>{rest}").map_err(io)?,
+                        None => writeln!(out, "= {}", d.message).map_err(io)?,
+                    }
+                }
+            }
+        }
+    }
     for case in &cases.hashes {
         writeln!(out, "hashes/{}", case.id).map_err(io)?;
         write_manifest(&mut out, case).map_err(io)?;

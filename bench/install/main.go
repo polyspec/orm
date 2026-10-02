@@ -1,4 +1,4 @@
-// install은 schema/bench.dbspec에서 생성한 model의 manifest를 bench database에
+// install은 schema/bench.dbs에서 생성한 model의 manifest를 bench database에
 // 설치한다. 손으로 쓴 DDL은 없고 statement는 dbspec renderer가 만든다.
 //
 //	go run ./bench/install -dsn 'postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable&timezone=%2B00:00'

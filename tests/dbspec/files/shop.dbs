@@ -1,0 +1,8 @@
+dbspec 1 shop
+
+table users {
+  id i64 identity
+  email varchar(191)
+  primary key (id)
+  unique uq_users_email (email)
+}

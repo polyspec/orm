@@ -15,7 +15,7 @@ use Orm\Db;
 use Orm\Orm;
 use Orm\OrmException;
 
-$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbspec')];
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbs')];
 
 function connect(string $dsn): Db
 {

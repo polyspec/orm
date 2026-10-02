@@ -4,7 +4,7 @@ declare(strict_types=1);
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
 // column rule, and the audit operation id. The models of
-// contracts/fixtures/audit.dbspec and a values document are generated into a
+// contracts/fixtures/audit.dbs and a values document are generated into a
 // temporary directory, so the test runs in its own process.
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases; the
 // test fails when either is unset.
@@ -35,8 +35,8 @@ register_shutdown_function(static function () use ($work): void {
 
 $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
     . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
-$documents = [(string) file_get_contents("$root/contracts/fixtures/audit.dbspec"), $values];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbspec' => $documents[0], 'values.dbspec' => $values])), "$work/gen", 'RuntimeDb\\Orm');
+$documents = [(string) file_get_contents("$root/contracts/fixtures/audit.dbs"), $values];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $documents[0], 'values.dbs' => $values])), "$work/gen", 'RuntimeDb\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'RuntimeDb\\Orm\\')) {
         require "$work/gen/" . substr($class, strlen('RuntimeDb\\Orm\\')) . '.php';

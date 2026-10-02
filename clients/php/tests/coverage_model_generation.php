@@ -10,7 +10,7 @@ require __DIR__ . '/coverage_cases.php';
 function generationCheck(string $root, string $out): array
 {
     [$status, $stdout, $stderr] = coverageProcess(
-        [PHP_BINARY, 'clients/php/bin/orm-gen', 'gen', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check', 'schema/bench.dbspec'],
+        [PHP_BINARY, 'clients/php/bin/orm-gen', 'gen', '--out', $out, '--namespace', 'Polyspec\\Orm\\Tests\\Model', '--check', 'schema/bench.dbs'],
         $root,
     );
     return [$status, $stdout . $stderr];

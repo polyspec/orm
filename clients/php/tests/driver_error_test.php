@@ -29,8 +29,8 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/refusal.dbspec')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['refusal.dbspec' => $documents[0]])), "$work/models", 'RefusalCase\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/refusal.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['refusal.dbs' => $documents[0]])), "$work/models", 'RefusalCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'RefusalCase\\Orm\\')) {
         require "$work/models/" . substr($class, strlen('RefusalCase\\Orm\\')) . '.php';

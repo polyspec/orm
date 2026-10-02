@@ -4,6 +4,7 @@
 // of a block, or to the end of the document.
 
 export type DbspecRule =
+  | 'signature'
   | 'header'
   | 'syntax'
   | 'order'

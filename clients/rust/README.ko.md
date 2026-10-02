@@ -26,7 +26,7 @@ orm-build = { path = "…/clients/rust/orm-build" }
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -123,8 +123,8 @@ cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… cargo test --workspace
 cargo build --release -p orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbspec
-./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbspec
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbs
+./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```
 
 `integration`과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. 테스트는 그 DB에서 자기 테이블을 삭제하고 설치한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.

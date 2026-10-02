@@ -18,7 +18,7 @@ fn require_dsn(var: &str) -> String {
 }
 
 static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/zone.dbspec"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
+    Schema::new(include_str!("../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
 
 /// Both tests create and drop zone_event in the same database, so they run
 /// one at a time.

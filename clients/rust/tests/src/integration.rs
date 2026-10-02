@@ -3,7 +3,7 @@
 //! test drops its tables there and installs the schema); the test fails when
 //! either is unset.
 //!
-//! Usage: integration <bench.dbspec> [--case <case>]
+//! Usage: integration <bench.dbs> [--case <case>]
 use std::cell::Cell;
 use std::path::PathBuf;
 
@@ -715,13 +715,13 @@ async fn main() {
         [_, _] => None,
         [_, _, flag, case] if flag == "--case" && CASES.contains(&case.as_str()) => Some(case.as_str()),
         _ => {
-            eprintln!("usage: integration <bench.dbspec> [--case <case>]; supported cases: {}", CASES.join(", "));
+            eprintln!("usage: integration <bench.dbs> [--case <case>]; supported cases: {}", CASES.join(", "));
             std::process::exit(2);
         }
     };
     let tmp = std::env::temp_dir().join(format!("orm-rust-integration-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
-    let text = std::fs::read_to_string(&args[1]).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
+    let text = orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
     let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");

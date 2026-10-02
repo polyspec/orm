@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.
+
 - T17.7: hot-path check의 Go 네이티브 기준 코드가 생성 클라이언트와 같은 statement를 실행하고, relation과 list workload는 key만 bind하며, Rust 네이티브 insert는 AES column에 AES ciphertext를 쓴다.
 
 - T15: contracts/features.json의 모든 feature가 coverage를 선언하고 `make feature-check`가 각 client의 owner case를 MySQL, PostgreSQL, SQLite에서 두 번씩, 또는 database 없이 실행한다. 모든 client에서 SQLite RESTRICT foreign key 위반은 FOREIGN_KEY이고 CHECK 위반은 CONSTRAINT다.

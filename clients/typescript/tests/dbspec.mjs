@@ -7,7 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { dbspecManifest, emitDbspec, parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
+import { fileURLToPath } from 'node:url';
+import { dbspecManifest, emitDbspec, parseDbspec, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
@@ -51,7 +52,7 @@ function parsed(text, set) {
 }
 
 assert(cases.canonical.length > 0 && cases.normalize.length > 0 && cases.invalid.length > 0);
-const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid, ...cases.sets].map(c => c.id);
+const ids = [...cases.canonical, ...cases.normalize, ...cases.invalid, ...cases.sets, ...cases.files].map(c => c.id);
 assert.equal(new Set(ids).size, ids.length, 'unique case ids');
 
 for (const c of cases.canonical) {
@@ -86,6 +87,26 @@ for (const c of cases.invalid) {
       assert.equal(typeof d.message, 'string');
       assert(d.message.length > 0);
     }
+  });
+}
+
+// files cases are read with readDbspecFile: a file without the signature gives one
+// "<path> is not a dbspec document" diagnostic and no text, any other file its bytes,
+// which parse and emit unchanged.
+assert(cases.files.length > 0, 'files cases');
+for (const c of cases.files) {
+  vector(`files ${c.id}`, () => {
+    const path = fileURLToPath(new URL(`tests/dbspec/${c.path}`, root));
+    const result = readDbspecFile(path);
+    if (c.errors.length > 0) {
+      assert.equal(result.text, null);
+      assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
+      for (const d of result.diagnostics) assert.equal(d.message, `${path} is not a dbspec document`);
+      return;
+    }
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(result.text, readFileSync(path, 'utf8'));
+    assert.equal(emitDbspec(parsed(result.text, {})), result.text);
   });
 }
 

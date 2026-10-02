@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use futures_util::future::join_all;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
-static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbspec"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
+static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
 static ENTITY: Entity = Entity { name: "service", schema: &SCHEMA, new: orm::model::new_boxed::<Service>, collect: orm::model::collect_boxed::<Service> };
 

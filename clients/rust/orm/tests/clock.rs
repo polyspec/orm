@@ -1,5 +1,5 @@
 //! The clock of `default now`, soft deletion and the now conditions, on SQLite,
-//! MySQL and PostgreSQL (contracts/fixtures/clock.dbspec, clock_mark.dbspec).
+//! MySQL and PostgreSQL (contracts/fixtures/clock.dbs, clock_mark.dbs).
 //! Each insert of clock_event fills created_ts from the clock, so its stored
 //! fraction holds the microseconds of the wall clock. A clock with
 //! millisecond resolution stores every value as `.mmm000`. The test fails
@@ -12,7 +12,7 @@ use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static CLOCK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/clock.dbspec"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
+    Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
 static CLOCK_EVENT: Entity =
     Entity { name: "clock_event", schema: &CLOCK_SCHEMA, new: orm::model::new_boxed::<ClockEvent>, collect: orm::model::collect_boxed::<ClockEvent> };
 const COLUMNS: [&str; 3] = ["seq", "label", "created_ts"];
@@ -147,7 +147,7 @@ async fn clock_microseconds_postgres() {
 }
 
 static CLOCK_MARK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/clock_mark.dbspec"), "sha256:f695f5f387baf1a92682394f9ca814958e0837e1ec4c429ca2d19feb58767683");
+    Schema::new(include_str!("../../../../contracts/fixtures/clock_mark.dbs"), "sha256:f695f5f387baf1a92682394f9ca814958e0837e1ec4c429ca2d19feb58767683");
 static CLOCK_MARK: Entity =
     Entity { name: "clock_mark", schema: &CLOCK_MARK_SCHEMA, new: orm::model::new_boxed::<ClockMark>, collect: orm::model::collect_boxed::<ClockMark> };
 const MARK_COLUMNS: [&str; 4] = ["seq", "label", "created_ts", "deleted_at"];

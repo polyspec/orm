@@ -2407,6 +2407,7 @@
   "engine/dbspec/expr.go::quote": "func(s string) string",
   "engine/dbspec/expr.go::writeExpr": "func(b *strings.Builder, e Expr)",
   "engine/dbspec/expr.go::writeOperand": "func(b *strings.Builder, op string, e Expr)",
+  "engine/dbspec/file.go::ReadFile": "func(path string) (string, []Diagnostic, error)",
   "engine/dbspec/introspect.go::Introspect": "func(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error)",
   "engine/dbspec/introspect.go::Querier": "type Querier interface { QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) }",
   "engine/dbspec/introspect.go::Unsupported": "type Unsupported struct { Kind string Table string Name string Reason string }",

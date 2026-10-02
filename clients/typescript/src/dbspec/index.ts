@@ -1,4 +1,5 @@
-// dbspec: the schema language of this repository (docs/dbspec.md). parseDbspec
+// dbspec: the schema language of this repository (docs/dbspec.md). readDbspecFile
+// reads a document file after checking its signature; parseDbspec
 // validates a document against its declared document set; emitDbspec writes a
 // parsed document in canonical form; dbspecManifest gives the manifest text,
 // the schema text and their hashes of a document set; renderDbspec writes the
@@ -16,6 +17,7 @@ import { parseDocument } from './parse.js';
 import { checkSet } from './set.js';
 
 export { renderDbspec, type DbspecDialect, type DbspecRenderResult } from './render.js';
+export { DBSPEC_SIGNATURE, readDbspecFile, type DbspecReadResult } from './file.js';
 export {
   introspectDbspec,
   type DbspecIntrospection,

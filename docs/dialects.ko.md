@@ -49,7 +49,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 - `bind_slots[].col_type`은 `date`, `time`, `datetime`, `point` 대상을 기록한다. 실행기는 SQLite 시간 값을 정규화하고 typed point를 bind 전에 `POINT(x y)`로 변환한다.
 - `bind_slots[].host_styles`와 `columns[].styles`는 실행기가 처리할 host stage를 기록한다. AES는 `docs/codec.md`에 정의한 `ORM-AES2\0` authenticated ciphertext format, 12바이트 random nonce, AES-256-GCM, version key derivation을 사용한다.
 - AES column이 있는 entity는 `aes_version` setting으로 key version column을 선언한다. 읽기는 그 column을 한 번만 고른다. request가 고른 column이면 그것을, 아니면 숨은 column을 쓰며, 저장된 version으로 설정된 key version에서 key를 선택한다. key가 없거나 ciphertext가 유효하지 않으면 `CONFIG` 또는 `CODEC_DECODE`를 반환하며 이전 version에 current key를 사용하지 않는다.
-- bench database는 `scripts/bench-db.sh`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, `go run ./bench/install`로 `schema/bench.dbspec`을 설치하고, `bench/sql/seed.mysql.sql`, `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`을 실행한 뒤 `go run ./bench/seedaes`로 인증된 host 형식의 AES와 blind-index 값을 채운다.
+- bench database는 `scripts/bench-db.sh`가 만든다. `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`의 database를 다시 만들고, `go run ./bench/install`로 `schema/bench.dbs`를 설치하고, `bench/sql/seed.mysql.sql`, `bench/sql/seed.pg.sql`, `bench/sql/seed.sqlite.sql`을 실행한 뒤 `go run ./bench/seedaes`로 인증된 host 형식의 AES와 blind-index 값을 채운다.
 - conformance vector의 결과는 세 database에서 같아야 한다. `get_query`는 방언 SQL을 반환한다.
 
 ## Schema definitions

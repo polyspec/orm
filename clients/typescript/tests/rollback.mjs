@@ -1,6 +1,6 @@
 // A transaction or savepoint whose callback fails and whose rollback fails
 // too, on SQLite, MySQL and PostgreSQL, with the fixture
-// contracts/fixtures/rollback.dbspec. The client reports one OrmError with
+// contracts/fixtures/rollback.dbs. The client reports one OrmError with
 // the code ROLLBACK and the message `transaction failed (<cause>) and rollback
 // failed (<rollback error>)` that keeps the callback error as its cause and
 // the rollback error as its rollback. The callback runs only model calls. On
@@ -26,7 +26,7 @@ import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel }
 import { failNextRollback } from '@polyspec/orm-typescript/testing';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
-const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbspec', import.meta.url), 'utf8');
+const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-rollback-'));
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;

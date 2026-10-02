@@ -24,10 +24,14 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
     println!("RUN dbspec stress {path}");
-    let text = match std::fs::read_to_string(&path) {
+    let text = match orm_schema::dbspec::read_file(std::path::Path::new(&path)) {
         Ok(text) => text,
-        Err(error) => {
+        Err(orm_schema::dbspec::ReadError::Io(error)) => {
             eprintln!("FAIL dbspec stress: {path}: {error}");
+            return ExitCode::FAILURE;
+        }
+        Err(orm_schema::dbspec::ReadError::Diagnostics(errors)) => {
+            eprintln!("FAIL dbspec stress: {}", errors[0].message);
             return ExitCode::FAILURE;
         }
     };

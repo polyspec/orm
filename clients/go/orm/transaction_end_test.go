@@ -12,10 +12,10 @@ import (
 	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-// connectBench는 schema/bench.dbspec의 manifest로 dsn에 연결한다.
+// connectBench는 schema/bench.dbs의 manifest로 dsn에 연결한다.
 func connectBench(t *testing.T, dsn string) *DB {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbspec"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

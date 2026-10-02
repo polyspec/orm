@@ -257,11 +257,11 @@ func commandBinary(t *testing.T) string {
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	bin := commandBinary(t)
 	write, _ := generatedScannedModule(t)
-	write("names.dbspec", namesDiagram)
+	write("names.dbs", namesDiagram)
 	run := func() (int, string, string) {
 		t.Helper()
 		var stdout, stderr bytes.Buffer
-		cmd := exec.Command(bin, "gen", "--document", "names.dbspec", "--lang", "go", "--out", "model", "--scan", "./...")
+		cmd := exec.Command(bin, "gen", "--document", "names.dbs", "--lang", "go", "--out", "model", "--scan", "./...")
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
 		var exit *exec.ExitError

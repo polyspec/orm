@@ -21,7 +21,7 @@ try {
   const calls = ['getsByNotAColumn(1)', 'orderByNotAColumnAsc()', 'gtIsClose(1)', 'lkReadCount(1)', 'getsByServiceSeqAndLtStartDt(1, 2)', 'andNeUuid(null)', 'joinServiceSeqWithSeq(s)'];
   await writeFile(usage, `import { Author } from './models/models.js';\ndeclare const x: Author;\n${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
   const out = join(work, 'models');
-  const bench = join(root, 'schema/bench.dbspec');
+  const bench = join(root, 'schema/bench.dbs');
   const result = run('gen', '--schema', bench, '--out', out, '--scan', usage);
   check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
   const text = await readFile(join(out, 'models.ts'), 'utf8');
@@ -43,7 +43,7 @@ try {
     'getDescription(): string | null',
   ]) check(text.includes(`public ${declaration} {`), `declaration ${declaration}`);
   // The value type of each dbspec type.
-  const types = join(work, 'types.dbspec');
+  const types = join(work, 'types.dbs');
   await writeFile(types, 'dbspec 1 types\n\ntable typed {\n  seq i64\n  small i16\n  day date null\n  clock time(3)\n  stamp datetime(0)\n  id uuid\n  body text\n  blob bytes\n  ratio f64\n  primary key (seq)\n}\n');
   const typed = join(work, 'typed');
   check(run('gen', '--schema', types, '--out', typed).status === 0, 'generation of the type document');
@@ -55,7 +55,7 @@ try {
   ]) check(typedText.includes(`public ${declaration} {`), `declaration ${declaration}`);
   const nested = await mkdtemp(join(root, 'clients/typescript/src/models/decimal-test-'));
   try {
-    const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.dbspec'), '--out', nested, '--scan', usage);
+    const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.dbs'), '--out', nested, '--scan', usage);
     check(nestedResult.status === 0, `nested generated model exit ${nestedResult.status}: ${nestedResult.stderr}`);
     const nestedText = await readFile(join(nested, 'models.ts'), 'utf8');
     check(nestedText.includes("from '../../index.js'"), 'nested model imports its client runtime');
@@ -65,11 +65,18 @@ try {
   }
   check(run('gen', '--out', out).status === 2, 'missing --schema is a usage error');
   check(run('--schema', bench, '--out', out).status === 2, 'a missing command is a usage error');
-  check(run('gen', '--schema', join(work, 'missing.dbspec'), '--out', out).status === 1, 'missing schema fails');
-  const invalid = join(work, 'invalid.dbspec');
+  check(run('gen', '--schema', join(work, 'missing.dbs'), '--out', out).status === 1, 'missing schema fails');
+  const invalid = join(work, 'invalid.dbs');
   await writeFile(invalid, 'dbspec 1 invalid\n\ntable t {\n  seq i64\n}\n');
   const rejected = run('gen', '--schema', invalid, '--out', out);
   check(rejected.status === 1 && rejected.stderr.includes('SCHEMA_INVALID'), `an invalid document fails: ${rejected.stderr}`);
+
+  // readDbspecFile rejects a file without the dbspec signature before parsing it.
+  for (const name of ['dbschema.dbs', 'empty.dbs']) {
+    const file = join(root, 'tests/dbspec/files', name);
+    const unsigned = run('gen', '--schema', file, '--out', join(work, `signature-${name}`));
+    check(unsigned.status === 1 && unsigned.stderr === `orm-gen: SCHEMA_INVALID: 1:1 signature: ${file} is not a dbspec document\n`, `${name} without the signature: ${unsigned.status} ${unsigned.stderr}`);
+  }
 
   // --check compares models.ts and the dbspec documents without writing.
   const genCheck = ['gen', '--schema', bench, '--out', out, '--scan', usage, '--check'];

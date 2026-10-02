@@ -1,4 +1,4 @@
-//! contracts/fixtures/audit.dbspec의 item과 item_history를 column 이름으로 읽고 쓰는 model과
+//! contracts/fixtures/audit.dbs의 item과 item_history를 column 이름으로 읽고 쓰는 model과
 //! 그 table을 다루는 도구. audit.rs와 coverage_audit.rs가 함께 쓴다.
 
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 pub static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbspec"), "sha256:2dd3ebcc7657ed4a39437fbd195221f456006745afbc6e957858b5a0b96f1bb2");
+    Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbs"), "sha256:2dd3ebcc7657ed4a39437fbd195221f456006745afbc6e957858b5a0b96f1bb2");
 
 /// column 이름으로 값을 읽고 쓰는 model.
 macro_rules! row_model {

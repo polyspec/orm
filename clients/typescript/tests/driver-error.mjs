@@ -1,6 +1,6 @@
 // Driver errors that the error catalog does not list, and CHECK violations,
 // on SQLite, MySQL and PostgreSQL, with the fixture
-// contracts/fixtures/refusal.dbspec. refused_row is immutable, so its triggers
+// contracts/fixtures/refusal.dbs. refused_row is immutable, so its triggers
 // refuse every update with a database error that the catalog does not list;
 // the client reports it as an OrmError with the code DRIVER, the driver
 // message, and the driver error as its cause. Its CHECK constraint refuses a
@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
-const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbspec', import.meta.url), 'utf8');
+const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-driver-error-'));
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;

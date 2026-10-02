@@ -1,13 +1,15 @@
 // orm-gen: the TypeScript model generator.
 //
-//   orm-gen gen --schema <document.dbspec>... --out src/models [--scan <file or directory>]... [--check]
+//   orm-gen gen --schema <document.dbs>... --out src/models [--scan <file or directory>]... [--check]
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { readDbspecFile } from '../dbspec/file.js';
 import { modelOfDocuments, parseDocumentSet } from '../engine/model.js';
+import { OrmError } from '../runtime_error.js';
 import { generateTypeScript, renderTypeScript } from '../generate/typescript.js';
 
-const usageText = `usage: orm-gen gen --schema <document.dbspec>... --out <directory> [--scan <file or directory>]... [--check]`;
+const usageText = `usage: orm-gen gen --schema <document.dbs>... --out <directory> [--scan <file or directory>]... [--check]`;
 
 class UsageError extends Error {}
 
@@ -59,13 +61,23 @@ function report(lines: readonly string[]): number {
   return lines.length === 0 ? 0 : 1;
 }
 
+/** --schema 파일을 readDbspecFile로 읽는다. signature가 없는 파일은 그 diagnostic의 SCHEMA_INVALID다. */
+function readDocument(path: string): string {
+  const read = readDbspecFile(path);
+  if (read.text === null) {
+    const d = read.diagnostics[0]!;
+    throw new OrmError('SCHEMA_INVALID', `${d.line}:${d.column} ${d.rule}: ${d.message}`);
+  }
+  return read.text;
+}
+
 /** Generates models.ts from the dbspec documents of one document set, each named by --schema. */
 function gen(args: readonly string[]): number {
   const { values } = parse(args, { schema: { type: 'string', multiple: true }, out: { type: 'string' }, scan: { type: 'string', multiple: true }, check: { type: 'boolean' } });
   const schemas = (values.schema as string[] | undefined) ?? [];
   const out = text(values.out);
   if (schemas.length === 0 || out === '') usage();
-  const model = modelOfDocuments(parseDocumentSet(schemas.map(path => readFileSync(path, 'utf8'))));
+  const model = modelOfDocuments(parseDocumentSet(schemas.map(readDocument)));
   const scan = (values.scan as string[] | undefined) ?? [];
   if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(model, out, scan)));
   generateTypeScript(model, out, scan);

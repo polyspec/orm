@@ -29,7 +29,7 @@ go build ./...
 
 ## 2. 스키마
 
-사람이 쓰는 정의는 dbspec document의 집합이다([dbspec.md](dbspec.md)). `schema/bench.dbspec`이 예제다.
+사람이 쓰는 정의는 dbspec document의 집합이다([dbspec.md](dbspec.md)). `schema/bench.dbs`가 예제다.
 
 ```text
 dbspec 1 example
@@ -74,15 +74,15 @@ table authors {
 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
-npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
+npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -99,7 +99,7 @@ fn main() {
 - `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 Go·PHP·TypeScript `orm-gen`의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 요청의 `manifest_hash`가 클라이언트가 읽은 모델과 다르면 `SCHEMA_HASH_MISMATCH`로 실패한다.
@@ -124,7 +124,7 @@ sqlite:///var/lib/orm_example.sqlite
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbspec>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`와 `ManifestHash`를 쓴다. `model.Connect(dsn, config)`는 그 manifest로 `orm.Connect(dsn, schema, config)`를 호출한다. runtime은 process마다 한 번 text로 모델을 만들고, text의 hash가 `ManifestHash`와 다르면 `SCHEMA_HASH_MISMATCH`로 거부하며, 모든 문장을 process 안에서 계획한다. `master.Utils().Schema().Install(model.ManifestText)`는 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다.
+`orm-gen gen --document <file.dbs>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`와 `ManifestHash`를 쓴다. `model.Connect(dsn, config)`는 그 manifest로 `orm.Connect(dsn, schema, config)`를 호출한다. runtime은 process마다 한 번 text로 모델을 만들고, text의 hash가 `ManifestHash`와 다르면 `SCHEMA_HASH_MISMATCH`로 거부하며, 모든 문장을 process 안에서 계획한다. `master.Utils().Schema().Install(model.ManifestText)`는 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다.
 
 ### PHP
 
@@ -173,7 +173,7 @@ import { Db } from '@polyspec/orm-typescript';
 import { Item } from './models/models.js';
 
 const master = await Db.connect(masterDsn, { aesKey });
-await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.utils().schema().install([await readFile('schema/example.dbs', 'utf8')]);
 await master.transaction(async () => {
   await new Item().setTitle('first').create();
 }, { operation: 42 });

@@ -21,13 +21,13 @@ type plannerStatement struct {
 	Params []int  `json:"params"`
 }
 
-// compilePlannerCase는 planner fixture case의 input에 schema/bench.dbspec의
+// compilePlannerCase는 planner fixture case의 input에 schema/bench.dbs의
 // manifest_hash를 더해 각 dialect의 engine으로 compile하고, 기대한
 // statement나 error code와 비교한다.
 func compilePlannerCase(t *testing.T, id string) {
 	t.Helper()
 	c := featureFixture(t, "planner", id, "compile")
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbspec"))
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)
 	}

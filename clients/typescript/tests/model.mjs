@@ -17,7 +17,7 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
-const bench = await readFile(join(root, 'schema/bench.dbspec'), 'utf8');
+const bench = await readFile(join(root, 'schema/bench.dbs'), 'utf8');
 const benchTables = parseDbspec(bench, {}).document.tables.map(t => t.name);
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
@@ -111,7 +111,7 @@ async function primaryAndReplica(dialect, primary, replica) {
   }
 }
 
-/** Drops the tables of schema/bench.dbspec; each SQLite case starts from a new file. */
+/** Drops the tables of schema/bench.dbs; each SQLite case starts from a new file. */
 async function dropTables(dialect, dsn) {
   if (dialect === 'mysql') {
     const conn = await mysqlConnection(dsn);
@@ -560,7 +560,7 @@ function documentModels(text) {
  * first key version.
  */
 async function aesJsonColumn(dialect, dsn, sqlitePath) {
-  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbspec'), 'utf8');
+  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
   const { secret_config: SecretConfig } = documentModels(secret);
   await dropTable(dialect, dsn, 'secret_config');
   const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
