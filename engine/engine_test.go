@@ -11,10 +11,10 @@ import (
 	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
-// benchModel은 schema/bench.dbspec의 runtime model이다.
+// benchModel은 schema/bench.dbs의 runtime model이다.
 func benchModel(t *testing.T) *runtimemodel.Model {
 	t.Helper()
-	m, err := runtimemodel.LoadFiles("../schema/bench.dbspec")
+	m, err := runtimemodel.LoadFiles("../schema/bench.dbs")
 	if err != nil {
 		t.Fatal(err)
 	}

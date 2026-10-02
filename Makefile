@@ -33,10 +33,10 @@ PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
 # connection으로 주입한 apply 정리 error를 두 번 실행하고, tests/dbspec/stress.mjs의 stress
 # 문서를 release mode에서 두 번 잰다: parse는 300 ms 안, emit(parse(doc)) == doc, 두
 # emission이 같다.
-DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbspec
+DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbs
 .PHONY: dbspec-rust-check
 # dbspec-ddl-check는 tests/dbspec/ddl.json의 모든 vector를 TEST_ENV의 MySQL, PostgreSQL,
-# SQLite에 적용해 behavior step을 실행하고, 모든 schema/*.dbspec과 contracts/fixtures/*.dbspec의
+# SQLite에 적용해 behavior step을 실행하고, 모든 schema/*.dbs와 contracts/fixtures/*.dbs의
 # 렌더링한 statement를 적용한다.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
@@ -312,7 +312,7 @@ dbspec-ts-check:
 # 틀린 field를 위치와 함께 거부하는지 확인하며, parse와 emit 시간을 기록한다.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	go test ./engine/dbspec -run '^(TestSharedVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
+	go test ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
 
 docs-dev:
 	npm run docs:dev

@@ -1,5 +1,5 @@
 // The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL, with the
-// fixtures contracts/fixtures/clock.dbspec and clock_mark.dbspec. An insert
+// fixtures contracts/fixtures/clock.dbs and clock_mark.dbs. An insert
 // that omits created_ts (default now) takes the database clock on MySQL and
 // PostgreSQL and binds the client clock of the `now` slot on SQLite, whose
 // database clock has milliseconds only; either way the stored fraction holds
@@ -17,8 +17,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { CORE, Db, Model, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
-const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbspec', import.meta.url), 'utf8');
-const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbspec', import.meta.url), 'utf8');
+const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
+const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-clock-'));
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;

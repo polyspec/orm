@@ -38,8 +38,8 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/rollback.dbspec')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['rollback.dbspec' => $documents[0]])), "$work/models", 'RollbackCase\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/rollback.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['rollback.dbs' => $documents[0]])), "$work/models", 'RollbackCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'RollbackCase\\Orm\\')) {
         require "$work/models/" . substr($class, strlen('RollbackCase\\Orm\\')) . '.php';

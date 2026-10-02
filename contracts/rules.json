@@ -9,7 +9,7 @@
     },
     {
       "id": "schema.generated",
-      "source": "schema/*.dbspec",
+      "source": "schema/*.dbs",
       "checker": "go-model-check and ts-model-check",
       "failure": "the committed generated clients are not reproducible from the dbspec source"
     },

@@ -1,11 +1,11 @@
 package orm_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
@@ -25,11 +25,14 @@ func fixtureSchema(t *testing.T, names ...string) *orm.Schema {
 	t.Helper()
 	documents := make([]string, len(names))
 	for i, name := range names {
-		b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbspec"))
+		text, diagnostics, err := dbspec.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		documents[i] = string(b)
+		if len(diagnostics) > 0 {
+			t.Fatal(diagnostics)
+		}
+		documents[i] = text
 	}
 	return documentSchema(t, documents...)
 }

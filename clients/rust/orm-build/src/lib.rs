@@ -8,7 +8,7 @@
 //! ```text
 //! // build.rs
 //! fn main() {
-//!     orm_build::Builder::new(["schema/shop.dbspec"]).scan("src").generate();
+//!     orm_build::Builder::new(["schema/shop.dbs"]).scan("src").generate();
 //! }
 //! ```
 //!
@@ -33,7 +33,7 @@ use std::path::{Path, PathBuf};
 pub const MODEL_FILE: &str = "orm_model.rs";
 
 /// generated model이 `include_str!`로 담는 manifest text file의 `OUT_DIR` 안 이름.
-pub const MANIFEST_FILE: &str = "orm_manifest.dbspec";
+pub const MANIFEST_FILE: &str = "orm_manifest.dbs";
 
 /// Configures one generation.
 pub struct Builder {

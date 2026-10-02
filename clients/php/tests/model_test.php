@@ -25,7 +25,7 @@ use Orm\OrmException;
 use Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
-$documents = [(string) file_get_contents("$root/schema/bench.dbspec")];
+$documents = [(string) file_get_contents("$root/schema/bench.dbs")];
 $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 @mkdir($work, 0o700, true);
 $tables = ['account_project', 'composite_membership', 'composite_account', 'author', 'service_member', 'service_region', 'soft_record', 'account', 'project', 'user', 'service', 'task'];

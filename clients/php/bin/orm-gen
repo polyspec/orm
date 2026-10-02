@@ -2,7 +2,7 @@
 <?php
 // dbspec document set에서 model을 만든다:
 //
-//   vendor/bin/orm-gen gen --out src/Model --namespace Example\\Model schema/example.dbspec
+//   vendor/bin/orm-gen gen --out src/Model --namespace Example\\Model schema/example.dbs
 declare(strict_types=1);
 
 foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {

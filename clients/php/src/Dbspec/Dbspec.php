@@ -25,6 +25,32 @@ final class Dbspec
         return $document === null ? ParseResult::invalid($diagnostics) : ParseResult::valid($document);
     }
 
+    /** 모든 dbspec document 파일의 첫 byte다. header `dbspec 1 <document>`가 이것으로 시작한다. */
+    public const SIGNATURE = 'dbspec ';
+
+    /**
+     * parse할 $path의 dbspec document 파일을 읽는다(docs/dbspec.md "Files"). SIGNATURE로
+     * 시작하지 않는 파일은 text 없이 line 1, column 1의 `signature` diagnostic 하나와 message
+     * "<path> is not a dbspec document"를 돌려주며 parse하지 않는다. directory나 읽을 수
+     * 없는 파일은 "cannot read <path>: <reason>" RuntimeException이다.
+     */
+    public static function readFile(string $path): ReadResult
+    {
+        // PHP는 directory를 열고 빈 text를 읽으므로, 빈 파일의 signature diagnostic이 되기 전에 거부한다.
+        if (is_dir($path)) {
+            throw new \RuntimeException("cannot read $path: is a directory");
+        }
+        $text = @file_get_contents($path);
+        if ($text === false) {
+            $reason = error_get_last()['message'] ?? 'cannot be read';
+            throw new \RuntimeException("cannot read $path: $reason");
+        }
+        if (!str_starts_with($text, self::SIGNATURE)) {
+            return ReadResult::invalid([new Diagnostic('signature', 1, 1, "$path is not a dbspec document")]);
+        }
+        return ReadResult::valid($text);
+    }
+
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */
     public static function emit(Document $document): string
     {

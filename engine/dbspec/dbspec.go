@@ -21,6 +21,7 @@ const Code = "SCHEMA_INVALID"
 
 // Rules of a diagnostic, as listed in docs/dbspec.md "Limits and errors".
 const (
+	RuleSignature     = "signature"
 	RuleHeader        = "header"
 	RuleSyntax        = "syntax"
 	RuleOrder         = "order"

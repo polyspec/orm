@@ -1,6 +1,7 @@
 //! dbspec, the schema language (`docs/dbspec.md`): parsing with every
 //! validation rule, and canonical emission.
 //!
+//! [`read_file`] reads a document file after checking its signature.
 //! [`parse`] reads one document against the declared document set that its
 //! `use` lines refer to and returns the [`Document`] or every [`Diagnostic`]
 //! in source order. [`emit`] writes a document in its canonical text, so
@@ -10,6 +11,7 @@ mod check;
 mod check_type;
 mod compare;
 mod emit;
+mod file;
 mod introspect;
 mod lexer;
 mod literal;
@@ -25,6 +27,7 @@ mod runtime;
 mod validate;
 
 pub use compare::{compare_schemas, Difference, RULE_COMPARE};
+pub use file::{read_file, ReadError, SIGNATURE};
 pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};

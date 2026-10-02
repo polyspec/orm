@@ -1,5 +1,5 @@
 //! A transaction or savepoint whose callback fails and whose rollback fails
-//! too, on SQLite, MySQL and PostgreSQL (contracts/fixtures/rollback.dbspec). The client reports Error::Rollback
+//! too, on SQLite, MySQL and PostgreSQL (contracts/fixtures/rollback.dbs). The client reports Error::Rollback
 //! with the code ROLLBACK, which keeps the callback error and the rollback
 //! error. The callback runs only model calls. On SQLite a trigger of the test
 //! fixture raises ROLLBACK when a row labeled `end` is inserted, which ends
@@ -18,7 +18,7 @@ use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static ROLLBACK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbspec"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
+    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
 static ROLLBACK_PROBE: Entity = Entity {
     name: "rollback_probe",
     schema: &ROLLBACK_SCHEMA,

@@ -617,8 +617,8 @@
       "fixtures": [
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
-        "contracts/fixtures/clock.dbspec",
-        "contracts/fixtures/clock_mark.dbspec"
+        "contracts/fixtures/clock.dbs",
+        "contracts/fixtures/clock_mark.dbs"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -761,7 +761,7 @@
       },
       "fixtures": [
         "clients/php/tests/deadlock_child.php",
-        "contracts/fixtures/rollback.dbspec"
+        "contracts/fixtures/rollback.dbs"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -936,7 +936,7 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/bench.dbspec",
+        "schema/bench.dbs",
         "tests/dbspec/cases.json",
         "tests/dbspec/ddl.json",
         "tests/dbspec/plans.json",
@@ -1379,7 +1379,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked --release -p orm-tests --bin integration && clients/rust/target/release/integration \"$PWD/schema/bench.dbspec\""
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked --release -p orm-tests --bin integration && clients/rust/target/release/integration \"$PWD/schema/bench.dbs\""
         },
         {
           "id": "chunking-php-keys",
@@ -1445,8 +1445,8 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/bench.dbspec",
-        "contracts/fixtures/refusal.dbspec"
+        "schema/bench.dbs",
+        "contracts/fixtures/refusal.dbs"
       ],
       "tests": [
         "engine/planner/soft_delete_test.go",
@@ -1512,7 +1512,7 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "contracts/fixtures/audit.dbspec"
+        "contracts/fixtures/audit.dbs"
       ],
       "tests": [
         "clients/go/orm/audit_test.go",

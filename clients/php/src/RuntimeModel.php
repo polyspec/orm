@@ -67,19 +67,32 @@ final class RuntimeModel
         return $documents;
     }
 
-    /** document set의 dbspec 파일을 읽어 parse한다. @param list<string> $paths */
+    /**
+     * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. 읽을 수 없는 파일은
+     * CONFIG, signature가 없는 파일은 SCHEMA_INVALID로 실패한다. @param list<string> $paths
+     */
     public static function files(array $paths): array
     {
         if ($paths === []) {
             throw new OrmException(Code::CONFIG, 'a document set needs at least one dbspec file');
         }
         $texts = [];
+        $errors = [];
         foreach ($paths as $path) {
-            $text = @file_get_contents($path);
-            if ($text === false) {
-                throw new OrmException(Code::CONFIG, "cannot read $path");
+            try {
+                $read = Dbspec::readFile($path);
+            } catch (\RuntimeException $e) {
+                throw new OrmException(Code::CONFIG, $e->getMessage(), $e);
             }
-            $texts[$path] = $text;
+            foreach ($read->diagnostics as $d) {
+                $errors[] = "$path:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+            }
+            if ($read->text !== null) {
+                $texts[$path] = $read->text;
+            }
+        }
+        if ($errors !== []) {
+            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
         }
         return self::parse($texts);
     }

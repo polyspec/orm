@@ -29,7 +29,7 @@ mod tests {
     // 모든 column을 고른 node는 AES key version column을 한 번만 읽고 그 위치를 표시한다.
     #[test]
     fn all_columns_select_the_aes_version_once() {
-        let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbspec")).unwrap();
+        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
         let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
@@ -54,7 +54,7 @@ mod tests {
     // 나아가지 않으므로(postgres.identity.by_default_not_advanced) 세 dialect 모두 거부한다.
     #[test]
     fn key_columns_are_not_written() {
-        let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbspec")).unwrap();
+        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
         let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
@@ -107,7 +107,7 @@ mod tests {
     // 자리로 bind한다(여러 row insert는 row마다). MySQL과 PostgreSQL은 database default에 맡긴다.
     #[test]
     fn sqlite_insert_binds_the_clock_for_default_now() {
-        let text = include_str!("../../../../../contracts/fixtures/clock.dbspec");
+        let text = include_str!("../../../../../contracts/fixtures/clock.dbs");
         let document = crate::dbspec::parse(text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();

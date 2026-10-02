@@ -17,8 +17,8 @@ import (
 // schemaDocumentPatterns finds the dbspec documents that the clients and
 // tests use as schemas; each document is one set.
 var schemaDocumentPatterns = []string{
-	filepath.Join("..", "..", "schema", "*.dbspec"),
-	filepath.Join("..", "..", "contracts", "fixtures", "*.dbspec"),
+	filepath.Join("..", "..", "schema", "*.dbs"),
+	filepath.Join("..", "..", "contracts", "fixtures", "*.dbs"),
 }
 
 // TestSchemaDocumentsApply renders every schema document for MySQL,
@@ -54,16 +54,20 @@ func TestSchemaDocumentsApply(t *testing.T) {
 	started := time.Now()
 	index := 0
 	for _, path := range paths {
-		text, err := os.ReadFile(path)
+		text, diagnostics, err := dbspec.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		document, diagnostics := dbspec.Parse(string(text), nil)
 		if len(diagnostics) > 0 {
 			t.Errorf("%s: %v", path, diagnostics)
 			continue
 		}
-		name := strings.TrimSuffix(filepath.Base(path), ".dbspec")
+		document, diagnostics := dbspec.Parse(text, nil)
+		if len(diagnostics) > 0 {
+			t.Errorf("%s: %v", path, diagnostics)
+			continue
+		}
+		name := strings.TrimSuffix(filepath.Base(path), ".dbs")
 		for _, db := range []string{"mysql", "postgres", "sqlite"} {
 			statements, diagnostics := dbspec.Render([]*dbspec.Document{document}, dbspec.Dialect(db))
 			if len(diagnostics) > 0 {

@@ -17,7 +17,7 @@ fn require_dsn(var: &str) -> String {
 }
 
 static SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/audit.dbspec"), "sha256:2dd3ebcc7657ed4a39437fbd195221f456006745afbc6e957858b5a0b96f1bb2");
+    Schema::new(include_str!("../../../../contracts/fixtures/audit.dbs"), "sha256:2dd3ebcc7657ed4a39437fbd195221f456006745afbc6e957858b5a0b96f1bb2");
 
 /// column 이름으로 값을 읽고 쓰는 model.
 macro_rules! row_model {

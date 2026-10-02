@@ -11,7 +11,7 @@ use std::time::Duration;
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
-    std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(path)).unwrap()
+    dbspec::read_file(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
 fn document(path: &str) -> Document {
@@ -22,8 +22,8 @@ fn document(path: &str) -> Document {
 fn manifest_text_reads_back_as_the_same_document_set() {
     let clock = CaseClock::start();
     println!("RUN dbspec runtime manifest round trip");
-    let bench = document("schema/bench.dbspec");
-    let audit = document("contracts/fixtures/audit.dbspec");
+    let bench = document("schema/bench.dbs");
+    let audit = document("contracts/fixtures/audit.dbs");
     let manifest = dbspec::manifest(&[&bench, &audit]).unwrap();
     let documents = dbspec::parse_manifest(&manifest.manifest_text).unwrap_or_else(|errors| panic!("{errors:?}"));
     let refs: Vec<&Document> = documents.iter().collect();
@@ -54,7 +54,7 @@ fn manifest_text_without_header_is_rejected() {
 fn runtime_model_of_bench() {
     let clock = CaseClock::start();
     println!("RUN dbspec runtime model of bench");
-    let bench = document("schema/bench.dbspec");
+    let bench = document("schema/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(
@@ -137,7 +137,7 @@ fn runtime_model_names_entities_and_reads_settings() {
     println!("RUN dbspec runtime model settings");
     let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history operation operation_id action change previous previous_operation_id\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_operation_id i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n";
     let shop = dbspec::parse(text, &BTreeMap::new()).unwrap_or_else(|errors| panic!("{errors:?}"));
-    let audit = document("contracts/fixtures/audit.dbspec");
+    let audit = document("contracts/fixtures/audit.dbs");
     let model = dbspec::runtime_model(&[&shop, &audit]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, ["item", "item_history", "member", "member_history"], "documents in name order, tables in document order");

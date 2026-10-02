@@ -144,7 +144,7 @@ fn mermaid_vectors() {
         count += 1;
         run(&id, &mut failures, || {
             let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(case["path"].as_str().expect("path"));
-            let source = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let document = dbspec::parse(&source, &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);
             if drops(&dropped) != case["dropped"] {

@@ -40,11 +40,14 @@ func TestIntrospectCompare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text, err := os.ReadFile(filepath.Join(root, stressPath))
+	text, diagnostics, err := dbspec.ReadFile(filepath.Join(root, stressPath))
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, diagnostics := dbspec.Parse(string(text), nil)
+	if len(diagnostics) > 0 {
+		t.Fatal(diagnostics)
+	}
+	document, diagnostics := dbspec.Parse(text, nil)
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
