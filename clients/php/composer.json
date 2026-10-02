@@ -8,7 +8,6 @@
         "php": ">=8.4",
         "ordered-json/ordered-json": "dev-main",
         "ext-pdo": "*",
-        "ext-pdo_mysql": "*",
         "ext-json": "*",
         "ext-zlib": "*",
         "symfony/yaml": "^7.4"
@@ -20,6 +19,7 @@
         }
     ],
     "suggest": {
+        "ext-pdo_mysql": "mysql:// DSNs",
         "ext-pdo_pgsql": "postgres:// DSNs",
         "ext-pdo_sqlite": "sqlite:// DSNs",
         "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)"

@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.8.3: main is merged into the dbspec branch again with N17: the PHP client requires no PDO driver extension, and `make php-without-mysql-check` installs `schema/bench.dbs` and creates and reads a row on SQLite in the official PHP image, which has no `pdo_mysql`.
+
 - T8.9: dbspec document files use the extension `.dbs` instead of `.dbspec`, and the header `dbspec 1 <document>` is the file signature. Every tool reads a document file with the one reader of its client (Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`), which rejects a file that does not start with the bytes `dbspec `, such as a DbSchema project file or an empty file, with one `signature` error `<path> is not a dbspec document` before parsing.
 
 - T17.7: the Go native baseline of the hot-path check runs the statements the generated client runs, its relation and list workloads bind only their keys, and the Rust native insert writes an AES ciphertext into the AES column.
@@ -336,6 +338,14 @@ catalog source per feature, the decisions for a local datetime with a
 UTC connection rule and executor update-time stamping, and leaves the audit
 context definition for T8.1 review. Thirteen defects of the current schema
 tools and clients are recorded as T8.0.1-T8.0.11, T8.0.13 and T8.0.14.
+
+Require no PDO driver extension in the PHP client (N17). `composer.json`
+required `ext-pdo_mysql`, so `composer install` refused a PHP without it,
+such as the official PHP image, although the client references the MySQL
+driver only for a `mysql://` DSN. It now suggests `pdo_mysql`, `pdo_pgsql`
+and `pdo_sqlite` and requires none of them, and
+`make php-without-mysql-check` runs the client on SQLite in the official
+PHP image.
 
 Provide a test fault that makes the rollback of a transaction fail on
 every database (N16). orm had no
