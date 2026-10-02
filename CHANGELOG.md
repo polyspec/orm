@@ -1,5 +1,7 @@
 # Changelog
 
+- T22: the root package.json no longer has the `schema:check` script, whose script file was removed, and `make repo-check` fails when a root npm script names a path that is not a tracked file or directory.
+
 - T21: the Rust catalog grid decodes MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`, `time` and `timestamp` cells as `Date`, `Time` and `DateTime` in the dbspec text forms, with exactly the declared fraction digits in a table page and six in a read-only grid query, so a table with a datetime column pages on every database.
 
 - T20: the Rust `client_bench` and the bench/rust `native` and `driver_compare` require their iterations argument; a missing argument or a value that is not an integer of at least the program's minimum ends the program with status 1 and an error naming the argument and the value, instead of running 3000 or 1000 iterations.
