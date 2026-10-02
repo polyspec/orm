@@ -803,10 +803,10 @@ function failureMessage(callable $fn): string
     return 'no error';
 }
 
-/** message 가 callback 오류와 transaction 끝의 오류를 함께 담은 CONFIG 인지 확인한다. */
+/** message 가 callback 오류와 transaction 끝의 오류를 함께 담은 ROLLBACK 인지 확인한다. */
 function checkBoth(string $what, string $message, string $cause, string $end): void
 {
-    check(str_starts_with($message, "CONFIG: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
+    check(str_starts_with($message, "ROLLBACK: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
 }
 
 // transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
@@ -877,7 +877,8 @@ try {
     checkBoth('rollback', $rolledBack, 'callback failed', 'rollback rejected by the test driver');
     $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 1';
     $began = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
-    checkBoth('begin', $began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
+    // catalog에 없는 driver 오류는 DRIVER code의 원인이다.
+    checkBoth('begin', $began, 'DRIVER: statement rejected by the test driver', 'rollback rejected by the test driver');
     $pdo->rejectRollback = false;
     $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 0';
     $committed = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));

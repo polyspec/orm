@@ -34,7 +34,8 @@ const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
 const postgresDSN = process.env.ORM_TEST_POSTGRES_DSN;
 if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');
 
-const fixedNow = () => new Date(Date.UTC(2026, 9, 1, 0, 0, 0));
+// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
 // plans는 plans.json의 create-from-empty와 그 target에서 시작하는 rename-table-and-column이다.
 const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
@@ -227,6 +228,8 @@ const scenarios = [
     await applyPlans(session.connection, dialect, plans, fixedNow, record);
     await schemaIs(session, dialect, target);
     assert.equal(await firstValue(session, `SELECT COUNT(*) FROM ${historyTable(dialect)} WHERE state = 'done'`), '2');
+    // applied_at은 tool clock의 UTC 시각을 소수 여섯 자리로 자른 text다.
+    assert.equal(await firstValue(session, `SELECT COUNT(*) FROM ${historyTable(dialect)} WHERE applied_at = '2026-10-01T00:00:00.123456Z'`), '2');
     const counts = {};
     for (const kind of events) counts[kind] = (counts[kind] ?? 0) + 1;
     assert.equal(counts.plan, 2, 'plan events');

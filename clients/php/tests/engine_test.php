@@ -100,7 +100,7 @@ foreach ($engines as $d => $engine) {
     $read = $engine->plan($softRead)['steps'][0]['sql'];
     expect(str_contains($read, $q('a') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete read filter: $read");
     $delete = $engine->plan($softDelete)['steps'][0]['sql'];
-    $mark = 'SET ' . $q('deleted_at') . ' = ' . ($d === 'sqlite' ? '?' : 'CURRENT_TIMESTAMP');
+    $mark = 'SET ' . $q('deleted_at') . ' = ' . ['mysql' => 'CURRENT_TIMESTAMP(6) ', 'postgres' => 'CURRENT_TIMESTAMP ', 'sqlite' => '? '][$d];
     expect(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
 }
 

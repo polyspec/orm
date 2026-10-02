@@ -60,7 +60,8 @@ async function connect() {
 }
 
 const [connection, exec, close] = await connect();
-const now = () => new Date(Date.UTC(2026, 9, 1, 0, 0, 0));
+// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+const now = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 const stop = new Error('stop');
 let result;
 try {

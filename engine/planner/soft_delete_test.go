@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -42,5 +43,55 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 	}
 	if len(plan.Steps[0].BindSlots) != 2 || plan.Steps[0].BindSlots[0].From != "now" || plan.Steps[0].BindSlots[1].From != "param" {
 		t.Fatalf("delete plan bind slots differ: %#v", plan.Steps[0].BindSlots)
+	}
+}
+
+// TestSoftDeleteClockPrecision는 soft delete가 column에 선언된 소수 자리로
+// database clock을 쓰는지 확인한다.
+func TestSoftDeleteClockPrecision(t *testing.T) {
+	for _, tc := range []struct {
+		column  string
+		dialect dialect.Dialect
+		want    string
+	}{
+		{"datetime(6)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE"},
+		{"datetime(0)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP WHERE"},
+		{"datetime(6)", dialect.Postgres{}, `UPDATE "account" SET "deleted_at" = CURRENT_TIMESTAMP WHERE`},
+		{"datetime(6)", dialect.SQLite{}, `UPDATE "account" SET "deleted_at" = ? WHERE`},
+	} {
+		m := testModel(t, "dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at "+tc.column+" null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n")
+		param := 0
+		plan, err := (&Planner{M: m, D: tc.dialect}).Compile(&ir.Request{
+			Kind:    "delete",
+			Query:   ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "eq", P: &param}}}}},
+			NParams: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sql := plan.Steps[0].SQL; !strings.HasPrefix(sql, tc.want) {
+			t.Errorf("%s %s: %s, want prefix %s", tc.dialect.Name(), tc.column, sql, tc.want)
+		}
+	}
+}
+
+// TestSoftDeleteClockSlotPrecision는 SQLite soft delete의 now slot이 column의 소수
+// 자리를 가지는지 확인한다. executor는 그 자리로 clock을 잘라 SQLite의
+// datetime(p) CHECK를 만족한다.
+func TestSoftDeleteClockSlotPrecision(t *testing.T) {
+	for _, precision := range []int{0, 3, 6} {
+		m := testModel(t, fmt.Sprintf("dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(%d) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n", precision))
+		param := 0
+		plan, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(&ir.Request{
+			Kind:    "delete",
+			Query:   ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "eq", P: &param}}}}},
+			NParams: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slot := plan.Steps[0].BindSlots[0]; slot.From != "now" || slot.Precision != precision {
+			t.Errorf("datetime(%d) soft delete slot = %+v", precision, slot)
+		}
 	}
 }

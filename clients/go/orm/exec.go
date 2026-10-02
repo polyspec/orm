@@ -126,8 +126,17 @@ func (d *DB) localTime(v any) any {
 }
 
 // now is the executor clock as UTC wall-clock text.
-func (d *DB) now() string {
-	return time.Now().In(d.location).Format("2006-01-02 15:04:05.000000")
+func (d *DB) now() time.Time {
+	return time.Now().In(d.location).Truncate(time.Microsecond)
+}
+
+// clockText는 clock을 precision 자리 소수로 자른 datetime text다.
+func clockText(t time.Time, precision int) string {
+	layout := "2006-01-02 15:04:05"
+	if precision > 0 {
+		layout += "." + strings.Repeat("0", precision)
+	}
+	return t.Format(layout)
 }
 
 // args resolves the bind slots of a step; masks marks secret and clock
@@ -141,7 +150,7 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 		masks[len(out)] = v
 	}
 	// One statement reads the clock once, so its clock columns are equal.
-	clock := ""
+	var clock time.Time
 	for _, b := range st.BindSlots {
 		switch b.From {
 		case "param":
@@ -195,10 +204,10 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 			out = append(out, parentVals...)
 		case "now":
 			mask(NowBind)
-			if clock == "" {
+			if clock.IsZero() {
 				clock = d.now()
 			}
-			out = append(out, clock)
+			out = append(out, clockText(clock, b.Precision))
 		case "operation":
 			v, err := operationValue(r.operation, b.ColType)
 			if err != nil {

@@ -126,6 +126,7 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 ```
 
 - `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `operation`(unit of work의 operation id. operation 컬럼의 `col_type` `i64` 또는 `uuid`가 있다) 중 하나다. `operation` 슬롯이 있는 쓰기를 operation id 없이 실행하거나 id가 `col_type`에 맞지 않으면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
+- **Clock.** 이것이 유일한 clock 규칙이며 [dialects](dialects.ko.md)와 [plans](plans.ko.md)는 이 규칙을 따른다. 모든 연결은 `datetime(p)`를 UTC로 읽고 쓴다. `now` slot은 마이크로초 해상도의 UTC 클라이언트 wall clock을 소수 여섯 자리로 자른 `datetime` 텍스트이며, statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같다. ORM이 쓰거나 비교하는 clock은 마이크로초를 유지한다. update 시각과 soft delete는 column이 선언한 소수 자릿수로 clock을 대입한다: MySQL은 `p > 0`이면 `CURRENT_TIMESTAMP(p)`, PostgreSQL은 `CURRENT_TIMESTAMP`, SQLite는 `now` slot이다. MySQL `now` value function과 그 상대 형식은 `NOW(6)`, PostgreSQL은 `now()`를 쓴다. SQLite에는 마이크로초 clock이 없으므로 SQLite dialect는 update 시각, soft delete, `now` 함수에 `now` slot을 bind하고, 상대 형식을 `now` slot에 간격을 적용한 `datetime` 뒤에 두 번째 `now` slot의 소수 여섯 자리를 붙인 형태로 render하며, insert가 빼먹은 `default now` 컬럼마다 `now` slot을 bind한다. MySQL과 PostgreSQL의 insert는 그런 컬럼을 database default에 맡긴다. plan history는 tool clock을 소수 여섯 자리로 유지한다([plans](plans.ko.md#apply)).
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.
 - `group_count` 행은 선택한 그룹 컬럼의 선언된 타입을 보존한다. 불리언 그룹 값은 JSON 불리언이며 데이터베이스 불리언 값이 잘못되면 디코딩에 실패한다.
@@ -140,7 +141,7 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 
 ## 3. 오류
 
-오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`를 추가한다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
+오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`). `ROLLBACK` 오류는 재시도하지 않는다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
 ## 4. 클라이언트 안의 계획
 
@@ -154,5 +155,7 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 | TypeScript | `clients/typescript/src/engine/`, `clients/typescript/src/dbspec/` DDL |
 
 generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부하며(`SCHEMA_HASH_MISMATCH`), 모든 요청을 그 요청의 `manifest_hash` 모델로 계획한다. plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
+
+한 프로세스는 여러 document set의 generated code를 읽을 수 있고, 연결 하나가 그 모두를 처리한다. generated code는 읽힐 때 자기 set의 runtime model을 프로세스에 등록한다. 생성 모델마다 자기 set의 `manifestHash`를 가지며, 모델이 만드는 모든 요청은 그 hash를 포함한다. 연결은 요청의 `manifest_hash` 모델로 요청을 계획한다. 읽힌 generated code가 등록하지 않은 manifest의 요청은 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, manifest text의 hash가 선언한 `manifestHash`와 다른 generated code도 그렇다. 어느 쪽도 다른 모델이 계획하지 않는다. 등록에는 연결의 호출이 필요 없다. `utils().schema().install(texts)`는 document set의 테이블을 만들고, 테이블이 이미 있는 set은 그 generated code가 읽히는 즉시 쓰인다. 모든 클라이언트가 이 규칙을 따른다.
 
 네 플래너는 같은 요청에서 같은 SQL과 bind slot을 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 같은 벡터를 네 클라이언트로 실행하고 문장, bind, 결과를 기록된 기대값과 비교한다.

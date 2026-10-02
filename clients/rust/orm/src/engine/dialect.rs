@@ -105,8 +105,15 @@ impl Dialect {
         self != Dialect::MySql
     }
 
-    pub fn now(self) -> &'static str {
-        "CURRENT_TIMESTAMP"
+    /// The database clock assigned to a column with the given fraction
+    /// digits: `CURRENT_TIMESTAMP(p)` on MySQL for `p > 0`, otherwise
+    /// `CURRENT_TIMESTAMP`.
+    pub fn now(self, precision: i64) -> String {
+        if self == Dialect::MySql && precision > 0 {
+            format!("CURRENT_TIMESTAMP({precision})")
+        } else {
+            "CURRENT_TIMESTAMP".into()
+        }
     }
 
     pub fn current_time(self) -> &'static str {
@@ -247,7 +254,7 @@ impl Dialect {
     /// binds the executor clock, both in SQL text order.
     pub fn value_function(self, name: &str, arg: &mut dyn FnMut() -> String, now: &mut dyn FnMut() -> String) -> Option<String> {
         match (self, name) {
-            (Dialect::MySql, "now") => return Some("NOW()".into()),
+            (Dialect::MySql, "now") => return Some("NOW(6)".into()),
             (Dialect::MySql, "today") => return Some("CURDATE()".into()),
             (Dialect::Postgres, "now") => return Some("now()".into()),
             (Dialect::Postgres, "today") => return Some("CURRENT_DATE".into()),
@@ -260,7 +267,7 @@ impl Dialect {
         Some(match self {
             Dialect::MySql => {
                 let f = if later { "DATE_ADD" } else { "DATE_SUB" };
-                format!("{f}(NOW(), INTERVAL {} {})", arg(), unit.to_uppercase())
+                format!("{f}(NOW(6), INTERVAL {} {})", arg(), unit.to_uppercase())
             }
             Dialect::Postgres => {
                 let op = if later { " + " } else { " - " };
@@ -275,14 +282,14 @@ impl Dialect {
                 format!("(now(){op}make_interval({field} => CAST({} AS {cast})))", arg())
             }
             Dialect::Sqlite => {
+                // datetime returns whole seconds: append the six fraction
+                // digits of a second clock slot, which equals the first in
+                // one statement.
                 let sign = if later { "'+'" } else { "'-'" };
                 let clock = now();
-                let modifier = format!("{sign} || CAST({} AS TEXT) || ' {unit}s'", arg());
-                if unit == "month" {
-                    format!("datetime({clock}, {modifier}, 'floor')")
-                } else {
-                    format!("datetime({clock}, {modifier})")
-                }
+                let floor = if unit == "month" { ", 'floor'" } else { "" };
+                let modifier = format!("{sign} || CAST({} AS TEXT) || ' {unit}s'{floor}", arg());
+                format!("(datetime({clock}, {modifier}) || substr({}, 20))", now())
             }
         })
     }

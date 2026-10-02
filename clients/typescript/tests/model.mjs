@@ -862,15 +862,15 @@ try {
       try {
         await db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); throw new Error('callback failed'); }, { retry: 0 });
       } catch (error) { rolledBack = error; }
-      check(rolledBack instanceof OrmError && rolledBack.code === 'CONFIG' && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
+      check(rolledBack instanceof OrmError && rolledBack.code === 'ROLLBACK' && rolledBack.message.startsWith('ROLLBACK: transaction failed (callback failed) and rollback failed (') && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
     } finally {
       await db.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   console.log(`${current} done`);
   const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
-  // message가 원인과 transaction 끝의 오류를 함께 담은 CONFIG인지 확인한다.
-  const checkBoth = (what, message, cause, end) => check(message.startsWith('CONFIG: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
+  // message가 원인과 transaction 끝의 오류를 함께 담은 ROLLBACK인지 확인한다.
+  const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
   // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
   // 보고한다. 풀리지 않은 named lock은 connection에 남는다. 실제 server는 RELEASE_LOCK을 거부하지 않으므로
   // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.

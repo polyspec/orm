@@ -23,11 +23,13 @@ final class Engine
         $this->planner = new Planner($model, new Dialect($dialect));
     }
 
-    /** 등록된 generated model과 dialect가 공유하는 engine이다. */
-    public static function for(string $dialect, int $cacheSize): self
+    /**
+     * manifest hash의 generated model과 dialect가 공유하는 engine이다. 그 hash를
+     * 등록한 generated model이 없으면 SCHEMA_HASH_MISMATCH다.
+     */
+    public static function for(string $manifestHash, string $dialect, int $cacheSize): self
     {
-        $model = Registry::model();
-        return self::$engines[$model->manifestHash . "\0" . $dialect] ??= new self($model, $dialect, $cacheSize);
+        return self::$engines[$manifestHash . "\0" . $dialect] ??= new self(Registry::model($manifestHash), $dialect, $cacheSize);
     }
 
     /** The plan of a value-free request (docs/protocol.md). */

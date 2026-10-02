@@ -177,7 +177,7 @@ impl<E: std::fmt::Display> std::fmt::Display for TransactionOnceError<E> {
             Self::Orm(error) => write!(f, "transaction failed: {error}"),
             Self::Callback(error) => write!(f, "transaction callback failed: {error}"),
             Self::Rollback { callback, rollback } => {
-                write!(f, "transaction callback failed ({callback}) and rollback failed ({rollback})")
+                write!(f, "{}: {}", codes::ROLLBACK, crate::rollback_message(callback, rollback))
             }
         }
     }
@@ -331,7 +331,7 @@ where
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(rollback_failed(&e, &rollback_error));
+                        return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -433,7 +433,7 @@ impl<'a, F> Transaction<'a, F> {
                 }
                 Err(e) => {
                     if let Err(rollback_error) = rollback(&tx).await {
-                        return Err(rollback_failed(&e, &rollback_error));
+                        return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
                         return Err(e);
@@ -454,7 +454,7 @@ where
     match run_savepoint(tx, f()).await? {
         Ok(value) => Ok(value),
         Err((callback, None)) => Err(callback),
-        Err((callback, Some(rollback))) => Err(rollback_failed(&callback, &rollback)),
+        Err((callback, Some(rollback))) => Err(Error::rollback(callback, rollback)),
     }
 }
 
@@ -466,7 +466,7 @@ where
     match run_savepoint(tx, (f)()).await? {
         Ok(value) => Ok(value),
         Err((callback, None)) => Err(callback),
-        Err((callback, Some(rollback))) => Err(rollback_failed(&callback, &rollback)),
+        Err((callback, Some(rollback))) => Err(Error::rollback(callback, rollback)),
     }
 }
 
@@ -522,11 +522,6 @@ async fn rollback_savepoint(tx: &TxShared, name: &str) -> Result<()> {
     let rolled_back = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await;
     let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
     joined([rolled_back.err(), released.err()].into_iter().flatten().collect())
-}
-
-/// 원인과 실패한 transaction 끝을 함께 보고한다(docs/interfaces.md).
-fn rollback_failed(cause: &dyn std::fmt::Display, rollback: &Error) -> Error {
-    Error::Config(format!("transaction failed ({cause}) and rollback failed ({rollback})"))
 }
 
 /// 오류가 없으면 Ok, 하나면 그 오류, 여럿이면 message를 모은 CONFIG다.
@@ -616,7 +611,7 @@ async fn rollback_and_resume(tx: &TxShared, payload: Box<dyn std::any::Any + Sen
 }
 
 /// panic을 이어 간다. transaction이나 savepoint를 끝내지 못했으면 panic 값은 원인과 그 오류를 담은
-/// CONFIG 오류의 text다.
+/// ROLLBACK 오류의 text다.
 fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>) -> ! {
     if let Some(rollback) = rollback {
         let cause = match (payload.downcast_ref::<&str>(), payload.downcast_ref::<String>()) {
@@ -624,7 +619,7 @@ fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>)
             (None, Some(text)) => text.clone(),
             (None, None) => "a panic without a text payload".to_owned(),
         };
-        std::panic::resume_unwind(Box::new(rollback_failed(&cause, &rollback).to_string()));
+        std::panic::resume_unwind(Box::new(format!("{}: {}", codes::ROLLBACK, crate::rollback_message(&cause, &rollback))));
     }
     std::panic::resume_unwind(payload)
 }
@@ -1122,7 +1117,15 @@ mod tests {
         let db = Db::connect(&format!("sqlite://{}", tmp.join("end.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
         let both = |error: &Error, cause: &str| {
             let text = error.to_string();
-            assert!(text.starts_with(&format!("CONFIG: transaction failed ({cause}) and rollback failed (")) && text.contains("not authorized"), "{text}");
+            assert!(text.starts_with(&format!("ROLLBACK: transaction failed ({cause}) and rollback failed (")) && text.contains("not authorized"), "{text}");
+            // ROLLBACK 오류는 callback 오류와 rollback 오류를 이 순서로 담는다.
+            match error {
+                Error::Rollback { callback, rollback } => {
+                    assert_eq!(callback.to_string(), cause, "callback error");
+                    assert!(rollback.to_string().contains("not authorized"), "rollback error: {rollback}");
+                }
+                other => panic!("ROLLBACK expected: {other:?}"),
+            }
         };
         deny_on_sqlite(&db, DENY_ROLLBACK).await;
         let error = db.transaction(async || Err::<(), _>(Error::Config("callback failed".into()))).retry(0).await.expect_err("rollback");
@@ -1132,7 +1135,7 @@ mod tests {
             std::panic::AssertUnwindSafe(db.transaction(async || -> Result<()> { panic!("callback panicked") }).retry(0).into_future()).catch_unwind().await;
         let payload = panicked.expect_err("the callback panics");
         let text = payload.downcast_ref::<String>().expect("the panic carries the transaction failure");
-        assert!(text.starts_with("CONFIG: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"), "{text}");
+        assert!(text.starts_with("ROLLBACK: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"), "{text}");
         deny_on_sqlite(&db, DENY_QUERY_ONLY_ON).await;
         let error = db.transaction(async || Ok(())).read_only().retry(0).await.expect_err("begin");
         assert!(error.to_string().contains("not authorized"), "begin: {error}");
@@ -1160,7 +1163,7 @@ mod tests {
         let db = Db::connect(&format!("sqlite://{}", tmp.join("savepoint.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
         let both = |what: &str, text: &str| {
             assert!(
-                text.starts_with("CONFIG: transaction failed (CONFIG: callback failed) and rollback failed (") && text.contains("not authorized"),
+                text.starts_with("ROLLBACK: transaction failed (CONFIG: callback failed) and rollback failed (") && text.contains("not authorized"),
                 "{what}: {text}"
             );
         };
@@ -1191,7 +1194,7 @@ mod tests {
             let payload = panicked.expect_err("the callback panics");
             let text = payload.downcast_ref::<String>().expect("the panic carries the savepoint failure");
             assert!(
-                text.starts_with("CONFIG: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"),
+                text.starts_with("ROLLBACK: transaction failed (callback panicked) and rollback failed (") && text.contains("not authorized"),
                 "panic {denied}: {text}"
             );
         }

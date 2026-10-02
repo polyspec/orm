@@ -598,7 +598,7 @@ abstract class Model implements \JsonSerializable
         }
         if (self::prefixed($name, 'possible')) {
             self::arity($name, $args, 1);
-            $column = Chain::columnName(null, substr($name, 8));
+            $column = Chain::schemaColumnName($meta['manifest_hash'], substr($name, 8));
             if ($column === '') {
                 throw new OrmException(Code::CONFIG, "$name: no model has the column " . substr($name, 8));
             }
@@ -845,7 +845,7 @@ abstract class Model implements \JsonSerializable
 
     private function build(string $kind, Db $db): Request
     {
-        $r = new Request($kind, $db);
+        $r = new Request($kind, static::manifestHash());
         $frame = new Frame($this, null);
         $r->ir += $this->query($r, $frame);
         return $r;
@@ -1598,9 +1598,25 @@ abstract class Model implements \JsonSerializable
 
     // ---- writes ----
 
+    /**
+     * 요청이 싣는 manifestHash다. generated bootstrap이 이 class를 그 hash로
+     * 등록하지 않았으면 SCHEMA_HASH_MISMATCH이므로 다른 set의 model이 이 요청을
+     * plan하지 않는다.
+     */
+    private static function manifestHash(): string
+    {
+        $meta = static::meta();
+        $hash = (string) ($meta['manifest_hash'] ?? '');
+        $registered = Registry::models($hash)[$meta['entity']] ?? null;
+        if ($registered !== static::class) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, static::class . " is not registered by the generated models of manifest $hash");
+        }
+        return $hash;
+    }
+
     private function writeRequest(string $kind, Db $db): Request
     {
-        $r = new Request($kind, $db);
+        $r = new Request($kind, static::manifestHash());
         $r->ir['entity'] = static::meta()['entity'];
         return $r;
     }
@@ -2120,9 +2136,9 @@ final class Request
     /** @var array<int, list<array>> relations with their own connection, by parent model */
     public array $external = [];
 
-    public function __construct(string $kind, Db $db)
+    public function __construct(string $kind, string $manifestHash)
     {
-        $this->ir = ['ir_version' => 1, 'manifest_hash' => Registry::manifestHash(), 'kind' => $kind];
+        $this->ir = ['ir_version' => 1, 'manifest_hash' => $manifestHash, 'kind' => $kind];
     }
 
     public function param(mixed $v): int

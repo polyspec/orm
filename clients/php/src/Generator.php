@@ -96,7 +96,7 @@ final class Generator
             if (isset($files["$class.php"])) {
                 throw new OrmException(Code::SCHEMA_INVALID, "entities {$e['entity']} and another entity generate the class $class");
             }
-            $files["$class.php"] = self::model($e, $class, $namespace);
+            $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash);
             $boot .= "Registry::register($class::class);\n";
         }
         $files['bootstrap.php'] = $boot;
@@ -110,11 +110,12 @@ final class Generator
         }
     }
 
-    private static function model(array $e, string $class, string $namespace): string
+    private static function model(array $e, string $class, string $namespace, string $hash): string
     {
         $name = $e['entity'];
         $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
-        $b .= "    public static function meta(): array\n    {\n        return " . self::export($e, 2) . ";\n    }\n";
+        // meta()는 entity와 그 model을 만든 document set의 manifest_hash다.
+        $b .= "    public static function meta(): array\n    {\n        return " . self::export($e + ['manifest_hash' => $hash], 2) . ";\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
             $styled = RuntimeModel::styled($c);

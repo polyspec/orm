@@ -82,6 +82,9 @@ type Field struct {
 	// Default는 선언된 default가 있음을 뜻한다. column을 빼먹은 insert는
 	// database default를 받는다.
 	Default bool
+	// DefaultNow는 default가 `now`임을 뜻한다. sub-second clock이 없는
+	// dialect(SQLite)는 이 column을 뺀 insert에 executor clock을 bind한다.
+	DefaultNow bool
 	// SelectExplicit인 field는 default select set에서 빠진다.
 	SelectExplicit bool
 	// Codec은 write 순서의 codec stage 목록이다.
@@ -236,7 +239,7 @@ func entityOf(t *dbspec.Table) *Entity {
 	}
 	for _, c := range t.Columns {
 		f := &Field{Name: c.Name, Type: string(c.Type.Kind), Length: c.Type.Length, Precision: c.Type.Precision, Scale: c.Type.Scale,
-			Null: c.Null, Identity: c.Identity, Default: c.Default != nil, PrimaryKey: slices.Contains(t.PrimaryKey.Columns, c.Name), ForeignKey: foreign[c.Name]}
+			Null: c.Null, Identity: c.Identity, Default: c.Default != nil, DefaultNow: c.Default != nil && c.Default.Now, PrimaryKey: slices.Contains(t.PrimaryKey.Columns, c.Name), ForeignKey: foreign[c.Name]}
 		if c.Identity {
 			e.Identity = c.Name
 		}
