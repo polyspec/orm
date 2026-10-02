@@ -1,6 +1,6 @@
 // Several dbspec document sets in one process, on SQLite, MySQL and
-// PostgreSQL. The bench set (schema/bench.dbspec) and the decimal set
-// (contracts/fixtures/decimal_schema.dbspec) register their models as
+// PostgreSQL. The bench set (schema/bench.dbs) and the decimal set
+// (contracts/fixtures/decimal_schema.dbs) register their models as
 // generated code does, each with the manifest hash of its own set, and any
 // connection plans a request with the runtime model of the request's
 // manifest hash. A set whose tables another connection installed is used
@@ -19,8 +19,8 @@ import { join } from 'node:path';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
-const benchText = await readFile(new URL('../../../schema/bench.dbspec', import.meta.url), 'utf8');
-const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbspec', import.meta.url), 'utf8');
+const benchText = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
+const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-schema-set-'));
 const CASE_DEADLINE_MS = 60_000;
 let failures = 0;

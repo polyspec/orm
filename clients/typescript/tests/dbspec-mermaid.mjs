@@ -11,7 +11,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { emitDbspec, exportMermaid, importMermaid, parseDbspec } from '../dist/dbspec/index.js';
+import { fileURLToPath } from 'node:url';
+import { emitDbspec, exportMermaid, importMermaid, parseDbspec, readDbspecFile } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/mermaid.json', root), 'utf8'));
@@ -95,7 +96,9 @@ function skeleton(document) {
 
 for (const c of vectors.round_trip) {
   vector(`mermaid round_trip ${c.id}`, () => {
-    const parsed = parseDbspec(readFileSync(new URL(c.path, root), 'utf8'), {});
+    const read = readDbspecFile(fileURLToPath(new URL(c.path, root)));
+    assert.deepEqual(read.diagnostics, [], 'file diagnostics');
+    const parsed = parseDbspec(read.text, {});
     assert.deepEqual(parsed.diagnostics, [], 'document diagnostics');
     const exported = exportMermaid(parsed.document);
     assert.deepEqual(drops(exported.dropped), c.dropped, 'export dropped');

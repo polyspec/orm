@@ -1,4 +1,4 @@
-// audit_triggers coverage: contracts/fixtures/audit.dbspec 을 schema install 로 설치하고
+// audit_triggers coverage: contracts/fixtures/audit.dbs 을 schema install 로 설치하고
 // clients/go/orm/audit_operation_test.go 와 같은 순서로 쓴 뒤 trigger 가 남긴 item_history 를
 // 확인한다. 끝에 두 table 과 PostgreSQL trigger function 을 지워 database 를 처음 상태로 돌린다.
 import assert from 'node:assert/strict';
@@ -7,14 +7,14 @@ import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
 
-const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbspec'), 'utf8');
+const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbs'), 'utf8');
 
 /** Registers the model of the audit document and returns a model class per entity. */
 function auditModels() {
   const parsed = parseDbspec(auditText, {});
-  assert.deepEqual(parsed.diagnostics, [], 'audit.dbspec parses');
+  assert.deepEqual(parsed.diagnostics, [], 'audit.dbs parses');
   const { manifest, diagnostics } = dbspecManifest([parsed.document]);
-  assert.deepEqual(diagnostics, [], 'audit.dbspec has a manifest');
+  assert.deepEqual(diagnostics, [], 'audit.dbs has a manifest');
   const model = registerModel(manifest.manifestText, manifest.manifestHash);
   const out = {};
   for (const entity of model.entities.values()) {

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The runtime model of schema/bench.dbspec (docs/dbspec.md "Runtime model"):
+// The runtime model of schema/bench.dbs (docs/dbspec.md "Runtime model"):
 // entities, the default select set, codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without
 // a schema path. Database behavior is in runtime_db_test.php.
@@ -55,7 +55,7 @@ function errorCode(Closure $fn): string
     return 'no error';
 }
 
-$bench = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbspec"]));
+$bench = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));
 
 runCase('entities in document order', function () use ($bench): void {
     $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task'];
@@ -81,7 +81,7 @@ runCase('default select set excludes only select explicit', function () use ($be
 });
 
 runCase('generated models carry the manifest hash and the model', function () use ($root, $bench): void {
-    $manifest = Dbspec::manifest(RuntimeModel::files(["$root/schema/bench.dbspec"]))->manifest;
+    $manifest = Dbspec::manifest(RuntimeModel::files(["$root/schema/bench.dbs"]))->manifest;
     $hash = Author::meta()['manifest_hash'];
     want($hash === $manifest->manifestHash, "manifest hash $hash");
     want(str_starts_with($hash, 'sha256:'), 'manifest hash form');
@@ -108,7 +108,7 @@ runCase('codec value types', function (): void {
 
 runCase('i16 field', function () use ($root): void {
     $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary key (seq)\n}\n";
-    $model = RuntimeModel::build(RuntimeModel::parse(['small.dbspec' => $doc]));
+    $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
     want($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
     $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
     Generator::generate($model, $out, 'Small\\Orm');
@@ -124,7 +124,7 @@ runCase('i16 field', function () use ($root): void {
 
 runCase('insert binds the clock of an omitted default now column only on SQLite', function (): void {
     $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
-    $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbspec' => $doc]));
+    $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbs' => $doc]));
     want($model->entities['note']['columns']['created_at']['default_now'] && !$model->entities['note']['columns']['rank']['default_now'], 'default_now flag');
     $set = [['column' => 'rank', 'p' => 0], ['column' => 'body', 'p' => 1]];
     $single = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash, 'kind' => 'insert', 'entity' => 'note', 'set' => $set, 'n_params' => 4];

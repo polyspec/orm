@@ -19,7 +19,7 @@ $dsn = getenv($env);
 if (!is_string($dsn) || $dsn === '') {
     throw new RuntimeException("$env is required");
 }
-$model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbspec']));
+$model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs']));
 $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
 Generator::generate($model, $generated, 'DecimalFixture');
 spl_autoload_register(static function (string $class) use ($generated): void {

@@ -193,7 +193,13 @@ func readCases(path string) (sharedCases, error) {
 	if all.Invalid, err = cases(r, v, "invalid", readCase); err != nil {
 		return all, err
 	}
-	all.Hashes, err = cases(r, v, "hashes", r.hashCase)
+	if all.Hashes, err = cases(r, v, "hashes", r.hashCase); err != nil {
+		return all, err
+	}
+	all.Files, err = cases(r, v, "files", func(c map[string]any, location, id string) (fileCase, error) {
+		path, err := r.string(c, location, "path")
+		return fileCase{ID: id, Path: path}, err
+	})
 	return all, err
 }
 

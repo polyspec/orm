@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "schema/bench.dbspec",
+  "schema": "schema/bench.dbs",
   "languages": {
     "go": {
       "roots": [
@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:07924c1b3399229a55b4ccfc16e30035f78a9cb2a554b8b86aa7c8288db84d4b",
-    "php": "sha256:9d749a9c6be8fe1c0d38c19c706cdbf2e357935bc5b3bfb58b3e78c03b5050df",
-    "rust": "sha256:15e4491712725f9476b613267e6d07d4c16a3d391f7430390e85c6fd274a99f4",
-    "typescript": "sha256:8ce583b7de2a6249cf67847ab9683039dce52bd24e97086d7f84fa663ed3e9bc"
+    "go": "sha256:f449787660821ac4413eacd5bd0ba82d48e63e3ab8c56820c50e9c50e809b05b",
+    "php": "sha256:e778dc83ee7b5e23cf0b7515725fb7fa6c9e9cacfc269c169af0a3172971cfa3",
+    "rust": "sha256:1f1c7643851d20ad752adc397e2194db30c8583dfa593028b0309cd5eb4d9181",
+    "typescript": "sha256:bc5f3a6950a73185d3daaac31eef46f2f7713578aad3f45ae0db88e07acaaa8e"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -358,13 +358,14 @@
       "id": "Dbspec",
       "fields": {},
       "methods": [
+        "readFile",
         "parse",
         "emit",
         "manifest",
         "render"
       ],
-      "ownership": "Parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md).",
-      "ownership_ko": "선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md)."
+      "ownership": "Reads a dbspec document file after checking its signature, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md).",
+      "ownership_ko": "signature를 확인한 뒤 dbspec 문서 파일을 읽고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md)."
     },
     {
       "id": "DbspecDocument",
@@ -1296,6 +1297,34 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::AesUtils.rotate",
           "signature": "public async rotate(model: unknown, keyring: AesKeyring): Promise<number>"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.readFile",
+      "for": "once",
+      "inputs": [
+        "DbspecFilePath"
+      ],
+      "output": "DbspecReadResult",
+      "errors": [],
+      "state": "Reads the document file at the path for parsing. A file that does not start with the bytes `dbspec ` returns exactly one signature diagnostic at line 1, column 1 with the message `<path> is not a dbspec document` and no text, before any parse; otherwise the bytes of the file and no diagnostic. A file that cannot be read is the read error of the platform",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/file.go::ReadFile",
+          "signature": "func(path string) (string, []Diagnostic, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readFile",
+          "signature": "public static function readFile(string $path): Orm\\Dbspec\\ReadResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_file",
+          "signature": "pub fn read_file(path: &Path) -> Result<String, ReadError>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/file.ts::readDbspecFile",
+          "signature": "export function readDbspecFile(path: string): DbspecReadResult"
         }
       }
     },

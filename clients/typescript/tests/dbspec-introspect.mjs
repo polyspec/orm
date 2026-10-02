@@ -17,7 +17,8 @@ import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
-import { dbspecManifest, emitDbspec, introspectDbspec, parseDbspec, renderDbspec } from '../dist/dbspec/index.js';
+import { fileURLToPath } from 'node:url';
+import { dbspecManifest, emitDbspec, introspectDbspec, parseDbspec, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 30000;
@@ -30,7 +31,7 @@ const CONNECTION_RULES = {
   postgres: ["SET TimeZone = 'UTC'"],
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
-// tests/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbspec이다.
+// tests/dialects schemaDocumentPatterns와 같은 디렉터리의 *.dbs다.
 const SCHEMA_DIRECTORIES = ['schema', 'contracts/fixtures'];
 
 const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
@@ -66,10 +67,12 @@ function roundTripSets() {
     out.push({ id: 'ddl_' + c.id.replaceAll('-', '_'), documents });
   }
   for (const directory of SCHEMA_DIRECTORIES) {
-    const files = readdirSync(new URL(directory + '/', root)).filter(f => f.endsWith('.dbspec')).sort();
+    const files = readdirSync(new URL(directory + '/', root)).filter(f => f.endsWith('.dbs')).sort();
     for (const file of files) {
-      const name = file.slice(0, -'.dbspec'.length);
-      out.push({ id: 'schema_' + name, documents: { [name]: readFileSync(new URL(`${directory}/${file}`, root), 'utf8') } });
+      const name = file.slice(0, -'.dbs'.length);
+      const read = readDbspecFile(fileURLToPath(new URL(`${directory}/${file}`, root)));
+      if (read.text === null) throw new Error(read.diagnostics[0].message);
+      out.push({ id: 'schema_' + name, documents: { [name]: read.text } });
     }
   }
   return out;

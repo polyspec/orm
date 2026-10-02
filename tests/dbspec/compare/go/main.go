@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -27,12 +28,19 @@ type hashCase struct {
 	Documents map[string][]string
 }
 
+// fileCase는 cases.json 기준 상대 경로로 파일을 이름 짓는 files case다.
+type fileCase struct {
+	ID   string
+	Path string
+}
+
 // sharedCases는 tests/dbspec/cases.json이다.
 type sharedCases struct {
 	Canonical []testCase
 	Normalize []testCase
 	Invalid   []testCase
 	Hashes    []hashCase
+	Files     []fileCase
 }
 
 // join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
@@ -423,11 +431,15 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 	}
 	for _, c := range v.RoundTrip {
 		fmt.Fprintf(out, "mermaid/round_trip/%s\n", c.ID)
-		source, err := os.ReadFile(c.Path)
+		source, diagnostics, err := dbspec.ReadFile(c.Path)
 		if err != nil {
 			return err
 		}
-		d, diagnostics := dbspec.Parse(string(source), nil)
+		if len(diagnostics) > 0 {
+			writeDiagnostics(out, diagnostics)
+			continue
+		}
+		d, diagnostics := dbspec.Parse(source, nil)
 		if len(diagnostics) > 0 {
 			writeDiagnostics(out, diagnostics)
 			continue
@@ -435,6 +447,28 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 		text := writeExport(out, d)
 		fmt.Fprintf(out, "mermaid/round_trip/%s/import\n", c.ID)
 		writeImport(out, text)
+	}
+	return nil
+}
+
+// writeFile은 path를 dbspec.ReadFile로 읽어 diagnostic과 그 message를, 없으면 그
+// text의 emission을 출력한다. message 앞의 path는 "<path>"로 쓴다.
+func writeFile(out *bufio.Writer, path string) error {
+	text, diagnostics, err := dbspec.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if len(diagnostics) == 0 {
+		write(out, text, nil, false)
+		return nil
+	}
+	for _, d := range diagnostics {
+		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		if rest, ok := strings.CutPrefix(d.Message, path); ok {
+			fmt.Fprintf(out, "= <path>%s\n", rest)
+		} else {
+			fmt.Fprintf(out, "= %s\n", d.Message)
+		}
 	}
 	return nil
 }
@@ -449,9 +483,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	stress, err := os.ReadFile(os.Args[2])
+	stress, diagnostics, err := dbspec.ReadFile(os.Args[2])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if len(diagnostics) > 0 {
+		fmt.Fprintln(os.Stderr, diagnostics[0].Message)
 		os.Exit(1)
 	}
 	out := bufio.NewWriter(os.Stdout)
@@ -471,7 +509,14 @@ func main() {
 		}
 	}
 	fmt.Fprintln(out, "stress")
-	write(out, string(stress), nil, true)
+	write(out, stress, nil, true)
+	for _, c := range all.Files {
+		fmt.Fprintf(out, "files/%s\n", c.ID)
+		if err := writeFile(out, filepath.Join(filepath.Dir(os.Args[1]), c.Path)); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 	for _, c := range all.Hashes {
 		fmt.Fprintf(out, "hashes/%s\n", c.ID)
 		writeManifest(out, c)

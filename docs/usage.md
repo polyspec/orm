@@ -29,7 +29,7 @@ go build ./...
 
 ## 2. Schema
 
-The human-maintained definition is a set of dbspec documents ([dbspec.md](dbspec.md)); `schema/bench.dbspec` is an example.
+The human-maintained definition is a set of dbspec documents ([dbspec.md](dbspec.md)); `schema/bench.dbs` is an example.
 
 ```text
 dbspec 1 example
@@ -74,15 +74,15 @@ Each client renders the `CREATE` statements of a document set for one dialect, i
 Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbspec
-npx orm-gen gen --schema schema/example.dbspec --out src/models --scan src
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
+npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -99,7 +99,7 @@ fn main() {
 - `--check` compares the output with the existing files without writing: `gen` of the Go, PHP, and TypeScript `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.
@@ -124,7 +124,7 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbspec>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
+`orm-gen gen --document <file.dbs>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
 
 ### PHP
 
@@ -173,7 +173,7 @@ import { Db } from '@polyspec/orm-typescript';
 import { Item } from './models/models.js';
 
 const master = await Db.connect(masterDsn, { aesKey });
-await master.utils().schema().install([await readFile('schema/example.dbspec', 'utf8')]);
+await master.utils().schema().install([await readFile('schema/example.dbs', 'utf8')]);
 await master.transaction(async () => {
   await new Item().setTitle('first').create();
 }, { operation: 42 });

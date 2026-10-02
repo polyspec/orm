@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -219,11 +218,14 @@ func checkMermaidInvalid(t *testing.T, c mermaidInvalidCase) {
 
 func checkMermaidRoundTrip(t *testing.T, c mermaidRoundTripCase) {
 	runTimed(t, "mermaid/round_trip/"+c.ID, 5*time.Second, func() error {
-		source, err := os.ReadFile(filepath.Join("..", "..", c.Path))
+		source, diagnostics, err := ReadFile(filepath.Join("..", "..", c.Path))
 		if err != nil {
 			return err
 		}
-		d, diagnostics := Parse(string(source), nil)
+		if len(diagnostics) > 0 {
+			return fmt.Errorf("read %s: %v", c.Path, diagnostics)
+		}
+		d, diagnostics := Parse(source, nil)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse %s: %v", c.Path, diagnostics)
 		}

@@ -1,6 +1,6 @@
 <?php
 // Engine test: manifest hash check, request validation, and statement forms of
-// each dialect for the runtime model of schema/bench.dbspec.
+// each dialect for the runtime model of schema/bench.dbs.
 // Usage: php clients/php/tests/engine_test.php
 declare(strict_types=1);
 
@@ -12,7 +12,7 @@ use Orm\OrmException;
 use Orm\RuntimeModel;
 
 $root = dirname(__DIR__, 3);
-$model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbspec"]));
+$model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));
 $failures = 0;
 
 function expect(bool $ok, string $message): void

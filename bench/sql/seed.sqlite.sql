@@ -1,4 +1,4 @@
--- Seed for SQLite: the same 100k author rows as the MySQL seed (same formulas). Run after scripts/bench-db.sh installs schema/bench.dbspec.
+-- Seed for SQLite: the same 100k author rows as the MySQL seed (same formulas). Run after scripts/bench-db.sh installs schema/bench.dbs.
 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 100000)
 INSERT INTO "author" ("name", "description", "is_close", "is_display", "display_start_dt", "display_end_dt", "is_allday",
   "target_club_reader_count", "success_count", "reader_count", "read_count", "photo_url", "user_seq", "service_seq",

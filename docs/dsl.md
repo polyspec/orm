@@ -76,10 +76,10 @@ Key   = [Operator] Column
 - `getsByServiceSeqAndIsClose(7, 0)` and `serviceSeq(7)->andIsClose(0)->gets()` produce the same condition.
 - A chain can combine any columns. PHP resolves chains at call time. Go, Rust, and TypeScript generate the chain methods that the scanned source code calls and reject an unknown column, operator, or argument count during generation.
 - Each language generates with its own build tool:
-  - Go scans the packages named by `--scan` and repeats until the calls type-check: `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbspec --lang go --out model --scan ./...` in a `//go:generate` line. Files that the default build excludes with a `//go:build` constraint are loaded with the tags, GOOS, and GOARCH their constraint needs, so a tagged test is covered without `GOFLAGS=-tags`.
-  - TypeScript scans the files named by `--scan` with the TypeScript compiler API and writes exact method signatures: `orm-gen gen --schema schema/example.dbspec --out src/models --scan src` in the `build` script before `tsc`.
-  - Rust scans the sources named by `scan` with `syn` in `build.rs`: `orm_build::Builder::new(["schema/example.dbspec"]).scan("src").generate()`, and `orm::models!()` includes the result as the module `model`.
-  - PHP writes the model classes with column metadata and typed getters and setters: `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbspec`.
+  - Go scans the packages named by `--scan` and repeats until the calls type-check: `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...` in a `//go:generate` line. Files that the default build excludes with a `//go:build` constraint are loaded with the tags, GOOS, and GOARCH their constraint needs, so a tagged test is covered without `GOFLAGS=-tags`.
+  - TypeScript scans the files named by `--scan` with the TypeScript compiler API and writes exact method signatures: `orm-gen gen --schema schema/example.dbs --out src/models --scan src` in the `build` script before `tsc`.
+  - Rust scans the sources named by `scan` with `syn` in `build.rs`: `orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`, and `orm::models!()` includes the result as the module `model`.
+  - PHP writes the model classes with column metadata and typed getters and setters: `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`.
 
 ### 2.3 Value shapes
 

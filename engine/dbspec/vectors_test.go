@@ -2,6 +2,8 @@ package dbspec
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +15,14 @@ type vectorFile struct {
 	Invalid   []vectorCase
 	Hashes    []hashCase
 	Sets      []setCase
+	Files     []fileCase
+}
+
+// fileCase는 cases.json의 files case다. path는 cases.json 기준 상대 경로다.
+type fileCase struct {
+	ID     string
+	Path   string
+	Errors []vectorError
 }
 
 type vectorCase struct {
@@ -180,6 +190,18 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 		s.Errors, err = r.locatedErrors(c, location, "errors")
 		return s, err
 	})
+	if err != nil {
+		return v, err
+	}
+	v.Files, err = vectorCases(r, object, "files", func(c map[string]any, location, id string) (fileCase, error) {
+		f := fileCase{ID: id}
+		var err error
+		if f.Path, err = r.string(c, location, "path"); err != nil {
+			return f, err
+		}
+		f.Errors, err = r.locatedErrors(c, location, "errors")
+		return f, err
+	})
 	return v, err
 }
 
@@ -257,6 +279,62 @@ func TestSharedVectors(t *testing.T) {
 					return err
 				}
 				return expectDiagnostics(text, set, c.Errors)
+			})
+		})
+	}
+}
+
+// TestFileVectors는 cases.json의 files case를 ReadFile로 읽는다. signature가 없는 파일은
+// "<path> is not a dbspec document" diagnostic 하나와 빈 text를, 나머지 파일은 그 byte를
+// 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
+func TestFileVectors(t *testing.T) {
+	vectors := loadVectors(t)
+	if len(vectors.Files) == 0 {
+		t.Fatal("files cases are missing")
+	}
+	root := repositoryRoot(t)
+	for _, c := range vectors.Files {
+		t.Run("files/"+c.ID, func(t *testing.T) {
+			runTimed(t, "files/"+c.ID, 5*time.Second, func() error {
+				path := filepath.Join(root, "tests", "dbspec", c.Path)
+				text, diagnostics, err := ReadFile(path)
+				if err != nil {
+					return err
+				}
+				if len(c.Errors) > 0 {
+					if text != "" {
+						return fmt.Errorf("ReadFile returned text with diagnostics")
+					}
+					got := make([]vectorError, len(diagnostics))
+					for i, d := range diagnostics {
+						if want := path + " is not a dbspec document"; d.Message != want {
+							return fmt.Errorf("message = %q, want %q", d.Message, want)
+						}
+						got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
+					}
+					if fmt.Sprint(got) != fmt.Sprint(c.Errors) {
+						return fmt.Errorf("diagnostics = %+v, want %+v", got, c.Errors)
+					}
+					return nil
+				}
+				if len(diagnostics) != 0 {
+					return fmt.Errorf("unexpected diagnostics %+v", diagnostics)
+				}
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				if text != string(raw) {
+					return fmt.Errorf("ReadFile text differs from the file bytes")
+				}
+				got, err := emitStable(text, nil)
+				if err != nil {
+					return err
+				}
+				if got != text {
+					return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, text)
+				}
+				return nil
 			})
 		})
 	}

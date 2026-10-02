@@ -36,5 +36,5 @@ case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked -p orm --features test-faults --test rollback)
   (cd clients/rust && cargo test --locked -p orm-build --features live-db)
   (cd clients/rust && cargo build --locked --release -p orm-tests --bin integration)
-  clients/rust/target/release/integration "$ROOT/schema/bench.dbspec"
+  clients/rust/target/release/integration "$ROOT/schema/bench.dbs"
 esac

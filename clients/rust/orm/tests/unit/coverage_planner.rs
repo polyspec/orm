@@ -1,4 +1,4 @@
-//! planner: contracts/fixtures/planner.json의 `input`에 schema/bench.dbspec의 manifest hash를 더해
+//! planner: contracts/fixtures/planner.json의 `input`에 schema/bench.dbs의 manifest hash를 더해
 //! 이 client의 engine으로 각 dialect에서 compile한다. statement(role, sql, bind slot의 param
 //! 순서)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
 //! engine의 compile은 crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
@@ -20,7 +20,7 @@ fn repository() -> PathBuf {
 }
 
 fn bench() -> Manifest {
-    let path = repository().join("schema/bench.dbspec");
+    let path = repository().join("schema/bench.dbs");
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let document = crate::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));
     let set = crate::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));

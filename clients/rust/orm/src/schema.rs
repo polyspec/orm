@@ -102,11 +102,11 @@ impl Schema {
 mod tests {
     use super::*;
 
-    /// contracts/fixtures/rollback.dbspec의 manifest text와 manifestHash.
+    /// contracts/fixtures/rollback.dbs의 manifest text와 manifestHash.
     fn rollback_manifest() -> (String, String) {
-        let text = include_str!("../../../../contracts/fixtures/rollback.dbspec");
-        let document = dbspec::parse(text, &Default::default()).expect("rollback.dbspec parses");
-        let manifest = dbspec::manifest(&[&document]).expect("rollback.dbspec manifest");
+        let text = include_str!("../../../../contracts/fixtures/rollback.dbs");
+        let document = dbspec::parse(text, &Default::default()).expect("rollback.dbs parses");
+        let manifest = dbspec::manifest(&[&document]).expect("rollback.dbs manifest");
         (manifest.manifest_text, manifest.manifest_hash)
     }
 

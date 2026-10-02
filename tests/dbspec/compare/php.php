@@ -189,9 +189,32 @@ $cases = dbspec_read_vectors($argv[1], static function (string $path, stdClass $
     $cases['hashes'] = dbspec_vector_cases($path, $v, 'hashes', static fn(stdClass $case, string $at): array => [
         'documents' => dbspec_vector_documents($path, $case, $at, 'documents'),
     ]);
+    $cases['files'] = dbspec_vector_cases($path, $v, 'files', static fn(stdClass $case, string $at): array => [
+        'path' => dbspec_vector_string($path, $case, $at, 'path'),
+    ]);
     return $cases;
 });
-$stress = dbspec_read_input($argv[2]);
+
+/**
+ * $path의 dbspec document 파일을 Dbspec::readFile로 읽는다. 읽을 수 없는 파일은 그 이유를,
+ * signature가 없는 파일은 그 diagnostic message를 stderr에 쓰고 1로 끝난다.
+ */
+function dbspec_read_document(string $path): string
+{
+    try {
+        $read = Orm\Dbspec\Dbspec::readFile($path);
+    } catch (RuntimeException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    if ($read->text === null) {
+        fwrite(STDERR, $read->diagnostics[0]->message . "\n");
+        exit(1);
+    }
+    return $read->text;
+}
+
+$stress = dbspec_read_document($argv[2]);
 foreach (['canonical', 'normalize', 'invalid'] as $kind) {
     foreach ($cases[$kind] as $case) {
         $crlf = $case['crlf'];
@@ -208,6 +231,26 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
 }
 echo "stress\n";
 dbspec_write($stress, [], true);
+// files case는 Dbspec::readFile로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
+// message 앞의 path는 "<path>"로 쓴다.
+foreach ($cases['files'] as $case) {
+    echo "files/{$case['id']}\n";
+    $path = dirname($argv[1]) . '/' . $case['path'];
+    try {
+        $read = Orm\Dbspec\Dbspec::readFile($path);
+    } catch (RuntimeException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    if ($read->text !== null) {
+        dbspec_write($read->text, [], false);
+        continue;
+    }
+    foreach ($read->diagnostics as $d) {
+        echo "! {$d->rule} {$d->line} {$d->column}\n";
+        echo '= ' . (str_starts_with($d->message, $path) ? '<path>' . substr($d->message, strlen($path)) : $d->message) . "\n";
+    }
+}
 
 /** diagnostic을 출력한다. @param list<Orm\Dbspec\Diagnostic> $diagnostics */
 function dbspec_diagnostics(array $diagnostics): void
@@ -552,8 +595,17 @@ foreach (['import', 'invalid'] as $kind) {
 }
 foreach ($mermaid['round_trip'] as $case) {
     echo "mermaid/round_trip/{$case['id']}\n";
-    $source = dbspec_read_input($case['path']);
-    $parsed = Orm\Dbspec\Dbspec::parse($source, []);
+    try {
+        $read = Orm\Dbspec\Dbspec::readFile($case['path']);
+    } catch (RuntimeException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(1);
+    }
+    if ($read->text === null) {
+        dbspec_plan_diagnostics($read->diagnostics);
+        continue;
+    }
+    $parsed = Orm\Dbspec\Dbspec::parse($read->text, []);
     if ($parsed->document === null) {
         dbspec_plan_diagnostics($parsed->diagnostics);
         continue;

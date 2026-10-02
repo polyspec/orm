@@ -1,5 +1,5 @@
 //! Driver errors that the error catalog does not list, and CHECK violations,
-//! on SQLite, MySQL and PostgreSQL (contracts/fixtures/refusal.dbspec). refused_row is immutable, so its triggers
+//! on SQLite, MySQL and PostgreSQL (contracts/fixtures/refusal.dbs). refused_row is immutable, so its triggers
 //! refuse every update with a database error that the catalog does not list;
 //! the client reports it with the code DRIVER, the driver message, and the
 //! driver error. Its CHECK constraint refuses a nonpositive amount with
@@ -12,7 +12,7 @@ use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static REFUSAL_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/refusal.dbspec"), "sha256:b4173544710d221d7a8b1802fee458fcd58bd4eb70aba5c07fbfb126a94d017d");
+    Schema::new(include_str!("../../../../contracts/fixtures/refusal.dbs"), "sha256:b4173544710d221d7a8b1802fee458fcd58bd4eb70aba5c07fbfb126a94d017d");
 static REFUSED_ROW: Entity =
     Entity { name: "refused_row", schema: &REFUSAL_SCHEMA, new: orm::model::new_boxed::<RefusedRow>, collect: orm::model::collect_boxed::<RefusedRow> };
 const COLUMNS: [&str; 2] = ["seq", "amount"];

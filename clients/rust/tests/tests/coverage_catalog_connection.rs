@@ -52,7 +52,7 @@ async fn coverage_catalog_read() {
         let namespace = catalog.current_namespace().await.expect("current namespace");
         let author = TableRef { namespace, name: "author".into() };
         let metadata = catalog.describe_table(&author).await.expect("author metadata");
-        let text = std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbspec")).expect("bench schema");
+        let text = std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbs")).expect("bench schema");
         let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
         let model = orm::dbspec::runtime_model(&[&document]).unwrap_or_else(|errors| panic!("bench model: {errors:?}"));
         let declared = model.entities.iter().find(|e| e.table == "author").expect("declared author table");

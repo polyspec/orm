@@ -4,11 +4,11 @@
 use std::path::PathBuf;
 
 fn schema() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/zone.dbspec")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/zone.dbs")
 }
 
 fn bench() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbspec")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbs")
 }
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -117,10 +117,23 @@ fn rejects_an_invalid_document() {
     let dir = std::env::temp_dir().join(format!("orm-build-invalid-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
-    std::fs::write(dir.join("zone.dbspec"), text).unwrap();
-    let err = orm_build::Builder::new([dir.join("zone.dbspec")]).out_dir(dir.join("out")).try_generate().unwrap_err();
+    std::fs::write(dir.join("zone.dbs"), text).unwrap();
+    let err = orm_build::Builder::new([dir.join("zone.dbs")]).out_dir(dir.join("out")).try_generate().unwrap_err();
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(err.contains("zone.dbspec: SCHEMA_INVALID 5:"), "{err}");
+    assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
+}
+
+/// dbspec::read_file이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
+#[test]
+fn rejects_a_file_without_the_signature() {
+    for name in ["dbschema.dbs", "empty.dbs"] {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/files").join(name);
+        let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
+        let err = orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
+        assert!(!out.exists(), "{name}: generation wrote {}", out.display());
+        let display = path.display();
+        assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
+    }
 }
 
 #[test]
@@ -129,7 +142,7 @@ fn manifest_text_is_embedded_with_its_hash() {
     let dir = std::env::temp_dir().join(format!("orm-build-manifest-{}-{n}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
-    let audit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/audit.dbspec");
+    let audit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/audit.dbs");
     orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
     let embedded = std::fs::read_to_string(dir.join("out").join(orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();

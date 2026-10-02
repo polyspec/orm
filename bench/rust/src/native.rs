@@ -9,7 +9,7 @@ use std::time::Instant;
 
 const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
 
-/// schema/bench.dbspec의 `author` column 형을 그대로 decode한다: `i64` key, `i32` count,
+/// schema/bench.dbs의 `author` column 형을 그대로 decode한다: `i64` key, `i32` count,
 /// `bool`, `datetime(6)`, `varchar`. AES column은 hex text로 읽는다.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]

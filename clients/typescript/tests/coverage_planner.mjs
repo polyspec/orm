@@ -1,4 +1,4 @@
-// planner coverage: contracts/fixtures/planner.json 의 request 를 schema/bench.dbspec 의 manifest hash
+// planner coverage: contracts/fixtures/planner.json 의 request 를 schema/bench.dbs 의 manifest hash
 // 와 함께 dialect 마다 client engine 으로 compile 해서 statement (role, sql, bind slot param 순서)
 // 또는 오류 code 가 기대값과 같은지 확인한다.
 import assert from 'node:assert/strict';
@@ -8,8 +8,8 @@ import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/inde
 import { repositoryRoot, runCases } from './coverage_case.mjs';
 
 const fixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
-const parsed = parseDbspec(await readFile(join(repositoryRoot, 'schema/bench.dbspec'), 'utf8'), {});
-assert.deepEqual(parsed.diagnostics, [], 'schema/bench.dbspec parses');
+const parsed = parseDbspec(await readFile(join(repositoryRoot, 'schema/bench.dbs'), 'utf8'), {});
+assert.deepEqual(parsed.diagnostics, [], 'schema/bench.dbs parses');
 const { manifest } = dbspecManifest([parsed.document]);
 const model = registerModel(manifest.manifestText, manifest.manifestHash);
 const dialects = ['mysql', 'postgres', 'sqlite'];

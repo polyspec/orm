@@ -4,7 +4,7 @@
 //
 // Usage: node runner_typescript.mjs --dsn URI [--vector NAME]...
 // Each --vector selects one vector by name; without one every vector runs.
-// The models embed the manifest of schema/bench.dbspec.
+// The models embed the manifest of schema/bench.dbs.
 import {
   AesKeyring, Author, CompositeAccount, Db, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, orm,
 } from '../../clients/typescript/dist/index.js';

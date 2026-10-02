@@ -6,12 +6,12 @@ namespace Orm;
 /**
  * The orm-gen command line: model generation from a dbspec document set.
  *
- *   orm-gen gen --out <dir> --namespace <Php\Namespace> [--check] <files.dbspec...>
+ *   orm-gen gen --out <dir> --namespace <Php\Namespace> [--check] <files.dbs...>
  */
 final class OrmGen
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --out <dir> --namespace <Php\\Namespace> [--check] <files.dbspec...>',
+        'gen' => 'orm-gen gen --out <dir> --namespace <Php\\Namespace> [--check] <files.dbs...>',
     ];
 
     /** @var resource */

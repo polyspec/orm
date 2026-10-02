@@ -43,7 +43,7 @@ table probe {
   }
 }
 `;
-const auditText = await readFile(join(root, 'contracts/fixtures/audit.dbspec'), 'utf8');
+const auditText = await readFile(join(root, 'contracts/fixtures/audit.dbs'), 'utf8');
 
 /** Registers the model of a document set and returns a model class per entity. */
 function models(text) {

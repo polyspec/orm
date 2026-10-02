@@ -1,6 +1,7 @@
 package runtimemodel
 
 import (
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -85,6 +86,19 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 	} {
 		if _, diagnostics := Load(text); len(diagnostics) == 0 || diagnostics[0].Rule != rule {
 			t.Errorf("Load(%q) = %v, want %s", text, diagnostics, rule)
+		}
+	}
+}
+
+// TestLoadFilesRejectsFileWithoutSignature는 signature가 없는 파일(DbSchema project XML,
+// 빈 파일)을 parse하지 않고 SCHEMA_INVALID signature diagnostic 하나로 거부하는지 확인한다.
+func TestLoadFilesRejectsFileWithoutSignature(t *testing.T) {
+	for _, name := range []string{"dbschema.dbs", "empty.dbs"} {
+		path := filepath.Join("..", "..", "tests", "dbspec", "files", name)
+		_, err := LoadFiles(path)
+		want := "SCHEMA_INVALID: 1:1 signature: " + path + " is not a dbspec document"
+		if err == nil || err.Error() != want {
+			t.Fatalf("LoadFiles(%s) = %v, want %s", name, err, want)
 		}
 	}
 }

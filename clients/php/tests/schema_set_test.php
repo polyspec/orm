@@ -1,7 +1,7 @@
 <?php
 // Several dbspec document sets in one process, on SQLite, MySQL and
 // PostgreSQL. The generated bench models (clients/php/gen) and the models of
-// contracts/fixtures/decimal_schema.dbspec, generated into their own
+// contracts/fixtures/decimal_schema.dbs, generated into their own
 // namespace, are loaded together; each model class carries the manifestHash
 // of its own set, and any connection plans a request with the runtime model
 // of the request's manifest hash. No registration call exists: a set that
@@ -45,9 +45,9 @@ function autoload(string $dir, string $namespace): void
     });
 }
 
-$benchDocuments = [(string) file_get_contents("$root/schema/bench.dbspec")];
-$decimalDocuments = [(string) file_get_contents("$root/contracts/fixtures/decimal_schema.dbspec")];
-$decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbspec' => $decimalDocuments[0]]));
+$benchDocuments = [(string) file_get_contents("$root/schema/bench.dbs")];
+$decimalDocuments = [(string) file_get_contents("$root/contracts/fixtures/decimal_schema.dbs")];
+$decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $decimalDocuments[0]]));
 Generator::generate($decimalModel, "$work/decimal", 'SchemaSetDecimal\\Orm');
 autoload("$work/decimal", 'SchemaSetDecimal\\Orm');
 require "$work/decimal/bootstrap.php";
@@ -179,7 +179,7 @@ function editedManifest(string $dsn): void
         check((new DecimalCase)($db)->getCount() === 0, 'decimal read');
         $edited = str_replace('decimal(13,4)', 'decimal(14,4)', $decimalDocuments[0]);
         check($edited !== $decimalDocuments[0], 'edited manifest differs');
-        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbspec' => $edited]));
+        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $edited]));
         $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
         $dir = "$work/edited-$edits";
         Generator::generate($editedModel, $dir, $namespace);
@@ -224,7 +224,7 @@ function unregisteredSchema(string $dsn): void
     $documents = ["dbspec 1 schema_set_unloaded\n\ntable schema_set_item {\n  seq i64 identity\n  label varchar(64)\n  primary key (seq)\n}\n"];
     $namespace = 'SchemaSetUnloaded' . (++$sets) . '\\Orm';
     $dir = "$work/unloaded-$sets";
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['unloaded.dbspec' => $documents[0]])), $dir, $namespace);
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['unloaded.dbs' => $documents[0]])), $dir, $namespace);
     // model class만 읽고 bootstrap.php는 읽지 않는다.
     autoload($dir, $namespace);
     $class = "$namespace\\SchemaSetItem";
