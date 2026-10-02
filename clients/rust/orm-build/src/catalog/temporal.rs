@@ -2,7 +2,7 @@
 //! 자릿수로 쓴다(docs/dbspec.md). grid decode는 여섯 자리를 쓰므로 나머지 자리는 0이어야 한다.
 //! SQLite는 선언된 temporal column의 dbspec text를 같은 temporal cell로 바꾼다.
 use super::TableMetadata;
-use crate::tool_db::{Conn, GridCell, GridQueryResult, QueryLimits, P};
+use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};
 
 /// native type의 `(p)`. 없으면 dialect의 기본값: MySQL `time`과 `datetime`은 0, PostgreSQL
 /// `time`과 `timestamp`는 6이다.
@@ -29,31 +29,6 @@ fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
         return Err(format!("GRID_TEMPORAL_PRECISION: {column} has more fraction digits than its precision {p}"));
     }
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
-}
-
-/// dbspec date `YYYY-MM-DD`: 0001-01-01부터 9999-12-31까지의 달력 날짜.
-fn is_date(text: &str) -> bool {
-    use orm::chrono::{Datelike, NaiveDate};
-    text.len() == 10
-        && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
-}
-
-/// dbspec time `HH:MM:SS`와 0~6자리 소수: 하루 안의 시각.
-pub(super) fn is_time(text: &str) -> bool {
-    use orm::chrono::NaiveTime;
-    let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
-    whole.len() == 8
-        && NaiveTime::parse_from_str(whole, "%H:%M:%S").is_ok_and(|time| time.format("%H:%M:%S").to_string() == whole)
-        && digits.is_none_or(|digits| (1..=6).contains(&digits.len()) && digits.bytes().all(|digit| digit.is_ascii_digit()))
-}
-
-/// dbspec text 형식의 date, time, datetime 값. `kind`는 date, time, datetime 중 하나다.
-pub(super) fn is_temporal(kind: &str, text: &str) -> bool {
-    match kind {
-        "date" => is_date(text),
-        "time" => is_time(text),
-        _ => text.split_once(' ').is_some_and(|(date, time)| is_date(date) && is_time(time)),
-    }
 }
 
 /// SQLite의 선언된 `DATE`, `TIME`, `DATETIME` column의 dbspec 종류. SQLite에는 temporal storage
@@ -121,7 +96,7 @@ mod tests {
 
     #[test]
     fn temporal_text_follows_the_dbspec_forms() {
-        use super::is_temporal;
+        use crate::tool_db::is_temporal;
         for (kind, text) in
             [("date", "0001-01-01"), ("date", "9999-12-31"), ("time", "23:59:59.999999"), ("time", "00:00:00"), ("datetime", "2026-01-02 03:04:05.1")]
         {

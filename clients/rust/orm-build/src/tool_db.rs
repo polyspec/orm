@@ -11,6 +11,7 @@ mod grid;
 mod limits;
 mod params;
 mod result;
+pub(crate) use grid::is_temporal;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub use params::{ParamType, P};

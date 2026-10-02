@@ -322,8 +322,7 @@ precision p of the column, where MySQL `time` and `datetime` without p have 0 an
 PostgreSQL `time` and `timestamp` without p have 6; a read-only grid query has
 no column declaration and writes six digits. A time outside 00:00:00 to
 23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL
-infinity fail. A temporal primary key cannot be bound as a row identity and
-fails with `ROW_UPDATE_INVALID`. SQLite has no temporal storage class: a read of
+infinity fail. SQLite has no temporal storage class: a read of
 a described table turns the stored text of a `DATE`, `TIME` or `DATETIME`
 column into the same temporal cell as MySQL and PostgreSQL, whose fraction
 digits the dbspec CHECK fixes at p, and a value that is not in the dbspec form
@@ -370,6 +369,11 @@ nonfinite MySQL floats and SQLite NaN before execution; SQLite infinities remain
 native float64 values. Reject malformed decimals, PostgreSQL text NUL, more than
 65535 parameters or total value bytes exceeding 16 MiB before preparing/executing.
 Typed NULLs use the selected native bind kind, not empty text or zero.
+`Date`, `Time` and `DateTime` binds take the dbspec text of the grid cells and
+reject any other form before execution; MySQL and PostgreSQL bind them as native
+date, time and timestamp values and SQLite binds the text, so a catalog write of
+a temporal column, a temporal row identity included, reads back the written
+cell when the value has the column's declared fraction digits.
 Native Boolean binding uses SQLx bool; PostgreSQL grid reads preserve Boolean,
 while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
 inventing a distinct native boolean type. SQLite storage class is owner-tested.
