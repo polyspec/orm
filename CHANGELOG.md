@@ -1,5 +1,7 @@
 # Changelog
 
+- T20: the Rust `client_bench` and the bench/rust `native` and `driver_compare` require their iterations argument; a missing argument or a value that is not an integer of at least the program's minimum ends the program with status 1 and an error naming the argument and the value, instead of running 3000 or 1000 iterations.
+
 - T19: a generated Go relation getter returns `(<result>, error)` and a Rust relation getter `orm::Result<Option<..>>`; a row without a related row reads as no result, and a stored relation value of another type is `INTERNAL` instead of a dropped type assertion or a `None`.
 
 - T8.8.3: main is merged into the dbspec branch again with N17: the PHP client requires no PDO driver extension, and `make php-without-mysql-check` installs `schema/bench.dbs` and creates and reads a row on SQLite in the official PHP image, which has no `pdo_mysql`.

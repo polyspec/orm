@@ -100,14 +100,18 @@ fn bench_dsn() -> String {
     }
 }
 
-/// 첫 인자는 반복 횟수다. 없으면 `default`를 쓰고, `minimum` 이상의 정수가 아니면 그 값을
-/// 출력하며 끝난다. relation4는 반복 횟수의 1/3을 재므로 최소 3이다.
-fn iterations(default: usize, minimum: usize) -> usize {
-    let Some(arg) = std::env::args().nth(1) else { return default };
+/// 첫 인자는 반복 횟수다. 없거나 `minimum` 이상의 정수가 아니면 인자 이름과 받은 값을
+/// 출력하며 끝난다. 기본 반복 횟수는 없다. relation4는
+/// 반복 횟수의 1/3을 재므로 최소 3이다.
+fn iterations(minimum: usize) -> usize {
+    let Some(arg) = std::env::args().nth(1) else {
+        eprintln!("usage: native <iterations>; the iterations argument is required");
+        std::process::exit(1)
+    };
     match arg.parse::<usize>() {
         Ok(n) if n >= minimum => n,
         _ => {
-            eprintln!("iterations must be an integer of at least {minimum}, got {arg:?}");
+            eprintln!("the iterations argument must be an integer of at least {minimum}, got {arg:?}");
             std::process::exit(1)
         }
     }
@@ -121,7 +125,7 @@ fn invalid_dsn(error: impl std::fmt::Display) -> ! {
 
 #[tokio::main]
 async fn main() {
-    let iters = iterations(3000, 3);
+    let iters = iterations(3);
     let opts = MySqlConnectOptions::from_str(&bench_dsn()).unwrap_or_else(|e| invalid_dsn(e)).statement_cache_capacity(256);
     let pool = MySqlPoolOptions::new().max_connections(1).connect_with(opts).await.expect("connect");
 

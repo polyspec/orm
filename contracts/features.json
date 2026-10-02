@@ -3723,6 +3723,7 @@
         "clients/go/bench/native_test.go",
         "clients/php/tests/perf_gate.php",
         "clients/rust/tests/src/client_bench.rs",
+        "clients/rust/tests/tests/client_bench_args.rs",
         "clients/rust/tests/tests/client_bench_dsn.rs",
         "clients/go/bench/coverage_performance_gate_test.go",
         "clients/php/tests/coverage_performance_gate.php",
