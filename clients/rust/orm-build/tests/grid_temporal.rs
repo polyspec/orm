@@ -37,6 +37,67 @@ fn temporal(kinds: [fn(String) -> GridCell; 6], values: [&str; 6]) -> Vec<GridCe
     row
 }
 
+/// temporal column에 쓰는 값. kind는 date, time, datetime 중 하나다.
+fn temporal_param(kind: &str, text: &str) -> P {
+    match kind {
+        "date" => P::Date(text.into()),
+        "time" => P::Time(text.into()),
+        _ => P::DateTime(text.into()),
+    }
+}
+
+fn write_columns(dialect: &str) -> &'static str {
+    match dialect {
+        "mysql" => "k BIGINT NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME(3) NULL, dt6 DATETIME(6) NULL",
+        "postgres" => "k BIGINT NOT NULL PRIMARY KEY, d date NULL, t3 time(3) NULL, dt6 timestamp(6) NULL",
+        _ => "k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME NULL, dt6 DATETIME NULL",
+    }
+}
+
+/// catalog insert와 update가 temporal column에 쓰고, 다시 읽은 cell이 쓴 cell과 같다.
+async fn writes(catalog: &mut CatalogConnection, namespace: &str, name: &str, failures: &mut Vec<String>, dialect: &str) {
+    let table = TableRef { namespace: namespace.into(), name: name.into() };
+    let metadata = match catalog.describe_table(&table).await {
+        Ok(metadata) => metadata,
+        Err(error) => return failures.push(format!("{dialect}: write table metadata: {error}")),
+    };
+    let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(|_| {});
+    let running = || Arc::new(AtomicBool::new(false));
+    let first = [("date", "2026-01-02"), ("time", "03:04:05.120"), ("datetime", "2026-01-02 03:04:05.123456")];
+    let values: Vec<(String, P)> = std::iter::once(("k".to_owned(), P::I(1)))
+        .chain(["d", "t3", "dt6"].iter().zip(first).map(|(column, (kind, text))| (column.to_string(), temporal_param(kind, text))))
+        .collect();
+    let want = vec![GridCell::Integer(1), GridCell::Date(first[0].1.into()), GridCell::Time(first[1].1.into()), GridCell::DateTime(first[2].1.into())];
+    match catalog.insert_row(&metadata, &values, running(), publish.clone(), Arc::new(|| Ok(()))).await {
+        Ok(inserted) if inserted.rows == vec![want.clone()] => {}
+        other => failures.push(format!("{dialect}: temporal insert: {other:?}")),
+    }
+    let page = match catalog.table_page(&table, 10, 0).await {
+        Ok(page) if page.result.rows == vec![want.clone()] => page,
+        other => return failures.push(format!("{dialect}: page after temporal insert: {other:?}")),
+    };
+    let Ok(snapshot) = RowSnapshot::from_page(&page, 0) else { return failures.push(format!("{dialect}: snapshot after temporal insert")) };
+    let second = [("date", "2027-12-31"), ("time", "23:59:59.999"), ("datetime", "0001-01-01 00:00:00.000001")];
+    let changes: Vec<(String, P)> =
+        ["d", "t3", "dt6"].iter().zip(second).map(|(column, (kind, text))| (column.to_string(), temporal_param(kind, text))).collect();
+    let want = vec![GridCell::Integer(1), GridCell::Date(second[0].1.into()), GridCell::Time(second[1].1.into()), GridCell::DateTime(second[2].1.into())];
+    match catalog.update_row(&snapshot, &changes, running(), publish.clone(), Arc::new(|| Ok(()))).await {
+        Ok(updated) if updated.rows == vec![want.clone()] => {}
+        other => failures.push(format!("{dialect}: temporal update: {other:?}")),
+    }
+    let page = match catalog.table_page(&table, 10, 0).await {
+        Ok(page) if page.result.rows == vec![want] => page,
+        other => return failures.push(format!("{dialect}: page after temporal update: {other:?}")),
+    };
+    // dbspec 형식이 아닌 temporal 값은 쓰기 전에 거부한다.
+    let Ok(snapshot) = RowSnapshot::from_page(&page, 0) else { return failures.push(format!("{dialect}: snapshot after temporal update")) };
+    let invalid = [("dt6".to_owned(), P::DateTime("2026-01-02T03:04:05".into()))];
+    let result = catalog.update_row(&snapshot, &invalid, running(), publish, Arc::new(|| Ok(()))).await;
+    if !result.as_ref().is_err_and(|e| e.contains("TOOL_BIND_INVALID")) {
+        failures.push(format!("{dialect}: invalid temporal write: {result:?}"));
+    }
+}
+
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-grid-temporal-{}.sqlite", std::process::id()));
     assert!(!path.exists());
@@ -128,7 +189,12 @@ async fn check() {
                 seed.exec(&format!("DROP TABLE {}", quote(&format!("{name}_zone"), dialect)), &[]).await.expect("remove owned zone table");
             }
         }
-        // temporal primary key는 row identity로 bind하지 않는다.
+        let written = format!("orm_grid_temporal_write_{}", std::process::id());
+        let written_sql = quote(&written, dialect);
+        seed.exec(&format!("CREATE TABLE {written_sql}({})", write_columns(dialect)), &[]).await.expect("owned temporal write table");
+        writes(&mut catalog, &table.namespace, &written, &mut failures, dialect).await;
+        seed.exec(&format!("DROP TABLE {written_sql}"), &[]).await.expect("remove owned temporal write table");
+        // temporal primary key는 row identity로 bind한다.
         let keyed = format!("orm_grid_temporal_key_{}", std::process::id());
         let keyed_sql = quote(&keyed, dialect);
         seed.exec(&format!("CREATE TABLE {keyed_sql}(d DATE NOT NULL PRIMARY KEY, n INTEGER NULL)"), &[]).await.expect("owned temporal key table");
@@ -143,7 +209,7 @@ async fn check() {
                     }
                     Err(error) => Err(error.clone()),
                 };
-                if !result.as_ref().is_err_and(|e| e.contains("temporal row identity")) {
+                if !matches!(&result, Ok(updated) if updated.rows == vec![vec![GridCell::Date("2026-01-02".into()), GridCell::Integer(2)]]) {
                     failures.push(format!("{dialect}: temporal key update: {result:?}"));
                 }
             }

@@ -318,8 +318,7 @@ SQLite는 네이티브 decimal 저장 클래스가 없으므로 실제 텍스트
 p 없는 MySQL `time`과 `datetime`은 0, p 없는 PostgreSQL `time`과 `timestamp`는
 6이다. read-only 그리드 조회에는 컬럼 선언이 없으므로 여섯 자리를 쓴다.
 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜,
-PostgreSQL infinity는 실패한다. 시간 primary key는 행 식별자로 bind할 수 없으며
-`ROW_UPDATE_INVALID`로 실패한다. SQLite에는 시간 저장 클래스가 없다. 기술된
+PostgreSQL infinity는 실패한다. SQLite에는 시간 저장 클래스가 없다. 기술된
 테이블의 읽기는 `DATE`, `TIME`, `DATETIME` 컬럼에 저장된 텍스트를 MySQL,
 PostgreSQL과 같은 시간 셀로 바꾸며, 소수 자릿수는 dbspec CHECK가 p로 고정한다.
 dbspec 형식이 아닌 값은 `GRID_TEMPORAL_VALUE`로 실패한다. read-only 그리드
@@ -362,6 +361,10 @@ PostgreSQL은 decimal·두 네이티브 실수 폭을 지원한다. 실행 전�
 실수·SQLite NaN을 거부하고 SQLite 무한대는 float64로 유지한다. 잘못된 decimal·
 PostgreSQL 텍스트 NUL·65535개 초과 인수·총 값 16 MiB 초과를 prepare/실행 전에
 거부한다. 타입형 NULL은 빈 텍스트/0이 아닌 지정 네이티브 bind 종류다.
+`Date`, `Time`, `DateTime` bind는 그리드 셀과 같은 dbspec 텍스트를 받고 다른 형식은
+실행 전에 거부한다. MySQL과 PostgreSQL은 네이티브 date, time, timestamp 값으로,
+SQLite는 텍스트로 bind하므로, 값이 컬럼의 선언된 소수 자릿수를 가지면 시간 행
+식별자를 포함한 시간 컬럼의 카탈로그 쓰기는 쓴 셀을 다시 읽는다.
 Boolean bind는 SQLx bool을 사용하며 PostgreSQL grid는 Boolean을 유지한다.
 MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 만들어내지
 않고 정수 0/1을 반환한다. SQLite 저장 클래스는 소유 테스트로 검증한다.

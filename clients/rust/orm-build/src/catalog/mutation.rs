@@ -39,6 +39,9 @@ pub(super) fn cell(value: &P) -> GridCell {
         P::Decimal(v) => GridCell::Decimal(v.clone()),
         P::Boolean(v) => GridCell::Boolean(*v),
         P::Binary(v) => GridCell::Binary(v.clone()),
+        P::Date(v) => GridCell::Date(v.clone()),
+        P::Time(v) => GridCell::Time(v.clone()),
+        P::DateTime(v) => GridCell::DateTime(v.clone()),
         P::Null(_) => GridCell::Null,
     }
 }
@@ -53,8 +56,9 @@ pub(super) fn bind(value: &GridCell) -> Result<P, String> {
         GridCell::Boolean(v) => P::Boolean(*v),
         GridCell::Binary(v) => P::Binary(v.clone()),
         GridCell::Null => return Err("ROW_UPDATE_INVALID: NULL row identity".into()),
-        // P에는 temporal bind가 없으므로 text로 바꿔 비교하지 않고 거부한다.
-        GridCell::Date(_) | GridCell::Time(_) | GridCell::DateTime(_) => return Err("ROW_UPDATE_INVALID: temporal row identity is not supported".into()),
+        GridCell::Date(v) => P::Date(v.clone()),
+        GridCell::Time(v) => P::Time(v.clone()),
+        GridCell::DateTime(v) => P::DateTime(v.clone()),
     })
 }
 pub(super) fn placeholder(index: usize, dialect: &str) -> String {

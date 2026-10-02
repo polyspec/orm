@@ -148,3 +148,28 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
         }
     }))
 }
+
+/// dbspec date `YYYY-MM-DD`: 0001-01-01부터 9999-12-31까지의 달력 날짜.
+pub(crate) fn is_date(text: &str) -> bool {
+    use orm::chrono::{Datelike, NaiveDate};
+    text.len() == 10
+        && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
+}
+
+/// dbspec time `HH:MM:SS`와 0~6자리 소수: 하루 안의 시각.
+pub(crate) fn is_time(text: &str) -> bool {
+    use orm::chrono::NaiveTime;
+    let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
+    whole.len() == 8
+        && NaiveTime::parse_from_str(whole, "%H:%M:%S").is_ok_and(|time| time.format("%H:%M:%S").to_string() == whole)
+        && digits.is_none_or(|digits| (1..=6).contains(&digits.len()) && digits.bytes().all(|digit| digit.is_ascii_digit()))
+}
+
+/// dbspec text 형식의 date, time, datetime 값. `kind`는 date, time, datetime 중 하나다.
+pub(crate) fn is_temporal(kind: &str, text: &str) -> bool {
+    match kind {
+        "date" => is_date(text),
+        "time" => is_time(text),
+        _ => text.split_once(' ').is_some_and(|(date, time)| is_date(date) && is_time(time)),
+    }
+}

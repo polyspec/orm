@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T21.2: Rust catalog는 dbspec text 형식의 `Date`, `Time`, `DateTime` bind로 temporal row identity를 포함한 `date`, `time`, `datetime` column에 쓰고, MySQL, PostgreSQL, SQLite에서 `ROW_WRITE_MISMATCH`로 실패하지 않고 쓴 cell을 다시 읽는다.
+
 - T21.1: SQLite에서 기술된 `DATE`, `TIME`, `DATETIME` column은 MySQL, PostgreSQL과 같은 `Date`, `Time`, `DateTime` grid cell로 읽히고, dbspec 형식 밖의 값은 `GRID_TEMPORAL_VALUE`로 실패하며, read-only grid query는 저장된 text를 유지한다.
 
 - T22: root package.json에 script file이 제거된 `schema:check` script가 더 이상 없고, root npm script가 tracked file이나 directory가 아닌 path를 쓰면 `make repo-check`가 실패한다.

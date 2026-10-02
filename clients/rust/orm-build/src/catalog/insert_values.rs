@@ -17,7 +17,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
             return Err("ROW_INSERT_INVALID: invalid column assignment".into());
         }
         let size = match value {
-            P::S(v) | P::Decimal(v) => v.len(),
+            P::S(v) | P::Decimal(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => v.len(),
             P::Binary(v) => v.len(),
             _ => 16,
         };

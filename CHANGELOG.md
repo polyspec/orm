@@ -1,5 +1,7 @@
 # Changelog
 
+- T21.2: the Rust catalog writes `date`, `time` and `datetime` columns with `Date`, `Time` and `DateTime` binds in the dbspec text form, including temporal row identities, and reads back the written cell on MySQL, PostgreSQL and SQLite instead of failing with `ROW_WRITE_MISMATCH`.
+
 - T21.1: on SQLite a described `DATE`, `TIME` or `DATETIME` column reads as the same `Date`, `Time` or `DateTime` grid cell as on MySQL and PostgreSQL, a value outside the dbspec form fails with `GRID_TEMPORAL_VALUE`, and a read-only grid query keeps the stored text.
 
 - T22: the root package.json no longer has the `schema:check` script, whose script file was removed, and `make repo-check` fails when a root npm script names a path that is not a tracked file or directory.
