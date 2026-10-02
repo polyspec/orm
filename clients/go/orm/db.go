@@ -118,6 +118,10 @@ type dbMutable struct {
 	keyringOnce sync.Once
 	keyring     AESKeyring
 	keyringErr  error
+
+	// rollbackFault는 FailNextRollback이 설정하는 test fault다. build tag
+	// ormtest가 있는 build만 설정할 수 있다.
+	rollbackFault atomic.Bool
 }
 
 // engineFor는 schema의 engine을 반환하고, 없으면 이 연결의 dialect로 만든다.

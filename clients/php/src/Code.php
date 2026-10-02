@@ -61,6 +61,8 @@ final class Code
     public const CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
     public const ROLLBACK = 'ROLLBACK';
+    /** executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran */
+    public const FAULT = 'FAULT';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: a NOWAIT lock could not be acquired immediately */

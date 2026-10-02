@@ -4,6 +4,8 @@
 # ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for the
 # Rust catalog connection tests; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects
 # clients (default: all).
+# rollback fault case는 각 client의 test entry point로 실행한다: Go build tag
+# ormtest, Rust feature test-faults, Node condition orm-test.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -14,6 +16,7 @@ LANGS=,${ORM_CLIENT_DB_LANGS:-go,php,rust,typescript},
 
 case "$LANGS" in *,go,*)
   go test -count=1 ./clients/go/...
+  go test -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
 esac
 case "$LANGS" in *,php,*)
   php clients/php/tests/model_test.php
@@ -30,6 +33,7 @@ case "$LANGS" in *,typescript,*)
 esac
 case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked --workspace)
+  (cd clients/rust && cargo test --locked -p orm --features test-faults --test rollback)
   (cd clients/rust && cargo test --locked -p orm-build --features live-db)
   (cd clients/rust && cargo build --locked --release -p orm-tests --bin integration)
   clients/rust/target/release/integration "$ROOT/schema/bench.dbspec"

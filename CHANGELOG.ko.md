@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T8.8.2: N16과 함께 main을 dbspec branch에 다시 merge했다. 각 client의 test entry point가 rollback fault를 설정하고, 그다음 실패한 rollback은 MySQL, PostgreSQL, SQLite에서 하나뿐인 transaction 종료 형태 `transaction failed (<cause>) and rollback failed (<error>)` 안의 `FAULT`로 보고된다. idle machine에서 client 하나와 database 하나씩 잰 2000 table introspection은 모든 client에서 0.73-2.56 s로 5 s budget 안이다.
+
 - T8.6.8: 모든 client가 MySQL, PostgreSQL, SQLite에서 plan을 step 하나씩 적용한다: statement마다 따로 commit하고 history step을 기록하며, recover는 다음 step의 catalog 효과로 중단된 plan을 이어 가고, rollback은 모든 step의 rollback statement로 마지막 plan을 되돌린다. 지우는 table과 column은 finalize가 지울 때까지 `dbspec$hold$` 이름을 받아 숨고, 더한 column은 rollback에서 숨었다가 다시 적용하면 돌아오며, 적용한 plan의 rollback은 non-null로 되돌릴 column의 NULL row를 채우거나 거부하고, lock 대기는 5초에 끝나며, `PlanSteps`가 각 step의 rollback statement, 효과, finalize 표시와 함께 `PlanStatements`를 대신한다.
 
 - T8.8.1: main을 dbspec branch에 merge했고, Mermaid source path는 제거된 채로 main의 기능이 dbspec path에서 동작한다. 한 process가 여러 document set의 generated code를 읽고 연결은 모든 요청을 그 manifest hash의 model로 계획한다. 읽힌 code가 등록하지 않은 manifest의 요청과 text의 hash가 선언한 hash와 다른 code는 `SCHEMA_HASH_MISMATCH`로 실패하며, generated code가 자기 set을 등록하므로 `utils().schema().register()`는 없다. rollback도 실패한 transaction이나 savepoint는 server가 닫은 connection에서도 모든 client에서 `ROLLBACK` 오류 `transaction failed (<cause>) and rollback failed (<error>)` 하나를 보고하고, 두 오류를 유지하며, 재시도하지 않는다. `docs/protocol.md`가 clock 규칙을 한 번 쓴다: client clock은 마이크로초의 UTC이고, MySQL은 `CURRENT_TIMESTAMP(p)`와 `NOW(6)`을 쓰며, SQLite 상대 형식은 소수 여섯 자리를 유지하고, SQLite는 생략한 `default now` column에 client clock을 bind하며, 모든 `now` slot은 그 column의 소수 자리를 가진다. plan history는 `applied_at`을 `YYYY-MM-DDTHH:MM:SS.ffffffZ`로 쓰고, TypeScript apply clock은 epoch 이후 마이크로초다.
@@ -316,6 +318,20 @@ node:sqlite, sqlite3 shell이 DSN query를 파일 이름에 남긴다는 것을 
 실행기 수정 시각 기록을 기록하고 audit context 정의는 T8.1 review로
 남긴다. 현재 스키마 도구와 client의 결함 13개를 T8.0.1-T8.0.11, T8.0.13,
 T8.0.14로 기록한다.
+
+모든 database에서 트랜잭션 rollback을 실패시키는 test fault를 제공한다(N16).
+orm에는 rollback을 실패시키는 지원 방법이 없었다. ORM
+test는 MySQL과 PostgreSQL에서 server session을 종료하거나 SQL로 쓴 SQLite
+trigger를 설치한다. 이제 각 클라이언트의 test entry point가 연결에 rollback
+fault를 설정한다. Go는 build tag `ormtest`의 `orm.FailNextRollback(db)`, Rust는
+feature `test-faults`의 `orm::testing::fail_next_rollback(&db)`, TypeScript는
+Node condition `orm-test`에서 `@polyspec/orm-typescript/testing`의
+`failNextRollback(db)`, PHP는 package autoloader가 load하지 않는
+`testing/Faults.php`의 `Orm\Testing\Faults::failNextRollback($db)`를 쓴다.
+DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다. callback이 실패한 다음
+트랜잭션의 rollback은 실행된 뒤 새 catalog code `FAULT`로 보고되어, 트랜잭션은
+callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다. `rollback_fault`
+case가 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 통과한다.
 
 migration ledger의 시각을 모든 database에서 마이크로초로 저장한다(N15).
 ledger `orm_schema_migrations`는 MySQL에서 `timestamp`를 선언했고 SQLite에서

@@ -143,6 +143,19 @@ default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 
 
 오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`). `ROLLBACK` 오류는 재시도하지 않는다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
+### 3.1 Test faults
+
+test는 자기 클라이언트의 test entry point로 모든 데이터베이스에서 트랜잭션의 rollback을 결정적으로 실패시킨다. production process는 이 fault를 설정할 수 없다. entry point는 handle의 연결에 rollback fault를 설정하고, 그 연결의 모든 handle이 이를 공유한다. callback이 실패한 다음 트랜잭션의 rollback은 평소대로 실행되어 데이터베이스가 트랜잭션을 버리고, 그 뒤 클라이언트는 rollback을 `FAULT` 오류로 실패했다고 보고한다. 트랜잭션은 callback 오류와 `FAULT` 오류를 유지한 `ROLLBACK` 오류 하나를 반환한다. commit, savepoint rollback, 실패한 begin이나 commit 뒤의 rollback은 fault를 소비하지 않는다. fault는 callback 실패 뒤의 트랜잭션 rollback이 소비할 때까지 설정된 채로 남고, 그다음 callback이 실패한 트랜잭션은 callback 오류만 반환한다.
+
+fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다.
+
+| 클라이언트 | Entry point | production build가 제외하는 방법 |
+|---|---|---|
+| Go | `orm.FailNextRollback(db)` | build tag `ormtest`가 있을 때만 파일을 compile한다(`go test -tags ormtest`). tag가 없으면 함수가 없어 호출이 compile되지 않는다 |
+| Rust | `orm::testing::fail_next_rollback(&db)` | cargo feature `test-faults`가 있을 때만 module을 compile하며, 어떤 default feature도 이를 켜지 않는다. `[dev-dependencies]`에서 켠다 |
+| TypeScript | `@polyspec/orm-typescript/testing`의 `failNextRollback(db)` | package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다 |
+| PHP | `Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
+
 ## 4. 클라이언트 안의 계획
 
 모든 클라이언트는 호출한 프로세스 안에서 요청을 검증하고 계획한다. 컴파일러 서비스, 데몬, 확장은 사용하지 않는다.

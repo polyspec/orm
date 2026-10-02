@@ -11,13 +11,19 @@
 // rollback fail. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test
 // databases; the test fails when either is unset.
 //
-// Usage: node clients/typescript/tests/rollback.mjs [case ...] (after npm run typescript:build)
+// rollback_fault case는 condition `orm-test`에서만 resolve되는 test entry point
+// `@polyspec/orm-typescript/testing`의 rollback fault를 설정한다.
+//
+// Usage: node --conditions=orm-test clients/typescript/tests/rollback.mjs [case ...] (after npm run typescript:build)
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import * as packageEntry from '../dist/index.js';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { failNextRollback } from '@polyspec/orm-typescript/testing';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbspec', import.meta.url), 'utf8');
@@ -141,7 +147,48 @@ async function savepointRollbackFailed(driver, dsn) {
   } finally { await db.close(); }
 }
 
-const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed };
+/**
+ * test entry point가 condition `orm-test`에서만 resolve되고 package entry point가
+ * fault를 export하지 않는지 확인한다.
+ */
+function checkFaultEntry() {
+  const packageRoot = new URL('..', import.meta.url).pathname;
+  const load = "await import('@polyspec/orm-typescript/testing')";
+  const plain = spawnSync(process.execPath, ['--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
+  check(plain.status !== 0 && plain.stderr.includes('ERR_PACKAGE_PATH_NOT_EXPORTED'), `the test entry point resolves without the condition orm-test: status ${plain.status} ${plain.stderr}`);
+  const tested = spawnSync(process.execPath, ['--conditions=orm-test', '--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
+  check(tested.status === 0, `the test entry point does not resolve under the condition orm-test: ${tested.stderr}`);
+  check(!('failNextRollback' in packageEntry) && !('armRollbackFault' in packageEntry), 'the package entry point exports the rollback fault');
+}
+
+/**
+ * test entry point의 rollback fault다. commit된 transaction은 fault를 남기고,
+ * callback이 실패한 다음 transaction은 rollback되며 그 rollback은 FAULT를 보고하고
+ * transaction은 callback 오류와 fault를 가진 ROLLBACK을 throw한다. fault는
+ * 소비된다: 그 뒤 transaction은 callback 오류만 throw하고 connection은 이후 요청을
+ * 처리한다.
+ */
+async function rollbackFault(driver, dsn) {
+  checkFaultEntry();
+  const db = await connect(driver, dsn);
+  try {
+    failNextRollback(db);
+    const committed = await raised(() => db.transaction(async () => { await probe(db, 'committed').create(); }, { retry: 0 }));
+    check(committed === undefined, `a committed transaction with an armed fault raises ${committed}`);
+    const callback = new Error('rollback fault callback failed');
+    const failing = async () => { await probe(db, 'rolled back').create(); throw callback; };
+    const error = await raised(() => db.transaction(failing, { retry: 0 }));
+    checkRollback(error, 'transaction');
+    check(error?.cause === callback, 'the ROLLBACK error keeps the callback error itself');
+    check(error?.rollback instanceof OrmError && error.rollback.code === 'FAULT', `the rollback error is FAULT: ${error?.rollback}`);
+    check(await new RollbackProbe().connect(db).getCount() === 1, 'the faulted rollback keeps only the committed row');
+    const again = await raised(() => db.transaction(failing, { retry: 0 }));
+    check(again === callback, `the transaction after the consumed fault raises the callback error: ${again}`);
+    check(await new RollbackProbe().connect(db).getCount() === 1, 'the second rollback keeps only the committed row');
+  } finally { await db.close(); }
+}
+
+const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 const targets = { sqlite: `sqlite://${join(work, 'rollback.sqlite')}` };
 for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {

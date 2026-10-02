@@ -24,6 +24,8 @@ final class Db
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
+    /** Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
+    private bool $rollbackFault = false;
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
@@ -226,6 +228,10 @@ final class Db
             } catch (\Throwable $cleanup) {
                 // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
+            }
+            if ($this->rollbackFault) {
+                $this->rollbackFault = false;
+                throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $failure;
         }

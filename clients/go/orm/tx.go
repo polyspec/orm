@@ -342,7 +342,13 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	err = fn()
 	returned = true
 	if err != nil {
-		return t.rollbackAfter(err)
+		if rollbackErr := t.rollback(); rollbackErr != nil {
+			return rollbackFailed(err, rollbackErr)
+		}
+		if d.m.rollbackFault.CompareAndSwap(true, false) {
+			return rollbackFailed(err, rollbackFaultErr())
+		}
+		return err
 	}
 	return t.commit()
 }
@@ -366,6 +372,12 @@ func (t *txConn) rollbackAfter(cause error) error {
 		return rollbackFailed(cause, rollbackErr)
 	}
 	return cause
+}
+
+// rollbackFaultErr는 설정된 test fault가 rollback이 실행된 뒤 보고하는 rollback
+// 오류다 (FailNextRollback, build tag ormtest).
+func rollbackFaultErr() error {
+	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
 }
 
 func (d *DB) begin(o txOptions) (*txConn, error) {

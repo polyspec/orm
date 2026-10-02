@@ -249,10 +249,19 @@ export function keyValue(value: unknown): Key {
   return scalarKey(value);
 }
 
+/**
+ * connection의 rollback fault를 설정한다. test entry point `src/testing.ts`만
+ * 호출하며 package entry point는 export하지 않는다.
+ */
+export function armRollbackFault(db: Db): void {
+  db['shared'].rollbackFault = true;
+}
+
 /** A database connection with its plan cache and statement cache. */
 export class Db {
-  // State every handle of one connection shares.
-  private readonly shared = { closed: false };
+  // 한 connection의 모든 handle이 공유하는 상태다. rollbackFault는 test entry
+  // point의 failNextRollback이 설정하는 test fault다.
+  private readonly shared = { closed: false, rollbackFault: false };
   public readonly signal: AbortSignal | undefined = undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
@@ -380,6 +389,10 @@ export class Db {
         await this.finish(frame, false);
       } catch (cleanup) {
         throw rollbackFailed(error, cleanup);
+      }
+      if (this.shared.rollbackFault) {
+        this.shared.rollbackFault = false;
+        throw rollbackFailed(error, new OrmError('FAULT', 'test fault: the rollback of the transaction ran and is reported as failed'));
       }
       throw error;
     }
