@@ -1,5 +1,5 @@
 //! Rust hot-path gate: generated client vs the sqlx baseline (bench/rust/src/native.rs).
-//! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> client_bench [iters]
+//! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> client_bench <iterations>
 use std::time::Instant;
 
 orm::models!();
@@ -24,10 +24,25 @@ fn bench_dsn() -> Result<String, String> {
     }
 }
 
+/// 첫 인자는 반복 횟수다. 없거나 `minimum` 이상의 정수가 아니면 인자 이름과 받은 값을
+/// 출력하며 끝난다. 기본 반복 횟수는 없다.
+fn iterations(minimum: usize) -> usize {
+    let Some(arg) = std::env::args().nth(1) else {
+        eprintln!("usage: client_bench <iterations>; the iterations argument is required");
+        std::process::exit(1)
+    };
+    match arg.parse::<usize>() {
+        Ok(n) if n >= minimum => n,
+        _ => {
+            eprintln!("the iterations argument must be an integer of at least {minimum}, got {arg:?}");
+            std::process::exit(1)
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let iters: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(3000);
+    let iters = iterations(1);
     let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let dsn = bench_dsn().unwrap_or_else(|e| {
         eprintln!("{e}");

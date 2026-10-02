@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T20: Rust `client_bench`와 bench/rust의 `native`, `driver_compare`는 iterations 인자를 요구한다. 인자가 없거나 program의 최소값 이상의 정수가 아니면 3000번이나 1000번을 반복하는 대신 인자 이름과 값을 담은 error와 함께 status 1로 끝난다.
+
 - T19: 생성된 Go relation getter는 `(<result>, error)`를, Rust relation getter는 `orm::Result<Option<..>>`를 돌려준다. related row가 없는 row는 결과 없음으로 읽히고, 다른 type으로 저장된 relation 값은 버려지는 type assertion이나 `None` 대신 `INTERNAL`이다.
 
 - T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.

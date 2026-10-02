@@ -51,7 +51,7 @@
 | PK 행 | 58.840µs | 61.825µs | 1.051 |
 | 100행 목록 | 1.180ms | 1.113ms | 0.943 |
 
-`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 `driver_compare`와 sqlx 기준 `native`를 `ORM_BENCH_MYSQL_DSN`의 시드된 벤치 데이터베이스에서 적은 반복 횟수로 실행하고, 둘 다 모든 작업의 row를 읽고 status 0으로 끝나지 않으면 실패한다. 지연 시간은 CI 통과 조건이 아니다.
+`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 반복 횟수는 `native`, `driver_compare`, `client_bench`의 필수 인자다. 인자가 없거나 program의 최소값(3, 10, 1) 이상의 정수가 아니면 program은 연결하기 전에 status 1로 끝난다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 `driver_compare`와 sqlx 기준 `native`를 `ORM_BENCH_MYSQL_DSN`의 시드된 벤치 데이터베이스에서 적은 반복 횟수로 실행하고, 둘 다 모든 작업의 row를 읽고 status 0으로 끝나지 않으면 실패한다. 지연 시간은 CI 통과 조건이 아니다.
 
 ## 5. 최신 기준 실행
 
