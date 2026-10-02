@@ -793,14 +793,14 @@
               7,
               36500
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e DATE_SUB(NOW(), INTERVAL ? DAY)"
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e DATE_SUB(NOW(6), INTERVAL ? DAY)"
           },
           {
             "binds": [
               7,
               1200
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c DATE_ADD(NOW(), INTERVAL ? MONTH)"
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c DATE_ADD(NOW(6), INTERVAL ? MONTH)"
           },
           {
             "binds": [

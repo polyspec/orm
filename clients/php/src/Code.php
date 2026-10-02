@@ -59,6 +59,8 @@ final class Code
     public const CONFIG = 'CONFIG';
     /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout) */
     public const CANCELED = 'CANCELED';
+    /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
+    public const ROLLBACK = 'ROLLBACK';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: a NOWAIT lock could not be acquired immediately */
@@ -67,10 +69,12 @@ final class Code
     public const DEADLOCK = 'DEADLOCK';
     /** driver: MySQL 1062 / SQLSTATE 23000 */
     public const DUPLICATE_KEY = 'DUPLICATE_KEY';
-    /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787/1811 */
+    /** driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787 */
     public const FOREIGN_KEY = 'FOREIGN_KEY';
     /** driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275 */
     public const CONSTRAINT = 'CONSTRAINT';
     /** driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes */
     public const READ_ONLY = 'READ_ONLY';
+    /** driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 */
+    public const DRIVER = 'DRIVER';
 }

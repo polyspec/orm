@@ -792,17 +792,19 @@
             "binds": [
               7,
               "$NOW",
-              36500
+              36500,
+              "$NOW"
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e datetime(?, '-' || CAST(? AS TEXT) || ' days')"
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003e (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20))"
           },
           {
             "binds": [
               7,
               "$NOW",
-              1200
+              1200,
+              "$NOW"
             ],
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor')"
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"start_dt\" \u003c (datetime(?, '+' || CAST(? AS TEXT) || ' months', 'floor') || substr(?, 20))"
           },
           {
             "binds": [
@@ -949,9 +951,11 @@
               "{\"a\":1}",
               "a:1:{s:1:\"k\";s:1:\"v\";}",
               "dbc465e76bc8f462fdfa67f87db87fcc749b2ae4341aa20f5a72f6b84b11b339",
-              1
+              1,
+              "$NOW",
+              "$NOW"
             ],
-            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"price\", \"ip\", \"aes_hex_email\", \"json_setting\", \"serialize_data\", \"email_blind_index\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"price\", \"ip\", \"aes_hex_email\", \"json_setting\", \"serialize_data\", \"email_blind_index\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [
@@ -1008,9 +1012,11 @@
               1,
               "2026-06-01 00:00:00.000000",
               "2026-06-01 00:00:00.000000",
-              1
+              1,
+              "$NOW",
+              "$NOW"
             ],
-            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
+            "sql": "INSERT INTO \"author\" (\"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\""
           },
           {
             "binds": [

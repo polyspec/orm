@@ -30,8 +30,9 @@ type Dialect interface {
 	ReadExpr(col string, styles []string, ph func() string) (string, int)
 	// WriteExpr wraps a bound value for a style pipeline on write.
 	WriteExpr(ph func() string, styles []string) (string, int)
-	// Now renders CURRENT_TIMESTAMP.
-	Now() string
+	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
+	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
+	Now(precision int) string
 	// CurrentTime renders a wall-clock expression that advances during a transaction.
 	CurrentTime() string
 	// HandlesStyle은 codec stage를 이 dialect의 SQL에서 적용하는지 알린다

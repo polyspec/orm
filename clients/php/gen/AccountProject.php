@@ -21,11 +21,12 @@ final class AccountProject extends Model
             'aes_version' => '',
             'audit' => '',
             'columns' => [
-                'account_seq' => ['name' => 'account_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
-                'project_seq' => ['name' => 'project_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
+                'account_seq' => ['name' => 'account_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
+                'project_seq' => ['name' => 'project_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
             ],
             'unique' => [],
             'indexes' => ['ix_account_project_project' => ['project_seq']],
+            'manifest_hash' => 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa',
         ];
     }
 

@@ -1,0 +1,11 @@
+dbspec 1 refusal
+
+table refused_row {
+  seq i64 identity
+  amount i32
+  primary key (seq)
+  check amount_positive (amount > 0)
+  settings {
+    immutable
+  }
+}

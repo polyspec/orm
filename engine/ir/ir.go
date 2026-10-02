@@ -207,11 +207,19 @@ type Optimist struct {
 type Error struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
+	// Cause는 driver code의 driver 오류이거나 ROLLBACK의 callback 오류와 rollback
+	// 오류다. JSON 형태에는 들어가지 않는다.
+	Cause error `json:"-"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Msg }
 
-func errf(code, format string, a ...any) *Error { return &Error{code, fmt.Sprintf(format, a...)} }
+// Unwrap은 Cause를 돌려준다.
+func (e *Error) Unwrap() error { return e.Cause }
+
+func errf(code, format string, a ...any) *Error {
+	return &Error{Code: code, Msg: fmt.Sprintf(format, a...)}
+}
 
 // opsByType은 dbspec type kind마다 허용하는 operator다.
 var opsByType = map[string][]string{

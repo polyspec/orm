@@ -44,7 +44,7 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 		}
 		return failure
 	})
-	if ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), failure.Error()) || !strings.Contains(err.Error(), errStatementRejected.Error()) {
-		t.Fatalf("rollback: want CONFIG with the callback and the reset error, got %v", err)
+	if ErrorCode(err) != CodeRollback || !strings.Contains(err.Error(), failure.Error()) || !strings.Contains(err.Error(), errStatementRejected.Error()) {
+		t.Fatalf("rollback: want ROLLBACK with the callback and the reset error, got %v", err)
 	}
 }

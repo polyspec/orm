@@ -10,7 +10,7 @@ declare(strict_types=1);
 // test fails when either is unset.
 // Usage: php clients/php/tests/runtime_db_test.php
 
-// bench model은 읽지 않는다: 한 process는 한 document set의 model만 가진다.
+// bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use Orm\Code;

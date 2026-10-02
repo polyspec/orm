@@ -166,7 +166,7 @@ func chainHistory(t *testing.T, plans []*dbspec.Plan, dialect, last string) []st
 		if i == len(plans)-1 && last != "" {
 			state, step, _ = strings.Cut(last, " ")
 		}
-		rows = append(rows, strings.Join([]string{p.Name, from, p.To, state, step, strconv.Itoa(len(statements)), "2026-10-01T00:00:00Z"}, "|"))
+		rows = append(rows, strings.Join([]string{p.Name, from, p.To, state, step, strconv.Itoa(len(statements)), "2026-10-01T00:00:00.123456Z"}, "|"))
 		source = p.Schema
 	}
 	return rows

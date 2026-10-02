@@ -41,8 +41,9 @@ fn create_from_empty() -> Vec<Plan> {
     vec![parse_plan(&text).unwrap_or_else(|e| panic!("create-from-empty: {e:?}"))]
 }
 
+/// tool clock: 2026-10-01T00:00:00.123456789Z. history의 applied_at은 소수 여섯 자리로 버린다.
 fn fixed_now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time")
+    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
 fn quiet(_: &ApplyEvent) -> Result<(), EventError> {

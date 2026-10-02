@@ -45,39 +45,58 @@ pub use value::{Param, StyledValue, Val};
 pub enum Error {
     /// An error with a code from docs/errors.yaml.
     Engine { code: String, msg: String },
-    /// Driver error.
-    Sqlx(sqlx::Error),
+    /// A driver error: the code the error catalog names for it, or DRIVER,
+    /// with the driver message and the driver error.
+    Driver { code: String, msg: String, source: sqlx::Error },
     /// A strict one-row query matched no row.
     NoRows,
     /// Update with optimistic locking matched no row.
     OptimisticLock,
     /// Executor configuration problem (missing AES key, bad transform input, …).
     Config(String),
+    /// A transaction or savepoint callback failed and its rollback failed too.
+    Rollback { callback: Box<Error>, rollback: Box<Error> },
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Engine { code, msg } => write!(f, "{code}: {msg}"),
-            Error::Sqlx(e) => write!(f, "sqlx: {e}"),
+            Error::Driver { code, msg, .. } => write!(f, "{code}: {msg}"),
             Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
+            Error::Rollback { callback, rollback } => write!(f, "{}: {}", codes::ROLLBACK, rollback_message(callback, rollback)),
         }
     }
 }
 
-impl std::error::Error for Error {}
+/// ROLLBACK 오류의 message: 실패한 callback의 오류와 실패한 rollback의 오류를 이 순서로 담는다.
+pub(crate) fn rollback_message(cause: &dyn std::fmt::Display, rollback: &dyn std::fmt::Display) -> String {
+    format!("transaction failed ({cause}) and rollback failed ({rollback})")
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Driver { source, .. } => Some(source),
+            Error::Rollback { callback, .. } => Some(callback.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 /// Driver errors: the codes the catalog names (docs/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
-/// DUPLICATE_KEY, 787 / 1811 → FOREIGN_KEY. A statement stopped before it finished — MySQL 1317 / 3024,
+/// DUPLICATE_KEY, 787 → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
+/// to CONSTRAINT. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
 /// MySQL 1290 / 1792, PostgreSQL 25006, SQLite READONLY (8, primary code of any extended form) — maps
-/// to READ_ONLY. Everything else stays `Error::Sqlx`.
+/// to READ_ONLY. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
+/// driver message. Each keeps the driver error as its source.
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
         use sqlx::error::DatabaseError as _;
@@ -92,6 +111,7 @@ impl From<sqlx::Error> for Error {
                     (1317, _) | (3024, _) => Some((codes::CANCELED, m.message().to_owned())),
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
                     (1290, _) | (1792, _) => Some((codes::READ_ONLY, m.message().to_owned())),
+                    (3819, _) | (4025, _) => Some((codes::CONSTRAINT, m.message().to_owned())),
                     (1298, _) => {
                         return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
                     }
@@ -106,7 +126,8 @@ impl From<sqlx::Error> for Error {
                     "23503" => Some((codes::FOREIGN_KEY, msg())),
                     "57014" => Some((codes::CANCELED, msg())),
                     "25006" => Some((codes::READ_ONLY, msg())),
-                    _ => None,
+                    "23514" => Some((codes::CONSTRAINT, msg())),
+                    _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
                 // sqlx reports the extended result code as text
@@ -114,19 +135,20 @@ impl From<sqlx::Error> for Error {
                 match (n & 0xff, n) {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
-                    (_, 787) | (_, 1811) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                    (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                    (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
                     (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
                     (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),
-                    _ => None,
+                    _ => Some((codes::DRIVER, s.message().to_owned())),
                 }
             } else {
                 None
             };
             if let Some((code, msg)) = mapped {
-                return Error::Engine { code: code.into(), msg };
+                return Error::Driver { code: code.into(), msg, source: e };
             }
         }
-        Error::Sqlx(e)
+        Error::Driver { code: codes::DRIVER.into(), msg: e.to_string(), source: e }
     }
 }
 
@@ -134,11 +156,17 @@ impl Error {
     pub fn code(&self) -> &str {
         match self {
             Error::Engine { code, .. } => code,
-            Error::Sqlx(_) => "SQLX",
+            Error::Driver { code, .. } => code,
             Error::NoRows => codes::NO_ROWS,
             Error::OptimisticLock => codes::OPTIMISTIC_LOCK,
             Error::Config(_) => codes::CONFIG,
+            Error::Rollback { .. } => codes::ROLLBACK,
         }
+    }
+
+    /// The error of a callback that failed and whose rollback failed too.
+    pub fn rollback(callback: Error, rollback: Error) -> Error {
+        Error::Rollback { callback: Box::new(callback), rollback: Box::new(rollback) }
     }
 
     /// A DEADLOCK mapped at the driver boundary (`From<sqlx::Error>`): MySQL 1213 / 40001,

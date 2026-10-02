@@ -347,10 +347,16 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	return t.commit()
 }
 
-// rollbackFailed는 transaction을 끝낸 원인과 실패한 rollback을 함께 보고한다
-// (docs/interfaces.md).
+// rollbackFailed는 transaction이나 savepoint를 끝낸 원인과 실패한 rollback을
+// 하나의 ROLLBACK 오류로 보고한다 (docs/errors.yaml, docs/interfaces.md). 오류의
+// Cause는 원인과 rollback 오류의 errors.Join이므로 errors.Is와 errors.As가 둘을
+// 모두 찾는다. panic 값처럼 error가 아닌 원인은 그 text의 error가 된다.
 func rollbackFailed(cause any, rollbackErr error) error {
-	return configErr("transaction failed (%v) and rollback failed (%v)", cause, rollbackErr)
+	causeErr, ok := cause.(error)
+	if !ok {
+		causeErr = errors.New(fmt.Sprint(cause))
+	}
+	return &ir.Error{Code: CodeRollback, Msg: fmt.Sprintf("transaction failed (%v) and rollback failed (%v)", causeErr, rollbackErr), Cause: errors.Join(causeErr, rollbackErr)}
 }
 
 // rollbackAfter는 cause로 끝나는 transaction을 rollback하고 cause를 돌려준다.
@@ -458,42 +464,16 @@ func (t *txConn) closeSession() error {
 	return err
 }
 
-// rollbackNative는 native transaction을 rollback한다. 다음 둘은 실패가 아니다.
-// transaction의 context가 취소되면 database/sql이 이미 rollback했으므로
-// sql.ErrTxDone이다. 취소된 statement 때문에 driver가 connection을 닫았으면
-// server가 그 session과 transaction을 끝냈고 pool은 그 connection을 버린다.
-// driver는 닫은 connection을 driver.ErrBadConn인 오류나 driver.Validator로
-// 알린다.
+// rollbackNative는 native transaction을 rollback한다. transaction의 context가
+// 취소되면 database/sql이 이미 rollback했으므로 sql.ErrTxDone은 실패가 아니다.
+// 그 밖의 실패는, driver나 server가 connection을 닫아 실패한 rollback도, 실패로
+// 보고한다 (docs/interfaces.md).
 func (t *txConn) rollbackNative() error {
 	err := t.tx.Rollback()
 	if err == nil || errors.Is(err, sql.ErrTxDone) && t.ctx.Err() != nil {
 		return nil
 	}
-	mapped := mapDriverErr(err)
-	if errors.Is(mapped, driver.ErrBadConn) {
-		return nil
-	}
-	closed, rawErr := t.connectionClosed()
-	if rawErr != nil {
-		return errors.Join(mapped, rawErr)
-	}
-	if closed {
-		return nil
-	}
-	return mapped
-}
-
-// connectionClosed는 driver가 transaction connection을 닫았는지 driver.Validator로
-// 확인한다. Validator가 없는 driver의 connection은 열려 있다고 본다.
-func (t *txConn) connectionClosed() (bool, error) {
-	closed := false
-	err := t.conn.Raw(func(dc any) error {
-		if v, ok := dc.(driver.Validator); ok {
-			closed = !v.IsValid()
-		}
-		return nil
-	})
-	return closed, err
+	return mapDriverErr(err)
 }
 
 func (t *txConn) commit() error {
@@ -571,28 +551,15 @@ func (t *txConn) rollbackSavepoint(name string) error {
 	return errors.Join(t.endSavepoint("ROLLBACK TO SAVEPOINT "+name), t.endSavepoint("RELEASE SAVEPOINT "+name))
 }
 
-// endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction 전체가
-// 이미 끝났으면 savepoint도 함께 끝났으므로 실패가 아니다. transaction의
-// context가 취소되면 database/sql이 transaction을 rollback하고, 취소된
-// statement 때문에 driver가 connection을 닫으면 server가 session과 함께
-// transaction을 끝낸다(rollbackNative).
+// endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction의
+// context가 취소되면 database/sql이 transaction 전체를 rollback했으므로
+// savepoint도 함께 끝났고 실패가 아니다. 그 밖의 실패는 보고한다.
 func (t *txConn) endSavepoint(statement string) error {
 	_, err := t.tx.ExecContext(t.ctx, statement)
 	if err == nil || t.ctx.Err() != nil {
 		return nil
 	}
-	mapped := mapDriverErr(err)
-	if errors.Is(mapped, driver.ErrBadConn) {
-		return nil
-	}
-	closed, rawErr := t.connectionClosed()
-	if rawErr != nil {
-		return errors.Join(mapped, rawErr)
-	}
-	if closed {
-		return nil
-	}
-	return mapped
+	return mapDriverErr(err)
 }
 
 func cloneInserted(src map[string]map[int64]struct{}) map[string]map[int64]struct{} {

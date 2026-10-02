@@ -14,9 +14,11 @@ use Orm\Dbspec\Document;
  *
  * entity는 [entity, table, pk, identity, updated, soft_delete, aes_version,
  * audit, columns, unique, indexes]이며 `audit`은 감사 table의 operation
- * column이다. column은 [name, type, nullable, default, select, codec,
- * blind_index, pk, foreign_key]이고 decimal, time, datetime은 precision을,
- * decimal은 scale도 가진다.
+ * column이다. column은 [name, type, nullable, default, default_now, select,
+ * codec, blind_index, pk, foreign_key]이고 decimal, time, datetime은
+ * precision을, decimal은 scale도 가진다. default_now는 default가 `now`임을
+ * 뜻한다. generated model의 meta()는 entity에 그 model을 만든 document set의
+ * manifest_hash를 더한다.
  */
 final class RuntimeModel
 {
@@ -110,6 +112,8 @@ final class RuntimeModel
         $entities = [];
         foreach ($classes as $class) {
             $meta = $class::meta();
+            // manifest_hash는 model class가 속한 document set을 가리키며 entity의 일부가 아니다.
+            unset($meta['manifest_hash']);
             $entities[$meta['entity']] = $meta;
         }
         return new self($manifestHash, $manifestText, $entities);
@@ -177,6 +181,7 @@ final class RuntimeModel
                 'type' => $c->type->name,
                 'nullable' => $c->nullable,
                 'default' => $c->default !== null,
+                'default_now' => $c->default === 'now',
                 'select' => !in_array($c->name, $explicit, true),
                 'codec' => $codecs[$c->name] ?? [],
                 'blind_index' => $blind[$c->name] ?? '',

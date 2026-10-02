@@ -549,16 +549,10 @@ export class Author extends Model {
   public forceIndexUqAuthorUuid(): this { this[CORE].index = 'uq_author_uuid'; return this; }
 }
 export interface Author {
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
   addColumnReadCountAliasReadText(format: string | ColumnFunction): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
   addColumnStartDtAliasStartMonth(format: string | ColumnFunction): this;
   addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
   aesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
   andAesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   andBetweenReadCount(v0: readonly [number, number]): this;
   andEqStartDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
@@ -591,7 +585,6 @@ export interface Author {
   getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   getsByServiceSeqAndIsClose(v0: number | readonly (number)[] | ValueFunction | Model, v1: boolean | readonly (boolean)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
   gtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
   isClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   isDisplay(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
@@ -600,20 +593,12 @@ export interface Author {
   joinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   leftJoinServiceRegionSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   leftJoinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  matchSeqWithServiceSeq(): this;
   matchSeqWithUserSeq(): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchServiceSeqWithServiceSeq(): this;
-  matchUserSeqWithSeq(): this;
-  matchUserSeqWithUserSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   nePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
   orIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   orderByReadCountDescAndSeqAsc(): this;
-  possibleIsClose(value: unknown): this;
   readCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
   readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
@@ -624,8 +609,6 @@ export interface Author {
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -675,35 +658,14 @@ export class User extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface User {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
   addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
   addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
   addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
   aliasOwner(): this;
   aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
   matchUserSeqWithSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
@@ -711,8 +673,6 @@ export interface User {
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -762,44 +722,16 @@ export class Service extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface Service {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
   gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
   matchServiceSeqWithSeq(): this;
-  matchUserSeqWithSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -863,50 +795,15 @@ export class ServiceRegion extends Model {
   public forceIndexIxServiceRegionService(): this { this[CORE].index = 'ix_service_region_service'; return this; }
 }
 export interface ServiceRegion {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
   aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  joinServiceSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  matchSeqWithServiceSeq(): this;
   matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchServiceSeqWithServiceSeq(): this;
-  matchUserSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
   possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -975,48 +872,17 @@ export class ServiceMember extends Model {
   public forceIndexIxServiceMemberUser(): this { this[CORE].index = 'ix_service_member_user'; return this; }
 }
 export interface ServiceMember {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnName(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(fn: (model: this) => Model): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
   aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   getCountByServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<number>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  joinServiceSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  joinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  leftJoinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   matchSeqWithServiceSeq(): this;
-  matchSeqWithUserSeq(): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
   matchServiceSeqWithServiceSeq(): this;
-  matchUserSeqWithSeq(): this;
   matchUserSeqWithUserSeq(): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1081,28 +947,7 @@ export class CompositeAccount extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface CompositeAccount {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
   getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
   tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
   /** Returns the value or relation result named AesHexEmail. */
@@ -1111,8 +956,6 @@ export interface CompositeAccount {
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1175,24 +1018,6 @@ export class CompositeMembership extends Model {
   public orderByRoleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('role', true, fn); return this; }
 }
 export interface CompositeMembership {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnName(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(fn: (model: this) => Model): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  getByTenantIdAndAccountId(v0: number | readonly (number)[] | ValueFunction | Model, v1: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  tenantId(v0: number | readonly (number)[] | ValueFunction | Model): this;
   tupleTenantIdWithAccountId(v0: ReadonlyArray<readonly [number, number]>): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
@@ -1200,8 +1025,6 @@ export interface CompositeMembership {
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1262,44 +1085,12 @@ export class SoftRecord extends Model {
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
 }
 export interface SoftRecord {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchUserSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1349,44 +1140,14 @@ export class Account extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface Account {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchUserSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
   newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1436,44 +1197,12 @@ export class Project extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface Project {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLbName(v0: string): this;
-  andLkName(v0: string): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  getsBySeqAndNeName(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | readonly (string)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchUserSeqWithSeq(): this;
-  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  neName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1528,30 +1257,12 @@ export class AccountProject extends Model {
   public forceIndexIxAccountProjectProject(): this { this[CORE].index = 'ix_account_project_project'; return this; }
 }
 export interface AccountProject {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnName(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(fn: (model: this) => Model): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1612,38 +1323,12 @@ export class Task extends Model {
   public orderByStateDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('state', true, fn); return this; }
 }
 export interface Task {
-  addColumnAesHexEmail(fn: (model: this) => Model): this;
-  addColumnAesHexPhone(fn: (model: this) => Model): this;
-  addColumnIsClose(fn: (model: this) => Model): this;
-  addColumnName(fn: (model: this) => Model): this;
-  addColumnNameAliasUpperName(fn: (model: this) => Model): this;
-  addColumnReadCountAliasReadText(fn: (model: this) => Model): this;
-  addColumnReadTotal(fn: (model: this) => Model): this;
-  addColumnStartDtAliasStartMonth(fn: (model: this) => Model): this;
-  addColumnUserSeq(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
-  aliasMembers(): this;
-  aliasModule(): this;
-  aliasOwner(): this;
-  aliasWriter(): this;
-  andLtSeq(v0: number | ValueFunction): this;
-  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
-  getsBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<Collection<this>>;
-  gtSeq(v0: number | ValueFunction): this;
-  matchServiceRegionSeqWithSeq(): this;
-  matchServiceSeqWithSeq(): this;
-  matchUserSeqWithSeq(): this;
-  newLabel(value: unknown): this;
-  possibleIsClose(value: unknown): this;
-  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Doubled. */
   getDoubled<T = unknown>(): T;
-  /** Returns the value or relation result named Label. */
-  getLabel<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */

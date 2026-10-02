@@ -238,6 +238,12 @@ func (a *applier) queryRow(query string, dest ...any) error {
 	return joinCleanup(err, rows.Close())
 }
 
+// appliedAt은 history의 applied_at text다: tool clock의 UTC 시각을 소수 여섯
+// 자리로 버림한 YYYY-MM-DDTHH:MM:SS.ffffffZ (docs/plans.md "Apply").
+func appliedAt(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000000Z")
+}
+
 // createHistory는 history table을 없을 때 만든다.
 func (a *applier) createHistory() error {
 	q := a.r.q
@@ -380,7 +386,7 @@ func (a *applier) runPlan(p *Plan, statements []string, start int, resume bool) 
 	if !resume {
 		_, err := a.c.ExecContext(a.ctx, "INSERT INTO "+q(historyTable)+" ("+q("name")+", "+q("from_hash")+", "+q("to_hash")+", "+
 			q("state")+", "+q("step")+", "+q("steps")+", "+q("applied_at")+") VALUES ("+a.placeholders(7)+")",
-			p.Name, hashOrEmpty(p.From), p.To, "running", 0, len(statements), a.now().UTC().Format("2006-01-02T15:04:05Z"))
+			p.Name, hashOrEmpty(p.From), p.To, "running", 0, len(statements), appliedAt(a.now()))
 		if err != nil {
 			return err
 		}

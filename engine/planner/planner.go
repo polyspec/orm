@@ -83,9 +83,10 @@ func (b *builder) config(name string) string {
 	return b.p.D.Placeholder(b.n)
 }
 
-// now is a timestamp the executor supplies (dialects without a sub-second clock function).
-func (b *builder) now() string {
-	b.binds = append(b.binds, plan.BindSlot{From: "now"})
+// now은 sub-second clock 함수가 없는 dialect에서 executor가 주는 시각이다.
+// precision은 그 시각이 들어가는 datetime column의 소수 자리다.
+func (b *builder) now(precision int) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "now", Precision: precision})
 	b.n++
 	return b.p.D.Placeholder(b.n)
 }
@@ -833,7 +834,12 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	}
 	if pr.Value != nil {
 		arg := func() string { return b.param(pr.Value.Ps[0]) }
-		value, ok := p.D.ValueFunction(pr.Value.Name, arg, b.now)
+		// datetime column과 비교하는 clock은 그 column의 소수 자리를 쓴다.
+		precision := 6
+		if col != nil && col.Type == "datetime" {
+			precision = col.Precision
+		}
+		value, ok := p.D.ValueFunction(pr.Value.Name, arg, func() string { return b.now(precision) })
 		if !ok {
 			return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: pr.Value.Name + " is not available on " + p.D.Name()}
 		}
@@ -1101,7 +1107,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		vals = append(vals, v)
 	}
 	// executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation 순서로 쓴다.
-	managed := managedInsertColumns(ent, set)
+	managed := p.managedInsertColumns(ent, set)
 	for _, c := range managed {
 		cols = append(cols, p.D.Quote(c.column))
 		vals = append(vals, c.value(b))
@@ -1179,14 +1185,23 @@ type managedColumn struct {
 }
 
 // managedInsertColumns는 insert가 사용자 assignment 외에 쓰는 column이다:
-// AES key version, audit operation column.
-func managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
+// AES key version, audit operation column, sub-second clock이 없는 dialect의 `default now` column.
+func (p *Planner) managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
 	var out []managedColumn
 	if ent.AESVersion != "" && !assigned(set, ent.AESVersion) {
 		out = append(out, managedColumn{ent.AESVersion, func(b *builder) string { return b.config("aes_version") }})
 	}
 	if ent.Audit != nil {
 		out = append(out, managedColumn{ent.Audit.Operation, func(b *builder) string { return b.operation(ent) }})
+	}
+	// sub-second clock이 없는 dialect의 `default now`는 millisecond만 가지므로
+	// 사용자가 assign하지 않은 그 column에 executor의 microsecond clock을 쓴다.
+	if p.D.HostNow() {
+		for _, f := range ent.Fields {
+			if f.DefaultNow && !assigned(set, f.Name) {
+				out = append(out, managedColumn{f.Name, func(b *builder) string { return b.now(f.Precision) }})
+			}
+		}
 	}
 	return out
 }
@@ -1374,16 +1389,14 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
 }
 
-// statementTime은 datetime column에 쓰는 statement 시각이다. sub-second clock이
-// 없는 dialect는 executor clock을 bind하고, MySQL은 column precision을 맞춘다.
+// statementTime은 updated와 soft delete가 datetime column에 쓰는 statement
+// 시각이다. sub-second clock이 없는 dialect는 executor의 microsecond clock을
+// bind하고, 나머지는 column의 소수 자리로 database clock을 쓴다.
 func (p *Planner) statementTime(b *builder, col *runtimemodel.Field) string {
-	switch {
-	case p.D.HostNow():
-		return b.now()
-	case col.Precision > 0 && p.D.Name() == "mysql":
-		return fmt.Sprintf("CURRENT_TIMESTAMP(%d)", col.Precision)
+	if p.D.HostNow() {
+		return b.now(col.Precision)
 	}
-	return p.D.Now()
+	return p.D.Now(col.Precision)
 }
 
 func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {

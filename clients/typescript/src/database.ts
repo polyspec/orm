@@ -4,6 +4,7 @@ import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request }
 import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
+import { wallMicros } from './clock.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
@@ -51,14 +52,15 @@ const models = new Map<string, RuntimeModel>();
 /**
  * Builds and registers the runtime model of a manifest text; generated model
  * modules call it once when they are imported. Registering the same manifest
- * again returns the registered model.
+ * again returns the registered model. A text that does not hash to
+ * manifestHash fails with SCHEMA_HASH_MISMATCH before any statement, also when
+ * that hash is already registered, and registers nothing.
  */
 export function registerModel(manifestText: string, manifestHash: string): RuntimeModel {
   const registered = models.get(manifestHash);
-  if (registered !== undefined) {
-    if (registered.manifestText !== manifestText) throw new OrmError('SCHEMA_INVALID', `manifest ${manifestHash} is registered with another text`);
-    return registered;
-  }
+  if (registered !== undefined && registered.manifestText === manifestText) return registered;
+  // 이미 등록된 hash라도 다른 text는 자기 hash로 검사한다: 잘못된 text는 SCHEMA_INVALID,
+  // 다른 hash로 가는 text는 SCHEMA_HASH_MISMATCH다.
   const model = modelOfManifest(manifestText, manifestHash);
   models.set(manifestHash, model);
   return model;
@@ -463,9 +465,12 @@ export class Db {
     return entry;
   }
 
-  /** The executor clock in the connection zone with p fraction digits. */
-  public now(instant: Date, precision: number): string {
-    const text = formatInstant(instant, this.zone);
+  /**
+   * executor clock이다: wall clock의 microsecond를 connection zone(UTC)의 text로 쓰고 6자리
+   * 소수를 precision 자리로 자른다. micros는 statement마다 한 번 읽은 wallMicros 값이다.
+   */
+  public now(micros: number, precision: number): string {
+    const text = formatInstant(new Date(Math.floor(micros / 1000)), this.zone).slice(0, 20) + String(micros % 1_000_000).padStart(6, '0');
     return precision === 0 ? text.slice(0, 19) : text.slice(0, 20 + precision);
   }
 
@@ -474,7 +479,7 @@ export class Db {
     const values: unknown[] = [];
     const masked: unknown[] = [];
     const push = (value: unknown, mask?: string) => { values.push(value); masked.push(mask ?? value); };
-    let clock: Date | undefined;
+    let clock: number | undefined;
     for (const slot of step.bind_slots) {
       switch (slot.from) {
         case 'param': {
@@ -515,7 +520,7 @@ export class Db {
           break;
         case 'now':
           // One statement reads the clock once, so its clock columns are equal.
-          clock ??= new Date();
+          clock ??= wallMicros();
           push(this.now(clock, slot.precision ?? 6), NOW);
           break;
         default:

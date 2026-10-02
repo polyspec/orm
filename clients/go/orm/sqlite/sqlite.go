@@ -19,8 +19,8 @@ import (
 
 func init() { orm.RegisterDriver("sqlite", "sqlite", mapErr) }
 
-// mapErr names the conditions docs/errors.yaml maps; everything else keeps
-// the driver's own error. SQLITE_BUSY reports a lock that another connection
+// mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
+// 나머지 driver 오류를 DRIVER로 보고한다. SQLITE_BUSY reports a lock that another connection
 // still held when the busy_timeout wait ended, so it is CANCELED.
 func mapErr(err error) error {
 	var se *sqlite.Error
@@ -35,7 +35,7 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDeadlock, Msg: se.Error()}
 	case 2067, 1555: // SQLITE_CONSTRAINT_UNIQUE / _PRIMARYKEY
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
-	case 787, 1811: // SQLITE_CONSTRAINT_FOREIGNKEY / _VTab
+	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
 	case 275: // SQLITE_CONSTRAINT_CHECK
 		return &ir.Error{Code: orm.CodeConstraint, Msg: se.Error()}

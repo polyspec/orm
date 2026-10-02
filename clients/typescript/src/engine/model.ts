@@ -16,6 +16,11 @@ export interface Field {
   readonly identity: boolean;
   /** The column has a default, which an insert that omits it takes from the database. */
   readonly hasDefault: boolean;
+  /**
+   * default가 `now`다. sub-second clock이 없는 dialect(SQLite)는 이 column을 뺀 insert에
+   * executor clock을 bind한다.
+   */
+  readonly defaultNow: boolean;
   /** decimal(p,s) p, time(p) and datetime(p) p, otherwise 0. */
   readonly precision: number;
   /** decimal(p,s) s, otherwise 0. */
@@ -137,6 +142,7 @@ function entityOfTable(t: DbspecTable): Entity {
     nullable: c.nullable,
     identity: c.identity,
     hasDefault: c.default !== null,
+    defaultNow: c.default?.kind === 'now',
     ...typeSizes(c.type),
     stages: stages.get(c.name) ?? [],
     selected: !explicit.has(c.name),
@@ -197,13 +203,14 @@ export function parseDocumentSet(texts: readonly string[]): DbspecDocument[] {
 
 /**
  * Builds the runtime model of a manifest text and checks that the text is the
- * manifest text of its documents and that manifestHash is its hash.
+ * manifest text of its documents (SCHEMA_INVALID otherwise) and that
+ * manifestHash is its hash (SCHEMA_HASH_MISMATCH otherwise).
  */
 export function modelOfManifest(manifestText: string, manifestHash: string): RuntimeModel {
   const model = modelOfDocuments(parseDocumentSet(splitDocuments(manifestText)));
   if (model.manifestText !== manifestText) throw new OrmError('SCHEMA_INVALID', 'the embedded text is not the manifest text of its documents');
   if (model.manifestHash !== manifestHash) {
-    throw new OrmError('SCHEMA_INVALID', `the embedded manifest hash ${manifestHash} differs from the hash ${model.manifestHash} of its text`);
+    throw new OrmError('SCHEMA_HASH_MISMATCH', `generated code declares manifest ${manifestHash}, its manifest text hashes to ${model.manifestHash}: generate the models again`);
   }
   return model;
 }

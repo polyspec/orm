@@ -9,7 +9,7 @@
 // Usage: php clients/php/tests/aes_json_test.php
 declare(strict_types=1);
 
-// The bench models are not loaded: one process holds the models of one schema.
+// bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use AesJson\Orm\SecretConfig;

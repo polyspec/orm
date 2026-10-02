@@ -616,7 +616,9 @@
       },
       "fixtures": [
         "tests/conformance/vectors.json",
-        "contracts/fixtures/decimal_model.json"
+        "contracts/fixtures/decimal_model.json",
+        "contracts/fixtures/clock.dbspec",
+        "contracts/fixtures/clock_mark.dbspec"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -631,7 +633,11 @@
         "clients/rust/tests/src/decimal_physical.rs",
         "clients/typescript/tests/decimal_model.mjs",
         "clients/typescript/tests/decimal_model.test.ts",
-        "clients/typescript/tests/decimal_model_db.mjs"
+        "clients/typescript/tests/decimal_model_db.mjs",
+        "clients/go/orm/clock_test.go",
+        "clients/php/tests/clock_test.php",
+        "clients/rust/orm/tests/clock.rs",
+        "clients/typescript/tests/clock.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -737,6 +743,10 @@
         {
           "code": "CAPABILITY_UNSUPPORTED",
           "when": "the dialect rejects an option"
+        },
+        {
+          "code": "ROLLBACK",
+          "when": "the callback of a transaction or savepoint failed and its rollback failed too; the error keeps both errors"
         }
       ],
       "clients": {
@@ -746,7 +756,8 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "clients/php/tests/deadlock_child.php"
+        "clients/php/tests/deadlock_child.php",
+        "contracts/fixtures/rollback.dbspec"
       ],
       "tests": [
         "clients/go/model/model_test.go",
@@ -760,7 +771,11 @@
         "clients/go/model/sqlite_concurrency_test.go",
         "clients/php/tests/sqlite_concurrency_test.php",
         "clients/typescript/tests/sqlite-concurrency.mjs",
-        "clients/rust/orm/tests/sqlite_concurrency.rs"
+        "clients/rust/orm/tests/sqlite_concurrency.rs",
+        "clients/go/orm/rollback_test.go",
+        "clients/php/tests/rollback_test.php",
+        "clients/rust/orm/tests/rollback.rs",
+        "clients/typescript/tests/rollback.mjs"
       ],
       "docs": [
         "docs/config.md",
@@ -839,7 +854,8 @@
         "clients/php/tests/engine_test.php",
         "clients/typescript/tests/generate.mjs",
         "clients/rust/orm-build/tests/generate.rs",
-        "clients/php/tests/orm_gen_test.php"
+        "clients/php/tests/orm_gen_test.php",
+        "clients/typescript/tests/generate-scan.mjs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -996,8 +1012,8 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates the missing tables, and registers the manifest hash.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 없는 테이블을 만들고 manifest hash를 등록한다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect and creates the tables when none of them exists. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 테이블이 하나도 없으면 만든다. 한 process는 여러 document set의 generated code를 읽고, 연결 하나가 각 요청을 그 manifest hash의 model로 처리해 그 모두를 처리한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1011,7 +1027,7 @@
       "state": [
         "render the statements of the dialect",
         "run them in one transaction where the dialect allows it",
-        "register the manifest hash with the connection"
+        "change nothing when every table of the set exists"
       ],
       "errors": [
         {
@@ -1021,6 +1037,10 @@
         {
           "code": "CONFIG",
           "when": "the installation cannot run on the connection"
+        },
+        {
+          "code": "SCHEMA_HASH_MISMATCH",
+          "when": "a request carries a manifest hash that no loaded generated code registered, or generated code holds a manifest text that does not hash to its declared manifest hash"
         }
       ],
       "clients": {
@@ -1036,7 +1056,11 @@
         "clients/php/tests/model_test.php",
         "clients/typescript/tests/model.mjs",
         "clients/rust/orm/tests/zone.rs",
-        "clients/go/orm/install_test.go"
+        "clients/go/orm/install_test.go",
+        "clients/php/tests/schema_set_test.php",
+        "clients/typescript/tests/schema-set.mjs",
+        "clients/go/decimalmodel/schema_set_test.go",
+        "clients/rust/tests/src/decimal_physical.rs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1393,6 +1417,14 @@
         {
           "code": "SCHEMA_INVALID",
           "when": "a constraint or setting names an unknown table or column"
+        },
+        {
+          "code": "CONSTRAINT",
+          "when": "a write breaks a CHECK constraint"
+        },
+        {
+          "code": "DRIVER",
+          "when": "a trigger, such as an immutable or audit trigger, refuses a write, or the driver reports another error that the catalog does not list"
         }
       ],
       "clients": {
@@ -1402,7 +1434,8 @@
         "typescript": "pass"
       },
       "fixtures": [
-        "schema/bench.dbspec"
+        "schema/bench.dbspec",
+        "contracts/fixtures/refusal.dbspec"
       ],
       "tests": [
         "engine/planner/soft_delete_test.go",
@@ -1413,7 +1446,11 @@
         "engine/dbspec/render_test.go",
         "clients/php/tests/dbspec_render_test.php",
         "clients/typescript/tests/dbspec-render.mjs",
-        "clients/rust/orm-schema/tests/dbspec_render.rs"
+        "clients/rust/orm-schema/tests/dbspec_render.rs",
+        "clients/go/orm/refusal_test.go",
+        "clients/php/tests/driver_error_test.php",
+        "clients/rust/orm/tests/refusal.rs",
+        "clients/typescript/tests/driver-error.mjs"
       ],
       "docs": [
         "docs/schema.md",

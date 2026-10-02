@@ -48,7 +48,7 @@ $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXC
 foreach (CONNECTION_RULES[$dialect] ?? throw new InvalidArgumentException("unknown dialect $dialect") as $rule) {
     $pdo->exec($rule);
 }
-$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00Z');
+$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
 $stop = new RuntimeException('stop');
 try {
     match ($action) {

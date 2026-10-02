@@ -702,17 +702,40 @@ export class Planner {
     return this.renderValue(b, col, a.p!);
   }
 
-  /** The clock of a datetime column: the dialect clock, or the executor clock where the database has none. */
+  /**
+   * update time과 soft deletion이 datetime column에 쓰는 clock이다. sub-second clock이 없는
+   * dialect는 executor의 microsecond `now` slot을 bind하고, 나머지는 column의 소수 자리로
+   * dialect의 database clock을 쓴다.
+   */
   private clock(b: Builder, col: Column): string {
-    if (this.d.hostNow) return b.now(col.precision);
-    if (col.precision > 0 && this.d.name === 'mysql') return `CURRENT_TIMESTAMP(${col.precision})`;
-    return this.d.now();
+    return this.d.hostNow ? b.now(col.precision) : this.d.now(col.precision);
   }
 
   /** The assignment of the audit operation column of an audited table, or undefined. */
   private operationAssignment(b: Builder, ent: Entity): string | undefined {
     if (ent.auditOperation === '') return undefined;
     return `${this.d.quote(ent.auditOperation)} = ${b.operation(ent, columnOf(ent, ent.auditOperation)!)}`;
+  }
+
+  /**
+   * insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit operation column,
+   * sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
+   * 그런 dialect의 database clock은 millisecond만 가지므로 executor의 microsecond clock을 쓴다.
+   */
+  private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) => string }[] {
+    const out: { column: string; value: (b: Builder) => string }[] = [];
+    const version = aesVersionColumn(ent);
+    if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version') });
+    if (ent.auditOperation !== '') {
+      const operation = columnOf(ent, ent.auditOperation)!;
+      out.push({ column: operation.name, value: b => b.operation(ent, operation) });
+    }
+    if (this.d.hostNow) {
+      for (const f of ent.fields) {
+        if (f.defaultNow && !assigned(set, f.name)) out.push({ column: f.name, value: b => b.now(f.precision) });
+      }
+    }
+    return out;
   }
 
   private insertStep(r: Request): Omit<PlanStep, 'id'> {
@@ -723,7 +746,6 @@ export class Planner {
     validateAESAssignments(ent, set, false);
     validateRequiredAssignments(ent, set);
     const version = aesVersionColumn(ent);
-    const operation = ent.auditOperation === '' ? undefined : columnOf(ent, ent.auditOperation)!;
     const cols: string[] = [];
     const vals: string[] = [];
     for (const a of set) {
@@ -732,13 +754,12 @@ export class Planner {
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
-    if (version !== '' && !assigned(set, version)) {
-      cols.push(this.d.quote(version));
-      vals.push(b.config('aes_version'));
-    }
-    if (operation) {
-      cols.push(this.d.quote(operation.name));
-      vals.push(b.operation(ent, operation));
+    // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation,
+    // `default now` column 순서로 쓴다.
+    const managed = this.managedInsertColumns(ent, set);
+    for (const c of managed) {
+      cols.push(this.d.quote(c.column));
+      vals.push(c.value(b));
     }
     let sql = `INSERT INTO ${this.d.quote(ent.table)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
     if ((r.rows ?? []).length > 0) {
@@ -746,8 +767,7 @@ export class Planner {
       const source = set.map((a, i) => i < input.length ? i : input.findIndex(x => x.column === blindIndexSource(ent, a.column)!.name));
       for (const row of r.rows!) {
         const more = set.map((a, i) => this.renderAssign(b, ent, columnOf(ent, a.column)!, { column: a.column, p: row[source[i]!] }));
-        if (version !== '' && !assigned(set, version)) more.push(b.config('aes_version'));
-        if (operation) more.push(b.operation(ent, operation));
+        for (const c of managed) more.push(c.value(b));
         sql += `, (${more.join(', ')})`;
       }
       return { role: 'main', sql, bind_slots: b.binds };

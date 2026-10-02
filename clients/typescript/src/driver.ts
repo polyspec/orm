@@ -78,7 +78,10 @@ function driverError(name: DriverName, error: unknown): OrmError {
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
   // extended codes report a write the read-only server or connection rejects.
   const readOnly = source.code === 'ER_OPTION_PREVENTS_STATEMENT' || source.code === 'ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION' || source.code === '25006' || (typeof source.errcode === 'number' && (source.errcode & 0xff) === 8);
-  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : readOnly ? 'READ_ONLY' : 'DRIVER';
+  // MySQL 3819/4025, PostgreSQL 23514, and SQLite CONSTRAINT_CHECK (275) report a CHECK violation.
+  const constraint = source.code === 'ER_CHECK_CONSTRAINT_VIOLATED' || source.code === 'ER_CONSTRAINT_FAILED' || source.code === '23514' || source.errcode === 275;
+  // Every other driver error, such as a write that a trigger refuses, is DRIVER.
+  const code = lockNotAvailable ? 'LOCK_NOT_AVAILABLE' : duplicate ? 'DUPLICATE_KEY' : foreignKey ? 'FOREIGN_KEY' : deadlock ? 'DEADLOCK' : readOnly ? 'READ_ONLY' : constraint ? 'CONSTRAINT' : 'DRIVER';
   return new OrmError(code, `${name}: ${message}`, error);
 }
 
@@ -280,9 +283,9 @@ function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
 class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
   public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {}
-  /** Returns client to the pool, or closes it when the pool already keeps idleSize idle connections. */
-  private release(client: pg.PoolClient): void {
-    client.release(this.pool.idleCount >= this.idleSize);
+  /** Returns client to the pool, or closes it when it failed or the pool already keeps idleSize idle connections. */
+  private release(client: pg.PoolClient, failed = false): void {
+    client.release(failed || this.pool.idleCount >= this.idleSize);
   }
   public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     let client: pg.PoolClient;
@@ -311,7 +314,7 @@ class PostgresPoolDriver implements DriverPool {
       } finally { this.release(client); }
       throw failure;
     }
-    return new PostgresTx(client, this.cacheSize, this.config, () => this.release(client));
+    return new PostgresTx(client, this.cacheSize, this.config, failed => this.release(client, failed));
   }
   public stats(): PoolStats {
     return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };
@@ -321,7 +324,17 @@ class PostgresPoolDriver implements DriverPool {
 
 class PostgresTx implements DriverTransaction {
   public readonly name = 'postgres' as const;
-  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly release: () => void) {}
+  /** The connection error the server reported between statements, such as the end of its session. */
+  private failure: unknown;
+  private readonly onError = (error: unknown) => { this.failure = error; };
+  public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly done: (failed: boolean) => void) {
+    // A checked-out client reports a connection error between statements as an event; the next statement then fails.
+    client.on('error', this.onError);
+  }
+  private release(): void {
+    this.client.removeListener('error', this.onError);
+    this.done(this.failure !== undefined);
+  }
   public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
     const work = pgExecute(this.client, sql, params, this.cacheSize);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);

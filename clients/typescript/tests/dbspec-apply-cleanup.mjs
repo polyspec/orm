@@ -15,7 +15,8 @@ import { DbspecApplyError, applyPlans, parsePlan, recoverPlans } from '../dist/d
 
 const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 5000;
-const fixedNow = () => new Date(Date.UTC(2026, 9, 1, 0, 0, 0));
+// tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
+const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
 const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
   .cases.filter(c => c.id === 'create-from-empty')

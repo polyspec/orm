@@ -27,13 +27,13 @@ func connectBench(t *testing.T, dsn string) *DB {
 	return db
 }
 
-// wantBoth는 err가 callback 오류와 transaction 끝의 오류를 함께 담은 CONFIG인지
+// wantBoth는 err가 callback 오류와 transaction 끝의 오류를 함께 담은 ROLLBACK인지
 // 확인한다.
 func wantBoth(t *testing.T, what string, err error, cause, end string) {
 	t.Helper()
 	want := fmt.Sprintf("transaction failed (%s) and rollback failed (", cause)
-	if ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), end) {
-		t.Fatalf("%s: want CONFIG %q with %q, got %v", what, want, end, err)
+	if ErrorCode(err) != CodeRollback || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), end) {
+		t.Fatalf("%s: want ROLLBACK %q with %q, got %v", what, want, end, err)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 	t.Run("begin", func(t *testing.T) {
 		inject(t, injectedFailure{statement: func(query string) bool { return query == "PRAGMA query_only = 1" }, rollback: true})
 		err := db.Transaction(func() error { return nil }, ReadOnly(), Retry(0))
-		wantBoth(t, "begin", err, errStatementRejected.Error(), errRollbackRejected.Error())
+		wantBoth(t, "begin", err, "DRIVER: "+errStatementRejected.Error(), errRollbackRejected.Error())
 	})
 	t.Run("panic with a successful rollback", func(t *testing.T) {
 		value := recovered(func() {

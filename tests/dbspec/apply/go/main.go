@@ -78,7 +78,7 @@ func run(action, dialect, uri, vectors string) (string, error) {
 			return "", fmt.Errorf("%s: %w", rule, err)
 		}
 	}
-	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
+	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 123456789, time.UTC) }
 	d := dbspec.Dialect(dialect)
 	switch action {
 	case "apply-first":

@@ -173,7 +173,8 @@ if (count($plans) !== 2 || $plans[1]->from !== $plans[0]->to) {
 }
 $targetManifest = Dbspec::manifest([$plans[1]->schema]);
 $target = $targetManifest->manifest?->schemaText ?? apply_failure('target', $targetManifest->diagnostics);
-$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00Z');
+// history의 applied_at은 이 clock을 소수 여섯 자리로 버림한 UTC text다.
+$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
 $history = static fn(string $dialect): string => $dialect === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
 // docs/plans.md "Apply" 의 lock 이름과 key.
 const MYSQL_APPLY_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
@@ -189,6 +190,7 @@ $scenarios = [
         Dbspec::apply($pdo, $db, $plans, $now, $record);
         apply_schema_is($pdo, $db, $target);
         apply_want($pdo, 'SELECT COUNT(*) FROM ' . $history($db) . " WHERE state = 'done'", '2');
+        apply_want($pdo, 'SELECT COUNT(*) FROM ' . $history($db) . " WHERE applied_at = '2026-10-01T00:00:00.123456Z'", '2');
         $counts = array_count_values($events);
         if (($counts['plan'] ?? 0) !== 2 || ($counts['verified'] ?? 0) !== 2 || ($counts['done'] ?? 0) !== 2 || ($counts['statement'] ?? 0) !== ($counts['applied'] ?? 0) || ($counts['statement'] ?? 0) === 0) {
             throw new RuntimeException('events ' . json_encode($counts));
