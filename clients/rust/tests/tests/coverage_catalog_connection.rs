@@ -62,15 +62,14 @@ async fn coverage_catalog_read() {
         assert_eq!(metadata.primary_key, ["seq"], "{driver}: author key");
         assert!(metadata.reliable_row_identity, "{driver}: author row identity");
 
-        // author의 page는 datetime(6) column을 dbspec text 형식의 cell로 읽는다. SQLite는
-        // 저장된 text의 storage class를 유지한다(docs/schema.md section 3).
+        // author의 page는 세 database에서 datetime(6) column을 dbspec text 형식의 같은
+        // DateTime cell로 읽는다(docs/interfaces.md).
         let page = catalog.table_page(&author, 3, 0).await.expect("author page");
         assert_eq!(page.order_by, ["seq"], "{driver}: page order");
         assert!(page.has_more, "{driver}: more author rows follow");
         let (seq, name, start) = (column(&page, "seq"), column(&page, "name"), column(&page, "start_dt"));
         let rows: Vec<[GridCell; 3]> = page.result.rows.iter().map(|row| [row[seq].clone(), row[name].clone(), row[start].clone()]).collect();
-        let start_dt = "2026-06-01 00:00:00.000000".to_owned();
-        let start_cell = if driver == "sqlite" { GridCell::Text(start_dt) } else { GridCell::DateTime(start_dt) };
+        let start_cell = GridCell::DateTime("2026-06-01 00:00:00.000000".into());
         let want: Vec<[GridCell; 3]> = (1..=3).map(|i| [GridCell::Integer(i), GridCell::Text(format!("author-{i}")), start_cell.clone()]).collect();
         assert_eq!(rows, want, "{driver}: first author page");
 

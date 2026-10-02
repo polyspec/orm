@@ -323,8 +323,12 @@ PostgreSQL `time` and `timestamp` without p have 6; a read-only grid query has
 no column declaration and writes six digits. A time outside 00:00:00 to
 23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL
 infinity fail. A temporal primary key cannot be bound as a row identity and
-fails with `ROW_UPDATE_INVALID`. SQLite has no temporal storage class, so its
-cells keep the tag of the stored value; a dbspec column stores its checked text.
+fails with `ROW_UPDATE_INVALID`. SQLite has no temporal storage class: a read of
+a described table turns the stored text of a `DATE`, `TIME` or `DATETIME`
+column into the same temporal cell as MySQL and PostgreSQL, whose fraction
+digits the dbspec CHECK fixes at p, and a value that is not in the dbspec form
+fails with `GRID_TEMPORAL_VALUE`; a read-only grid query has no declaration and
+keeps the stored text.
 
 ### Qualified native Rust table metadata
 

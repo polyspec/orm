@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T21.1: SQLite에서 기술된 `DATE`, `TIME`, `DATETIME` column은 MySQL, PostgreSQL과 같은 `Date`, `Time`, `DateTime` grid cell로 읽히고, dbspec 형식 밖의 값은 `GRID_TEMPORAL_VALUE`로 실패하며, read-only grid query는 저장된 text를 유지한다.
+
 - T22: root package.json에 script file이 제거된 `schema:check` script가 더 이상 없고, root npm script가 tracked file이나 directory가 아닌 path를 쓰면 `make repo-check`가 실패한다.
 
 - T21: Rust catalog grid는 MySQL `DATE`, `TIME`, `DATETIME`과 PostgreSQL `date`, `time`, `timestamp` cell을 dbspec text 형식의 `Date`, `Time`, `DateTime`으로 decode한다. table page는 선언된 소수 자릿수를, read-only grid query는 여섯 자리를 쓰므로 datetime column이 있는 table의 page를 모든 database에서 읽는다.

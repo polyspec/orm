@@ -319,8 +319,11 @@ p 없는 MySQL `time`과 `datetime`은 0, p 없는 PostgreSQL `time`과 `timesta
 6이다. read-only 그리드 조회에는 컬럼 선언이 없으므로 여섯 자리를 쓴다.
 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜,
 PostgreSQL infinity는 실패한다. 시간 primary key는 행 식별자로 bind할 수 없으며
-`ROW_UPDATE_INVALID`로 실패한다. SQLite에는 시간 저장 클래스가 없으므로 셀이
-저장된 값의 태그를 유지하고, dbspec 컬럼은 CHECK된 텍스트를 저장한다.
+`ROW_UPDATE_INVALID`로 실패한다. SQLite에는 시간 저장 클래스가 없다. 기술된
+테이블의 읽기는 `DATE`, `TIME`, `DATETIME` 컬럼에 저장된 텍스트를 MySQL,
+PostgreSQL과 같은 시간 셀로 바꾸며, 소수 자릿수는 dbspec CHECK가 p로 고정한다.
+dbspec 형식이 아닌 값은 `GRID_TEMPORAL_VALUE`로 실패한다. read-only 그리드
+조회에는 선언이 없으므로 저장된 텍스트를 유지한다.
 
 ### 한정된 네이티브 Rust 테이블 메타데이터
 
