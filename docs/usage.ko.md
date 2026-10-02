@@ -94,6 +94,21 @@ SQLite는 column 제거·정의 변경과 primary key·unique·foreign key 변�
 
 `ormgen migrate`는 실제 스키마를 읽고 `orm_schema_migrations`를 생성한 뒤 계획을 계산하고 지원되는 비파괴 변경을 적용한다. 적용 후 실제 스키마를 검증하고 결과를 기록한다. 같은 `migration-id`를 다시 실행하면 기록된 migration과 실제 스키마가 일치할 때만 no-op이 된다. `--dry-run`은 DB를 변경하지 않고 계획을 출력한다. 검증은 table과 column을 명칭 기준으로 비교한다. column 순서는 schema 속성이 아니며, DB는 추가된 column을 선언 위치와 관계없이 끝에 붙인다. comment가 있는 column을 추가하면 같은 migration에서 comment도 기록한다.
 
+ledger `orm_schema_migrations`는 모든 database에서 시작·종료 시각을 소수 여섯 자리로 저장한다(`docs/protocol.ko.md` §2). 다른 시각 column을 가진 ledger를 만난 command는 `MIGRATION_HISTORY_PRECISION`으로 실패하고 아무것도 바꾸지 않는다. 이전 tool이 만든 MySQL 또는 SQLite ledger는 초 단위로 저장하므로, 그 소유자가 아래 statement로 한 번 변환한다. 기록된 시각은 초를 유지하고 소수부 `000000`을 받는다. SQLite statement는 이전 SQLite 시각 text `YYYY-MM-DD HH:MM:SS`를 전제로 한다. `CHECK`가 다른 행을 거부하면 소유자는 transaction을 rollback한다.
+
+```sql
+-- MySQL
+ALTER TABLE orm_schema_migrations MODIFY started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), MODIFY finished_at timestamp(6) NULL;
+
+-- SQLite
+BEGIN;
+ALTER TABLE orm_schema_migrations RENAME TO orm_schema_migrations_seconds;
+CREATE TABLE orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL CHECK (started_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'), finished_at TEXT NULL CHECK (finished_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'));
+INSERT INTO orm_schema_migrations SELECT migration_id, name, from_schema_hash, to_schema_hash, plan_checksum, status, operations, error_detail, started_at || '.000000', finished_at || '.000000' FROM orm_schema_migrations_seconds;
+DROP TABLE orm_schema_migrations_seconds;
+COMMIT;
+```
+
 수정 시각 속성(`onupdate`)은 MySQL에서만 column 속성이다. PostgreSQL과 SQLite에는 이런 속성이 없고 ORM이 update마다 값을 지정하므로, 이 속성만 바뀐 것은 PostgreSQL·SQLite 변경이 아니다. MySQL과 PostgreSQL은 CHECK 식을 자체 정규형으로 저장한다. 비교할 때는 선언된 식을 같은 DB의 임시 table에 만들어 다시 읽고, 정규형이 같으면 변경이 없는 것으로 본다.
 
 ### 2.2 Schema 입력 행렬

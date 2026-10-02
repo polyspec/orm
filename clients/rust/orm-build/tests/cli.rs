@@ -97,7 +97,9 @@ impl Target {
         match self.driver {
             "mysql" => run!(sqlx::MySqlConnection::connect(&mysql_url(&self.dsn)).await.unwrap()),
             "postgres" => run!(sqlx::PgConnection::connect(&self.dsn).await.unwrap()),
-            _ => run!(sqlx::SqliteConnection::connect(&self.dsn).await.unwrap()),
+            _ => run!(sqlx::SqliteConnection::connect_with(&self.dsn.parse::<sqlx::sqlite::SqliteConnectOptions>().unwrap().create_if_missing(true))
+                .await
+                .unwrap()),
         }
         rows
     }
@@ -247,7 +249,9 @@ async fn sqlite_migration_rejects_invalid_history_operations() {
         assert!(!output.stderr.contains("private-invalid-operations"));
         assert_eq!(t.sql(&["SELECT operations,status FROM orm_schema_migrations"]).await, before);
         std::fs::remove_dir_all(dir).expect("remove newly created owned fixture directory");
-    }).await.expect("history accessor regression deadline");
+    })
+    .await
+    .expect("history accessor regression deadline");
     eprintln!("passed sqlite_migration_rejects_invalid_history_operations {:?}", started.elapsed());
 }
 
@@ -302,7 +306,7 @@ async fn recover_marks_source_retryable_and_target_applied() {
         let sql_text = &dry[first.len() + 1..];
         let checksum = orm_build::migration::checksum_text(sql_text);
         t.sql(&[&format!(
-            "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail) VALUES ('m2','schema sync','{from}','{to}','{checksum}','failed',{operations},'')"
+            "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at) VALUES ('m2','schema sync','{from}','{to}','{checksum}','failed',{operations},'','2026-01-02 03:04:05.123456')"
         )])
         .await;
         t.fails(&["migrate", "--dsn", "@DSN@", "--schema", "v2.mmd", "--migration-id", "m2", "--log-dir", "@DIR@/logs"], "MIGRATION_RECOVERY_REQUIRED");
@@ -478,4 +482,168 @@ async fn sqlite_migration_rejects_a_concurrent_writer() {
     assert!(!out.ok, "{}", out.stdout);
     sqlx::raw_sql("ROLLBACK").execute(&mut holder).await.unwrap();
     assert!(t.ok(&["migrate", "--dsn", &dsn, "--schema", "v1.mmd", "--log-dir", "@DIR@/logs"]).starts_with("migration_id=initial status=applied"));
+}
+
+/// The ledger statements of the tools before the microsecond ledger.
+const WHOLE_SECOND_LEDGER_MYSQL: &str = "CREATE TABLE orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamp NULL)";
+const WHOLE_SECOND_LEDGER_SQLITE: &str = "CREATE TABLE orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT NULL)";
+
+const LEDGER_SCHEMAS: [(&str, &str); 3] = [
+    ("l1.mmd", "erDiagram\n  ledger_probe {\n    bigint seq PK\n  }\n"),
+    ("l2.mmd", "erDiagram\n  ledger_probe {\n    bigint seq PK\n    varchar(32) note \"?\"\n  }\n"),
+    ("l3.mmd", "erDiagram\n  ledger_probe {\n    bigint seq PK\n    varchar(32) note \"?\"\n    varchar(32) label \"?\"\n  }\n"),
+];
+
+impl Target {
+    /// Every stored ledger time as text in UTC on PostgreSQL and SQLite and in
+    /// the session time zone on MySQL; a NULL finishing time is empty.
+    async fn ledger_times(&self) -> Vec<Vec<String>> {
+        self.sql(&[match self.driver {
+            "mysql" => "SELECT migration_id, CAST(started_at AS CHAR), CAST(finished_at AS CHAR) FROM orm_schema_migrations ORDER BY migration_id",
+            "postgres" => "SELECT migration_id, to_char(started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US'), to_char(finished_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.US') FROM orm_schema_migrations ORDER BY migration_id",
+            _ => "SELECT migration_id, started_at, finished_at FROM orm_schema_migrations ORDER BY migration_id",
+        }])
+        .await
+    }
+
+    /// The stored definition of the ledger columns.
+    async fn ledger_definition(&self) -> Vec<Vec<String>> {
+        self.sql(&[match self.driver {
+            "mysql" => "SELECT CONCAT(COLUMN_NAME, ' ', COLUMN_TYPE) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orm_schema_migrations' ORDER BY COLUMN_NAME",
+            "postgres" => "SELECT attname || ' ' || format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = to_regclass('orm_schema_migrations') AND attnum > 0 AND NOT attisdropped ORDER BY attname",
+            _ => "SELECT sql FROM sqlite_master WHERE type='table' AND name='orm_schema_migrations'",
+        }])
+        .await
+    }
+}
+
+/// Runs a ledger case on each database with its own deadline, reports the
+/// result and elapsed time of each database, and fails after all of them ran
+/// when one failed.
+async fn ledger_case<F>(name: &str, body: F)
+where
+    F: AsyncFn(&Target),
+{
+    use futures_util::FutureExt;
+    let _serial = SERIAL.lock().await;
+    let mut failed = Vec::new();
+    for t in targets(name) {
+        let started = std::time::Instant::now();
+        eprintln!("RUN  {name}/{}", t.driver);
+        t.reset().await;
+        for (file, text) in LEDGER_SCHEMAS {
+            std::fs::write(t.dir.join(file), text).unwrap();
+        }
+        let run = tokio::time::timeout(std::time::Duration::from_secs(60), std::panic::AssertUnwindSafe(body(&t)).catch_unwind()).await;
+        t.reset().await;
+        let elapsed = started.elapsed().as_secs_f64();
+        match run {
+            Ok(Ok(())) => eprintln!("ok   {name}/{} {elapsed:.3}s", t.driver),
+            Ok(Err(_)) => {
+                eprintln!("FAIL {name}/{} {elapsed:.3}s", t.driver);
+                failed.push(t.driver);
+            }
+            Err(_) => {
+                eprintln!("FAIL {name}/{} timeout after 60 s", t.driver);
+                failed.push(t.driver);
+            }
+        }
+    }
+    assert!(failed.is_empty(), "{name} failed on {failed:?}");
+}
+
+/// migration_ledger_microseconds: three migrations store six fraction digits
+/// in every ledger time, at least one of them not 000000.
+#[tokio::test(flavor = "multi_thread")]
+async fn migration_ledger_microseconds() {
+    ledger_case("migration_ledger_microseconds", async |t: &Target| {
+        for (i, (file, _)) in LEDGER_SCHEMAS.iter().enumerate() {
+            let out = t.ok(&["migrate", "--dsn", "@DSN@", "--schema", file, "--migration-id", &format!("m{}", i + 1), "--log-dir", "@DIR@/logs"]);
+            assert!(out.contains("status=applied"), "{}: {out}", t.driver);
+        }
+        let rows = t.ledger_times().await;
+        assert_eq!(rows.len(), 3, "{}: {rows:?}", t.driver);
+        let mut fractions = 0;
+        for row in &rows {
+            for v in &row[1..] {
+                let b = v.as_bytes();
+                let digits = |r: std::ops::Range<usize>| r.into_iter().all(|i| b[i].is_ascii_digit());
+                let form = b.len() == 26 && b[4] == b'-' && b[7] == b'-' && b[10] == b' ' && b[13] == b':' && b[16] == b':' && b[19] == b'.';
+                assert!(
+                    form && digits(0..4) && digits(5..7) && digits(8..10) && digits(11..13) && digits(14..16) && digits(17..19) && digits(20..26),
+                    "{}: ledger time {v:?} of {} has no six fraction digits: {rows:?}",
+                    t.driver,
+                    row[0]
+                );
+                if !v.ends_with(".000000") {
+                    fractions += 1;
+                }
+            }
+        }
+        assert!(fractions > 0, "{}: ledger times have no fraction: {rows:?}", t.driver);
+    })
+    .await;
+}
+
+/// migration_ledger_whole_seconds: a ledger with whole-second time columns
+/// fails the migration with MIGRATION_HISTORY_PRECISION and stays unchanged.
+#[tokio::test(flavor = "multi_thread")]
+async fn migration_ledger_whole_seconds() {
+    ledger_case("migration_ledger_whole_seconds", async |t: &Target| {
+        let create = match t.driver {
+            "mysql" => WHOLE_SECOND_LEDGER_MYSQL,
+            "postgres" => "CREATE TABLE orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz(0) NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz(0) NULL)",
+            _ => WHOLE_SECOND_LEDGER_SQLITE,
+        };
+        t.sql(&[create, "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at,finished_at) VALUES ('old','old','from','to','sum','applied',1,'','2026-01-02 03:04:05','2026-01-02 03:04:06')"]).await;
+        let (before, definition) = (t.ledger_times().await, t.ledger_definition().await);
+        t.fails(&["migrate", "--dsn", "@DSN@", "--schema", "l1.mmd", "--migration-id", "m1", "--log-dir", "@DIR@/logs"], &format!("MIGRATION_HISTORY_PRECISION: driver={} column=started_at", t.driver));
+        assert_eq!(t.ledger_times().await, before, "{}: ledger rows changed", t.driver);
+        assert_eq!(t.ledger_definition().await, definition, "{}: ledger definition changed", t.driver);
+        let probe = match t.driver {
+            "mysql" => "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ledger_probe'",
+            "postgres" => "SELECT tablename FROM pg_tables WHERE schemaname = current_schema() AND tablename = 'ledger_probe'",
+            _ => "SELECT name FROM sqlite_master WHERE type='table' AND name='ledger_probe'",
+        };
+        assert!(t.sql(&[probe]).await.is_empty(), "{}: the migration created ledger_probe", t.driver);
+    })
+    .await;
+}
+
+/// migration_ledger_earlier: an earlier ledger converted with the statements
+/// of docs/usage.md, and an earlier PostgreSQL ledger as it is, keep their
+/// rows with the fraction 000000 and take a new migration with six fraction
+/// digits.
+#[tokio::test(flavor = "multi_thread")]
+async fn migration_ledger_earlier() {
+    ledger_case("migration_ledger_earlier", async |t: &Target| {
+        let mut statements: Vec<&str> = match t.driver {
+                    "mysql" => vec![WHOLE_SECOND_LEDGER_MYSQL],
+                    "postgres" => vec!["CREATE TABLE orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)"],
+            _ => vec![WHOLE_SECOND_LEDGER_SQLITE],
+        };
+        statements.push("INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at,finished_at) VALUES ('old','old','from','to','sum','applied',1,'','2026-01-02 03:04:05','2026-01-02 03:04:06')");
+        match t.driver {
+                    "mysql" => statements.push("ALTER TABLE orm_schema_migrations MODIFY started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), MODIFY finished_at timestamp(6) NULL"),
+                    "postgres" => {}
+            _ => statements.extend([
+                "BEGIN",
+                "ALTER TABLE orm_schema_migrations RENAME TO orm_schema_migrations_seconds",
+                "CREATE TABLE orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL CHECK (started_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'), finished_at TEXT NULL CHECK (finished_at GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+                "INSERT INTO orm_schema_migrations SELECT migration_id, name, from_schema_hash, to_schema_hash, plan_checksum, status, operations, error_detail, started_at || '.000000', finished_at || '.000000' FROM orm_schema_migrations_seconds",
+                "DROP TABLE orm_schema_migrations_seconds",
+                "COMMIT",
+            ]),
+        }
+        t.sql(&statements).await;
+        let out = t.ok(&["migrate", "--dsn", "@DSN@", "--schema", "l1.mmd", "--migration-id", "m1", "--log-dir", "@DIR@/logs"]);
+        assert!(out.contains("status=applied"), "{}: {out}", t.driver);
+        let rows = t.ledger_times().await;
+        assert!(rows.len() == 2 && rows[1][0] == "old", "{}: {rows:?}", t.driver);
+        for v in rows.iter().flat_map(|r| &r[1..]) {
+            assert!(v.len() == 26 && v.as_bytes()[19] == b'.' && v[20..].bytes().all(|b| b.is_ascii_digit()), "{}: ledger time {v:?} has no six fraction digits: {rows:?}", t.driver);
+        }
+        assert!(rows[1][1].ends_with(":05.000000") && rows[1][2].ends_with(":06.000000"), "{}: earlier row lost its seconds: {:?}", t.driver, rows[1]);
+    })
+    .await;
 }

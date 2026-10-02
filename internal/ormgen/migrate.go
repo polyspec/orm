@@ -468,22 +468,6 @@ func sqliteBalancedParen(s string, start int) (int, error) {
 	return 0, fmt.Errorf("unbalanced parentheses")
 }
 
-func ensureMigrationTable(ctx context.Context, db *sql.DB, driver string) error {
-	var q string
-	switch driver {
-	case "mysql":
-		q = "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamp NULL)"
-	case "postgres":
-		q = "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)"
-	default:
-		q = "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT NULL)"
-	}
-	if _, err := db.ExecContext(ctx, q); err != nil {
-		return fmt.Errorf("MIGRATION_HISTORY_CREATE: driver=%s: %w", driver, err)
-	}
-	return nil
-}
-
 type migrationRow interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
@@ -522,8 +506,9 @@ func insertMigration(ctx context.Context, db *sql.DB, driver string, r migration
 	for i := range ph {
 		ph[i] = placeholder(driver, i+1)
 	}
-	q := "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail) VALUES (" + strings.Join(ph, ",") + ", '')"
-	if _, err := db.ExecContext(ctx, q, args...); err != nil {
+	clock, clockArgs := ledgerClock(driver)
+	q := "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at) VALUES (" + strings.Join(ph, ",") + ", '', " + clock + ")"
+	if _, err := db.ExecContext(ctx, q, append(args, clockArgs...)...); err != nil {
 		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s: %w", r.MigrationID, err)
 	}
 	return nil
@@ -534,20 +519,22 @@ func updateMigration(ctx context.Context, db *sql.DB, driver, id, status, detail
 }
 
 func updateMigrationOn(ctx context.Context, db migrationExec, driver, id, status, detail string) error {
-	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=CURRENT_TIMESTAMP WHERE migration_id=" + placeholder(driver, 3)
-	_, err := db.ExecContext(ctx, q, status, detail, id)
+	clock, clockArgs := ledgerClock(driver)
+	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=" + clock + " WHERE migration_id=" + placeholder(driver, 3)
+	_, err := db.ExecContext(ctx, q, ledgerArgs([]any{status, detail, id}, 2, clockArgs)...)
 	return err
 }
 
 func transitionMigration(ctx context.Context, db migrationExec, driver, id, from, to, detail string) error {
+	clock, clockArgs := ledgerClock(driver)
 	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2)
 	if to == "applying" {
-		q += ", started_at=CURRENT_TIMESTAMP, finished_at=NULL"
+		q += ", started_at=" + clock + ", finished_at=NULL"
 	} else {
-		q += ", finished_at=CURRENT_TIMESTAMP"
+		q += ", finished_at=" + clock
 	}
 	q += " WHERE migration_id=" + placeholder(driver, 3) + " AND status=" + placeholder(driver, 4)
-	result, err := db.ExecContext(ctx, q, to, detail, id, from)
+	result, err := db.ExecContext(ctx, q, ledgerArgs([]any{to, detail, id, from}, 2, clockArgs)...)
 	if err != nil {
 		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s transition=%s_to_%s: %w", id, from, to, err)
 	}
@@ -562,8 +549,9 @@ func transitionMigration(ctx context.Context, db migrationExec, driver, id, from
 }
 
 func markMigrationFailed(ctx context.Context, db migrationExec, driver, id, detail string) error {
-	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=CURRENT_TIMESTAMP WHERE migration_id=" + placeholder(driver, 3) + " AND status IN (" + placeholder(driver, 4) + "," + placeholder(driver, 5) + "," + placeholder(driver, 6) + ")"
-	result, err := db.ExecContext(ctx, q, "failed", detail, id, "queued", "retryable", "applying")
+	clock, clockArgs := ledgerClock(driver)
+	q := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=" + clock + " WHERE migration_id=" + placeholder(driver, 3) + " AND status IN (" + placeholder(driver, 4) + "," + placeholder(driver, 5) + "," + placeholder(driver, 6) + ")"
+	result, err := db.ExecContext(ctx, q, ledgerArgs([]any{"failed", detail, id, "queued", "retryable", "applying"}, 2, clockArgs)...)
 	if err != nil {
 		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s mark_failed: %w", id, err)
 	}

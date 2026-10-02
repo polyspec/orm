@@ -1,5 +1,21 @@
 # Changelog
 
+Store the times of the migration ledger with microseconds on every
+database (N15). The ledger `orm_schema_migrations` declared `timestamp`
+on MySQL and `TEXT` written with `CURRENT_TIMESTAMP` on SQLite, so its
+`started_at` and `finished_at` kept whole seconds there, while
+PostgreSQL kept microseconds. The schema tools of Go, PHP, Rust and
+TypeScript now create `timestamp(6)` columns written with
+`CURRENT_TIMESTAMP(6)` on MySQL, and on SQLite `TEXT` columns with a
+`CHECK` for six fraction digits that take the tool clock in UTC. Before
+a command uses an existing ledger, the tool verifies its time columns;
+a ledger with whole-second columns fails with
+`MIGRATION_HISTORY_PRECISION` and stays unchanged. `docs/usage.md`
+states the statements that convert a MySQL or SQLite ledger created
+before this change. The cases `migration_ledger_microseconds`,
+`migration_ledger_whole_seconds` and `migration_ledger_earlier` pass in
+Go, PHP, Rust and TypeScript on MySQL, PostgreSQL and SQLite.
+
 Write the database clock with microseconds on MySQL and keep the
 fraction of the client clock in SQLite relative value functions (N14).
 The MySQL dialect rendered soft deletion as `CURRENT_TIMESTAMP` and the

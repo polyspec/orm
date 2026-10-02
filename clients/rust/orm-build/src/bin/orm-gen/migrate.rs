@@ -178,14 +178,90 @@ fn now() -> String {
     rfc3339_nano(SystemTime::now())
 }
 
+/// The SQLite form of a ledger time: UTC text with six fraction digits.
+const SQLITE_TIME_GLOB: &str = "'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'";
+
+/// The SQLite definitions of the ledger time columns. SQLite keeps a column
+/// definition only in the table statement, so an existing ledger is verified
+/// against these texts.
+fn sqlite_time_columns() -> [(&'static str, String); 2] {
+    [
+        ("started_at", format!("started_at TEXT NOT NULL CHECK (started_at GLOB {SQLITE_TIME_GLOB})")),
+        ("finished_at", format!("finished_at TEXT NULL CHECK (finished_at GLOB {SQLITE_TIME_GLOB})")),
+    ]
+}
+
+/// Creates the migration ledger when it is missing and verifies the time
+/// columns of an existing ledger; other time columns fail with
+/// MIGRATION_HISTORY_PRECISION and the ledger stays unchanged.
 async fn ensure_migration_table(conn: &mut Conn, driver: &str) -> Result<(), String> {
     let q = match driver {
-        "mysql" => "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamp NULL)",
-        "postgres" => "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)",
-        _ => "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT NULL)",
+        "mysql" => "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), finished_at timestamp(6) NULL)".to_owned(),
+        "postgres" => "CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)".to_owned(),
+        _ => {
+            let [started, finished] = sqlite_time_columns();
+            format!("CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, {}, {})", started.1, finished.1)
+        }
     };
-    conn.exec(q, &[]).await.map_err(|e| format!("MIGRATION_HISTORY_CREATE: driver={driver}: {e}"))?;
+    conn.exec(&q, &[]).await.map_err(|e| format!("MIGRATION_HISTORY_CREATE: driver={driver}: {e}"))?;
+    verify_ledger_times(conn, driver).await
+}
+
+async fn verify_ledger_times(conn: &mut Conn, driver: &str) -> Result<(), String> {
+    if driver == "sqlite" {
+        let rows = conn
+            .query("SELECT sql FROM sqlite_master WHERE type='table' AND name='orm_schema_migrations'", &[])
+            .await
+            .map_err(|e| format!("MIGRATION_HISTORY_READ: driver=sqlite definition: {e}"))?;
+        let statement = rows.first().map(|r| r[0].text()).unwrap_or_default();
+        for (column, definition) in sqlite_time_columns() {
+            if !statement.contains(&definition) {
+                return Err(format!("MIGRATION_HISTORY_PRECISION: driver=sqlite column={column} required={}", schema::go_quote(&definition)));
+            }
+        }
+        return Ok(());
+    }
+    let (q, required): (&str, &[&str]) = if driver == "postgres" {
+        (
+            "SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = to_regclass('orm_schema_migrations') AND attname = $1 AND attnum > 0 AND NOT attisdropped",
+            &["timestamp with time zone", "timestamp(6) with time zone"],
+        )
+    } else {
+        (
+            "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orm_schema_migrations' AND COLUMN_NAME = ?",
+            &["timestamp(6)"],
+        )
+    };
+    for column in ["started_at", "finished_at"] {
+        let rows = conn.query(q, &[s(column)]).await.map_err(|e| format!("MIGRATION_HISTORY_READ: driver={driver} column={column}: {e}"))?;
+        let definition = rows.first().map_or_else(|| "missing".to_owned(), |r| r[0].text());
+        if !required.contains(&definition.as_str()) {
+            return Err(format!(
+                "MIGRATION_HISTORY_PRECISION: driver={driver} column={column} definition={} required={}",
+                schema::go_quote(&definition),
+                schema::go_quote(required[0])
+            ));
+        }
+    }
     Ok(())
+}
+
+/// The clock a ledger write assigns and its bound values: the database clock
+/// with microseconds on MySQL and PostgreSQL, and on SQLite, which has no
+/// clock with microseconds, the tool clock in UTC.
+fn ledger_clock(driver: &str) -> Result<(&'static str, Vec<P>), String> {
+    Ok(match driver {
+        "mysql" => ("CURRENT_TIMESTAMP(6)", Vec::new()),
+        "postgres" => ("CURRENT_TIMESTAMP", Vec::new()),
+        _ => ("?", vec![P::S(ledger_time(SystemTime::now())?)]),
+    })
+}
+
+/// A UTC time as `YYYY-MM-DD HH:MM:SS.ffffff`.
+fn ledger_time(t: SystemTime) -> Result<String, String> {
+    let micros = t.duration_since(std::time::UNIX_EPOCH).map_err(|e| format!("MIGRATION_CLOCK: the wall clock is before 1970: {e}"))?.subsec_micros();
+    let whole = rfc3339_nano(t);
+    Ok(format!("{} {}.{micros:06}", &whole[..10], &whole[11..19]))
 }
 
 async fn migration_by_id(conn: &mut Conn, driver: &str, id: &str) -> Result<Option<Record>, String> {
@@ -194,46 +270,57 @@ async fn migration_by_id(conn: &mut Conn, driver: &str, id: &str) -> Result<Opti
         placeholder(driver, 1)
     );
     let rows = conn.query(&q, &[s(id)]).await.map_err(|e| format!("MIGRATION_HISTORY_READ: migration_id={id}: {e}"))?;
-    rows.first().map(|r| Ok(Record {
-        migration_id: r[0].text(),
-        name: r[1].text(),
-        from_hash: r[2].text(),
-        to_hash: r[3].text(),
-        checksum: r[4].text(),
-        status: r[5].text(),
-        operations: r[6].int().map_err(|e| format!("MIGRATION_HISTORY_READ: invalid operations: {e}"))?,
-    })).transpose()
+    rows.first()
+        .map(|r| {
+            Ok(Record {
+                migration_id: r[0].text(),
+                name: r[1].text(),
+                from_hash: r[2].text(),
+                to_hash: r[3].text(),
+                checksum: r[4].text(),
+                status: r[5].text(),
+                operations: r[6].int().map_err(|e| format!("MIGRATION_HISTORY_READ: invalid operations: {e}"))?,
+            })
+        })
+        .transpose()
 }
 
 async fn insert_migration(conn: &mut Conn, driver: &str, r: &Record) -> Result<(), String> {
     let ph: Vec<String> = (1..=7).map(|i| placeholder(driver, i)).collect();
+    let (clock, at) = ledger_clock(driver)?;
     let q = format!(
-        "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail) VALUES ({}, '')",
+        "INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at) VALUES ({}, '', {clock})",
         ph.join(",")
     );
-    let params = [s(&r.migration_id), s(&r.name), s(&r.from_hash), s(&r.to_hash), s(&r.checksum), s(&r.status), P::I(r.operations)];
+    let mut params = vec![s(&r.migration_id), s(&r.name), s(&r.from_hash), s(&r.to_hash), s(&r.checksum), s(&r.status), P::I(r.operations)];
+    params.extend(at);
     conn.exec(&q, &params).await.map_err(|e| format!("MIGRATION_HISTORY_WRITE: migration_id={}: {e}", r.migration_id))?;
     Ok(())
 }
 
 async fn update_migration(conn: &mut Conn, driver: &str, id: &str, status: &str, detail: &str) -> Result<(), String> {
+    let (clock, at) = ledger_clock(driver)?;
     let q = format!(
-        "UPDATE orm_schema_migrations SET status={}, error_detail={}, finished_at=CURRENT_TIMESTAMP WHERE migration_id={}",
+        "UPDATE orm_schema_migrations SET status={}, error_detail={}, finished_at={clock} WHERE migration_id={}",
         placeholder(driver, 1),
         placeholder(driver, 2),
         placeholder(driver, 3)
     );
-    conn.exec(&q, &[s(status), s(detail), s(id)]).await.map(|_| ()).map_err(|e| e.to_string())
+    let mut params = vec![s(status), s(detail)];
+    params.extend(at);
+    params.push(s(id));
+    conn.exec(&q, &params).await.map(|_| ()).map_err(|e| e.to_string())
 }
 
 async fn transition_migration(conn: &mut Conn, driver: &str, id: &str, from: &str, to: &str, detail: &str) -> Result<(), String> {
+    let (clock, at) = ledger_clock(driver)?;
     let mut q = format!("UPDATE orm_schema_migrations SET status={}, error_detail={}", placeholder(driver, 1), placeholder(driver, 2));
-    q += if to == "applying" { ", started_at=CURRENT_TIMESTAMP, finished_at=NULL" } else { ", finished_at=CURRENT_TIMESTAMP" };
+    q += &if to == "applying" { format!(", started_at={clock}, finished_at=NULL") } else { format!(", finished_at={clock}") };
     q += &format!(" WHERE migration_id={} AND status={}", placeholder(driver, 3), placeholder(driver, 4));
-    let rows = conn
-        .exec(&q, &[s(to), s(detail), s(id), s(from)])
-        .await
-        .map_err(|e| format!("MIGRATION_HISTORY_WRITE: migration_id={id} transition={from}_to_{to}: {e}"))?;
+    let mut params = vec![s(to), s(detail)];
+    params.extend(at);
+    params.extend([s(id), s(from)]);
+    let rows = conn.exec(&q, &params).await.map_err(|e| format!("MIGRATION_HISTORY_WRITE: migration_id={id} transition={from}_to_{to}: {e}"))?;
     if rows != 1 {
         return Err(format!("MIGRATION_STATE_CHANGED: migration_id={id} expected_status={from} requested_status={to} affected_rows={rows}"));
     }
@@ -242,14 +329,17 @@ async fn transition_migration(conn: &mut Conn, driver: &str, id: &str, from: &st
 
 async fn mark_failed(conn: &mut Conn, driver: &str, id: &str, detail: &str, status: &str, from: &[&str]) -> Result<(), String> {
     let ph: Vec<String> = (0..from.len()).map(|i| placeholder(driver, 4 + i)).collect();
+    let (clock, at) = ledger_clock(driver)?;
     let q = format!(
-        "UPDATE orm_schema_migrations SET status={}, error_detail={}, finished_at=CURRENT_TIMESTAMP WHERE migration_id={} AND status IN ({})",
+        "UPDATE orm_schema_migrations SET status={}, error_detail={}, finished_at={clock} WHERE migration_id={} AND status IN ({})",
         placeholder(driver, 1),
         placeholder(driver, 2),
         placeholder(driver, 3),
         ph.join(",")
     );
-    let mut params = vec![s(status), s(detail), s(id)];
+    let mut params = vec![s(status), s(detail)];
+    params.extend(at);
+    params.push(s(id));
     params.extend(from.iter().map(|f| s(f)));
     let what = if status == "failed" { "mark_failed" } else { "mark_rollback_failed" };
     let rows = conn.exec(&q, &params).await.map_err(|e| format!("MIGRATION_HISTORY_WRITE: migration_id={id} {what}: {e}"))?;
@@ -278,7 +368,9 @@ async fn with_migration_lock<T>(pool: &orm::db::Pool, driver: &str, body: impl A
         }
         "postgres" => {
             conn.exec("BEGIN", &[]).await.map_err(|e| format!("transaction begin: {e}"))?;
-            let acquired = conn.query("SELECT pg_try_advisory_xact_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))", &[]).await
+            let acquired = conn
+                .query("SELECT pg_try_advisory_xact_lock(hashtext(current_database()), hashtext('polyspec.orm.migration'))", &[])
+                .await
                 .and_then(|rows| rows.first().map(|r| r[0].bool()).transpose());
             match acquired {
                 Err(e) => {
@@ -336,10 +428,17 @@ fn sqlite_ident(name: &str) -> String {
 
 async fn foreign_key_violation(conn: &mut Conn, table: &str) -> Result<Option<String>, String> {
     let rows = conn.query(&format!("PRAGMA foreign_key_check(\"{}\")", sqlite_ident(table)), &[]).await.map_err(|e| e.to_string())?;
-    rows.first().map(|r| {
-        let rowid = r[1].opt_int().map_err(|e| e.to_string())?.map_or_else(|| "{0 false}".to_owned(), |n| format!("{{{n} true}}"));
-        Ok(format!("table={} foreign_key_violation rowid={rowid} parent={} foreign_key_id={}", r[0].text(), r[2].text(), r[3].int().map_err(|e| e.to_string())?))
-    }).transpose()
+    rows.first()
+        .map(|r| {
+            let rowid = r[1].opt_int().map_err(|e| e.to_string())?.map_or_else(|| "{0 false}".to_owned(), |n| format!("{{{n} true}}"));
+            Ok(format!(
+                "table={} foreign_key_violation rowid={rowid} parent={} foreign_key_id={}",
+                r[0].text(),
+                r[2].text(),
+                r[3].int().map_err(|e| e.to_string())?
+            ))
+        })
+        .transpose()
 }
 
 /// The triggers a migration drops before it rebuilds a table; the rebuild
@@ -357,7 +456,8 @@ async fn preflight_sqlite_rebuild(conn: &mut Conn, text: &str) -> Result<(), Str
             .await
             .map_err(|e| format!("SQLITE_REBUILD_PREFLIGHT: table={} temp={}: {e}", m.table, m.temp))?;
         let count = temp.first().ok_or_else(|| pre("missing object count".into(), "temporary object"))?[0]
-            .int().map_err(|e| pre(e.to_string(), "temporary object count"))?;
+            .int()
+            .map_err(|e| pre(e.to_string(), "temporary object count"))?;
         if count != 0 {
             return Err(format!("SQLITE_REBUILD_UNSAFE: table={} temporary object {} already exists", m.table, m.temp));
         }

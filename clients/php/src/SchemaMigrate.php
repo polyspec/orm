@@ -110,18 +110,85 @@ final class SchemaMigrate
         return "migration_id=$id status=applied from_schema_hash={$live['schema_hash']} to_schema_hash={$want['schema_hash']} operations=$operations\n";
     }
 
+    /** The SQLite form of a ledger time: UTC text with six fraction digits. */
+    private const SQLITE_TIME_GLOB = "'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9].[0-9][0-9][0-9][0-9][0-9][0-9]'";
+
+    /**
+     * The SQLite definitions of the ledger time columns. SQLite keeps a column
+     * definition only in the table statement, so an existing ledger is
+     * verified against these texts.
+     */
+    private const SQLITE_TIME_COLUMNS = [
+        'started_at' => 'started_at TEXT NOT NULL CHECK (started_at GLOB ' . self::SQLITE_TIME_GLOB . ')',
+        'finished_at' => 'finished_at TEXT NULL CHECK (finished_at GLOB ' . self::SQLITE_TIME_GLOB . ')',
+    ];
+
+    /**
+     * Creates the ledger when it is missing and verifies the time columns of an
+     * existing ledger; other time columns fail with MIGRATION_HISTORY_PRECISION
+     * and the ledger stays unchanged.
+     */
     private static function ensureTable(\PDO $db, string $driver): void
     {
         $q = match ($driver) {
-            'mysql' => 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamp NULL)',
+            'mysql' => 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id varchar(191) NOT NULL PRIMARY KEY, name varchar(255) NOT NULL, from_schema_hash varchar(128) NOT NULL, to_schema_hash varchar(128) NOT NULL, plan_checksum varchar(128) NOT NULL, status varchar(32) NOT NULL, operations int NOT NULL, error_detail text NOT NULL, started_at timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), finished_at timestamp(6) NULL)',
             'postgres' => 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id text PRIMARY KEY, name text NOT NULL, from_schema_hash text NOT NULL, to_schema_hash text NOT NULL, plan_checksum text NOT NULL, status text NOT NULL, operations integer NOT NULL, error_detail text NOT NULL, started_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at timestamptz NULL)',
-            default => 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, finished_at TEXT NULL)',
+            default => 'CREATE TABLE IF NOT EXISTS orm_schema_migrations (migration_id TEXT PRIMARY KEY, name TEXT NOT NULL, from_schema_hash TEXT NOT NULL, to_schema_hash TEXT NOT NULL, plan_checksum TEXT NOT NULL, status TEXT NOT NULL, operations INTEGER NOT NULL, error_detail TEXT NOT NULL, ' . implode(', ', self::SQLITE_TIME_COLUMNS) . ')',
         };
         try {
             $db->exec($q);
         } catch (\PDOException $e) {
             throw new \RuntimeException("MIGRATION_HISTORY_CREATE: driver=$driver: " . $e->getMessage());
         }
+        self::verifyTimes($db, $driver);
+    }
+
+    private static function verifyTimes(\PDO $db, string $driver): void
+    {
+        if ($driver === 'sqlite') {
+            try {
+                $statement = (string) $db->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='orm_schema_migrations'")->fetchColumn();
+            } catch (\PDOException $e) {
+                throw new \RuntimeException('MIGRATION_HISTORY_READ: driver=sqlite definition: ' . $e->getMessage());
+            }
+            foreach (self::SQLITE_TIME_COLUMNS as $column => $definition) {
+                if (!str_contains($statement, $definition)) {
+                    throw new \RuntimeException("MIGRATION_HISTORY_PRECISION: driver=sqlite column=$column required=" . Go::quote($definition));
+                }
+            }
+            return;
+        }
+        [$q, $required] = $driver === 'postgres'
+            ? ["SELECT format_type(atttypid, atttypmod) FROM pg_attribute WHERE attrelid = to_regclass('orm_schema_migrations') AND attname = ? AND attnum > 0 AND NOT attisdropped", ['timestamp with time zone', 'timestamp(6) with time zone']]
+            : ["SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orm_schema_migrations' AND COLUMN_NAME = ?", ['timestamp(6)']];
+        foreach (['started_at', 'finished_at'] as $column) {
+            try {
+                $st = $db->prepare($q);
+                $st->execute([$column]);
+                $definition = $st->fetchColumn();
+            } catch (\PDOException $e) {
+                throw new \RuntimeException("MIGRATION_HISTORY_READ: driver=$driver column=$column: " . $e->getMessage());
+            }
+            $definition = $definition === false ? 'missing' : (string) $definition;
+            if (!in_array($definition, $required, true)) {
+                throw new \RuntimeException("MIGRATION_HISTORY_PRECISION: driver=$driver column=$column definition=" . Go::quote($definition) . ' required=' . Go::quote($required[0]));
+            }
+        }
+    }
+
+    /**
+     * The clock a ledger write assigns and its bound values: the database clock
+     * with microseconds on MySQL and PostgreSQL, and on SQLite, which has no
+     * clock with microseconds, the tool clock in UTC.
+     * @return array{string, list<string>}
+     */
+    private static function clock(\PDO $db): array
+    {
+        return match ($db->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
+            'mysql' => ['CURRENT_TIMESTAMP(6)', []],
+            'pgsql' => ['CURRENT_TIMESTAMP', []],
+            default => ['?', [self::now()->format('Y-m-d H:i:s.u')]],
+        };
     }
 
     /** @return array{id: string, name: string, from: string, to: string, checksum: string, status: string, operations: int}|null */
@@ -143,8 +210,9 @@ final class SchemaMigrate
     private static function insert(\PDO $db, array $r): void
     {
         try {
-            $db->prepare("INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail) VALUES (?,?,?,?,?,?,?, '')")
-                ->execute([$r['id'], $r['name'], $r['from'], $r['to'], $r['checksum'], $r['status'], $r['operations']]);
+            [$clock, $at] = self::clock($db);
+            $db->prepare("INSERT INTO orm_schema_migrations (migration_id,name,from_schema_hash,to_schema_hash,plan_checksum,status,operations,error_detail,started_at) VALUES (?,?,?,?,?,?,?, '', $clock)")
+                ->execute([$r['id'], $r['name'], $r['from'], $r['to'], $r['checksum'], $r['status'], $r['operations'], ...$at]);
         } catch (\PDOException $e) {
             throw new \RuntimeException("MIGRATION_HISTORY_WRITE: migration_id={$r['id']}: " . $e->getMessage());
         }
@@ -152,17 +220,19 @@ final class SchemaMigrate
 
     private static function update(\PDO $db, string $id, string $status, string $detail): void
     {
-        $db->prepare('UPDATE orm_schema_migrations SET status=?, error_detail=?, finished_at=CURRENT_TIMESTAMP WHERE migration_id=?')->execute([$status, $detail, $id]);
+        [$clock, $at] = self::clock($db);
+        $db->prepare("UPDATE orm_schema_migrations SET status=?, error_detail=?, finished_at=$clock WHERE migration_id=?")->execute([$status, $detail, ...$at, $id]);
     }
 
     private static function transition(\PDO $db, string $id, string $from, string $to, string $detail): void
     {
+        [$clock, $at] = self::clock($db);
         $q = 'UPDATE orm_schema_migrations SET status=?, error_detail=?'
-            . ($to === 'applying' ? ', started_at=CURRENT_TIMESTAMP, finished_at=NULL' : ', finished_at=CURRENT_TIMESTAMP')
+            . ($to === 'applying' ? ", started_at=$clock, finished_at=NULL" : ", finished_at=$clock")
             . ' WHERE migration_id=? AND status=?';
         try {
             $st = $db->prepare($q);
-            $st->execute([$to, $detail, $id, $from]);
+            $st->execute([$to, $detail, ...$at, $id, $from]);
         } catch (\PDOException $e) {
             throw new \RuntimeException("MIGRATION_HISTORY_WRITE: migration_id=$id transition={$from}_to_$to: " . $e->getMessage());
         }
@@ -174,8 +244,9 @@ final class SchemaMigrate
     private static function markFailed(\PDO $db, string $id, string $detail): void
     {
         try {
-            $st = $db->prepare('UPDATE orm_schema_migrations SET status=?, error_detail=?, finished_at=CURRENT_TIMESTAMP WHERE migration_id=? AND status IN (?,?,?)');
-            $st->execute(['failed', $detail, $id, 'queued', 'retryable', 'applying']);
+            [$clock, $at] = self::clock($db);
+            $st = $db->prepare("UPDATE orm_schema_migrations SET status=?, error_detail=?, finished_at=$clock WHERE migration_id=? AND status IN (?,?,?)");
+            $st->execute(['failed', $detail, ...$at, $id, 'queued', 'retryable', 'applying']);
         } catch (\PDOException $e) {
             throw new \RuntimeException("MIGRATION_HISTORY_WRITE: migration_id=$id mark_failed: " . $e->getMessage());
         }

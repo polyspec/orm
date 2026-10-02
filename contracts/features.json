@@ -934,15 +934,18 @@
         "internal/ormgen/diff_test.go",
         "internal/ormgen/import_test.go",
         "internal/ormgen/migrate_test.go",
+        "internal/ormgen/ledger_test.go",
         "clients/php/tests/schema_test.php",
         "clients/php/tests/schema_tool_test.php",
         "clients/php/tests/schema_db_test.php",
+        "clients/php/tests/ledger_test.php",
         "clients/rust/orm-build/tests/schema_cases.rs",
         "clients/rust/orm-build/tests/tools.rs",
         "clients/rust/orm-build/tests/cli.rs",
         "clients/typescript/tests/schema-cases.mjs",
         "clients/typescript/tests/sqlite-auto-import.mjs",
         "clients/typescript/tests/schema-tools.mjs",
+        "clients/typescript/tests/ledger.mjs",
         "engine/schema/fuzz_test.go",
         "engine/schema/manifest_property_test.go",
         "internal/ormgen/ddl_uuid_test.go",
@@ -962,7 +965,7 @@
         },
         {
           "id": "schema-php",
-          "command": "php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php && php clients/php/tests/schema_db_test.php"
+          "command": "php clients/php/tests/schema_test.php && php clients/php/tests/schema_tool_test.php && php clients/php/tests/schema_db_test.php && php clients/php/tests/ledger_test.php"
         },
         {
           "id": "schema-rust",
@@ -970,7 +973,7 @@
         },
         {
           "id": "schema-typescript",
-          "command": "npm run typescript:build && node clients/typescript/tests/schema-cases.mjs && node clients/typescript/tests/sqlite-auto-import.mjs && node clients/typescript/tests/schema-tools.mjs"
+          "command": "npm run typescript:build && node clients/typescript/tests/schema-cases.mjs && node clients/typescript/tests/sqlite-auto-import.mjs && node clients/typescript/tests/schema-tools.mjs && node clients/typescript/tests/ledger.mjs"
         }
       ]
     },

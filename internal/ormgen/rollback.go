@@ -173,8 +173,9 @@ func rollbackMigration(ctx context.Context, db *sql.DB, plan migrationPlanFile, 
 }
 
 func markRollbackFailed(ctx context.Context, db *sql.DB, driver, id, detail string) error {
-	query := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=CURRENT_TIMESTAMP WHERE migration_id=" + placeholder(driver, 3) + " AND status IN (" + placeholder(driver, 4) + "," + placeholder(driver, 5) + ")"
-	result, err := db.ExecContext(ctx, query, "rollback_failed", detail, id, "applied", "rolling_back")
+	clock, clockArgs := ledgerClock(driver)
+	query := "UPDATE orm_schema_migrations SET status=" + placeholder(driver, 1) + ", error_detail=" + placeholder(driver, 2) + ", finished_at=" + clock + " WHERE migration_id=" + placeholder(driver, 3) + " AND status IN (" + placeholder(driver, 4) + "," + placeholder(driver, 5) + ")"
+	result, err := db.ExecContext(ctx, query, ledgerArgs([]any{"rollback_failed", detail, id, "applied", "rolling_back"}, 2, clockArgs)...)
 	if err != nil {
 		return fmt.Errorf("MIGRATION_HISTORY_WRITE: migration_id=%s mark_rollback_failed: %w", id, err)
 	}
