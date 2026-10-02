@@ -136,9 +136,10 @@ fn shared_dbspec_vectors() {
     println!("PASS dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}");
 }
 
-/// files case는 `dbspec::read_file`로 읽는다. signature가 없는 파일은 "<path> is not a
-/// dbspec document" diagnostic 하나를, 나머지 파일은 그 byte를 돌려주며 그 text는 parse와
-/// emit에서 바뀌지 않는다.
+/// files case는 `dbspec::read_file`에 path를 주어, `dbspec::read_bytes`에 파일 byte와 case
+/// path를 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec
+/// document", UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나를, 나머지
+/// 파일은 그 byte를 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
 #[test]
 fn shared_dbspec_files() {
     let clock = CaseClock::start();
@@ -157,21 +158,34 @@ fn shared_dbspec_files() {
             .iter()
             .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
             .collect();
-        match dbspec::read_file(&file_path) {
-            Ok(text) => {
-                assert!(expected.is_empty(), "{id}: read a file that has no signature");
-                assert_eq!(text.as_bytes(), std::fs::read(&file_path).unwrap().as_slice(), "{id}: the file bytes");
-                let document = parsed(id, &text, &BTreeMap::new());
-                assert_eq!(dbspec::emit(&document), text, "{id}: the file text emits unchanged");
-            }
-            Err(dbspec::ReadError::Diagnostics(errors)) => {
-                let got: Vec<(String, usize, usize)> = errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect();
-                assert_eq!(got, expected, "{id}: diagnostics {errors:?}");
-                for error in &errors {
-                    assert_eq!(error.message, format!("{} is not a dbspec document", file_path.display()), "{id}: message");
+        let name = case["path"].as_str().unwrap();
+        let shown = file_path.display().to_string();
+        let raw = std::fs::read(&file_path).unwrap_or_else(|e| panic!("{id}: {shown}: {e}"));
+        let reads = [
+            ("file", shown.as_str(), dbspec::read_file(&file_path)),
+            ("bytes", name, dbspec::read_bytes(name, raw.clone()).map_err(dbspec::ReadError::Diagnostics)),
+        ];
+        for (kind, name, read) in reads {
+            match read {
+                Ok(text) => {
+                    assert!(expected.is_empty(), "{id} {kind}: read text where diagnostics are expected");
+                    assert_eq!(text.as_bytes(), raw.as_slice(), "{id} {kind}: the file bytes");
+                    let document = parsed(id, &text, &BTreeMap::new());
+                    assert_eq!(dbspec::emit(&document), text, "{id} {kind}: the file text emits unchanged");
                 }
+                Err(dbspec::ReadError::Diagnostics(errors)) => {
+                    let got: Vec<(String, usize, usize)> = errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect();
+                    assert_eq!(got, expected, "{id} {kind}: diagnostics {errors:?}");
+                    for error in &errors {
+                        let message = match error.rule.as_str() {
+                            "signature" => format!("{name} is not a dbspec document"),
+                            _ => format!("{name} is not valid UTF-8"),
+                        };
+                        assert_eq!(error.message, message, "{id} {kind}: message");
+                    }
+                }
+                Err(dbspec::ReadError::Io(error)) => panic!("{id} {kind}: {shown}: {error}"),
             }
-            Err(dbspec::ReadError::Io(error)) => panic!("{id}: {}: {error}", file_path.display()),
         }
         let (cpu, wall) = (case_clock.cpu(), case_clock.wall());
         assert!(cpu < CASE_DEADLINE, "{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})");

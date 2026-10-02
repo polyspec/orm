@@ -614,22 +614,30 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     }
     writeln!(out, "stress").map_err(io)?;
     write(&mut out, &stress, &BTreeMap::new(), true).map_err(io)?;
-    // files case는 read_file로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
-    // message 앞의 path는 "<path>"로 쓴다.
+    // files case는 read_file에 path를 주어 "files/<id>"로, read_bytes에 파일 byte와 case path를
+    // 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를, 없으면 emission을
+    // 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
     let directory = Path::new(cases_path).parent().unwrap_or(Path::new(""));
     for case in &cases.files {
-        writeln!(out, "files/{}", case.id).map_err(io)?;
         let path = directory.join(&case.path);
-        match orm_schema::dbspec::read_file(&path) {
-            Ok(text) => write(&mut out, &text, &BTreeMap::new(), false).map_err(io)?,
-            Err(ReadError::Io(e)) => return Err(format!("{}: {e}", path.display())),
-            Err(ReadError::Diagnostics(diagnostics)) => {
-                let shown = path.display().to_string();
-                for d in &diagnostics {
-                    writeln!(out, "! {} {} {}", d.rule, d.line, d.column).map_err(io)?;
-                    match d.message.strip_prefix(shown.as_str()) {
-                        Some(rest) => writeln!(out, "= <path>{rest}").map_err(io)?,
-                        None => writeln!(out, "= {}", d.message).map_err(io)?,
+        let shown = path.display().to_string();
+        let raw = std::fs::read(&path).map_err(|e| format!("{shown}: {e}"))?;
+        let reads = [
+            (format!("files/{}", case.id), shown.as_str(), orm_schema::dbspec::read_file(&path)),
+            (format!("files/{}/bytes", case.id), case.path.as_str(), orm_schema::dbspec::read_bytes(&case.path, raw).map_err(ReadError::Diagnostics)),
+        ];
+        for (label, name, read) in reads {
+            writeln!(out, "{label}").map_err(io)?;
+            match read {
+                Ok(text) => write(&mut out, &text, &BTreeMap::new(), false).map_err(io)?,
+                Err(ReadError::Io(e)) => return Err(format!("{shown}: {e}")),
+                Err(ReadError::Diagnostics(diagnostics)) => {
+                    for d in &diagnostics {
+                        writeln!(out, "! {} {} {}", d.rule, d.line, d.column).map_err(io)?;
+                        match d.message.strip_prefix(name) {
+                            Some(rest) => writeln!(out, "= <name>{rest}").map_err(io)?,
+                            None => writeln!(out, "= {}", d.message).map_err(io)?,
+                        }
                     }
                 }
             }

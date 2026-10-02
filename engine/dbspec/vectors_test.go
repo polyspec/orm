@@ -284,9 +284,9 @@ func TestSharedVectors(t *testing.T) {
 	}
 }
 
-// TestFileVectors는 cases.json의 files case를 ReadFile로 읽는다. signature가 없는 파일은
-// "<path> is not a dbspec document" diagnostic 하나와 빈 text를, 나머지 파일은 그 byte를
-// 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
+// TestFileVectors는 files case마다 파일을 ReadFile로 path를 주어, ReadBytes로 그 byte와
+// case path를 이름으로 주어 읽는다. 두 reader는 같은 rule과 위치를 내고 message는 각자
+// 받은 이름을 쓴다.
 func TestFileVectors(t *testing.T) {
 	vectors := loadVectors(t)
 	if len(vectors.Files) == 0 {
@@ -294,50 +294,76 @@ func TestFileVectors(t *testing.T) {
 	}
 	root := repositoryRoot(t)
 	for _, c := range vectors.Files {
-		t.Run("files/"+c.ID, func(t *testing.T) {
-			runTimed(t, "files/"+c.ID, 5*time.Second, func() error {
-				path := filepath.Join(root, "tests", "dbspec", c.Path)
-				text, diagnostics, err := ReadFile(path)
-				if err != nil {
-					return err
-				}
-				if len(c.Errors) > 0 {
-					if text != "" {
-						return fmt.Errorf("ReadFile returned text with diagnostics")
-					}
-					got := make([]vectorError, len(diagnostics))
-					for i, d := range diagnostics {
-						if want := path + " is not a dbspec document"; d.Message != want {
-							return fmt.Errorf("message = %q, want %q", d.Message, want)
-						}
-						got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
-					}
-					if fmt.Sprint(got) != fmt.Sprint(c.Errors) {
-						return fmt.Errorf("diagnostics = %+v, want %+v", got, c.Errors)
-					}
-					return nil
-				}
-				if len(diagnostics) != 0 {
-					return fmt.Errorf("unexpected diagnostics %+v", diagnostics)
-				}
+		path := filepath.Join(root, "tests", "dbspec", c.Path)
+		readers := []struct {
+			kind, name string
+			read       func() (string, []Diagnostic, error)
+		}{
+			{"file", path, func() (string, []Diagnostic, error) { return ReadFile(path) }},
+			{"bytes", c.Path, func() (string, []Diagnostic, error) {
 				raw, err := os.ReadFile(path)
 				if err != nil {
-					return err
+					return "", nil, err
 				}
-				if text != string(raw) {
-					return fmt.Errorf("ReadFile text differs from the file bytes")
-				}
-				got, err := emitStable(text, nil)
-				if err != nil {
-					return err
-				}
-				if got != text {
-					return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, text)
-				}
-				return nil
+				text, diagnostics := ReadBytes(c.Path, raw)
+				return text, diagnostics, nil
+			}},
+		}
+		for _, reader := range readers {
+			id := "files/" + c.ID + "/" + reader.kind
+			t.Run(id, func(t *testing.T) {
+				runTimed(t, id, 5*time.Second, func() error {
+					text, diagnostics, err := reader.read()
+					if err != nil {
+						return err
+					}
+					return expectFileRead(path, reader.name, text, diagnostics, c.Errors)
+				})
 			})
-		})
+		}
 	}
+}
+
+// fileMessages는 file reader와 byte check가 rule마다 쓰는 message다.
+var fileMessages = map[string]string{RuleSignature: " is not a dbspec document", RuleEncoding: " is not valid UTF-8"}
+
+// expectFileRead는 한 reader의 결과를 files case와 비교한다. errors가 있으면 text 없이 그
+// diagnostic만, 없으면 파일 byte와 같은 text가 parse되고 그대로 emit되어야 한다.
+func expectFileRead(path, name, text string, diagnostics []Diagnostic, want []vectorError) error {
+	if len(want) > 0 {
+		if text != "" {
+			return fmt.Errorf("the reader returned text with diagnostics")
+		}
+		got := make([]vectorError, len(diagnostics))
+		for i, d := range diagnostics {
+			if message := name + fileMessages[d.Rule]; d.Message != message {
+				return fmt.Errorf("message = %q, want %q", d.Message, message)
+			}
+			got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			return fmt.Errorf("diagnostics = %+v, want %+v", got, want)
+		}
+		return nil
+	}
+	if len(diagnostics) != 0 {
+		return fmt.Errorf("unexpected diagnostics %+v", diagnostics)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	if text != string(raw) {
+		return fmt.Errorf("the reader text differs from the file bytes")
+	}
+	got, err := emitStable(text, nil)
+	if err != nil {
+		return err
+	}
+	if got != text {
+		return fmt.Errorf("emission differs:\ngot:\n%s\nwant:\n%s", got, text)
+	}
+	return nil
 }
 
 // expectDiagnostics는 text를 parse해 모든 diagnostic의 rule, 줄, 칸을 순서대로 want와

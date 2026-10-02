@@ -44,7 +44,7 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 ## 파일 {#files}
 
-dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <document>`가 파일 signature다. 문서 파일을 읽는 tool은 parse 전에 파일이 `dbspec ` bytes(`dbspec`과 공백 하나)로 시작하는지 확인한다. 그래서 같은 확장자를 쓰는 다른 형식의 파일(예: DbSchema project 파일(XML))과 빈 파일은 parse하지 않고 dbspec 문서와 구별된다. 이 bytes로 시작하지 않는 파일은 line 1, column 1의 `signature` error 하나이며, message는 그 파일을 `<path> is not a dbspec document`로 밝히고 그 파일에는 다른 error를 보고하지 않는다. header 앞에 byte order mark가 있는 파일도 `signature` error이고, byte order mark가 있는 text를 parser에 직접 주면 `encoding` error다. 이 bytes로 시작하는 파일은 parse하므로, 그 뒤에서 `dbspec 1 <document>`와 달라지는 header(예: `dbspec 2 shop`)는 `header` error다. 각 client에는 file reader가 하나 있고 문서 파일을 읽는 모든 tool이 그것을 쓴다: Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`. 읽을 수 없는 파일은 diagnostic이 아니라 platform의 읽기 error다.
+dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <document>`가 파일 signature다. 문서 파일을 읽는 tool은 parse 전에 파일이 `dbspec ` bytes(`dbspec`과 공백 하나)로 시작하는지 확인한다. 그래서 같은 확장자를 쓰는 다른 형식의 파일(예: DbSchema project 파일(XML))과 빈 파일은 parse하지 않고 dbspec 문서와 구별된다. 이 bytes로 시작하지 않는 파일은 line 1, column 1의 `signature` error 하나이며, message는 그 파일을 `<path> is not a dbspec document`로 밝히고 그 파일에는 다른 error를 보고하지 않는다. header 앞에 byte order mark가 있는 파일도 `signature` error이고, byte order mark가 있는 text를 parser에 직접 주면 `encoding` error다. 이 bytes로 시작하는 파일은 parse하므로, 그 뒤에서 `dbspec 1 <document>`와 달라지는 header(예: `dbspec 2 shop`)는 `header` error다. 이 bytes로 시작하지만 UTF-8이 아닌 파일은 첫 잘못된 byte의 줄과 열에서 `encoding` error 하나(`<path> is not valid UTF-8`)이며 parse하지 않는다. 각 client에는 byte check가 하나 있다. 이것은 파일의 bytes와 message가 쓸 이름을 받아 이 diagnostic이나 text를 준다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`. 자기 규칙으로(예: symbolic link를 따라가지 않고) 파일을 읽어야 하는 tool은 bytes를 한 번 읽어 자기가 보여 주는 이름과 함께 넘긴다. 각 client에는 file reader도 하나 있다. 이것은 path의 파일을 읽어 그 bytes와 path를 byte check에 주며, 문서 파일을 읽는 나머지 모든 tool이 그것을 쓴다: Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`. 읽을 수 없는 파일은 diagnostic이 아니라 platform의 읽기 error다.
 
 ## 이름
 
@@ -277,7 +277,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 
 | 규칙 | 의미 |
 | --- | --- |
-| `signature` | 문서 파일이 `dbspec ` bytes로 시작하지 않는다([파일](#files)). file reader가 parse 전에 보고한다 |
+| `signature` | 문서 파일이 `dbspec ` bytes로 시작하지 않는다([파일](#files)). byte check와 file reader가 parse 전에 보고한다 |
 | `header` | 첫 줄이 `dbspec 1 <document>`가 아니거나 version이 1이 아니다 |
 | `syntax` | token이 그 위치에 올 수 없다 |
 | `order` | `use`, `table`, `diagram`의 순서나 table 안 줄의 순서가 틀렸다 |
@@ -293,7 +293,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 | `use` | 쓰는 문서가 선언된 집합에 없거나 쓰는 table이 거기 정의되지 않았다 |
 | `diagram` | diagram이 모르는 table을 가리키거나, table을 반복하거나, 좌표가 정수가 아니다 |
 | `limit` | 문서가 크기나 개수 한도를 넘는다 |
-| `encoding` | text가 유효한 UTF-8이 아니거나, byte order mark가 있거나, 단독 CR이 있다 |
+| `encoding` | text가 유효한 UTF-8이 아니거나, byte order mark가 있거나, 단독 CR이 있다. UTF-8이 아닌 파일 bytes는 byte check와 file reader가 parse 전에 보고한다 |
 
 ## Mermaid 언어에서 바뀐 이름
 
@@ -336,4 +336,4 @@ Mermaid 언어와 manifest의 모든 기능:
 
 ## 검증
 
-공유 vector는 `tests/dbspec/`에 있다: canonical 문서와 그 출력, canonical이 아닌 문서와 그 canonical 출력, 기대하는 모든 diagnostic이 있는 잘못된 문서, 그리고 `tests/dbspec/files/`의 문서 파일: 모든 client reader가 `signature` error로 거부하는 DbSchema project 파일(XML)과 빈 파일, 그리고 바뀌지 않게 읽는 `.dbs` 문서. 모든 client가 같게 parse하고 출력한다. 2000-table, 60000-column, 10000-foreign-key case의 parse budget은 Rust client release mode에서 300 ms다. Go client budget은 100 ms, TypeScript client는 Node에서 250 ms, PHP client는 128 MiB memory limit 안에서 400 ms다. 각 budget은 parse를 실행한 thread의 CPU 시간을 제한한다: Rust main thread, Go test가 고정한 OS thread, Node main thread, 한 thread로 도는 PHP process다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담고, Go와 Node의 process CPU 시간은 다른 core에서 도는 garbage collector thread의 시간도 담는다. 각 client의 stress test는 case를 다섯 번 parse해 parse마다 CPU 시간과 wall-clock 시간을, 그리고 CPU 시간의 가장 짧은 값, median, 가장 긴 값을 출력하고 median이 budget을 넘으면 실패한다. `make timing-check`는 네 stress test, Rust orm-schema vector test, PHP dbspec test를 그 process group이 wall-clock 시간의 10분의 1만 받는 상태로 실행하고 모든 시간 제한이 지켜지기를 요구한다. budget은 각 구현의 첫 측정에서 정했으며 올리지 않는다.
+공유 vector는 `tests/dbspec/`에 있다: canonical 문서와 그 출력, canonical이 아닌 문서와 그 canonical 출력, 기대하는 모든 diagnostic이 있는 잘못된 문서, 그리고 `tests/dbspec/files/`의 문서 파일: 모든 client가 `signature` error로 거부하는 DbSchema project 파일(XML)과 빈 파일, `encoding` error로 거부하는 UTF-8이 아닌 byte가 있는 파일, 그리고 바뀌지 않게 읽는 `.dbs` 문서. 각 client는 모든 파일을 file reader와 byte check로 읽고, `make dbspec-compare-check`가 네 client의 두 결과를 비교한다. 모든 client가 같게 parse하고 출력한다. 2000-table, 60000-column, 10000-foreign-key case의 parse budget은 Rust client release mode에서 300 ms다. Go client budget은 100 ms, TypeScript client는 Node에서 250 ms, PHP client는 128 MiB memory limit 안에서 400 ms다. 각 budget은 parse를 실행한 thread의 CPU 시간을 제한한다: Rust main thread, Go test가 고정한 OS thread, Node main thread, 한 thread로 도는 PHP process다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담고, Go와 Node의 process CPU 시간은 다른 core에서 도는 garbage collector thread의 시간도 담는다. 각 client의 stress test는 case를 다섯 번 parse해 parse마다 CPU 시간과 wall-clock 시간을, 그리고 CPU 시간의 가장 짧은 값, median, 가장 긴 값을 출력하고 median이 budget을 넘으면 실패한다. `make timing-check`는 네 stress test, Rust orm-schema vector test, PHP dbspec test를 그 process group이 wall-clock 시간의 10분의 1만 받는 상태로 실행하고 모든 시간 제한이 지켜지기를 요구한다. budget은 각 구현의 첫 측정에서 정했으며 올리지 않는다.

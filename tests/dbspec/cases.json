@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, or alternate LF and CRLF starting with CRLF when mixed is true; every case ends with one line end, except a mixed case, whose last line has none. Columns count Unicode code points. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order. hashes cases parse every listed document as the document set; manifestText and schemaText are the lines of the document set texts, each line followed by LF, and the hashes are taken over those texts. sets cases give the documents of a set as a list; each is parsed against the other listed documents and the parsing documents, and the set must give exactly errors from both the manifest and the rendering of every dialect. files cases name a file under tests/dbspec by its path relative to this file; each client reads it with its dbspec file reader (Go dbspec.ReadFile, PHP Dbspec::readFile, TypeScript readDbspecFile, Rust dbspec::read_file). A case with errors reads exactly those errors, each with the message \"<path> is not a dbspec document\" for the path given to the reader, and no text; a case without errors reads the bytes of the file, which parse and emit unchanged.",
+  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, or alternate LF and CRLF starting with CRLF when mixed is true; every case ends with one line end, except a mixed case, whose last line has none. Columns count Unicode code points. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order. hashes cases parse every listed document as the document set; manifestText and schemaText are the lines of the document set texts, each line followed by LF, and the hashes are taken over those texts. sets cases give the documents of a set as a list; each is parsed against the other listed documents and the parsing documents, and the set must give exactly errors from both the manifest and the rendering of every dialect. files cases name a file under tests/dbspec by its path relative to this file; each client reads it twice: with its dbspec file reader (Go dbspec.ReadFile, PHP Dbspec::readFile, TypeScript readDbspecFile, Rust dbspec::read_file) given the path, and with its byte check (Go dbspec.ReadBytes, PHP Dbspec::readBytes, TypeScript readDbspecBytes, Rust dbspec::read_bytes) given the bytes of the file and the case path as name. A case with errors reads exactly those errors and no text; a signature error has the message \"<name> is not a dbspec document\" and an encoding error the message \"<name> is not valid UTF-8\", where <name> is the path given to the file reader or the name given to the byte check. A case without errors reads the bytes of the file, which parse and emit unchanged.",
   "canonical": [
     {
       "id": "minimal-table",
@@ -4319,6 +4319,17 @@
           "line": 1,
           "column": 1,
           "rule": "signature"
+        }
+      ]
+    },
+    {
+      "id": "invalid-utf8-file",
+      "path": "files/invalid-utf8.dbs",
+      "errors": [
+        {
+          "line": 3,
+          "column": 8,
+          "rule": "encoding"
         }
       ]
     },

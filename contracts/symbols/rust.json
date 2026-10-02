@@ -461,6 +461,8 @@
   "clients/rust/orm-schema/src/dbspec/emit.rs::written": " fn written (settings : \u0026 Settings , view : View) -\u003e Vec \u003c \u0026 SettingLine \u003e",
   "clients/rust/orm-schema/src/dbspec/file.rs::ReadError": "pub enum ReadError  { Io (io :: Error) , Diagnostics (Vec \u003c Diagnostic \u003e) , }",
   "clients/rust/orm-schema/src/dbspec/file.rs::ReadError as fmt :: Display::fmt": " fn fmt (\u0026 self , f : \u0026 mut fmt :: Formatter \u003c '_ \u003e) -\u003e fmt :: Result",
+  "clients/rust/orm-schema/src/dbspec/file.rs::diagnostic": " fn diagnostic (rule : \u0026 str , line : usize , column : usize , message : String) -\u003e Diagnostic",
+  "clients/rust/orm-schema/src/dbspec/file.rs::read_bytes": "pub fn read_bytes (name : \u0026 str , bytes : Vec \u003c u8 \u003e) -\u003e Result \u003c String , Vec \u003c Diagnostic \u003e \u003e",
   "clients/rust/orm-schema/src/dbspec/file.rs::read_file": "pub fn read_file (path : \u0026 Path) -\u003e Result \u003c String , ReadError \u003e",
   "clients/rust/orm-schema/src/dbspec/introspect/check.rs::Decoder": " struct Decoder \u003c 'c \u003e { tokens : Vec \u003c Token \u003e , i : usize , columns : \u0026 'c BTreeMap \u003c String , Type \u003e , dialect : Dialect , }",
   "clients/rust/orm-schema/src/dbspec/introspect/check.rs::Decoder \u003c '_ \u003e::and": " fn and (\u0026 mut self) -\u003e Result \u003c Node , String \u003e",

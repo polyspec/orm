@@ -231,24 +231,30 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
 }
 echo "stress\n";
 dbspec_write($stress, [], true);
-// files case는 Dbspec::readFile로 읽어 diagnostic과 그 message를, 없으면 emission을 출력한다.
-// message 앞의 path는 "<path>"로 쓴다.
+// files case는 Dbspec::readFile에 path를 주어 "files/<id>"로, Dbspec::readBytes에 파일
+// byte와 case path를 이름으로 주어 "files/<id>/bytes"로 읽어 diagnostic과 그 message를,
+// 없으면 emission을 출력한다. message 앞의 이름은 "<name>"으로 쓴다.
 foreach ($cases['files'] as $case) {
-    echo "files/{$case['id']}\n";
     $path = dirname($argv[1]) . '/' . $case['path'];
     try {
-        $read = Orm\Dbspec\Dbspec::readFile($path);
+        $reads = [
+            "files/{$case['id']}" => [$path, Orm\Dbspec\Dbspec::readFile($path)],
+            "files/{$case['id']}/bytes" => [$case['path'], Orm\Dbspec\Dbspec::readBytes($case['path'], (string) file_get_contents($path))],
+        ];
     } catch (RuntimeException $e) {
         fwrite(STDERR, $e->getMessage() . "\n");
         exit(1);
     }
-    if ($read->text !== null) {
-        dbspec_write($read->text, [], false);
-        continue;
-    }
-    foreach ($read->diagnostics as $d) {
-        echo "! {$d->rule} {$d->line} {$d->column}\n";
-        echo '= ' . (str_starts_with($d->message, $path) ? '<path>' . substr($d->message, strlen($path)) : $d->message) . "\n";
+    foreach ($reads as $label => [$name, $read]) {
+        echo "$label\n";
+        if ($read->text !== null) {
+            dbspec_write($read->text, [], false);
+            continue;
+        }
+        foreach ($read->diagnostics as $d) {
+            echo "! {$d->rule} {$d->line} {$d->column}\n";
+            echo '= ' . (str_starts_with($d->message, $name) ? '<name>' . substr($d->message, strlen($name)) : $d->message) . "\n";
+        }
     }
 }
 

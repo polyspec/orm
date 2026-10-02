@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
-import { dbspecManifest, emitDbspec, parseDbspec, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, parseDbspec, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
@@ -90,24 +90,30 @@ for (const c of cases.invalid) {
   });
 }
 
-// files cases are read with readDbspecFile: a file without the signature gives one
-// "<path> is not a dbspec document" diagnostic and no text, any other file its bytes,
+// files cases are read twice: with readDbspecFile given the path and with readDbspecBytes
+// given the file bytes and the case path as name. Bytes without the signature give one
+// "<name> is not a dbspec document" diagnostic, bytes that are not UTF-8 one
+// "<name> is not valid UTF-8" diagnostic, and no text; any other file gives its bytes,
 // which parse and emit unchanged.
+const fileMessages = { signature: ' is not a dbspec document', encoding: ' is not valid UTF-8' };
 assert(cases.files.length > 0, 'files cases');
 for (const c of cases.files) {
-  vector(`files ${c.id}`, () => {
-    const path = fileURLToPath(new URL(`tests/dbspec/${c.path}`, root));
-    const result = readDbspecFile(path);
-    if (c.errors.length > 0) {
-      assert.equal(result.text, null);
-      assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
-      for (const d of result.diagnostics) assert.equal(d.message, `${path} is not a dbspec document`);
-      return;
-    }
-    assert.deepEqual(result.diagnostics, []);
-    assert.equal(result.text, readFileSync(path, 'utf8'));
-    assert.equal(emitDbspec(parsed(result.text, {})), result.text);
-  });
+  const path = fileURLToPath(new URL(`tests/dbspec/${c.path}`, root));
+  const readers = { file: [path, () => readDbspecFile(path)], bytes: [c.path, () => readDbspecBytes(c.path, readFileSync(path))] };
+  for (const [kind, [name, read]] of Object.entries(readers)) {
+    vector(`files ${c.id} ${kind}`, () => {
+      const result = read();
+      if (c.errors.length > 0) {
+        assert.equal(result.text, null);
+        assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
+        for (const d of result.diagnostics) assert.equal(d.message, name + fileMessages[d.rule]);
+        return;
+      }
+      assert.deepEqual(result.diagnostics, []);
+      assert.equal(result.text, readFileSync(path, 'utf8'));
+      assert.equal(emitDbspec(parsed(result.text, {})), result.text);
+    });
+  }
 }
 
 // parseSet parses every document of a hashes case against the others, in document name order.
