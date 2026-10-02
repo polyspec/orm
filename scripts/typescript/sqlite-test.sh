@@ -14,4 +14,4 @@ node clients/typescript/tests/sqlite-concurrency.mjs
 node clients/typescript/tests/schema-set.mjs
 node clients/typescript/tests/clock.mjs
 node clients/typescript/tests/driver-error.mjs
-node clients/typescript/tests/rollback.mjs
+node --conditions=orm-test clients/typescript/tests/rollback.mjs

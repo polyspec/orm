@@ -55,6 +55,8 @@ pub const CONFIG: &str = "CONFIG";
 pub const CANCELED: &str = "CANCELED";
 /// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 pub const ROLLBACK: &str = "ROLLBACK";
+/// executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
+pub const FAULT: &str = "FAULT";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: a NOWAIT lock could not be acquired immediately

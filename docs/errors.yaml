@@ -63,6 +63,8 @@ codes:
     origin: executor
   - code: ROLLBACK                # a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
     origin: executor
+  - code: FAULT                   # a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
+    origin: executor
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----

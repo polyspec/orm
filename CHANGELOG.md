@@ -1,5 +1,7 @@
 # Changelog
 
+- T8.8.2: main is merged into the dbspec branch again with N16: each client's test entry point arms a rollback fault, and the next failed rollback is reported as `FAULT` through the single transaction-end form `transaction failed (<cause>) and rollback failed (<error>)` on MySQL, PostgreSQL and SQLite. Measured one client and one database at a time on an idle machine, the 2000-table introspection takes 0.73-2.56 s in every client, within the 5 s budget.
+
 - T8.6.8: every client applies a plan step by step on MySQL, PostgreSQL and SQLite: each statement commits on its own with its recorded history step, recover continues an interrupted plan from the catalog effect of the next step, and rollback undoes the last plan with the rollback statement of every step. Dropped tables and columns stay hidden under `dbspec$hold$` names until finalize drops them, added columns are hidden on rollback and come back on a second apply, a rollback of an applied plan fills or refuses the NULL rows of columns it makes non-null, lock waits end after 5 seconds, and `PlanSteps` replaces `PlanStatements` with each step's rollback statement, effect and finalize mark.
 
 - T8.8.1: main is merged into the dbspec branch, and its features work on the dbspec paths while the Mermaid source path stays removed. One process loads the generated code of several document sets and a connection plans every request with the model of its manifest hash; a request of a manifest that no loaded code registered, or code whose text does not hash to its declared hash, fails with `SCHEMA_HASH_MISMATCH`, and generated code registers its set, so no `utils().schema().register()` exists. A transaction or savepoint whose rollback fails too, also on a connection the server closed, reports one `ROLLBACK` error `transaction failed (<cause>) and rollback failed (<error>)` in every client, keeps both errors and is not retried. `docs/protocol.md` states one clock rule: the client clock is UTC with microseconds, MySQL writes `CURRENT_TIMESTAMP(p)` and `NOW(6)`, SQLite relative forms keep six fraction digits, SQLite binds the client clock for an omitted `default now` column, and every `now` slot carries the fraction digits of its column. The plan history writes `applied_at` as `YYYY-MM-DDTHH:MM:SS.ffffffZ`, and the TypeScript apply clock is microseconds since the epoch.
@@ -328,6 +330,24 @@ catalog source per feature, the decisions for a local datetime with a
 UTC connection rule and executor update-time stamping, and leaves the audit
 context definition for T8.1 review. Thirteen defects of the current schema
 tools and clients are recorded as T8.0.1-T8.0.11, T8.0.13 and T8.0.14.
+
+Provide a test fault that makes the rollback of a transaction fail on
+every database (N16). orm had no
+supported way to make a rollback fail: the ORM tests end the server
+session on MySQL and PostgreSQL or install a SQLite trigger written in
+SQL. The test entry point of each client now arms a rollback fault on a
+connection: Go `orm.FailNextRollback(db)` with the build tag `ormtest`,
+Rust `orm::testing::fail_next_rollback(&db)` with the feature
+`test-faults`, TypeScript `failNextRollback(db)` of
+`@polyspec/orm-typescript/testing` under the Node condition `orm-test`,
+and PHP `Orm\Testing\Faults::failNextRollback($db)` from
+`testing/Faults.php`, which the package autoloader does not load. No
+DSN, configuration value or environment variable arms the fault. The
+next rollback of a transaction whose callback failed runs and is then
+reported with the new catalog code `FAULT`, so the transaction returns
+`ROLLBACK` with the callback error and the `FAULT` error. The case
+`rollback_fault` passes in Go, PHP, Rust and TypeScript on MySQL,
+PostgreSQL and SQLite.
 
 Store the times of the migration ledger with microseconds on every
 database (N15). The ledger `orm_schema_migrations` declared `timestamp`

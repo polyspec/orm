@@ -242,7 +242,7 @@ impl Db {
                 commit(&tx).await.map_err(TransactionOnceError::Orm)?;
                 Ok(value)
             }
-            Err(callback) => match rollback(&tx).await {
+            Err(callback) => match rollback(&tx).await.and_then(|()| rollback_fault(self)) {
                 Ok(()) => Err(TransactionOnceError::Callback(callback)),
                 Err(rollback) => Err(TransactionOnceError::Rollback { callback, rollback }),
             },
@@ -330,7 +330,7 @@ where
                     return Ok(v);
                 }
                 Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await {
+                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
@@ -432,7 +432,7 @@ impl<'a, F> Transaction<'a, F> {
                     return Ok(v);
                 }
                 Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await {
+                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
                         return Err(Error::rollback(e, rollback_error));
                     }
                     if !e.is_deadlock() || attempt >= self.retry {
@@ -687,6 +687,16 @@ async fn commit(tx: &TxShared) -> Result<()> {
             sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
             t.completed();
         }
+    }
+    Ok(())
+}
+
+/// transaction이 rollback된 뒤 설정된 test fault를 소비한다: 그 rollback은
+/// `FAULT`로 실패했다고 보고된다 (`orm::testing::fail_next_rollback`, feature
+/// `test-faults`).
+fn rollback_fault(db: &Db) -> Result<()> {
+    if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {
+        return Err(Error::Engine { code: codes::FAULT.into(), msg: "test fault: the rollback of the transaction ran and is reported as failed".into() });
     }
     Ok(())
 }
