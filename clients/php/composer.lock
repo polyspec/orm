@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "85ff12f8b758347c5c4b9b840083f918",
+    "content-hash": "2fc8f4f488dce97c234709bd932b6b18",
     "packages": [
         {
             "name": "ordered-json/ordered-json",
@@ -287,7 +287,6 @@
     "platform": {
         "php": ">=8.4",
         "ext-pdo": "*",
-        "ext-pdo_mysql": "*",
         "ext-json": "*",
         "ext-zlib": "*"
     },

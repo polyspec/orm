@@ -1,5 +1,13 @@
 # Changelog
 
+Require no PDO driver extension in the PHP client (N17). `composer.json`
+required `ext-pdo_mysql`, so `composer install` refused a PHP without it,
+such as the official PHP image, although the client references the MySQL
+driver only for a `mysql://` DSN. It now suggests `pdo_mysql`, `pdo_pgsql`
+and `pdo_sqlite` and requires none of them, and
+`make php-without-mysql-check` runs the client on SQLite in the official
+PHP image.
+
 Provide a test fault that makes the rollback of a transaction fail on
 every database (N16). orm had no
 supported way to make a rollback fail: the ORM tests end the server

@@ -1,5 +1,12 @@
 # 변경 이력
 
+PHP 클라이언트에서 PDO driver 확장을 요구하지 않는다(N17). `composer.json`이
+`ext-pdo_mysql`을 요구했으므로, 클라이언트가 MySQL driver를 `mysql://` DSN에서만
+참조하는데도 공식 PHP image처럼 그것이 없는 PHP에서 `composer install`이
+거부되었다. 이제 `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`를 제안하고 어느 것도
+요구하지 않으며, `make php-without-mysql-check`가 공식 PHP image에서 SQLite로
+클라이언트를 실행한다.
+
 모든 database에서 트랜잭션 rollback을 실패시키는 test fault를 제공한다(N16).
 orm에는 rollback을 실패시키는 지원 방법이 없었다. ORM
 test는 MySQL과 PostgreSQL에서 server session을 종료하거나 SQL로 쓴 SQLite

@@ -3,7 +3,9 @@
 The PHP client: generated models (`Polyspec\Orm\Tests\Model\Author`, …) over PDO (`pdo_mysql`, `pdo_pgsql`,
 `pdo_sqlite`). The library assembles SQL itself: each statement shape is validated against
 `schema.json`, planned once, and kept in a bounded process-local plan cache. No service or extension
-runs beside it. PHP 8.4 or later. Version 0.0.1.
+runs beside it. PHP 8.4 or later. Version 0.0.1. The scheme of a DSN selects its PDO driver, so
+`composer.json` requires none of the three and suggests each one; `scripts/php-without-mysql.sh` runs
+the client on SQLite in the official PHP image, which has no `pdo_mysql`.
 
 ## Layout
 - `src/` — the runtime, PSR-4 `Orm\` (`composer.json`): the model syntax (`Model.php`,
