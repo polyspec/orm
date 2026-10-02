@@ -33,7 +33,7 @@ The check measures the generated client and an equivalent native result in one p
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `bench/go` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
+| Go | 1.35 | 1.25 | `clients/go/bench` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
 | PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php` |
 
 Both checks read the seeded bench database from `ORM_BENCH_MYSQL_DSN`. The Go check runs when `ORM_RUN_PERF_GATE=1`; a check that runs without `ORM_BENCH_MYSQL_DSN` fails and prints the variable name, and no bench test connects to a local server instead.

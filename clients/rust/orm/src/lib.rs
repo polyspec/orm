@@ -90,7 +90,7 @@ impl std::error::Error for Error {
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
-/// DUPLICATE_KEY, 787 → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
+/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
 /// to CONSTRAINT. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
@@ -136,6 +136,8 @@ impl From<sqlx::Error> for Error {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
                     (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                    // RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+                    (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => Some((codes::FOREIGN_KEY, s.message().to_owned())),
                     (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
                     (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
                     (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),

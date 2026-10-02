@@ -10,6 +10,7 @@ package sqlite
 
 import (
 	"errors"
+	"strings"
 
 	sqlite "modernc.org/sqlite"
 
@@ -37,6 +38,10 @@ func mapErr(err error) error {
 		return &ir.Error{Code: orm.CodeDuplicateKey, Msg: se.Error()}
 	case 787: // SQLITE_CONSTRAINT_FOREIGNKEY
 		return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
+	case 1811: // SQLITE_CONSTRAINT_TRIGGER: RESTRICT action은 FK 오류로, trigger RAISE는 DRIVER다
+		if strings.Contains(se.Error(), "FOREIGN KEY constraint failed") {
+			return &ir.Error{Code: orm.CodeForeignKey, Msg: se.Error()}
+		}
 	case 275: // SQLITE_CONSTRAINT_CHECK
 		return &ir.Error{Code: orm.CodeConstraint, Msg: se.Error()}
 	case 9: // SQLITE_INTERRUPT: the statement was cancelled

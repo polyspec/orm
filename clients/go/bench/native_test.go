@@ -3,8 +3,8 @@
 // Workloads: PK get, 100-row list, INSERT, 4-step relation chain (1 parent +
 // 3 IN-batched children, assembled in Go). Run:
 //
-//	ORM_BENCH_MYSQL_DSN=mysql://… go test ./bench/go -run xxx -bench . -benchmem -benchtime 3s
-//	ORM_BENCH_MYSQL_DSN=mysql://… ORM_BENCH_PAR=64 go test ./bench/go -run xxx -bench Par -benchmem
+//	ORM_BENCH_MYSQL_DSN=mysql://… go test ./clients/go/bench -run xxx -bench . -benchmem -benchtime 3s
+//	ORM_BENCH_MYSQL_DSN=mysql://… ORM_BENCH_PAR=64 go test ./clients/go/bench -run xxx -bench Par -benchmem
 package bench
 
 import (

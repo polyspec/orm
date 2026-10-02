@@ -131,6 +131,42 @@ test('native owner and dependent files execute twice from their own parts', { ti
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+// Go test cache가 두 번째 실행을 대신하면 실행 증거가 아니므로, 각 실행이
+// test process를 실제로 실행해 directory를 하나씩 남기는지 확인한다.
+test('every Go execution runs the test instead of reading the test cache', { timeout: 120000 }, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
+  const owner = 'clients/go/sample/sample_test.go';
+  const runs = join(root, 'runs');
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'],
+      owners: { go: { part: 'clients/go/sample', tests: [owner],
+        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
+      dependents: [] } }] };
+  try {
+    await mkdir(join(root, 'clients/go/sample'), { recursive: true });
+    await mkdir(runs);
+    await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
+    await writeFile(join(root, owner), `//go:build featurecoverage
+
+package sample
+
+import (
+	"os"
+	"testing"
+)
+
+func TestFirst(t *testing.T) {
+	// Mkdir는 test cache가 기록하는 file 읽기가 아니므로 cache된 결과에는 흔적이 남지 않는다.
+	if _, err := os.MkdirTemp(${JSON.stringify(runs)}, "run-"); err != nil {
+		t.Fatal(err)
+	}
+}
+`);
+    assert.deepEqual(await executeCoverage(manifest, root, 60000), []);
+    assert.equal((await readdir(runs)).length, 2);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('invented JSON success from an arbitrary command is not execution evidence', { timeout: 8000 }, async () => {
   const manifest = contract('independent');
   const report = (role, part, tests, language, cases, dependent) => JSON.stringify({

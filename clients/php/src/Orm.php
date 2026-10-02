@@ -333,7 +333,8 @@ final class OrmException extends \RuntimeException
                 is_int($num) && ($num & 0xff) === 5 => Code::CANCELED,
                 in_array($num, [6, 262], true) => Code::DEADLOCK,
                 in_array($num, [2067, 1555], true) || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
-                $num === 787 || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
+                // RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+                $num === 787 || (in_array($num, [19, 1811], true) && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
                 $num === 275 || ($num === 19 && str_starts_with($message, 'CHECK constraint failed')) => Code::CONSTRAINT,
                 $num === 9 => Code::CANCELED,
                 is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,

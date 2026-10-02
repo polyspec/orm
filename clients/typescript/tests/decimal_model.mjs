@@ -9,13 +9,13 @@ for (const testCase of fixture.cases) {
   if (!column) throw new Error(`${testCase.id}: unknown column ${testCase.column}`);
   try {
     const actual = normalizeDecimal(testCase.input, column.precision, column.scale);
-    if (testCase.error) throw new Error(`${testCase.id}: expected ${testCase.error}`);
-    if (actual !== testCase.expected) throw new Error(`${testCase.id}: got ${actual}; expected ${testCase.expected}`);
+    if (testCase.expected.error) throw new Error(`${testCase.id}: expected ${testCase.expected.error}`);
+    if (actual !== testCase.expected.value) throw new Error(`${testCase.id}: got ${actual}; expected ${testCase.expected.value}`);
     const stored = decimalScaled(testCase.input, column.precision, column.scale);
     const decoded = decimalFromScaled(stored, column.precision, column.scale);
-    if (decoded !== testCase.expected) throw new Error(`${testCase.id}: SQLite round trip got ${decoded}`);
+    if (decoded !== testCase.expected.value) throw new Error(`${testCase.id}: SQLite round trip got ${decoded}`);
   } catch (error) {
-    if (!testCase.error || error.code !== testCase.error) throw error;
+    if (!testCase.expected.error || error.code !== testCase.expected.error) throw error;
   }
   console.log(`CASE ${testCase.id} PASS`);
 }

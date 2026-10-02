@@ -58,6 +58,13 @@ An empty SQLite `AUTOINCREMENT` table may have no `sqlite_sequence` entry yet;
 the counter test verifies its table definition, observes the first inserted
 counter, and restores the original absence.
 
+Each runner also takes a repeatable vector selection (`-vector NAME` in Go,
+`--vector NAME` in PHP, Rust, and TypeScript) and then runs only the named
+vectors in declared order; an unknown or repeated name fails before any vector
+runs. The `conformance_verification` coverage case of each client runs its
+runner for the read-only vectors `conditions_values` and `relations` and
+compares each with the recorded expectation of the selected database.
+
 `check compare` compares recorded files and does not establish that a runner
 executed now. It requires exactly one output from each of the four clients.
 `check run` removes earlier generated outputs when it starts and publishes its

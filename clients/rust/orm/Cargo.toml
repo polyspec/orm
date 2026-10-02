@@ -38,3 +38,5 @@ yaml-rust2 = { version = "0.13.0", default-features = false }
 [dev-dependencies]
 # SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
 libsqlite3-sys = { version = "0.37", default-features = false }
+# coverage test가 자기 계산의 CPU 시간을 잰다.
+orm-case-clock = { path = "../case-clock" }
