@@ -6,6 +6,9 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { checkCoverage, databases, executeCoverage, languages, selectFeatures } from './coverage.mjs';
 
+// sample crate는 orm workspace가 아니므로 Makefile이 정한 orm workspace의 test feature를 쓰지 않는다.
+delete process.env.ORM_RUST_TEST_FEATURES;
+
 const ownerTests = {
   go: 'clients/go/orm/dsn_test.go', php: 'clients/php/tests/dsn.php',
   rust: 'clients/rust/orm/tests/zone.rs', typescript: 'clients/typescript/tests/typecheck.ts',
