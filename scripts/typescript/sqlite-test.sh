@@ -13,7 +13,7 @@ node clients/typescript/tests/model.mjs
 node --test clients/typescript/tests/dbspec_runtime_db.mjs
 node clients/typescript/tests/sqlite-concurrency.mjs
 node clients/typescript/tests/schema-set.mjs
-node clients/typescript/tests/add-columns.mjs
+node clients/typescript/tests/add-tables-and-columns.mjs
 node clients/typescript/tests/clock.mjs
 node clients/typescript/tests/driver-error.mjs
 node --conditions=orm-test clients/typescript/tests/rollback.mjs

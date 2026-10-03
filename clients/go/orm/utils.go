@@ -266,19 +266,20 @@ func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
 	return s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
 }
 
-// AddColumns는 generated schema의 document set에서 database에 이미 있는 table에
-// 빠진 column 가운데 null이거나 default가 있는 column을 더한다(docs/schema.md
-// "Adding columns"). 연결의 database를 introspect해 set의 table만 비교하고,
-// dbspec.AddColumnSteps의 plan step을 실행하므로 바뀐 table의 audit trigger도
-// 새 column을 기록하도록 바뀐다. database에 없는 set의 table과 다른 set의
-// table은 그대로 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다
-// 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저
-// CONFIG다. PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다.
-// MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈
-// 채 table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction
-// 안에서 바뀌지 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다.
-// 더한 column을 table 이름, column 순서로 "table.column"으로 돌려준다.
-func (s *SchemaUtils) AddColumns(schema *Schema) ([]string, error) {
+// AddTablesAndColumns는 설치한 document set을 generated schema의 새 version으로
+// 더해서만 올린다(docs/schema.md "Adding tables and columns"). 연결의 database를
+// introspect해 database에 있는 set의 table을 set과 비교하고, database에 없는 set의
+// table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진 column
+// 가운데 null이거나 default가 있는 column을 더한다. dbspec.AddTablesAndColumnsSteps의
+// plan step을 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다.
+// 다른 set의 table은 그대로 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다
+// 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다.
+// PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다. MySQL은 schema
+// statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어
+// column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다
+// transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한 column은
+// "table.column"으로 table 이름, column 순서로 돌려준다.
+func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	d := s.u.db
 	m, err := schema.registered()
 	if err != nil {
@@ -299,23 +300,23 @@ func (s *SchemaUtils) AddColumns(schema *Schema) ([]string, error) {
 		if err != nil {
 			return mapDriverErr(err)
 		}
-		columns, steps, differences := dbspec.AddColumnSteps(live, unsupported, target, dialect)
+		additions, steps, differences := dbspec.AddTablesAndColumnsSteps(live, unsupported, target, dialect)
 		if len(differences) > 0 {
-			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing columns that are null or have a default: " + strings.Join(differences, "; ")}
+			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: " + strings.Join(differences, "; ")}
 		}
 		for _, step := range steps {
 			if _, err := q.ExecContext(ctx, step.Statement); err != nil {
 				return mapDriverErr(err)
 			}
 		}
-		added = columns
+		added = additions
 		return nil
 	}
 	switch {
 	case d.driver == "postgres":
 		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
 	case activeFor(d) != nil:
-		return nil, configErr("%s adds columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
+		return nil, configErr("%s adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
 	case d.driver == "mysql":
 		err = apply(d.ctx, d.sql)
 	default:

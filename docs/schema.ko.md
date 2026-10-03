@@ -55,17 +55,17 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 | TypeScript | `utils().schema().install(SCHEMA)` | 생성된 module의 schema 값(`{ manifestText, manifestHash }`) |
 | Rust | `utils().schema().install(&model::SCHEMA).await` | 생성된 모델의 schema 값(`orm::Schema`) |
 
-## 5. 컬럼 추가
+## 5. 테이블과 컬럼 추가
 
-`connection.utils().schema().addColumns(schema)`는 generated schema 값의 document set에서 기존 테이블에 빠진 컬럼을, 각 컬럼이 `null`이거나 default가 있을 때 추가하고, 테이블 이름 순, 그다음 컬럼 순서의 `table.column`으로 반환한다. 연결의 데이터베이스를 introspect하고([dialects](dialects.md#introspection)) set의 테이블 가운데 있는 것만 그 schema text의 [비교](plans.md#comparison)로 비교한다. 없는 set의 테이블과 set 밖의 모든 테이블은 비교하지도 바꾸지도 않으므로 한 데이터베이스가 여러 set의 테이블을 담을 수 있다. 모든 차이가 그런 컬럼의 `add_column`이면 그 테이블들에서 target까지의 plan 하나의 [step](plans.md#steps)을 실행한다: MySQL과 PostgreSQL은 컬럼의 renderer CHECK와 함께 `ADD COLUMN`, SQLite는 테이블 다시 만들기이고, audit 테이블은 트리거를 바꾸므로 새 트리거가 새 컬럼을 이력 테이블에 복사한다. 다시 부르면 아무것도 추가하지 않고 빈 목록을 반환한다. plan 이력을 기록하지 않고 set을 등록하지 않는다. set은 generated code의 connect helper가 등록한다.
+`connection.utils().schema().addTablesAndColumns(schema)`는 설치한 document set을 더하기만 하는 새 version으로 올린다: 데이터베이스에 없는 set의 테이블을 모두 만들고, 기존 테이블에 빠진 컬럼을, 각 컬럼이 `null`이거나 default가 있을 때 추가한다. 만든 테이블은 `table`, 추가한 컬럼은 `table.column`으로, 테이블 이름 순, 그다음 컬럼 순서로 반환한다. 연결의 데이터베이스를 introspect하고([dialects](dialects.md#introspection)) 있는 set의 테이블을 schema text의 [비교](plans.md#comparison)로 set과 비교한다. set 밖의 모든 테이블은 비교하지도 바꾸지도 않으므로 한 데이터베이스가 여러 set의 테이블을 담을 수 있다. 모든 차이가 `create_table`이거나 그런 컬럼의 `add_column`이면 그 테이블들에서 set까지의 plan 하나의 [step](plans.md#steps)을 실행한다: 만드는 테이블은 index, foreign key, check, `immutable`과 `audit` 트리거와 함께 만들고, 추가하는 컬럼은 MySQL과 PostgreSQL에서 컬럼의 renderer CHECK와 함께 `ADD COLUMN`, SQLite에서 테이블 다시 만들기이며, audit 테이블은 트리거를 바꾸므로 새 트리거가 새 컬럼을 이력 테이블에 복사한다. 다시 부르면 아무것도 추가하지 않고 빈 목록을 반환한다. plan 이력을 기록하지 않고 set을 등록하지 않는다. set은 generated code의 connect helper가 등록한다.
 
-다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환하며, 각 차이를 `<kind> <table>[.<name>]`로 적는다: default 없는 non-null 빠진 컬럼, set이 선언하지 않은 컬럼, 바뀐 type, `null`, default, identity, 기존 컬럼 앞의 빠진 컬럼(PostgreSQL은 컬럼을 끝에 붙이므로 `reorder_columns`), 바뀐 primary key, unique key, index, foreign key, check, setting, 그리고 introspection이 읽지 못하는 set 테이블의 객체다. manifest text가 선언한 `manifestHash`로 hash되지 않으면 먼저 `CONFIG`, diagnostic이 있는 set은 `SCHEMA_INVALID`로 실패한다. PostgreSQL은 연결의 진행 중인 트랜잭션이나 새 트랜잭션에서 step을 적용한다. MySQL은 schema statement마다 암묵적으로 commit하고, SQLite는 트랜잭션 안에서 바꿀 수 없는 foreign key를 끈 채 테이블을 다시 만들므로, 둘 다 트랜잭션 밖에서 적용하고 안에서는 `CONFIG`를 반환한다. SQLite는 연결 하나에서 `BEGIN IMMEDIATE` 트랜잭션 하나로 실행하고, commit 전에 `PRAGMA foreign_key_check`가 row를 돌려주지 않아야 하며, foreign key를 다시 켠다.
+다른 모든 차이는 version이 테이블을 더할 때에도 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환하며, 각 차이를 `<kind> <table>[.<name>]`로 적는다: default 없는 non-null 빠진 컬럼, set이 선언하지 않은 컬럼, 바뀐 type, `null`, default, identity, 기존 컬럼 앞의 빠진 컬럼(PostgreSQL은 컬럼을 끝에 붙이므로 `reorder_columns`), 기존 테이블의 바뀐 primary key, unique key, index, foreign key, check, setting, 그리고 introspection이 읽지 못하는 set 테이블의 객체다. manifest text가 선언한 `manifestHash`로 hash되지 않으면 먼저 `CONFIG`, diagnostic이 있는 set은 `SCHEMA_INVALID`로 실패한다. PostgreSQL은 연결의 진행 중인 트랜잭션이나 새 트랜잭션에서 step을 적용한다. MySQL은 schema statement마다 암묵적으로 commit하고, SQLite는 트랜잭션 안에서 바꿀 수 없는 foreign key를 끈 채 테이블을 다시 만들므로, 둘 다 트랜잭션 밖에서 적용하고 안에서는 `CONFIG`를 반환한다. SQLite는 연결 하나에서 `BEGIN IMMEDIATE` 트랜잭션 하나로 실행하고, commit 전에 `PRAGMA foreign_key_check`가 row를 돌려주지 않아야 하며, foreign key를 다시 켠다.
 
 | 언어 | 호출 | Step |
 |---|---|---|
-| Go | `Utils().Schema().AddColumns(model.Schema)` | `dbspec.AddColumnSteps` |
-| PHP | `utils()->schema()->addColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addColumnSteps` |
-| TypeScript | `utils().schema().addColumns(SCHEMA)` | `addColumnSteps` |
-| Rust | `utils().schema().add_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_column_steps` |
+| Go | `Utils().Schema().AddTablesAndColumns(model.Schema)` | `dbspec.AddTablesAndColumnsSteps` |
+| PHP | `utils()->schema()->addTablesAndColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addTablesAndColumnsSteps` |
+| TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
+| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_tables_and_columns_steps` |
 
-`install`은 set을 통째로만 만든다: 다른 테이블이 있는 데이터베이스에서 테이블이 늘어난 set의 `install`은 `CONFIG`를 반환하고, `addColumns`는 그 테이블을 없는 채로 둔다.
+`install`은 set을 통째로만 만들고 일부 테이블만 있는 set에는 `CONFIG`를 반환한다. `addTablesAndColumns`는 그런 set을 새 version으로 올리고, 그 뒤 `install`은 아무것도 바꾸지 않는다.

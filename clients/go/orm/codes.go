@@ -32,7 +32,7 @@ const (
 	CodeCanceled              = "CANCELED"               // executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
 	CodeRollback              = "ROLLBACK"               // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 	CodeFault                 = "FAULT"                  // executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
-	CodeSchemaDiffers         = "SCHEMA_DIFFERS"         // executor: addColumns found a difference between the existing tables of a document set and the set other than a missing column that is null or has a default
+	CodeSchemaDiffers         = "SCHEMA_DIFFERS"         // executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table or a missing column that is null or has a default
 	CodeInternal              = "INTERNAL"               // executor
 	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
 	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions

@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:6f900835b843275c81394ac91e376bc72828c366dcd49fa079cb5ade05d761c4",
-    "php": "sha256:4a2755ea2a68a9c9907e0dfc820fdde7e27dca00a3b19b49f3e9c923a828c155",
-    "rust": "sha256:2fffcd4c57dd1ff9d396038fd0b1a5ea974b59f2dc872e435b885204c622b3c3",
-    "typescript": "sha256:178e764f54ac8171e677205588a68c046b5c0b267a16c3f1128cbb238b2a8221"
+    "go": "sha256:365d01687484d29a483a14899ab9036025fd1103256d0361f7e6ed3a8e40b060",
+    "php": "sha256:85a5aba819b77779c61f31ce7d5e3cad364ede3d9411d0e893b0e945dccb07d5",
+    "rust": "sha256:2a5cc4a9504353a3431a4cc88f19f791156d8edfcfc69b2d187d1684d4a2c5cb",
+    "typescript": "sha256:920da978e59204978917254f8a589c55bcdf03e39031960a8aa3706472b9798a"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1246,35 +1246,35 @@
       }
     },
     {
-      "id": "SchemaUtils.addColumns",
+      "id": "SchemaUtils.addTablesAndColumns",
       "for": "once",
       "inputs": [
         "GeneratedSchema"
       ],
-      "output": "AddedColumns",
+      "output": "AddedTablesAndColumns",
       "errors": [
         "CONFIG",
         "SCHEMA_INVALID",
         "SCHEMA_DIFFERS",
         "driver error"
       ],
-      "state": "Adds the missing null or defaulted columns of the existing tables of the document set of a generated schema with the plan steps of the dialect, which also replace the audit triggers of each changed table; leaves the missing tables and the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement",
+      "state": "Upgrades the installed document set of a generated schema by the tables the database lacks and the missing null or defaulted columns of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; leaves the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement",
       "native": {
         "go": {
-          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddColumns",
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddTablesAndColumns",
           "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addColumns",
-          "signature": "public function addColumns(Orm\\Schema $schema): array"
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addTablesAndColumns",
+          "signature": "public function addTablesAndColumns(Orm\\Schema $schema): array"
         },
         "rust": {
-          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_columns",
-          "signature": "pub async fn add_columns(&self, schema: &Schema) -> Result<Vec<String>>"
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
+          "signature": "pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addColumns",
-          "signature": "public async addColumns(schema: Schema): Promise<string[]>"
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addTablesAndColumns",
+          "signature": "public async addTablesAndColumns(schema: Schema): Promise<string[]>"
         }
       }
     },

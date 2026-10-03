@@ -1855,8 +1855,8 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addColumns adds the missing columns of the existing tables of a document set that are null or have a default with the plan steps of the dialect, which also replace the audit triggers of each changed table; it leaves the missing tables and the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addColumns는 document set의 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 바뀐 table의 audit trigger도 바꾼다. 없는 table과 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1889,7 +1889,7 @@
         },
         {
           "code": "SCHEMA_DIFFERS",
-          "when": "addColumns found a difference between the existing tables of the document set and the set other than a missing column that is null or has a default"
+          "when": "addTablesAndColumns found a difference between the existing tables of the document set and the set other than a missing table or a missing column that is null or has a default"
         }
       ],
       "clients": {
@@ -1903,17 +1903,17 @@
         "clients/php/tests/coverage_cases.php",
         "clients/rust/tests/src/coverage_env.rs",
         "clients/typescript/tests/coverage_case.mjs",
-        "contracts/fixtures/add_columns/changed.dbs",
-        "contracts/fixtures/add_columns/default.dbs",
-        "contracts/fixtures/add_columns/index.dbs",
-        "contracts/fixtures/add_columns/log.dbs",
-        "contracts/fixtures/add_columns/nullable.dbs",
-        "contracts/fixtures/add_columns/removed.dbs",
-        "contracts/fixtures/add_columns/reorder.dbs",
-        "contracts/fixtures/add_columns/required.dbs",
-        "contracts/fixtures/add_columns/unique.dbs",
-        "contracts/fixtures/add_columns/v1.dbs",
-        "contracts/fixtures/add_columns/v2.dbs"
+        "contracts/fixtures/add_tables_and_columns/changed.dbs",
+        "contracts/fixtures/add_tables_and_columns/default.dbs",
+        "contracts/fixtures/add_tables_and_columns/index.dbs",
+        "contracts/fixtures/add_tables_and_columns/log.dbs",
+        "contracts/fixtures/add_tables_and_columns/nullable.dbs",
+        "contracts/fixtures/add_tables_and_columns/removed.dbs",
+        "contracts/fixtures/add_tables_and_columns/reorder.dbs",
+        "contracts/fixtures/add_tables_and_columns/required.dbs",
+        "contracts/fixtures/add_tables_and_columns/unique.dbs",
+        "contracts/fixtures/add_tables_and_columns/v1.dbs",
+        "contracts/fixtures/add_tables_and_columns/v2.dbs"
       ],
       "tests": [
         "clients/go/orm/keyword_test.go",
@@ -1932,10 +1932,10 @@
         "clients/php/tests/coverage_schema_install.php",
         "clients/rust/tests/src/coverage_schema_install.rs",
         "clients/typescript/tests/coverage_schema_install.mjs",
-        "clients/go/orm/add_columns_test.go",
-        "clients/php/tests/add_columns_test.php",
-        "clients/rust/orm/tests/add_columns.rs",
-        "clients/typescript/tests/add-columns.mjs"
+        "clients/go/orm/add_tables_and_columns_test.go",
+        "clients/php/tests/add_tables_and_columns_test.php",
+        "clients/rust/orm/tests/add_tables_and_columns.rs",
+        "clients/typescript/tests/add-tables-and-columns.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1951,20 +1951,20 @@
           "command": "php clients/php/tests/engine_test.php"
         },
         {
-          "id": "install-add-columns-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestAddColumns' -count=1"
+          "id": "install-add-tables-and-columns-go",
+          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestAddTablesAndColumns' -count=1"
         },
         {
-          "id": "install-add-columns-php",
-          "command": "php clients/php/tests/add_columns_test.php"
+          "id": "install-add-tables-and-columns-php",
+          "command": "php clients/php/tests/add_tables_and_columns_test.php"
         },
         {
-          "id": "install-add-columns-typescript",
-          "command": "node clients/typescript/tests/add-columns.mjs"
+          "id": "install-add-tables-and-columns-typescript",
+          "command": "node clients/typescript/tests/add-tables-and-columns.mjs"
         },
         {
-          "id": "install-add-columns-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_columns"
+          "id": "install-add-tables-and-columns-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns"
         }
       ],
       "coverage": {

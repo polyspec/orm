@@ -10,9 +10,7 @@ table addcol_item {
   payload bytes null
   operation_id i64
   note varchar(64) null
-  priority i32 default 3
-  archived bool default false
-  status varchar(16) default 'new'
+  amount i32
   primary key (id)
   unique uq_addcol_item_ref (ref)
   index ix_addcol_item_enabled_created_at_at_the_sixty_three_byte_limit (enabled, created_at)
@@ -34,9 +32,7 @@ table addcol_item_history {
   payload bytes null
   operation_id i64
   note varchar(64) null
-  priority i32 null
-  archived bool null
-  status varchar(16) null
+  amount i32 null
   primary key (history_id)
   index ix_addcol_item_history_row (id)
 }
@@ -46,7 +42,6 @@ table addcol_tag {
   item_id i64
   parent_id i64 null
   name varchar(32)
-  color varchar(32) null
   primary key (id)
   index ix_addcol_tag_item (item_id)
   index ix_addcol_tag_parent (parent_id)
@@ -56,6 +51,26 @@ table addcol_tag {
 
 table addcol_extra {
   id i64 identity
+  item_id i64
   label varchar(32)
+  operation_id i64
   primary key (id)
+  index ix_addcol_extra_item (item_id)
+  foreign key fk_addcol_extra_item (item_id) references addcol_item (id) on delete restrict on update restrict
+  check ck_addcol_extra_label (label <> '')
+  settings {
+    audit into addcol_extra_history operation operation_id action history_action previous previous_operation_id
+  }
+}
+
+table addcol_extra_history {
+  history_id i64 identity
+  history_action varchar(8)
+  previous_operation_id i64 null
+  id i64
+  item_id i64
+  label varchar(32)
+  operation_id i64
+  primary key (history_id)
+  index ix_addcol_extra_history_row (id)
 }
