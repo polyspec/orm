@@ -4,6 +4,7 @@
 
 #[tokio::test]
 async fn sqlite_file_name_is_the_path() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");
@@ -31,15 +32,16 @@ async fn sqlite_file_name_is_the_path() {
 /// path는 CONFIG다(docs/config.md "Runtime connection").
 #[tokio::test]
 async fn sqlite_path_cases() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dsn/sqlite-paths.json");
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");
     let mut failures = Vec::new();
     for (index, case) in cases.iter().enumerate() {
-        let started = std::time::Instant::now();
         let id = case["id"].as_str().expect("id");
-        println!("start dsn/sqlite-path/{id}");
+        // 각 vector는 연결 하나를 10 s 기한 안에서 열고 닫는다.
+        let mut inner = orm_testcase::start(format!("dsn/sqlite-path/{id}"), std::time::Duration::from_secs(10));
         let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-path-{}-{index}", std::process::id()));
         assert!(!directory.exists(), "{} already exists", directory.display());
         std::fs::create_dir(&directory).expect("temporary directory");
@@ -70,13 +72,11 @@ async fn sqlite_path_cases() {
             }
             (None, None) => Some("the case has neither file nor error".to_owned()),
         };
-        match problem {
-            None => println!("result dsn/sqlite-path/{id}: PASS after {:?}", started.elapsed()),
-            Some(p) => {
-                println!("result dsn/sqlite-path/{id}: FAIL after {:?}: {p}", started.elapsed());
-                failures.push(format!("{id}: {p}"));
-            }
+        if let Some(p) = problem {
+            inner.fail(&p);
+            failures.push(format!("{id}: {p}"));
         }
+        drop(inner);
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
 }

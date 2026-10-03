@@ -348,6 +348,7 @@ mod declared_boolean_tests {
 
     #[test]
     fn selected_boolean_groups_keep_their_declared_type() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let child = Assemble { columns: vec![OutCol { index: 2, name: "child_flag".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
         let assemble = Assemble {
             columns: vec![

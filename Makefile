@@ -31,6 +31,7 @@ testcase-check:
 	$(GO_TEST) ./internal/testcase -count=1
 	node --test tests/testcase.test.mjs
 	php tests/testcase_test.php
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.

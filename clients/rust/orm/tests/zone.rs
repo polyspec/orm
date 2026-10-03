@@ -88,6 +88,7 @@ async fn drop_table(db: &Db) {
 
 #[tokio::test]
 async fn connections_use_utc() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     let tmp = std::env::temp_dir().join(format!("orm-rust-zone-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
@@ -150,6 +151,7 @@ async fn connections_use_utc() {
 /// UTC가 아닌 timezone parameter는 CONFIG로 실패한다.
 #[test]
 fn non_utc_time_zones_are_rejected() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for dsn in [
         "mysql://root@localhost/orm_example?timezone=%2B09:00",
         "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
@@ -169,6 +171,7 @@ fn non_utc_time_zones_are_rejected() {
 /// commit implicitly.
 #[tokio::test]
 async fn mysql_install_inside_transaction() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     let dsn = require_dsn("ORM_TEST_MYSQL_DSN");
     let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
@@ -183,6 +186,7 @@ async fn mysql_install_inside_transaction() {
 /// The pool size a connection is opened with is its maximum open connections.
 #[tokio::test]
 async fn pool_size() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
@@ -197,6 +201,7 @@ async fn pool_size() {
 /// above the pool size returns CONFIG.
 #[tokio::test]
 async fn pool_idle_size_and_lifetime() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
@@ -238,6 +243,7 @@ async fn pool_idle_size_and_lifetime() {
 /// more concurrent transactions or opens more connections than its maximum.
 #[tokio::test]
 async fn pool_size_bound() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
@@ -305,6 +311,7 @@ fn slow_count(db: &Db, condition: &str) -> Core {
 /// A statement past the connection timeout returns CANCELED.
 #[tokio::test]
 async fn statement_timeout() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
         let dsn = require_dsn(var);
@@ -329,6 +336,7 @@ async fn statement_timeout() {
 /// statements of that connection.
 #[tokio::test]
 async fn statement_timeout_through_a_pooler() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     let setup = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
     drop_table(&setup).await;
@@ -359,6 +367,7 @@ async fn statement_timeout_through_a_pooler() {
 /// of the simple protocol and in the binary format of prepared statements.
 #[tokio::test]
 async fn postgres_float_round_trip() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
     let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
     let values = [0.1 + 0.2, 1.0 / 3.0, f64::MIN_POSITIVE, 5e-324, f64::MAX, -123456.789e-7];
@@ -376,6 +385,7 @@ async fn postgres_float_round_trip() {
 /// connection it ran on stays usable.
 #[tokio::test]
 async fn dropping_a_query_cancels_it() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
         let dsn = require_dsn(var);
@@ -407,6 +417,7 @@ async fn dropping_a_query_cancels_it() {
 /// of waiting for SQLx's five-second close-on-drop path.
 #[tokio::test]
 async fn dropping_a_transaction_frees_a_single_connection() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let _serial = SERIAL.lock().await;
     let sqlite = std::env::temp_dir().join(format!("orm-drop-tx-{}.sqlite", std::process::id()));
     let targets = [

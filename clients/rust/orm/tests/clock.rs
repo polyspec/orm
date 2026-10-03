@@ -133,16 +133,19 @@ async fn bounded(driver: &str) {
 
 #[tokio::test]
 async fn clock_microseconds_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite").await;
 }
 
 #[tokio::test]
 async fn clock_microseconds_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql").await;
 }
 
 #[tokio::test]
 async fn clock_microseconds_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres").await;
 }
 
@@ -289,30 +292,36 @@ async fn bounded_mark(driver: &str, case: &str) {
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("sqlite", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("mysql", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("postgres", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("sqlite", "now_condition").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("mysql", "now_condition").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded_mark("postgres", "now_condition").await;
 }

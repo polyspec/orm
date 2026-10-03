@@ -4,14 +4,12 @@
 use orm_schema::dbspec::model::{Column, Name, Pos, Type};
 use orm_schema::dbspec::{emit, parse};
 use std::collections::BTreeMap;
-use std::time::Instant;
 
 const SOURCE: &str = "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n";
 
 #[test]
 fn model_is_read_changed_and_emitted() {
-    let started = Instant::now();
-    eprintln!("start dbspec_model model_is_read_changed_and_emitted");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let mut document = parse(SOURCE, &BTreeMap::new()).expect("valid document");
     assert_eq!(document.name.text, "shop");
     let table = &mut document.tables[0];
@@ -28,5 +26,4 @@ fn model_is_read_changed_and_emitted() {
     let text = emit(&document);
     assert_eq!(text, "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  total decimal(13,2)\n  primary key (id)\n}\n");
     parse(&text, &BTreeMap::new()).expect("emitted document is valid");
-    eprintln!("pass dbspec_model model_is_read_changed_and_emitted elapsed={:?}", started.elapsed());
 }

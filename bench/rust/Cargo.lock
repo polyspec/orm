@@ -1134,6 +1134,7 @@ version = "0.0.1"
 dependencies = [
  "mysql_async",
  "orm",
+ "orm-testcase",
  "sqlx",
  "tokio",
 ]
@@ -1145,6 +1146,10 @@ dependencies = [
  "regex",
  "sha2 0.10.9",
 ]
+
+[[package]]
+name = "orm-testcase"
+version = "0.0.1"
 
 [[package]]
 name = "parking"

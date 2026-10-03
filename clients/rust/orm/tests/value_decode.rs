@@ -10,6 +10,7 @@ fn required_dsn(name: &str) -> String {
 
 #[tokio::test]
 async fn invalid_database_cells_return_decode_errors() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(20), async {
         let mysql = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 1, orm::Config::default()).await.unwrap();
         let Pool::MySql(pool) = mysql.pool() else { panic!("MySQL DSN selected another engine") };

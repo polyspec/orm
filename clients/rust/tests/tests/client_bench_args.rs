@@ -9,6 +9,7 @@ fn run_with_args(args: &[&str]) -> (Option<i32>, String) {
 
 #[test]
 fn client_bench_requires_the_iterations_argument() {
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let (code, stderr) = run_with_args(&[]);
     assert_eq!(code, Some(1), "client_bench without arguments: {stderr}");
     assert!(stderr.contains("the iterations argument is required"), "client_bench stderr lacks the missing argument: {stderr}");
@@ -16,6 +17,7 @@ fn client_bench_requires_the_iterations_argument() {
 
 #[test]
 fn client_bench_rejects_an_invalid_iterations_argument() {
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     for arg in ["many", "-1", "0", "1.5", ""] {
         let (code, stderr) = run_with_args(&[arg]);
         assert_eq!(code, Some(1), "client_bench {arg:?}: {stderr}");

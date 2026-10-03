@@ -8,6 +8,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+// DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// (orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
@@ -20,8 +22,8 @@ fn document(path: &str) -> Document {
 
 #[test]
 fn manifest_text_reads_back_as_the_same_document_set() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec runtime manifest round trip");
     let bench = document("schema/bench.dbs");
     let audit = document("contracts/fixtures/audit.dbs");
     let manifest = dbspec::manifest(&[&bench, &audit]).unwrap();
@@ -31,13 +33,13 @@ fn manifest_text_reads_back_as_the_same_document_set() {
     assert_eq!(again, manifest, "the documents of a manifest text have the same manifest");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
-    println!("PASS dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}");
+    orm_testcase::step(format_args!("dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn manifest_text_without_header_is_rejected() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec runtime manifest without header");
     let errors = dbspec::parse_manifest("table t {\n}\n").expect_err("a manifest text starts with a header");
     assert_eq!(errors[0].rule, "header");
     assert_eq!((errors[0].line, errors[0].column), (1, 1));
@@ -47,13 +49,13 @@ fn manifest_text_without_header_is_rejected() {
     assert!(errors[0].message.starts_with("document a: "), "{errors:?}");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
-    println!("PASS dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}");
+    orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn runtime_model_of_bench() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec runtime model of bench");
     let bench = document("schema/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
@@ -128,13 +130,13 @@ fn runtime_model_of_bench() {
     assert!(model.entity("missing").is_none());
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
-    println!("PASS dbspec runtime model of bench cpu={cpu:?} wall={wall:?}");
+    orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn runtime_model_names_entities_and_reads_settings() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec runtime model settings");
     let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history operation operation_id action change previous previous_operation_id\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_operation_id i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n";
     let shop = dbspec::parse(text, &BTreeMap::new()).unwrap_or_else(|errors| panic!("{errors:?}"));
     let audit = document("contracts/fixtures/audit.dbs");
@@ -158,5 +160,5 @@ fn runtime_model_names_entities_and_reads_settings() {
     assert_eq!(repeated[0].rule, "name.duplicate");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
-    println!("PASS dbspec runtime model settings cpu={cpu:?} wall={wall:?}");
+    orm_testcase::step(format_args!("dbspec runtime model settings cpu={cpu:?} wall={wall:?}"));
 }

@@ -5,6 +5,7 @@ use orm_build::{
 
 #[tokio::test]
 async fn grid_numbers_preserve_native_bits_and_unsigned_range() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid numeric deadline");
 }
 async fn check() {
@@ -12,8 +13,7 @@ async fn check() {
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running grid_numbers:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -63,7 +63,7 @@ async fn check() {
         }
         catalog.close().await;
         database.close().await;
-        eprintln!("finished grid_numbers:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "grid numeric cases failed: {failures:?}");

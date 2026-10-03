@@ -156,6 +156,7 @@ mod tests {
     // insert 값은 key version 1의 AES envelope를 hex로 쓴 text다.
     #[test]
     fn insert_email_is_an_aes_hex_envelope() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let text = super::insert_email();
         let envelope = orm::codec::hex_decode(&text).expect("insert email is hex");
         let plain = orm::codec::aes_decrypt(&envelope, "bench-salt").expect("insert email is an AES envelope of bench-salt");

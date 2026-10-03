@@ -1323,6 +1323,7 @@ mod column_decode_tests {
 
     #[test]
     fn decoded_cell_failure_names_the_column() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into() };
         let error = column_decode_error("author", "jsons_tags", error);
         assert_eq!(error.code(), codes::CODEC_DECODE);
@@ -1389,6 +1390,7 @@ mod related_tests {
     /// 저장된 relation 값을 다른 model type이나 다른 relation 종류로 읽으면 INTERNAL이다.
     #[test]
     fn relation_results_report_a_mismatched_value() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let core = parent();
         assert!(core.related_one::<Right>("one").unwrap().is_some());
         assert!(core.related_one::<Right>("empty").unwrap().is_none());

@@ -67,6 +67,7 @@ fn record(db: &Db) -> SoftRecord {
 
 #[tokio::test]
 async fn soft_delete_filters_reads_and_rewrites_deletes() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-rust-soft-delete-{}.sqlite", std::process::id()));
     let _ = std::fs::remove_file(&path);
     let dsn = format!("sqlite://{}?_pragma=busy_timeout(5000)", path.display());

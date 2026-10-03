@@ -16,6 +16,7 @@ fn wrapped() -> Result<Option<Author>, std::io::Error> {
 
 #[test]
 fn generated_model_result_chains_preserve_assigned_values() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     for row in [mapped().expect("error mapping"), wrapped().expect("success mapping").expect("model")] {
         let StyledValue::Value(value) = row.get_jsons_tags().expect("assigned field") else {
             panic!("assigned field is SQL NULL");

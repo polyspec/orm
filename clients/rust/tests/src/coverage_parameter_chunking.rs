@@ -6,6 +6,7 @@ use super::model::Author;
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_root_in_chunking() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("root_in_chunking", async {
         let db = connect().await;
         let values: Vec<i64> = (1..=70000).chain(1..=200).chain(200001..=200100).collect();

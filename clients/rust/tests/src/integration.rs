@@ -37,6 +37,7 @@ mod nonnull_model {
 
 #[test]
 fn generated_nonnull_styled_setter_rejects_sql_null() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let err = match nonnull_model::NonnullDocument::new().set_body(orm::StyledValue::SqlNull) {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
@@ -64,6 +65,7 @@ use orm::{AesKeyring, Collection, Db, Isolation, Null};
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_generated_model_connection() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
@@ -111,6 +113,7 @@ fn code<T>(r: orm::Result<T>) -> String {
 
 #[test]
 fn generated_fields_require_selection_or_assignment() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let model = Author::new();
     assert_eq!(model.get_name().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED);
     assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
@@ -728,9 +731,10 @@ async fn main() {
     let env = Env { tmp: tmp.clone() };
     if selected.is_none_or(|case| case == "schema_empty") {
         for t in env.without_tables("schema_empty").await {
+            let case = orm_testcase::start(format!("schema_empty/{}", t.driver), orm_testcase::DATABASE);
             schema_empty(&t).await;
             t.db.close().await;
-            println!("ok schema_empty ({})", t.driver);
+            drop(case);
         }
     }
     for name in ["conditions", "joins_and_relations", "columns_and_subqueries", "writes", "transactions", "aes_rotation", "json_values", "bind_limit_splitting"]
@@ -738,7 +742,9 @@ async fn main() {
         if selected.is_some_and(|case| case != name) {
             continue;
         }
+        // 각 case는 database 하나에 schema를 설치하고 statement 수백 개 이하를 실행한다.
         for t in env.databases(name).await {
+            let case = orm_testcase::start(format!("{name}/{}", t.driver), orm_testcase::DATABASE);
             match name {
                 "conditions" => conditions(&t).await,
                 "joins_and_relations" => joins_and_relations(&t).await,
@@ -750,21 +756,22 @@ async fn main() {
                 _ => bind_limit_splitting(&t).await,
             }
             t.db.close().await;
-            println!("ok {name} ({})", t.driver);
+            drop(case);
         }
     }
     if selected.is_none_or(|case| case == "primary_and_replica") {
         for t in env.databases("primary_and_replica").await {
+            let case = orm_testcase::start(format!("primary_and_replica/{}", t.driver), orm_testcase::DATABASE);
             if t.driver == "sqlite" {
                 read_only_sqlite(&t, &tmp.join("primary_and_replica.sqlite")).await;
-                println!("ok read_only_sqlite");
+                case.step("read_only_sqlite");
                 continue;
             }
             let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());
             let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
             primary_and_replica(&t, &replica).await;
             t.db.close().await;
-            println!("ok primary_and_replica ({})", t.driver);
+            drop(case);
         }
     }
     let _ = std::fs::remove_dir_all(&tmp);

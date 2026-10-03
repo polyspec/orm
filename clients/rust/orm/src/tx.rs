@@ -758,7 +758,9 @@ mod tests {
     }
 
     #[test]
-    fn transaction_send_future_contract_is_checked() {}
+    fn transaction_send_future_contract_is_checked() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    }
 
     #[derive(Debug, PartialEq, Eq)]
     enum DomainFailure {
@@ -775,6 +777,7 @@ mod tests {
 
     #[test]
     fn one_shot_transaction_reports_callback_and_rollback_errors() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let error = TransactionOnceError::Rollback { callback: DomainFailure::Rejected, rollback: Error::Config("rollback rejected".into()) };
         assert!(error.to_string().contains("request rejected"));
         assert!(error.to_string().contains("rollback rejected"));
@@ -783,6 +786,7 @@ mod tests {
 
     #[tokio::test]
     async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-once-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         let targets = [
@@ -863,6 +867,7 @@ mod tests {
 
     #[tokio::test]
     async fn callback_timeout_cancels_a_statement_and_rolls_back() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-timeout-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         let targets = [
@@ -936,6 +941,7 @@ mod tests {
     // 풀리지 않은 named lock은 COMMIT과 ROLLBACK 뒤에도 connection에 남는다.
     #[tokio::test]
     async fn lock_not_held_at_transaction_end_is_reported() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
         let key = format!("orm_test.released.{}", std::process::id());
         let result = db
@@ -954,6 +960,7 @@ mod tests {
     // RELEASE_LOCK이 실패해도 local 값 reset까지 시도하고 두 실패를 모두 보고한다.
     #[tokio::test]
     async fn every_failed_cleanup_step_is_reported() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
         let tx = transaction_with_failing_reset(&db).await;
         tx.locks.lock().unwrap().push(format!("orm_test.killed.{}", std::process::id()));
@@ -968,6 +975,7 @@ mod tests {
     // named lock을 끝내므로 다른 connection이 그 lock을 잡는다.
     #[tokio::test]
     async fn panicking_callback_ends_its_transaction() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         use futures_util::FutureExt as _;
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
         let key = format!("orm_test.panicked.{}", std::process::id());
@@ -999,6 +1007,7 @@ mod tests {
     // SQLite에서는 닫힌 connection의 write transaction이 끝나 다른 connection이 write lock을 잡는다.
     #[tokio::test]
     async fn dropped_transaction_closes_its_connection() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-dropped-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         let targets = [
@@ -1121,6 +1130,7 @@ mod tests {
     // 보고하고, 끝나지 않은 transaction의 connection은 닫혀 다음 transaction이 시작한다.
     #[tokio::test]
     async fn sqlite_transaction_end_failures_are_reported() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;
         let tmp = std::env::temp_dir().join(format!("orm-transaction-end-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
@@ -1167,6 +1177,7 @@ mod tests {
     // callback은 실패한 RELEASE SAVEPOINT를 돌려준다.
     #[tokio::test]
     async fn savepoint_end_failures_are_reported() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;
         let tmp = std::env::temp_dir().join(format!("orm-savepoint-end-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
@@ -1220,6 +1231,7 @@ mod tests {
     // variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
     #[tokio::test]
     async fn failed_local_reset_is_reported() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
         let tx = transaction_with_failing_reset(&db).await;
         let mut inner = tx.inner.lock().await.take().expect("transaction inner");

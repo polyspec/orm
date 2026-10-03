@@ -9,6 +9,7 @@ use std::sync::{
 
 #[tokio::test]
 async fn native_updates_lock_compare_verify_and_rollback() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
 }
 async fn check() {
@@ -16,8 +17,7 @@ async fn check() {
     assert!(!path.exists());
     let mut commit_rejection_misclassified = false;
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let began = std::time::Instant::now();
-        eprintln!("running native_update:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -378,7 +378,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.unwrap();
         drop(seed);
         db.close().await;
-        eprintln!("finished native_update:{dialect} {:?}", began.elapsed());
+        orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).unwrap();
     assert!(!commit_rejection_misclassified, "explicit PostgreSQL constraint rejection must not be indeterminate");

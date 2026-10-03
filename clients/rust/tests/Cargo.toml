@@ -30,6 +30,8 @@ name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
 [dependencies]
+# integration program이 case마다 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
 orm = { path = "../orm" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }

@@ -59,6 +59,7 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 
 #[tokio::test]
 async fn invalid_aes_configuration_fails_before_connection() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let cases = [
         ("zero current version", orm::Config { aes_version: 0, ..Default::default() }),
         ("negative current version", orm::Config { aes_version: -1, ..Default::default() }),
@@ -77,6 +78,7 @@ async fn invalid_aes_configuration_fails_before_connection() {
 
 #[tokio::test]
 async fn aes_write_uses_key_of_current_version() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("aes-keys.sqlite").display());

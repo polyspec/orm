@@ -8,6 +8,7 @@ mod checked_value_tests {
 
     #[test]
     fn invalid_or_lossy_values_report_decode_errors() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let bad_integers = [Val::Str("not-a-number".into()), Val::Str("9223372036854775808".into()), Val::F64(1.5), Val::F64(f64::NAN), Val::Null];
         for value in bad_integers {
             assert_eq!(value.as_i64().unwrap_err().code(), crate::codes::CODEC_DECODE, "{value:?}");
@@ -48,6 +49,7 @@ mod checked_value_tests {
 
     #[test]
     fn aggregate_numbers_follow_shared_binary64_cases_without_changing_checked_values() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let fixture: serde_json::Value =
             serde_json::from_str(include_str!("../../../../contracts/fixtures/aggregate_numeric.json")).expect("aggregate fixture");
         assert_eq!(fixture["feature"], "model_queries");
