@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.2: the CI workflow installs MySQL 8.4.11 from five packages of its Ubuntu 24.04 deb bundle through apt, which installs their dependencies such as `libaio1t64`, so `make test-servers` finds `mysqld` at `/usr/sbin/mysqld` without a symbolic link. `make repo-check` fails when a workflow step creates a symbolic link.
+
 - G5.1: the CI workflow starts the servers of the database checks with `make test-servers`, as the local checks do: the MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer, with every DSN of `.runtime/servers/env` in the environment of its later steps. `make repo-check` fails when the workflow lacks a variable that `scripts/test-servers.sh` writes, defines one itself, writes the environment file or runs a make target before the servers start.
 
 - T35.4: PHP plans the audit record of a set registered by its schema value without its generated classes: such a set has its runtime model from its manifest text and external text, as in Go, Rust and TypeScript.
