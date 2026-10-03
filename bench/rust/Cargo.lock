@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "orm"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1130,7 +1130,7 @@ dependencies = [
 
 [[package]]
 name = "orm-bench"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "mysql_async",
  "orm",
@@ -1141,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "orm-schema"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "regex",
  "sha2 0.10.9",
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "orm-testcase"
-version = "0.0.1"
+version = "0.0.2"
 
 [[package]]
 name = "parking"

@@ -1,6 +1,6 @@
 [package]
 name = "orm-case-database"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 publish = false
 description = "A database of its own for each Rust ORM test case, dropped when the case ends"

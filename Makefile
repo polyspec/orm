@@ -1,4 +1,4 @@
-.PHONY: check repo-check checklist-check ts-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check version-check repo-check checklist-check ts-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -67,7 +67,7 @@ TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typesc
 # target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다.
-CHECK_TARGETS = checklist-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
+CHECK_TARGETS = checklist-check version-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
 check:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
@@ -322,6 +322,12 @@ dbspec-php-check:
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지 확인한다.
+# version-check는 VERSION 파일과 orm의 모든 version 선언(Rust manifest와 lockfile, PHP composer,
+# TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
+version-check:
+	node --test scripts/version/check.test.mjs
+	node scripts/version/check.mjs
+
 repo-check:
 	node --test scripts/repo/check.test.mjs
 	node scripts/repo/check.mjs
