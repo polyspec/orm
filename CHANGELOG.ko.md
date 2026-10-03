@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T31.1: `go run ./tests/interfaces/check`는 cargo가 build했다고 보고한 위치에서 Rust symbol 도구를 찾는다. Makefile이 모든 cargo 명령에 주는 것처럼 `CARGO_TARGET_DIR`이 다른 target directory를 정해도 이 검사는 현재 도구를 실행한다.
+
 - T30: `audit` setting은 기록할 column을 `exclude (col, ...)`나 `include (col, ...)` 목록 하나로 고를 수 있다. operation column은 언제나 기록한다. 이력 table은 identity key, action, previous column 말고는 기록하는 column만 갖고, trigger는 MySQL, PostgreSQL, SQLite에서 그 column만 복사하며, schema text는 setting을 기록하지 않는 column의 `exclude` 목록으로 쓰고, introspection은 trigger에서 그것을 되살린다. 없거나 두 번 적은 목록 column, 두 목록, 목록에 적은 operation column은 `setting` error이고, PHP와 Rust의 이력 table 검사는 Go와 TypeScript처럼 어긋난 곳마다 error 하나를 낸다. 암호화가 필요한 값은 쓰기 전에 codec이 암호화하므로 trigger는 그 ciphertext를 복사한다.
 
 - T8.8.5: 네 client에서 `utils().schema().addColumns`는 이제 `addTablesAndColumns`(Go `AddTablesAndColumns`, Rust `add_tables_and_columns`)다. 설치한 document set을 더해서만 올리는 이 호출은 database에 없는 set의 table도 같은 plan step으로 index, foreign key, check, audit과 immutable trigger와 함께 모두 만들고, 만든 table은 `table`, 더한 column은 `table.column`으로 돌려준다. 다른 모든 차이는 여전히 어떤 statement보다 먼저 `SCHEMA_DIFFERS`다. step 함수는 `AddTablesAndColumnsSteps`, `Dbspec::addTablesAndColumnsSteps`, `addTablesAndColumnsSteps`, `add_tables_and_columns_steps`로 바뀌었고, fixture는 contracts/fixtures/add_tables_and_columns로 옮겼다.
