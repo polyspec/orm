@@ -105,7 +105,7 @@ jobs:
       - name: decoder fuzz smoke checks
         run: make fuzz-check
       - name: Go
-        run: go vet ./... && go test ./...
+        run: go vet ./... && go test -v -timeout 0 ./...
       - name: generated Go models are current
         run: make go-model-check
       - name: generated TypeScript models are current
@@ -129,7 +129,7 @@ jobs:
           go run ./tests/interfaces/check --results tests/conformance/out/sqlite
       - name: codec vectors
         run: |
-          go test ./clients/go/orm -run TestCodec
+          go test -v -timeout 0 ./clients/go/orm -run TestCodec
           (cd clients/rust && cargo test --locked -p orm codec)
           php tests/codec/check.php
       - name: hot-path regression gate

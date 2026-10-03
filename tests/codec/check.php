@@ -5,6 +5,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
+require_once dirname(__DIR__) . '/testcase.php';
 
 use Orm\Codec;
 use Orm\Code;
@@ -36,6 +37,8 @@ function canon(mixed $v): mixed
     return (object) $out;
 }
 
+// 각 구역은 memory 안에서 vector를 decode하고 encode하는 case다.
+testcase_begin('codec/php-vectors', TESTCASE_COMPUTE);
 foreach ($vectors as $v) {
     // vector의 style 이름 json은 dbspec codec stage ordered_json이다.
     $styles = array_map(static fn(string $s): string => $s === 'json' ? 'ordered_json' : $s, $v['styles']);
@@ -53,6 +56,9 @@ foreach ($vectors as $v) {
         fwrite(STDERR, "php encode {$v['name']} differs\n");
     }
 }
+$vectorFailures = $fail;
+testcase_end($vectorFailures > 0 ? "$vectorFailures check(s) failed; each line above names one" : null);
+testcase_begin('codec/php-errors', TESTCASE_COMPUTE);
 $errors = [
     ['duplicate YAML key', fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE],
     ['multiple YAML documents', fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE],
@@ -78,6 +84,9 @@ if ($canon(Codec::decode(['yaml'], "1: value\n")->payload()) !== '{"1":"value"}'
     $fail++;
     fwrite(STDERR, "YAML integer map key: expected string key\n");
 }
+testcase_end($fail > $vectorFailures ? ($fail - $vectorFailures) . " check(s) failed; each line above names one" : null);
+$beforeOutputs = $fail;
+testcase_begin('codec/other-language-outputs', TESTCASE_COMPUTE);
 $langs = 0;
 foreach (glob("$root/out/*.json") as $file) {
     $lang = basename($file, '.json');
@@ -98,9 +107,6 @@ foreach (glob("$root/out/*.json") as $file) {
         }
     }
 }
-if ($fail === 0) {
-    echo 'codec: ' . count($vectors) . " vectors ok in PHP; $langs other-language outputs decode identically\n";
-    exit(0);
-}
-fwrite(STDERR, "codec: $fail failures\n");
-exit(1);
+testcase_step("$langs other-language outputs of " . count($vectors) . ' vectors');
+testcase_end($fail > $beforeOutputs ? ($fail - $beforeOutputs) . " check(s) failed; each line above names one" : null);
+exit($fail === 0 ? 0 : 1);

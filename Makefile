@@ -20,6 +20,17 @@ WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV))
 # test binary 전체의 기한(기본 10분)을 끈다.
 GO_TEST = go test -v -timeout 0
 
+# RUN_CASE는 자기 case를 보고하지 않는 명령(build, format, lint, package 검사)을 case 하나로
+# 실행한다(tests/run-case.mjs): RUN과 기한, 명령의 출력 줄을 STEP으로, PASS나 FAIL을 출력하고
+# 기한이 지나면 명령을 끝낸다. 기한의 기준:
+# BUILD_DEADLINE: Rust release build, clippy, `go test -c`는 target이나 build cache가 비면
+# 의존성 전체를 compile한다(개발 machine에서 2.5-4분). 30분은 멈춘 build만 끝낸다.
+# TOOL_DEADLINE: tsc, gofmt, cargo fmt, go generate 같은 도구 한 번의 실행(몇 초에서 1분).
+RUN_CASE = node tests/run-case.mjs
+BUILD_DEADLINE = 30m
+TOOL_DEADLINE = 5m
+TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+
 check: checklist-check testcase-check repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check php-without-mysql-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check dialect-facts-check conformance-check perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 	$(WITH_TEST_ENV) $(GO_TEST) ./...
 
@@ -68,7 +79,7 @@ dbspec-introspect-check:
 # trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-introspect-ts-check
 dbspec-introspect-ts-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-introspect.mjs
 
 # dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
@@ -107,8 +118,8 @@ dbspec-apply-check:
 # row와 introspect한 schema text가 chain의 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
+	$(TSC_BUILD)
+	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
@@ -121,14 +132,14 @@ dbspec-apply-rust-check:
 # 그 renderDbspec, planSteps, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
 .PHONY: dbspec-plan-ts-check
 dbspec-plan-ts-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-plan-physical.mjs
 
 # dbspec-apply-ts-check는 TypeScript client를 build하고 2000 table plan을 뺀 dbspec-apply-check의
 # scenario를 그 applyPlans, recoverPlans, rollbackPlans, finalizePlans로 실행한다.
 .PHONY: dbspec-apply-ts-check
 dbspec-apply-ts-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-apply-physical.mjs
 
 # dbspec-plan-rust-check는 같은 case를 Rust client의 plan step, renderer,
@@ -157,8 +168,8 @@ dbspec-apply-php-check:
 dbspec-introspect-compare-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
+	$(TSC_BUILD)
+	$(RUN_CASE) rust-build/dbspec_introspect $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
 	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 
 # dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
@@ -171,9 +182,9 @@ dbspec-compare-check:
 	node --test tests/dbspec/compare/check.test.mjs
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
+	$(TSC_BUILD)
+	$(RUN_CASE) rust-build/dbspec_compare $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
+	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
 	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
 	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
@@ -185,12 +196,13 @@ dbspec-rust-check:
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) run --release --locked --offline -p orm-schema --example dbspec_stress -- $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	$(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
+	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check:
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
+	$(RUN_CASE) rust-clippy/orm-lib $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 
@@ -232,7 +244,7 @@ test-servers-stop:
 feature-check:
 	node scripts/features/build.mjs --check
 	node --test scripts/features/coverage.test.mjs
-	npm run typescript:build
+	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
 
@@ -240,7 +252,7 @@ feature-docs:
 	node scripts/features/build.mjs
 
 package-check:
-	./scripts/package-check.sh
+	$(RUN_CASE) package $(BUILD_DEADLINE) -- ./scripts/package-check.sh
 
 fuzz-check:
 	$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
@@ -250,8 +262,9 @@ client-unit-check:
 	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/orm_gen_test.php
 
 # php-without-mysql-check는 pdo_mysql이 없는 공식 PHP image에서 PHP client를 SQLite로 실행한다(N17).
+# container image를 받고 PHP를 시작하는 데 몇 분이 걸릴 수 있다.
 php-without-mysql-check:
-	./scripts/php-without-mysql.sh
+	$(RUN_CASE) php-without-mysql $(TOOL_DEADLINE) -- ./scripts/php-without-mysql.sh
 
 client-db-check:
 	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
@@ -305,20 +318,21 @@ interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
 
 go-model-check:
-	cd clients/go/model && go generate ./ && git diff --exit-code -- .
+	$(RUN_CASE) go-model $(TOOL_DEADLINE) -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
 # or when the committed src/models/models.ts differs from its output.
 ts-model-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(TSC_BUILD)
 	node --test clients/typescript/tests/models-scan.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
 ts-check:
-	npm run typescript:check && $(WITH_TEST_ENV) npm run typescript:test
+	$(RUN_CASE) typescript-check $(TOOL_DEADLINE) -- npm run typescript:check
+	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports.
@@ -330,7 +344,7 @@ ts-min-check:
 # stress 문서를 두 번 parse하고 emit하며 두 시간을 출력한다.
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
-	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs clients/typescript/tests/dbspec-apply-cleanup.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
@@ -365,20 +379,21 @@ docs-rules-check:
 # the files it would change.
 .PHONY: go-fmt-check
 go-fmt-check:
-	@files=$$(gofmt -l $$(git ls-files '*.go')); if [ -n "$$files" ]; then echo "gofmt would change:"; echo "$$files"; exit 1; fi; echo "go-fmt-check: every tracked Go source is gofmt formatted"
+	@$(RUN_CASE) go-fmt $(TOOL_DEADLINE) -- sh -c 'files=$$(gofmt -l $$(git ls-files "*.go")); if [ -n "$$files" ]; then echo "gofmt would change:"; echo "$$files"; exit 1; fi; echo "every tracked Go source is gofmt formatted"'
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (clients/rust/rustfmt.toml).
 rust-fmt-check:
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-fmt $(TOOL_DEADLINE) --cwd clients/rust -- cargo fmt --all --check
 
 rust-150-check:
-	./scripts/check-rust-150.sh
+	$(RUN_CASE) rust-150 $(BUILD_DEADLINE) -- ./scripts/check-rust-150.sh
 
 rust-check:
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo check --locked && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked --workspace --all-targets -- -D warnings
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/check $(BUILD_DEADLINE) --cwd clients/rust -- cargo check --locked
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/clippy $(BUILD_DEADLINE) --cwd clients/rust -- cargo clippy --locked --workspace --all-targets -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/clippy-live-db $(BUILD_DEADLINE) --cwd clients/rust -- cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/clippy-test-faults $(BUILD_DEADLINE) --cwd clients/rust -- cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
 
 # rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
@@ -388,7 +403,7 @@ rust-driver-check:
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check:
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --release --locked --offline -p orm-tests --bin complex --bin demo
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/examples $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/release/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/release/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
@@ -397,14 +412,14 @@ TIMING_GO_DBSPEC_TEST = .runtime/timing/dbspec.test
 timing-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	go test -c -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --release --locked --offline -p orm-schema --example dbspec_stress
-	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --offline -p orm-schema --no-run
-	npm run typescript:build
+	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/orm-schema-tests $(BUILD_DEADLINE) --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
+	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(abspath clients/rust/target/release/examples/dbspec_stress) node --test --test-concurrency=1 tests/timing/preempted.test.mjs
 
 typescript-build:
-	npm run typescript:build
+	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 
 git-check:
 	node --test scripts/git/check.test.mjs
