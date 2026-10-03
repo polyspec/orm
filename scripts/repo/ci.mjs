@@ -47,12 +47,13 @@ const runsMake = run => /^make\s/m.test(run) && !startsServers(run);
 const exportsServers = run => run.includes('.runtime/servers/env') && run.includes('GITHUB_ENV');
 
 // ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.sh와 같은 정의로 주지
-// 않는 곳마다 오류 하나를 돌려준다.
+// 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
 //   - make test-servers를 실행하는 step이 없으면 workflow가 적지 않은 각 변수가 오류다.
 //   - make를 실행하는 다른 step이 그 step보다 앞서면 오류다.
 //   - 그 뒤 .runtime/servers/env를 $GITHUB_ENV에 더하는 step이 다음 step이 아니면 오류다: make를
 //     거치지 않는 검사(go test, cargo test, php)도 같은 변수를 process 환경에서 읽는다.
 //   - workflow가 그 변수를 직접 정의하거나 .runtime/servers/env를 직접 쓰면 오류다.
+//   - symbolic link를 만드는 step(ln -s, symlink)은 오류다.
 export function ciServerErrors(workflow, serversScript) {
   const variables = serverVariables(serversScript);
   const errors = [];
@@ -77,5 +78,10 @@ export function ciServerErrors(workflow, serversScript) {
   }
   if (/>>?\s*\.runtime\/servers\/env/.test(workflow))
     errors.push('ci.yml writes .runtime/servers/env; make test-servers writes it');
+  // symbolic link는 쓰지 않는다(AGENTS.md): 서버 program은 자기 package 경로에서 찾는다.
+  for (const step of steps) {
+    if (/(^|[\s;&|(])ln\s+(-[A-Za-z]*s[A-Za-z]*|--symbolic)(\s|$)|symlink/im.test(step.run))
+      errors.push(`ci.yml step "${step.name}" creates a symbolic link`);
+  }
   return errors;
 }

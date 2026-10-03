@@ -85,6 +85,13 @@ caseTest('a check before make test-servers fails', COMPUTE, () => {
   assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make test-servers starts the servers']);
 });
 
+caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
+  for (const command of ['ln -s a b', 'sudo ln -sf /usr/lib/a.so.1t64 /usr/lib/a.so.1', 'ln --symbolic a b', `node -e "fs.symlinkSync('a', 'b')"`]) {
+    const linked = steps.replace('      - name: database servers', `      - name: link\n        run: ${command}\n      - name: database servers`);
+    assert.deepEqual(ciServerErrors(linked, script), ['ci.yml step "link" creates a symbolic link'], command);
+  }
+});
+
 caseTest('a workflow that does not export the server environment fails', COMPUTE, () => {
   const unexported = steps.replace(`sed -e 's/^export //' .runtime/servers/env >> "$GITHUB_ENV"`, 'true');
   assert.deepEqual(ciServerErrors(unexported, script), [
