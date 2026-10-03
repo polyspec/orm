@@ -930,6 +930,8 @@ mod tests {
 
     /// MySQL transaction을 열고 local 값을 둔 뒤 그 connection을 다른 connection에서 끊는다.
     /// 실제 server는 `SET @`orm.…` = NULL`을 거부하지 않으므로 끊긴 connection으로 reset을 실패시킨다.
+    /// server session을 끊는 test이므로 db는 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN의 server에
+    /// 연결한다. ProxySQL은 KILL을 자기 client session의 명령으로 받는다.
     async fn transaction_with_failing_reset(db: &Db) -> TxShared {
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
         let tx = begin(db, None, false, None).await.expect("begin");
@@ -969,7 +971,7 @@ mod tests {
     #[tokio::test]
     async fn every_failed_cleanup_step_is_reported() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
-        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, crate::Config::default()).await.expect("connect");
         let tx = transaction_with_failing_reset(&db).await;
         tx.locks.lock().unwrap().push(format!("orm_test.killed.{}", std::process::id()));
         let mut inner = tx.inner.lock().await.take().expect("transaction inner");
@@ -1012,6 +1014,8 @@ mod tests {
     // 끝나지 않은 채 drop된 transaction future는 connection을 닫는다. server는 그 session의
     // transaction과 lock을 끝내므로 다른 connection이 그 lock을 잡는다. MySQL test server의
     // connection은 TLS로 연결되며, sqlx의 TLS stream shutdown은 server가 보내지 않는 data를 기다린다.
+    // server session의 끝을 보는 test이므로 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN과
+    // ORM_TEST_POSTGRES_SERVER_DSN의 server에 연결한다.
     // SQLite에서는 닫힌 connection의 write transaction이 끝나 다른 connection이 write lock을 잡는다.
     #[tokio::test]
     async fn dropped_transaction_closes_its_connection() {
@@ -1020,8 +1024,8 @@ mod tests {
         std::fs::create_dir_all(&tmp).unwrap();
         let targets = [
             ("sqlite", format!("sqlite://{}", tmp.join("dropped.sqlite").display())),
-            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
-            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
+            ("mysql", required_dsn("ORM_TEST_MYSQL_SERVER_DSN")),
+            ("postgres", required_dsn("ORM_TEST_POSTGRES_SERVER_DSN")),
         ];
         for (driver, dsn) in targets {
             let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
@@ -1240,7 +1244,7 @@ mod tests {
     #[tokio::test]
     async fn failed_local_reset_is_reported() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
-        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 2, crate::Config::default()).await.expect("connect");
         let tx = transaction_with_failing_reset(&db).await;
         let mut inner = tx.inner.lock().await.take().expect("transaction inner");
         let reset = finish(&tx, &mut inner).await;
