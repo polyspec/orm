@@ -1,9 +1,15 @@
-// 결정적 dbspec 부하 문서를 표준 출력으로 쓴다: table 2000개, column 60000개, foreign key 10000개.
-// 모든 client가 같은 문서를 parse하고 emit해 시간을 잰다. 출력은 canonical form이다.
+// 결정적 dbspec 부하 문서를 표준 출력으로 쓴다: 기본은 table 2000개, column 60000개, foreign key
+// 10000개다. 모든 client가 같은 문서를 parse하고 emit해 시간을 잰다(make bench). 출력은 canonical
+// form이다.
+//
+// Usage: node tests/dbspec/stress.mjs [tables]
+// tables를 주면 table마다 column 30개와 foreign key 5개인 같은 모양의 작은 문서를 쓴다. make check는
+// 이것으로 같은 code path(render, apply, introspect, 비교)를 짧게 실행한다.
 
-const TABLES = 2000;
-const COLUMNS = 60000;
-const FOREIGN_KEYS = 10000;
+const TABLES = process.argv[2] === undefined ? 2000 : Number(process.argv[2]);
+if (!Number.isInteger(TABLES) || TABLES < 2) throw new Error('usage: node tests/dbspec/stress.mjs [tables >= 2]');
+const COLUMNS = TABLES * 30;
+const FOREIGN_KEYS = TABLES * 5;
 const TYPES = ['i32', 'i64', 'bool', 'decimal(13,2)', 'f64', 'varchar(64)', 'text', 'bytes', 'uuid', 'date', 'time(0)', 'datetime(6)'];
 
 function seeded(seed) {

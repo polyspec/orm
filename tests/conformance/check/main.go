@@ -42,8 +42,8 @@ import (
 // runner와 build 명령의 기한이다. build는 run 한 번에 한 번만 하고, 모든 database와 두 번의
 // 실행이 build된 runner를 실행한다.
 const (
-	// rustBuildDeadline: orm-tests의 conformance binary를 release로 build한다. target이
-	// 비었으면 의존성 전체를 compile한다(개발 machine에서 release 의존성 전체의 compile이 2.5-4분).
+	// rustBuildDeadline: orm-tests의 conformance binary를 debug로 build한다(test build와 의존성을
+	// 함께 쓴다). target이 비었으면 의존성 전체를 compile한다(개발 machine에서 2-4분).
 	rustBuildDeadline = 8 * time.Minute
 	// typescriptBuildDeadline: TypeScript client를 tsc로 build한다(개발 machine에서 약 11 s).
 	typescriptBuildDeadline = 2 * time.Minute
@@ -294,7 +294,7 @@ var goRunner string
 // buildRunners는 Rust runner, TypeScript client와 Go runner를 한 번 build한다. Go runner는
 // directory에 binary로 남는다.
 func buildRunners(c *testcase.Case, root, directory string) error {
-	if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+	if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
 		return err
 	}
 	if err := runCommand(c, root, "", typescriptBuildDeadline, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
@@ -327,7 +327,7 @@ func runOne(c *testcase.Case, root, output, language string) error {
 		} else if !filepath.IsAbs(target) {
 			target = filepath.Join(root, target)
 		}
-		return runCommand(c, root, output, runnerDeadline, filepath.Join(target, "release", "conformance"), flags...)
+		return runCommand(c, root, output, runnerDeadline, filepath.Join(target, "debug", "conformance"), flags...)
 	default:
 		return fmt.Errorf("unsupported language %q", language)
 	}

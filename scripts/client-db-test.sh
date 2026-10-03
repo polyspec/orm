@@ -37,8 +37,8 @@ case "$LANGS" in *,rust,*)
   (cd clients/rust && cargo test --locked --workspace)
   (cd clients/rust && cargo test --locked -p orm --features test-faults --test rollback)
   (cd clients/rust && cargo test --locked -p orm-build --features live-db)
-  # release build는 자기 case를 보고하지 않으므로 tests/run-case.mjs로 감싼다. 기한 8분의 기준은
+  # build는 자기 case를 보고하지 않으므로 tests/run-case.mjs로 감싼다. 기한 8분의 기준은
   # Makefile의 BUILD_DEADLINE과 같다.
-  node tests/run-case.mjs rust-build/integration 8m --cwd clients/rust -- cargo build --locked --release -p orm-tests --bin integration
-  clients/rust/target/release/integration "$ROOT/schema/bench.dbs"
+  node tests/run-case.mjs rust-build/integration 8m --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
+  clients/rust/target/debug/integration "$ROOT/schema/bench.dbs"
 esac

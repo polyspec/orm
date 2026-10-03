@@ -5,7 +5,7 @@ The same statement in three files; the same JSON on stdout.
 ```
 go run ./examples/thin-slice/go
 php examples/thin-slice/php/main.php
-(cd clients/rust && cargo build --release -p orm-tests) && clients/rust/target/release/demo
+(cd clients/rust && cargo build -p orm-tests) && clients/rust/target/debug/demo
 ```
 
 Each prints one timing line on stderr: p50 of the generated client against the

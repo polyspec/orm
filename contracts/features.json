@@ -2822,7 +2822,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked --release -p orm-tests --bin integration && clients/rust/target/release/integration \"$PWD/schema/bench.dbs\""
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && clients/rust/target/debug/integration \"$PWD/schema/bench.dbs\""
         },
         {
           "id": "chunking-php-keys",

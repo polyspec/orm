@@ -1,5 +1,11 @@
 # 변경 이력
 
+- T27.4: `make bench`는 2000 table stress case와 시간 budget case(네 stress parse budget, 2000 table plan 적용, release Rust runner로 하는 2000 table introspection 비교, 2000 table runner 비교, `make timing-check`)를 그 assertion 그대로 실행한다. `make check`는 runner 비교와 introspection 비교를 같은 모양의 20 table 문서(`node tests/dbspec/stress.mjs 20`)로 실행하고, dbspec, integration, conformance, example runner는 debug build다.
+
+- T27.3: `make check`는 scripts/check/run.mjs로 target마다 남은 disk와 함께 보고하는 묶음으로 실행하고, 실패한 뒤에도 계속해 모든 결과를 출력한다. 실행마다 자기 bench database와 decimal database를 만들어 seed하고 끝에 지운다(`make decimal-db-setup`은 `DECIMAL_ENV`와 `DECIMAL_DATABASE`를 받는다). 모든 cargo 명령은 toolchain 하나와 target directory 하나를 incremental 결과 없이, 줄 번호 debug 정보로 쓰고, build 한도는 8분이다. Rust `tx` probe table은 case database에 있고, case-database-check는 끝난 process가 남긴 것만 남은 것으로 본다. target 합계는 약 100분 대신 약 36분이다.
+
+- T27.2: `go run ./tests/conformance/check run`은 `-driver`/`-dsn` 쌍 여러 개를 받아 Rust, TypeScript, Go runner를 한 번 build하고, build된 runner를 각각 1분 한도로 실행한다. `make conformance-check`는 세 database를 한 실행에서 확인하고, 실행 lock은 bench database마다 잡는다.
+
 - T27.1: `make feature-check`는 case 앞에서 state reader, package마다 Go test binary 하나, Rust crate마다 test binary를 한 번 build하고, 모든 coverage 실행은 그 binary를 process마다 10분 대신 2분 한도로 실행한다(Rust entry는 선언된 file을 compile한 test binary마다 process 하나에서 모든 symbol을 실행한다). 세 database는 함께 진행하고, state digest는 JSON 대신 type을 붙인 값을 hash하며, 같은 검증 명령은 한 번 실행하고, 검증 명령은 target이 한 번 build한 TypeScript client를 쓴다. check는 다시 통과하고(T25 case database helper는 `schema_install`에 속한다), 빈 Rust target에서 34분 대신 17분 걸린다.
 
 - T26: 모든 client의 rollback 실패 case는 ProxySQL이 자기 명령으로 받는 `KILL` 대신, make target이 export하고 pooler check가 그대로 두는 server DSN `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 server session을 종료한다. Rust session 연결은 `extra_float_digits`를 보내지 않는 client 연결이다. 그래서 이 case들은 ProxySQL과 PgBouncer를 거쳐도 통과한다.
