@@ -228,6 +228,53 @@ func (s *SchemaUtils) Install(manifestJSON []byte) error {
 	return s.register(compiled)
 }
 
+// AddColumns adds every missing column of the existing tables of a schema
+// manifest that is nullable or has a default, and replaces the audit triggers
+// of each changed table so that they record the new columns. A table that
+// does not exist and the tables of other manifests are left unchanged. Any
+// other difference between the existing tables and the manifest returns
+// SCHEMA_DIFFERS before any statement runs. The manifest hash is verified
+// against its content first. PostgreSQL and SQLite apply the statements in the
+// active transaction or in a new one; MySQL commits schema statements
+// implicitly, so it applies them outside a transaction and returns CONFIG
+// inside one. It returns the added columns as table.column, in manifest order.
+func (s *SchemaUtils) AddColumns(manifestJSON []byte) ([]string, error) {
+	d := s.u.db
+	manifest, _, err := s.engine(manifestJSON)
+	if err != nil {
+		return nil, err
+	}
+	var added []string
+	apply := func(ctx context.Context, q interface {
+		ormgen.Catalog
+		ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	}) error {
+		statements, columns, err := ormgen.PlanAddColumns(ctx, q, d.sql, d.driver, manifest)
+		if err != nil {
+			return mapDriverErr(err)
+		}
+		for _, statement := range statements {
+			if _, err := q.ExecContext(ctx, statement); err != nil {
+				return mapDriverErr(err)
+			}
+		}
+		added = columns
+		return nil
+	}
+	if d.driver == "mysql" {
+		if activeFor(d) != nil {
+			return nil, configErr("MySQL commits schema statements implicitly; add columns outside a transaction")
+		}
+		err = apply(d.ctx, d.sql)
+	} else {
+		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+	}
+	if err != nil {
+		return nil, err
+	}
+	return added, nil
+}
+
 // Register adds the engine of an installed schema manifest to the
 // connection, as Install does after its statements, without running any
 // statement. The manifest hash is verified against its content; a manifest

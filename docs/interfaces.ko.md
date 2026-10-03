@@ -176,6 +176,7 @@ classDiagram
 | `backendWaitingForLock(ctx)` | PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환 |
 | `schema().install(manifestJson)` | 모든 데이터베이스에서 매니페스트의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().register(manifestJson)` | 객체를 만들지 않고 설치된 매니페스트를 연결에 등록. 매니페스트 해시가 내용과 다르면 `CONFIG` |
+| `schema().addColumns(manifestJson)` | 매니페스트의 기존 테이블에 없는, NULL 허용 또는 기본값이 있는 컬럼을 추가하고, 바뀐 각 테이블의 audit 트리거를 교체하며, 추가한 컬럼을 `table.column`으로 반환. 다른 차이는 변경 전에 `SCHEMA_DIFFERS`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)` | 스키마 확인 |
 | `schema().empty()` | 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다 |
 | `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환 |

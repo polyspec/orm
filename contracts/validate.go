@@ -43,6 +43,7 @@ var outputs = map[string]map[string]string{
 	"AesUtils":          {"go": "*AESUtils", "php": "Orm\\AesUtils", "rust": "AesUtils<'_>", "typescript": "AesUtils"},
 	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
+	"AddedColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
 }
 
 // inputs maps a common argument list to the native parameters of each

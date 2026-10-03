@@ -65,6 +65,8 @@ codes:
     origin: executor
   - code: FAULT                   # a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
     origin: executor
+  - code: SCHEMA_DIFFERS          # addColumns found a difference between the existing tables of a manifest and the manifest other than a missing nullable or defaulted column
+    origin: executor
   - code: INTERNAL
     origin: executor
   # ---- driver (mapped) ----

@@ -30,7 +30,7 @@
 - `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다. 각 클라이언트의 test entry point는 rollback fault를 설정한다. callback이 실패한 다음 트랜잭션의 rollback은 실행된 뒤 FAULT로 보고되어 트랜잭션이 ROLLBACK을 반환한다.
 - `model_generation`: 언어별 생성기로 schema.json에서 모델을 만든다. Go와 Rust는 소스를 읽어 호출한 체인 메서드를 만들고, PHP는 실행 시 체인을 해석하며 TypeScript는 읽은 체인에 타입을 붙인다. `--check`를 붙이면 Go, PHP, TypeScript 생성기는 쓰지 않고 모델을 출력 디렉터리와 비교한다.
 - `schema_definition`: Mermaid 다이어그램에서 schema.json을 만들고, dialect별 DDL을 렌더링하며, 데이터베이스를 다이어그램으로 가져오고, 두 manifest를 비교해 forward와 rollback migration을 만든다.
-- `schema_install`: 연결로 manifest를 설치한다. 모든 client가 manifest hash를 내용과 대조하고 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록하므로, 연결 하나가 여러 schema의 생성 모델을 처리한다.
+- `schema_install`: 연결로 manifest를 설치한다. 모든 client가 manifest hash를 내용과 대조하고 자기 dialect의 생성 DDL을 렌더링해 없는 테이블을 만들고 manifest를 등록하므로, 연결 하나가 여러 schema의 생성 모델을 처리한다. addColumns는 manifest의 기존 테이블에 없는, NULL 허용 또는 기본값이 있는 컬럼을 추가하고, 바뀐 각 테이블의 audit 트리거를 교체하며, 다른 manifest의 테이블은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다.
 - `planner`: 값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보를 client process에서 만든다. 네 planner는 같은 statement를 만든다.
 - `composite_keys`: 선언된 모든 primary key와 foreign key 구성 요소를 식별, 쓰기, 관계, tuple 조건, 페이지에서 유지한다.
 - `authenticated_encryption`: 인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.

@@ -85,7 +85,7 @@ pub fn manifest(tables: &[Table], trigger_bodies: &[String]) -> Result<Manifest,
 /// a rendered diagram.
 pub fn with_trigger_directives(tables: &[Table], trigger_bodies: &[String], mut text: String) -> String {
     let names: std::collections::BTreeSet<String> = tables.iter().map(|t| t.name.clone()).collect();
-    for line in orm_schema::triggers::trigger_directives(trigger_bodies, &names) {
+    for line in crate::triggers::trigger_directives(trigger_bodies, &names) {
         text += "  ";
         text += &line;
         text.push('\n');
@@ -184,7 +184,8 @@ pub fn render_mermaid(ts: &[Table], prev: Option<&Diagram>) -> String {
             for (i, column) in fk.columns.iter().enumerate() {
                 foreign_by_column.insert(column, (fk, i));
             }
-            if fk.target != t.name && primary.get(fk.target.as_str()).map_or(fk.target_columns.is_empty(), |p| *p == fk.target_columns) {
+            // A foreign key to the table itself is a relation of the table to itself.
+            if primary.get(fk.target.as_str()).map_or(fk.target_columns.is_empty(), |p| *p == fk.target_columns) {
                 rels.push(Rel { parent: fk.target.clone(), child: t.name.clone(), fks: fk.columns.clone(), on_delete: fk.on_delete.clone() });
             }
         }
@@ -195,11 +196,13 @@ pub fn render_mermaid(ts: &[Table], prev: Option<&Diagram>) -> String {
             if c.key == "PRI" {
                 keys.push("PK");
             }
-            let target = match foreign_by_column.get(c.name.as_str()) {
+            let foreign = foreign_by_column.get(c.name.as_str());
+            let target = match foreign {
                 Some((fk, _)) => Some(fk.target.clone()),
                 None => fk_target(&c.name, &tables),
             };
-            if target.as_ref().is_some_and(|t2| !t2.is_empty() && *t2 != t.name) {
+            // A column whose name only resembles the name of its own table is not a key to that table.
+            if target.as_ref().is_some_and(|t2| !t2.is_empty() && (*t2 != t.name || foreign.is_some())) {
                 keys.push("FK");
             }
             if let Some(ix) = single.get(c.name.as_str()) {

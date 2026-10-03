@@ -697,7 +697,8 @@ final class SchemaImport
                 foreach ($fk['columns'] as $i => $column) {
                     $foreignByColumn[$column] = [$fk, $i];
                 }
-                if ($fk['target'] !== $t['name'] && ($primary[$fk['target']] ?? []) === $fk['target_columns']) {
+                // A foreign key to the table itself is a relation of the table to itself.
+                if (($primary[$fk['target']] ?? []) === $fk['target_columns']) {
                     $rels[] = ['parent' => $fk['target'], 'child' => $t['name'], 'fks' => $fk['columns'], 'on_delete' => $fk['on_delete']];
                 }
             }
@@ -709,7 +710,8 @@ final class SchemaImport
                     $keys[] = 'PK';
                 }
                 $target = isset($foreignByColumn[$c['name']]) ? $foreignByColumn[$c['name']][0]['target'] : self::fkTarget($c['name'], $tables);
-                if ($target !== '' && $target !== $t['name']) {
+                // A column whose name only resembles the name of its own table is not a key to that table.
+                if ($target !== '' && ($target !== $t['name'] || isset($foreignByColumn[$c['name']]))) {
                     $keys[] = 'FK';
                 }
                 if (isset($single[$c['name']]) && $single[$c['name']]['unique'] && $c['key'] !== 'PRI') {

@@ -2171,6 +2171,7 @@
   "clients/go/orm/utils.go::PrivilegeUtils.table": "receiver=*PrivilegeUtils func(table string) (string, error)",
   "clients/go/orm/utils.go::SchemaUtils": "type SchemaUtils struct{ u *Utils }",
   "clients/go/orm/utils.go::SchemaUtils#field.u": "*Utils",
+  "clients/go/orm/utils.go::SchemaUtils.AddColumns": "receiver=*SchemaUtils func(manifestJSON []byte) ([]string, error)",
   "clients/go/orm/utils.go::SchemaUtils.Empty": "receiver=*SchemaUtils func() (bool, error)",
   "clients/go/orm/utils.go::SchemaUtils.Exists": "receiver=*SchemaUtils func(name string) (bool, error)",
   "clients/go/orm/utils.go::SchemaUtils.Install": "receiver=*SchemaUtils func(manifestJSON []byte) error",

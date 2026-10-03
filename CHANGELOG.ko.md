@@ -1,5 +1,16 @@
 # 변경 이력
 
+네 클라이언트에서 연결을 통해 매니페스트의 기존 테이블에 없는 컬럼을 추가한다(N19).
+`utils().schema().addColumns(manifestJson)`(Go `AddColumns`, Rust `add_columns`)은
+매니페스트의 테이블만 읽고, NULL을 허용하거나 기본값이 있는 없는 컬럼을 모두
+추가하며, 바뀐 각 테이블의 audit 트리거를 새 컬럼을 기록하도록 교체하고, 추가한
+컬럼을 `table.column`으로 반환한다. 없는 테이블과 다른 매니페스트의 테이블은 바꾸지
+않고, 반복 호출은 아무것도 추가하지 않으며, 다른 모든 차이는 어떤 문장도 실행하기
+전에 새 catalog code `SCHEMA_DIFFERS`를 반환한다. 이제 가져오기는 테이블이 자기 키를
+참조하는 외래 키를 그 테이블 자신에 대한 관계로 읽는다. Rust catalog 읽기와 실제
+스키마 가져오기는 `orm-build`에서 `orm_schema::catalog`와 `orm_schema::live`로 옮겨,
+runtime과 tool이 같은 방식으로 catalog를 읽는다.
+
 네 클라이언트에서 `ssl-mode=VERIFY_IDENTITY`와 절대 `ssl-ca`로 MySQL에 TLS
 연결한다(N18). 연결은 server 인증서를 CA와 DSN의 host 이름으로 검사하며,
 password는 RSA 교환 없이 TLS 안에서만 전달된다. Go, PHP, TypeScript

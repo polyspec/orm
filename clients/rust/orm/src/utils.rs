@@ -204,6 +204,40 @@ impl<'a> Utils<'a> {
     }
 }
 
+/// The catalog reads of add_columns on the executor of the call.
+struct ExecutorCatalog<'a> {
+    u: &'a Utils<'a>,
+    ex: &'a Executor,
+}
+
+/// A catalog value of a decoded row; bytes are UTF-8 text.
+fn catalog_value(v: Val) -> Result<orm_schema::catalog::CatalogValue> {
+    use orm_schema::catalog::CatalogValue;
+    match v {
+        Val::Null => Ok(CatalogValue::Null),
+        Val::I64(n) => Ok(CatalogValue::Int(n)),
+        Val::Str(s) => Ok(CatalogValue::Text(s)),
+        Val::Bool(b) => Ok(CatalogValue::Bool(b)),
+        Val::Bytes(b) => String::from_utf8(b)
+            .map(CatalogValue::Text)
+            .map_err(|e| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("catalog text is not UTF-8: {e}") }),
+        other => Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("unsupported catalog value {other:?}") }),
+    }
+}
+
+impl orm_schema::catalog::Catalog for ExecutorCatalog<'_> {
+    type Error = Error;
+
+    async fn query(&mut self, sql: &str) -> Result<orm_schema::catalog::Rows> {
+        let rows = self.u.query(self.ex, sql.to_owned(), &[]).await?;
+        rows.into_iter().map(|row| row.into_iter().map(catalog_value).collect()).collect()
+    }
+
+    async fn exec(&mut self, sql: &str) -> Result<()> {
+        self.u.exec(self.ex, sql.to_owned(), &[]).await.map(|_| ())
+    }
+}
+
 /// A manifest whose hash matches its content; CONFIG otherwise.
 fn verified(manifest_json: &[u8]) -> Result<Manifest> {
     Manifest::load(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))
@@ -247,6 +281,55 @@ impl SchemaUtils<'_> {
                     t.raw(statement).await?;
                 }
                 Ok(())
+            })
+            .await
+    }
+
+    /// Adds every missing column of the existing tables of a schema manifest
+    /// that is nullable or has a default, and replaces the audit triggers of
+    /// each changed table so that they record the new columns. A table that
+    /// does not exist and the tables of other manifests are left unchanged.
+    /// Any other difference between the existing tables and the manifest
+    /// returns SCHEMA_DIFFERS before any statement runs. The manifest hash is
+    /// verified against its content first. PostgreSQL and SQLite apply the
+    /// statements in the active transaction or in a new one; MySQL commits
+    /// schema statements implicitly, so it reads the tables in a transaction,
+    /// applies the statements outside it and returns CONFIG inside one. It
+    /// returns the added columns as `table.column`, in manifest order.
+    pub async fn add_columns(&self, manifest_json: &[u8]) -> Result<Vec<String>> {
+        verified(manifest_json)?;
+        let text = std::str::from_utf8(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
+        let manifest = orm_schema::schema::Manifest::load(text).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
+        let driver = self.u.db.driver();
+        let plan = async |ex: &Executor| {
+            let mut catalog = ExecutorCatalog { u: self.u, ex };
+            orm_schema::catalog::plan_add_columns(&mut catalog, driver, &manifest).await.map_err(|e| match e {
+                orm_schema::catalog::AddColumnsError::Query(e) => e,
+                orm_schema::catalog::AddColumnsError::Differs(msg) => Error::Engine { code: codes::SCHEMA_DIFFERS.into(), msg },
+                orm_schema::catalog::AddColumnsError::Unsupported(msg) => Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg },
+                orm_schema::catalog::AddColumnsError::Internal(msg) => Error::internal(msg),
+            })
+        };
+        if let crate::db::Pool::MySql(pool) = self.u.db.pool() {
+            // MySQL commits schema statements implicitly, so they run outside a transaction.
+            if active_for(self.u.db).is_some() {
+                return Err(Error::Config("MySQL commits schema statements implicitly; add columns outside a transaction".into()));
+            }
+            let planned = self.u.run(plan).await?;
+            let mut conn = pool.acquire().await?;
+            for statement in &planned.statements {
+                sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.clone()))).execute(&mut *conn).await?;
+            }
+            return Ok(planned.added);
+        }
+        self.u
+            .run(async |ex: &Executor| {
+                let planned = plan(ex).await?;
+                let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
+                for statement in &planned.statements {
+                    t.raw(statement).await?;
+                }
+                Ok(planned.added)
             })
             .await
     }

@@ -83,6 +83,29 @@ pub fn s(v: &str) -> P {
 
 pub type Rows = Vec<Vec<Val>>;
 
+fn catalog_value(value: Val) -> orm_schema::catalog::CatalogValue {
+    use orm_schema::catalog::CatalogValue;
+    match value {
+        Val::Null => CatalogValue::Null,
+        Val::Int(n) => CatalogValue::Int(n),
+        Val::Text(s) => CatalogValue::Text(s),
+        Val::Bool(b) => CatalogValue::Bool(b),
+    }
+}
+
+/// The catalog reads of the import on a tool connection.
+impl orm_schema::catalog::Catalog for Conn {
+    type Error = sqlx::Error;
+
+    async fn query(&mut self, sql: &str) -> Result<orm_schema::catalog::Rows, sqlx::Error> {
+        Ok(Conn::query(self, sql, &[]).await?.into_iter().map(|row| row.into_iter().map(catalog_value).collect()).collect())
+    }
+
+    async fn exec(&mut self, sql: &str) -> Result<(), sqlx::Error> {
+        Conn::exec(self, sql, &[]).await.map(|_| ())
+    }
+}
+
 fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
     value.map(String::from_utf8).transpose()
         .map(|value| value.map_or(Val::Null, Val::Text))

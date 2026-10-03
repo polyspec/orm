@@ -1,0 +1,21 @@
+erDiagram
+  addcol_item {
+    bigint       seq             PK "auto"
+    varchar(36)  uuid            UK
+    varchar(64)  label           "?"
+    tinyint      enabled         "=0 bool"
+    decimal(10_2) price          "=0"
+    datetime(6)  created_at      "=now"
+    varchar(64)  note            "?"
+  }
+  addcol_tag {
+    bigint       seq             PK "auto"
+    bigint       addcol_item_seq FK
+    bigint       parent_addcol_tag_seq FK "?"
+    varchar(32)  name
+  }
+
+  addcol_item ||--o{ addcol_tag : addcol_item_seq
+  addcol_tag ||--o{ addcol_tag : parent_addcol_tag_seq
+  %% orm:audit_log operation=addcol_operation(seq, operation_uuid) context=addcol.operation change=addcol_change(addcol_operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)
+  %% orm:audit entity=addcol_item mode=changes
