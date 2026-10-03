@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T27: 모든 check가 몇 분 안에 끝나고 `make check`가 step마다 보고한다. 전체 실행 한 번이 step 43개를 15분에 통과한다(이전 약 100분).
+
 - T29.1: dbspec apply, recover, rollback, finalize는 MySQL과 PostgreSQL에서 connection이 다른 client와 나누지 않는 server session 하나를 지키는지 확인하고, lock을 잡는 session이 이미 lock을 잡고 있거나 뒤의 statement가 다른 session에서 실행되면(transaction pooler처럼) 다음 statement 전에 `session` error로 멈춘다. 요구는 직접 연결이나 session pooling 연결이다.
 
 - T29: server session을 끊거나 보는 Rust `tx` test는 server DSN으로 연결하므로 `make client-pooler-check`가 통과한다.
