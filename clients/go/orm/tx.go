@@ -519,6 +519,8 @@ func (t *txConn) commit() error {
 // savepoint runs fn inside a savepoint of the active transaction.
 func (t *txConn) savepoint(fn func() error) (err error) {
 	insertedBefore := cloneInserted(t.inserted)
+	// savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
+	operationBefore := t.operation
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
@@ -532,14 +534,14 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
 		// savepoint rollback은 panic으로 보고한다.
 		if r := recover(); r != nil {
-			t.inserted = insertedBefore
+			t.inserted, t.operation = insertedBefore, operationBefore
 			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 				panic(rollbackFailed(r, rollbackErr))
 			}
 			panic(r)
 		}
 		if !returned {
-			t.inserted = insertedBefore
+			t.inserted, t.operation = insertedBefore, operationBefore
 			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 				panic(rollbackFailed("callback exited without returning", rollbackErr))
 			}
@@ -548,7 +550,7 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	err = fn()
 	returned = true
 	if err != nil {
-		t.inserted = insertedBefore
+		t.inserted, t.operation = insertedBefore, operationBefore
 		if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 			return rollbackFailed(err, rollbackErr)
 		}

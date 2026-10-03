@@ -606,7 +606,7 @@ impl Db {
                     }
                     (None, _) => {
                         return Err(Error::Config(format!(
-                            "a write of the audited column {} requires an operation id; run it in a transaction with operation(id)",
+                            "a write of the audited column {} requires an operation id; run it in a transaction with operation(id) or set the id with utils().set_operation(id)",
                             b.column
                         )))
                     }
@@ -727,7 +727,7 @@ impl Db {
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
-        let operation = crate::tx::active_for(self).and_then(|t| t.operation.clone());
+        let operation = crate::tx::active_for(self).and_then(|t| t.operation());
         let args = self.args(st, &req.params, &[], operation.as_ref())?;
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
@@ -777,7 +777,8 @@ impl Executor {
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_query(Target::Tx(inner), st, params, parent_vals, t.operation.as_ref()).await
+                let operation = t.operation();
+                t.db.run_query(Target::Tx(inner), st, params, parent_vals, operation.as_ref()).await
             }
         }
     }
@@ -793,7 +794,8 @@ impl Executor {
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_execute(Target::Tx(inner), st, params, t.operation.as_ref()).await
+                let operation = t.operation();
+                t.db.run_execute(Target::Tx(inner), st, params, operation.as_ref()).await
             }
         }
     }

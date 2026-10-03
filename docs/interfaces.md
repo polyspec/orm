@@ -173,6 +173,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 |---|---|
 | `lock(key)` | transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction |
 | `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
+| `setOperation(id)` | sets the operation id of the active transaction before its first audited write; requires an active transaction; another id than the one the transaction has is `CONFIG`, and a savepoint that rolls back restores the id it began with |
 | `wasInserted(entity, sequence)` | reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback |
 | `backendWaitingForLock(ctx)` | reports PostgreSQL pool backends waiting for a lock; MySQL and SQLite return `false` without exposing a driver-specific caller API |
 | `schema().install(schema)` | takes the generated schema value, fails with `CONFIG` before any statement when its manifest text does not hash to its `manifestHash`, renders the dbspec document set for the dialect of the connection and creates every table when none exists, and registers the set on the connection; changes nothing when every table exists and returns `CONFIG` when only some exist; on MySQL a call inside a transaction returns `CONFIG` |

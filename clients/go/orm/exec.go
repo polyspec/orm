@@ -239,7 +239,7 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 // column type에 맞지 않으면 CONFIG다.
 func operationValue(id any, columnType string) (any, error) {
 	if id == nil {
-		return nil, configErr("a write of an audited table needs an operation id: run it in a transaction with orm.Operation(id)")
+		return nil, configErr("a write of an audited table needs an operation id: run it in a transaction with orm.Operation(id) or set the id with Utils().SetOperation(id)")
 	}
 	switch columnType {
 	case "i64":

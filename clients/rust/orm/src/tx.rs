@@ -23,8 +23,10 @@ pub(crate) struct TxShared {
     savepoints: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
-    /// unit of work의 operation id. executor가 audit 대상 row의 operation column에 쓴다.
-    pub(crate) operation: Option<OperationId>,
+    /// unit of work의 operation id. executor가 audit 대상 row의 operation column에 쓴다. transaction의
+    /// operation option이나 실행 중의 `utils().set_operation(id)`가 정하고, rollback한 savepoint는 그
+    /// savepoint를 시작할 때의 값으로 되돌린다.
+    pub(crate) operation: Mutex<Option<OperationId>>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
@@ -34,6 +36,15 @@ pub(crate) struct TxShared {
 pub enum OperationId {
     I64(i64),
     Uuid(String),
+}
+
+impl std::fmt::Display for OperationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationId::I64(id) => write!(f, "{id}"),
+            OperationId::Uuid(id) => f.write_str(id),
+        }
+    }
 }
 
 impl From<i64> for OperationId {
@@ -55,6 +66,23 @@ impl From<&str> for OperationId {
 }
 
 impl TxShared {
+    /// 지금의 operation id다. statement를 기다리기 전에 꺼내 쓴다.
+    pub(crate) fn operation(&self) -> Option<OperationId> {
+        self.operation.lock().unwrap().clone()
+    }
+
+    /// operation id를 정한다. 다른 id가 이미 있으면 CONFIG이고 같은 id면 바꾸지 않는다.
+    pub(crate) fn set_operation(&self, id: OperationId) -> Result<()> {
+        let mut operation = self.operation.lock().unwrap();
+        match &*operation {
+            Some(old) if *old != id => Err(Error::Config(format!("the transaction already has the operation id {old}; it cannot change to {id}"))),
+            _ => {
+                *operation = Some(id);
+                Ok(())
+            }
+        }
+    }
+
     /// Marks the start of a statement; the transaction rejects concurrent use.
     pub(crate) fn enter(&self) -> Result<tokio::sync::MutexGuard<'_, Option<TxInner>>> {
         if self.finished.load(Ordering::Acquire) {
@@ -268,8 +296,16 @@ type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnw
 
 /// callback이 실행되는 곳: 새 transaction이나 바깥 transaction의 savepoint.
 enum OnceScope<'a> {
-    Transaction { db: &'a Db, tx: Arc<TxShared> },
-    Savepoint { tx: Arc<TxShared>, name: String },
+    Transaction {
+        db: &'a Db,
+        tx: Arc<TxShared>,
+    },
+    /// `operation`은 savepoint를 시작할 때의 operation id이며 rollback이 되돌린다.
+    Savepoint {
+        tx: Arc<TxShared>,
+        name: String,
+        operation: Option<OperationId>,
+    },
 }
 
 impl<'a> OnceScope<'a> {
@@ -283,7 +319,7 @@ impl<'a> OnceScope<'a> {
     fn close(self) -> OnceStep<'a, Result<()>> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
-            OnceScope::Savepoint { tx, name } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, .. } => Box::pin(async move {
                 let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 released
@@ -303,7 +339,8 @@ impl<'a> OnceScope<'a> {
                     rolled_back
                 }
             }),
-            OnceScope::Savepoint { tx, name } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, operation } => Box::pin(async move {
+                *tx.operation.lock().unwrap() = operation;
                 let undone = rollback_savepoint(&tx, &name).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 undone
@@ -359,7 +396,10 @@ where
                             let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
                             let name = format!("orm_sp_{n}");
                             match tx.raw(&format!("SAVEPOINT {name}")).await {
-                                Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
+                                Ok(()) => {
+                                    let operation = tx.operation();
+                                    Ok(OnceScope::Savepoint { tx, name, operation })
+                                }
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                                     Err(error)
@@ -647,6 +687,8 @@ async fn run_savepoint<T, E, Fut>(tx: Arc<TxShared>, callback: Fut) -> Result<st
 where
     Fut: Future<Output = std::result::Result<T, E>>,
 {
+    // savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
+    let operation_before = tx.operation();
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
     let ended = async {
@@ -658,8 +700,14 @@ where
                 tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
                 SavepointEnd::Returned(Ok(value))
             }
-            Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
-            Err(payload) => SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err()),
+            Ok(Err(error)) => {
+                *tx.operation.lock().unwrap() = operation_before.clone();
+                SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err())))
+            }
+            Err(payload) => {
+                *tx.operation.lock().unwrap() = operation_before.clone();
+                SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err())
+            }
         })
     }
     .await;
@@ -741,7 +789,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, operation
         savepoints: AtomicU32::new(0),
         locals: Mutex::new(HashMap::new()),
         locks: Mutex::new(Vec::new()),
-        operation,
+        operation: Mutex::new(operation),
         sqlite_mode: Mutex::new(sqlite_mode),
     })
 }

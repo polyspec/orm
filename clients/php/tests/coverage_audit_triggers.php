@@ -9,6 +9,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 require __DIR__ . '/restore_case.php';
+require __DIR__ . '/set_operation_case.php';
 
 use CoverageAudit\Orm\Item;
 use Orm\Code;
@@ -212,5 +213,9 @@ runCoverageCases($argv, [
         } finally {
             $db->close();
         }
+    },
+    // utils()->setOperation은 실행 중인 transaction의 operation id를 정한다(set_operation_case.php).
+    'audit_operation_set_in_transaction' => function (): void {
+        withAudit(fn(Db $db) => setOperationCase($db, 'CoverageAudit\\Orm'));
     },
 ]);

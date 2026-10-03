@@ -34,6 +34,11 @@ export interface ConnectOptions {
 /** An operation id: a safe integer for an i64 operation column, a string for a uuid one. */
 export type OperationId = number | string;
 
+/** id 가 operation id 가 될 수 있는 값(safe integer 나 빈 문자열이 아닌 문자열)인지 알린다. */
+export function isOperationId(id: unknown): id is OperationId {
+  return Number.isSafeInteger(id) || (typeof id === 'string' && id !== '');
+}
+
 export interface TransactionOptions {
   isolation?: Isolation;
   readOnly?: boolean;
@@ -107,7 +112,8 @@ export class TxFrame {
   public savepoints = 0;
   public readonly locals = new Map<string, string>();
   public readonly locks: string[] = [];
-  public constructor(public readonly db: Db, public readonly tx: DriverTransaction, public readonly operation: OperationId | undefined) {}
+  /** The operation id of the unit of work; utils().setOperation(id) sets it inside the transaction. */
+  public constructor(public readonly db: Db, public readonly tx: DriverTransaction, public operation: OperationId | undefined) {}
 }
 
 const flow = new AsyncLocalStorage<readonly TxFrame[]>();
@@ -409,7 +415,7 @@ export class Db {
     const timeoutMs = options.timeoutMs ?? 0;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
     const operation = options.operation;
-    if (operation !== undefined && !Number.isSafeInteger(operation) && (typeof operation !== 'string' || operation === '')) {
+    if (operation !== undefined && !isOperationId(operation)) {
       throw new OrmError('CONFIG', 'transaction operation must be a safe integer or a non-empty string');
     }
     const outer = activeFor(this);
@@ -490,12 +496,15 @@ export class Db {
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
     frame.savepoints++;
     const name = `orm_sp_${frame.savepoints}`;
+    // savepoint 안에서 정한 operation id 는 그 작업과 함께 되돌린다.
+    const operationBefore = frame.operation;
     try {
       await frame.tx.control(`SAVEPOINT ${name}`);
       let result: T;
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
+        frame.operation = operationBefore;
         // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
         const errors: unknown[] = [];
         for (const statement of [`ROLLBACK TO SAVEPOINT ${name}`, `RELEASE SAVEPOINT ${name}`]) {
@@ -625,7 +634,7 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
  */
 function operationValue(slot: BindSlot, operation: OperationId | undefined): OperationId {
   if (operation === undefined) {
-    throw new OrmError('CONFIG', `${slot.name} is audited: run the write in a transaction with an operation id`);
+    throw new OrmError('CONFIG', `${slot.name} is audited: run the write in a transaction with an operation id, or set the id with utils().setOperation(id)`);
   }
   if (slot.col_type === 'uuid' ? typeof operation !== 'string' : !Number.isSafeInteger(operation)) {
     throw new OrmError('CONFIG', `the operation column ${slot.name}.${slot.column} (${slot.col_type}) does not take the operation id ${JSON.stringify(operation)}`);

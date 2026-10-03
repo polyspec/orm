@@ -341,6 +341,50 @@ err := master.Transaction(func() error {
 
 A write of an audited table outside such a transaction, or with an id that does not fit the operation column, fails with `CONFIG` before it reaches the database; `orm.Operation` with a value that is neither `int64` nor `string` fails the transaction with `CONFIG` before it begins. A request that assigns the operation column itself fails with `IR_INVALID`.
 
+### Set the operation id inside a transaction
+
+When the operation id is known only after the transaction began, for example because it is the key of a row that the unit of work inserts first, set it on the running transaction before the first audited write. Utilities call it on the connection of the transaction:
+
+```go
+err := master.Transaction(func() error {
+    op, err := model.Operation().SetName("import").Create() // a table without audit
+    if err != nil {
+        return err
+    }
+    if err := master.Utils().SetOperation(op.GetSeq()); err != nil {
+        return err
+    }
+    _, err = model.Item().SetTitle("draft").Create()
+    return err
+})
+```
+```php
+$master->transaction(function () use ($master): void {
+    $op = (new Operation)->setName('import')->create();
+    $master->utils()->setOperation($op->getSeq());
+    (new Item)->setTitle('draft')->create();
+});
+```
+```rust
+master.transaction(async || {
+    let op = Operation::new().set_name("import").create().await?;
+    master.utils().set_operation(op.get_seq()?)?;
+    Item::new().set_title("draft").create().await.map(|_| ())
+}).await?;
+```
+```typescript
+await master.transaction(async () => {
+    const op = await new Operation().setName('import').create();
+    master.utils().setOperation(op.getSeq());
+    await new Item().setTitle('draft').create();
+});
+```
+
+- It requires an active transaction of the connection; outside one it fails with `CONFIG`. An audited write before it fails with `CONFIG` as without an operation id.
+- The id belongs to the whole transaction: a nested transaction uses it and can set it when the outer one has none. Setting the id the transaction already has, from the option or an earlier call, changes nothing; another id fails with `CONFIG`.
+- A nested transaction whose savepoint rolls back restores the id it began with, because the rows written under it are rolled back too.
+- The id has the type of the operation column, as for the transaction option.
+
 ### Restore a soft-deleted row
 
 A delete of a table with a `soft_delete` setting keeps the row and its unique key values, and reads never return it, so inserting the same key again fails with `DUPLICATE_KEY`. `restore()` brings such a row back: set the values of the primary key or of one unique key on a new model, and any new values of other columns, and call `restore()`. It writes the new values and clears the soft delete column with one `UPDATE` ([protocol](protocol.md#_1-5-restore)), reads the row by the same key with the default select set and returns it as a loaded model.

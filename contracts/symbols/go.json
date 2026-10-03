@@ -2228,6 +2228,7 @@
   "clients/go/orm/utils.go::Utils.Privileges": "receiver=*Utils func() *PrivilegeUtils",
   "clients/go/orm/utils.go::Utils.Schema": "receiver=*Utils func() *SchemaUtils",
   "clients/go/orm/utils.go::Utils.SetLocal": "receiver=*Utils func(key, value string) error",
+  "clients/go/orm/utils.go::Utils.SetOperation": "receiver=*Utils func(id any) error",
   "clients/go/orm/utils.go::Utils.Stats": "receiver=*Utils func() DBStats",
   "clients/go/orm/utils.go::Utils.WasInserted": "receiver=*Utils func(entity string, key int64) (bool, error)",
   "clients/go/orm/utils.go::Utils.active": "receiver=*Utils func(name string) (*txConn, error)",

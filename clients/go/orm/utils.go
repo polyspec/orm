@@ -169,6 +169,31 @@ func (t *txConn) clearLocals() error {
 	return errors.Join(errs...)
 }
 
+// SetOperation sets the operation id of the active transaction of the
+// connection, for a unit of work whose id is known only after the transaction
+// began. Every later insert and update of an audited table in the transaction
+// writes it. id is an int64 for an i64 operation column and a lower-case UUID
+// string for a uuid one. Setting the id the transaction already has changes
+// nothing; another id, also from a nested transaction or after
+// orm.Operation, fails with CodeConfig. A savepoint that rolls back restores
+// the id it began with.
+func (u *Utils) SetOperation(id any) error {
+	t, err := u.active("SetOperation")
+	if err != nil {
+		return err
+	}
+	switch id.(type) {
+	case int64, string:
+	default:
+		return configErr("operation id is %T; an operation id is an int64 or a UUID string", id)
+	}
+	if t.operation != nil && t.operation != id {
+		return configErr("the transaction already has the operation id %v; it cannot change to %v", t.operation, id)
+	}
+	t.operation = id
+	return nil
+}
+
 // Local returns a value set with SetLocal; NO_ROWS when it is missing.
 func (u *Utils) Local(key string) (string, error) {
 	t, err := u.active("local")

@@ -1531,6 +1531,7 @@
   "clients/php/src/Utils.php::Orm\\Utils::privileges": "public function privileges(): Orm\\PrivilegeUtils",
   "clients/php/src/Utils.php::Orm\\Utils::schema": "public function schema(): Orm\\SchemaUtils",
   "clients/php/src/Utils.php::Orm\\Utils::setLocal": "public function setLocal(string $key, string $value): void",
+  "clients/php/src/Utils.php::Orm\\Utils::setOperation": "public function setOperation(string|int $id): void",
   "clients/php/src/Utils.php::Orm\\Utils::stats": "public function stats(): Orm\\Stats",
   "clients/php/src/Utils.php::Orm\\Utils::validKey": "private static function validKey(string $key): bool",
   "clients/php/src/Utils.php::Orm\\UtilsSql": "final class Orm\\UtilsSql extends  implements  uses ",

@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mjs';
 import { createCaseDatabase } from './case-database.mjs';
-import { restoreCase, restoreSchema } from './restore_case.mjs';
+import { restoreCase, restoreSchema, setOperationCase } from './restore_case.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -186,6 +186,12 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     const rows = history.values().map(h => [h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('operation_id'), h[CORE].column('title'), h[CORE].column('deleted_at') !== null]);
     assert.deepEqual(rows, [['insert', null, 7, 'a', false], ['update', 7, 8, 'b', false], ['update', 8, 9, 'b', true]]);
     assert.equal(await new Item().connect(db).getCount(), 0);
+  });
+
+  // 시작한 transaction 안에서 utils().setOperation(id)로 operation id 를 정한다(tests/restore_case.mjs). audit.dbs 는 앞
+  // case 가 설치했고, 이 case 는 자기가 쓴 행의 이력만 확인한다.
+  caseTest(`${dialect}: setOperation sets the operation id inside a running transaction`, 60_000, async () => {
+    await setOperationCase(db);
   });
 
   // soft delete 한 행을 unique key 나 primary key 로 restore 한다(tests/restore_case.mjs).
