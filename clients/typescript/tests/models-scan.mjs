@@ -1,7 +1,7 @@
 // models script 검사: scan 대상이 model을 호출하는 source와 정확히 같고,
 // commit된 src/models/models.ts가 그 scan의 generator 출력과 같은지 확인한다.
 // Usage: node --test clients/typescript/tests/models-scan.mjs (after tsc -p clients/typescript/tsconfig.build.json)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -48,7 +48,8 @@ function callsModels(path) {
   });
 }
 
-test('the models script scans exactly the sources that call models', { timeout: 10000 }, () => {
+// 기한 10 s: test source를 TypeScript parser로 읽기만 한다.
+caseTest('the models script scans exactly the sources that call models', 10000, () => {
   assert(modelClasses.size > 0, 'src/models/models.ts declares model classes');
   const args = modelsArgs();
   const scanned = args.flatMap((word, i) => (args[i - 1] === '--scan' ? files(resolve(client, word)) : []));
@@ -57,7 +58,8 @@ test('the models script scans exactly the sources that call models', { timeout: 
   assert.deepEqual(names(scanned), names(calling));
 });
 
-test('the committed models equal the generator output', { timeout: 30000 }, () => {
+// 기한 30 s: orm-gen process 하나가 models를 만들어 비교한다.
+caseTest('the committed models equal the generator output', 30000, () => {
   const result = spawnSync(process.execPath, ['dist/bin/orm-gen.js', ...modelsArgs(), '--check'], { cwd: client, encoding: 'utf8' });
   assert.equal(result.error, undefined);
   assert.deepEqual({ status: result.status, stdout: result.stdout, stderr: result.stderr }, { status: 0, stdout: '', stderr: '' });

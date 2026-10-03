@@ -2,6 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { scriptPathErrors } from './scripts.mjs';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
+
+// repository check는 root npm script가 쓰는 path가 tracked file이나 directory인지 확인하는 case 하나다.
+const log = sections();
+log.begin('repo', COMPUTE);
 
 const root = new URL('../../', import.meta.url).pathname;
 const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
@@ -17,3 +22,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(`repository check: ${tracked.length} tracked paths inspected`);
+log.end();

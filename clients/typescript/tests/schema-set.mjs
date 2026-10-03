@@ -18,11 +18,13 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { runCase } from '../../../tests/testcase.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const benchText = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-schema-set-'));
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
 const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
 let current = '';
@@ -186,34 +188,23 @@ try {
   for (const name of selected) {
     const run = cases[name];
     if (run === undefined) throw new Error(`unknown case ${name}`);
-    const caseBefore = failures;
     for (const [driver, base] of Object.entries(targets)) {
       const before = failures;
       current = `${name}/${driver}`;
-      const start = performance.now();
-      console.log(`RUN  ${current}`);
-      let timer;
-      let database;
-      try {
-        database = await newDatabase(driver, base);
-        const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timeout after ${CASE_DEADLINE_MS} ms`)), CASE_DEADLINE_MS); });
-        await Promise.race([run(database.dsn), deadline]);
-      } catch (error) {
-        failures++;
-        console.error(`FAIL ${current}: ${error?.stack ?? error}`);
-      } finally {
-        clearTimeout(timer);
-        try { await database?.drop(); } catch (error) { failures++; console.error(`FAIL ${current}: drop database: ${error?.stack ?? error}`); }
-      }
-      console.log(`${failures === before ? 'ok  ' : 'FAIL'} ${current} ${((performance.now() - start) / 1000).toFixed(3)}s`);
+      const passed = await runCase(`schema-set/${current}`, CASE_DEADLINE_MS, async () => {
+        let database;
+        try {
+          database = await newDatabase(driver, base);
+          await run(database.dsn);
+        } finally {
+          try { await database?.drop(); } catch (error) { failures++; console.error(`FAIL ${current}: drop database: ${error?.stack ?? error}`); }
+        }
+        if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+      });
+      if (!passed && failures === before) failures++;
     }
-    if (failures === caseBefore) console.log(`CASE ${name} PASS`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript schema set test: ${failures} failures`);
-  process.exit(1);
-}
-console.log(`typescript schema set test: ${selected.length} cases on ${Object.keys(targets).length} databases passed`);
+if (failures > 0) process.exitCode = 1;

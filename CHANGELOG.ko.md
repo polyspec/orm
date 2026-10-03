@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T24.2: 모든 JavaScript test case와 Node check runner는 실행 중에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.mjs), case마다 자기 기한을 가진다. `make feature-check`는 coverage 실행과 검증 명령을 실행하는 동안 하나씩 보고하고, `node scripts/features/check.mjs --run --feature <id>`는 한 기능의 명령만 실행한다. T19와 T20 기록은 message placeholder를 code로 써서 문서가 다시 build된다.
+
 - T24.1: 모든 Go test case는 시작할 때 `RUN <case> deadline=<d>`, 긴 case가 도는 동안 경과 시간을 담은 `STEP` 줄, 끝날 때 경과 시간과 함께 `PASS`, 이유를 담은 `FAIL`, 또는 `SKIP`을 출력한다(internal/testcase). case마다 자기 기한이 있고, 기한을 넘긴 case는 모든 goroutine stack과 함께 실패한다. Makefile의 Go check, client와 performance script, feature 명령은 binary 전체의 한도 대신 `go test -v -timeout 0`으로 실행하며, conformance check와 interface check도 build, 언어, 비교 case를 같은 방식으로 보고한다.
 
 - N3.2: 모든 클라이언트에서 연결은 자기에게 등록된 schema set만 계획한다. generated code의 connect helper(Go `model.Connect`, PHP `Polyspec\Orm\Tests\Model\connect`, Rust `model::connect`, TypeScript `connect`)는 연결을 열고 `connectSchema`로 그 set을 등록하며, `install(schema)`는 generated schema 값을 받아 자기가 설치한 set을 등록한다. raw 연결은 아무것도 등록하지 않는다. 연결에 등록되지 않은 set의 요청은 cache된 plan이 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, 선언한 hash로 hash되지 않는 manifest text는 connect나 install에서 `CONFIG`로 실패한다. Go는 plan cache보다 먼저 schema를 확인하므로 편집한 generated code가 더는 cache된 plan으로 실행되지 않는다.

@@ -8,12 +8,11 @@
 // document and unsupported objects.
 //
 // Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test clients/typescript/tests/dbspec-introspect.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
@@ -21,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { dbspecManifest, emitDbspec, introspectDbspec, parseDbspec, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
+// TIMEOUT은 case 하나의 기한(ms)이다. round trip 하나는 문서 집합 하나를 database 하나에 적용하고 introspect한 뒤 지운다.
 const TIMEOUT = 30000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 // 모든 집합에서 dialect마다 같아야 하는 catalog query 수다(docs/dialects.md "Introspection").
@@ -43,17 +43,7 @@ const text = lines => lines.join('\n') + '\n';
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
 function vector(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`result ${name}: FAIL after ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`result ${name}: PASS after ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 // roundTripSets returns every case of ddl.json and every schema document as a

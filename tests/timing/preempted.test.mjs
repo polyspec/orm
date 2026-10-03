@@ -6,7 +6,7 @@
 //
 // Usage: make timing-check (the target builds the Go test binary, the Rust stress example and
 // the TypeScript client, and writes the stress document first).
-import test from 'node:test';
+import { caseTest, stepLines } from '../testcase.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 // load average 90인 공유 machine과 비슷한 비율이다.
 const RUN_MS = 10;
 const STOP_MS = 90;
+// TIMEOUT은 case 하나의 기한이다. 하위 process는 wall-clock 시간의 10분의 1만 CPU를 받으므로
+// 멈추지 않을 때 1분 안에 끝나는 test가 10분까지 걸린다.
 const TIMEOUT = 600_000;
 
 function declared(name) {
@@ -26,17 +28,17 @@ function declared(name) {
 }
 
 // runPreempted는 command를 자기 process group에서 실행하며 그 group을 주기적으로 멈추고
-// 종료 code, signal, 출력을 돌려준다.
-async function runPreempted(command, args, cwd) {
-  const started = performance.now();
-  console.log(`start ${command} ${args.join(' ')}`);
+// 종료 code, signal, 출력을 돌려준다. 하위 process의 출력 줄은 실행 중에 case의 단계로 나온다.
+async function runPreempted(step, command, args, cwd) {
+  step(`start ${command} ${args.join(' ')}`);
+  const lines = stepLines(step);
   // 안쪽 node --test가 바깥 test runner의 자식으로 보고하지 않도록 NODE_TEST_CONTEXT를 뺀다.
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
   const child = spawn(command, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
-  child.stdout.on('data', (chunk) => { output += chunk; });
-  child.stderr.on('data', (chunk) => { output += chunk; });
+  child.stdout.on('data', (chunk) => { output += chunk; lines.write(String(chunk)); });
+  child.stderr.on('data', (chunk) => { output += chunk; lines.write(String(chunk)); });
   let exited = false;
   const exit = new Promise((resolve) => child.on('exit', () => { exited = true; resolve(); }));
   const done = new Promise((resolve, reject) => {
@@ -52,9 +54,8 @@ async function runPreempted(command, args, cwd) {
     if (!(await signalGroup(child.pid, 'SIGCONT', exit))) break;
   }
   const { code, signal } = await done;
-  console.log(`end ${command} code=${code} signal=${signal} stops=${stops} elapsedMs=${(performance.now() - started).toFixed(0)}`);
-  // 각 test가 출력한 전체와 median CPU 시간 줄을 남긴다.
-  for (const line of output.split('\n').filter((l) => /median|PASS dbspec[ _]|stress tables/.test(l))) console.log(`  ${line.trim()}`);
+  lines.flush();
+  step(`end ${command} code=${code} signal=${signal} stops=${stops}`);
   return { code, signal, output, stops };
 }
 
@@ -72,8 +73,8 @@ async function signalGroup(pid, signal, exit) {
   }
 }
 
-async function passesPreempted(command, args, cwd = root) {
-  const { code, signal, output, stops } = await runPreempted(command, args, cwd);
+async function passesPreempted(step, command, args, cwd = root) {
+  const { code, signal, output, stops } = await runPreempted(step, command, args, cwd);
   assert.ok(stops > 0, `${command} finished before it was stopped once`);
   assert.equal(signal, null, `${command} ended by ${signal}:\n${output}`);
   assert.equal(code, 0, `${command} failed while preempted:\n${output}`);
@@ -81,25 +82,25 @@ async function passesPreempted(command, args, cwd = root) {
 
 const stressDocument = () => declared('DBSPEC_STRESS_DOCUMENT');
 
-test('go: the stress parse budget holds while preempted', { timeout: TIMEOUT }, async () => {
-  await passesPreempted(declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}engine/dbspec`);
+caseTest('go: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+  await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}engine/dbspec`);
 });
 
-test('rust: the stress parse budget holds while preempted', { timeout: TIMEOUT }, async () => {
-  await passesPreempted(declared('TIMING_RUST_STRESS'), [stressDocument()]);
+caseTest('rust: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+  await passesPreempted(step, declared('TIMING_RUST_STRESS'), [stressDocument()]);
 });
 
-test('rust: the orm-schema vector deadlines hold while preempted', { timeout: TIMEOUT }, async () => {
+caseTest('rust: the orm-schema vector deadlines hold while preempted', TIMEOUT, async ({ step }) => {
   const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan', 'dbspec_mermaid'];
-  await passesPreempted('cargo', ['test', '--locked', '--offline', '-p', 'orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}clients/rust`);
+  await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}clients/rust`);
 });
 
 for (const script of ['dbspec_test', 'dbspec_rules_test', 'dbspec_manifest_test', 'dbspec_render_test', 'dbspec_mermaid_test', 'dbspec_plan_test', 'dbspec_stress_test']) {
-  test(`php: ${script} deadlines hold while preempted`, { timeout: TIMEOUT }, async () => {
-    await passesPreempted('php', [`clients/php/tests/${script}.php`]);
+  caseTest(`php: ${script} deadlines hold while preempted`, TIMEOUT, async ({ step }) => {
+    await passesPreempted(step, 'php', [`clients/php/tests/${script}.php`]);
   });
 }
 
-test('typescript: the stress parse budget holds while preempted', { timeout: TIMEOUT }, async () => {
-  await passesPreempted(process.execPath, ['--test', 'clients/typescript/tests/dbspec-stress.mjs']);
+caseTest('typescript: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+  await passesPreempted(step, process.execPath, ['--test', 'clients/typescript/tests/dbspec-stress.mjs']);
 });

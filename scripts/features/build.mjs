@@ -1,5 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
+
+// feature 문서 build는 manifest를 읽어 두 문서를 만들거나 비교하는 case 하나다.
+const log = sections();
+log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-docs', COMPUTE);
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifest = JSON.parse(await readFile(resolve(root, 'contracts/features.json'), 'utf8'));
@@ -21,3 +26,4 @@ if (process.argv.includes('--check')) {
   for (const [relative, content] of outputs) await writeFile(resolve(root, relative), content);
 }
 console.log(`features: generated ${manifest.features.length} feature rows`);
+log.end();

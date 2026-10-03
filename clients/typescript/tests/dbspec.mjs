@@ -3,31 +3,21 @@
 // documents report exactly the listed diagnostics in source order.
 //
 // Usage: node --test clients/typescript/tests/dbspec.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { dbspecManifest, emitDbspec, parseDbspec, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
+// TIMEOUT은 case 하나의 기한(ms)이다. vector 하나는 memory 안에서 문서 하나를 parse하고 emit한다.
 const TIMEOUT = 15000;
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
 export function vector(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`fail ${name} ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`pass ${name} ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 // join writes the lines with LF, with CRLF when crlf is true, or with

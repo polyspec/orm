@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
+import { PROCESS, runCase } from '../../../tests/testcase.mjs';
 
 const benchPath = fileURLToPath(new URL('../../../schema/bench.dbs', import.meta.url));
 
@@ -116,20 +117,19 @@ const tests = {
   },
 };
 
+// 각 case의 기한은 PROCESS다. 가장 큰 case가 writer process 6개를 띄우고 각각 transaction
+// 40개를 commit한다.
 try {
   for (const [name, test] of Object.entries(tests)) {
     current = name;
     const before = failures;
-    const started = performance.now();
-    console.log(`RUN  ${name}`);
-    try { await test(); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${failures === before ? 'PASS' : 'FAIL'} ${name} (${((performance.now() - started) / 1000).toFixed(2)}s)`);
+    const passed = await runCase(`sqlite-concurrency/${name}`, PROCESS, async () => {
+      await test();
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript sqlite concurrency: ${failures} failures`);
-  process.exit(1);
-}
-console.log('typescript sqlite concurrency passed');
+if (failures > 0) process.exitCode = 1;

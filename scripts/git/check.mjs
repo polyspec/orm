@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path, { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
 // subjectErrors returns the reasons a subject breaks the rule, or none.
 export function subjectErrors(subject, rule) {
@@ -19,6 +20,9 @@ export function subjectErrors(subject, rule) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // git check는 git log를 읽어 commit subject를 검사하는 case 하나다.
+  const log = sections();
+  log.begin('git-subjects', COMPUTE);
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const registry = JSON.parse(await readFile(path.join(root, 'contracts/rules.json'), 'utf8'));
   const rule = registry.rules.find(rule => rule.id === 'git.subject-format');
@@ -46,4 +50,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(1);
   }
   console.log('git.subject-format: commit subjects passed');
+  log.end();
 }

@@ -6,15 +6,15 @@
 // whose errors are the first failure and then the cleanup errors in order.
 //
 // Usage: node --test clients/typescript/tests/dbspec-apply-cleanup.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
 import { EFFECT_QUERIES, dbspecEffectHolds } from '../dist/dbspec/apply.js';
 
 const root = new URL('../../../', import.meta.url);
+// TIMEOUT은 case 하나의 기한(ms)이다. apply의 정리 error case 하나는 memory SQLite database 하나에 plan 하나를 적용한다.
 const TIMEOUT = 20000;
 // tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
@@ -31,17 +31,7 @@ assert.equal(plans.length, 1, 'plans.json has no create-from-empty case');
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
 function vector(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`result ${name}: FAIL after ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`result ${name}: PASS after ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 // failingSqlite는 memory SQLite database를 감싸서 fail의 statement를 exec하면 그 error를 던진다.

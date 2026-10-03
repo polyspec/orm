@@ -14,10 +14,12 @@
 //
 // Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (TypeScript build와 Rust example의 release build 뒤)
-import { performance } from 'node:perf_hooks';
 import { compare } from './compare.mjs';
 import { runRunner, runners } from './runners.mjs';
+import { COMPUTE, runCase } from '../../testcase.mjs';
 
+// TIMEOUT은 runner 실행 하나의 기한이다. Go runner는 `go run` compile을 포함하고 모든
+// runner가 stress 문서와 vector file 다섯 개를 읽는다.
 const TIMEOUT = 120000;
 const [cases, stress, ddl, plans, mermaid] = process.argv.slice(2);
 if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined || mermaid === undefined) {
@@ -31,23 +33,24 @@ async function run(runner) {
   return result.stdout;
 }
 
-const started = performance.now();
-console.log('start dbspec compare');
 const outputs = [];
 for (const runner of runners) {
   for (const round of [1, 2]) {
-    const runStarted = performance.now();
-    const output = await run(runner);
-    const count = output.split('\n').filter(line => line !== '' && !/^[|!=] /.test(line)).length;
-    console.log(`step ${runner.name} ${round}: ${count} cases in ${(performance.now() - runStarted).toFixed(1)} ms`);
-    outputs.push({ name: `${runner.name} ${round}`, output });
+    const passed = await runCase(`dbspec-compare/${runner.name}/${round}`, TIMEOUT, async ({ step }) => {
+      const output = await run(runner);
+      const count = output.split('\n').filter(line => line !== '' && !/^[|!=] /.test(line)).length;
+      step(`${count} cases`);
+      outputs.push({ name: `${runner.name} ${round}`, output });
+    });
+    if (!passed) process.exit(1);
   }
 }
-const difference = compare(outputs);
-if (difference !== null) {
-  console.log(`fail dbspec compare: ${difference.other} differs from ${difference.reference} in ${difference.case} at line ${difference.line}`);
-  console.log(`  ${difference.reference}: ${difference.expected}`);
-  console.log(`  ${difference.other}: ${difference.actual}`);
-  process.exit(1);
-}
-console.log(`pass dbspec compare: ${outputs.length} runs agree in ${(performance.now() - started).toFixed(1)} ms`);
+const agreed = await runCase('dbspec-compare/agreement', COMPUTE, ({ step }) => {
+  const difference = compare(outputs);
+  if (difference !== null) {
+    throw new Error(`${difference.other} differs from ${difference.reference} in ${difference.case} at line ${difference.line}\n` +
+      `  ${difference.reference}: ${difference.expected}\n  ${difference.other}: ${difference.actual}`);
+  }
+  step(`${outputs.length} runs agree`);
+});
+if (!agreed) process.exit(1);

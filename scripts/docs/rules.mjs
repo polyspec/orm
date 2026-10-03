@@ -1,6 +1,11 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { docs, root, files } from './lib.mjs';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
+
+// rules check는 문서 file을 읽어 쌍과 문체를 검사하는 case 하나다.
+const log = sections();
+log.begin('docs-rules', COMPUTE);
 
 const rules = JSON.parse(await readFile(path.join(root, 'contracts/rules.json'), 'utf8'));
 if (rules.version !== 1 || !Array.isArray(rules.rules)) throw new Error('contracts/rules.json: invalid rule registry');
@@ -79,3 +84,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`rules: ${sources.length} English documents, ${translations.size} Korean translations passed`);
+log.end();

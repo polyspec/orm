@@ -22,12 +22,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
+import { runCase } from '../../../tests/testcase.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm-typescript/testing';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-rollback-'));
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 table을 지우고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 지운다.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
@@ -206,33 +208,22 @@ try {
   for (const name of selected) {
     const run = cases[name];
     if (run === undefined) throw new Error(`unknown case ${name}`);
-    const caseBefore = failures;
     for (const [driver, dsn] of Object.entries(targets)) {
       const before = failures;
       current = `${name}/${driver}`;
-      const start = performance.now();
-      console.log(`RUN  ${current}`);
-      let timer;
-      try {
-        await dropTable(driver, dsn);
-        const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timeout after ${CASE_DEADLINE_MS} ms`)), CASE_DEADLINE_MS); });
-        await Promise.race([run(driver, dsn), deadline]);
-      } catch (error) {
-        failures++;
-        console.error(`FAIL ${current}: ${error?.stack ?? error}`);
-      } finally {
-        clearTimeout(timer);
-        await dropTable(driver, dsn);
-      }
-      console.log(`${failures === before ? 'ok  ' : 'FAIL'} ${current} ${((performance.now() - start) / 1000).toFixed(3)}s`);
+      const passed = await runCase(`rollback/${current}`, CASE_DEADLINE_MS, async () => {
+        try {
+          await dropTable(driver, dsn);
+          await run(driver, dsn);
+        } finally {
+          await dropTable(driver, dsn);
+        }
+        if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+      });
+      if (!passed && failures === before) failures++;
     }
-    if (failures === caseBefore) console.log(`CASE ${name} PASS`);
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript rollback test: ${failures} failures`);
-  process.exit(1);
-}
-console.log(`typescript rollback test: ${selected.length} cases on ${Object.keys(targets).length} databases passed`);
+if (failures > 0) process.exitCode = 1;

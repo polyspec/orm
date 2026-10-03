@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { caseTest } from '../testcase.mjs';
 import { parse } from '../../clients/typescript/node_modules/ordered-json/js/index.js';
 import { StyledValue } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
-test('ordered-json numbers and styled states remain exact in result output', { timeout: 1000 }, () => {
+// 각 case의 기한 1 s: case는 memory 안에서 result 값 몇 개를 쓰고 비교한다.
+caseTest('ordered-json numbers and styled states remain exact in result output', 1000, () => {
   const result = resultValue({
     exact: parse('9007199254740993'),
     exactBigInt: 9007199254740993n,
@@ -14,11 +15,11 @@ test('ordered-json numbers and styled states remain exact in result output', { t
   assert.equal(JSON.stringify(result), '{"exact":9007199254740993,"exactBigInt":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},"sqlNull":{"kind":"sql-null"}}');
 });
 
-test('a member key that JavaScript reorders reports an error', { timeout: 1000 }, () => {
+caseTest('a member key that JavaScript reorders reports an error', 1000, () => {
   assert.throws(() => resultValue(parse('{"1":1,"a":2}')), { code: 'CODEC_ENCODE' });
 });
 
-test('a result never drops an undefined field or writes a non-finite number as null', { timeout: 1000 }, () => {
+caseTest('a result never drops an undefined field or writes a non-finite number as null', 1000, () => {
   assert.throws(() => resultValue({ missing: undefined }), /undefined conformance result/);
   assert.throws(() => resultValue([Number.NaN]), /non-finite conformance result/);
   assert.throws(() => resultValue(StyledValue.value({ missing: undefined })), { code: 'CODEC_ENCODE' });
@@ -29,7 +30,7 @@ test('a result never drops an undefined field or writes a non-finite number as n
   assert.throws(() => resultValue(new Date('2026-01-01T00:00:00Z')), /unsupported conformance result/);
 });
 
-test('derived integer conversion preserves the exact numeric value', { timeout: 1000 }, () => {
+caseTest('derived integer conversion preserves the exact numeric value', 1000, () => {
   assert.equal(derivedInteger(2), 2);
   assert.equal(derivedInteger('2'), 2);
   assert.equal(derivedInteger(2n), 2);
@@ -40,7 +41,7 @@ test('derived integer conversion preserves the exact numeric value', { timeout: 
   }
 });
 
-test('unexpected vector errors preserve their cause and write vectors use a transaction', { timeout: 1000 }, async () => {
+caseTest('unexpected vector errors preserve their cause and write vectors use a transaction', 1000, async () => {
   const cause = new Error('invalid row');
   await assert.rejects(executeVector('invalid', async () => { throw cause; }), error => {
     assert.match(error.message, /invalid/);

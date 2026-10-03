@@ -7,14 +7,14 @@
 // every comparison lists exactly its differences or compare diagnostics.
 //
 // Usage: node --test clients/typescript/tests/dbspec-plan.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { performance } from 'node:perf_hooks';
 import { chainPlans, compareSchemas, diffPlan, effectText, emitPlan, parseDbspec, parsePlan, planSteps } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'));
+// TIMEOUT은 case 하나의 기한(ms)이다. plan vector 하나는 memory 안에서 plan 하나를 parse하고 step을 만든다.
 const TIMEOUT = 5000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 
@@ -34,17 +34,7 @@ function stepFields(s) {
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
 function vector(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`result ${name}: FAIL after ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`result ${name}: PASS after ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 const text = lines => lines.join('\n') + '\n';
