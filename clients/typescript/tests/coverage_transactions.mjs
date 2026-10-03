@@ -2,7 +2,7 @@
 // 전달되는지, 중첩 transaction 이 savepoint 로 안쪽 write 만 되돌리는지 확인한다. 쓴 row 는
 // composite_account 에만 있고 case 가 끝날 때 모두 지운다.
 import assert from 'node:assert/strict';
-import { CompositeAccount, Db } from '../dist/index.js';
+import { CompositeAccount, connect } from '../dist/index.js';
 import { featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
@@ -10,7 +10,7 @@ const tenant = 990003;
 /** Opens the selected database, runs the case and removes every row of the tenant afterwards. */
 async function withTenant(body) {
   const { driver, dsn } = featureDatabase();
-  const db = await Db.connect(dsn);
+  const db = await connect(dsn);
   try {
     assert.equal(db.driver, driver);
     assert.equal(await new CompositeAccount().connect(db).tenantId(tenant).getCount(), 0, `no composite_account row of tenant ${tenant} before the case`);

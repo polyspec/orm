@@ -19,7 +19,7 @@ type SoftRecordModel struct {
 	fDeletedAt *time.Time
 }
 
-var softRecordEntity = &orm.Entity{Name: "soft_record", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &SoftRecordModel{m: c}; c.Bind(x); return x },
+var softRecordEntity = &orm.Entity{Name: "soft_record", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &SoftRecordModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*SoftRecordModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*SoftRecordModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

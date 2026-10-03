@@ -86,7 +86,8 @@ async fn aes_write_uses_key_of_current_version() {
     let mut row = connected(&writer);
     row.core_mut().set_ordered("config", orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
     orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create with aes_keys and aes_version: {e}"));
-    let reader = Db::connect(&dsn, 2, orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() }).await.unwrap();
+    let reader =
+        Db::connect_schema(&dsn, &SCHEMA, 2, orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() }).await.unwrap();
     let mut q = connected(&reader);
     q.core_mut().add_all_columns();
     let rows = orm::model::gets(&q).await.unwrap().into_vec();

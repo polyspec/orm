@@ -67,7 +67,7 @@ async fn main() -> orm::Result<()> {
         )),
         ..Default::default()
     };
-    let db = orm::Db::connect(&dsn(), 1, config).await?;
+    let db = model::connect(&dsn(), 1, config).await?;
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
         .unwrap()
         .and_hms_opt(0, 0, 0)

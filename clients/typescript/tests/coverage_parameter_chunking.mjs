@@ -2,13 +2,13 @@
 // 없는 값을 포함해도 count 가 맞는지, 나누면 결과가 달라지는 limit 은 IR_INVALID 로 거부하는지
 // 확인한다. 읽기만 한다.
 import assert from 'node:assert/strict';
-import { Author, Db } from '../dist/index.js';
+import { Author, connect } from '../dist/index.js';
 import { errorCode, featureDatabase, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_parameter_chunking.mjs', {
   async root_in_chunking() {
     const { driver, dsn } = featureDatabase();
-    const db = await Db.connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
       const values = [];

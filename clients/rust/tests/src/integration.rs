@@ -68,7 +68,7 @@ async fn coverage_generated_model_connection() {
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
     assert!(!dsn.is_empty());
-    let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap();
+    let db = model::connect(&dsn, 1, orm::Config::default()).await.unwrap();
     Author::new().connect(&db).get_count().await.unwrap();
     db.close().await;
 }
@@ -142,7 +142,7 @@ impl Env {
         }
         let mut out = Vec::new();
         for (driver, dsn) in targets {
-            let db = Db::connect(&dsn, 4, config()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            let db = model::connect(&dsn, 4, config()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
             let statement = |sql: String| sqlx::raw_sql(sqlx::AssertSqlSafe(sql));
             match db.pool() {
                 Pool::MySql(p) => {
@@ -286,7 +286,7 @@ async fn joins_and_relations(t: &Target) {
     let got = limited.first().and_then(|u| u.get_author_models()).expect("author models");
     assert_eq!(names(got), "gamma", "group_limit");
 
-    let other = Db::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
+    let other = model::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
     let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
     assert_eq!(external.get_owner().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
@@ -515,7 +515,7 @@ async fn await_replica(primary: &Db, replica: &Db) {
 /// without a connection inside a transaction uses the transaction.
 async fn primary_and_replica(t: &Target, replica_dsn: &str) {
     let master = &t.db;
-    let slave1 = Db::connect(replica_dsn, 2, config()).await.unwrap();
+    let slave1 = model::connect(replica_dsn, 2, config()).await.unwrap();
     let name = format!("replica-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
     User::new().connect(master).set_name(&name).create().await.unwrap();
     await_replica(master, &slave1).await;
@@ -557,7 +557,7 @@ async fn read_only_sqlite(t: &Target, path: &std::path::Path) {
     User::new().connect(&t.db).set_name("read-only").create().await.unwrap();
     t.db.close().await;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
-    let db = Db::connect(&t.dsn, 2, config()).await.unwrap();
+    let db = model::connect(&t.dsn, 2, config()).await.unwrap();
     assert_eq!(User::new().connect(&db).name("read-only").get_count().await.unwrap(), 1, "the read-only database reads the row");
     assert_eq!(code(User::new().connect(&db).set_name("rejected").create().await), orm::codes::READ_ONLY, "a write to the read-only database");
     db.close().await;

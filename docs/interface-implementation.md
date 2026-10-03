@@ -11,9 +11,9 @@ intermediate query or model layer.
 
 | Specification call | Rust API and behavior |
 |---|---|
-| Engine selection and connection | `Db::connect(dsn, pool_size, Config)` selects MySQL, PostgreSQL, or SQLite from the DSN and creates the bounded pool. |
+| Engine selection and connection | `Db::connect(dsn, pool_size, Config)` selects MySQL, PostgreSQL, or SQLite from the DSN and creates the bounded pool without any registered set; `Db::connect_schema(dsn, &SCHEMA, pool_size, Config)`, which the generated `model::connect` calls, also registers the set of the generated models. |
 | Schema hash check | A generated `Schema::new(manifest_text, manifest_hash)` validates the embedded manifest text; the engine rejects a request whose hash differs with `SCHEMA_HASH_MISMATCH`. |
-| Schema installation and inspection | `db.utils().schema().install(manifest)` installs the manifest; `exists`, `installed`, and `empty` inspect the selected database. Audit directives in the manifest are installed with the audit tables and triggers. |
+| Schema installation and inspection | `db.utils().schema().install(&model::SCHEMA)` installs the set and registers it on the connection; `exists`, `installed`, and `empty` inspect the selected database. Audit directives in the manifest are installed with the audit tables and triggers. |
 | Transaction isolation, read-only, timeout, and retry | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)` applies the declared options; `retry(0)` runs the callback once. `Db::transaction_once` preserves the callback error and does not retry. |
 | Cancellation | Dropping a statement or transaction future closes its checked-out connection so the server operation is canceled or rolled back before that slot is reused; driver cancellation maps to `CANCELED`. |
 | Encrypted columns | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, and `db.utils().aes()` provide key validation, encrypted writes, blind indexes, status, and rotation for generated encrypted columns. |

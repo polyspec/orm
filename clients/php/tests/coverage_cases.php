@@ -7,7 +7,6 @@ declare(strict_types=1);
 
 use Orm\Config;
 use Orm\Db;
-use Orm\Orm;
 use Orm\OrmException;
 
 /**
@@ -55,7 +54,7 @@ function coverageDatabase(): array
 /** seed된 bench database의 AES와 blind index key로 연결한다(scripts/bench-db.sh). */
 function coverageConnect(string $dsn): Db
 {
-    return Orm::connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+    return \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 }
 
 /** 저장소 파일의 JSON을 읽는다. 읽거나 해석할 수 없으면 실패한다. */

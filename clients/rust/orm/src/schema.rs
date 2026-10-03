@@ -84,6 +84,15 @@ impl Schema {
         documents(self.text, self.hash)
     }
 
+    /// 등록할 schema의 runtime model. text가 선언한 hash로 hash되지 않으면 어떤
+    /// statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+    pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
+        self.manifest().map_err(|e| match e {
+            Error::Engine { code, msg } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
+            other => other,
+        })
+    }
+
     /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest

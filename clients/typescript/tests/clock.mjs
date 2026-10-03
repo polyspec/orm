@@ -23,6 +23,12 @@ const work = await mkdtemp(join(tmpdir(), 'orm-ts-clock-'));
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
@@ -68,7 +74,7 @@ async function dropTable(driver, dsn) {
 async function clockMicroseconds(dsn) {
   const db = await Db.connect(dsn);
   try {
-    await db.utils().schema().install([clockText]);
+    await db.utils().schema().install(schemaOf(clockText));
     const before = Date.now();
     for (let i = 0; i < 16; i++) {
       const event = new ClockEvent().connect(db);
@@ -109,7 +115,7 @@ async function readMarks(dsn, column) {
 
 async function markDb(dsn) {
   const db = await Db.connect(dsn);
-  await db.utils().schema().install([markText]);
+  await db.utils().schema().install(schemaOf(markText));
   return db;
 }
 

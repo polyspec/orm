@@ -22,12 +22,12 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 	s := fixtureSchema(t, "rollback")
 	dsn := newDatabase(t, driver)
 	path := strings.TrimPrefix(dsn, "sqlite://")
-	db, err := orm.Connect(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := db.Utils().Schema().Install(s.Text); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
 	end := func() {}

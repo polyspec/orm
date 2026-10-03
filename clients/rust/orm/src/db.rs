@@ -20,6 +20,7 @@ use crate::engine::{self, Dialect};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
+use crate::schema::Schema;
 use crate::tx::{OperationId, TxShared};
 use crate::value::Param;
 use crate::{codes, Error, Result};
@@ -257,6 +258,8 @@ pub(crate) struct DbInner {
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
     plan_order: Mutex<VecDeque<u64>>,
+    /// 이 연결에 등록된 set의 manifest hash.
+    sets: std::sync::RwLock<std::collections::HashSet<String>>,
     pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
@@ -309,8 +312,28 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
 }
 
 impl Db {
+    /// Connects to the database selected by the DSN URI and registers the set
+    /// of a generated schema on the connection; the connect helper of
+    /// generated models calls it. A manifest text that does not hash to its
+    /// declared hash fails with CONFIG before the connection opens.
+    pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db> {
+        schema.registered()?;
+        let db = Db::connect(dsn, pool_size, cfg).await?;
+        db.register(schema)?;
+        Ok(db)
+    }
+
+    /// schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+    pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
+        schema.registered()?;
+        self.inner.sets.write().unwrap().insert(schema.hash().to_owned());
+        Ok(())
+    }
+
     /// Connects to the database selected by the DSN URI with at most
-    /// `pool_size` open connections; zero uses 10.
+    /// `pool_size` open connections; zero uses 10. The connection has no set
+    /// registered: a model request on it fails with SCHEMA_HASH_MISMATCH until
+    /// `install` registers the set of the model.
     pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db> {
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
             return Err(Error::Config("cache sizes must be positive".into()));
@@ -392,6 +415,7 @@ impl Db {
                 zone: parsed.zone,
                 plans: Mutex::new(HashMap::new()),
                 plan_order: Mutex::new(VecDeque::new()),
+                sets: std::sync::RwLock::new(std::collections::HashSet::new()),
                 pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
@@ -450,6 +474,14 @@ impl Db {
         // plan cache는 manifest_hash로 구분되므로, 같은 hash를 선언하고 다른 text를 가진
         // generated code가 다른 model의 plan을 쓰지 않게 cache를 보기 전에 그 text를 확인한다.
         let manifest = req.schema.manifest()?;
+        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
+        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        if !self.inner.sets.read().unwrap().contains(req.schema.hash()) {
+            return Err(Error::Engine {
+                code: codes::SCHEMA_HASH_MISMATCH.into(),
+                msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
+            });
+        }
         let key = req.shape_key();
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());

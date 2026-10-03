@@ -19,7 +19,7 @@ type CompositeMembershipModel struct {
 	fRole      string
 }
 
-var compositeMembershipEntity = &orm.Entity{Name: "composite_membership", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &CompositeMembershipModel{m: c}; c.Bind(x); return x },
+var compositeMembershipEntity = &orm.Entity{Name: "composite_membership", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &CompositeMembershipModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) {
 		return m.(*CompositeMembershipModel).assign(name, v)
 	},

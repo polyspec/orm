@@ -2,7 +2,7 @@
 // delete 를 한 번씩 돌린다. identity column 이 없는 composite_account 에만 쓰고 쓴 row 를 모두
 // 지우므로 database 상태는 그대로다.
 import assert from 'node:assert/strict';
-import { CompositeAccount, Db } from '../dist/index.js';
+import { CompositeAccount, connect } from '../dist/index.js';
 import { errorCode, featureDatabase, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
@@ -10,7 +10,7 @@ const tenant = 990002;
 await runCases('coverage_model_writes.mjs', {
   async model_write_cycle() {
     const { driver, dsn } = featureDatabase();
-    const db = await Db.connect(dsn);
+    const db = await connect(dsn);
     try {
       assert.equal(db.driver, driver);
       const account = () => new CompositeAccount().connect(db);

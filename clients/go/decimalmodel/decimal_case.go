@@ -19,7 +19,7 @@ type DecimalCaseModel struct {
 	fLargeValue *string
 }
 
-var decimalCaseEntity = &orm.Entity{Name: "decimal_case", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &DecimalCaseModel{m: c}; c.Bind(x); return x },
+var decimalCaseEntity = &orm.Entity{Name: "decimal_case", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &DecimalCaseModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*DecimalCaseModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*DecimalCaseModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

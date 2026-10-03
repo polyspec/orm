@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:18baf806c4b5fe4bd93e863b268661912ad292934b4ab93741ebd08fc020a520",
-    "php": "sha256:7add1909db7dd4feca21b0d6f2bb8ad5c389237ca2b5219f0ca015950ae46113",
-    "rust": "sha256:c77394306b32d30072f9f6eafc2dd85f35c6bada9654f3d866a35b112e58003e",
-    "typescript": "sha256:eb2bd20648f13aaeabfa8d8f688b5f4092d0739c0442c714552dfe43c75a41c6"
+    "go": "sha256:00368510c2b9c4c36b2b9cbf4091492a6c592cbd7516821246e539346eaee026",
+    "php": "sha256:e9de3548ef59e93de1a11d417fe1ec7d71291c279bf86c5fdaefbb89a6503476",
+    "rust": "sha256:53a3b24edd61624e80e4ab5cc7a84ca9250fced15c2164be92299881fbb3a442",
+    "typescript": "sha256:e5088b8d9dcd85f69dbf6b6ad36d80d69256cb3204b7fba5da886e0e5c7605f5"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -211,13 +211,14 @@
       },
       "methods": [
         "connect",
+        "connectSchema",
         "transaction",
         "utils",
         "close",
         "stats"
       ],
-      "ownership": "Owns the pool, the planners of registered schemas, and the plan and statement caches.",
-      "ownership_ko": "pool, 등록된 schema의 planner, plan cache, statement cache를 가진다."
+      "ownership": "Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches.",
+      "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다."
     },
     {
       "id": "TransactionFlow",
@@ -292,8 +293,8 @@
         "installed",
         "empty"
       ],
-      "ownership": "Installs a manifest with the client DDL renderer.",
-      "ownership_ko": "client DDL 렌더러로 manifest를 설치한다."
+      "ownership": "Installs the set of a generated schema with the client DDL renderer and registers it on the connection.",
+      "ownership_ko": "client DDL 렌더러로 generated schema의 set을 설치하고 연결에 등록한다."
     },
     {
       "id": "AesUtils",
@@ -1046,11 +1047,11 @@
         "SCHEMA_HASH_MISMATCH",
         "driver error"
       ],
-      "state": "Opens the pool selected by the DSN URI scheme",
+      "state": "Opens the pool selected by the DSN URI scheme without any registered schema set",
       "native": {
         "go": {
-          "symbol": "clients/go/model/orm.go::Connect",
-          "signature": "func(dsn string, cfg orm.Config) (*orm.DB, error)"
+          "symbol": "clients/go/orm/db.go::Connect",
+          "signature": "func(dsn string, cfg Config) (*DB, error)"
         },
         "php": {
           "symbol": "clients/php/src/Orm.php::Orm\\Orm::connect",
@@ -1063,6 +1064,37 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.connect",
           "signature": "public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db>"
+        }
+      }
+    },
+    {
+      "id": "Db.connectSchema",
+      "for": "once",
+      "inputs": [
+        "SchemaConnection"
+      ],
+      "output": "Db",
+      "errors": [
+        "CONFIG",
+        "driver error"
+      ],
+      "state": "Opens the pool selected by the DSN URI scheme and registers the set of a generated schema on it; the connect helper of generated code calls it, and a manifest text that does not hash to its manifestHash returns CONFIG before the connection opens",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/db.go::ConnectSchema",
+          "signature": "func(dsn string, s *Schema, cfg Config) (*DB, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Orm.php::Orm\\Orm::connectSchema",
+          "signature": "public static function connectSchema(string $dsn, Orm\\Schema $schema, Orm\\Config $config): Orm\\Db"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/db.rs::Db::connect_schema",
+          "signature": "pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.connectSchema",
+          "signature": "public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db>"
         }
       }
     },
@@ -1185,7 +1217,7 @@
       "id": "SchemaUtils.install",
       "for": "once",
       "inputs": [
-        "ManifestJson"
+        "GeneratedSchema"
       ],
       "output": "Success",
       "errors": [
@@ -1193,15 +1225,15 @@
         "SCHEMA_INVALID",
         "driver error"
       ],
-      "state": "Creates the tables of the document set when none of them exists and changes nothing when all exist",
+      "state": "Creates the tables of the document set of a generated schema when none of them exists, changes nothing when all exist, and registers the set on the connection; a manifest text that does not hash to its manifestHash returns CONFIG before any statement",
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",
-          "signature": "receiver=*SchemaUtils func(manifestText string) error"
+          "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
           "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
-          "signature": "public function install(array $documents): void"
+          "signature": "public function install(Orm\\Schema $schema): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
@@ -1209,7 +1241,7 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
-          "signature": "public async install(texts: readonly string[]): Promise<void>"
+          "signature": "public async install(schema: Schema): Promise<void>"
         }
       }
     },

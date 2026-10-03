@@ -27,11 +27,11 @@ table secret_note {
 // connection with only that version's key reads the value.
 func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 	s := documentSchema(t, aesKeysSchema)
-	manifest := s.Text
+	manifest := s
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "aes-keys.sqlite")
 	open := func(cfg orm.Config) *orm.DB {
 		t.Helper()
-		db, err := orm.Connect(dsn, s, cfg)
+		db, err := orm.ConnectSchema(dsn, s, cfg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,7 +72,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 // differs from AESKeys[AESVersion].
 func TestAESKeyMustMatchKeyOfCurrentVersion(t *testing.T) {
 	s := documentSchema(t, aesKeysSchema)
-	_, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "aes-conflict.sqlite"), s,
+	_, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "aes-conflict.sqlite"), s,
 		orm.Config{AESKey: "other-key", AESKeys: map[int32]string{1: "note-key-one"}, AESVersion: 1})
 	if orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), "AESKey") {
 		t.Fatalf("open error = %v, want CONFIG about AESKey", err)

@@ -35,12 +35,12 @@ func TestAuditOperationID(t *testing.T) {
 			// 새 database라 이전 실행의 table, trigger, function이 남지 않는다.
 			dsn := newDatabase(t, driver)
 			sqlitePath := strings.TrimPrefix(dsn, "sqlite://")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			if err := db.Utils().Schema().Install(s.Text); err != nil {
+			if err := db.Utils().Schema().Install(s); err != nil {
 				t.Fatal(err)
 			}
 			items := rowEntity("item", s, "seq", "title", "operation_id", "deleted_at")

@@ -109,7 +109,7 @@ func TestCoverageAuditHistory(t *testing.T) {
 	defer dropAudit(t, raw, driver)
 
 	s := fixtureSchema(t, "audit")
-	db, err := orm.Connect(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestCoverageAuditHistory(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if err := db.Utils().Schema().Install(s.Text); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
 	items := rowEntity("item", s, "seq", "title", "operation_id", "deleted_at")

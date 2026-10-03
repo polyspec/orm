@@ -32,10 +32,10 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 
 | 언어 | 연결 | replica로 읽기 | primary로 쓰기 |
 |---|---|---|---|
-| PHP | `$master = Orm::connect($primaryDsn, $config);` `$slave1 = Orm::connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
+| PHP | `$master = \Polyspec\Orm\Tests\Model\connect($primaryDsn, $config);` `$slave1 = \Polyspec\Orm\Tests\Model\connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
 | Go | `master, err := model.Connect(primaryDSN, cfg)` `slave1, err := model.Connect(replicaDSN, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
-| Rust | `let master = Db::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = Db::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
-| TypeScript | `const master = await Db.connect(primaryDsn, schemaPath, options);` `const slave1 = await Db.connect(replicaDsn, schemaPath, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
+| Rust | `let master = model::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = model::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
+| TypeScript | `const master = await connect(primaryDsn, options);` `const slave1 = await connect(replicaDsn, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
 
 - 모델이나 읽어 온 행은 자신이 연결된 연결만 사용한다. `master`의 트랜잭션 안에서 `slave1`에 연결한 모델은 트랜잭션 밖에서 `slave1`로 실행되고, `connect`가 없는 모델은 트랜잭션 안에서 실행된다.
 - 연결마다 풀, prepared statement, 세션 설정이 따로 있다.

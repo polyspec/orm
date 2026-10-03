@@ -53,7 +53,7 @@ type AuthorModel struct {
 	fSerializeData         orm.StyledValue
 }
 
-var authorEntity = &orm.Entity{Name: "author", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &AuthorModel{m: c}; c.Bind(x); return x },
+var authorEntity = &orm.Entity{Name: "author", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &AuthorModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*AuthorModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*AuthorModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

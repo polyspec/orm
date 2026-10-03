@@ -24,7 +24,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 	}
 	connectOne := func(t *testing.T, dsn string) *DB {
 		t.Helper()
-		db, err := Connect(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{PoolSize: 1})
+		db, err := ConnectSchema(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{PoolSize: 1})
 		if err != nil {
 			t.Fatal(err)
 		}

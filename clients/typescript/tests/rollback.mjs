@@ -31,6 +31,12 @@ const work = await mkdtemp(join(tmpdir(), 'orm-ts-rollback-'));
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
@@ -80,7 +86,7 @@ async function dropTable(driver, dsn) {
 /** Opens the client, installs the fixture and, on SQLite, creates the trigger that raises ROLLBACK. */
 async function connect(driver, dsn) {
   const db = await Db.connect(dsn);
-  await db.utils().schema().install([rollbackText]);
+  await db.utils().schema().install(schemaOf(rollbackText));
   if (driver === 'sqlite') {
     await native(driver, dsn, ["CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"]);
   }

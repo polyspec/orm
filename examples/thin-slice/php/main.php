@@ -18,7 +18,7 @@ const AES_KEY = 'bench-salt';
 
 $lastSql = '';
 $lastArgs = [];
-$db = Orm::connect(dsn(), new Config(
+$db = \Polyspec\Orm\Tests\Model\connect(dsn(), new Config(
     aesKey: AES_KEY,
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {

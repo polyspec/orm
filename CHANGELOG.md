@@ -1,5 +1,7 @@
 # Changelog
 
+- N3.2: a connection plans only the schema sets registered on it, in every client. The connect helper of generated code (Go `model.Connect`, PHP `Polyspec\Orm\Tests\Model\connect`, Rust `model::connect`, TypeScript `connect`) opens a connection and registers its set through `connectSchema`, and `install(schema)` takes the generated schema value and registers the set it installs; a raw connection registers none. A request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` before execution, also with a cached plan, and a manifest text that does not hash to its declared hash fails with `CONFIG` when it is connected or installed. Go checks the schema before its plan cache, so edited generated code no longer runs from a cached plan.
+
 - N3.3.1: this branch provides no `utils().schema().register(manifestJson)`; a set reaches a connection through the connect helper of its generated code or through `install()`, and the records say so.
 
 - T18: a relation request carries every component of its key, one `{left, right}` pair per component in key order (`keys` in place of `left` and `right`), and each `match<L>With<R>()` adds one pair, so `composite_membership` loads from `composite_account` by `tenant_id` and `account_id` together in Go, PHP, Rust and TypeScript, also through a child with its own connection. An empty key list, a pair without a column or a column used twice on one side is `IR_INVALID`. Rust `Core::add_match` replaces `set_match`.

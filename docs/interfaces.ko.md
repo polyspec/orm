@@ -102,9 +102,9 @@ classDiagram
 | 클라이언트 | 공개 연결 호출 | 결과 |
 |---|---|---|
 | Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
-| PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
-| Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
-| TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |
+| PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
+| Rust | `model::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| TypeScript | generated module의 `connect(dsn, options)` | `Promise<Db>` |
 
 ### 5.1 생성과 언어별 표기
 
@@ -174,7 +174,7 @@ classDiagram
 | `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
 | `wasInserted(entity, sequence)` | 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원 |
 | `backendWaitingForLock(ctx)` | PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환 |
-| `schema().install(documents)` | 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만든다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
+| `schema().install(schema)` | generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)` | 스키마 확인 |
 | `schema().empty()` | 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다 |
 | `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환 |

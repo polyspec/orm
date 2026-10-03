@@ -68,6 +68,24 @@ final class RuntimeModel
     }
 
     /**
+     * manifest text를 header 줄에서 나눈 document text다. 각 document의 이름을
+     * label로 갖는다. header로 시작하지 않는 text는 SCHEMA_INVALID다.
+     *
+     * @return array<string, string>
+     */
+    public static function splitManifest(string $text): array
+    {
+        if (!str_starts_with($text, 'dbspec 1 ')) {
+            throw new OrmException(Code::SCHEMA_INVALID, 'manifest text does not start with a dbspec header');
+        }
+        $out = [];
+        foreach (preg_split('/(?<=\n)(?=dbspec 1 )/', $text) as $document) {
+            $out['document ' . count($out)] = $document;
+        }
+        return $out;
+    }
+
+    /**
      * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. 읽을 수 없는 파일은
      * CONFIG, signature가 없는 파일은 SCHEMA_INVALID로 실패한다. @param list<string> $paths
      */

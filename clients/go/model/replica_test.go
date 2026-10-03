@@ -79,7 +79,7 @@ func awaitReplica(t *testing.T, driver, primary, replica string) {
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
 func TestPrimaryAndReplica(t *testing.T) {
-	manifest := model.ManifestText
+	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
 			primary, replica := dsns[0], dsns[1]
@@ -140,7 +140,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 // that the process may only read: SQLite opens it read-only, reads succeed,
 // and a write returns READ_ONLY.
 func TestReadOnlySQLite(t *testing.T) {
-	manifest := model.ManifestText
+	manifest := model.Schema
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
 	dsn := "sqlite://" + path
 	writable, err := model.Connect(dsn, orm.Config{})

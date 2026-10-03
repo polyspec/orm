@@ -49,6 +49,40 @@ export interface TransactionOptions {
 
 const models = new Map<string, RuntimeModel>();
 
+/** The generated schema value: the manifest text of a document set with its declared manifestHash. */
+export interface Schema {
+  readonly manifestText: string;
+  readonly manifestHash: string;
+}
+
+/**
+ * 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지 않으면 어떤
+ * statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+ */
+export function schemaModel(schema: Schema): RuntimeModel {
+  if (schema === null || typeof schema !== 'object' || typeof schema.manifestText !== 'string' || typeof schema.manifestHash !== 'string') {
+    throw new OrmError('CONFIG', 'a schema is the manifestText and manifestHash of generated code');
+  }
+  const loaded = models.get(schema.manifestHash);
+  if (loaded !== undefined && loaded.manifestText === schema.manifestText) return loaded;
+  try {
+    return modelOfManifest(schema.manifestText, schema.manifestHash);
+  } catch (error) {
+    if (error instanceof OrmError && error.code === 'SCHEMA_HASH_MISMATCH') {
+      throw new OrmError('CONFIG', `invalid schema manifest: the manifest text does not hash to its declared manifestHash ${schema.manifestHash}`, error);
+    }
+    throw error;
+  }
+}
+
+// 등록은 이 module의 registerSet과 Db.connectSchema만 한다. package는 이 symbol을 내보내지 않는다.
+const REGISTER = Symbol('register');
+
+/** schema의 set을 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다. */
+export function registerSet(db: Db, model: RuntimeModel): void {
+  db.root()[REGISTER](model);
+}
+
 /**
  * Builds and registers the runtime model of a manifest text; generated model
  * modules call it once when they are imported. Registering the same manifest
@@ -289,8 +323,9 @@ export class Db {
   }
 
   /**
-   * Opens the database selected by the DSN URI scheme. A request names the
-   * manifest its models were generated from; the imported models register it.
+   * Opens the database selected by the DSN URI scheme. The connection has no
+   * set registered: a model request on it fails with SCHEMA_HASH_MISMATCH
+   * until install registers the set of the model.
    */
   public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
     if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError('CONFIG', 'connect takes the DSN and an options object');
@@ -308,6 +343,23 @@ export class Db {
     const db = new Db(pool, parsed.zone, options);
     try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
     return db;
+  }
+
+  /**
+   * Opens the database selected by the DSN URI scheme and registers the set
+   * of a generated schema on the connection; the connect helper of generated
+   * models calls it. A manifest text that does not hash to its declared hash
+   * fails with CONFIG before the connection opens.
+   */
+  public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db> {
+    const model = schemaModel(schema);
+    const db = await Db.connect(dsn, options);
+    db[REGISTER](model);
+    return db;
+  }
+
+  public [REGISTER](model: RuntimeModel): void {
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.driver));
   }
 
   public get driver(): DriverName { return this.pool.name; }
@@ -461,16 +513,14 @@ export class Db {
 
   public async plan(request: Request): Promise<Cached> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    // 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
+    const engine = this.engines.get(request.manifest_hash);
+    if (engine === undefined) {
+      throw new OrmError('SCHEMA_HASH_MISMATCH', `manifest ${request.manifest_hash} is not registered on this connection: connect through its generated models or install it`);
+    }
     const key = canonical(request);
     const cached = this.plans.get(key);
     if (cached) return cached;
-    let engine = this.engines.get(request.manifest_hash);
-    if (engine === undefined) {
-      const model = models.get(request.manifest_hash);
-      if (model === undefined) throw new OrmError('SCHEMA_HASH_MISMATCH', `no imported models were generated from manifest ${request.manifest_hash}`);
-      engine = new Engine(model, this.driver);
-      this.engines.set(request.manifest_hash, engine);
-    }
     const plan = engine.compile(request);
     const entry = { plan, id: planId(key) };
     this.plans.set(key, entry);

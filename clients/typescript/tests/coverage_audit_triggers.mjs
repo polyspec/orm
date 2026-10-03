@@ -9,6 +9,12 @@ import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tabl
 
 const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbs'), 'utf8');
 
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 /** Registers the model of the audit document and returns a model class per entity. */
 function auditModels() {
   const parsed = parseDbspec(auditText, {});
@@ -46,7 +52,7 @@ await runCases('coverage_audit_triggers.mjs', {
     try {
       assert.equal(db.driver, driver);
       await withCleanup(async () => {
-        await db.utils().schema().install([auditText]);
+        await db.utils().schema().install(schemaOf(auditText));
         const item = title => { const m = new Item(); m[CORE].setValue('title', title); return m; };
         const byKey = seq => new Item().raw('{seq} = ?', seq);
         assert.equal(await errorCode(item('outside').connect(db).create()), 'CONFIG', 'insert without an operation id');

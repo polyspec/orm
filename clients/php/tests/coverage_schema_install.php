@@ -9,8 +9,8 @@ require __DIR__ . '/coverage_cases.php';
 
 use Orm\Code;
 use Orm\Db;
-use Polyspec\Orm\Tests\Model\Author;
-use Orm\Registry;
+use Orm\RuntimeModel;
+use Orm\Schema;
 
 const PARTIAL_DOCUMENT = <<<'DBSPEC'
 dbspec 1 partial
@@ -47,8 +47,8 @@ runCoverageCases($argv, [
         $db = coverageConnect($dsn);
         try {
             coverageWant(installedTable($db, 'author'), 'the bench database has no author table');
-            // generated model이 등록한 manifest hash의 manifest text를 설치한다.
-            $db->utils()->schema()->install([Registry::manifestText(Author::meta()['manifest_hash'])]);
+            // generated code의 schema 값을 설치한다.
+            $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
         } finally {
             $db->close();
         }
@@ -58,7 +58,8 @@ runCoverageCases($argv, [
         $db = coverageConnect($dsn);
         try {
             coverageWant(!installedTable($db, 'coverage_install_missing'), 'coverage_install_missing exists before the case');
-            $code = coverageCode(fn() => $db->utils()->schema()->install([PARTIAL_DOCUMENT]));
+            $partial = RuntimeModel::build(RuntimeModel::parse(['partial.dbs' => PARTIAL_DOCUMENT]));
+            $code = coverageCode(fn() => $db->utils()->schema()->install(new Schema($partial->manifestText, $partial->manifestHash)));
             coverageWant($code === Code::CONFIG, "a partly installed document set is $code, want CONFIG");
             coverageWant(!installedTable($db, 'coverage_install_missing'), 'the rejected install created coverage_install_missing');
         } finally {

@@ -11,9 +11,8 @@ use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\User;
 use Orm\Config;
-use Orm\Orm;
 
-$db = Orm::connect(
+$db = \Polyspec\Orm\Tests\Model\connect(
     dsn(),
     new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'),
 );

@@ -1,13 +1,13 @@
 // constraints_and_relations coverage: database 가 거부한 foreign key, check, unique 위반이 각각
 // FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY 로 보고되고 아무 row 도 바뀌지 않는지 확인한다.
 import assert from 'node:assert/strict';
-import { Author, Db, User } from '../dist/index.js';
+import { Author, User, connect } from '../dist/index.js';
 import { errorCode, featureDatabase, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_constraints_and_relations.mjs', {
   async constraint_errors() {
     const { driver, dsn } = featureDatabase();
-    const db = await Db.connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
       const snapshot = async () => {

@@ -36,24 +36,24 @@ orm::models!();
 
 use model::Author;
 
-let db = orm::Db::connect(&dsn, 8, orm::Config::default()).await?;
+let db = model::connect(&dsn, 8, orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
-Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc`, …). The chain, join, relation, column, and getter methods of the [DSL](../../docs/dsl.md) are generated for the calls the scanned source makes. An unknown column, operator, or argument count on a model the source names stops the build with the file position. The generated module embeds the manifest text of its document set and its `manifestHash` (`model::SCHEMA`, `model::MANIFEST_HASH`), so one connection serves models of any schema.
+Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc`, …). The chain, join, relation, column, and getter methods of the [DSL](../../docs/dsl.md) are generated for the calls the scanned source makes. An unknown column, operator, or argument count on a model the source names stops the build with the file position. The generated module embeds the manifest text of its document set and its `manifestHash` (`model::SCHEMA`, `model::MANIFEST_HASH`) and its connect helper `model::connect`, which opens a connection with `Db::connect_schema` and registers the set on it. A connection plans only the sets registered on it ([protocol](../../docs/protocol.md)).
 
 ## Connection
 
-`Db::connect(dsn, pool_size, config)` takes a DSN URI; the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
+`model::connect(dsn, pool_size, config)` and `Db::connect(dsn, pool_size, config)` take a DSN URI; `Db::connect` opens a connection without any registered set. the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
-`db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database and applies the statements; it does nothing when every table of the set exists and returns `CONFIG` when only some exist.
+`db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist.
 
 ## Required calls
 
 | Operation | Rust API |
 |---|---|
 | Validate a generated manifest hash | `Schema::manifest()` builds the runtime model from the embedded manifest text and checks its `manifestHash`; `Manifest::load(text, hash)` does the same for another manifest text |
-| Select an engine and expose models | `Db::connect` selects the dialect from the DSN; each generated model embeds its schema and registers its entity descriptor in its generated module, so no global registration call is required |
+| Select an engine and expose models | `model::connect` selects the dialect from the DSN and registers the set of the generated models on the connection; a request of a set that is not registered on its connection returns `SCHEMA_HASH_MISMATCH` |
 | Install schema objects | `db.utils().schema().install(&model::SCHEMA)` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | Run a callback with a `Send` future | `db.transaction_send(callback).await` |

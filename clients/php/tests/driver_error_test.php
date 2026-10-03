@@ -77,7 +77,7 @@ function connect(string $dsn): Db
 {
     global $documents;
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install($documents);
+    $db->utils()->schema()->install(\RefusalCase\Orm\schema());
     return $db;
 }
 

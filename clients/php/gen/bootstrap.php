@@ -4,9 +4,17 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
+use Orm\Config;
+use Orm\Db;
+use Orm\Orm;
 use Orm\Registry;
+use Orm\Schema;
 
-Registry::generated('sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa', 'dbspec 1 bench
+/** The manifestHash of the document set the models were generated from. */
+const MANIFEST_HASH = 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa';
+
+/** The manifest text of the document set the models were generated from. */
+const MANIFEST_TEXT = 'dbspec 1 bench
 
 table author {
   seq i64 identity
@@ -163,7 +171,21 @@ table task {
   primary key (seq)
   check ck_task_state (state in (\'open\', \'done\'))
 }
-');
+';
+
+/** The generated schema value: install takes it to create the tables and register the set. */
+function schema(): Schema
+{
+    return new Schema(MANIFEST_TEXT, MANIFEST_HASH);
+}
+
+/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */
+function connect(string $dsn, Config $config): Db
+{
+    return Orm::connectSchema($dsn, schema(), $config);
+}
+
+Registry::generated(MANIFEST_HASH, MANIFEST_TEXT);
 Registry::register(Author::class);
 Registry::register(User::class);
 Registry::register(Service::class);

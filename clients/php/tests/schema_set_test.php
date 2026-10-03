@@ -1,17 +1,18 @@
 <?php
 // Several dbspec document sets in one process, on SQLite, MySQL and
 // PostgreSQL. The generated bench models (clients/php/gen) and the models of
-// contracts/fixtures/decimal_schema.dbs, generated into their own
-// namespace, are loaded together; each model class carries the manifestHash
-// of its own set, and any connection plans a request with the runtime model
-// of the request's manifest hash. No registration call exists: a set that
-// another connection installed is used by loading its generated models. A
-// request whose manifest hash no loaded generated models registered, and
-// generated code whose manifest text does not hash to its declared
-// manifestHash, fail with SCHEMA_HASH_MISMATCH before execution. Each case
-// runs in its own database (a new SQLite file, or a database the case creates
-// on the server of ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN); the test fails
-// when either variable is unset.
+// contracts/fixtures/decimal_schema.dbs, generated into their own namespace,
+// are loaded together; each model class carries the manifestHash of its own
+// set. A connection plans only the sets registered on it: the connect helper
+// of generated code and install register a set, and a raw connection
+// registers none. A request of a set that is not registered on its connection
+// fails with SCHEMA_HASH_MISMATCH before execution, also when another
+// connection installed the set. A manifest text that does not hash to its
+// declared manifestHash fails with CONFIG when it is connected or installed,
+// and generated code of such a text fails with SCHEMA_HASH_MISMATCH when it
+// loads. Each case runs in its own database (a new SQLite file, or a database
+// the case creates on the server of ORM_TEST_MYSQL_DSN or
+// ORM_TEST_POSTGRES_DSN); the test fails when either variable is unset.
 // Usage: php clients/php/tests/schema_set_test.php [case ...]
 declare(strict_types=1);
 
@@ -24,6 +25,7 @@ use Orm\Generator;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\RuntimeModel;
+use Orm\Schema;
 use SchemaSetDecimal\Orm\DecimalCase;
 
 const CASE_DEADLINE_SECONDS = 60;
@@ -45,7 +47,6 @@ function autoload(string $dir, string $namespace): void
     });
 }
 
-$benchDocuments = [(string) file_get_contents("$root/schema/bench.dbs")];
 $decimalDocuments = [(string) file_get_contents("$root/contracts/fixtures/decimal_schema.dbs")];
 $decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $decimalDocuments[0]]));
 Generator::generate($decimalModel, "$work/decimal", 'SchemaSetDecimal\\Orm');
@@ -107,16 +108,15 @@ function caseDatabase(string $driver, string $base): array
 }
 
 /**
- * bench set으로 시작한 연결이 bench와 decimal set을 설치하고(decimal은 두 번이며
+ * bench helper로 연 연결이 bench와 decimal set을 설치하고(decimal은 두 번이며
  * 두 번째 설치는 아무것도 바꾸지 않는다) 두 set의 model을 transaction 안팎에서 쓴다.
  */
 function severalSchemas(string $dsn): void
 {
-    global $benchDocuments, $decimalDocuments;
-    $db = Orm::connect($dsn, new Config());
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     try {
-        foreach ([$benchDocuments, $decimalDocuments, $decimalDocuments] as $documents) {
-            $db->utils()->schema()->install($documents);
+        foreach ([\Polyspec\Orm\Tests\Model\schema(), \SchemaSetDecimal\Orm\schema(), \SchemaSetDecimal\Orm\schema()] as $schema) {
+            $db->utils()->schema()->install($schema);
         }
         (new User)($db)->setName('core')->create();
         (new DecimalCase)($db)->setSeq(1)->setAmount('48.0450')->create();
@@ -135,67 +135,83 @@ function severalSchemas(string $dsn): void
     }
 }
 
-/**
- * 다른 연결이 설치한 decimal set을 등록 호출 없이 쓴다. 설치 전에는 decimal
- * table이 없으므로 read가 DRIVER이고 아무것도 만들어지지 않는다. 설치 뒤에는
- * 먼저 열린 연결에서도 decimal model이 읽고 쓴다.
- */
-function installedElsewhere(string $dsn): void
+/** 실행한 statement 수를 세는 Config다. */
+function counted(int &$n): Config
 {
-    global $benchDocuments, $decimalDocuments;
-    $db = Orm::connect($dsn, new Config());
+    return new Config(onQuery: static function () use (&$n): void {
+        $n++;
+    });
+}
+
+/**
+ * 연결에 등록되지 않은 set의 요청은 table이 있어도 실행 전에
+ * SCHEMA_HASH_MISMATCH다. raw 연결은 아무 set도 등록하지 않고, bench helper로
+ * 연 연결은 다른 연결이 설치한 decimal set을 등록하지 않는다. decimal helper로
+ * 연 연결은 그 set을 쓴다.
+ */
+function unregisteredSchema(string $dsn): void
+{
+    $runs = 0;
+    $raw = Orm::connect($dsn, counted($runs));
     try {
-        check(code(fn() => (new DecimalCase)($db)->getCount()) === Code::DRIVER, 'decimal read before installation');
-        check(code(fn() => (new DecimalCase)($db)->getCount()) === Code::DRIVER, 'the failed read created no table');
-        $installer = Orm::connect($dsn, new Config());
+        check(code(fn() => (new User)($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read on a raw connection');
+    } finally {
+        $raw->close();
+    }
+    $core = \Polyspec\Orm\Tests\Model\connect($dsn, counted($runs));
+    try {
+        $installer = \SchemaSetDecimal\Orm\connect($dsn, new Config());
         try {
-            foreach ([$benchDocuments, $decimalDocuments] as $documents) {
-                $installer->utils()->schema()->install($documents);
-            }
+            $installer->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
+            (new DecimalCase)($installer)->setSeq(1)->setAmount('1.0000')->create();
         } finally {
             $installer->close();
         }
-        (new DecimalCase)($db)->setSeq(3)->setAmount('2.5000')->create();
-        $amount = (new DecimalCase)($db)->addAllColumns()->getBySeq(3)->getAmount();
-        check($amount === '2.5000', "decimal row after installation elsewhere $amount");
+        check(code(fn() => (new DecimalCase)($core)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'decimal read on the bench connection');
+        check(code(fn() => (new DecimalCase)($core)->setSeq(2)->setAmount('2.0000')->create()) === Code::SCHEMA_HASH_MISMATCH, 'decimal write on the bench connection');
+        check($runs === 0, "unregistered requests ran $runs statements");
     } finally {
-        $db->close();
+        $core->close();
+    }
+    $decimal = \SchemaSetDecimal\Orm\connect($dsn, new Config());
+    try {
+        $rows = (new DecimalCase)($decimal)->getCount();
+        check($rows === 1, "decimal rows through the decimal helper $rows");
+    } finally {
+        $decimal->close();
     }
 }
 
 /**
- * manifest text가 선언한 manifestHash로 hash되지 않는 generated model은
- * SCHEMA_HASH_MISMATCH로 실행 전에 거절되고 table은 바뀌지 않는다. 같은 hash의
- * engine이 이미 cache되어 있어도 그렇다.
+ * manifest text가 선언한 manifestHash로 hash되지 않는 schema의 connect와
+ * install은 어떤 statement보다 먼저 CONFIG이고 table을 바꾸지 않는다. 그런
+ * text의 generated code는 load할 때 SCHEMA_HASH_MISMATCH다.
  */
 function editedManifest(string $dsn): void
 {
     global $work, $decimalDocuments, $decimalModel;
     static $edits = 0;
-    $db = Orm::connect($dsn, new Config());
+    $edited = new Schema(str_replace('decimal(13,4)', 'decimal(14,4)', $decimalModel->manifestText), $decimalModel->manifestHash);
+    check($edited->manifestText !== $decimalModel->manifestText, 'edited manifest differs');
+    check(code(fn() => Orm::connectSchema($dsn, $edited, new Config())) === Code::CONFIG, 'connect with an edited manifest');
+    $runs = 0;
+    $db = \SchemaSetDecimal\Orm\connect($dsn, counted($runs));
     try {
-        $db->utils()->schema()->install($decimalDocuments);
-        // 진짜 decimal set의 engine을 먼저 cache한다.
+        check(code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
+        check($runs === 0, "the edited install ran $runs statements");
+        $db->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
         check((new DecimalCase)($db)->getCount() === 0, 'decimal read');
-        $edited = str_replace('decimal(13,4)', 'decimal(14,4)', $decimalDocuments[0]);
-        check($edited !== $decimalDocuments[0], 'edited manifest differs');
-        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $edited]));
+        // 편집한 text의 generated code가 진짜 decimal set의 hash를 선언한다.
+        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => str_replace('decimal(13,4)', 'decimal(14,4)', $decimalDocuments[0])]));
         $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
         $dir = "$work/edited-$edits";
         Generator::generate($editedModel, $dir, $namespace);
-        // 편집한 text와 model은 그대로 두고 선언한 hash만 진짜 decimal set의 hash로 바꾼다.
         foreach (glob("$dir/*.php") as $file) {
             file_put_contents($file, str_replace($editedModel->manifestHash, $decimalModel->manifestHash, (string) file_get_contents($file)));
         }
-        autoload($dir, $namespace);
         check(code(function () use ($dir): void {
             require "$dir/bootstrap.php";
         }) === Code::SCHEMA_HASH_MISMATCH, 'loading generated code of an edited manifest');
-        $class = "$namespace\\DecimalCase";
-        check($class::meta()['manifest_hash'] === $decimalModel->manifestHash, 'the edited model declares the decimal manifest hash');
-        check(code(fn() => (new $class)($db)->setSeq(1)->setAmount('1.0000')->create()) === Code::SCHEMA_HASH_MISMATCH, 'write of the edited model');
-        check(code(fn() => (new $class)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'read of the edited model');
-        check((new DecimalCase)($db)->getCount() === 0, 'decimal rows after the rejected requests');
         [$driver] = Orm::parseDsn($dsn);
         $type = match ($driver) {
             'mysql' => $db->pdo()->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'decimal_case' AND COLUMN_NAME = 'amount'")->fetchColumn(),
@@ -213,38 +229,10 @@ function editedManifest(string $dsn): void
     }
 }
 
-/**
- * 어떤 generated code도 등록하지 않은 manifest hash를 싣는 요청은 table이
- * 있어도 SCHEMA_HASH_MISMATCH로 실행 전에 실패하며 다른 model이 plan하지 않는다.
- */
-function unregisteredSchema(string $dsn): void
-{
-    global $work;
-    static $sets = 0;
-    $documents = ["dbspec 1 schema_set_unloaded\n\ntable schema_set_item {\n  seq i64 identity\n  label varchar(64)\n  primary key (seq)\n}\n"];
-    $namespace = 'SchemaSetUnloaded' . (++$sets) . '\\Orm';
-    $dir = "$work/unloaded-$sets";
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['unloaded.dbs' => $documents[0]])), $dir, $namespace);
-    // model class만 읽고 bootstrap.php는 읽지 않는다.
-    autoload($dir, $namespace);
-    $class = "$namespace\\SchemaSetItem";
-    $db = Orm::connect($dsn, new Config());
-    try {
-        $db->utils()->schema()->install($documents);
-        check(code(fn() => (new $class)($db)->addAllColumns()->gets()) === Code::SCHEMA_HASH_MISMATCH, 'read of an unregistered manifest');
-        check(code(fn() => (new $class)($db)->setLabel('x')->create()) === Code::SCHEMA_HASH_MISMATCH, 'write of an unregistered manifest');
-        $rows = (int) $db->pdo()->query('SELECT COUNT(*) FROM schema_set_item')->fetchColumn();
-        check($rows === 0, "rows written by the rejected request: $rows");
-    } finally {
-        $db->close();
-    }
-}
-
 $cases = [
     'several_schemas' => severalSchemas(...),
-    'installed_elsewhere' => installedElsewhere(...),
-    'edited_manifest' => editedManifest(...),
     'unregistered_schema' => unregisteredSchema(...),
+    'edited_manifest' => editedManifest(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 $targets = ['sqlite' => ''];

@@ -102,6 +102,7 @@ classDiagram
         ConnectionPool pool
         Cache_Sql_Statement statements
         connect()
+        connectSchema()
         transaction()
         utils()
         close()
@@ -220,12 +221,12 @@ classDiagram
 | Plan | Immutable statements and assembly metadata cached per request shape. |
 | Step | One SQL statement of a plan. |
 | Assemble | Maps result columns by position to models, joins, and relations. |
-| Db | Owns the pool, the planners of registered schemas, and the plan and statement caches. |
+| Db | Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches. |
 | TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. |
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
-| SchemaUtils | Installs a manifest with the client DDL renderer. |
+| SchemaUtils | Installs the set of a generated schema with the client DDL renderer and registers it on the connection. |
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |

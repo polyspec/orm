@@ -87,7 +87,7 @@ function connect(string $dsn): Db
 {
     global $documents;
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install($documents);
+    $db->utils()->schema()->install(\RollbackCase\Orm\schema());
     [$driver, $pdo] = native($dsn);
     if ($driver === 'sqlite') {
         $pdo->exec("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END");

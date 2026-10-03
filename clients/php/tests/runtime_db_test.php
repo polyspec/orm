@@ -82,7 +82,7 @@ function database(string $driver, string $dsn): Db
     global $documents;
     dropAll($driver, $dsn);
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install($documents);
+    $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
     return $db;
 }
 
@@ -92,7 +92,7 @@ $cases['install renders the document set'] = function (Db $db): void {
     global $documents;
     $count = static fn(string $table): int => (int) $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
     want($count('item') === 0 && $count('item_history') === 0 && $count('sample') === 0, 'installed tables');
-    $db->utils()->schema()->install($documents);
+    $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
     want($count('sample') === 0, 'a repeated install');
 };
 

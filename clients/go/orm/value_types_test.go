@@ -38,12 +38,12 @@ func TestRuntimeValueTypes(t *testing.T) {
 			t.Logf("start %s", driver)
 			defer func() { t.Logf("end %s in %s", driver, time.Since(start)) }()
 			dsn := newDatabase(t, driver)
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			if err := db.Utils().Schema().Install(s.Text); err != nil {
+			if err := db.Utils().Schema().Install(s); err != nil {
 				t.Fatal(err)
 			}
 			ent := rowEntity("typed_value", s, columns...)

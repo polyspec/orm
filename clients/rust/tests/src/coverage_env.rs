@@ -15,7 +15,7 @@ pub async fn connect() -> Db {
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
     let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
-    let db = Db::connect(&dsn, 2, config).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = super::model::connect(&dsn, 2, config).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     db
 }

@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         blind_index_key: "bench-blind-index".into(),
         ..Default::default()
     };
-    let db = orm::Db::connect(&dsn(), 4, config).await?;
+    let db = model::connect(&dsn(), 4, config).await?;
 
     // A join child with its own ON conditions whose WHERE conditions are placed
     // in a group, and two levels of relations with options.

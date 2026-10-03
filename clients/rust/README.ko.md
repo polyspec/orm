@@ -36,24 +36,24 @@ orm::models!();
 
 use model::Author;
 
-let db = orm::Db::connect(&dsn, 8, orm::Config::default()).await?;
+let db = model::connect(&dsn, 8, orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
-모든 모델에는 고정 메서드(`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc` 등)가 있다. [DSL](../../docs/dsl.ko.md)의 체인, join, relation, 열 및 getter 메서드는 검사한 소스의 호출에 맞춰 생성한다. 소스에 등장하는 모델에 알 수 없는 열·연산자·인수 개수가 있으면 파일 위치를 표시하고 빌드를 실패시킨다. 생성 모듈에는 document set의 manifest text와 `manifestHash`(`model::SCHEMA`, `model::MANIFEST_HASH`)가 포함되므로 연결 하나로 여러 스키마의 모델을 사용할 수 있다.
+모든 모델에는 고정 메서드(`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc` 등)가 있다. [DSL](../../docs/dsl.ko.md)의 체인, join, relation, 열 및 getter 메서드는 검사한 소스의 호출에 맞춰 생성한다. 소스에 등장하는 모델에 알 수 없는 열·연산자·인수 개수가 있으면 파일 위치를 표시하고 빌드를 실패시킨다. 생성 모듈에는 document set의 manifest text와 `manifestHash`(`model::SCHEMA`, `model::MANIFEST_HASH`)와 connect helper `model::connect`가 포함된다. `model::connect`는 `Db::connect_schema`로 연결을 열고 그 set을 등록한다. 연결은 자기에게 등록된 set만 계획한다([protocol](../../docs/protocol.ko.md)).
 
 ## 연결
 
-`Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. scheme은 `mysql`, `postgres`, `sqlite` 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
+`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite` 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
-`db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 테이블이 모두 있으면 아무것도 하지 않고 일부만 있으면 `CONFIG`를 반환한다.
+`db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환한다.
 
 ## 필수 호출
 
 | 작업 | Rust API |
 |---|---|
 | 생성 manifest 해시 검증 | `Schema::manifest()`는 포함된 manifest text로 runtime model을 만들고 `manifestHash`를 확인한다. `Manifest::load(text, hash)`는 다른 manifest text에 같은 일을 한다. |
-| 엔진 선택과 모델 노출 | `Db::connect`가 DSN에서 dialect를 선택한다. 생성 모델마다 스키마를 포함하고 생성 모듈에 entity descriptor를 등록하므로 전역 등록 호출은 필요 없다. |
+| 엔진 선택과 모델 노출 | `model::connect`가 DSN에서 dialect를 선택하고 생성 모델의 set을 연결에 등록한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`를 반환한다. |
 | 스키마 객체 설치 | `db.utils().schema().install(&model::SCHEMA)` |
 | 격리 수준 또는 읽기 전용 실행 | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | `Send` future가 필요한 callback 실행 | `db.transaction_send(callback).await` |

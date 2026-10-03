@@ -68,7 +68,7 @@ table json_data {
 // to {"a":2,"b":1}.
 func TestJsonTextOrderPreservation(t *testing.T) {
 	s := documentSchema(t, jsonTextSchema)
-	manifest := s.Text
+	manifest := s
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "jsontext.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -79,7 +79,7 @@ func TestJsonTextOrderPreservation(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "json_data")
 			defer dropTable(t, driver, dsn, "json_data")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -23,11 +23,14 @@ const ManifestText = "dbspec 1 decimal_schema\n" +
 	"  primary key (seq)\n" +
 	"}\n"
 
-var ormSchema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}
+// Schema is the generated schema value: the manifest text with its declared
+// manifestHash. Install takes it to create the tables and register the set.
+var Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}
 
-// Connect opens the database selected by the DSN URI. The models plan
-// their statements with the manifest they were generated from.
-func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.Connect(dsn, ormSchema, cfg) }
+// Connect opens the database selected by the DSN URI and registers the
+// set of these models on the connection, so the models plan their requests on
+// it. A manifest text that does not hash to ManifestHash fails with CONFIG.
+func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSchema(dsn, Schema, cfg) }
 
 // ormModel is any generated model; a model value is a subquery.
 type ormModel interface {

@@ -202,12 +202,21 @@ pub struct SchemaUtils<'a> {
 }
 
 impl SchemaUtils<'_> {
-    /// schema의 dbspec document set을 연결의 dialect로 render한 statement를 적용한다
-    /// (docs/dialects.md, "Rendered statements"). document set의 table이 모두 있으면
-    /// 아무것도 하지 않고, 일부만 있으면 CONFIG를 돌려준다. PostgreSQL과 SQLite는 활성
-    /// transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를 암묵적으로
-    /// commit하므로 transaction 밖에서 적용하고, transaction 안에서는 CONFIG를 돌려준다.
+    /// generated schema의 dbspec document set을 연결의 dialect로 render한 statement를
+    /// 적용하고 그 set을 이 연결에 등록한다 (docs/dialects.md, "Rendered statements").
+    /// manifest text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 CONFIG다.
+    /// document set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 CONFIG를
+    /// 돌려준다. PostgreSQL과 SQLite는 활성 transaction이나 새 transaction에서 적용한다.
+    /// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서 적용하고,
+    /// transaction 안에서는 CONFIG를 돌려준다.
     pub async fn install(&self, schema: &Schema) -> Result<()> {
+        self.apply(schema).await?;
+        self.u.db.register(schema)
+    }
+
+    /// schema의 table을 만든다 (`install` 참고).
+    async fn apply(&self, schema: &Schema) -> Result<()> {
+        schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
         let dialect = match self.u.db.driver() {

@@ -8,7 +8,6 @@ use Orm\Code;
 use Orm\Config;
 use Orm\GroupRow;
 use Orm\GroupRows;
-use Orm\Orm;
 use Orm\OrmException;
 
 $driver = getenv('ORM_GROUP_DATABASE');
@@ -16,7 +15,7 @@ $dsn = getenv('ORM_GROUP_DSN');
 if (!in_array($driver, ['mysql', 'postgres', 'sqlite'], true) || !is_string($dsn) || $dsn === '') {
     throw new RuntimeException('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');
 }
-$db = Orm::connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 try {
     if ($db->driver() !== $driver) throw new RuntimeException('DSN selected the wrong database');
     $query = static fn(): Author => (new Author)($db);

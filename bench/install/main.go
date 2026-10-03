@@ -27,7 +27,7 @@ func main() {
 		fail(err)
 	}
 	defer db.Close()
-	if err := db.Utils().Schema().Install(model.ManifestText); err != nil {
+	if err := db.Utils().Schema().Install(model.Schema); err != nil {
 		fail(err)
 	}
 }

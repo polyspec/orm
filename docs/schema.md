@@ -46,11 +46,11 @@ SQLite catalog connections require an existing regular database file and disable
 
 ## 4. Schema installation
 
-`connection.utils().schema().install(...)` renders the document set with the dialect of the connection and applies the statements, triggers included. It creates every table when no table of the set exists, changes nothing when every table exists, and fails with `CONFIG` when only some exist. A set with a diagnostic fails with `SCHEMA_INVALID`. PostgreSQL and SQLite apply the statements in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly, so it applies them outside a transaction, and a call inside a transaction returns `CONFIG`.
+`connection.utils().schema().install(schema)` renders the document set of a generated schema value with the dialect of the connection, applies the statements, triggers included, and registers the set on the connection ([protocol](protocol.md)). A manifest text that does not hash to its declared `manifestHash` fails with `CONFIG` before any statement. It creates every table when no table of the set exists, changes nothing when every table exists, and fails with `CONFIG` when only some exist. A set with a diagnostic fails with `SCHEMA_INVALID`. PostgreSQL and SQLite apply the statements in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly, so it applies them outside a transaction, and a call inside a transaction returns `CONFIG`.
 
 | Language | Call | Input |
 |---|---|---|
-| Go | `Utils().Schema().Install(model.ManifestText)` | the manifest text of the generated models |
-| PHP | `utils()->schema()->install($documents)` | the text of every document of the set |
-| TypeScript | `utils().schema().install(texts)` | the text of every document of the set |
-| Rust | `utils().schema().install(&schema).await` | the schema of the generated models |
+| Go | `Utils().Schema().Install(model.Schema)` | the schema value of the generated package (`*orm.Schema`) |
+| PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | the schema value of the generated models (`Orm\Schema`) |
+| TypeScript | `utils().schema().install(SCHEMA)` | the schema value of the generated module (`{ manifestText, manifestHash }`) |
+| Rust | `utils().schema().install(&model::SCHEMA).await` | the schema value of the generated models (`orm::Schema`) |

@@ -122,7 +122,7 @@ function picks(Collection $c, string ...$names): array
     return array_map(static fn(Model $m): ?array => pick($m, ...$names), $c->all());
 }
 
-$db = Orm::connect($dsn, new Config(
+$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$log): void {

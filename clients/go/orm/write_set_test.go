@@ -11,7 +11,7 @@ import (
 
 func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 	s := documentSchema(t, "dbspec 1 write_set\n\ntable record {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n")
-	db, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "write-set.sqlite"), s, orm.Config{})
+	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "write-set.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +23,7 @@ func TestWasInsertedTracksGeneratedRows(t *testing.T) {
 	if waiting {
 		t.Fatal("SQLite reported a PostgreSQL backend lock wait")
 	}
-	if err := db.Utils().Schema().Install(s.Text); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
 	records := rowEntity("record", s, "seq", "label")

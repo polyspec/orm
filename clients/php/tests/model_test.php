@@ -77,8 +77,8 @@ function database(string $driver, string $dsn): Db
 {
     global $documents;
     dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-    $db->utils()->schema()->install($documents);
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     return $db;
 }
 
@@ -90,7 +90,7 @@ function schemaEmpty(string $driver, string $dsn): void
 {
     global $documents;
     dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config());
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     check($db->utils()->schema()->empty() === true, 'a database without tables');
     if ($driver === 'postgres') {
         $db->pdo()->exec('CREATE SCHEMA unowned_empty');
@@ -101,7 +101,7 @@ function schemaEmpty(string $driver, string $dsn): void
         }
         check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
     }
-    $db->utils()->schema()->install($documents);
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     check($db->utils()->schema()->empty() === false, 'installed tables');
     $db->close();
 }
@@ -210,7 +210,7 @@ $tests['joins and relations'] = function (Db $db, string $dsn): void {
     $limited = (new User)($db)->relations((new Author)->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))->orderBySeqAsc()->gets();
     $got = $limited->first()->getAuthorModels();
     check(count($got) === 1 && $got->first()->getName() === 'gamma', 'groupLimit');
-    $other = Orm::connect($dsn, $db->config());
+    $other = \Polyspec\Orm\Tests\Model\connect($dsn, $db->config());
     $external = (new Author)($db)->relation((new User)($other)->matchUserSeqWithSeq()->aliasOwner())->getByName('beta');
     check($external->getOwner()?->getName() === 'lee', 'relation on another connection');
     check(code(fn() => (new Author)($db)->joinUserSeqWithSeq((new User)($db))->gets()) === Code::CONFIG, 'join child with connection');
@@ -396,14 +396,14 @@ $tests['transactions'] = function (Db $db, string $dsn): void {
 };
 
 $tests['utilities'] = function (Db $db, string $dsn): void {
-    $documents = $GLOBALS['documents'];
     $schema = $db->utils()->schema();
-    check(code(fn() => $schema->install(["dbspec 1 broken\n\ntable t {\n}\n"])) === Code::SCHEMA_INVALID, 'install an invalid document');
+    $broken = "dbspec 1 broken\n\ntable t {\n}\n";
+    check(code(fn() => $schema->install(new \Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))) === Code::SCHEMA_INVALID, 'install an invalid document');
     $user = (new User)($db)->setName('kept')->create();
-    $schema->install($documents);
+    $schema->install(\Polyspec\Orm\Tests\Model\schema());
     check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
     $db->pdo()->exec($db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : ($db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'));
-    check(code(fn() => $schema->install($documents)) === Code::CONFIG, 'install over some tables of the set');
+    check(code(fn() => $schema->install(\Polyspec\Orm\Tests\Model\schema())) === Code::CONFIG, 'install over some tables of the set');
     check(code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
     $privileges = $db->utils()->privileges();
     switch ($db->driver()) {
@@ -469,9 +469,9 @@ $tests['aes rotation'] =function (Db $db, string $dsn): void {
     check($db->utils()->aes()->status(new Author, $keyring)->pending === 0, 'after rotation');
     global $schema;
     // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-    $versioned = Orm::connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
+    $versioned = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
     (new Author)($versioned)->getBySeq($f['authors'][1]->getSeq())->setAesHexEmail('second@example.com')->update();
-    $current = Orm::connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
+    $current = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
     check((new Author)($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
     check(code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
 };
@@ -549,12 +549,12 @@ foreach ($targets as $driver => $dsn) {
 foreach ($targets as $driver => $dsn) {
     $current = "pool size/$driver";
     try {
-        $db = Orm::connect($dsn, new Config(poolSize: 3));
+        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
-        check(code(fn() => Orm::connect($dsn, new Config(poolSize: -1))) === Code::CONFIG, 'negative pool size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: -1))) === Code::CONFIG, 'negative pool size');
         // The PHP client has no pool, so the pool idle size and lifetime are rejected.
-        check(code(fn() => Orm::connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
-        check(code(fn() => Orm::connect($dsn, new Config(poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
@@ -565,7 +565,7 @@ foreach ($targets as $driver => $dsn) {
 foreach ($targets as $driver => $dsn) {
     $current = "statement timeout/$driver";
     try {
-        check(code(fn() => Orm::connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
         // bounds every statement, and SQLite has no session timeout.
         $slow = ['mysql' => 'SLEEP(5) = 0', 'postgres' => 'pg_sleep(5) IS NULL'][$driver] ?? null;
@@ -573,7 +573,7 @@ foreach ($targets as $driver => $dsn) {
             $db = database($driver, $dsn);
             seed($db);
             $db->close();
-            $bounded = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
+            $bounded = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
             // The condition is evaluated per row, so the table holds rows.
             check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'a statement past the timeout');
             $bounded->close();
@@ -600,9 +600,9 @@ try {
     $db->close();
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     $slow = 'pg_sleep(0.1) IS NOT NULL';
-    $bounded = Orm::connect($single, new Config(statementTimeoutMs: 200));
+    $bounded = \Polyspec\Orm\Tests\Model\connect($single, new Config(statementTimeoutMs: 200));
     check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
-    $plain = Orm::connect($single, new Config());
+    $plain = \Polyspec\Orm\Tests\Model\connect($single, new Config());
     check((new Author)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
     check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
     $bounded->close();
@@ -620,7 +620,7 @@ if (isset($targets['mysql'])) {
         $inside = null;
         $db->transaction(function () use ($db, $documents, &$inside): void {
             try {
-                $db->utils()->schema()->install($documents);
+                $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
             } catch (OrmException $e) {
                 $inside = $e;
             }
@@ -642,7 +642,7 @@ foreach ($targets as $driver => $base) {
             if (in_array($zoneName, ['', '+00:00', 'UTC'], true)) {
                 connectionUtc(database($driver, $dsn));
             } else {
-                check(code(fn() => Orm::connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
+                check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
             }
         } catch (Throwable $e) {
             $failures++;
@@ -713,7 +713,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         $name = 'replica-' . hrtime(true);
         (new User)($master)->setName($name)->create();
         awaitReplica($driver, $targets[$driver], $replica);
-        $slave1 = Orm::connect($replica, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        $slave1 = \Polyspec\Orm\Tests\Model\connect($replica, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
         check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
         check(code(fn() => (new User)($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
         check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
@@ -744,7 +744,7 @@ try {
     (new User)($writable)->setName('read-only')->create();
     $writable->close();
     chmod($path, 0o444);
-    $readOnly = Orm::connect("sqlite://$path", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $readOnly = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
     check((new User)($readOnly)->name('read-only')->getCount() === 1, 'the read-only database reads the row');
     check(code(fn() => (new User)($readOnly)->setName('rejected')->create()) === Code::READ_ONLY, 'a write to the read-only database');
     $readOnly->close();

@@ -12,7 +12,6 @@ use Polyspec\Orm\Tests\Model\Author;
 use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
-use Orm\Orm;
 use Orm\PendingTime;
 
 if ($argc !== 1) {
@@ -25,7 +24,7 @@ if ($benchDsn === false || $benchDsn === '') {
     fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips\n");
     exit(1);
 }
-$db = Orm::connect($benchDsn, new Config(
+$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
 ));

@@ -89,8 +89,12 @@ final class Generator
             self::checkNames($e);
         }
         $files = [];
-        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Registry;\n\n"
-            . 'Registry::generated(' . self::str($m->manifestHash) . ', ' . self::str($m->manifestText) . ");\n";
+        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Config;\nuse Orm\\Db;\nuse Orm\\Orm;\nuse Orm\\Registry;\nuse Orm\\Schema;\n\n"
+            . "/** The manifestHash of the document set the models were generated from. */\nconst MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"
+            . "/** The manifest text of the document set the models were generated from. */\nconst MANIFEST_TEXT = " . self::str($m->manifestText) . ";\n\n"
+            . "/** The generated schema value: install takes it to create the tables and register the set. */\nfunction schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH);\n}\n\n"
+            . "/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */\nfunction connect(string \$dsn, Config \$config): Db\n{\n    return Orm::connectSchema(\$dsn, schema(), \$config);\n}\n\n"
+            . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT);\n";
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
             if (isset($files["$class.php"])) {

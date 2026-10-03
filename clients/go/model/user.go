@@ -19,7 +19,7 @@ type UserModel struct {
 	fName string
 }
 
-var userEntity = &orm.Entity{Name: "user", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &UserModel{m: c}; c.Bind(x); return x },
+var userEntity = &orm.Entity{Name: "user", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &UserModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*UserModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*UserModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

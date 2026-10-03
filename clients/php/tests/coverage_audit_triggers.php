@@ -90,7 +90,7 @@ function auditCase(string $dsn, string $document, string $work): void
     try {
         coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'item or item_history exists before the case');
         coverageRestoring(function () use ($db, $document): void {
-            $db->utils()->schema()->install([$document]);
+            $db->utils()->schema()->install(\CoverageAudit\Orm\schema());
             $outside = coverageCode(fn() => (new Item)($db)->setTitle('outside')->create());
             coverageWant($outside === Code::CONFIG, "an insert without an operation id is $outside, want CONFIG");
             $seq = $db->transaction(function () use ($db): int {

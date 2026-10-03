@@ -68,7 +68,7 @@ function stored(string $dsn): array
 /** @param array<int, string> $keys */
 function open(string $dsn, array $keys, int $version): Db
 {
-    return Orm::connect($dsn, new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
+    return Orm::connectSchema($dsn, \AesJson\Orm\schema(), new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
 }
 
 /** The ordered-json text of a read styled value; a value of another type fails the test. */
@@ -108,7 +108,7 @@ function aesJsonColumn(string $dsn): void
     $both = [1 => 'config-key-one', 2 => 'config-key-two'];
 
     $first = open($dsn, $one, 1);
-    $first->utils()->schema()->install($documents);
+    $first->utils()->schema()->install(\AesJson\Orm\schema());
     $seq = (new SecretConfig)($first)->setConfig(styled(parse($value)))->create()->getSeq();
     $row = (new SecretConfig)($first)->addAllColumns()->getBySeq($seq);
     check(text($row->getConfig()) === $value, 'read back');

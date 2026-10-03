@@ -203,17 +203,28 @@ type SchemaUtils struct{ u *Utils }
 // Schema returns the schema utilities.
 func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 
-// Install은 manifest text의 document set을 이 연결의 dialect로 render해
-// 적용한다. set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도
-// 바꾸지 않으며, 일부만 있으면 CONFIG다. PostgreSQL과 SQLite는 진행 중인
-// transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를
-// 암묵적으로 commit하므로 transaction 밖에서 적용하고 안에서는 CONFIG다.
-func (s *SchemaUtils) Install(manifestText string) error {
+// Install은 generated schema의 document set을 이 연결의 dialect로 render해
+// 적용하고 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
+// 않으면 어떤 statement보다 먼저 CONFIG다. set의 table이 하나도 없으면 모두
+// 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG다.
+// PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용한다.
+// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서
+// 적용하고 안에서는 CONFIG다.
+func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
-	m, diagnostics := runtimemodel.Load(manifestText)
-	if len(diagnostics) > 0 {
-		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	m, err := schema.registered()
+	if err != nil {
+		return err
 	}
+	if err := s.apply(m); err != nil {
+		return err
+	}
+	return d.register(schema)
+}
+
+// apply는 runtime model의 table을 만든다(Install 참고).
+func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
+	d := s.u.db
 	statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(d.driver))
 	if len(diagnostics) > 0 {
 		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
