@@ -1,6 +1,10 @@
 package dbspec
 
-import "strconv"
+import (
+	"slices"
+	"strconv"
+	"strings"
+)
 
 // Document is one parsed dbspec document. Slices keep document order; Emit
 // applies the canonical order. Comments hold whole comment lines from `#` to
@@ -217,14 +221,55 @@ type ImmutableSetting struct {
 	Comments []string
 }
 
-// AuditSetting is
-// `audit into <history> operation <column> action <column> previous <column>`.
+// AuditSetting은 `audit into <history> operation <column> action <column>
+// previous <column> [exclude (<column>, ...) | include (<column>, ...)]`이다.
+// 목록이 없으면 Exclude와 Include는 nil이고, parse한 setting은 둘 중 하나만
+// 가진다(docs/dbspec.md "Audit").
 type AuditSetting struct {
 	Comments  []string
 	History   string
 	Operation string
 	Action    string
 	Previous  string
+	Exclude   []string
+	Include   []string
+}
+
+// Records는 audit trigger가 column을 복사하는지 알린다. operation column은
+// 언제나, exclude 목록의 column은 언제나 아니며, include 목록이 있으면 그
+// column만 복사한다.
+func (a *AuditSetting) Records(column string) bool {
+	switch {
+	case column == a.Operation:
+		return true
+	case a.Exclude != nil:
+		return !slices.Contains(a.Exclude, column)
+	case a.Include != nil:
+		return slices.Contains(a.Include, column)
+	}
+	return true
+}
+
+// Excluded는 audit trigger가 복사하지 않는 t의 column을 column 순서로
+// 돌려준다. schema text가 쓰는 목록이다.
+func (a *AuditSetting) Excluded(t *Table) []string {
+	var out []string
+	for _, c := range t.Columns {
+		if !a.Records(c.Name) {
+			out = append(out, c.Name)
+		}
+	}
+	return out
+}
+
+// line은 setting 줄을 쓴다. columns가 nil이면 목록 없이, 아니면 list
+// keyword와 그 column을 쓴다.
+func (a *AuditSetting) line(list string, columns []string) string {
+	s := "audit into " + a.History + " operation " + a.Operation + " action " + a.Action + " previous " + a.Previous
+	if columns != nil {
+		s += " " + list + " (" + strings.Join(columns, ", ") + ")"
+	}
+	return s
 }
 
 // Diagram places tables for a view.

@@ -162,7 +162,7 @@ fn emit_table(out: &mut Out, table: &Table) {
         lines.sort_by(|a, b| (a.setting.rank(), a.setting.sort_name()).cmp(&(b.setting.rank(), b.setting.sort_name())));
         for line in lines {
             out.comments(2, &line.comments);
-            out.line(2, &setting_text(&line.setting));
+            out.line(2, &setting_text(&line.setting, table, out.view));
         }
         out.comments(2, &settings.closing);
         out.line(1, "}");
@@ -181,7 +181,7 @@ fn written(settings: &Settings, view: View) -> Vec<&SettingLine> {
     settings.lines.iter().filter(|line| view != View::Schema || schema(line)).collect()
 }
 
-fn setting_text(setting: &Setting) -> String {
+fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
     match setting {
         Setting::Entity(name) => format!("entity {}", name.text),
         Setting::Updated(column) => format!("updated {}", column.text),
@@ -194,8 +194,15 @@ fn setting_text(setting: &Setting) -> String {
         Setting::BlindIndex(aes, target) => format!("blind_index {} {}", aes.text, target.text),
         Setting::Navigation(key, child, parent) => format!("navigation {} {} {}", key.text, child.text, parent.text),
         Setting::Immutable => "immutable".into(),
-        Setting::Audit { into, operation, action, previous } => {
-            format!("audit into {} operation {} action {} previous {}", into.text, operation.text, action.text, previous.text)
+        Setting::Audit { into, operation, action, previous, lists } => {
+            // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude
+            // 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+            let line = |list: &str, columns: Vec<&str>| audit_line(&into.text, &operation.text, &action.text, &previous.text, list, &columns);
+            match (view, lists.first()) {
+                (View::Schema, _) => line("exclude", table.columns.iter().filter(|c| !setting.records(&c.name.text)).map(|c| c.name.text.as_str()).collect()),
+                (_, Some(list)) => line(&list.keyword.text, list.columns.iter().map(|c| c.text.as_str()).collect()),
+                (_, None) => line("exclude", Vec::new()),
+            }
         }
     }
 }

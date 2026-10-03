@@ -2,6 +2,7 @@
 // 기준은 Go 엔진(engine/dbspec/compare.go)이며 diagnostic message는 Go와 같은 바이트다.
 import { dbspecManifest, emitDbspec } from './index.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSetting, DbspecTable } from './model.js';
+import { auditRecords } from './audit.js';
 import { columnOf, sameDefault, sameType, sortedKeys, widens } from './plan_diff.js';
 import { foreignKeyDef, indexDef } from './plan_objects.js';
 
@@ -120,8 +121,8 @@ function compareTables(s: DbspecTable, t: DbspecTable, add: Add): void {
   compareObjects(add, 'foreign_key', s.foreignKeys, t.foreignKeys, f => foreignKeyDef(f.columns, f.table, f.references, f));
   compareObjects(add, 'check', s.checks, t.checks, k => k.expression);
   for (const kind of ['immutable', 'audit'] as const) {
-    const from = settingOf(s, kind);
-    const to = settingOf(t, kind);
+    const from = settingOf(s, kind, s, t);
+    const to = settingOf(t, kind, s, t);
     if (from !== to) {
       if (from !== null) add(`drop_${kind}`, '');
       if (to !== null) add(`add_${kind}`, '');
@@ -141,9 +142,14 @@ function compareObjects<T extends { readonly name: string }>(add: Add, kind: str
   }
 }
 
-/** table에 하나뿐인 setting의 정의, 없으면 null이다. */
-function settingOf(t: DbspecTable, kind: 'immutable' | 'audit'): string | null {
-  const setting: DbspecSetting | undefined = t.settings?.settings.find(x => x.kind === kind);
+/**
+ * table에 하나뿐인 setting의 정의, 없으면 null이다. audit은 두 쪽에 다 있는 column 가운데 기록하지
+ * 않는 column까지 비교한다. 한쪽에만 있는 column은 add_column이나 drop_column이 차이로 남긴다.
+ */
+function settingOf(x: DbspecTable, kind: 'immutable' | 'audit', s: DbspecTable, t: DbspecTable): string | null {
+  const setting: DbspecSetting | undefined = x.settings?.settings.find(e => e.kind === kind);
   if (setting === undefined) return null;
-  return setting.kind === 'audit' ? `${setting.into} ${setting.operation} ${setting.action} ${setting.previous}` : setting.kind;
+  if (setting.kind !== 'audit') return setting.kind;
+  const excluded = t.columns.filter(c => columnOf(s, c.name) !== undefined && !auditRecords(setting, c.name)).map(c => c.name);
+  return [`${setting.into} ${setting.operation} ${setting.action} ${setting.previous}`, ...excluded].join(' ');
 }

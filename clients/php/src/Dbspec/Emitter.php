@@ -79,18 +79,24 @@ final class Emitter
             usort($settings, static fn(Setting $a, Setting $b): int => $rank[$a->kind] <=> $rank[$b->kind]
                 ?: (($a->kind === 'codec' || $a->kind === 'blind_index' || $a->kind === 'navigation') ? strcmp($a->arguments[0], $b->arguments[0]) : 0));
             foreach ($settings as $setting) {
-                $out .= self::comments($setting->comments, '    ', $view) . '    ' . self::setting($setting) . "\n";
+                $out .= self::comments($setting->comments, '    ', $view) . '    ' . self::setting($setting, $table, $view) . "\n";
             }
             $out .= self::comments($table->settings->closingComments, '    ', $view) . "  }\n";
         }
         return $out . self::comments($closingComments, '  ', $view) . "}\n";
     }
 
-    private static function setting(Setting $setting): string
+    private static function setting(Setting $setting, Table $table, View $view): string
     {
         return match ($setting->kind) {
             'select_explicit' => 'select explicit ' . implode(' ', $setting->arguments),
-            'audit' => "audit into {$setting->arguments[0]} operation {$setting->arguments[1]} action {$setting->arguments[2]} previous {$setting->arguments[3]}",
+            // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude
+            // 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+            'audit' => match (true) {
+                $view === View::Schema => $setting->auditLine('exclude', $setting->excluded($table)),
+                $setting->include !== null => $setting->auditLine('include', $setting->include),
+                default => $setting->auditLine('exclude', $setting->exclude),
+            },
             default => implode(' ', [$setting->kind, ...$setting->arguments]),
         };
     }

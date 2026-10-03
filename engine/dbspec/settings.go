@@ -184,8 +184,9 @@ func (v *validator) onlyIndexColumn(t *tableNode, column string) bool {
 	return false
 }
 
-// audit checks `audit into <history> operation <c> action <c> previous <c>`
-// and the shape of the history table (docs/dbspec.md "Audit").
+// audit checks `audit into <history> operation <c> action <c> previous <c>
+// [exclude (<c>, ...) | include (<c>, ...)]` and the shape of the history
+// table, which holds exactly the recorded columns (docs/dbspec.md "Audit").
 func (v *validator) audit(t *tableNode, s *settingNode) {
 	historyRef, operationRef, actionRef, previousRef := s.args[0], s.args[1], s.args[2], s.args[3]
 	if v.propagatedChild(t) {
@@ -195,6 +196,7 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 	if operation != nil && (operation.null != nil || (operation.typ.valid && operation.typ.typ.Kind != TypeI64 && operation.typ.typ.Kind != TypeUUID)) {
 		v.add(RuleSetting, operationRef, "the operation column is a non-null i64 or uuid column")
 	}
+	recorded := v.auditLists(t, s, operationRef)
 	if !v.ref(historyRef) {
 		return
 	}
@@ -258,7 +260,15 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 		}
 		reserved[previousRef.text] = true
 	}
+	// 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history
+	// table의 column을 맞추어 보지 않는다.
+	if recorded == nil {
+		return
+	}
 	for _, c := range t.columns {
+		if !recorded(c.name.text) {
+			continue
+		}
 		h := history.column(c.name.text)
 		switch {
 		case h == nil && history.failedName(c.name.text):
@@ -269,10 +279,48 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 		}
 	}
 	for _, h := range history.columns {
-		if !reserved[h.name.text] && t.column(h.name.text) == nil && !t.failedName(h.name.text) {
+		if reserved[h.name.text] || t.failedName(h.name.text) {
+			continue
+		}
+		switch {
+		case t.column(h.name.text) == nil:
 			v.add(RuleSetting, historyRef, "history table %q has column %q, which is not a column of table %q", historyRef.text, h.name.text, t.name.text)
+		case !recorded(h.name.text):
+			v.add(RuleSetting, historyRef, "history table %q has column %q, which table %q does not record", historyRef.text, h.name.text, t.name.text)
 		}
 	}
+}
+
+// auditLists는 audit의 exclude나 include 목록을 검사하고, column이 기록되는지
+// 알리는 함수를 돌려준다(docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째
+// 목록의 keyword에서 거부하고 nil을 돌려준다. 목록의 column은 table의
+// column이고, 한 번만 나오며, operation column이 아니다. operation column은
+// 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+func (v *validator) auditLists(t *tableNode, s *settingNode, operationRef token) func(string) bool {
+	if len(s.lists) > 1 {
+		v.add(RuleSetting, s.lists[1].keyword, "audit names its recorded columns by exclude or by include, not both")
+		return nil
+	}
+	listed := map[string]bool{}
+	for _, list := range s.lists {
+		for _, ref := range list.columns {
+			switch {
+			case listed[ref.text]:
+				v.add(RuleSetting, ref, "column %q repeats in audit %s", ref.text, list.keyword.text)
+				continue
+			case ref.text == operationRef.text:
+				v.add(RuleSetting, ref, "the operation column %q is always recorded and is not listed in exclude or include", ref.text)
+			default:
+				v.columnRef(t, ref, RuleSetting)
+			}
+			listed[ref.text] = true
+		}
+	}
+	operation := operationRef.text
+	if len(s.lists) == 1 && s.lists[0].keyword.text == "include" {
+		return func(column string) bool { return column == operation || listed[column] }
+	}
+	return func(column string) bool { return column == operation || !listed[column] }
 }
 
 // coordinate reads a diagram coordinate: an integer from -2147483648 to

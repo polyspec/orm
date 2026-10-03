@@ -560,6 +560,9 @@ func (r renderer) history(t *Table, a *AuditSetting, event, timing, action, prev
 	columns := []string{r.q(a.Action), r.q(a.Previous)}
 	values := []string{action, previous}
 	for _, c := range t.Columns {
+		if !a.Records(c.Name) {
+			continue
+		}
 		columns = append(columns, r.q(c.Name))
 		values = append(values, "NEW."+r.q(c.Name))
 	}

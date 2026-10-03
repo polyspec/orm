@@ -160,8 +160,17 @@ fn compare_tables(s: &Table, t: &Table, found: &mut Vec<(&'static str, String)>)
         object_defs(&t.checks, |k| (&k.name.text, expr_text(&k.expr, same))),
     );
     let immutable = |setting: &Setting| matches!(setting, Setting::Immutable).then(String::new);
+    // audit은 두 쪽에 다 있는 column 가운데 기록하지 않는 column까지 비교한다. 한쪽에만 있는
+    // column은 add_column이나 drop_column이 차이로 남긴다.
     let audit = |setting: &Setting| match setting {
-        Setting::Audit { into, operation, action, previous } => Some(format!("{} {} {} {}", into.text, operation.text, action.text, previous.text)),
+        Setting::Audit { into, operation, action, previous, .. } => {
+            let mut def = format!("{} {} {} {}", into.text, operation.text, action.text, previous.text);
+            for c in t.columns.iter().filter(|c| s.column(&c.name.text).is_some() && !setting.records(&c.name.text)) {
+                def.push(' ');
+                def.push_str(&c.name.text);
+            }
+            Some(def)
+        }
         _ => None,
     };
     compare_setting(&mut add, ("drop_immutable", "add_immutable"), setting_of(s, immutable), setting_of(t, immutable));

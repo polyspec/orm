@@ -109,6 +109,10 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
       readonly operation: string;
       readonly action: string;
       readonly previous: string;
+      /** 기록하지 않는 column 목록. 목록이 없으면 null이다. */
+      readonly exclude: readonly string[] | null;
+      /** operation column 말고 기록하는 column 목록. 목록이 없으면 null이다. */
+      readonly include: readonly string[] | null;
     }
 );
 

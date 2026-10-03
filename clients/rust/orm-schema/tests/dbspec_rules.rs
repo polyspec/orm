@@ -672,7 +672,15 @@ const CASES: &[Case] = &[
             "  }",
             "}",
         ]],
-        expect: Expect::Errors(&[("setting", 14, 5), ("setting", 15, 5), ("setting", 15, 16), ("setting", 15, 52), ("setting", 15, 68)]),
+        expect: Expect::Errors(&[
+            ("setting", 14, 5),
+            ("setting", 15, 5),
+            ("setting", 15, 16),
+            ("setting", 15, 16),
+            ("setting", 15, 16),
+            ("setting", 15, 52),
+            ("setting", 15, 68),
+        ]),
     },
     Case {
         id: "audit-history-shape",
@@ -700,7 +708,7 @@ const CASES: &[Case] = &[
             "  primary key (history_id)",
             "}",
         ]],
-        expect: Expect::Errors(&[("setting", 10, 16), ("setting", 10, 62), ("setting", 10, 78)]),
+        expect: Expect::Errors(&[("setting", 10, 16), ("setting", 10, 16), ("setting", 10, 16), ("setting", 10, 62), ("setting", 10, 78)]),
     },
     Case {
         id: "settings-canonical-order",

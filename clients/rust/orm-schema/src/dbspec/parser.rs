@@ -5,6 +5,7 @@ use super::check::{not_allowed, CheckParser};
 use super::lexer::{tokenize, Kind, Token};
 use super::literal::{default_literal, Value};
 use super::model::*;
+use std::collections::HashSet;
 
 pub(crate) const MAX_BYTES: usize = 32 * 1024 * 1024;
 pub(crate) const MAX_TABLES: usize = 4096;
@@ -770,6 +771,21 @@ impl Parser {
     }
 
     /// `( <column> [asc|desc], ... )`; directions only when `directions` is set.
+    /// audit 목록의 `(<column>, ...)`를 읽는다. 이름은 부르는 쪽이 검사한다.
+    fn audit_columns(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
+        self.expect(cursor, "(")?;
+        let mut columns = Vec::new();
+        loop {
+            columns.push(self.word(cursor)?);
+            if cursor.peek_is(",") {
+                cursor.next();
+                continue;
+            }
+            self.expect(cursor, ")")?;
+            return Some(columns);
+        }
+    }
+
     fn column_list(&mut self, cursor: &mut Cursor, directions: bool) -> Option<Vec<(Name, bool)>> {
         self.expect(cursor, "(")?;
         let mut columns = Vec::new();
@@ -997,7 +1013,20 @@ impl Parser {
                 let action = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "previous")?;
                 let previous = self.name(&mut cursor)?;
-                Some(Setting::Audit { into, operation, action, previous })
+                let mut lists = Vec::new();
+                while cursor.peek_is("exclude") || cursor.peek_is("include") {
+                    let keyword = self.word(&mut cursor)?;
+                    let columns = self.audit_columns(&mut cursor)?;
+                    lists.push(AuditList { keyword, columns });
+                }
+                // 목록의 이름은 처음 나올 때만 검사한다. operation column은 검사가 따로 거부한다.
+                let mut named = HashSet::new();
+                for column in lists.iter().flat_map(|l| &l.columns) {
+                    if named.insert(column.text.clone()) && column.text != operation.text {
+                        self.check_name(&column.text, column.pos);
+                    }
+                }
+                Some(Setting::Audit { into, operation, action, previous, lists })
             })(),
             _ => {
                 self.report(err(keyword.pos, "setting", format!("unknown setting '{}'", keyword.text)));

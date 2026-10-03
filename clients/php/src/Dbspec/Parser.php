@@ -889,6 +889,12 @@ final class Parser
             return;
         }
         $arguments = array_slice($t, 1);
+        // audit의 exclude와 include 목록은 여덟 낱말 뒤에 오며 앞의 낱말을 검사한 뒤 따로 읽는다.
+        $rest = [];
+        if ($keyword === 'audit' && count($arguments) > 8) {
+            $rest = array_slice($arguments, 8);
+            $arguments = array_slice($arguments, 0, 8);
+        }
         foreach ($arguments as $i => $argument) {
             if (!self::isWord($argument[0])) {
                 $this->error('syntax', $this->line, $argument[1], "unexpected `{$argument[0]}` in a setting");
@@ -903,6 +909,7 @@ final class Parser
             $this->error('syntax', $this->line, $this->endColumn(), "setting `$keyword` needs more arguments");
             return;
         }
+        $lists = [];
         $kind = $keyword;
         if ($keyword === 'select') {
             if ($arguments[0][0] !== 'explicit') {
@@ -919,6 +926,12 @@ final class Parser
                 }
             }
             $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7]];
+            if ($rest !== []) {
+                $lists = $this->auditListTokens($rest);
+                if ($lists === null) {
+                    return;
+                }
+            }
         }
         $perName = $kind === 'codec' || $kind === 'navigation' || $kind === 'blind_index';
         $key = $perName ? $kind . ' ' . $arguments[0][0] : $kind;
@@ -931,8 +944,67 @@ final class Parser
         foreach ($kind === 'codec' ? [$arguments[0]] : $arguments as $argument) {
             $this->name($argument);
         }
-        $this->table->settings->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments());
-        $this->tableSettings[] = [$kind, $arguments, $this->line, $at];
+        // 목록의 이름은 처음 나올 때만 검사한다. operation column은 검사가 따로 거부한다.
+        $named = [];
+        foreach ($lists as [, $columns]) {
+            foreach ($columns as $token) {
+                if (!isset($named[$token[0]]) && $token[0] !== $arguments[1][0]) {
+                    $this->name($token);
+                }
+                $named[$token[0]] = true;
+            }
+        }
+        $listed = [];
+        foreach ($lists as [$list, $columns]) {
+            $listed[$list[0]] = array_map(static fn(array $a): string => $a[0], $columns);
+        }
+        $this->table->settings->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
+        $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists];
+    }
+
+    /**
+     * audit의 `exclude (<column>, ...)`와 `include (<column>, ...)` 목록을 읽는다. 문법이 틀리면
+     * syntax 오류를 내고 null을 돌려준다.
+     *
+     * @param list<array{0: string, 1: int}> $tokens
+     * @return list<array{0: array{0: string, 1: int}, 1: list<array{0: string, 1: int}>}>|null
+     */
+    private function auditListTokens(array $tokens): ?array
+    {
+        $lists = [];
+        $i = 0;
+        while ($i < count($tokens)) {
+            $keyword = $tokens[$i];
+            if ($keyword[0] !== 'exclude' && $keyword[0] !== 'include') {
+                $this->error('syntax', $this->line, $keyword[1], "expected `exclude`, `include` or the end of the line, not `{$keyword[0]}`");
+                return null;
+            }
+            if (($tokens[$i + 1][0] ?? null) !== '(') {
+                $this->error('syntax', $this->line, $tokens[$i + 1][1] ?? $this->endColumn(), 'expected `(`');
+                return null;
+            }
+            $i += 2;
+            $columns = [];
+            for (;;) {
+                $name = $tokens[$i] ?? null;
+                if ($name === null || !self::isWord($name[0])) {
+                    $this->error('syntax', $this->line, $name[1] ?? $this->endColumn(), 'expected a column name');
+                    return null;
+                }
+                $columns[] = $name;
+                $next = $tokens[$i + 1] ?? null;
+                $i += 2;
+                if ($next !== null && $next[0] === ')') {
+                    break;
+                }
+                if ($next === null || $next[0] !== ',') {
+                    $this->error('syntax', $this->line, $next[1] ?? $this->endColumn(), 'expected `,` or `)`');
+                    return null;
+                }
+            }
+            $lists[] = [$keyword, $columns];
+        }
+        return $lists;
     }
 
     private function openDiagram(): void
@@ -1105,7 +1177,7 @@ final class Parser
                 $singleColumnKeys[$index->columns[0]->name] = true;
             }
         }
-        foreach ($this->tableSettings as [$kind, $arguments, $line, $at]) {
+        foreach ($this->tableSettings as [$kind, $arguments, $line, $at, $lists]) {
             // A column reference: the column, or null after a diagnostic or a failed name or line.
             $column = function (array $token) use ($kind, $line): ?Column {
                 if (!self::validName($token[0])) {
@@ -1211,8 +1283,9 @@ final class Parser
                     if ($operation !== null && ($operation->nullable || ($operation->type->name !== 'i64' && $operation->type->name !== 'uuid'))) {
                         $this->error('setting', $line, $arguments[1][1], 'the audit operation column is a non-null i64 or uuid column');
                     }
+                    $recorded = $this->auditLists($lists, $arguments[1][0], $line, $column);
                     if (self::validName($arguments[0][0]) && self::validName($arguments[2][0]) && self::validName($arguments[3][0])) {
-                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operation?->type, $line];
+                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operation?->type, $line, $recorded];
                     }
                     $this->generatedName($line, $at, $this->table->name . '$audit_insert');
                     break;
@@ -1267,9 +1340,46 @@ final class Parser
         }
     }
 
+    /**
+     * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
+     * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을
+     * 돌려준다. 목록의 column은 table의 column이고, 한 번만 나오며, operation column이 아니다.
+     * operation column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+     *
+     * @param list<array{0: array{0: string, 1: int}, 1: list<array{0: string, 1: int}>}> $lists
+     * @param \Closure(array): ?Column $column
+     * @return (\Closure(string): bool)|null
+     */
+    private function auditLists(array $lists, string $operation, int $line, \Closure $column): ?\Closure
+    {
+        if (count($lists) > 1) {
+            $this->error('setting', $line, $lists[1][0][1], 'audit names its recorded columns by exclude or by include, not both');
+            return null;
+        }
+        $listed = [];
+        foreach ($lists as [$keyword, $columns]) {
+            foreach ($columns as $token) {
+                if (isset($listed[$token[0]])) {
+                    $this->error('setting', $line, $token[1], "column `{$token[0]}` repeats in audit {$keyword[0]}");
+                    continue;
+                }
+                if ($token[0] === $operation) {
+                    $this->error('setting', $line, $token[1], "the operation column `{$token[0]}` is always recorded and is not listed in exclude or include");
+                } else {
+                    $column($token);
+                }
+                $listed[$token[0]] = true;
+            }
+        }
+        if (count($lists) === 1 && $lists[0][0][0] === 'include') {
+            return static fn(string $c): bool => $c === $operation || isset($listed[$c]);
+        }
+        return static fn(string $c): bool => $c === $operation || !isset($listed[$c]);
+    }
+
     private function checkAuditHistories(): void
     {
-        foreach ($this->deferredAudits as [$audited, $columns, $arguments, $operationType, $line]) {
+        foreach ($this->deferredAudits as [$audited, $columns, $arguments, $operationType, $line, $recorded]) {
             [$historyToken, , $actionToken, $previousToken] = $arguments;
             $entry = $this->tables[$historyToken[0]] ?? null;
             if ($entry === null && isset($this->failedTables[$historyToken[0]])) {
@@ -1288,38 +1398,54 @@ final class Parser
                 $this->error('setting', $line, $historyToken[1], 'an audited table is not its own history table');
                 continue;
             }
-            $action = $historyColumns[$actionToken[0]] ?? null;
-            if ($action === null || $action->nullable || $action->type->text() !== 'varchar(8)') {
-                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a non-null varchar(8) column of `{$history->name}`");
-            }
-            $previous = $historyColumns[$previousToken[0]] ?? null;
-            if ($previous === null || !$previous->nullable || ($operationType !== null && $previous->type->text() !== $operationType->text())) {
-                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a null column of `{$history->name}` with the operation column's type");
+            // history table의 모양은 어긋난 곳마다 하나씩 보고한다: audit된 history table, i64
+            // identity primary key, action과 previous column, 기록하는 column의 사본, 남는 column.
+            foreach ($history->settings?->settings ?? [] as $setting) {
+                if ($setting->kind === 'audit') {
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` is audited itself");
+                }
             }
             $key = $history->primaryKey?->columns ?? [];
             $identity = count($key) === 1 ? ($historyColumns[$key[0]] ?? null) : null;
-            $shaped = $identity !== null && $identity->identity && $identity->type->name === 'i64';
-            $own = [$key[0] ?? '' => true, $actionToken[0] => true, $previousToken[0] => true];
-            if (count($own) !== 3) {
-                $shaped = false;
+            $reserved = [];
+            if ($identity !== null && $identity->identity && $identity->type->name === 'i64') {
+                $reserved[$identity->name] = true;
+            } else {
+                $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` needs an i64 identity primary key");
+            }
+            $action = $historyColumns[$actionToken[0]] ?? null;
+            if ($action === null || isset($reserved[$actionToken[0]]) || $action->nullable || $action->type->text() !== 'varchar(8)') {
+                $this->error('setting', $line, $actionToken[1], "the audit action column `{$actionToken[0]}` is a separate non-null varchar(8) column of `{$history->name}`");
+            }
+            $reserved[$actionToken[0]] = true;
+            $previous = $historyColumns[$previousToken[0]] ?? null;
+            if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable || ($operationType !== null && $previous->type->text() !== $operationType->text())) {
+                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate null column of `{$history->name}` with the operation column's type");
+            }
+            $reserved[$previousToken[0]] = true;
+            // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 column을 맞추어 보지 않는다.
+            if ($recorded === null) {
+                continue;
             }
             foreach ($columns as $name => $column) {
-                if (isset($own[$name]) || !isset($historyColumns[$name]) || $historyColumns[$name]->type->text() !== $column->type->text()) {
-                    $shaped = false;
+                if (!$recorded($name)) {
+                    continue;
+                }
+                if (isset($reserved[$name]) || !isset($historyColumns[$name])) {
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has no copy of column `$name`");
+                } elseif ($historyColumns[$name]->type->text() !== $column->type->text()) {
+                    $this->error('setting', $line, $historyToken[1], "history column `$name` has type {$historyColumns[$name]->type->text()}, not {$column->type->text()}");
                 }
             }
             foreach ($historyColumns as $name => $column) {
-                if (!isset($own[$name]) && !isset($columns[$name])) {
-                    $shaped = false;
+                if (isset($reserved[$name])) {
+                    continue;
                 }
-            }
-            foreach ($history->settings?->settings ?? [] as $setting) {
-                if ($setting->kind === 'audit') {
-                    $shaped = false;
+                if (!isset($columns[$name])) {
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column `$name`, which is not a column of `{$audited->name}`");
+                } elseif (!$recorded($name)) {
+                    $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` has column `$name`, which `{$audited->name}` does not record");
                 }
-            }
-            if (!$shaped) {
-                $this->error('setting', $line, $historyToken[1], "history table `{$history->name}` needs an i64 identity primary key, the action and previous columns and exactly the columns of `{$audited->name}` with their types, and no audit setting");
             }
         }
     }

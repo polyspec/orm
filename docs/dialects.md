@@ -317,7 +317,7 @@ The SQLite `f64` CHECK has no probe in the schema definitions above: a REAL colu
 A generated trigger is named `<table>$<event>`: `immutable_update`, `immutable_delete`, `audit_insert`, `audit_update` and `audit_delete`. A PostgreSQL trigger executes a function of the same name that the renderer owns. A rejection raises the message `table <table> is immutable` or `table <table> deletes through its soft delete column`: MySQL `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '…'`, PostgreSQL `RAISE EXCEPTION '…'`, SQLite `SELECT RAISE(ABORT, '…')`.
 
 - `immutable`: `BEFORE UPDATE` and `BEFORE DELETE` row triggers that reject.
-- `audit`: an `AFTER INSERT` row trigger inserts into the history table the action `'insert'`, a NULL previous operation and every `NEW` column; an `AFTER UPDATE` row trigger inserts `'update'`, `OLD.<operation column>` and every `NEW` column; a `BEFORE DELETE` row trigger rejects. The insert names the action, previous and audited columns in that order and leaves the history key to its identity.
+- `audit`: an `AFTER INSERT` row trigger inserts into the history table the action `'insert'`, a NULL previous operation and the `NEW` value of every recorded column; an `AFTER UPDATE` row trigger inserts `'update'`, `OLD.<operation column>` and the `NEW` value of every recorded column; a `BEFORE DELETE` row trigger rejects. The insert names the action, previous and recorded columns in that order, the recorded columns in table column order, and leaves the history key to its identity ([audit](dbspec.md#audit)).
 - A MySQL trigger body is the single statement; a PostgreSQL function body is `BEGIN … RETURN NULL; END` in `LANGUAGE plpgsql` (a `BEFORE` rejection never returns); a SQLite body is `BEGIN …; END`.
 
 ## Introspection
@@ -372,7 +372,7 @@ A literal is read as the value of the column it meets and written in its canonic
 
 ### Triggers
 
-The triggers named `<table>$immutable_update` and `<table>$immutable_delete`, or `<table>$audit_insert`, `<table>$audit_update` and `<table>$audit_delete`, give the `immutable` or `audit` setting when every one of them equals the renderer output: MySQL timing, event and `ACTION_STATEMENT`; PostgreSQL `pg_get_triggerdef` with the schema prefix of the table removed and the `prosrc` of its function; SQLite the `CREATE TRIGGER` text. The `audit` parameters are read from the insert statement of `audit_insert` and the `OLD` column of `audit_update` before the comparison. A set that is incomplete or differs, and every other trigger, are unsupported.
+The triggers named `<table>$immutable_update` and `<table>$immutable_delete`, or `<table>$audit_insert`, `<table>$audit_update` and `<table>$audit_delete`, give the `immutable` or `audit` setting when every one of them equals the renderer output: MySQL timing, event and `ACTION_STATEMENT`; PostgreSQL `pg_get_triggerdef` with the schema prefix of the table removed and the `prosrc` of its function; SQLite the `CREATE TRIGGER` text. The `audit` parameters are read from the insert statement of `audit_insert` and the `OLD` column of `audit_update` before the comparison: the insert names the action, previous and recorded columns, the recorded columns include the operation column, and the columns of the table that it does not name become the `exclude` list in column order, as the schema text writes it. A set that is incomplete or differs, and every other trigger, are unsupported.
 
 ### Unsupported objects
 

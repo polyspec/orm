@@ -118,7 +118,15 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
   | { readonly kind: 'blind_index'; readonly column: Tk; readonly indexColumn: Tk }
   | { readonly kind: 'navigation'; readonly foreignKey: Tk; readonly childName: Tk; readonly parentName: Tk }
   | { readonly kind: 'immutable' }
-  | { readonly kind: 'audit'; readonly into: Tk; readonly operation: Tk; readonly action: Tk; readonly previous: Tk }
+  | {
+      readonly kind: 'audit';
+      readonly into: Tk;
+      readonly operation: Tk;
+      readonly action: Tk;
+      readonly previous: Tk;
+      /** exclude와 include 목록이다. 둘 다 쓴 setting은 검사가 거부한다. */
+      readonly lists: readonly { readonly kw: Tk; readonly columns: readonly Tk[] }[];
+    }
 );
 
 interface ISettings {
@@ -1116,8 +1124,16 @@ class DocumentParser {
           parts.push(w);
           i += 2;
         }
-        if (!this.end(toks, i, line)) return;
-        entry = { kw, comments, kind: 'audit', into: parts[0]!, operation: parts[1]!, action: parts[2]!, previous: parts[3]! };
+        const lists: { kw: Tk; columns: Tk[] }[] = [];
+        while (isWord(toks[i], 'exclude') || isWord(toks[i], 'include')) {
+          if (!isPunct(toks[i + 1], '(')) return this.syntax(toks, i + 1, line, 'expected (');
+          const listed = this.list(toks, i + 2, line, ')');
+          if (listed === null) return;
+          lists.push({ kw: toks[i]!, columns: listed[0] });
+          i = listed[1];
+        }
+        if (i < toks.length) return this.syntax(toks, i, line, 'expected exclude, include or the end of the line');
+        entry = { kw, comments, kind: 'audit', into: parts[0]!, operation: parts[1]!, action: parts[2]!, previous: parts[3]!, lists };
         break;
       }
       default:
@@ -1739,6 +1755,7 @@ class DocumentParser {
     if (operation && operation.type !== null && (!['i64', 'uuid'].includes(operation.type.kind) || operation.nullable)) {
       this.at('setting', s.operation, 'the operation column is a non-null i64 or uuid column');
     }
+    const recorded = this.auditLists(table, s);
     if (!wellFormed(s.into.t)) return;
     if (!available.has(s.into.t)) {
       this.at('setting', s.into, `history table ${s.into.t} is not defined or used`);
@@ -1772,9 +1789,11 @@ class DocumentParser {
         this.at('setting', s.previous, 'the previous column is nullable and has the type of the operation column');
       }
     }
+    // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의 column을 맞추어 보지 않는다.
+    if (recorded === null) return;
     const allowed = new Set([key?.name.t, s.action.t, s.previous.t]);
     for (const c of table.columns) {
-      if (!wellFormed(c.name.t)) continue;
+      if (!wellFormed(c.name.t) || !recorded(c.name.t)) continue;
       allowed.add(c.name.t);
       const copy = history.colMap.get(c.name.t);
       if (copy === undefined) this.at('setting', s.into, `history table ${s.into.t} has no column ${c.name.t}`);
@@ -1783,8 +1802,38 @@ class DocumentParser {
       }
     }
     for (const c of history.columns) {
-      if (!allowed.has(c.name.t)) this.at('setting', s.into, `history table ${s.into.t} has the extra column ${c.name.t}`);
+      if (allowed.has(c.name.t)) continue;
+      if (wellFormed(c.name.t) && table.colMap.has(c.name.t)) this.at('setting', s.into, `history table ${s.into.t} has column ${c.name.t}, which table ${table.name.t} does not record`);
+      else this.at('setting', s.into, `history table ${s.into.t} has the extra column ${c.name.t}`);
     }
+  }
+
+  /**
+   * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
+   * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을 돌려준다.
+   * 목록의 column은 table의 column이고, 한 번만 나오며, operation column이 아니다. operation
+   * column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+   */
+  private auditLists(table: ITable, s: Extract<ISetting, { kind: 'audit' }>): ((column: string) => boolean) | null {
+    if (s.lists.length > 1) {
+      this.at('setting', s.lists[1]!.kw, 'audit names its recorded columns by exclude or by include, not both');
+      return null;
+    }
+    const listed = new Set<string>();
+    for (const list of s.lists) {
+      for (const tok of list.columns) {
+        if (listed.has(tok.t)) {
+          this.at('setting', tok, `column ${tok.t} repeats in audit ${list.kw.t}`);
+          continue;
+        }
+        if (tok.t === s.operation.t) this.at('setting', tok, `the operation column ${tok.t} is always recorded and is not listed in exclude or include`);
+        else if (this.name(tok)) this.lookup(table, tok, 'setting');
+        listed.add(tok.t);
+      }
+    }
+    const operation = s.operation.t;
+    if (s.lists.length === 1 && s.lists[0]!.kw.t === 'include') return column => column === operation || listed.has(column);
+    return column => column === operation || !listed.has(column);
   }
 
   build(): DbspecDocument {
@@ -1899,10 +1948,25 @@ function settingOf(s: ISetting): DbspecSetting {
       setting = { comments, kind: s.kind };
       break;
     case 'audit':
-      setting = { comments, kind: s.kind, into: s.into.t, operation: s.operation.t, action: s.action.t, previous: s.previous.t };
+      setting = {
+        comments,
+        kind: s.kind,
+        into: s.into.t,
+        operation: s.operation.t,
+        action: s.action.t,
+        previous: s.previous.t,
+        exclude: listOf(s, 'exclude'),
+        include: listOf(s, 'include'),
+      };
       break;
   }
   return Object.freeze(setting);
+}
+
+/** audit setting의 exclude나 include 목록, 없으면 null이다. */
+function listOf(s: Extract<ISetting, { kind: 'audit' }>, kind: 'exclude' | 'include'): readonly string[] | null {
+  const list = s.lists.find(l => l.kw.t === kind);
+  return list === undefined ? null : Object.freeze(list.columns.map(c => c.t));
 }
 
 /** The first encoding error of the lines: a byte order mark, a bare CR or an unpaired surrogate. */

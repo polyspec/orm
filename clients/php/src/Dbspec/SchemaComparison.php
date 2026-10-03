@@ -126,8 +126,8 @@ final class SchemaComparison
         self::objects($add, 'foreign_key', $s->foreignKeys, $t->foreignKeys, static fn(ForeignKey $f): string => PlanObjects::foreignKeyDef($f->columns, $f->table, $f->referencedColumns, $f));
         self::objects($add, 'check', $s->checks, $t->checks, static fn(Check $k): string => $k->expression);
         foreach (['immutable', 'audit'] as $kind) {
-            $sourceSetting = self::setting($s, $kind);
-            $targetSetting = self::setting($t, $kind);
+            $sourceSetting = self::setting($s, $kind, $s, $t);
+            $targetSetting = self::setting($t, $kind, $s, $t);
             if ($sourceSetting !== $targetSetting) {
                 if ($sourceSetting !== null) {
                     $add("drop_$kind", '');
@@ -165,12 +165,26 @@ final class SchemaComparison
     }
 
     /** table 에 하나뿐인 setting 의 정의, 없으면 null 이다. */
-    private static function setting(Table $t, string $kind): ?string
+    /**
+     * table에 하나뿐인 setting의 정의, 없으면 null이다. audit은 두 쪽에 다 있는 column 가운데
+     * 기록하지 않는 column까지 비교한다. 한쪽에만 있는 column은 add_column이나 drop_column이
+     * 차이로 남긴다.
+     */
+    private static function setting(Table $x, string $kind, Table $s, Table $t): ?string
     {
-        foreach ($t->settings?->settings ?? [] as $setting) {
-            if ($setting->kind === $kind) {
-                return implode(' ', $setting->arguments);
+        foreach ($x->settings?->settings ?? [] as $setting) {
+            if ($setting->kind !== $kind) {
+                continue;
             }
+            $def = $setting->arguments;
+            if ($kind === 'audit') {
+                foreach ($t->columns as $column) {
+                    if (PlanDiff::column($s, $column->name) !== null && !$setting->records($column->name)) {
+                        $def[] = $column->name;
+                    }
+                }
+            }
+            return implode(' ', $def);
         }
         return null;
     }

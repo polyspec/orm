@@ -100,6 +100,13 @@ func (s *settingsNode) model() *Settings {
 			out.Immutable = &ImmutableSetting{Comments: line.comments}
 		case "audit":
 			out.Audit = &AuditSetting{Comments: line.comments, History: args[0], Operation: args[1], Action: args[2], Previous: args[3]}
+			for _, list := range line.lists {
+				if list.keyword.text == "exclude" {
+					out.Audit.Exclude = tokenTexts(list.columns)
+				} else {
+					out.Audit.Include = tokenTexts(list.columns)
+				}
+			}
 		}
 	}
 	return out
@@ -227,7 +234,7 @@ func (e *emitter) table(t *Table) {
 			e.comments(1, s.Comments)
 			e.comments(1, s.ClosingComments)
 		} else {
-			e.settings(s)
+			e.settings(t, s)
 		}
 	}
 	e.comments(1, t.ClosingComments)
@@ -241,7 +248,7 @@ func (s *Settings) empty() bool {
 		s.Immutable == nil && s.Audit == nil
 }
 
-func (e *emitter) settings(s *Settings) {
+func (e *emitter) settings(t *Table, s *Settings) {
 	e.line(1, s.Comments, "settings {")
 	if e.view != viewSchema {
 		e.mappingSettings(s)
@@ -250,7 +257,16 @@ func (e *emitter) settings(s *Settings) {
 		e.line(2, s.Immutable.Comments, "immutable")
 	}
 	if a := s.Audit; a != nil {
-		e.line(2, a.Comments, "audit into "+a.History+" operation "+a.Operation+" action "+a.Action+" previous "+a.Previous)
+		// schema text는 database 상태로 정해지므로 기록하지 않는 column을 column
+		// 순서의 exclude 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+		switch {
+		case e.view == viewSchema:
+			e.line(2, a.Comments, a.line("exclude", a.Excluded(t)))
+		case a.Include != nil:
+			e.line(2, a.Comments, a.line("include", a.Include))
+		default:
+			e.line(2, a.Comments, a.line("exclude", a.Exclude))
+		}
 	}
 	e.comments(2, s.ClosingComments)
 	e.line(1, nil, "}")
