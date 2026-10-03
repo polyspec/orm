@@ -25,3 +25,10 @@ caseTest('a changed test or vector file selects the feature that declares it', 5
 caseTest('a path that no feature declares selects nothing', 5000, async () => {
   assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/checklist.md']), []);
 });
+
+caseTest('a file named by a file that a fixture names selects the feature', 5000, async () => {
+  // contracts/interfaces.json은 contracts/symbols/rust.json을 적고, 그 snapshot은 Rust source의 symbol을 적는다.
+  const owners = await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs']);
+  assert.deepEqual(ids(owners), ['interface_contract']);
+  assert.deepEqual(owners[0].reasons, ['clients/rust/orm/src/tx_send_tests.rs (named by contracts/symbols/rust.json)']);
+});
