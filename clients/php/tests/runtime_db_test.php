@@ -6,13 +6,15 @@ declare(strict_types=1);
 // column rule, and the audit operation id. The models of
 // contracts/fixtures/audit.dbs and a values document are generated into a
 // temporary directory, so the test runs in its own process.
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases; the
-// test fails when either is unset.
+// Each case runs in a case database of its own (case_database.php) created
+// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
+// is unset.
 // Usage: php clients/php/tests/runtime_db_test.php
 
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -60,26 +62,9 @@ function errorCode(Closure $fn): string
     return 'no error';
 }
 
-/** 이 test가 설치하는 table과 PostgreSQL trigger function을 지운다. */
-function dropAll(string $driver, string $dsn): void
-{
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    foreach (['item', 'item_history', 'sample'] as $table) {
-        $raw->exec($driver === 'postgres' ? "DROP TABLE IF EXISTS \"$table\" CASCADE" : ($driver === 'mysql' ? "DROP TABLE IF EXISTS `$table`" : "DROP TABLE IF EXISTS \"$table\""));
-    }
-    if ($driver === 'postgres') {
-        // PostgreSQL trigger function은 table과 함께 지워지지 않는다.
-        foreach (['insert', 'update', 'delete'] as $event) {
-            $raw->exec("DROP FUNCTION IF EXISTS \"item\$audit_$event\"()");
-        }
-    }
-}
-
 function database(string $driver, string $dsn): Db
 {
     global $documents;
-    dropAll($driver, $dsn);
     $db = Orm::connect($dsn, new Config());
     $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
     return $db;
@@ -134,23 +119,19 @@ $cases['audit operation id'] = function (Db $db): void {
     want($count === 1, "stored rows $count");
 };
 
-$targets = ['sqlite' => "sqlite://$work/runtime.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 $failures = 0;
-// 각 case는 database 하나에 문서 집합을 설치하고 row 몇 개를 쓰고 읽은 뒤 table을 지운다.
-foreach ($targets as $driver => $dsn) {
+// 각 case는 자기 case database에 문서 집합을 설치하고 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
+foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
     foreach ($cases as $name => $case) {
-        $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function () use ($driver, $dsn, $case): void {
-            $db = database($driver, $dsn);
-            $case($db);
-            $db->close();
-            dropAll($driver, $dsn);
+        $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function (callable $step) use ($driver, $case): void {
+            with_case_database($driver, $step, static function (string $dsn) use ($driver, $case): void {
+                $db = database($driver, $dsn);
+                try {
+                    $case($db);
+                } finally {
+                    $db->close();
+                }
+            });
         });
         if (!$passed) {
             $failures++;

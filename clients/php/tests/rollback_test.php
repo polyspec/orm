@@ -7,14 +7,15 @@
 // ROLLBACK when a row labeled `end` is inserted, which ends the transaction,
 // so the client's ROLLBACK finds no transaction. On MySQL and PostgreSQL a
 // test connection ends the server session that holds the transaction, so the
-// next statement and the rollback fail. ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name test databases; the test fails when either is
-// unset.
+// next statement and the rollback fail. Each case runs in a case database
+// of its own (case_database.php) created through ORM_TEST_MYSQL_DSN or
+// ORM_TEST_POSTGRES_DSN; the test fails when either is unset.
 // Usage: php clients/php/tests/rollback_test.php [case ...]
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 // package autoloader는 test entry point를 load하지 않으므로 이 test는 그 path로
 // require한다.
@@ -31,7 +32,7 @@ use Orm\RuntimeModel;
 use Orm\Testing\Faults;
 use RollbackCase\Orm\RollbackProbe;
 
-// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 table을 지우고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 지운다.
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
 
 $work = sys_get_temp_dir() . '/orm-php-rollback-' . getmypid();
@@ -78,11 +79,6 @@ function native(string $dsn): array
     return [$driver, new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION])];
 }
 
-function dropTable(string $dsn): void
-{
-    [, $pdo] = native($dsn);
-    $pdo->exec('DROP TABLE IF EXISTS rollback_probe');
-}
 
 /** Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK. */
 function connect(string $dsn): Db
@@ -207,28 +203,16 @@ function rollbackFault(string $dsn): void
 
 $cases = ['rollback_failed' => rollbackFailed(...), 'savepoint_rollback_failed' => savepointRollbackFailed(...), 'rollback_fault' => rollbackFault(...)];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => "sqlite://$work/rollback.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach ($targets as $driver => $dsn) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $passed = testcase_run("rollback/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $dsn, $before): void {
-            try {
-                dropTable($dsn);
-                $cases[$case]($dsn);
-            } finally {
-                dropTable($dsn);
-            }
+        // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.
+        $passed = testcase_run("rollback/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
             if ($GLOBALS['failures'] > $before) {
                 throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
             }

@@ -10,14 +10,16 @@
 // connection installed the set. A manifest text that does not hash to its
 // declared manifestHash fails with CONFIG when it is connected or installed,
 // and generated code of such a text fails with SCHEMA_HASH_MISMATCH when it
-// loads. Each case runs in its own database (a new SQLite file, or a database
-// the case creates on the server of ORM_TEST_MYSQL_DSN or
-// ORM_TEST_POSTGRES_DSN); the test fails when either variable is unset.
+// loads. Each case runs in a case database of its own (case_database.php: a
+// new SQLite file, or a database the case creates on the server of
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN); the test fails when either
+// variable is unset.
 // Usage: php clients/php/tests/schema_set_test.php [case ...]
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\User;
 use Orm\Code;
@@ -75,38 +77,6 @@ function code(callable $f): string
         return $e->code_;
     }
     return '';
-}
-
-/**
- * case 하나의 database다: SQLite는 새 file, MySQL과 PostgreSQL은 base DSN의
- * server에 새로 만든 database다. 돌려주는 함수가 그 database를 지운다.
- * @return array{0: string, 1: Closure(): void}
- */
-function caseDatabase(string $driver, string $base): array
-{
-    global $work;
-    static $n = 0;
-    $name = sprintf('orm_schema_set_%d_%d', getmypid(), ++$n);
-    if ($driver === 'sqlite') {
-        $path = "$work/$name.sqlite";
-        return ["sqlite://$path", static function () use ($path): void {
-            foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
-                if (file_exists($path . $suffix) && !unlink($path . $suffix)) {
-                    throw new RuntimeException("$path$suffix cannot be removed");
-                }
-            }
-        }];
-    }
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($base);
-    $admin = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $dsn = preg_replace('#^([a-z]+://[^/?]*)/[^?]*#', '$1/' . $name, $base, 1, $replaced);
-    if ($replaced !== 1) {
-        throw new RuntimeException('the test DSN names no database');
-    }
-    $admin->exec("CREATE DATABASE $name");
-    return [$dsn, static function () use ($admin, $driver, $name): void {
-        $admin->exec("DROP DATABASE $name" . ($driver === 'postgres' ? ' WITH (FORCE)' : ''));
-    }];
 }
 
 /**
@@ -237,31 +207,15 @@ $cases = [
     'edited_manifest' => editedManifest(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => ''];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach ($targets as $driver => $base) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $passed = testcase_run("schema_set/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $driver, $base, $before): void {
-            $drop = null;
-            try {
-                [$dsn, $drop] = caseDatabase($driver, $base);
-                $cases[$case]($dsn);
-            } finally {
-                if ($drop !== null) {
-                    $drop();
-                }
-            }
+        $passed = testcase_run("schema_set/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
             if ($GLOBALS['failures'] > $before) {
                 throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
             }

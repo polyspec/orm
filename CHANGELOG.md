@@ -1,5 +1,7 @@
 # Changelog
 
+- T25.2: the PHP database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/php/tests/case_database.php), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases.
+
 - T25.1: the Go database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (internal/testdb), and drop it when the test ends, also after a failure, instead of dropping and installing tables in the shared test databases.
 
 - T24.6: the JavaScript, PHP and Rust case reports write a duration that rounds up to the next unit in that unit (`1s`, not `1000ms`), as Go does.

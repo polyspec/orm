@@ -4,14 +4,16 @@
 // ordered-json value, reads it back with the same text, rotates to another key
 // version, and takes an update. The models are generated from the document into
 // a temporary directory, so the test runs in its own process.
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases; the
-// test fails when either is unset.
+// Each case runs in a case database of its own (case_database.php) created
+// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
+// is unset.
 // Usage: php clients/php/tests/aes_json_test.php
 declare(strict_types=1);
 
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use AesJson\Orm\SecretConfig;
 use Orm\AesKeyring;
@@ -101,8 +103,6 @@ function jsonEncodeCode(mixed $value): string
 function aesJsonColumn(string $dsn): void
 {
     global $documents;
-    $pdo = raw($dsn);
-    $pdo->exec('DROP TABLE IF EXISTS secret_config');
     $value = '{"z":{"b":1,"a":[]},"a":[true,null,"x"],"token":"s3cret-token","n":-12.50,"e":{}}';
     $updated = '{"token":"next-token","list":[1,"two",null]}';
     $one = [1 => 'config-key-one'];
@@ -146,23 +146,14 @@ function aesJsonColumn(string $dsn): void
     check(stored($dsn)[1] === 1, 'updated version');
     check(text((new SecretConfig)($again)->addAllColumns()->getBySeq($seq)->getConfig()) === $updated, 'updated read');
     $again->close();
-    $pdo->exec('DROP TABLE IF EXISTS secret_config');
 }
 
-$targets = ['sqlite' => "sqlite://$work/aes-json.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
-// 각 case는 database 하나에 AES JSON column table을 만들고 row 몇 개를 쓰고 읽는다.
-foreach ($targets as $driver => $dsn) {
+// 각 case는 자기 case database에 AES JSON column table을 만들고 row 몇 개를 쓰고 읽는다.
+foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
     $current = "aes json column/$driver";
     $before = $failures;
-    $passed = testcase_run("aes_json/$driver", TESTCASE_DATABASE, static function () use ($dsn, $before): void {
-        aesJsonColumn($dsn);
+    $passed = testcase_run("aes_json/$driver", TESTCASE_DATABASE, static function (callable $step) use ($driver, $before): void {
+        with_case_database($driver, $step, static fn(string $dsn) => aesJsonColumn($dsn));
         if ($GLOBALS['failures'] > $before) {
             throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
         }

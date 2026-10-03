@@ -4,14 +4,16 @@
 // the client clock of the `now` slot, MySQL and PostgreSQL apply the database
 // default. Either way the stored fraction holds the microseconds of the wall
 // clock; a clock with millisecond resolution stores every value as `.mmm000`.
-// The fixtures are contracts/fixtures/clock.dbs and clock_mark.dbs. ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name test databases; the test fails when either is
+// The fixtures are contracts/fixtures/clock.dbs and clock_mark.dbs. Each case
+// runs in a case database of its own (case_database.php) created through
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either is
 // unset.
 // Usage: php clients/php/tests/clock_test.php [case ...]
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use ClockCase\Orm\ClockEvent;
 use ClockMarkCase\Orm\ClockMark;
@@ -20,7 +22,7 @@ use Orm\Generator;
 use Orm\Orm;
 use Orm\RuntimeModel;
 
-// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 table을 지우고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 지운다.
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
 
 $work = sys_get_temp_dir() . '/orm-php-clock-' . getmypid();
@@ -57,13 +59,6 @@ function check(bool $ok, string $message): void
     }
 }
 
-function dropTable(string $dsn): void
-{
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $pdo->exec('DROP TABLE IF EXISTS clock_event');
-    $pdo->exec('DROP TABLE IF EXISTS clock_mark');
-}
 
 /**
  * Sixteen inserts in separate statements store created_ts with six fraction
@@ -163,28 +158,16 @@ $cases = [
     'clock_now_condition' => clockNowCondition(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => "sqlite://$work/clock.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach ($targets as $driver => $dsn) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $passed = testcase_run("clock/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $dsn, $before): void {
-            try {
-                dropTable($dsn);
-                $cases[$case]($dsn);
-            } finally {
-                dropTable($dsn);
-            }
+        // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.
+        $passed = testcase_run("clock/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
             if ($GLOBALS['failures'] > $before) {
                 throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
             }

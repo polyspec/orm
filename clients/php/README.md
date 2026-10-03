@@ -144,7 +144,8 @@ the cause and `$rollback` is the rollback error. A `ROLLBACK` error is not retri
     go run ./tests/conformance/check run -langs php -driver mysql|postgres|sqlite -dsn <bench DSN>
 
 `model_test.php` runs on SQLite, MySQL and PostgreSQL and fails when a MySQL or PostgreSQL DSN is
-unset; each DSN names an empty test database (its tables are dropped and installed with
-`utils()->schema()->install()`).
-`runtime_db_test.php` takes the same DSNs. `perf_gate.php` compares the client with PDO on the
+unset. Each case that installs a schema or checks `utils()->schema()->empty()` creates a database
+of its own on the server of the DSN (or a new SQLite file) and drops it when it ends, also after a
+failure (tests/case_database.php), so the database a DSN names need not be empty and keeps no
+table of the test. `runtime_db_test.php` takes the same DSNs. `perf_gate.php` compares the client with PDO on the
 seeded bench database.
