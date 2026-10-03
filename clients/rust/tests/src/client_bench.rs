@@ -33,7 +33,7 @@ async fn main() {
         eprintln!("{e}");
         std::process::exit(1)
     });
-    let db = orm::Db::connect(&dsn, 1, config).await.unwrap();
+    let db = model::connect(&dsn, 1, config).await.unwrap();
 
     for _ in 0..200 {
         Author::new().connect(&db).get_by_seq(1).await.unwrap();

@@ -16,7 +16,7 @@ import (
 func TestCoverageSchemaInstallExisting(t *testing.T) {
 	db, _, _ := connectFeature(t)
 	before := must(model.Author().Connect(db).GetCount())
-	if err := db.Utils().Schema().Install(model.ManifestText); err != nil {
+	if err := db.Utils().Schema().Install(model.Schema); err != nil {
 		t.Fatalf("install of the installed bench manifest: %v", err)
 	}
 	if after := must(model.Author().Connect(db).GetCount()); after != before || after != 100000 {
@@ -50,7 +50,7 @@ func TestCoverageSchemaInstallPartial(t *testing.T) {
 	if nativeTableExists(t, driver, dsn, "coverage_install_missing") {
 		t.Fatal("table coverage_install_missing exists before the install")
 	}
-	if err := db.Utils().Schema().Install(m.ManifestText); orm.ErrorCode(err) != orm.CodeConfig {
+	if err := db.Utils().Schema().Install(&orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText}); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("install of a partly installed set = %v, want CONFIG", err)
 	}
 	if nativeTableExists(t, driver, dsn, "coverage_install_missing") {

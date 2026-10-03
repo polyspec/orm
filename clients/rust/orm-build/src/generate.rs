@@ -815,6 +815,9 @@ fn emit(g: &Gen<'_>, manifest_hash: &str, manifest_file: &str) -> String {
         b,
         "/// The manifest text of the document set the models were generated from.\npub static SCHEMA: orm::Schema = orm::Schema::new(include_str!({manifest_file:?}), MANIFEST_HASH);\n"
     );
+    b.push_str(
+        "/// Connects to the database selected by the DSN URI and registers the set of these models on the connection.\npub async fn connect(dsn: &str, pool_size: u32, cfg: orm::Config) -> orm::Result<orm::Db> {\n    orm::Db::connect_schema(dsn, &SCHEMA, pool_size, cfg).await\n}\n\n",
+    );
     for gm in &g.models {
         let _ = writeln!(b, "pub use {}::{};", gm.module, gm.typ);
     }

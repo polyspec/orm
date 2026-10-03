@@ -18,7 +18,7 @@ type AccountProjectModel struct {
 	fProjectSeq int64
 }
 
-var accountProjectEntity = &orm.Entity{Name: "account_project", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &AccountProjectModel{m: c}; c.Bind(x); return x },
+var accountProjectEntity = &orm.Entity{Name: "account_project", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &AccountProjectModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*AccountProjectModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*AccountProjectModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

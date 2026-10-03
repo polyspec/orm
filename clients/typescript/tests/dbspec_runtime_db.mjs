@@ -45,6 +45,12 @@ table probe {
 `;
 const auditText = await readFile(join(root, 'contracts/fixtures/audit.dbs'), 'utf8');
 
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 /** Registers the model of a document set and returns a model class per entity. */
 function models(text) {
   const parsed = parseDbspec(text, {});
@@ -116,9 +122,9 @@ for (const [dialect, dsn] of targets) {
   });
 
   test(`${dialect}: install renders the dbspec documents and repeats without a change`, { timeout: 60_000 }, async () => {
-    await db.utils().schema().install([probeText]);
-    await db.utils().schema().install([probeText]);
-    await db.utils().schema().install([auditText]);
+    await db.utils().schema().install(schemaOf(probeText));
+    await db.utils().schema().install(schemaOf(probeText));
+    await db.utils().schema().install(schemaOf(auditText));
     assert.equal(await new Probe().connect(db).getCount(), 0);
     assert.equal(await new Item().connect(db).getCount(), 0);
   });

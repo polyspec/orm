@@ -23,7 +23,8 @@ the client on SQLite in the official PHP image, which has no `pdo_mysql`.
   setters; every other method name (conditions, joins, relations, columns, finders) is resolved at
   call time with the grammar of `docs/dsl.md`. orm does not autoload the generated namespace;
   the runtime needs `gen/bootstrap.php` required once — it registers the
-  models with the manifest text and `manifestHash` of the document set they were generated from.
+  models with the manifest text and `manifestHash` of the document set they were generated from
+  and defines the schema value `schema()` and the connect helper `connect()`.
   A process may load the generated models of several document sets; each model class carries the
   `manifestHash` of its own set, and a bootstrap whose manifest text does not hash to its declared
   `manifestHash` fails with `SCHEMA_HASH_MISMATCH` before any statement.
@@ -55,9 +56,8 @@ status 1 when it prints a line.
 ```php
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Config;
-use Orm\Orm;
 
-$db = Orm::connect('mysql://orm@db.internal/orm_example', new Config(
+$db = \Polyspec\Orm\Tests\Model\connect('mysql://orm@db.internal/orm_example', new Config(
     aesKey: getenv('ORM_AES_KEY') ?: '',
     blindIndexKey: getenv('ORM_BLIND_INDEX_KEY') ?: '',
 ));
@@ -75,11 +75,12 @@ connection reads and writes datetime values in UTC: MySQL and PostgreSQL session
 `timezone` parameter accepts only `+00:00` and `UTC`; another zone is a `CONFIG` error. MySQL
 accepts `?socket=`, PostgreSQL `?host=` (a socket directory) and `?sslmode=`.
 
-`Orm::connect` takes no schema path: every request carries the `manifestHash` of its model class,
-and any connection plans it with the runtime model of the generated models that registered that
-hash. A request whose `manifestHash` no loaded generated models registered fails with
-`SCHEMA_HASH_MISMATCH` before execution; no other model plans it. A document set installed by
-another connection needs no call on this one: loading its generated models is enough.
+A connection plans only the document sets registered on it (docs/protocol.md). The connect helper
+`connect($dsn, $config)` of the generated models opens the connection with `Orm::connectSchema`
+and registers their set; `utils()->schema()->install($schema)` registers the set it installs.
+`Orm::connect` opens a connection without any set. Every request carries the `manifestHash` of its
+model class, and a request whose set is not registered on its connection fails with
+`SCHEMA_HASH_MISMATCH` before execution, also when another connection installed the set.
 
 `onQuery` is `fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err)`:
 secret binds read `"$SECRET"` and the SQLite clock bind reads `"$NOW"`. The clock bind is the
@@ -110,8 +111,10 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
   `BEGIN`; the connection waits for a lock up to `busy_timeout` (docs/config.md).
 - Host stages (aes, hex, ip) are applied before binding and after fetching; `tests/codec/` checks
   them byte for byte.
-- `utils()->schema()->install($documents)` renders the dbspec document set (`Dbspec::render`) and
-  applies the statements in one transaction. When every table of the set exists it does nothing;
+- `utils()->schema()->install($schema)` takes the generated schema value (`schema()`, an
+  `Orm\Schema`), fails with `CONFIG` when its manifest text does not hash to its `manifestHash`,
+  renders the dbspec document set (`Dbspec::render`), applies the statements in one transaction and
+  registers the set on the connection. When every table of the set exists it does nothing;
   when only some exist it is a `CONFIG` error. MySQL commits each DDL statement itself, so there
   the statements run outside a transaction and `install` inside one is a `CONFIG` error.
 

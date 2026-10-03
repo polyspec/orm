@@ -240,7 +240,7 @@ async fn main() {
         })),
         ..Default::default()
     };
-    let db = Db::connect(&args.dsn, 4, config).await.expect("connect");
+    let db = model::connect(&args.dsn, 4, config).await.expect("connect");
     let out = match run_all(&db, &shared, &args.vectors).await {
         Ok(out) => out,
         Err(e) => {

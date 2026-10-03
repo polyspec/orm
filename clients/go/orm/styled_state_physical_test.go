@@ -64,12 +64,12 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "styled_case")
 			defer dropTable(t, driver, dsn, "styled_case")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			if err := db.Utils().Schema().Install(s.Text); err != nil {
+			if err := db.Utils().Schema().Install(s); err != nil {
 				t.Fatal(err)
 			}
 			var raw *sql.DB

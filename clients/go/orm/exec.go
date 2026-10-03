@@ -75,6 +75,12 @@ func (d *DB) plan(r *request) (*cached, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
+	// plan cache key는 manifestHash와 요청 모양이므로, 같은 hash의 다른 text나 이
+	// 연결에 등록되지 않은 manifest가 cache된 plan을 쓰지 않게 cache를 보기 전에 확인한다.
+	eng, err := d.engineFor(r.schema)
+	if err != nil {
+		return nil, err
+	}
 	r.ir.NParams = len(r.params)
 	key := shapeKey(&r.ir)
 	d.m.planMu.RLock()
@@ -83,7 +89,7 @@ func (d *DB) plan(r *request) (*cached, error) {
 	if ok {
 		return c, nil
 	}
-	p, err := d.compile(r.schema, &r.ir)
+	p, err := d.compile(eng, &r.ir)
 	if err != nil {
 		return nil, err
 	}

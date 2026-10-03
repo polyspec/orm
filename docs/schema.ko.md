@@ -46,11 +46,11 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 
-`connection.utils().schema().install(...)`은 연결의 dialect로 document set을 렌더링하고 trigger를 포함한 statement를 적용한다. 집합의 테이블이 하나도 없으면 모든 테이블을 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. diagnostic이 있는 집합은 `SCHEMA_INVALID`로 실패한다. PostgreSQL과 SQLite는 연결의 진행 중인 트랜잭션이나 새 트랜잭션에서 statement를 적용한다. MySQL은 스키마 statement마다 암묵적으로 커밋하므로 트랜잭션 밖에서 적용하며, 트랜잭션 안에서 호출하면 `CONFIG`를 반환한다.
+`connection.utils().schema().install(schema)`는 generated schema 값의 document set을 연결의 dialect로 렌더링하고 trigger를 포함한 statement를 적용한 뒤 그 set을 연결에 등록한다([protocol](protocol.md)). manifest text가 선언한 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`로 실패한다. 집합의 테이블이 하나도 없으면 모든 테이블을 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. diagnostic이 있는 집합은 `SCHEMA_INVALID`로 실패한다. PostgreSQL과 SQLite는 연결의 진행 중인 트랜잭션이나 새 트랜잭션에서 statement를 적용한다. MySQL은 스키마 statement마다 암묵적으로 커밋하므로 트랜잭션 밖에서 적용하며, 트랜잭션 안에서 호출하면 `CONFIG`를 반환한다.
 
 | 언어 | 호출 | 입력 |
 |---|---|---|
-| Go | `Utils().Schema().Install(model.ManifestText)` | 생성된 모델의 manifest text |
-| PHP | `utils()->schema()->install($documents)` | 집합의 모든 document text |
-| TypeScript | `utils().schema().install(texts)` | 집합의 모든 document text |
-| Rust | `utils().schema().install(&schema).await` | 생성된 모델의 schema |
+| Go | `Utils().Schema().Install(model.Schema)` | 생성된 package의 schema 값(`*orm.Schema`) |
+| PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | 생성된 모델의 schema 값(`Orm\Schema`) |
+| TypeScript | `utils().schema().install(SCHEMA)` | 생성된 module의 schema 값(`{ manifestText, manifestHash }`) |
+| Rust | `utils().schema().install(&model::SCHEMA).await` | 생성된 모델의 schema 값(`orm::Schema`) |

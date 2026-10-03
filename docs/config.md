@@ -32,10 +32,10 @@ The ORM does not route statements between servers. Reads from replicas use one c
 
 | Language | Connections | Read through a replica | Write through the primary |
 |---|---|---|---|
-| PHP | `$master = Orm::connect($primaryDsn, $config);` `$slave1 = Orm::connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
+| PHP | `$master = \Polyspec\Orm\Tests\Model\connect($primaryDsn, $config);` `$slave1 = \Polyspec\Orm\Tests\Model\connect($replicaDsn, $config);` | `(new User)($slave1)->name($name)->get()` | `$row->connect($master)->setName($new)->update()` |
 | Go | `master, err := model.Connect(primaryDSN, cfg)` `slave1, err := model.Connect(replicaDSN, cfg)` | `model.User().Connect(slave1).Name(name).Get()` | `row.Connect(master).SetName(next).Update()` |
-| Rust | `let master = Db::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = Db::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
-| TypeScript | `const master = await Db.connect(primaryDsn, schemaPath, options);` `const slave1 = await Db.connect(replicaDsn, schemaPath, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
+| Rust | `let master = model::connect(&primary_dsn, n, cfg.clone()).await?;` `let slave1 = model::connect(&replica_dsn, n, cfg).await?;` | `User::new().connect(&slave1).name(name).get().await?` | `row.connect(&master).set_name(next).update(false).await?` |
+| TypeScript | `const master = await connect(primaryDsn, options);` `const slave1 = await connect(replicaDsn, options);` | `new User().connect(slave1).name(name).get()` | `row.connect(master).setName(next).update()` |
 
 - A model or a loaded row uses the connection it is connected to and no other. Inside a transaction of `master`, a model connected to `slave1` runs on `slave1` outside the transaction, and a model without `connect` runs in the transaction.
 - Each connection has its own pool, prepared statements, and session settings.

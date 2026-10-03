@@ -341,10 +341,10 @@ async fn statement_timeout_through_a_pooler() {
     }
     let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
     let slow = "pg_sleep(0.1) IS NOT NULL";
-    let bounded = Db::connect(&single, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
+    let bounded = Db::connect_schema(&single, &SCHEMA, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
     let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection through the pooler");
     assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
-    let plain = Db::connect(&single, 1, orm::Config::default()).await.unwrap();
+    let plain = Db::connect_schema(&single, &SCHEMA, 1, orm::Config::default()).await.unwrap();
     let count = orm::model::get_count(&slow_count(&plain, slow)).await;
     assert_eq!(count.map_err(|e| e.to_string()), Ok(3), "a connection without a timeout after the bounded one");
     let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection after the plain one");

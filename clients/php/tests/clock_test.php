@@ -73,7 +73,7 @@ function clockMicroseconds(string $dsn): void
     global $documents;
     $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
     try {
-        $db->utils()->schema()->install($documents);
+        $db->utils()->schema()->install(\ClockCase\Orm\schema());
         $before = microtime(true);
         for ($i = 0; $i < 16; $i++) {
             (new ClockEvent)($db)->setLabel("event-$i")->create();
@@ -99,7 +99,7 @@ function markDb(string $dsn): \Orm\Db
 {
     global $markDocuments;
     $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
-    $db->utils()->schema()->install($markDocuments);
+    $db->utils()->schema()->install(\ClockMarkCase\Orm\schema());
     return $db;
 }
 

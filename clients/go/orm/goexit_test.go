@@ -14,8 +14,8 @@ import (
 // transaction rolls back and the connection serves the next statement.
 func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
-	db, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s, orm.Config{})
+	manifest := s
+	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

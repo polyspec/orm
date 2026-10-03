@@ -19,7 +19,7 @@ type CompositeAccountModel struct {
 	fName      string
 }
 
-var compositeAccountEntity = &orm.Entity{Name: "composite_account", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &CompositeAccountModel{m: c}; c.Bind(x); return x },
+var compositeAccountEntity = &orm.Entity{Name: "composite_account", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &CompositeAccountModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*CompositeAccountModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*CompositeAccountModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

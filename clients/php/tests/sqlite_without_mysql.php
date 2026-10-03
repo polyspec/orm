@@ -41,7 +41,7 @@ if (!mkdir($work, 0o700, true)) {
     fail("cannot create $work");
 }
 $db = Orm::connect("sqlite://$work/case.sqlite", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-$db->utils()->schema()->install([$document->text]);
+$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
 $created = (new Service)($db)->setName('without-mysql')->create();
 $read = (new Service)($db)->getBySeq($created->getSeq());
 $db->close();

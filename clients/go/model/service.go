@@ -18,7 +18,7 @@ type ServiceModel struct {
 	fName string
 }
 
-var serviceEntity = &orm.Entity{Name: "service", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &ServiceModel{m: c}; c.Bind(x); return x },
+var serviceEntity = &orm.Entity{Name: "service", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &ServiceModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*ServiceModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*ServiceModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

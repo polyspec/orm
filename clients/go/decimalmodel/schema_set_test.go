@@ -68,7 +68,7 @@ func schemaSetDatabase(t *testing.T, driver string) string {
 	return u.String()
 }
 
-// schemaSet은 bench document set으로 연결하고 bench와 decimal document set을
+// schemaSet은 bench set의 connect helper로 연결하고 bench와 decimal schema를
 // 설치한 뒤(decimal은 두 번, 두 번째 설치는 아무것도 바꾸지 않는다), 두 set의
 // generated model을 그 연결에서 transaction 안팎으로 쓴다.
 func schemaSet(t *testing.T, driver string) {
@@ -78,8 +78,8 @@ func schemaSet(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, text := range []string{model.ManifestText, decimalmodel.ManifestText, decimalmodel.ManifestText} {
-		if err := db.Utils().Schema().Install(text); err != nil {
+	for _, schema := range []*orm.Schema{model.Schema, decimalmodel.Schema, decimalmodel.Schema} {
+		if err := db.Utils().Schema().Install(schema); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -127,75 +127,114 @@ func TestSchemaSetSQLite(t *testing.T)   { schemaSet(t, "sqlite") }
 func TestSchemaSetMySQL(t *testing.T)    { schemaSet(t, "mysql") }
 func TestSchemaSetPostgres(t *testing.T) { schemaSet(t, "postgres") }
 
-// schemaSetInstalledElsewhere는 다른 연결이 설치한 decimal set을 등록 호출 없이
-// 쓴다. 설치 전에는 decimal table이 없으므로 그 read가 DRIVER이고 아무것도
-// 만들어지지 않는다. 설치 뒤에는 먼저 열린 연결에서도 decimal model이 읽고 쓴다.
-func schemaSetInstalledElsewhere(t *testing.T, driver string) {
+// counted는 실행한 statement 수를 세는 Config다.
+func counted(n *int) orm.Config { return orm.Config{OnQuery: func(orm.Event) { *n++ }} }
+
+// schemaSetUnregistered는 연결에 등록되지 않은 set의 요청이 table이 있어도
+// 실행 전에 SCHEMA_HASH_MISMATCH로 실패하는지 확인한다. raw 연결은 아무 set도
+// 등록하지 않고, bench helper로 연 연결은 다른 연결이 설치한 decimal set을
+// 등록하지 않는다. decimal helper로 연 연결은 그 set을 쓴다.
+func schemaSetUnregistered(t *testing.T, driver string) {
 	dsn := schemaSetDatabase(t, driver)
-	db, err := model.Connect(dsn, orm.Config{})
+	var rawRuns, coreRuns int
+	raw, err := orm.Connect(dsn, counted(&rawRuns))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
-	if _, err := decimalmodel.DecimalCase().Connect(db).GetCount(); orm.ErrorCode(err) != orm.CodeDriver {
-		t.Fatalf("decimal read before installation = %v, want DRIVER", err)
+	defer raw.Close()
+	if _, err := model.User().Connect(raw).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
+		t.Fatalf("bench read on a raw connection = %v, want SCHEMA_HASH_MISMATCH", err)
 	}
+	core, err := model.Connect(dsn, counted(&coreRuns))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer core.Close()
 	installer, err := decimalmodel.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, text := range []string{model.ManifestText, decimalmodel.ManifestText} {
-		if err := installer.Utils().Schema().Install(text); err != nil {
-			t.Fatal(err)
-		}
+	if err := installer.Utils().Schema().Install(decimalmodel.Schema); err != nil {
+		t.Fatal(err)
 	}
-	installer.Close()
-	row, err := decimalmodel.DecimalCase().Connect(db).SetSeq(3).SetAmount("2.5000")
+	row, err := decimalmodel.DecimalCase().Connect(installer).SetSeq(1).SetAmount("1.0000")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := row.Create(); err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := decimalmodel.DecimalCase().Connect(db).Seq(3).Get()
-	if err != nil || loaded.GetAmount() != "2.5000" {
-		t.Fatalf("decimal row after installation elsewhere = %v, %v", loaded, err)
+	installer.Close()
+	if _, err := decimalmodel.DecimalCase().Connect(core).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
+		t.Fatalf("decimal read on the bench connection = %v, want SCHEMA_HASH_MISMATCH", err)
+	}
+	write, err := decimalmodel.DecimalCase().Connect(core).SetSeq(2).SetAmount("2.0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := write.Create(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
+		t.Fatalf("decimal write on the bench connection = %v, want SCHEMA_HASH_MISMATCH", err)
+	}
+	if rawRuns != 0 || coreRuns != 0 {
+		t.Fatalf("unregistered requests ran statements: raw %d, bench %d", rawRuns, coreRuns)
+	}
+	decimal, err := decimalmodel.Connect(dsn, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer decimal.Close()
+	if n, err := decimalmodel.DecimalCase().Connect(decimal).GetCount(); err != nil || n != 1 {
+		t.Fatalf("decimal rows through the decimal helper = %d, %v; want 1", n, err)
 	}
 }
 
-// schemaSetEditedManifest는 manifest text가 선언한 manifestHash와 다른 model의
-// 요청이 실행 전에 SCHEMA_HASH_MISMATCH로 실패하고 database를 바꾸지 않는지
-// 확인한다.
+func TestSchemaSetUnregisteredSQLite(t *testing.T)   { schemaSetUnregistered(t, "sqlite") }
+func TestSchemaSetUnregisteredMySQL(t *testing.T)    { schemaSetUnregistered(t, "mysql") }
+func TestSchemaSetUnregisteredPostgres(t *testing.T) { schemaSetUnregistered(t, "postgres") }
+
+// schemaSetEditedManifest는 text가 선언한 manifestHash로 hash되지 않는 schema를
+// 확인한다. 그 schema의 설치와 connect는 어떤 statement보다 먼저 CONFIG이고
+// table을 만들지 않는다. 그 text를 품은 model의 요청은 같은 hash의 같은 요청이
+// plan된 뒤에도 실행 전에 SCHEMA_HASH_MISMATCH다.
 func schemaSetEditedManifest(t *testing.T, driver string) {
 	dsn := schemaSetDatabase(t, driver)
-	db, err := decimalmodel.Connect(dsn, orm.Config{})
+	edited := &orm.Schema{Hash: decimalmodel.ManifestHash, Text: strings.ReplaceAll(decimalmodel.ManifestText, "decimal(13,4)", "decimal(14,4)")}
+	if edited.Text == decimalmodel.ManifestText {
+		t.Fatal("edited manifest does not differ")
+	}
+	if _, err := orm.ConnectSchema(dsn, edited, orm.Config{}); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("connect with an edited manifest = %v, want CONFIG", err)
+	}
+	var runs int
+	db, err := decimalmodel.Connect(dsn, counted(&runs))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if err := db.Utils().Schema().Install(decimalmodel.ManifestText); err != nil {
+	if err := db.Utils().Schema().Install(edited); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("install of an edited manifest = %v, want CONFIG", err)
+	}
+	if runs != 0 {
+		t.Fatalf("the edited install ran %d statements", runs)
+	}
+	if err := db.Utils().Schema().Install(decimalmodel.Schema); err != nil {
 		t.Fatal(err)
 	}
-	edited := strings.ReplaceAll(decimalmodel.ManifestText, "decimal(13,4)", "decimal(14,4)")
-	if edited == decimalmodel.ManifestText {
-		t.Fatal("edited manifest does not differ")
+	// 같은 hash의 같은 요청을 먼저 plan해 둔다.
+	if n, err := decimalmodel.DecimalCase().Connect(db).GetCount(); err != nil || n != 0 {
+		t.Fatalf("decimal rows before the edited request = %d, %v", n, err)
 	}
-	ent := &orm.Entity{Name: "decimal_case", Schema: &orm.Schema{Hash: decimalmodel.ManifestHash, Text: edited}}
-	c := orm.NewCore(ent)
+	before := runs
+	c := orm.NewCore(&orm.Entity{Name: "decimal_case", Schema: edited})
 	c.Connect(db)
 	if _, err := c.GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
 		t.Fatalf("request of an edited manifest = %v, want SCHEMA_HASH_MISMATCH", err)
 	}
-	if n, err := decimalmodel.DecimalCase().Connect(db).GetCount(); err != nil || n != 0 {
-		t.Fatalf("decimal rows after the rejected request = %d, %v", n, err)
+	if runs != before {
+		t.Fatalf("the edited request ran %d statements", runs-before)
 	}
 }
 
-func TestSchemaSetInstalledElsewhereSQLite(t *testing.T) { schemaSetInstalledElsewhere(t, "sqlite") }
-func TestSchemaSetInstalledElsewhereMySQL(t *testing.T)  { schemaSetInstalledElsewhere(t, "mysql") }
-func TestSchemaSetInstalledElsewherePostgres(t *testing.T) {
-	schemaSetInstalledElsewhere(t, "postgres")
-}
 func TestSchemaSetEditedManifestSQLite(t *testing.T)   { schemaSetEditedManifest(t, "sqlite") }
 func TestSchemaSetEditedManifestMySQL(t *testing.T)    { schemaSetEditedManifest(t, "mysql") }
 func TestSchemaSetEditedManifestPostgres(t *testing.T) { schemaSetEditedManifest(t, "postgres") }

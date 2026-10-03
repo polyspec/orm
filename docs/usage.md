@@ -124,15 +124,15 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbs>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText` and `ManifestHash` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.Connect(dsn, schema, config)` with that manifest: the runtime builds its model from the text once per process, rejects text whose hash differs from `ManifestHash` with `SCHEMA_HASH_MISMATCH`, and plans every statement in the process. `master.Utils().Schema().Install(model.ManifestText)` renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
+`orm-gen gen --document <file.dbs>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText`, `ManifestHash` and the schema value `Schema` into the generated `orm.go`. `model.Connect(dsn, config)` calls `orm.ConnectSchema(dsn, model.Schema, config)`: it opens the connection and registers the set of the models on it, and a text whose hash differs from `ManifestHash` fails with `CONFIG`. A request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` ([protocol](protocol.md)); `orm.Connect(dsn, config)` opens a connection without any set. `master.Utils().Schema().Install(model.Schema)` registers the set on the connection and renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist.
 
 ### PHP
 
 ```php
-$master = Orm::connect($masterDsn, new Config(aesKey: $aesKey));
+$master = \Polyspec\Orm\Tests\Model\connect($masterDsn, new Config(aesKey: $aesKey));
 ```
 
-`Orm::connect` takes no schema path: `bootstrap.php` of the generated models registers the runtime model, the manifest text and `manifestHash`, and every request carries that hash. `$db->utils()->schema()->install($documents)` takes the text of every dbspec document of the set.
+`bootstrap.php` of the generated models defines `MANIFEST_TEXT`, `MANIFEST_HASH`, the schema value `schema()` and the connect helper `connect()`, which opens the connection with `Orm::connectSchema` and registers the set of the models on it; every request carries `manifestHash`. `Orm::connect` opens a connection without any set. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` installs the set and registers it on the connection.
 
 An audited table (`audit` setting, [dbspec](dbspec.md#audit)) is written inside a transaction that names its operation id; the executor writes the id into the operation column of every audited row the transaction inserts or updates, a soft delete included:
 
@@ -148,11 +148,11 @@ The id is an `int` for an `i64` operation column and a lower-case canonical UUID
 ### Rust
 
 ```rust
-let master = orm::Db::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+let master = model::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`, so the connection does not take a schema path; the runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database and applies the statements. It does nothing when every table of the set exists and returns `CONFIG` when only some exist; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
+`orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It does nothing when every table of the set exists and returns `CONFIG` when only some exist; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
 
 An audited table (`audit` setting) takes the operation id of its unit of work from the transaction. `operation(id)` sets it on the outermost transaction; the executor writes it into the operation column of every audited row the transaction inserts or updates, including the update of a soft delete:
 
@@ -169,19 +169,18 @@ An insert or update of an audited table without an operation id, outside a trans
 ### TypeScript
 
 ```typescript
-import { Db } from '@polyspec/orm-typescript';
-import { Item } from './models/models.js';
+import { Item, SCHEMA, connect } from './models/models.js';
 
-const master = await Db.connect(masterDsn, { aesKey });
-await master.utils().schema().install([await readFile('schema/example.dbs', 'utf8')]);
+const master = await connect(masterDsn, { aesKey });
+await master.utils().schema().install(SCHEMA);
 await master.transaction(async () => {
   await new Item().setTitle('first').create();
 }, { operation: 42 });
 ```
 
-`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT` and its hash as `MANIFEST_HASH` and registers the model when it is imported; `Db.connect(dsn, options)` takes no schema path, and a request of models that the process did not import fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(texts)` takes the dbspec texts of one document set and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
+`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
 
-Each client caches plans by request shape. `connection.utils().schema().install(texts)` installs the document set ([schema.md](schema.md#_4-schema-installation)).
+Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)).
 
 ---
 
@@ -357,9 +356,9 @@ The same statement produces the same result on all three databases, although sta
 `connection.utils().schema().install(...)` renders the document set with the dialect of the connection ([schema.md](schema.md#_4-schema-installation)).
 
 - Go: `model.Connect(url, config)`; the DSN scheme selects the driver.
-- PHP: `Orm::connect(url, config)`; the DSN scheme selects the PDO driver.
-- Rust: `orm::Db::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
-- TypeScript: `Db.connect(url, options)`; the DSN scheme selects the driver package.
+- PHP: `\Polyspec\Orm\Tests\Model\connect(url, config)`; the DSN scheme selects the PDO driver.
+- Rust: `model::connect(url, pool_size, config).await?`; the DSN scheme selects the sqlx driver.
+- TypeScript: `connect(url, options)` of the generated module; the DSN scheme selects the driver package.
 - Several connections can be open at once, and `connect` selects one per model, for example reads on `slave1` and writes on `master`.
 - SQLite rejects `Lb` and fulltext operators (`OPERATOR_NOT_ALLOWED`).
 

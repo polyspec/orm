@@ -1,10 +1,10 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
-import { activeFor, type Db, type TxFrame } from './database.js';
+import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
 import type { DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
 import { renderDbspec } from './dbspec/index.js';
-import { parseDocumentSet } from './engine/model.js';
+import { parseDocumentSet, splitDocuments } from './engine/model.js';
 import { OrmError } from './runtime_error.js';
 
 export interface AesRotationStatus {
@@ -117,17 +117,19 @@ export class SchemaUtils {
   }
 
   /**
-   * Installs the tables of a dbspec document set: the texts are the documents
-   * of the set, and their rendered statements (docs/dialects.md "Rendered
-   * statements") create the tables when none of them exists. When every table
-   * exists the call changes nothing; when only some exist it fails with CONFIG.
+   * Installs the tables of the document set of a generated schema and
+   * registers the set on this connection. A manifest text that does not hash
+   * to its declared manifestHash fails with CONFIG before any statement. The
+   * rendered statements (docs/dialects.md "Rendered statements") create the
+   * tables when none of them exists; when every table exists the call creates
+   * nothing; when only some exist it fails with CONFIG.
    * PostgreSQL and SQLite apply the statements in the active transaction or in
    * a new one; MySQL commits schema statements implicitly, so it applies them
    * outside a transaction and rejects a call inside one with CONFIG.
    */
-  public async install(texts: readonly string[]): Promise<void> {
-    if (!Array.isArray(texts) || texts.length === 0) throw config('install takes the dbspec texts of a document set');
-    const documents = parseDocumentSet(texts);
+  public async install(schema: Schema): Promise<void> {
+    const model = schemaModel(schema);
+    const documents = parseDocumentSet(splitDocuments(schema.manifestText));
     const rendered = renderDbspec(documents, this.db.driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
@@ -139,7 +141,10 @@ export class SchemaUtils {
     const tables = documents.flatMap(d => d.tables.map(t => t.name));
     const present: string[] = [];
     for (const table of tables) if (await this.table(table)) present.push(table);
-    if (present.length === tables.length) return;
+    if (present.length === tables.length) {
+      registerSet(this.db, model);
+      return;
+    }
     if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
     if (this.db.pool.unprepared) {
       await this.db.pool.unprepared(statements);
@@ -148,6 +153,7 @@ export class SchemaUtils {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
+    registerSet(this.db, model);
   }
 
   /** Reports whether a table of the connected database or schema exists. */

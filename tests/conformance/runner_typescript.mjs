@@ -6,7 +6,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of schema/bench.dbs.
 import {
-  AesKeyring, Author, CompositeAccount, Db, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, orm,
+  AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, connect, orm,
 } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
@@ -113,7 +113,7 @@ const picks = (rows, ...names) => rows.values().map(m => pick(m, ...names));
 const keysOf = rows => rows.keys();
 
 async function main() {
-  const db = await Db.connect(dsn, {
+  const db = await connect(dsn, {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },

@@ -66,7 +66,7 @@ table order {
 // table whose table and column names are SQL keywords.
 func TestSQLKeywordNames(t *testing.T) {
 	s := documentSchema(t, keywordSchema)
-	manifest := s.Text
+	manifest := s
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "keyword.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -76,7 +76,7 @@ func TestSQLKeywordNames(t *testing.T) {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "order")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}

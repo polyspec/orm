@@ -16,12 +16,12 @@ var refusalColumns = []string{"seq", "amount"}
 func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	t.Helper()
 	s := fixtureSchema(t, "refusal")
-	db, err := orm.Connect(newDatabase(t, driver), s, orm.Config{})
+	db, err := orm.ConnectSchema(newDatabase(t, driver), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := db.Utils().Schema().Install(s.Text); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
 	ent := rowEntity("refused_row", s, refusalColumns...)

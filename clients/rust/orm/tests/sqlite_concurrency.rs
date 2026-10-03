@@ -92,7 +92,7 @@ async fn write_services(db: &Db, name: &str, n: usize) -> Result<(), String> {
 async fn open(dsn: &str, count: usize) -> Vec<Db> {
     let mut out = Vec::new();
     for i in 0..count {
-        out.push(Db::connect(dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
+        out.push(Db::connect_schema(dsn, &SCHEMA, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
     }
     out
 }
@@ -214,7 +214,7 @@ async fn lock_wait_expires() {
 async fn statement_timeout_bounds_sqlite_lock_wait() {
     let dsn = database("config-expiry").await;
     let holder = open(&dsn, 1).await.remove(0);
-    let waiter = Db::connect(&dsn, 1, orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
+    let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
     let (code, waited) = holder
         .transaction(async || {
             let mut row = service(None);

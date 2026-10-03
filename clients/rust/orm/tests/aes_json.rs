@@ -68,7 +68,7 @@ fn connected(db: &Db) -> Secret {
 async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
     let keys: BTreeMap<i32, String> = keys.iter().map(|(v, k)| (*v, (*k).to_owned())).collect();
     let config = orm::Config { aes_key: keys[&version].clone(), aes_version: version, aes_keys: keys, ..Default::default() };
-    Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("{dsn}: {e}"))
+    Db::connect_schema(dsn, &SCHEMA, 2, config).await.unwrap_or_else(|e| panic!("{dsn}: {e}"))
 }
 
 /// The config value of the single row, as its compact ordered-json text.

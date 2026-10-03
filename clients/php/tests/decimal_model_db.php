@@ -59,7 +59,7 @@ try {
         // The generated setter accepts an exact string.
     }
 
-    $db = Orm::connect($dsn, new Config());
+    $db = DecimalFixture\connect($dsn, new Config());
     try {
         if ((new $class)->connect($db)->seq(1)->getCount() !== 0) {
             throw new RuntimeException('decimal fixture row 1 exists before the test');

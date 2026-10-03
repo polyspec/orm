@@ -12,14 +12,13 @@ use Polyspec\Orm\Tests\Model\Service;
 use Orm\Code;
 use Orm\Config;
 use Orm\Db;
-use Orm\Orm;
 use Orm\OrmException;
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbs')];
 
 function connect(string $dsn): Db
 {
-    return Orm::connect($dsn, new Config());
+    return \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
 }
 
 /** Runs $count transactions that read the service count and then insert one service. */
@@ -67,7 +66,7 @@ function database(string $name): string
 {
     global $documents, $work;
     $dsn = "sqlite://$work/$name.sqlite";
-    connect($dsn)->utils()->schema()->install($documents);
+    connect($dsn)->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     return $dsn;
 }
 

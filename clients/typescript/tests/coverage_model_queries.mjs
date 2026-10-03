@@ -1,13 +1,13 @@
 // model_queries coverage: 생성된 model 의 조건, 정렬, limit, 합계, 관계 읽기를 seed 된 bench
 // database 에서 확인한다. 읽기만 한다.
 import assert from 'node:assert/strict';
-import { Author, Db, User } from '../dist/index.js';
+import { Author, User, connect } from '../dist/index.js';
 import { featureDatabase, runCases } from './coverage_case.mjs';
 
 await runCases('coverage_model_queries.mjs', {
   async model_query_rows() {
     const { driver, dsn } = featureDatabase();
-    const db = await Db.connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
       assert.equal(await new Author().connect(db).userSeq(1).getCount(), 20, 'authors of user 1');

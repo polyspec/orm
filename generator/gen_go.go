@@ -261,10 +261,11 @@ func (g *goGen) write() error {
 	b.WriteString("var _ time.Time\n\n")
 	fmt.Fprintf(&b, "// ManifestHash is the manifestHash of the document set the models were generated from.\nconst ManifestHash = %q\n\n", g.m.ManifestHash)
 	fmt.Fprintf(&b, "// ManifestText is the manifest text of the document set the models were generated from.\nconst ManifestText = %s\n\n", goStringLiteral(g.m.ManifestText))
-	b.WriteString("var ormSchema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}\n\n")
-	b.WriteString(`// Connect opens the database selected by the DSN URI. The models plan
-// their statements with the manifest they were generated from.
-func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.Connect(dsn, ormSchema, cfg) }
+	b.WriteString("// Schema is the generated schema value: the manifest text with its declared\n// manifestHash. Install takes it to create the tables and register the set.\nvar Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}\n\n")
+	b.WriteString(`// Connect opens the database selected by the DSN URI and registers the
+// set of these models on the connection, so the models plan their requests on
+// it. A manifest text that does not hash to ManifestHash fails with CONFIG.
+func Connect(dsn string, cfg orm.Config) (*orm.DB, error) { return orm.ConnectSchema(dsn, Schema, cfg) }
 
 `)
 	g.writeConstraints(&b)
@@ -441,7 +442,7 @@ func (g *goGen) writeModel(gm *goModel) error {
 		fmt.Fprintf(&b, "\t%s %s\n", field(c), fieldType(c))
 	}
 	b.WriteString("}\n\n")
-	fmt.Fprintf(&b, "var %s = &orm.Entity{Name: %q, Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &%s{m: c}; c.Bind(x); return x },\n", ent, e.Name, t)
+	fmt.Fprintf(&b, "var %s = &orm.Entity{Name: %q, Schema: Schema, New: func(c *orm.Core) orm.Model { x := &%s{m: c}; c.Bind(x); return x },\n", ent, e.Name, t)
 	fmt.Fprintf(&b, "\tAssign: func(m orm.Model, name string, v any) (bool, error) { return m.(*%s).assign(name, v) },\n", t)
 	fmt.Fprintf(&b, "\tValue: func(m orm.Model, name string) (any, bool) { return m.(*%s).value(name) },\n", t)
 	fmt.Fprintf(&b, "\tCollect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any { return orm.CollectOf[*%s](keys, items, fetched) },\n}\n\n", t)

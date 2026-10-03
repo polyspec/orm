@@ -170,28 +170,21 @@ final class SchemaUtils
     public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
 
     /**
-     * dbspec document set을 connection의 database에 설치한다. client의
-     * renderer가 만든 statement(docs/dialects.md "Rendered statements")로
-     * table, key, index, foreign key, check, trigger를 만든다. $documents는
-     * 집합의 각 문서 text다. 집합에 diagnostic이 있으면 SCHEMA_INVALID로
-     * 실패한다. 집합의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면
+     * generated schema의 document set을 connection의 database에 설치하고 그 set을
+     * 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지 않으면 어떤
+     * statement보다 먼저 CONFIG다. client의 renderer가 만든 statement
+     * (docs/dialects.md "Rendered statements")로 table, key, index, foreign key,
+     * check, trigger를 만든다. 집합에 diagnostic이 있으면 SCHEMA_INVALID로
+     * 실패한다. 집합의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면
      * CONFIG로 실패하므로 같은 집합의 반복 설치는 같은 상태를 남긴다. 있는
      * table의 정의는 비교하지 않는다. statement는 한 transaction에서 실행하며,
      * MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행한다.
-     *
-     * @param list<string> $documents
      */
-    public function install(array $documents): void
+    public function install(Schema $schema): void
     {
+        $schema->verify();
         $driver = $this->db->driver();
-        $texts = [];
-        foreach ($documents as $i => $text) {
-            if (!is_string($text)) {
-                throw new OrmException(Code::CONFIG, "document $i is not a dbspec text");
-            }
-            $texts["document $i"] = $text;
-        }
-        $parsed = RuntimeModel::parse($texts);
+        $parsed = RuntimeModel::parse(RuntimeModel::splitManifest($schema->manifestText));
         $rendered = Dbspec::render($parsed, $driver);
         if ($rendered->statements === null) {
             $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $rendered->diagnostics);
@@ -225,12 +218,13 @@ final class SchemaUtils
         };
         if ($driver !== 'mysql') {
             $this->sql->run($apply);
-            return;
+        } else {
+            if (Db::activeFor($this->db) !== null) {
+                throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
+            }
+            $apply();
         }
-        if (Db::activeFor($this->db) !== null) {
-            throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
-        }
-        $apply();
+        $this->db->registerSet($schema);
     }
 
     /** connection의 현재 database나 search_path에 table이 있는지 여부다. */

@@ -124,34 +124,57 @@ type dbMutable struct {
 	rollbackFault atomic.Bool
 }
 
-// engineFor는 schema의 engine을 반환하고, 없으면 이 연결의 dialect로 만든다.
+// engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated
+// code가 품은 text가 선언한 hash로 hash되지 않거나, 그 manifest가 이 연결에
+// 등록되지 않았으면 SCHEMA_HASH_MISMATCH다. 요청이 실행될 수 있는 대상은
+// process가 읽은 code가 아니라 연결이 쓰는 database가 정하므로, 연결은 자기에게
+// 등록된 set만 plan한다.
 func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	if s == nil {
 		return nil, configErr("the model has no schema")
 	}
-	// engine은 manifestHash로 cache되므로, 같은 hash를 선언하고 다른 text를 가진
-	// schema가 다른 schema의 engine으로 plan되지 않게 먼저 그 text를 확인한다.
-	m, err := s.Model()
-	if err != nil {
+	if _, err := s.Model(); err != nil {
 		return nil, err
 	}
 	d.m.engineMu.RLock()
 	eng := d.m.engines[s.Hash]
 	d.m.engineMu.RUnlock()
-	if eng != nil {
-		return eng, nil
+	if eng == nil {
+		return nil, &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("manifest %s is not registered on this connection: connect through its generated package or install it", s.Hash)}
 	}
-	eng, err = engine.New(m, d.driver)
+	return eng, nil
+}
+
+// registered는 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지
+// 않으면 어떤 statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+func (s *Schema) registered() (*runtimemodel.Model, error) {
+	if s == nil {
+		return nil, configErr("schema is required")
+	}
+	m, err := s.Model()
+	if ErrorCode(err) == CodeSchemaHashMismatch {
+		return nil, configErr("invalid schema manifest: %s", err.(*ir.Error).Msg)
+	}
+	return m, err
+}
+
+// register는 schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+func (d *DB) register(s *Schema) error {
+	m, err := s.registered()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	d.m.engineMu.Lock()
 	defer d.m.engineMu.Unlock()
-	if existing := d.m.engines[s.Hash]; existing != nil {
-		return existing, nil
+	if d.m.engines[s.Hash] != nil {
+		return nil
+	}
+	eng, err := engine.New(m, d.driver)
+	if err != nil {
+		return err
 	}
 	d.m.engines[s.Hash] = eng
-	return eng, nil
+	return nil
 }
 
 // BackendWaitingForLock reports whether another backend of this PostgreSQL
@@ -177,11 +200,7 @@ func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	return waiting, mapDriverErr(err)
 }
 
-func (d *DB) compile(s *Schema, r *ir.Request) (*plan.Plan, error) {
-	eng, err := d.engineFor(s)
-	if err != nil {
-		return nil, err
-	}
+func (d *DB) compile(eng *engine.Engine, r *ir.Request) (*plan.Plan, error) {
 	if err := ir.Validate(eng.M, r); err != nil {
 		return nil, err
 	}
@@ -202,9 +221,10 @@ const defaultCacheSize = 256
 // zero; the TypeScript and Rust clients use the same value.
 const defaultPoolSize = 10
 
-// Connect는 DSN URI scheme이 고른 database에 연결한다. schema는 generated
-// package의 manifest이며, 이 process에서 모든 statement를 plan한다.
-func Connect(dsn string, s *Schema, cfg Config) (*DB, error) {
+// Connect opens the database selected by the DSN URI scheme. The connection
+// has no schema registered: a model request on it fails with
+// SCHEMA_HASH_MISMATCH until Install registers the set of the model.
+func Connect(dsn string, cfg Config) (*DB, error) {
 	if cfg.StatementTimeoutMs < 0 {
 		return nil, configErr("statement timeout must not be negative")
 	}
@@ -212,17 +232,22 @@ func Connect(dsn string, s *Schema, cfg Config) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if s == nil {
-		return nil, configErr("schema is required")
-	}
-	if _, err := s.Model(); err != nil {
+	return open(context.Background(), parsed, cfg)
+}
+
+// ConnectSchema opens the database selected by the DSN URI scheme and
+// registers the set of a generated schema on the connection; the connect
+// helper of a generated package calls it. A manifest text that does not hash
+// to its declared hash fails with CONFIG before the connection opens.
+func ConnectSchema(dsn string, s *Schema, cfg Config) (*DB, error) {
+	if _, err := s.registered(); err != nil {
 		return nil, err
 	}
-	d, err := open(context.Background(), parsed, cfg)
+	d, err := Connect(dsn, cfg)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := d.engineFor(s); err != nil {
+	if err := d.register(s); err != nil {
 		d.Close()
 		return nil, err
 	}

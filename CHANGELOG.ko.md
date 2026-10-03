@@ -1,5 +1,7 @@
 # 변경 이력
 
+- N3.2: 모든 클라이언트에서 연결은 자기에게 등록된 schema set만 계획한다. generated code의 connect helper(Go `model.Connect`, PHP `Polyspec\Orm\Tests\Model\connect`, Rust `model::connect`, TypeScript `connect`)는 연결을 열고 `connectSchema`로 그 set을 등록하며, `install(schema)`는 generated schema 값을 받아 자기가 설치한 set을 등록한다. raw 연결은 아무것도 등록하지 않는다. 연결에 등록되지 않은 set의 요청은 cache된 plan이 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, 선언한 hash로 hash되지 않는 manifest text는 connect나 install에서 `CONFIG`로 실패한다. Go는 plan cache보다 먼저 schema를 확인하므로 편집한 generated code가 더는 cache된 plan으로 실행되지 않는다.
+
 - N3.3.1: 이 branch는 `utils().schema().register(manifestJson)`를 제공하지 않는다. set은 generated code의 connect helper나 `install()`로 연결에 들어가며, 기록이 그렇게 적는다.
 
 - T18: relation request는 key의 모든 성분을 담는다. 성분마다 `{left, right}` 한 쌍을 key 순서대로 담고(`left`와 `right` 대신 `keys`), `match<L>With<R>()`는 호출마다 쌍 하나를 더하므로 Go, PHP, Rust, TypeScript에서 `composite_account`의 `composite_membership`을 `tenant_id`와 `account_id`로 함께 읽는다. 자기 연결을 가진 자식으로 읽어도 같다. 빈 key 목록, column이 없는 쌍, 한쪽에 두 번 나오는 column은 `IR_INVALID`다. Rust `Core::add_match`가 `set_match`를 대신한다.

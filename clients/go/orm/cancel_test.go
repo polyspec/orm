@@ -27,13 +27,13 @@ func TestWithContextCancels(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,13 +88,13 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -140,18 +140,18 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			dropTable(t, driver, dsn, "zone_event")
 			defer dropTable(t, driver, dsn, "zone_event")
-			holder, err := orm.Connect(dsn, s, orm.Config{})
+			holder, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer holder.Close()
-			waiter, err := orm.Connect(dsn, s, orm.Config{})
+			waiter, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -245,7 +245,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 // connection report the same connection, so callers can compare them.
 func TestRootIdentifiesTheConnection(t *testing.T) {
 	s := fixtureSchema(t, "zone")
-	db, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s, orm.Config{})
+	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	if db.Root() != db || first.Root() != db || second.Root() != db {
 		t.Fatal("a derived handle reports another connection")
 	}
-	other, err := orm.Connect("sqlite://"+filepath.Join(t.TempDir(), "other.sqlite"), s, orm.Config{})
+	other, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "other.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

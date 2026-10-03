@@ -42,7 +42,7 @@ func TestSQLitePathCases(t *testing.T) {
 			begin := time.Now()
 			t.Logf("start dsn/sqlite-path/%s", c.ID)
 			dir := t.TempDir()
-			db, err := orm.Connect("sqlite://"+dir+"/"+c.Path, s, orm.Config{})
+			db, err := orm.ConnectSchema("sqlite://"+dir+"/"+c.Path, s, orm.Config{})
 			if err == nil {
 				err = db.Close()
 			}

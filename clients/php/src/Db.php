@@ -26,6 +26,8 @@ final class Db
     private bool $typed = false;
     /** Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
     private bool $rollbackFault = false;
+    /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
+    private array $sets = [];
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
@@ -48,6 +50,16 @@ final class Db
     public function poolSize(): int
     {
         return $this->config->poolSize;
+    }
+
+    /**
+     * @internal Orm::connectSchema와 SchemaUtils::install만 부른다. schema의 set을
+     * 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+     */
+    public function registerSet(Schema $schema): void
+    {
+        $schema->verify();
+        $this->sets[$schema->manifestHash] = true;
     }
 
     /** The database of the connection: mysql, postgres, or sqlite. */
@@ -452,8 +464,13 @@ final class Db
 
     private function plan(Request $r): array
     {
-        // 요청의 manifest hash를 등록한 generated model의 engine이 plan한다.
-        $engine = Engine::for($r->ir['manifest_hash'], $this->driver, $this->config->planCacheSize);
+        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
+        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        $hash = $r->ir['manifest_hash'];
+        if (!isset($this->sets[$hash])) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
+        }
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
             return $engine->plan($shape);

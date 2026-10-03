@@ -28,7 +28,7 @@ func TestTransactionReportsFailedLocalReset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := Connect(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{})
+	db, err := ConnectSchema(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -36,7 +36,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 		out[i] = db
 	}
 	if install {
-		manifest := model.ManifestText
+		manifest := model.Schema
 		if err := out[0].Utils().Schema().Install(manifest); err != nil {
 			t.Fatalf("install: %v", err)
 		}

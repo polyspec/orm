@@ -15,7 +15,7 @@ async fn decimal_physical(env: &str) {
 
     let dsn = std::env::var(env).unwrap_or_else(|_| panic!("{env} is required"));
     assert!(!dsn.is_empty(), "{env} is empty");
-    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let db = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     let result: orm::Result<()> = db
         .transaction(async || {
             let row = DecimalCase::new().set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
@@ -87,16 +87,17 @@ async fn schema_set_server(driver: &str, base: &str, statement: &str) {
     }
 }
 
-/// Opens one connection, installs the bench and decimal document sets (the
-/// decimal set twice; the second installation changes nothing), and uses the
-/// generated models of both sets on it inside and outside a transaction.
+/// The bench helper connects, installs the bench and decimal document sets
+/// (the decimal set twice; the second installation changes nothing), and uses
+/// the generated models of both sets on the connection inside and outside a
+/// transaction.
 #[cfg(test)]
 async fn schema_set(driver: &str) {
     use decimal_model::DecimalCase;
     use model::User;
 
     let (dsn, name) = schema_set_database(driver).await;
-    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let db = model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     for schema in [&model::SCHEMA, &decimal_model::SCHEMA, &decimal_model::SCHEMA] {
         db.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     }
@@ -134,58 +135,89 @@ async fn schema_set_sqlite() {
     schema_set("sqlite").await;
 }
 
-/// Uses the decimal document set that another connection installed, without
-/// any registration call. Before the installation the decimal table does not
-/// exist, so a decimal read fails with DRIVER and creates nothing. After
-/// another connection installs the set, the connection opened first reads and
-/// writes decimal rows.
+/// The number of statements a connection ran, counted by its query hook.
 #[cfg(test)]
-async fn schema_set_installed_elsewhere(driver: &str) {
+fn counted(runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> orm::Config {
+    let runs = runs.clone();
+    orm::Config {
+        on_query: Some(std::sync::Arc::new(move |_: &str, _: &[orm::Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
+            runs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        })),
+        ..Default::default()
+    }
+}
+
+/// A request of a set that is not registered on its connection fails with
+/// SCHEMA_HASH_MISMATCH before execution, also when its tables exist: a raw
+/// connection registers no set, and a connection of the bench helper does not
+/// register the decimal set that another connection installed. A connection
+/// of the decimal helper uses it.
+#[cfg(test)]
+async fn schema_set_unregistered(driver: &str) {
     use decimal_model::DecimalCase;
+    use model::User;
 
     let (dsn, name) = schema_set_database(driver).await;
-    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
-    let missing = DecimalCase::new().connect(&db).get_count().await.expect_err("a decimal read before installation");
-    assert_eq!(missing.code(), "DRIVER", "{driver}: decimal read before installation: {missing}");
-    let installer = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
-    for schema in [&model::SCHEMA, &decimal_model::SCHEMA] {
-        installer.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-    }
+    let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let raw = orm::Db::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let error = User::new().connect(&raw).get_count().await.expect_err("a bench read on a raw connection");
+    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
+    raw.close().await;
+    let core = model::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let installer = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    installer.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    DecimalCase::new().connect(&installer).set_seq(1).set_amount("1.0000").unwrap().create().await.unwrap();
     installer.close().await;
-    DecimalCase::new().connect(&db).set_seq(3).set_amount("2.5000").unwrap().create().await.unwrap();
-    assert_eq!(DecimalCase::new().connect(&db).get_by_seq(3).await.unwrap().get_amount().unwrap(), "2.5000", "{driver}: decimal row");
-    db.close().await;
+    let error = DecimalCase::new().connect(&core).get_count().await.expect_err("a decimal read on the bench connection");
+    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
+    let error =
+        DecimalCase::new().connect(&core).set_seq(2).set_amount("2.0000").unwrap().create().await.err().expect("a decimal write on the bench connection");
+    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
+    assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of unregistered requests");
+    core.close().await;
+    let decimal = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    assert_eq!(DecimalCase::new().connect(&decimal).get_count().await.unwrap(), 1, "{driver}: decimal rows through the decimal helper");
+    decimal.close().await;
     drop_schema_set_database(driver, &dsn, &name).await;
 }
 
-/// A model whose embedded manifest text differs from its declared
-/// manifestHash is rejected with SCHEMA_HASH_MISMATCH before execution, also
-/// after a model with the same hash planned the same request, and the table
-/// stays unchanged.
+/// A schema whose manifest text does not hash to its declared manifestHash
+/// fails with CONFIG before any statement when it is connected or installed,
+/// and creates nothing. A model of that text is rejected with
+/// SCHEMA_HASH_MISMATCH before execution, also after a model with the same
+/// hash planned the same request.
 #[cfg(test)]
 async fn schema_set_edited_manifest(driver: &str) {
     use decimal_model::DecimalCase;
 
     let (dsn, name) = schema_set_database(driver).await;
-    let db = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
-    db.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-    DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
-    // 같은 hash의 같은 요청을 먼저 plan해 둔다.
-    assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows");
     let text = decimal_model::SCHEMA.text();
     let edited = text.replace("decimal(13,4)", "decimal(14,4)");
     assert_ne!(edited, text, "edited manifest differs");
     let schema: &'static orm::Schema = Box::leak(Box::new(orm::Schema::new(Box::leak(edited.into_boxed_str()), decimal_model::MANIFEST_HASH)));
+    let error = orm::Db::connect_schema(&dsn, schema, 2, orm::Config::default()).await.err().expect("a connection with an edited manifest");
+    assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
+    let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let db = decimal_model::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let error = db.utils().schema().install(schema).await.expect_err("an install of an edited manifest");
+    assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
+    assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of the edited install");
+    db.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
+    // 같은 hash의 같은 요청을 먼저 plan해 둔다.
+    assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows");
     let entity: &'static orm::Entity = Box::leak(Box::new(orm::Entity {
         name: "decimal_case",
         schema,
         new: orm::model::new_boxed::<DecimalCase>,
         collect: orm::model::collect_boxed::<DecimalCase>,
     }));
+    let before = runs.load(std::sync::atomic::Ordering::Relaxed);
     let mut core = orm::Core::new(entity);
     core.connect(&db);
     let error = orm::model::get_count(&core).await.expect_err("a request of an edited manifest");
     assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
+    assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), before, "{driver}: statements of the edited request");
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows after the rejected request");
     db.close().await;
     drop_schema_set_database(driver, &dsn, &name).await;
@@ -204,20 +236,20 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
 
 #[cfg(test)]
 #[tokio::test]
-async fn schema_set_installed_elsewhere_mysql() {
-    schema_set_installed_elsewhere("mysql").await;
+async fn schema_set_unregistered_mysql() {
+    schema_set_unregistered("mysql").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
-async fn schema_set_installed_elsewhere_postgres() {
-    schema_set_installed_elsewhere("postgres").await;
+async fn schema_set_unregistered_postgres() {
+    schema_set_unregistered("postgres").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
-async fn schema_set_installed_elsewhere_sqlite() {
-    schema_set_installed_elsewhere("sqlite").await;
+async fn schema_set_unregistered_sqlite() {
+    schema_set_unregistered("sqlite").await;
 }
 
 #[cfg(test)]

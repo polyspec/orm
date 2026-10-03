@@ -31,7 +31,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	manifest := model.ManifestText
+	manifest := model.Schema
 	for driver, dsn := range targets {
 		if dsn == "" {
 			t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
@@ -247,7 +247,7 @@ func TestGetMissingReturnsNoRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manifest := model.ManifestText
+	manifest := model.Schema
 	if err := db.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}

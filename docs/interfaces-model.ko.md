@@ -102,6 +102,7 @@ classDiagram
         ConnectionPool pool
         Cache_Sql_Statement statements
         connect()
+        connectSchema()
         transaction()
         utils()
         close()
@@ -220,12 +221,12 @@ classDiagram
 | Plan | request 모양별로 cache하는 불변 statement와 조립 정보다. |
 | Step | plan의 SQL statement 하나다. |
 | Assemble | 결과 컬럼을 위치로 model, join, relation에 대응시킨다. |
-| Db | pool, 등록된 schema의 planner, plan cache, statement cache를 가진다. |
+| Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다. |
 | TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. |
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
 | Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
-| SchemaUtils | client DDL 렌더러로 manifest를 설치한다. |
+| SchemaUtils | client DDL 렌더러로 generated schema의 set을 설치하고 연결에 등록한다. |
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
 | AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
 | AESRotationStatus | key version별 행 수다. |

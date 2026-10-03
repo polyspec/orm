@@ -10,9 +10,23 @@ final class Orm
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
     /**
-     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다.
-     * 모든 connection은 datetime을 UTC로 읽고 쓴다(docs/dialects.md): MySQL과
-     * PostgreSQL session의 time zone은 UTC다.
+     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 열고 generated
+     * schema의 set을 그 연결에 등록한다. generated code의 connect helper가 부른다.
+     * text가 선언한 hash로 hash되지 않으면 연결을 열기 전에 CONFIG다.
+     */
+    public static function connectSchema(string $dsn, Schema $schema, Config $config): Db
+    {
+        $schema->verify();
+        $db = self::connect($dsn, $config);
+        $db->registerSet($schema);
+        return $db;
+    }
+
+    /**
+     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다. 연결에는
+     * 등록된 set이 없으므로 model 요청은 install이 그 set을 등록할 때까지
+     * SCHEMA_HASH_MISMATCH다. 모든 connection은 datetime을 UTC로 읽고 쓴다
+     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다.
      */
     public static function connect(string $dsn, Config $config): Db
     {

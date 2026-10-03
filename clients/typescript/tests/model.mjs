@@ -10,8 +10,9 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  AesKeyring, Account, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, StyledValue,
-  Service, ServiceMember, ServiceRegion, User, dbspecManifest, parseDbspec, registerModel,
+  Account, AesKeyring, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, SCHEMA, Service,
+  ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench, dbspecManifest, parseDbspec,
+  registerModel,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -27,6 +28,12 @@ const selectedCase = args.length === 0 ? undefined : args[1];
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
@@ -140,8 +147,8 @@ async function install(dialect, dsn) {
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
-    await db.utils().schema().install([bench]);
-    await db.utils().schema().install([bench]);
+    await db.utils().schema().install(SCHEMA);
+    await db.utils().schema().install(SCHEMA);
   } finally { await db.close(); }
 }
 
@@ -161,7 +168,7 @@ async function schemaEmpty(dialect, dsn) {
       } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
       check(await db.utils().schema().empty(), 'the empty schema dropped');
     }
-    await db.utils().schema().install([bench]);
+    await db.utils().schema().install(SCHEMA);
     check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
 }
@@ -465,12 +472,12 @@ async function aesRotation(db, dsn) {
   status = await db.utils().aes().status(new Author(), keyring);
   check(status.pending === 0, `after rotation: ${JSON.stringify(status)}`);
   // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-  const versioned = await Db.connect(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
-  const current = await Db.connect(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
+  const versioned = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
+  const current = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
   try {
     check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
     check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(await code(Db.connect(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
+    check(await code(connectBench(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
   } finally {
     await versioned.close();
     await current.close();
@@ -478,7 +485,7 @@ async function aesRotation(db, dsn) {
 }
 
 function connect(dsn) {
-  return Db.connect(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
+  return connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
 }
 
 /**
@@ -537,7 +544,7 @@ async function bindLimitSplitting(db) {
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
 async function mysqlInstallInsideTransaction(db) {
   let inside = null;
-  await db.transaction(async () => { inside = await code(db.utils().schema().install([bench])); });
+  await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
   check(inside === 'CONFIG', `install inside a transaction: ${inside}`);
 }
 
@@ -565,7 +572,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   await dropTable(dialect, dsn, 'secret_config');
   const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
   const updatedText = '{"token":"next-token","list":[1,"two",null]}';
-  const open = (keys, version) => Db.connect(dsn, { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
+  const open = (keys, version) => Db.connectSchema(dsn, schemaOf(secret), { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
   const read = async db => {
     const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
     check(rows.length === 1, `rows ${rows.length}`);
@@ -578,7 +585,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const first = await open(one, 1);
   let seq;
   try {
-    await first.utils().schema().install([secret]);
+    await first.utils().schema().install(schemaOf(secret));
     const created = new SecretConfig().connect(first);
     created[CORE].setValue('config', StyledValue.value(parseJson(text)));
     seq = (await created.create())[CORE].column('seq');
@@ -666,14 +673,14 @@ try {
   if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
     current = `${dialect}/poolSize`;
-    const sized = await Db.connect(dsn, { poolSize: 3 });
+    const sized = await connectBench(dsn, { poolSize: 3 });
     try {
       // The SQLite driver holds one connection, so the size applies to the pooled drivers.
       const want = dialect === 'sqlite' ? 1 : 3;
       check(sized.utils().stats().maxOpenConnections === want, `configured pool size ${sized.utils().stats().maxOpenConnections}`);
-      check(await code(Db.connect(dsn, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
+      check(await code(connectBench(dsn, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
       for (const options of [{}, { poolSize: 0 }]) {
-        const unset = await Db.connect(dsn, options);
+        const unset = await connectBench(dsn, options);
         try {
           const got = unset.utils().stats().maxOpenConnections;
           check(got === (dialect === 'sqlite' ? 1 : 10), `pool size ${JSON.stringify(options)}: ${got}`);
@@ -682,7 +689,7 @@ try {
       if (dialect !== 'sqlite') {
         // Each transaction holds a connection while it runs, so six
         // transactions on a pool of two run at most two at a time.
-        const bounded = await Db.connect(dsn, { poolSize: 2 });
+        const bounded = await connectBench(dsn, { poolSize: 2 });
         try {
           let active = 0;
           let peak = 0;
@@ -698,7 +705,7 @@ try {
         } finally { await bounded.close(); }
         // Three transactions hold three connections at once; after they end
         // the pool keeps one idle connection and closes the others.
-        const idle = await Db.connect(dsn, { poolSize: 3, poolIdleSize: 1 });
+        const idle = await connectBench(dsn, { poolSize: 3, poolIdleSize: 1 });
         try {
           let release;
           let arrived;
@@ -714,7 +721,7 @@ try {
           check(stats.idle === 1 && stats.openConnections === 1, `pool idle size 1 keeps ${stats.idle} idle of ${stats.openConnections} open connections`);
         } finally { await idle.close(); }
         // A connection is closed when its lifetime passes, idle or at its release.
-        const aged = await Db.connect(dsn, { poolLifetimeMs: 100 });
+        const aged = await connectBench(dsn, { poolLifetimeMs: 100 });
         try {
           check(aged.utils().stats().openConnections === 1, 'the connection opened by connect');
           await new Promise(resolve => setTimeout(resolve, 400));
@@ -722,7 +729,7 @@ try {
         } finally { await aged.close(); }
       }
       for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolLifetimeMs: -1 }]) {
-        check(await code(Db.connect(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
+        check(await code(connectBench(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
     console.log(`${current} done`);
@@ -731,12 +738,12 @@ try {
     current = `${dialect}/statementTimeout`;
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     await install(dialect, dsn);
-    check(await code(Db.connect(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
+    check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
     // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
     // SQLite has no session timeout.
     const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
     if (slow !== undefined) {
-      const bounded = await Db.connect(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
+      const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
       try {
         await seed(bounded);
         check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
@@ -758,8 +765,8 @@ try {
     try { await seed(setup); } finally { await setup.close(); }
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     const slow = 'pg_sleep(0.1) IS NOT NULL';
-    const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
-    const plain = await Db.connect(single, {});
+    const bounded = await connectBench(single, { statementTimeoutMs: 200 });
+    const plain = await connectBench(single, {});
     try {
       check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
       check(await new Author().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
@@ -848,7 +855,7 @@ try {
   // 실제 server는 reset을 거부하지 않으므로 transaction connection의 control이 reset만 실패시킨다.
   current = 'mysql/failedLocalReset';
   try {
-    const db = await Db.connect(process.env.ORM_TEST_MYSQL_DSN);
+    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
     try {
       const failReset = () => {
         const tx = db.utils().active('setLocal').tx;
@@ -876,7 +883,7 @@ try {
   // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
   current = 'mysql/failedLockRelease';
   try {
-    const db = await Db.connect(process.env.ORM_TEST_MYSQL_DSN);
+    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
     try {
       const key = name => `orm_test.${name}.${process.pid}`;
       const failRelease = () => {
@@ -904,7 +911,7 @@ try {
   // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
   current = 'sqlite/failedRollback';
   try {
-    const db = await Db.connect(`sqlite://${join(work, 'transaction-end.sqlite')}`);
+    const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
     try {
       const native = db.pool.state.db;
       const exec = native.exec.bind(native);
@@ -939,7 +946,7 @@ try {
   // 이 statement를 거부하지 않으므로 transaction connection의 control이 실패시킨다.
   current = 'sqlite/failedSavepointEnd';
   try {
-    const db = await Db.connect(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
+    const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
     try {
       const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
         const tx = db.utils().active('transaction').tx;

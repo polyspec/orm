@@ -36,7 +36,7 @@ func TestAESJSONColumnSchema(t *testing.T) {
 // databases.
 func TestAESJSONColumn(t *testing.T) {
 	s := fixtureSchema(t, "secret_config")
-	manifest := s.Text
+	manifest := s
 	sqlitePath := filepath.Join(t.TempDir(), "aes-json.sqlite")
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + sqlitePath,
@@ -49,7 +49,7 @@ func TestAESJSONColumn(t *testing.T) {
 			dropTable(t, driver, dsn, "secret_config")
 			defer dropTable(t, driver, dsn, "secret_config")
 			open := func(keys map[int32]string, current int32) *orm.DB {
-				db, err := orm.Connect(dsn, s, orm.Config{AESKeys: keys, AESVersion: current, AESKey: keys[current]})
+				db, err := orm.ConnectSchema(dsn, s, orm.Config{AESKeys: keys, AESVersion: current, AESKey: keys[current]})
 				if err != nil {
 					t.Fatal(err)
 				}

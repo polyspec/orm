@@ -10,10 +10,9 @@ require __DIR__ . '/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Config;
-use Orm\Orm;
 
 [, $dsn, $first, $second, $tag] = $argv;
-$db = Orm::connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
 $runs = 0;
 $db->transaction(function () use (&$runs, $first, $second, $tag): void {
     $runs++;

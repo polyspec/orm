@@ -6,7 +6,7 @@ const dialect = args[1];
 const name = `DECIMAL_${dialect.toUpperCase()}_DSN`;
 const dsn = process.env[name];
 if (!dsn) throw new Error(`${name} is required`);
-const [{ Db, OrmError }, { activeFor }, { DecimalCase }] = await Promise.all([
+const [{ OrmError }, { activeFor }, { DecimalCase, connect }] = await Promise.all([
   import('../dist/index.js'),
   import('../dist/database.js'),
   import('../dist/models/decimal_fixture/models.js'),
@@ -27,7 +27,7 @@ try {
   if (!(error instanceof OrmError) || error.code !== 'CODEC_ENCODE') throw error;
 }
 
-const db = await Db.connect(dsn);
+const db = await connect(dsn);
 try {
   if (await new DecimalCase().connect(db).seq(1).getCount() !== 0) {
     throw new Error('decimal fixture row 1 exists before the test');

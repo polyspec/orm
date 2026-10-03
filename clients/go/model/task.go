@@ -19,7 +19,7 @@ type TaskModel struct {
 	fState string
 }
 
-var taskEntity = &orm.Entity{Name: "task", Schema: ormSchema, New: func(c *orm.Core) orm.Model { x := &TaskModel{m: c}; c.Bind(x); return x },
+var taskEntity = &orm.Entity{Name: "task", Schema: Schema, New: func(c *orm.Core) orm.Model { x := &TaskModel{m: c}; c.Bind(x); return x },
 	Assign: func(m orm.Model, name string, v any) (bool, error) { return m.(*TaskModel).assign(name, v) },
 	Value:  func(m orm.Model, name string) (any, bool) { return m.(*TaskModel).value(name) },
 	Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {

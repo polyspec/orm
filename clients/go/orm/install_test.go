@@ -17,8 +17,8 @@ import (
 func TestMySQLInstallInsideTransaction(t *testing.T) {
 	dsn := requireDSN(t, "ORM_TEST_MYSQL_DSN")
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
-	db, err := orm.Connect(dsn, s, orm.Config{})
+	manifest := s
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,11 +51,11 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 // ORM_TEST_POSTGRES_DSN name.
 func TestSchemaEmpty(t *testing.T) {
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
 			dsn := newDatabase(t, driver)
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,13 +111,13 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 			t.Logf("start %s", driver)
 			defer func() { t.Logf("end %s in %s", driver, time.Since(start)) }()
 			dsn := newDatabase(t, driver)
-			db, err := orm.Connect(dsn, s, orm.Config{})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
 			for i := 0; i < 2; i++ {
-				if err := db.Utils().Schema().Install(s.Text); err != nil {
+				if err := db.Utils().Schema().Install(s); err != nil {
 					t.Fatalf("install %d: %v", i+1, err)
 				}
 			}
@@ -156,7 +156,7 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 			if _, err := raw.Exec(map[string]string{"mysql": "DROP TABLE `item_history`"}[driver] + map[string]string{"sqlite": `DROP TABLE "item_history"`, "postgres": `DROP TABLE "item_history"`}[driver]); err != nil {
 				t.Fatal(err)
 			}
-			if err := db.Utils().Schema().Install(s.Text); orm.ErrorCode(err) != orm.CodeConfig {
+			if err := db.Utils().Schema().Install(s); orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("install over a partly installed set = %v, want CONFIG", err)
 			}
 		})

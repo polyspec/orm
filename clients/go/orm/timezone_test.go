@@ -48,7 +48,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 // UTC wall clock으로 저장되고 UTC location으로 읽히며, clock default도 UTC다.
 func TestConnectionsUseUTC(t *testing.T) {
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	targets := map[string]string{
 		"sqlite":   "sqlite://",
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -74,7 +74,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 				}
 				dropTable(t, driver, base, "zone_event")
 				defer dropTable(t, driver, base, "zone_event")
-				db, err := orm.Connect(dsn, s, orm.Config{})
+				db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -158,7 +158,7 @@ func TestPoolSize(t *testing.T) {
 	for driver, dsn := range targets {
 		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
-			db, err := orm.Connect(dsn, s, orm.Config{PoolSize: 3})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -166,10 +166,10 @@ func TestPoolSize(t *testing.T) {
 			if got := db.Stats().MaxOpenConnections; got != 3 {
 				t.Fatalf("max open connections = %d, want 3", got)
 			}
-			if _, err := orm.Connect(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+			if _, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative pool size: %v", err)
 			}
-			unset, err := orm.Connect(dsn, s, orm.Config{})
+			unset, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -182,7 +182,7 @@ func TestPoolSize(t *testing.T) {
 			}
 			// Each transaction holds a connection while it runs, so six
 			// transactions on a pool of two run at most two at a time.
-			bounded, err := orm.Connect(dsn, s, orm.Config{PoolSize: 2})
+			bounded, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 2})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -231,14 +231,14 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
 			for _, cfg := range []orm.Config{{PoolIdleSize: -1}, {PoolSize: 3, PoolIdleSize: 4}, {PoolIdleSize: 11}, {PoolLifetimeMs: -1}} {
-				if _, err := orm.Connect(dsn, s, cfg); orm.ErrorCode(err) != orm.CodeConfig {
+				if _, err := orm.ConnectSchema(dsn, s, cfg); orm.ErrorCode(err) != orm.CodeConfig {
 					t.Fatalf("pool idle size %d, lifetime %d: %v, want CONFIG", cfg.PoolIdleSize, cfg.PoolLifetimeMs, err)
 				}
 			}
 			// Three read-only transactions hold three connections at once,
 			// and SQLite begins them without the write lock; after they end
 			// the pool keeps one idle connection and closes the others.
-			idle, err := orm.Connect(dsn, s, orm.Config{PoolSize: 3, PoolIdleSize: 1})
+			idle, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3, PoolIdleSize: 1})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -270,7 +270,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if st := idle.Stats(); st.Idle != 1 || st.OpenConnections != 1 {
 				t.Fatalf("pool idle size 1 keeps %d idle of %d open connections", st.Idle, st.OpenConnections)
 			}
-			unset, err := orm.Connect(dsn, s, orm.Config{PoolSize: 3})
+			unset, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -294,7 +294,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			}
 			// The pool closes an idle connection whose lifetime has passed
 			// on its next cleanup, which runs at least once a second.
-			aged, err := orm.Connect(dsn, s, orm.Config{PoolLifetimeMs: 100})
+			aged, err := orm.ConnectSchema(dsn, s, orm.Config{PoolLifetimeMs: 100})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -325,7 +325,7 @@ func TestStatementTimeout(t *testing.T) {
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	for driver, dsn := range targets {
 		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
@@ -333,7 +333,7 @@ func TestStatementTimeout(t *testing.T) {
 			defer dropTable(t, driver, dsn, "zone_event")
 			// The table and its rows are created without a statement timeout;
 			// only the checked statement runs on the connection with the timeout.
-			setup, err := orm.Connect(dsn, s, orm.Config{})
+			setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -357,7 +357,7 @@ func TestStatementTimeout(t *testing.T) {
 					}
 				}
 			}
-			db, err := orm.Connect(dsn, s, orm.Config{StatementTimeoutMs: 200})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -369,7 +369,7 @@ func TestStatementTimeout(t *testing.T) {
 			if _, err := c.GetCount(); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
 			}
-			if _, err := orm.Connect(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+			if _, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative statement timeout: %v", err)
 			}
 		})
@@ -384,10 +384,10 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
 	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
 	s := fixtureSchema(t, "zone")
-	manifest := s.Text
+	manifest := s
 	dropTable(t, "postgres", base, "zone_event")
 	defer dropTable(t, "postgres", base, "zone_event")
-	setup, err := orm.Connect(base, s, orm.Config{})
+	setup, err := orm.ConnectSchema(base, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 		c.Raw("", "pg_sleep(0.1) IS NOT NULL", nil)
 		return c.GetCount()
 	}
-	bounded, err := orm.Connect(single, s, orm.Config{StatementTimeoutMs: 200})
+	bounded, err := orm.ConnectSchema(single, s, orm.Config{StatementTimeoutMs: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection through the pooler: %v", err)
 	}
-	plain, err := orm.Connect(single, s, orm.Config{})
+	plain, err := orm.ConnectSchema(single, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

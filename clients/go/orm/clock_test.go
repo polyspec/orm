@@ -19,12 +19,12 @@ func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm
 	t.Helper()
 	s := fixtureSchema(t, document)
 	dsn := newDatabase(t, driver)
-	db, err := orm.Connect(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := db.Utils().Schema().Install(s.Text); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
 	return s, dsn, db
