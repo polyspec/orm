@@ -3,17 +3,14 @@
 // database의 table과 row(tests/conformance/check state의 digest), PostgreSQL schema 목록이
 // 그대로이며, case가 만든 `orm_case_` database와 `orm-case-` SQLite file이 하나도 남지 않아야 한다.
 //
-// 다른 실행이나 session이 같은 server에서 test를 실행해도 검사가 흔들리지 않도록(T27), case에 줄
-// 공유 test database는 이 검사가 만드는 자기 database `orm_shared_<pid>_<random>`(MySQL,
-// PostgreSQL)다. ORM_TEST_MYSQL_DSN과 ORM_TEST_POSTGRES_DSN은 그것을 만들고 지우는 관리 연결로만
-// 쓰고, client case에는 그 database를 가리키는 DSN을 준다. 남은 case database와 file은 실행 전에
-// 없던 것 가운데 이름의 process가 끝난 것만 센다. 실행 중인 process의 것은 다른 실행의 case다.
-// 검사가 끝날 때(실패한 뒤에도) 자기 database를 지운다.
+// 남은 case database와 file은 실행 전에 없던 것 가운데 이름의 process가 끝난 것만 남은 것으로
+// 본다. 실행 중인 process의 것은 다른 실행의 case다(T27). 공유 test database는 PgBouncer의
+// orm_test_single이 가리키는 database이므로 이 검사가 따로 만들 수 없고, 그 digest와 PostgreSQL
+// schema 목록은 같은 server에서 다른 session이 test를 실행하지 않을 때 비교할 수 있다.
 //
 // Usage: node scripts/case-database-check.mjs (TEST_ENV를 읽은 shell에서, TypeScript build와
-// Rust integration release build 뒤)
+// Rust integration debug build 뒤)
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -22,20 +19,11 @@ import { DATABASE, PROCESS, runCase, runGroup, stepLines } from '../tests/testca
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const require = createRequire(resolve(root, 'clients/typescript/package.json'));
-const adminMysqlDsn = process.env.ORM_TEST_MYSQL_DSN;
-const adminPostgresDsn = process.env.ORM_TEST_POSTGRES_DSN;
-if (!adminMysqlDsn) throw new Error('ORM_TEST_MYSQL_DSN is required; database checks never skip');
-if (!adminPostgresDsn) throw new Error('ORM_TEST_POSTGRES_DSN is required; database checks never skip');
-const shared = `orm_shared_${process.pid}_${randomBytes(4).toString('hex')}`;
-// withDatabase는 DSN의 database(path)만 바꾼다.
-const withDatabase = (dsn, name) => {
-  const url = new URL(dsn);
-  url.pathname = `/${name}`;
-  return url.toString();
-};
-const mysqlDsn = withDatabase(adminMysqlDsn, shared);
-const postgresDsn = withDatabase(adminPostgresDsn, shared);
-const secrets = [adminMysqlDsn, adminPostgresDsn, mysqlDsn, postgresDsn];
+const mysqlDsn = process.env.ORM_TEST_MYSQL_DSN;
+const postgresDsn = process.env.ORM_TEST_POSTGRES_DSN;
+if (!mysqlDsn) throw new Error('ORM_TEST_MYSQL_DSN is required; database checks never skip');
+if (!postgresDsn) throw new Error('ORM_TEST_POSTGRES_DSN is required; database checks never skip');
+const secrets = [mysqlDsn, postgresDsn];
 const redact = text => secrets.reduce((out, dsn) => out.replaceAll(dsn, '[redacted]'), String(text));
 const leftover = `orm_leftover_${process.pid}`;
 
@@ -46,7 +34,7 @@ const commands = [
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './clients/go/model']],
   ['php/model', 'php', ['clients/php/tests/model_test.php']],
   ['typescript/model', 'node', ['clients/typescript/tests/model.mjs']],
-  ['rust/integration', resolve(root, 'clients/rust/target/release/integration'), [resolve(root, 'schema/bench.dbs')]],
+  ['rust/integration', resolve(root, 'clients/rust/target/debug/integration'), [resolve(root, 'schema/bench.dbs')]],
 ];
 
 function mysqlConnection(dsn = mysqlDsn) {
@@ -86,8 +74,7 @@ async function mysql(statements, dsn = mysqlDsn) {
 // program을 실행하고 출력 줄을 step으로 보고한다. 종료 상태가 0이 아니면 실패다.
 function execute(program, args, step) {
   return new Promise((done, fail) => {
-    const env = { ...process.env, ORM_TEST_MYSQL_DSN: mysqlDsn, ORM_TEST_POSTGRES_DSN: postgresDsn };
-    const child = spawn(program, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(program, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
     const lines = stepLines(text => step(redact(text)));
     child.stdout.on('data', chunk => lines.write(String(chunk)));
     child.stderr.on('data', chunk => lines.write(String(chunk)));
@@ -150,15 +137,8 @@ async function check(name, deadline, body) {
 
 let before;
 let created = false;
-let owned = false;
 try {
-  await check('case-database/shared', DATABASE, async ({ step }) => {
-    owned = true;
-    await mysql([`CREATE DATABASE \`${shared}\``], adminMysqlDsn);
-    await postgres([`CREATE DATABASE "${shared}"`], adminPostgresDsn);
-    step(`shared test database ${shared} created on MySQL and PostgreSQL`);
-  });
-  if (!failed) await check('case-database/leftover', DATABASE, async ({ step }) => {
+  await check('case-database/leftover', DATABASE, async ({ step }) => {
     await mysql([`CREATE TABLE \`${leftover}\` (id int PRIMARY KEY)`]);
     created = true;
     await mysql([`INSERT INTO \`${leftover}\` (id) VALUES (1)`]);
@@ -189,11 +169,6 @@ try {
     await mysql([`DROP TABLE \`${leftover}\``]);
     await postgres([`DROP TABLE IF EXISTS "${leftover}"`]);
     step(`table ${leftover} dropped`);
-  });
-  if (owned) await check('case-database/remove-shared', DATABASE, async ({ step }) => {
-    await mysql([`DROP DATABASE IF EXISTS \`${shared}\``], adminMysqlDsn);
-    await postgres([`DROP DATABASE IF EXISTS "${shared}" WITH (FORCE)`], adminPostgresDsn);
-    step(`shared test database ${shared} dropped`);
   });
 }
 if (failed) process.exitCode = 1;

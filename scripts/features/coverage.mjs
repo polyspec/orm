@@ -354,7 +354,9 @@ async function buildNative(plans, directory, buildTimeoutMs) {
 
 // prepared는 spec 하나를 build된 binary를 실행하는 process 목록으로 바꾼다. Go는 test2json이
 // test binary를 실행해 `go test -json`과 같은 event를 낸다. Rust는 선언된 test file을
-// compile한 test binary마다 그 entry의 모든 symbol을 한 process에서 정확히 일치로 실행한다.
+// compile한 test binary마다 그 entry의 모든 symbol을 한 process에서 정확히 일치로, 선언된 순서와
+// 상관없이 하나씩 차례로 실행한다(--test-threads=1). 같은 entry의 case는 같은 database row를 쓸 수
+// 있으므로 symbol마다 process를 띄우던 때처럼 겹쳐 실행하지 않는다.
 function prepared(spec, builds) {
   if (spec.format === 'case') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
   if (spec.format === 'go') {
@@ -369,7 +371,7 @@ function prepared(spec, builds) {
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
   return executables.map(executable => ({ program: executable,
-    args: [...spec.symbols, '--exact', '--include-ignored'], cwd: spec.cwd }));
+    args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1'], cwd: spec.cwd }));
 }
 
 async function state(builds, database, dsn, timeoutMs) {
@@ -489,7 +491,9 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buil
                   step(child.label ?? `${spec.format === 'case' ? spec.program : child.program} ${entry.test}${spec.symbols ? ` ${spec.symbols.join(' ')}` : ''}`);
                   const result = await run(child.program, child.args, child.cwd, timeoutMs, testEnv, dsn ? text => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
-                  output += result.value + '\n';
+                  // libtest는 `test <symbol> ... ok` 결과 줄을 stdout에 쓴다. test가 stderr에 쓰는
+                  // case 보고 줄이 그 줄 사이에 끼지 않도록 Rust는 stdout만 읽는다.
+                  output += (spec.format === 'cargo' ? result.stdout : result.value) + '\n';
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.symbols));
               }

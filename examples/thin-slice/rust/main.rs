@@ -2,7 +2,7 @@
 //! stdout: the result as JSON. stderr: p50 of the generated client and of the
 //! same SQL through sqlx directly.
 //!
-//!   clients/rust/target/release/demo
+//!   clients/rust/target/debug/demo
 //! The DSN comes from ORM_BENCH_MYSQL_DSN, which the program requires.
 use std::sync::{Arc, Mutex};
 use std::time::Instant;

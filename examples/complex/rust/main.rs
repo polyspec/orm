@@ -1,6 +1,6 @@
 //! A complex statement in every client language, one JSON document. Run:
 //!
-//!   clients/rust/target/release/complex
+//!   clients/rust/target/debug/complex
 orm::models!();
 
 use model::{Author, Service, ServiceMember, User};

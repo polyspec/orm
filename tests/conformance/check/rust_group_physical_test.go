@@ -20,7 +20,7 @@ func TestPhysicalRustGroupBoolean(t *testing.T) {
 	}
 	if !t.Run("build", func(t *testing.T) {
 		c := testcase.Start(t, rustBuildDeadline)
-		if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+		if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
 			t.Fatal(err)
 		}
 	}) {

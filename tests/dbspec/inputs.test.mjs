@@ -3,7 +3,7 @@
 // message와 0이 아닌 exit로 거부하는지 확인한다.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mjs
-// (after the TypeScript build and the release builds of the Rust dbspec_compare,
+// (after the TypeScript build and the debug builds of the Rust dbspec_compare,
 // dbspec_apply and dbspec_stress examples)
 import { after } from 'node:test';
 import { caseTest } from '../testcase.mjs';
@@ -41,9 +41,9 @@ const applyRunners = [
   { name: 'apply go', command: 'go', args: ['run', './tests/dbspec/apply/go'] },
   { name: 'apply php', command: 'php', args: ['tests/dbspec/apply/php.php'] },
   { name: 'apply typescript', command: process.execPath, args: ['tests/dbspec/apply/typescript.mjs'] },
-  { name: 'apply rust', command: 'clients/rust/target/release/examples/dbspec_apply', args: [] },
+  { name: 'apply rust', command: 'clients/rust/target/debug/examples/dbspec_apply', args: [] },
 ];
-const stressHarness = { name: 'stress rust', command: 'clients/rust/target/release/examples/dbspec_stress', args: [] };
+const stressHarness = { name: 'stress rust', command: 'clients/rust/target/debug/examples/dbspec_stress', args: [] };
 const inputNames = ['cases', 'stress document', 'ddl', 'plans', 'mermaid'];
 
 // 각 경우는 runner, 그 인자, 그리고 stderr에 나와야 할 읽을 수 없는 경로다.

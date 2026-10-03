@@ -60,10 +60,18 @@ TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typesc
 # target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다.
-CHECK_TARGETS = checklist-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
+CHECK_TARGETS = checklist-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
 check:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+
+# bench는 성능 측정(2000 table stress 문서의 parse budget, 적용, introspection과 비교, CPU 시간
+# 제한)을 check와 같은 runner로 target마다 실행한다.
+BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-compare-bench dbspec-compare-bench timing-check
+.PHONY: bench
+bench:
+	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
+	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
 # go-test-check는 모든 Go package의 test를 실행한다.
 .PHONY: go-test-check
@@ -90,10 +98,22 @@ checklist-check:
 	node scripts/checklist/check.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
-# connection으로 주입한 apply 정리 error를 두 번 실행하고, tests/dbspec/stress.mjs의 stress
-# 문서를 release mode에서 두 번 잰다: parse는 300 ms 안, emit(parse(doc)) == doc, 두
-# emission이 같다.
+# connection으로 주입한 apply 정리 error를 두 번 실행한다.
+#
+# DBSPEC_STRESS_DOCUMENT는 tests/dbspec/stress.mjs의 2000 table 문서다. 그 문서의 parse 시간
+# budget, 적용, introspection과 비교는 성능 측정이므로 make bench가 실행한다. make check의
+# dbspec-compare-check와 dbspec-introspect-compare-check는 같은 모양의 작은 문서
+# (DBSPEC_COMPARE_TABLES, DBSPEC_INTROSPECT_TABLES개 table)로 같은 code path를 실행하고, make
+# bench는 같은 target을 2000 table로 실행한다.
 DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbs
+DBSPEC_COMPARE_TABLES ?= 20
+DBSPEC_COMPARE_DOCUMENT = clients/rust/target/dbspec/stress-$(DBSPEC_COMPARE_TABLES).dbs
+DBSPEC_INTROSPECT_TABLES ?= 20
+DBSPEC_INTROSPECT_DOCUMENT = clients/rust/target/dbspec/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
+# DBSPEC_INTROSPECT_PROFILE은 Rust introspection runner의 cargo profile이다. make check는 test
+# build와 의존성을 함께 쓰는 dev, make bench는 introspection budget을 재는 release다.
+DBSPEC_INTROSPECT_PROFILE ?= dev
+DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(DBSPEC_INTROSPECT_PROFILE))
 .PHONY: dbspec-rust-check
 # dbspec-ddl-check는 tests/dbspec/ddl.json의 모든 vector를 TEST_ENV의 MySQL, PostgreSQL,
 # SQLite에 적용해 behavior step을 실행하고, 모든 schema/*.dbs와 contracts/fixtures/*.dbs의
@@ -121,7 +141,6 @@ dbspec-introspect-ts-check:
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_introspect_test.php
-	php clients/php/tests/dbspec_introspect_stress_test.php
 
 # dbspec-introspect-rust-check는 같은 round trip과 tests/dbspec/introspect.json의 case를 Rust
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
@@ -143,7 +162,13 @@ dbspec-plan-check:
 # statement와 history step 22000개씩을 따로 commit하므로 그 case의 기한이 길다.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyStressPlan)$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1
+
+# dbspec-apply-stress-bench는 2000 table 문서를 첫 plan으로 MySQL, PostgreSQL, SQLite에
+# 적용한다(make bench). MySQL은 statement와 history step 22000개씩을 따로 commit한다.
+.PHONY: dbspec-apply-stress-bench
+dbspec-apply-stress-bench:
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
 # tests/dbspec/apply의 Go, PHP, TypeScript, Rust runner의 모든 순서쌍마다 MySQL, PostgreSQL,
@@ -153,8 +178,8 @@ dbspec-apply-check:
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check:
 	$(TSC_BUILD)
-	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
@@ -194,45 +219,68 @@ dbspec-plan-php-check:
 dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php
 
-# dbspec-introspect-compare-check는 2000 table stress 문서를 MySQL, PostgreSQL, SQLite에
-# 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust introspection
-# runner를 실행해 같은 출력, source schema text, 미지원 객체 없음, 각 introspection의 budget
-# 준수를 요구한다.
-.PHONY: dbspec-introspect-compare-check
+# dbspec-introspect-compare-check는 stress 문서(DBSPEC_INTROSPECT_TABLES개 table)를 MySQL,
+# PostgreSQL, SQLite에 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust
+# introspection runner를 실행해 같은 출력, source schema text, 미지원 객체 없음, 각
+# introspection의 budget 준수를 요구한다. dbspec-introspect-compare-bench는 같은 target을 2000
+# table 문서와 release runner로 실행한다.
+.PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
 dbspec-introspect-compare-check:
-	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
-	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
+	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
 	$(TSC_BUILD)
-	$(RUN_CASE) rust-build/dbspec_introspect $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(RUN_CASE) rust-build/dbspec_introspect $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+
+dbspec-introspect-compare-bench:
+	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
 # dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
-# stress 문서, tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
+# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
 # 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
-# apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다.
-.PHONY: dbspec-compare-check
+# apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
+# test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
+# 문서로 실행한다.
+.PHONY: dbspec-compare-check dbspec-compare-bench
 dbspec-compare-check:
 	node --test tests/dbspec/compare/check.test.mjs
-	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
-	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
+	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
 	$(TSC_BUILD)
-	$(RUN_CASE) rust-build/dbspec_compare $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
-	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
-	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
-	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
-	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_STRESS_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	$(RUN_CASE) rust-build/dbspec_compare $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
+	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
 
-dbspec-rust-check:
+dbspec-compare-bench:
+	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
+
+# dbspec-stress-bench는 2000 table stress 문서를 Go, PHP, TypeScript, Rust에서 두 번씩 parse하고
+# emit해 parse 시간 budget(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
+# emission이 같음을 확인하고(Rust는 release build), PHP introspection을 SQLite에서 잰다.
+.PHONY: dbspec-stress-bench
+dbspec-stress-bench:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
+	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
+	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
+	php clients/php/tests/dbspec_stress_test.php
+	php clients/php/tests/dbspec_stress_test.php
+	php clients/php/tests/dbspec_introspect_stress_test.php
+	$(TSC_BUILD)
+	node --test clients/typescript/tests/dbspec-stress.mjs
+	node --test clients/typescript/tests/dbspec-stress.mjs
 	$(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
 	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+
+dbspec-rust-check:
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check:
@@ -243,8 +291,8 @@ rust-send-savepoint-check:
 .PHONY: dbspec-php-check
 # dbspec-php-check는 공유 dbspec vector, PHP rule, tests/dbspec/ddl.json의 statement vector,
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
-# connection으로 주입한 apply 정리 error, tests/dbspec/stress.mjs의 stress 문서를 각각 두 번
-# 실행한다. stress test는 parse와 emit 시간, 최대 memory를 출력한다.
+# connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
+# 실행한다.
 dbspec-php-check:
 	php clients/php/tests/dbspec_test.php
 	php clients/php/tests/dbspec_test.php
@@ -260,8 +308,6 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_mermaid_test.php
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 	php clients/php/tests/dbspec_apply_cleanup_test.php
-	php clients/php/tests/dbspec_stress_test.php
-	php clients/php/tests/dbspec_stress_test.php
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지 확인한다.
@@ -340,7 +386,7 @@ unselected-column-physical-check:
 # `orm_case_` database와 `orm-case-` SQLite file을 남기지 않는지 확인한다(T25).
 case-database-check:
 	$(RUN_CASE) typescript-build $(BUILD_DEADLINE) -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/integration $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked --release -p orm-tests --bin integration
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/integration $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
 	$(WITH_TEST_ENV) node scripts/case-database-check.mjs
 
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check
@@ -382,22 +428,21 @@ ts-min-check:
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, plan vector, Mermaid
-# vector, apply 정리 error, 그것들이 아직 다루지 않는 rule을 실행한 뒤, tests/dbspec/stress.mjs의
-# stress 문서를 두 번 parse하고 emit하며 두 시간을 출력한다.
+# vector, apply 정리 error, 그것들이 아직 다루지 않는 rule을 실행한다. stress 문서는 make bench가
+# 실행한다.
 .PHONY: dbspec-ts-check
 dbspec-ts-check:
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs clients/typescript/tests/dbspec-apply-cleanup.mjs
-	node --test clients/typescript/tests/dbspec-stress.mjs
-	node --test clients/typescript/tests/dbspec-stress.mjs
 
 # dbspec-go-check는 Go dbspec engine으로 tests/dbspec/cases.json의 공유 vector, 자기 rule case,
-# node tests/dbspec/stress.mjs가 쓰는 stress 문서, manifest, statement, plan, comparison,
+# manifest, statement, plan, comparison,
 # Mermaid vector, apply 정리 error, case harness를 실행하고, 모든 vector file의 빠지거나 type이
-# 틀린 field를 위치와 함께 거부하는지 확인하며, parse와 emit 시간을 기록한다.
+# 틀린 field를 위치와 함께 거부하는지 확인한다. stress 문서(TestStressDocument, build tag bench)는
+# make bench가 실행한다.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	$(GO_TEST) ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1
+	$(GO_TEST) ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1
 
 docs-dev:
 	npm run docs:dev
@@ -445,16 +490,17 @@ rust-driver-check:
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/examples $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/release/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/release/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/examples $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/debug/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/debug/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
+# 2000 table stress 문서의 parse budget을 쓰므로 make bench가 실행한다.
 TIMING_GO_DBSPEC_TEST = .runtime/timing/dbspec.test
 timing-check:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
+	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/orm-schema-tests $(BUILD_DEADLINE) --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
 	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
