@@ -12,11 +12,13 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // executor is where a statement runs: a connection or an active transaction.
@@ -250,10 +252,10 @@ type txOptions struct {
 	set       bool
 }
 
-// auditRecord는 transaction이 삽입한 audit 기록의 entity와 primary key 값이다.
+// auditRecord는 transaction이 삽입한 audit 기록의 table과 primary key 값이다.
 type auditRecord struct {
-	entity string
-	key    any
+	table string
+	key   any
 }
 
 // TransactionOption configures a transaction.
@@ -276,67 +278,117 @@ func TimeoutMs(ms int) TransactionOption {
 
 // Audit makes the transaction one unit of work with an audit record. Before
 // the callback, in every attempt, the transaction inserts one row into the
-// audit record table: the defaults of the handle (DB.Audit) with values, a map
-// from column name to value, of which a value wins over the default of the same
-// column. Every insert, update, soft delete and restore of an audited table in
-// the transaction writes the record's primary key into the table's audit
-// column. The handle must have defaults, and every key must be a column of the
-// audit record table; otherwise the transaction fails with CodeConfig before
-// it begins. A nested transaction uses the audit of the outer one and accepts
-// only orm.Retry.
+// audit record table, the table that the audit settings of the registered sets
+// name with references: the values of Config.AuditSource, called once for the
+// transaction, with values, a map from column name to value, of which a value
+// wins over the source's value of the same column. Every insert, update, soft
+// delete and restore of an audited table in the transaction writes the record's
+// primary key into the table's audit column. The connection must have an audit
+// source, and every key must be a column of the audit record table; otherwise
+// the transaction fails with CodeConfig before it begins, and an error of the
+// source fails it as well. A nested transaction uses the audit of the outer one
+// and accepts only orm.Retry.
 func Audit(values map[string]any) TransactionOption {
 	return func(o *txOptions) { o.audit, o.auditSet, o.set = maps.Clone(values), true, true }
 }
 
-// auditRecord는 handle의 기본값 model에 transaction의 값을 더한 audit 기록
-// model이다. 같은 column이면 transaction의 값이 기본값을 이긴다. 기본값이
-// 없거나, 기본값 model이 다른 연결을 쓰거나, 값의 key가 audit 기록 table의
-// column이 아니거나, 그 table의 primary key가 column 하나가 아니면 CONFIG다.
-func (d *DB) auditRecord(values map[string]any) (*Core, error) {
-	if d.auditDefaults == nil || d.auditDefaults.Orm_() == nil {
-		return nil, configErr("the transaction has audit values but the connection has no audit defaults: set them with db.Audit(defaults)")
-	}
-	defaults := d.auditDefaults.Orm_()
-	if defaults.conn != nil && defaults.conn.Root() != d.Root() {
-		return nil, configErr("the audit defaults %s connect to another connection than the transaction", defaults.ent.Name)
-	}
-	ent, err := defaults.entityModel(d)
-	if err != nil {
-		return nil, err
-	}
-	if len(ent.PK) != 1 {
-		return nil, configErr("the audit record table %s needs a primary key of one column", ent.Name)
-	}
-	record := defaults.Clone()
-	for _, column := range slices.Sorted(maps.Keys(values)) {
-		if ent.Field(column) == nil {
-			return nil, configErr("audit value %s is not a column of %s", column, ent.Name)
-		}
-		record.Set(column, values[column])
-	}
-	if record.err != nil {
-		return nil, record.err
-	}
-	return record, nil
+// auditInsert는 transaction이 삽입할 audit 기록이다: 기록 table의 entity와 그
+// entity가 속한 schema, column 값이다.
+type auditInsert struct {
+	schema *Schema
+	ent    *runtimemodel.Entity
+	values map[string]any
 }
 
-// insertAudit은 transaction의 audit 기록을 삽입하고 그 entity와 primary key
-// 값을 돌려준다. 시도마다 record의 복사본을 삽입하므로 deadlock 뒤에 다시
-// 실행해도 같은 값을 쓴다.
-func (d *DB) insertAudit(record *Core) (*auditRecord, error) {
-	ent, err := record.entityModel(d)
+// auditRecord는 audit source의 값에 transaction의 값을 더한 audit 기록이다.
+// 같은 column이면 transaction의 값이 이긴다. 기록 table은 연결에 등록한 set의
+// audit setting이 references로 이름한 table 하나이며, 그 table을 entity로 가진
+// set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이 없거나
+// 여럿이거나, 값의 key가 그 table의 column이 아니거나, primary key가 column
+// 하나가 아니면 CONFIG이고, source의 오류는 그대로 돌려준다.
+func (d *DB) auditRecord(values map[string]any) (*auditInsert, error) {
+	if d.cfg.AuditSource == nil {
+		return nil, configErr("the transaction has audit values but the connection has no audit source: set Config.AuditSource")
+	}
+	d.m.engineMu.RLock()
+	var tables []string
+	for _, eng := range d.m.engines {
+		for _, name := range eng.M.Order {
+			if a := eng.M.Entities[name].Audit; a != nil && !slices.Contains(tables, a.Record) {
+				tables = append(tables, a.Record)
+			}
+		}
+	}
+	slices.Sort(tables)
+	var target *auditInsert
+	if len(tables) == 1 {
+		for hash, eng := range d.m.engines {
+			for _, name := range eng.M.Order {
+				if e := eng.M.Entities[name]; e.Table == tables[0] {
+					target = &auditInsert{schema: d.m.schemas[hash], ent: e}
+				}
+			}
+		}
+	}
+	d.m.engineMu.RUnlock()
+	switch {
+	case len(tables) == 0:
+		return nil, configErr("the transaction has audit values but no set of the connection has an audited table")
+	case len(tables) > 1:
+		return nil, configErr("the audited tables of the connection record their audits in %s; one audit record table is required", strings.Join(tables, ", "))
+	case target == nil:
+		return nil, configErr("the audit record table %s is not a table of a set registered on the connection", tables[0])
+	case len(target.ent.PK) != 1:
+		return nil, configErr("the audit record table %s needs a primary key of one column", tables[0])
+	}
+	source, err := d.cfg.AuditSource(d.ctx)
 	if err != nil {
 		return nil, err
 	}
-	m, err := record.Clone().Create()
+	target.values = map[string]any{}
+	for _, set := range []map[string]any{source, values} {
+		for _, column := range slices.Sorted(maps.Keys(set)) {
+			if target.ent.Field(column) == nil {
+				return nil, configErr("audit value %s is not a column of %s", column, target.ent.Table)
+			}
+			target.values[column] = set[column]
+		}
+	}
+	if len(target.values) == 0 {
+		return nil, configErr("the audit record of %s has no value: the audit source and the transaction give none", target.ent.Table)
+	}
+	return target, nil
+}
+
+// insertAudit은 transaction의 audit 기록을 삽입하고 그 table과 primary key
+// 값을 돌려준다. primary key가 identity이면 생성된 key, 아니면 기록의 값이다.
+// 시도마다 다시 삽입한다.
+func (d *DB) insertAudit(ex executor, a *auditInsert) (*auditRecord, error) {
+	r := &request{schema: a.schema}
+	r.ir.IRVersion = ir.Version
+	r.ir.ManifestHash = a.schema.Hash
+	r.ir.Kind = "insert"
+	r.ir.Entity = a.ent.Name
+	for _, column := range slices.Sorted(maps.Keys(a.values)) {
+		assign, err := r.assign(a.ent, setSpec{column: column, value: a.values[column], null: a.values[column] == nil})
+		if err != nil {
+			return nil, err
+		}
+		r.ir.Set = append(r.ir.Set, assign)
+	}
+	r.ir.NParams = len(r.params)
+	id, _, err := write(ex, r)
 	if err != nil {
 		return nil, err
 	}
-	key := m.Orm_().value(ent.PK[0])
+	key := a.values[a.ent.PK[0]]
+	if a.ent.Field(a.ent.PK[0]).Identity {
+		key = id
+	}
 	if key == nil {
-		return nil, configErr("the audit record %s has no %s after its insert", ent.Name, ent.PK[0])
+		return nil, configErr("the audit record %s has no %s after its insert", a.ent.Table, a.ent.PK[0])
 	}
-	return &auditRecord{entity: ent.Name, key: key}, nil
+	return &auditRecord{table: a.ent.Table, key: key}, nil
 }
 
 // Retry sets how many times a deadlocked callback runs again; 0 disables retry.
@@ -366,11 +418,12 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 		}
 		inner := fn
 		fn = func() error {
-			a, err := d.insertAudit(record)
+			t := activeFor(d)
+			a, err := d.insertAudit(t, record)
 			if err != nil {
 				return err
 			}
-			activeFor(d).audit = a
+			t.audit = a
 			return inner()
 		}
 	}

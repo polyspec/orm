@@ -27,7 +27,6 @@ use Orm\Generator;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\RuntimeModel;
-use RuntimeDb\Orm\Audit;
 use RuntimeDb\Orm\Item;
 use RuntimeDb\Orm\Sample;
 
@@ -73,10 +72,10 @@ function errorCode(Closure $fn): string
     return 'no error';
 }
 
-/** dsn에 연결하고 $namespace의 document set을 설치한다. */
+/** actor 'default'를 audit 값으로 주는 audit source로 dsn에 연결하고 $namespace의 document set을 설치한다. */
 function database(string $dsn, string $namespace): Db
 {
-    $db = Orm::connect($dsn, new Config());
+    $db = Orm::connect($dsn, auditConfig('default'));
     $db->utils()->schema()->install(("$namespace\\schema")());
     return $db;
 }
@@ -109,10 +108,9 @@ $cases['i16 values and defaults'] = function (Db $db): void {
 };
 
 // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
-$cases['audit record of a transaction'] = function (Db $db): void {
-    auditCase($db, 'RuntimeDb\\Orm');
-    $adb = $db->audit((new Audit)->setActor('assign'));
-    $assigned = errorCode(fn() => $adb->transaction(fn() => (new Item)->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0));
+$cases['audit record of a transaction'] = function (Db $db, string $dsn): void {
+    auditCase($db, $dsn, 'RuntimeDb\\Orm');
+    $assigned = errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0));
     want($assigned === Code::IR_INVALID, "an assigned audit column = $assigned, want IR_INVALID");
     want((new Item)($db)->getCount() === 0, 'soft delete hides the row');
 };
@@ -130,7 +128,7 @@ foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             with_case_database($driver, $step, static function (string $dsn) use ($name, $case): void {
                 $db = database($dsn, $name === 'restore of soft-deleted rows' ? 'RuntimeRestore\\Orm' : 'RuntimeDb\\Orm');
                 try {
-                    $case($db);
+                    $case($db, $dsn);
                 } finally {
                     $db->close();
                 }

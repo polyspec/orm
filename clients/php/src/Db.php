@@ -28,14 +28,6 @@ final class Db
     private bool $rollbackFault = false;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     private array $sets = [];
-    /**
-     * 연결의 상태(닫힘, statement cache, 등록된 set, test fault)를 가진 Db다. 연결은 자신이고,
-     * audit()이 만든 handle은 그 연결이다. transaction frame도 이 Db로 맞춘다.
-     */
-    private Db $root;
-    /** 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다. */
-    private ?Model $auditDefaults = null;
-
     /** @internal Orm::connect creates connections. */
     public function __construct(
         private readonly \PDO $pdo,
@@ -47,25 +39,6 @@ final class Db
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
-        $this->root = $this;
-    }
-
-    /**
-     * A handle on the same connection whose transactions record their audit with
-     * $defaults: a model of the audit record table with the values that every
-     * audit of the handle shares, such as the account and the request. A
-     * transaction with audit values inserts one audit record with these defaults
-     * and its values, and the audited writes of the transaction refer to it. The
-     * handle shares the PDO connection, the registered sets and the active
-     * transactions with the connection; models connect to it as to the
-     * connection. The connection itself is not changed.
-     */
-    public function audit(Model $defaults): Db
-    {
-        $handle = clone $this;
-        $handle->root = $this->root;
-        $handle->auditDefaults = $defaults;
-        return $handle;
     }
 
     /**
@@ -85,7 +58,7 @@ final class Db
     public function registerSet(Schema $schema): void
     {
         $schema->verify();
-        $this->root->sets[$schema->manifestHash] = true;
+        $this->sets[$schema->manifestHash] = true;
     }
 
     /** The database of the connection: mysql, postgres, or sqlite. */
@@ -109,7 +82,7 @@ final class Db
     /** @internal */
     public function pdo(): \PDO
     {
-        if ($this->root->closed) {
+        if ($this->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         return $this->pdo;
@@ -124,19 +97,19 @@ final class Db
     /** Releases cached statements; the connection cannot be used afterwards. */
     public function close(): void
     {
-        if ($this->root->closed) {
+        if ($this->closed) {
             return;
         }
-        $this->root->closed = true;
+        $this->closed = true;
         try {
-            foreach ($this->root->stmts as $st) {
+            foreach ($this->stmts as $st) {
                 $st->closeCursor();
             }
         } catch (\PDOException $e) {
             throw OrmException::fromDriver($e, $this->driver);
         }
-        $this->root->stmts = [];
-        $this->root->stmtOrder = [];
+        $this->stmts = [];
+        $this->stmtOrder = [];
     }
 
     public static function bindLimit(string $driver): int
@@ -146,20 +119,20 @@ final class Db
 
     private function stmt(string $sql): \PDOStatement
     {
-        if ($this->root->closed) {
+        if ($this->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
-        if (isset($this->root->stmts[$sql])) {
-            return $this->root->stmts[$sql];
+        if (isset($this->stmts[$sql])) {
+            return $this->stmts[$sql];
         }
         // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
         $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
-        $this->root->stmts[$sql] = $st;
-        $this->root->stmtOrder[] = $sql;
-        while (count($this->root->stmtOrder) > $this->config->statementCacheSize) {
-            $oldest = array_shift($this->root->stmtOrder);
-            $this->root->stmts[$oldest]->closeCursor();
-            unset($this->root->stmts[$oldest]);
+        $this->stmts[$sql] = $st;
+        $this->stmtOrder[] = $sql;
+        while (count($this->stmtOrder) > $this->config->statementCacheSize) {
+            $oldest = array_shift($this->stmtOrder);
+            $this->stmts[$oldest]->closeCursor();
+            unset($this->stmts[$oldest]);
         }
         return $st;
     }
@@ -170,7 +143,7 @@ final class Db
     public static function activeFor(Db $db): ?TxFrame
     {
         for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
-            if (self::$frames[$i]->db->root === $db->root) {
+            if (self::$frames[$i]->db === $db) {
                 return self::$frames[$i];
             }
         }
@@ -185,7 +158,7 @@ final class Db
     public static function resolve(?Db $conn): array
     {
         if ($conn !== null) {
-            if ($conn->root->closed) {
+            if ($conn->closed) {
                 throw new OrmException(Code::CONFIG, 'database is closed');
             }
             return [$conn, self::activeFor($conn)];
@@ -216,11 +189,12 @@ final class Db
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
      *
-     * $audit은 이 작업 단위의 audit 기록 값(column => 값)이다. 값이 있으면 transaction은
-     * 시도마다 callback 전에 이 handle의 audit 기본값(audit())에 값을 더한 audit 기록 하나를
-     * 삽입하고(같은 column이면 값이 이긴다), transaction 안의 모든 감사 대상 insert, update, soft
-     * delete, restore는 그 primary key를 audit column에 쓴다(docs/dbspec.md "Audit"). 기본값이
-     * 없거나 값의 key가 audit 기록 table의 column이 아니면 transaction을 시작하기 전에 CONFIG다.
+     * $audit은 이 작업 단위의 audit 기록 값(column => 값)이다. 값이 있으면 transaction은 시작하기
+     * 전에 연결 설정의 auditSource를 한 번 부르고, 시도마다 callback 전에 그 값에 $audit을 더한(같은
+     * column이면 $audit이 이긴다) 행 하나를 연결에 등록한 set의 audit 기록 table에 삽입한다.
+     * transaction 안의 모든 감사 대상 insert, update, soft delete, restore는 그 primary key를 audit
+     * column에 쓴다(docs/dbspec.md "Audit"). source가 없거나, 기록 table이 하나가 아니거나, 값의
+     * key가 그 table의 column이 아니면 transaction을 시작하기 전에 CONFIG다.
      * 중첩 transaction은 바깥 transaction의 audit을 쓰며 $audit을 받지 않는다.
      *
      * @param array<string, mixed>|null $audit
@@ -241,7 +215,8 @@ final class Db
             $record = $this->auditRecord($audit);
             $inner = $fn;
             $fn = function () use ($record, $inner): mixed {
-                self::activeFor($this)->audit = $this->insertAudit($record);
+                $frame = self::activeFor($this);
+                $frame->audit = $this->insertAudit($frame, $record);
                 return $inner();
             };
         }
@@ -264,48 +239,93 @@ final class Db
     }
 
     /**
-     * handle의 audit 기본값 model에 transaction의 값을 더한 audit 기록 model이다. 같은 column이면
-     * transaction의 값이 기본값을 이긴다. 기본값이 없거나, 기본값 model이 다른 연결을 쓰거나,
-     * 값의 key가 audit 기록 table의 column이 아니거나, 그 table의 primary key가 column 하나가
-     * 아니면 CONFIG다.
+     * audit source의 값에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이
+     * 이긴다. 기록 table은 연결에 등록한 set의 audit setting이 references로 이름한 table 하나이며, 그
+     * table을 entity로 가진 set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이
+     * 없거나 여럿이거나, 값의 key가 그 table의 column이 아니거나, primary key가 column 하나가
+     * 아니면 CONFIG다. source는 transaction을 시작하기 전에 한 번 부르며 그 예외는 그대로 전한다.
      *
      * @param array<string, mixed> $values
+     * @return array{hash: string, entity: array, values: array<string, mixed>}
      */
-    private function auditRecord(array $values): Model
+    private function auditRecord(array $values): array
     {
-        $defaults = $this->auditDefaults ?? throw new OrmException(Code::CONFIG, 'the transaction has audit values but the connection has no audit defaults: set them with $db->audit($defaults)');
-        $meta = $defaults::meta();
-        $conn = $defaults->connection();
-        if ($conn !== null && $conn->root !== $this->root) {
-            throw new OrmException(Code::CONFIG, "the audit defaults {$meta['entity']} connect to another connection than the transaction");
+        $source = $this->config->auditSource ?? throw new OrmException(Code::CONFIG, 'the transaction has audit values but the connection has no audit source: set Config auditSource');
+        $models = [];
+        foreach (array_keys($this->sets) as $hash) {
+            $models[$hash] = Registry::model($hash);
         }
-        if (count($meta['pk']) !== 1) {
-            throw new OrmException(Code::CONFIG, "the audit record table {$meta['entity']} needs a primary key of one column");
-        }
-        ksort($values, SORT_STRING);
-        foreach (array_keys($values) as $column) {
-            if (!isset($meta['columns'][$column])) {
-                throw new OrmException(Code::CONFIG, "audit value $column is not a column of {$meta['entity']}");
+        $tables = [];
+        foreach ($models as $model) {
+            foreach ($model->entities as $entity) {
+                if ($entity['audit_record'] !== '' && !in_array($entity['audit_record'], $tables, true)) {
+                    $tables[] = $entity['audit_record'];
+                }
             }
         }
-        return $defaults->withValues($values);
+        sort($tables, SORT_STRING);
+        if ($tables === []) {
+            throw new OrmException(Code::CONFIG, 'the transaction has audit values but no set of the connection has an audited table');
+        }
+        if (count($tables) > 1) {
+            throw new OrmException(Code::CONFIG, 'the audited tables of the connection record their audits in ' . implode(', ', $tables) . '; one audit record table is required');
+        }
+        $target = null;
+        foreach ($models as $hash => $model) {
+            foreach ($model->entities as $entity) {
+                if ($entity['table'] === $tables[0]) {
+                    $target = ['hash' => $hash, 'entity' => $entity];
+                }
+            }
+        }
+        if ($target === null) {
+            throw new OrmException(Code::CONFIG, "the audit record table {$tables[0]} is not a table of a set registered on the connection");
+        }
+        if (count($target['entity']['pk']) !== 1) {
+            throw new OrmException(Code::CONFIG, "the audit record table {$tables[0]} needs a primary key of one column");
+        }
+        $merged = [];
+        foreach ([$source(), $values] as $set) {
+            ksort($set, SORT_STRING);
+            foreach ($set as $column => $value) {
+                if (!isset($target['entity']['columns'][$column])) {
+                    throw new OrmException(Code::CONFIG, "audit value $column is not a column of {$tables[0]}");
+                }
+                $merged[$column] = $value;
+            }
+        }
+        if ($merged === []) {
+            throw new OrmException(Code::CONFIG, "the audit record of {$tables[0]} has no value: the audit source and the transaction give none");
+        }
+        $target['values'] = $merged;
+        return $target;
     }
 
     /**
-     * transaction의 audit 기록을 삽입하고 그 entity와 primary key 값을 돌려준다. 시도마다 record의
-     * 복사본을 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
+     * transaction의 audit 기록을 삽입하고 그 table과 primary key 값을 돌려준다. primary key가
+     * identity이면 생성된 key, 아니면 기록의 값이다. 시도마다 다시 삽입한다.
      *
-     * @return array{entity: string, key: mixed}
+     * @param array{hash: string, entity: array, values: array<string, mixed>} $record
+     * @return array{table: string, key: mixed}
      */
-    private function insertAudit(Model $record): array
+    private function insertAudit(TxFrame $frame, array $record): array
     {
-        $meta = $record::meta();
-        $pk = $meta['pk'][0];
-        $key = (clone $record)->create()->toArray()[$pk] ?? null;
-        if ($key === null) {
-            throw new OrmException(Code::CONFIG, "the audit record {$meta['entity']} has no $pk after its insert");
+        $entity = $record['entity'];
+        $r = new Request('insert', $record['hash']);
+        $r->ir['entity'] = $entity['entity'];
+        $values = $record['values'];
+        ksort($values, SORT_STRING);
+        foreach ($values as $column => $value) {
+            $value = $value === null ? null : Model::encodeValue($entity['columns'][$column], $value);
+            $r->ir['set'][] = $value === null ? ['column' => $column, 'null' => true] : ['column' => $column, 'p' => $r->param($value)];
         }
-        return ['entity' => $meta['entity'], 'key' => $key];
+        [$id] = $this->writeOf($frame, $r);
+        $pk = $entity['pk'][0];
+        $key = $entity['identity'] === $pk ? ($id === null ? null : (int) $id) : ($values[$pk] ?? null);
+        if ($key === null) {
+            throw new OrmException(Code::CONFIG, "the audit record {$entity['table']} has no $pk after its insert");
+        }
+        return ['table' => $entity['table'], 'key' => $key];
     }
 
     private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
@@ -323,8 +343,8 @@ final class Db
                 // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
-            if ($this->root->rollbackFault) {
-                $this->root->rollbackFault = false;
+            if ($this->rollbackFault) {
+                $this->rollbackFault = false;
                 throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $failure;
@@ -336,7 +356,7 @@ final class Db
 
     private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
     {
-        if ($this->root->closed) {
+        if ($this->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
@@ -533,7 +553,7 @@ final class Db
 
     private function enter(?TxFrame $frame, array $ir): void
     {
-        if ($this->root->closed) {
+        if ($this->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($frame !== null && $frame->finished) {
@@ -549,7 +569,7 @@ final class Db
         // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
         // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
         $hash = $r->ir['manifest_hash'];
-        if (!isset($this->root->sets[$hash])) {
+        if (!isset($this->sets[$hash])) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
         }
         $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
@@ -795,8 +815,8 @@ final class Db
                     break;
                 case 'audit':
                     $audit = $frame?->audit ?? throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
-                    if ($audit['entity'] !== ($b['name'] ?? '')) {
-                        throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a {$audit['entity']}");
+                    if ($audit['table'] !== ($b['name'] ?? '')) {
+                        throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a row of {$audit['table']}");
                     }
                     $out[] = $audit['key'];
                     break;
@@ -1200,10 +1220,10 @@ final class TxFrame
     /** @var list<string> */
     public array $locks = [];
     /**
-     * transaction이 시작할 때 삽입한 audit 기록의 entity와 primary key 값이다. 감사 대상 행의
+     * transaction이 시작할 때 삽입한 audit 기록의 table과 primary key 값이다. 감사 대상 행의
      * audit column에 그 key를 쓴다. 없으면 null이다.
      *
-     * @var array{entity: string, key: mixed}|null
+     * @var array{table: string, key: mixed}|null
      */
     public ?array $audit = null;
 

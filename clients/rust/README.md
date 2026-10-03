@@ -70,7 +70,7 @@ and have a nonempty key. If `aes_keys` is present, it must contain the current v
 `aes_key` supplied alongside it must equal that version's key. `Db::connect` returns `CONFIG`
 before opening a connection for invalid key configuration. A connection without AES columns may
 leave both key fields empty.
-| Record audited writes | Declare the `audit` setting in the schema, take a handle with the audit defaults with `db.audit(Audit::new().set_…(…))`, and pass the values of the unit of work with `.audit([("action", …)])` on `transaction`, `transaction_send` or `transaction_once` ([usage](../../docs/usage.md#audited-writes)) |
+| Record audited writes | Declare the `audit` setting in the schema, give `Config::audit_source` once at connect, and pass the values of the unit of work with `.audit([("action", …)])` on `transaction`, `transaction_send` or `transaction_once` ([usage](../../docs/usage.md#audited-writes)) |
 
 `timeout_ms(0)` disables the callback deadline. A positive deadline covers callback execution,
 including statements it starts. Expiry returns `CANCELED` only after rollback succeeds; if

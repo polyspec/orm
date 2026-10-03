@@ -1689,7 +1689,8 @@ abstract class Model implements \JsonSerializable
         return $a;
     }
 
-    private static function encodeValue(array $col, mixed $v): mixed
+    /** @internal the stored value of a column value: the styled codec stages encode it */
+    public static function encodeValue(array $col, mixed $v): mixed
     {
         $codec = array_values(array_filter($col['codec'], static fn(string $s): bool => !Codec::isHostStyle($s)));
         if ($codec === []) {
@@ -2016,24 +2017,6 @@ abstract class Model implements \JsonSerializable
         }
         $db->writeOf($frame, $r);
         return $q->get();
-    }
-
-    /**
-     * @internal a copy of the model with $values (column => value) set as its
-     * setters set them; Db::transaction builds the audit record with it.
-     *
-     * @param array<string, mixed> $values
-     */
-    public function withValues(array $values): static
-    {
-        $m = clone $this;
-        foreach ($values as $column => $value) {
-            $m->writeColumn($column, $value);
-        }
-        if ($m->error !== null) {
-            throw $m->error;
-        }
-        return $m;
     }
 
     /** @internal the connection of a loaded row */

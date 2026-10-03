@@ -160,9 +160,9 @@ classDiagram
 | `readOnly` | 불리언 |
 | `timeoutMs` | 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환 |
 | `retry` | 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다 |
-| `audit` | 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 콜백 전에, 시도마다, 연결 handle의 audit 기본값에 이 값을 더해(값이 이긴다) 삽입하고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](usage.ko.md#audited-writes)) |
+| `audit` | 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 콜백 전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](usage.ko.md#audited-writes)) |
 
-`connection.audit(defaults)`는 audit 기록 테이블의 모델인 audit 기본값을 가진 같은 연결의 handle을 반환하며, 연결 자신은 바꾸지 않는다. 기본값 없는 handle에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패한다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
+연결 설정은 현재 요청의 audit 값을 돌려주는 함수 `auditSource`를 받는다([설정](config.ko.md)). source 없는 연결에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패하고, source의 오류는 트랜잭션을 실패시킨다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
 
 - 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
 - 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다. 콜백 오류, panic, Go `runtime.Goexit` 뒤에는 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 모두 실행하고, 둘 중 하나가 실패하면 오류나 panic 값은 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`다. 성공한 콜백 뒤에 실패한 `RELEASE SAVEPOINT`는 그 오류를 반환한다. 취소된 트랜잭션 context로 이미 끝난 트랜잭션의 savepoint는 트랜잭션과 함께 끝났다.

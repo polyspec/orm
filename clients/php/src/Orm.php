@@ -346,6 +346,12 @@ final class Config
         public readonly int $poolLifetimeMs = 0,
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,
+        /**
+         * fn(): array<string, mixed> giving the audit record values of a transaction with audit
+         * values, such as the account and the request; the transaction calls it once before it
+         * begins, and its values of the same column lose to the values of the transaction
+         */
+        public readonly ?\Closure $auditSource = null,
     ) {
         if ($aesVersion < 1 || $planCacheSize < 1 || $statementCacheSize < 1) {
             throw new OrmException(Code::CONFIG, 'AES version and cache sizes must be positive');

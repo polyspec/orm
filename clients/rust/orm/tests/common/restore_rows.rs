@@ -59,7 +59,6 @@ macro_rules! row_model {
 
 row_model!(Membership, MEMBERSHIP, "membership", ["seq", "team_id", "member_id", "note", "audit_seq", "deleted_at"]);
 row_model!(Label, LABEL, "label", ["id", "name", "color", "deleted_at"]);
-row_model!(AuditRecord, AUDIT, "audit", ["seq", "actor"]);
 
 /// 연결하고 값을 정한 model.
 fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
@@ -132,13 +131,12 @@ fn cast_text(driver: &str, column: &str) -> String {
 ///   - key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이며, 지워지지 않은 행에는 쓰지 않는다.
 ///   - key의 값이 없는 restore와 set 값이 없는 restore는 CONFIG다.
 pub async fn restore_case(driver: &str, dsn: &str) {
-    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let source: orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
+    let db = Db::connect(dsn, 2, orm::Config { audit_source: Some(source), ..Default::default() }).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let i = Param::I64;
     let text = |s: &str| Param::Str(s.to_owned());
-    let mut defaults = AuditRecord::from_core(Core::new(AuditRecord::entity()));
-    defaults.core_mut().set("actor", text("default"));
-    let adb = db.audit(defaults);
+    let adb = &db;
     let (seq, id) = adb
         .transaction(async || {
             let m = orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n1"))])).await?;

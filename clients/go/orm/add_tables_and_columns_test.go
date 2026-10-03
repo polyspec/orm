@@ -44,7 +44,7 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 	dsn := newDatabase(t, driver)
 	v1 := addTablesAndColumnsSchema(t, "v1")
 	logSet := addTablesAndColumnsSchema(t, "log")
-	db, err := orm.ConnectSchema(dsn, v1, orm.Config{PoolSize: 1})
+	db, err := orm.ConnectSchema(dsn, v1, orm.Config{PoolSize: 1, AuditSource: auditSource("setup")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 		return row.(*keywordRow).vals["id"].(int64)
 	}
 	create(rowEntity("addcol_log_entry", logSet, "id", "message"), map[string]any{"message": "kept"})
-	err = db.Audit(auditOf(v1, "setup")).Transaction(func() error {
+	err = db.Transaction(func() error {
 		item := create(rowEntity("addcol_item", v1, "id", "ref", "label", "audit_seq"), map[string]any{"ref": "item-1", "label": "first"})
 		tags := rowEntity("addcol_tag", v1, "id", "item_id", "parent_id", "name")
 		parent := create(tags, map[string]any{"item_id": item, "name": "red"})
@@ -151,12 +151,12 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 		t.Fatalf("a tag of a missing item = %v, want FOREIGN_KEY", err)
 	}
 	// version 2의 model은 새 column을 쓰고, audit trigger는 새 column을 기록한다.
-	next, err := orm.ConnectSchema(dsn, v2, orm.Config{})
+	next, err := orm.ConnectSchema(dsn, v2, auditConfig("next"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer next.Close()
-	err = next.Audit(auditOf(v2, "update")).Transaction(func() error {
+	err = next.Transaction(func() error {
 		c := orm.NewCore(rowEntity("addcol_item", v2, "id", "note", "priority", "audit_seq"))
 		c.Connect(next)
 		c.Set("id", int64(1))
@@ -171,7 +171,7 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 		t.Fatalf("history rows of the update with the new columns = %d", n)
 	}
 	// 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
-	err = next.Audit(auditOf(v2, "extra")).Transaction(func() error {
+	err = next.Transaction(func() error {
 		c := orm.NewCore(rowEntity("addcol_extra", v2, "id", "item_id", "label", "audit_seq"))
 		c.Connect(next)
 		c.Set("item_id", int64(1))

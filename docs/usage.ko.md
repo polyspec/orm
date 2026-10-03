@@ -296,39 +296,46 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 
 ### 감사 대상 쓰기 {#audited-writes}
 
-`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 호출이 기록을 정한다:
+`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블, 곧 setting이 `references`로 정한 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 곳이 기록의 값을 준다:
 
-- 연결의 `audit(defaults)`는 audit 기본값을 가진 같은 연결의 handle을 돌려준다. 기본값은 계정과 요청처럼 handle의 모든 작업 단위가 함께 쓰는 값을 가진 audit 기록 테이블의 모델이다. 연결 자신은 바꾸지 않으므로 요청마다 한 번 정하고 handle을 넘긴다. 모델은 연결에 연결하듯이 handle에 연결한다.
-- 그 handle에서 실행하는 트랜잭션의 `audit` 옵션은 이 작업 단위의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `transaction`, `transaction_send`, `transaction_once`의 `.audit(pairs)`, TypeScript `{ audit: {...} }`). 빈 map은 기본값만 기록한다.
+- 연결 설정은 프로세스마다 한 번 `auditSource`를 받는다([설정](config.ko.md)). 현재 요청의 audit 값, 곧 계정과 요청 id처럼 audit 기록 테이블의 컬럼 이름에서 값으로 가는 map을 돌려주는 함수다. ORM은 자기 audit 값을 쓰지 않는다.
+- 트랜잭션의 `audit` 옵션은 이 변경의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `transaction`, `transaction_send`, `transaction_once`의 `.audit(pairs)`, TypeScript `{ audit: {...} }`). 빈 map은 source의 값만 기록한다.
 
 ```go
-db := master.Audit(model.Audit().SetAccountSeq(accountSeq).SetRequestId(requestID)) // once per request
-err := db.Transaction(func() error {
+master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {
+    r := requestOf(ctx) // the request context of the calling code
+    return map[string]any{"account_seq": r.AccountSeq, "request_id": r.ID}, nil
+}})
+err = master.WithContext(ctx).Transaction(func() error {
     _, err := model.Service().SetName("renamed").Create()
     return err
 }, orm.Audit(map[string]any{"action": "service.rename", "reason": reason}))
 ```
 ```php
-$db = $master->audit((new Audit)->setAccountSeq($accountSeq)->setRequestId($requestId)); // once per request
-$db->transaction(function (): void {
+$master = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(auditSource: fn (): array => ['account_seq' => $request->accountSeq(), 'request_id' => $request->id()]));
+$master->transaction(function (): void {
     (new Service)->setName('renamed')->create();
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-let db = master.audit(Audit::new().set_account_seq(account_seq).set_request_id(request_id)); // once per request
-db.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
+let master = model::connect(&dsn, pool_size, orm::Config {
+    audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
+    ..Default::default()
+}).await?;
+master.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
     .audit([("action", "service.rename"), ("reason", reason.as_str())])
     .await?;
 ```
 ```typescript
-const db = master.audit(new Audit().setAccountSeq(accountSeq).setRequestId(requestId)); // once per request
-await db.transaction(async () => {
+const master = await connect(dsn, { auditSource: () => ({ account_seq: currentRequest().accountSeq, request_id: currentRequest().id }) });
+await master.transaction(async () => {
   await new Service().setName('renamed').create();
 }, { audit: { action: 'service.rename', reason } });
 ```
 
-- 트랜잭션은 callback 전에, 재시도하는 트랜잭션이면 시도마다, 기본값에 트랜잭션의 값을 더한 행 하나를 audit 기록 테이블에 삽입한다. 같은 컬럼이면 트랜잭션의 값이 기본값을 이긴다. 트랜잭션 안의 감사 대상 테이블의 모든 insert, update, soft delete, restore는 그 행의 primary key를 테이블의 audit 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. callback이 실패하면 audit 행도 변경과 함께 되돌아간다.
-- handle에 기본값이 없거나 audit 기록 테이블에 없는 컬럼의 값이 있으면 트랜잭션은 시작하기 전에 `CONFIG`로 실패한다. audit 값을 가진 트랜잭션 밖에서 감사 대상 테이블을 쓰면 `CONFIG`로 실패하고, audit 기록 테이블이 기본값의 테이블과 다른 테이블을 쓸 때도 그렇다. 중첩 트랜잭션은 바깥 트랜잭션의 audit을 쓰며 `audit`을 받지 않는다. audit 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
+- `audit`을 가진 트랜잭션은 시작하기 전에 source를 한 번 부르고, callback 전에, 재시도하는 트랜잭션이면 시도마다, source의 값과 자기 값으로 audit 기록 테이블에 행 하나를 삽입한다. 같은 컬럼이면 트랜잭션의 값이 source의 값을 이긴다. 트랜잭션 안의 감사 대상 테이블의 모든 insert, update, soft delete, restore는 그 행의 primary key(생성된 identity나 준 값)를 테이블의 audit 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. callback이 실패하면 audit 행도 변경과 함께 되돌아간다.
+- audit 기록 테이블은 연결에 등록한 set의 감사 대상 테이블들의 `references`가 정한 테이블 하나이며, 연결에 등록한 set의 테이블이다. 그런 테이블이 없거나 여럿이거나 primary key가 컬럼 둘 이상이면 `CONFIG`로 실패한다. 연결에 audit source가 없거나, source나 트랜잭션의 값이 audit 기록 테이블에 없는 컬럼을 정하거나, 값이 하나도 없으면 트랜잭션은 시작하기 전에 `CONFIG`로 실패한다. source의 오류는 그 오류로 트랜잭션을 실패시킨다.
+- `audit`을 가진 트랜잭션 밖에서 감사 대상 테이블을 쓰면 `CONFIG`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 audit을 쓰며 `audit`을 받지 않는다. audit 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
 
 ### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
 

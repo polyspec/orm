@@ -60,7 +60,7 @@ type Key struct {
 
 // Audit은 audit setting 중 executor가 쓰는 부분이다. table의 모든 insert와
 // update가 transaction의 audit 기록 key를 Column에 쓴다. Record는 audit 기록
-// table의 entity 이름이다.
+// table의 이름이다.
 type Audit struct {
 	History string
 	Column  string
@@ -130,16 +130,6 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 			}
 			m.Entities[e.Name] = e
 			m.Order = append(m.Order, e.Name)
-		}
-	}
-	for _, e := range m.Entities {
-		if e.Audit == nil {
-			continue
-		}
-		for _, other := range m.Entities {
-			if other.Table == e.Audit.Record {
-				e.Audit.Record = other.Name
-			}
 		}
 	}
 	return m, nil
@@ -289,7 +279,6 @@ func entityOf(t *dbspec.Table) *Entity {
 		e.fields[b.AESColumn].BlindIndex = b.IndexColumn
 	}
 	if s.Audit != nil {
-		// Record는 table 이름이며 Build가 모든 entity를 만든 뒤 entity 이름으로 바꾼다.
 		e.Audit = &Audit{History: s.Audit.History, Column: s.Audit.Column, Record: s.Audit.References}
 	}
 	return e

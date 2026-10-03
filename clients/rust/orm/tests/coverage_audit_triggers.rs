@@ -7,7 +7,7 @@ mod audit_rows;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
 
-use audit_rows::{drop_tables, SCHEMA};
+use audit_rows::drop_tables;
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use sqlx::Row;
@@ -43,20 +43,17 @@ fn feature_database() -> (String, String) {
     (driver, dsn)
 }
 
-/// 고른 database에 audit.dbs를 설치하고 case를 실행한 뒤, case가 실패해도 설치한 table과 function을 지우고
+/// 고른 database에서 audit.dbs를 설치하는 case를 실행한 뒤, case가 실패해도 설치한 table과 function을 지우고
 /// 그 실패를 이어 간다. item, item_history, audit이 미리 있으면 실패한다.
-async fn with_audit(case: impl AsyncFnOnce(&Db, &str)) {
+async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
     let (driver, dsn) = feature_database();
     let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
-    let ran = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(async {
-        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-        case(&db, &driver).await;
-    }))
-    .await;
+    // case는 audit source를 가진 자기 연결로 audit.dbs를 설치하고 쓴다.
+    let ran = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(case(&driver, &dsn))).await;
     drop_tables(&db, &driver).await;
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
@@ -134,7 +131,6 @@ macro_rules! columns_model {
 
 columns_model!(Card, CARD, "card", ["seq", "title", "secret", "audit_seq", "deleted_at"]);
 columns_model!(Tag, TAG, "tag", ["id", "label", "color", "audit_seq"]);
-columns_model!(ColumnsAudit, COLUMNS_AUDIT, "audit", ["seq", "actor"]);
 
 /// 값을 정한 model.
 fn with<M: Model>(values: &[(&str, Param)]) -> M {
@@ -196,9 +192,9 @@ async fn audit_selected_columns() {
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
-    db.utils().schema().install(&COLUMNS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let text = |s: &str| Param::Str(s.to_owned());
-    let adb = db.audit(with::<ColumnsAudit>(&[("actor", text("default"))]));
+    let adb = Db::connect(&dsn, 2, audit_rows::audit_config("default")).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    adb.utils().schema().install(&COLUMNS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let (seq, id) = adb
         .transaction(async || {
             let card = orm::model::create(&mut with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
@@ -242,6 +238,7 @@ async fn audit_selected_columns() {
     let rows = text_rows(&db, &query).await;
     let want = [["insert", "NULL", "x", "1"], ["update", "1", "x", "2"]];
     assert_eq!(rows, want.map(|r| r.map(str::to_owned).to_vec()), "{driver}: tag_history rows");
+    adb.close().await;
     drop_columns_tables(&db, &driver).await;
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");

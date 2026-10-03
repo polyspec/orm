@@ -29,6 +29,13 @@ use crate::{codes, Error, Result};
 /// arrive as `$SECRET` and executor clock binds as `$NOW`.
 pub type OnQuery = Arc<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&Error>) + Send + Sync>;
 
+/// The audit source of a connection: it returns the audit values of the
+/// current request, column names and values of the audit record table, such as
+/// the account and the request id. A transaction with `audit(values)` calls it
+/// once before it begins; an error fails the transaction. The ORM writes no
+/// audit value of its own.
+pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Sync>;
+
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
@@ -49,6 +56,9 @@ pub struct Config {
     /// default of 30 minutes.
     pub pool_lifetime_ms: u32,
     pub on_query: Option<OnQuery>,
+    /// The audit values of the transactions that record an audit; `None`
+    /// fails such a transaction with CONFIG.
+    pub audit_source: Option<AuditSource>,
 }
 
 impl Default for Config {
@@ -64,6 +74,7 @@ impl Default for Config {
             plan_cache_size: 256,
             statement_cache_size: 256,
             on_query: None,
+            audit_source: None,
         }
     }
 }
@@ -260,6 +271,8 @@ pub(crate) struct DbInner {
     plan_order: Mutex<VecDeque<u64>>,
     /// 이 연결에 등록된 set의 manifest hash.
     sets: std::sync::RwLock<std::collections::HashSet<String>>,
+    /// 등록한 set의 schema. audit 기록은 그 table을 가진 set으로 삽입한다.
+    pub(crate) schemas: std::sync::RwLock<Vec<&'static Schema>>,
     pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
@@ -272,8 +285,6 @@ pub(crate) struct DbInner {
 #[derive(Clone)]
 pub struct Db {
     pub(crate) inner: Arc<DbInner>,
-    /// 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다(`Db::audit`).
-    pub(crate) audit_defaults: Option<Arc<crate::core::Core>>,
 }
 
 /// The connection pool state.
@@ -328,7 +339,9 @@ impl Db {
     /// schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
     pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
         schema.registered()?;
-        self.inner.sets.write().unwrap().insert(schema.hash().to_owned());
+        if self.inner.sets.write().unwrap().insert(schema.hash().to_owned()) {
+            self.inner.schemas.write().unwrap().push(schema.interned());
+        }
         Ok(())
     }
 
@@ -409,7 +422,6 @@ impl Db {
             }
         };
         let db = Db {
-            audit_defaults: None,
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
@@ -419,6 +431,7 @@ impl Db {
                 plans: Mutex::new(HashMap::new()),
                 plan_order: Mutex::new(VecDeque::new()),
                 sets: std::sync::RwLock::new(std::collections::HashSet::new()),
+                schemas: std::sync::RwLock::new(Vec::new()),
                 pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
@@ -604,11 +617,11 @@ impl Db {
                 // audit slot은 transaction이 삽입한 audit 기록의 primary key다. audit이 없거나 audit table이
                 // 다른 entity에 audit을 기록하면 CONFIG다.
                 "audit" => out.push(match audit {
-                    Some(a) if a.entity == b.name => a.key.clone(),
+                    Some(a) if a.table == b.name => a.key.clone(),
                     Some(a) => {
                         return Err(Error::Config(format!(
-                            "the audited table records its audits in {}, but the audit of the transaction is a {}",
-                            b.name, a.entity
+                            "the audited table records its audits in {}, but the audit of the transaction is a row of {}",
+                            b.name, a.table
                         )))
                     }
                     None => return Err(Error::Config("a write of an audited table needs an audit: run it in a transaction with audit values".into())),

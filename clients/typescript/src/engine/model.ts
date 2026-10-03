@@ -58,7 +58,7 @@ export interface Entity {
   readonly aesVersion: string;
   /** The audit column of an `audit` setting, or ''. Every insert and update writes the key of the transaction's audit record into it. */
   readonly auditColumn: string;
-  /** The entity of the audit record table of an `audit` setting, or ''. */
+  /** The audit record table of an `audit` setting (its references table), or ''. */
   readonly auditRecord: string;
 }
 
@@ -114,7 +114,7 @@ function typeSizes(t: DbspecType): { precision: number; scale: number; length: n
   }
 }
 
-function entityOfTable(t: DbspecTable, entityNames: ReadonlyMap<string, string>): Entity {
+function entityOfTable(t: DbspecTable): Entity {
   let name = t.name;
   let updated = '';
   let softDelete = '';
@@ -133,7 +133,7 @@ function entityOfTable(t: DbspecTable, entityNames: ReadonlyMap<string, string>)
       case 'select_explicit': for (const c of s.columns) explicit.add(c); break;
       case 'codec': stages.set(s.column, s.stages); break;
       case 'blind_index': blind.set(s.column, s.indexColumn); break;
-      case 'audit': auditColumn = s.column; auditRecord = entityNames.get(s.references) ?? s.references; break;
+      case 'audit': auditColumn = s.column; auditRecord = s.references; break;
       case 'navigation': case 'immutable': break;
     }
   }
@@ -177,17 +177,9 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
     throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   }
   const entities = new Map<string, Entity>();
-  // audit 기록 table은 table 이름이고 runtime model은 그 entity 이름을 쓴다.
-  const entityNames = new Map<string, string>();
-  for (const document of documents) {
-    for (const table of document.tables) {
-      const entity = table.settings?.settings.find(s => s.kind === 'entity');
-      entityNames.set(table.name, entity?.kind === 'entity' ? entity.name : table.name);
-    }
-  }
   for (const document of [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
     for (const table of document.tables) {
-      const e = entityOfTable(table, entityNames);
+      const e = entityOfTable(table);
       if (entities.has(e.name)) throw new OrmError('SCHEMA_INVALID', `entity ${e.name} is declared twice in the document set`);
       entities.set(e.name, e);
     }
