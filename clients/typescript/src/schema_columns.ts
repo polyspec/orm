@@ -5,8 +5,8 @@
 // does not hold (bool, int, lazy and styles) taken from the manifest. Every
 // other difference between those tables and the manifest is reported with
 // SCHEMA_DIFFERS before any statement runs.
-import { ddlErrorText, ddlTable, splitSQL } from './engine/ddl.js';
-import type { Manifest } from './engine/manifest.js';
+import { ddlErrorText, ddlIndexName, ddlTable, ddlType, splitSQL } from './engine/ddl.js';
+import type { Column, Manifest } from './engine/manifest.js';
 import { triggerObjects } from './engine/triggers.js';
 import type { DriverControl } from './driver.js';
 import { OrmError } from './runtime_error.js';
@@ -14,7 +14,7 @@ import { buildManifest, type SchemaColumn, type SchemaEntity, type SchemaManifes
 import { parseDiagram, type DColumn, type Diagram } from './schema/mermaid.js';
 import { alignLiveChecks } from './tools/checks.js';
 import type { ToolDb, ToolDriver } from './tools/db.js';
-import { renderDiff } from './tools/diff.js';
+import { columnStorage, renderDiff } from './tools/diff.js';
 import { readTables, renderMermaid, type ImpTable } from './tools/introspect.js';
 
 export interface AddColumnsPlan { statements: string[]; added: string[]; }
@@ -73,6 +73,51 @@ function alignDefaults(current: SchemaManifest, declared: SchemaManifest): void 
   }
 }
 
+/**
+ * Gives every live column whose type the dialect stores as the declared type
+ * the declared type: PostgreSQL stores char(n) as varchar(n) and every blob
+ * type as bytea, so the import cannot read the declared raw type back. SQLite
+ * compares storage classes in the diff itself.
+ */
+function alignTypes(current: SchemaManifest, declared: SchemaManifest, driver: string): void {
+  if (driver === 'sqlite') return;
+  const physical = (c: SchemaColumn): string | undefined => {
+    try { return ddlType(c as unknown as Column, driver); } catch { return undefined; }
+  };
+  for (const name of declared.order ?? []) {
+    const columns = new Map((declared.entities![name]!.columns ?? []).map(c => [c.name, c]));
+    for (const c of current.entities![name]!.columns ?? []) {
+      const d = columns.get(c.name);
+      if (d === undefined || JSON.stringify(columnStorage(c, driver)) === JSON.stringify(columnStorage(d, driver))) continue;
+      const live = physical(c);
+      if (live === undefined || live !== physical(d)) continue;
+      c.type = d.type;
+      c.raw = d.raw;
+      c.len = d.len;
+      c.precision = d.precision;
+      c.scale = d.scale;
+      c.unsigned = d.unsigned;
+      c.enum = d.enum;
+    }
+  }
+}
+
+/**
+ * Gives every live index whose physical name is the physical name of a
+ * declared index the declared name: a name longer than the identifier limit
+ * of the dialect is stored cut with a digest, which the import cannot read
+ * back.
+ */
+function alignIndexes(current: SchemaManifest, declared: SchemaManifest, driver: string): void {
+  for (const name of declared.order ?? []) {
+    const e = current.entities![name]!;
+    if (!e.indexes) continue;
+    const table = declared.entities![name]!.table;
+    const byPhysical = new Map(Object.keys(declared.entities![name]!.indexes ?? {}).map(index => [ddlIndexName(table, index, driver), index]));
+    e.indexes = Object.fromEntries(Object.entries(e.indexes).map(([index, columns]) => [byPhysical.get(ddlIndexName(table, index, driver)) ?? index, columns]));
+  }
+}
+
 function required(c: SchemaColumn): boolean { return (c.auto ?? false) || (!(c.nullable ?? false) && c.default == null); }
 
 export async function planAddColumns(driver: string, control: DriverControl, want: SchemaManifest): Promise<AddColumnsPlan> {
@@ -109,6 +154,8 @@ export async function planAddColumns(driver: string, control: DriverControl, wan
     throw differs(`compare the checks of the existing tables: ${ddlErrorText(error)}`, error);
   }
   alignDefaults(current, declared);
+  alignTypes(current, declared, driver);
+  alignIndexes(current, declared, driver);
   const expanded = tables(current);
   const added: string[] = [];
   const missing: string[] = [];

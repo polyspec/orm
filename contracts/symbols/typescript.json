@@ -2493,6 +2493,8 @@
   "clients/typescript/src/schema_columns.ts::AddColumnsPlan#field.statements": "string[]",
   "clients/typescript/src/schema_columns.ts::AddColumnsPlan#wire": "{\"statements\":\"list\u003ctext\u003e\",\"added\":\"list\u003ctext\u003e\"}",
   "clients/typescript/src/schema_columns.ts::alignDefaults": "function alignDefaults(current: SchemaManifest, declared: SchemaManifest): void",
+  "clients/typescript/src/schema_columns.ts::alignIndexes": "function alignIndexes(current: SchemaManifest, declared: SchemaManifest, driver: string): void",
+  "clients/typescript/src/schema_columns.ts::alignTypes": "function alignTypes(current: SchemaManifest, declared: SchemaManifest, driver: string): void",
   "clients/typescript/src/schema_columns.ts::catalog": "function catalog(driver: ToolDriver, control: DriverControl): ToolDb",
   "clients/typescript/src/schema_columns.ts::defaultText": "function defaultText(d: string): string",
   "clients/typescript/src/schema_columns.ts::differs": "function differs(message: string, cause?: unknown): OrmError",

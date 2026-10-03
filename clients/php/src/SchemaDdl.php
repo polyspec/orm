@@ -210,7 +210,7 @@ final class SchemaDdl
         return $parts[count($parts) - 1];
     }
 
-    private static function indexName(string $table, string $index, string $dialect): string
+    public static function indexName(string $table, string $index, string $dialect): string
     {
         return $dialect === 'sqlite' ? self::table($table, $dialect) . '_' . $index : self::boundedIdentifier(self::base($table) . '_' . $index, $dialect);
     }

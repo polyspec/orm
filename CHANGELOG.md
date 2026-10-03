@@ -1,5 +1,14 @@
 # Changelog
 
+Compare the PostgreSQL column types and the bounded index names of the
+existing tables by their stored form in addColumns (N19.1). PostgreSQL stores
+`char(n)` as `varchar(n)` and every blob type as `bytea`, and stores an index
+name longer than 63 bytes cut with a digest, so addColumns returned
+`SCHEMA_DIFFERS` for tables that matched their manifest. A column whose type
+the dialect stores as the declared type now has the declared type, and an
+index whose physical name is the physical name of a declared index has the
+declared name.
+
 Add the missing columns of the existing tables of a manifest through the
 connection in the four clients (N19). `utils().schema().addColumns(manifestJson)`
 (Go `AddColumns`, Rust `add_columns`) reads only the tables of the manifest,

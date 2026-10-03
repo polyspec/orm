@@ -88,6 +88,8 @@ func PlanAddColumns(ctx context.Context, q Catalog, pool *sql.DB, driver string,
 		return nil, nil, schemaDiffers("compare the checks of the existing tables: %v", err)
 	}
 	addColumnsAlignDefaults(current, declared)
+	addColumnsAlignTypes(current, declared, driver)
+	addColumnsAlignIndexes(current, declared, driver)
 	expanded := addColumnsTables(current)
 	var added, missing []string
 	changed := map[string]bool{}
@@ -226,5 +228,64 @@ func addColumnsAlignDefaults(current, declared *schema.Manifest) {
 				c.Default = &value
 			}
 		}
+	}
+}
+
+// addColumnsAlignTypes gives every live column whose type the dialect stores
+// as the declared type the declared type: PostgreSQL stores char(n) as
+// varchar(n) and every blob type as bytea, so the import cannot read the
+// declared raw type back. SQLite compares storage classes in the diff itself.
+func addColumnsAlignTypes(current, declared *schema.Manifest, driver string) {
+	if driver == "sqlite" {
+		return
+	}
+	for _, name := range declared.Order {
+		for _, c := range current.Entities[name].Columns {
+			d := declared.Entities[name].Column(c.Name)
+			if d == nil {
+				continue
+			}
+			lt, lr, ll := columnStorage(c, driver)
+			dt, dr, dl := columnStorage(d, driver)
+			if lt == dt && lr == dr && ll == dl {
+				continue
+			}
+			live, err := ddlType(c, driver)
+			if err != nil {
+				continue
+			}
+			want, err := ddlType(d, driver)
+			if err != nil || live != want {
+				continue
+			}
+			c.Type, c.Raw, c.Len, c.Precision, c.Scale, c.Unsigned = d.Type, d.Raw, d.Len, d.Precision, d.Scale, d.Unsigned
+			c.Enum = append([]string(nil), d.Enum...)
+		}
+	}
+}
+
+// addColumnsAlignIndexes gives every live index whose physical name is the
+// physical name of a declared index the declared name: a name longer than the
+// identifier limit of the dialect is stored cut with a digest, which the import
+// cannot read back.
+func addColumnsAlignIndexes(current, declared *schema.Manifest, driver string) {
+	for _, name := range declared.Order {
+		e := current.Entities[name]
+		if len(e.Indexes) == 0 {
+			continue
+		}
+		table := declared.Entities[name].Table
+		byPhysical := map[string]string{}
+		for index := range declared.Entities[name].Indexes {
+			byPhysical[ddlIndexName(table, index, driver)] = index
+		}
+		named := map[string][]string{}
+		for index, columns := range e.Indexes {
+			if declaredName, ok := byPhysical[ddlIndexName(table, index, driver)]; ok {
+				index = declaredName
+			}
+			named[index] = columns
+		}
+		e.Indexes = named
 	}
 }

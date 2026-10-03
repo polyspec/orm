@@ -1,5 +1,5 @@
 {
-  "schema_hash": "a9ffc0322fe543a7",
+  "schema_hash": "59b805466b7c46aa",
   "order": [
     "addcol_item",
     "addcol_tag"
@@ -55,6 +55,20 @@
           "precision": 6
         },
         {
+          "name": "payload",
+          "type": "bytes",
+          "raw": "longblob",
+          "nullable": true,
+          "lazy": true
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "raw": "char(8)",
+          "nullable": true,
+          "len": 8
+        },
+        {
           "name": "note",
           "type": "string",
           "raw": "varchar(64)",
@@ -81,6 +95,10 @@
         ]
       ],
       "indexes": {
+        "ix_addcol_item_enabled_and_created_at_stored_together": [
+          "enabled",
+          "created_at"
+        ],
         "ix_addcol_label": [
           "label"
         ]

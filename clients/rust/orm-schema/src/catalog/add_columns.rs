@@ -12,7 +12,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use super::{align_live_checks, read_tables, Catalog, CatalogError};
-use crate::ddl::{ddl_table, render_diff};
+use crate::ddl::{column_storage, ddl_index_name, ddl_table, ddl_type, render_diff};
 use crate::live::render_mermaid;
 use crate::schema::{self, Col, DColumn, DEntity, Diagram, Manifest};
 use crate::sql::split_sql;
@@ -114,6 +114,52 @@ fn align_defaults(current: &mut Manifest, declared: &Manifest) {
     }
 }
 
+/// Gives every live column whose type the dialect stores as the declared type
+/// the declared type: PostgreSQL stores char(n) as varchar(n) and every blob
+/// type as bytea, so the import cannot read the declared raw type back. SQLite
+/// compares storage classes in the diff itself.
+fn align_types(current: &mut Manifest, declared: &Manifest, driver: &str) {
+    if driver == "sqlite" {
+        return;
+    }
+    for name in &declared.order {
+        let columns: HashMap<&str, &Col> = declared.entities[name].columns.iter().map(|c| (c.name.as_str(), c)).collect();
+        let Some(e) = current.entities.get_mut(name) else { continue };
+        for c in e.columns.iter_mut() {
+            let Some(d) = columns.get(c.name.as_str()) else { continue };
+            if column_storage(c, driver) == column_storage(d, driver) {
+                continue;
+            }
+            let (Ok(live), Ok(want)) = (ddl_type(c, driver), ddl_type(d, driver)) else { continue };
+            if live == want {
+                c.typ = d.typ.clone();
+                c.raw = d.raw.clone();
+                c.len = d.len;
+                c.precision = d.precision;
+                c.scale = d.scale;
+                c.unsigned = d.unsigned;
+                c.r#enum = d.r#enum.clone();
+            }
+        }
+    }
+}
+
+/// Gives every live index whose physical name is the physical name of a
+/// declared index the declared name: a name longer than the identifier limit
+/// of the dialect is stored cut with a digest, which the import cannot read
+/// back.
+fn align_indexes(current: &mut Manifest, declared: &Manifest, driver: &str) {
+    for name in &declared.order {
+        let Some(e) = current.entities.get_mut(name) else { continue };
+        let table = &declared.entities[name].table;
+        let by_physical: HashMap<String, &String> = declared.entities[name].indexes.keys().map(|index| (ddl_index_name(table, index, driver), index)).collect();
+        e.indexes = std::mem::take(&mut e.indexes)
+            .into_iter()
+            .map(|(index, columns)| (by_physical.get(&ddl_index_name(table, &index, driver)).map_or(index, |d| (*d).clone()), columns))
+            .collect();
+    }
+}
+
 pub async fn plan_add_columns<C: Catalog>(conn: &mut C, driver: &str, want: &Manifest) -> Result<AddColumnsPlan, AddColumnsError<C::Error>> {
     let mut physical = HashMap::new();
     for name in &want.order {
@@ -146,6 +192,8 @@ pub async fn plan_add_columns<C: Catalog>(conn: &mut C, driver: &str, want: &Man
     }
     align_live_checks(conn, driver, &mut current, &declared).await?;
     align_defaults(&mut current, &declared);
+    align_types(&mut current, &declared, driver);
+    align_indexes(&mut current, &declared, driver);
     let mut expanded = tables(&current);
     let (mut added, mut missing) = (Vec::new(), Vec::new());
     let mut changed = BTreeSet::new();

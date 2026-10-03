@@ -1,5 +1,12 @@
 # 변경 이력
 
+addColumns에서 기존 테이블의 PostgreSQL 컬럼 타입과 잘린 인덱스 이름을 저장된
+형식으로 비교한다(N19.1). PostgreSQL은 `char(n)`을 `varchar(n)`으로, 모든 blob
+타입을 `bytea`로 저장하고, 63 byte보다 긴 인덱스 이름은 잘린 뒤 digest를 붙여
+저장하므로, addColumns는 매니페스트와 일치하는 테이블에 `SCHEMA_DIFFERS`를
+반환했다. 이제 dialect가 선언한 타입으로 저장하는 컬럼은 선언한 타입을 가지고,
+물리 이름이 선언한 인덱스의 물리 이름과 같은 인덱스는 선언한 이름을 가진다.
+
 네 클라이언트에서 연결을 통해 매니페스트의 기존 테이블에 없는 컬럼을 추가한다(N19).
 `utils().schema().addColumns(manifestJson)`(Go `AddColumns`, Rust `add_columns`)은
 매니페스트의 테이블만 읽고, NULL을 허용하거나 기본값이 있는 없는 컬럼을 모두
