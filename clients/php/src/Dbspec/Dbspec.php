@@ -242,19 +242,20 @@ final class Dbspec
     }
 
     /**
-     * 연결의 addColumns가 실행할 step이다(docs/schema.md "Adding columns"). `$live`는
-     * 연결의 database를 introspect한 문서, `$unsupported`는 introspection이 읽지 못한
-     * 객체, `$target`은 document set의 schema text 문서다. 두 쪽에 다 있는 table만
-     * 비교하므로 database에 없는 set의 table과 set에 없는 database의 table은 그대로
-     * 둔다. 차이가 null이거나 default가 있는 column의 add_column뿐이면, 그 table들의
-     * live 문서에서 target까지의 plan step(docs/plans.md "Steps")과 더하는 column을
-     * table 이름, column 순서로 "table.column"으로 돌려준다. 다른 차이는 step 없이
+     * 연결의 addTablesAndColumns가 실행할 step이다(docs/schema.md "Adding tables and
+     * columns"). `$live`는 연결의 database를 introspect한 문서, `$unsupported`는
+     * introspection이 읽지 못한 객체, `$target`은 document set의 schema text 문서다. set에
+     * 없는 database의 table은 비교하지도 바꾸지도 않는다. database에 있는 set의 table과
+     * set의 차이가 database에 없는 table의 create_table과 null이거나 default가 있는
+     * column의 add_column뿐이면, database에 있는 set의 table에서 set까지의 plan
+     * step(docs/plans.md "Steps")과, table 이름 순으로 만드는 table은 "table", 더하는
+     * column은 column 순서로 "table.column"인 목록을 돌려준다. 다른 차이는 step 없이
      * "<kind> <table>[.<name>]"로 돌려준다.
      *
      * @param list<Unsupported> $unsupported
-     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} 더하는 column, step, 차이
+     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} 만드는 table과 더하는 column, step, 차이
      */
-    public static function addColumnSteps(Document $live, array $unsupported, Document $target, string $dialect): array
+    public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array
     {
         $qualified = static fn(string $table, string $name): string => $name === '' ? $table : "$table.$name";
         $declared = [];
@@ -268,29 +269,25 @@ final class Dbspec
                 $differences[] = "unsupported_{$u->kind} " . $qualified($u->table, $u->name) . ": {$u->reason}";
             }
         }
-        $existing = [];
+        if ($differences !== []) {
+            return [[], [], $differences];
+        }
         $source = new Document('schema');
         foreach ($live->tables as $table) {
             if (isset($declared[$table->name])) {
-                $existing[$table->name] = true;
                 $source->tables[] = $table;
             }
         }
-        $part = new Document('schema');
-        foreach ($target->tables as $table) {
-            if (isset($existing[$table->name])) {
-                $part->tables[] = $table;
-            }
-        }
-        if ($differences !== [] || $part->tables === []) {
-            return [[], [], $differences];
-        }
-        $comparison = self::compareSchemas($source, $part);
+        $comparison = self::compareSchemas($source, $target);
         foreach ($comparison->diagnostics as $d) {
             $differences[] = "{$d->rule}: {$d->message}";
         }
         $adding = [];
         foreach ($comparison->differences ?? [] as $d) {
+            if ($d->kind === 'create_table') {
+                $adding[$d->table] = true;
+                continue;
+            }
             if ($d->kind === 'add_column') {
                 $column = null;
                 foreach ($declared[$d->table]->columns as $c) {
@@ -310,28 +307,40 @@ final class Dbspec
         if ($differences !== [] || $adding === []) {
             return [[], [], $differences];
         }
-        // 더하는 column은 table 이름 순, table 안에서는 column 순서다.
+        // 만드는 table과 더하는 column은 table 이름 순, table 안에서는 column 순서다.
         $added = [];
-        foreach ($part->tables as $table) {
+        foreach ($target->tables as $table) {
+            if (isset($adding[$table->name])) {
+                $added[] = $table->name;
+                continue;
+            }
             foreach ($table->columns as $c) {
                 if (isset($adding[$qualified($table->name, $c->name)])) {
                     $added[] = $qualified($table->name, $c->name);
                 }
             }
         }
-        // 더하는 column은 plan 하나로 쓴다. plan은 source schema에서 시작하므로 step은
-        // docs/plans.md의 순서와 rollback을 그대로 갖는다.
+        // 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
+        // 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을
+        // 그대로 갖는다.
         $diagnostics = [];
         $steps = [];
-        $manifest = self::manifest([$source]);
-        if ($manifest->manifest === null) {
-            $diagnostics = $manifest->diagnostics;
-        } else {
-            $plan = self::parsePlan("dbplan 1 add_columns\nfrom {$manifest->manifest->schemaHash}\n\n" . self::emit($part));
+        $start = $source->tables === [] ? null : $source;
+        $from = 'empty';
+        if ($start !== null) {
+            $manifest = self::manifest([$start]);
+            if ($manifest->manifest === null) {
+                $diagnostics = $manifest->diagnostics;
+            } else {
+                $from = $manifest->manifest->schemaHash;
+            }
+        }
+        if ($diagnostics === []) {
+            $plan = self::parsePlan("dbplan 1 add_tables_and_columns\nfrom $from\n\n" . self::emit($target));
             if ($plan->plan === null) {
                 $diagnostics = $plan->diagnostics;
             } else {
-                $written = self::planSteps($source, $plan->plan, $dialect);
+                $written = self::planSteps($start, $plan->plan, $dialect);
                 $diagnostics = $written->diagnostics;
                 $steps = $written->steps ?? [];
             }

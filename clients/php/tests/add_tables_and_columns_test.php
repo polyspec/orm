@@ -1,13 +1,14 @@
 <?php
-// addColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md "Adding columns"). case
-// database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와 함께 가진다.
-// version 2로 addColumns를 부르면 있는 table에 빠진 null이거나 default가 있는 column을 더하고,
-// row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을 만들지 않으며,
-// 다른 set의 table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은
-// 아무것도 바꾸기 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_columns/*.dbs다. 각
-// case는 자기 case database(case_database.php)에서 실행하며 ORM_TEST_MYSQL_DSN이나
-// ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
-// Usage: php clients/php/tests/add_columns_test.php [case ...]
+// addTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md "Adding tables and
+// columns"). case database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와
+// 함께 가진다. version 2로 addTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가
+// 있는 column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는
+// table을 index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로
+// 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도 바꾸기 전에
+// SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각 case는 자기
+// case database(case_database.php)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
+// 없으면 실패한다.
+// Usage: php clients/php/tests/add_tables_and_columns_test.php [case ...]
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -28,6 +29,7 @@ use Orm\Schema;
 const CASE_DEADLINE_SECONDS = 60;
 
 const ADDED = [
+    'addcol_extra', 'addcol_extra_history',
     'addcol_item.note', 'addcol_item.priority', 'addcol_item.archived', 'addcol_item.status',
     'addcol_item_history.note', 'addcol_item_history.priority', 'addcol_item_history.archived', 'addcol_item_history.status',
     'addcol_tag.color',
@@ -56,10 +58,10 @@ function thrown(callable $f): ?OrmException
     return null;
 }
 
-/** contracts/fixtures/add_columns/$name.dbs의 schema 값이다. */
+/** contracts/fixtures/add_tables_and_columns/$name.dbs의 schema 값이다. */
 function fixture(string $name): Schema
 {
-    $path = dirname(__DIR__, 3) . "/contracts/fixtures/add_columns/$name.dbs";
+    $path = dirname(__DIR__, 3) . "/contracts/fixtures/add_tables_and_columns/$name.dbs";
     $read = Dbspec::readFile($path);
     if ($read->text === null) {
         throw new RuntimeException("cannot read $path");
@@ -94,12 +96,12 @@ function installed(string $dsn): Db
     return $db;
 }
 
-function addColumns(string $dsn, string $driver): void
+function addTablesAndColumns(string $dsn, string $driver): void
 {
     $db = installed($dsn);
     try {
-        $added = $db->utils()->schema()->addColumns(fixture('v2'));
-        check($added === ADDED, 'addColumns = ' . json_encode($added));
+        $added = $db->utils()->schema()->addTablesAndColumns(fixture('v2'));
+        check($added === ADDED, 'addTablesAndColumns = ' . json_encode($added));
         // row는 그대로이고 새 column은 NULL이거나 default다.
         $items = count_of($db, "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'");
         check($items === 1, "items with their values and the new defaults $items");
@@ -117,39 +119,50 @@ function addColumns(string $dsn, string $driver): void
         $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1");
         $history = count_of($db, "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
         check($history === 1, "history rows of the update with the new columns $history");
-        $extra = null;
-        try {
-            $db->pdo()->query('SELECT COUNT(*) FROM addcol_extra');
-        } catch (PDOException $e) {
-            $extra = $e;
+        // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
+        $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, 'extra', 3)");
+        $inserted = count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'");
+        check($inserted === 1, "history rows of the insert into the created table $inserted");
+        foreach ([
+            "INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)" => 'foreign key',
+            "INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)" => 'check',
+            'DELETE FROM addcol_extra' => 'audit delete',
+        ] as $statement => $what) {
+            $refused = null;
+            try {
+                $db->pdo()->exec($statement);
+            } catch (PDOException $e) {
+                $refused = $e;
+            }
+            check($refused !== null, "the $what of the created table accepted $statement");
         }
-        check($extra !== null, 'addColumns created the missing table addcol_extra');
-        $again = $db->utils()->schema()->addColumns(fixture('v2'));
-        check($again === [], 'repeated addColumns = ' . json_encode($again));
-        // install은 set을 통째로만 만든다(docs/schema.md "Schema installation").
+        check(count_of($db, 'SELECT COUNT(*) FROM addcol_extra') === 1, 'rows of the created table');
+        $again = $db->utils()->schema()->addTablesAndColumns(fixture('v2'));
+        check($again === [], 'repeated addTablesAndColumns = ' . json_encode($again));
+        // 모든 table이 있으므로 install은 아무것도 바꾸지 않는다(docs/schema.md "Schema installation").
         $install = thrown(fn() => $db->utils()->schema()->install(fixture('v2')));
-        check($install?->code_ === Code::CONFIG, 'install of version 2 over its existing tables: ' . ($install?->getMessage() ?? 'no error'));
+        check($install === null, 'install of version 2 over its tables: ' . ($install?->getMessage() ?? ''));
     } finally {
         $db->close();
     }
 }
 
-function addColumnsDiffers(string $dsn, string $driver): void
+function addTablesAndColumnsDiffers(string $dsn, string $driver): void
 {
     $db = installed($dsn);
     try {
         foreach (DIFFERS as $name) {
-            $e = thrown(fn() => $db->utils()->schema()->addColumns(fixture($name)));
+            $e = thrown(fn() => $db->utils()->schema()->addTablesAndColumns(fixture($name)));
             check($e?->code_ === Code::SCHEMA_DIFFERS, "$name: " . ($e?->getMessage() ?? 'no error'));
         }
-        $added = $db->utils()->schema()->addColumns(fixture('v2'));
-        check($added === ADDED, 'addColumns after the differences = ' . json_encode($added));
+        $added = $db->utils()->schema()->addTablesAndColumns(fixture('v2'));
+        check($added === ADDED, 'addTablesAndColumns after the differences = ' . json_encode($added));
     } finally {
         $db->close();
     }
 }
 
-function addColumnsTransaction(string $dsn, string $driver): void
+function addTablesAndColumnsTransaction(string $dsn, string $driver): void
 {
     $db = installed($dsn);
     try {
@@ -157,8 +170,8 @@ function addColumnsTransaction(string $dsn, string $driver): void
             $rolledBack = false;
             try {
                 $db->transaction(function () use ($db): void {
-                    $added = $db->utils()->schema()->addColumns(fixture('v2'));
-                    check($added === ADDED, 'addColumns in the transaction = ' . json_encode($added));
+                    $added = $db->utils()->schema()->addTablesAndColumns(fixture('v2'));
+                    check($added === ADDED, 'addTablesAndColumns in the transaction = ' . json_encode($added));
                     throw new LogicException('roll back');
                 }, retry: 0);
             } catch (LogicException $e) {
@@ -168,37 +181,37 @@ function addColumnsTransaction(string $dsn, string $driver): void
         } else {
             $inside = null;
             $db->transaction(function () use ($db, &$inside): void {
-                $inside = thrown(fn() => $db->utils()->schema()->addColumns(fixture('v2')));
+                $inside = thrown(fn() => $db->utils()->schema()->addTablesAndColumns(fixture('v2')));
             }, retry: 0);
-            check($inside?->code_ === Code::CONFIG, "addColumns in a $driver transaction: " . ($inside?->getMessage() ?? 'no error'));
+            check($inside?->code_ === Code::CONFIG, "addTablesAndColumns in a $driver transaction: " . ($inside?->getMessage() ?? 'no error'));
         }
-        $added = $db->utils()->schema()->addColumns(fixture('v2'));
-        check($added === ADDED, 'addColumns after the transaction = ' . json_encode($added));
+        $added = $db->utils()->schema()->addTablesAndColumns(fixture('v2'));
+        check($added === ADDED, 'addTablesAndColumns after the transaction = ' . json_encode($added));
     } finally {
         $db->close();
     }
 }
 
-function addColumnsEditedManifest(string $dsn, string $driver): void
+function addTablesAndColumnsEditedManifest(string $dsn, string $driver): void
 {
     $db = installed($dsn);
     try {
         $v2 = fixture('v2');
         $edited = new Schema(str_replace(' note ', ' memo ', $v2->manifestText), $v2->manifestHash);
-        $e = thrown(fn() => $db->utils()->schema()->addColumns($edited));
-        check($e?->code_ === Code::CONFIG, 'addColumns of an edited manifest: ' . ($e?->getMessage() ?? 'no error'));
-        $added = $db->utils()->schema()->addColumns($v2);
-        check($added === ADDED, 'addColumns after the edited manifest = ' . json_encode($added));
+        $e = thrown(fn() => $db->utils()->schema()->addTablesAndColumns($edited));
+        check($e?->code_ === Code::CONFIG, 'addTablesAndColumns of an edited manifest: ' . ($e?->getMessage() ?? 'no error'));
+        $added = $db->utils()->schema()->addTablesAndColumns($v2);
+        check($added === ADDED, 'addTablesAndColumns after the edited manifest = ' . json_encode($added));
     } finally {
         $db->close();
     }
 }
 
 $cases = [
-    'add_columns' => addColumns(...),
-    'add_columns_differs' => addColumnsDiffers(...),
-    'add_columns_transaction' => addColumnsTransaction(...),
-    'add_columns_edited_manifest' => addColumnsEditedManifest(...),
+    'add_tables_and_columns' => addTablesAndColumns(...),
+    'add_tables_and_columns_differs' => addTablesAndColumnsDiffers(...),
+    'add_tables_and_columns_transaction' => addTablesAndColumnsTransaction(...),
+    'add_tables_and_columns_edited_manifest' => addTablesAndColumnsEditedManifest(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 foreach ($selected as $case) {
@@ -208,7 +221,7 @@ foreach ($selected as $case) {
     foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $passed = testcase_run("add_columns/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+        $passed = testcase_run("add_tables_and_columns/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
             with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn, $driver));
             if ($GLOBALS['failures'] > $before) {
                 throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');

@@ -8,7 +8,7 @@
 //! in source order. [`emit`] writes a document in its canonical text, so
 //! `emit(parse(s)) == s` for canonical input.
 
-mod add_columns;
+mod add_tables_and_columns;
 mod check;
 mod check_type;
 mod compare;
@@ -28,7 +28,7 @@ mod render;
 mod runtime;
 mod validate;
 
-pub use add_columns::{add_column_steps, AddColumnSteps};
+pub use add_tables_and_columns::{add_tables_and_columns_steps, AddTablesAndColumnsSteps};
 pub use compare::{compare_schemas, Difference, RULE_COMPARE};
 pub use file::{read_bytes, read_file, ReadError, SIGNATURE};
 pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};

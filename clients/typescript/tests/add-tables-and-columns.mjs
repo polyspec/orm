@@ -1,13 +1,14 @@
-// addColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md "Adding columns"). case
-// database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와 함께 가진다.
-// version 2로 addColumns를 부르면 있는 table에 빠진 null이거나 default가 있는 column을 더하고,
-// row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을 만들지 않으며,
-// 다른 set의 table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은
-// 아무것도 바꾸기 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_columns/*.dbs다. 각
-// case는 자기 case database(case-database.mjs)에서 실행하며 ORM_TEST_MYSQL_DSN이나
-// ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+// addTablesAndColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md "Adding tables and
+// columns"). case database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와 함께
+// 가진다. version 2로 addTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가 있는
+// column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을
+// index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로 둔다. 다시
+// 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도 바꾸기 전에 SCHEMA_DIFFERS다.
+// fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각 case는 자기 case
+// database(case-database.mjs)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면
+// 실패한다.
 //
-// Usage: node clients/typescript/tests/add-columns.mjs [case ...] (after npm run typescript:build)
+// Usage: node clients/typescript/tests/add-tables-and-columns.mjs [case ...] (after npm run typescript:build)
 import { Db, OrmError, dbspecManifest, parseDbspec, readDbspecFile } from '../dist/index.js';
 import { runCase } from '../../../tests/testcase.mjs';
 import { withCaseDatabase } from './case-database.mjs';
@@ -17,6 +18,7 @@ import { nativeQuery } from './coverage_case.mjs';
 // 몇 번 더한 뒤 지운다.
 const CASE_DEADLINE_MS = 60_000;
 const ADDED = [
+  'addcol_extra', 'addcol_extra_history',
   'addcol_item.note', 'addcol_item.priority', 'addcol_item.archived', 'addcol_item.status',
   'addcol_item_history.note', 'addcol_item_history.priority', 'addcol_item_history.archived', 'addcol_item_history.status',
   'addcol_tag.color',
@@ -33,9 +35,9 @@ async function thrown(run) {
 }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-/** contracts/fixtures/add_columns/<name>.dbs의 schema 값이다. */
+/** contracts/fixtures/add_tables_and_columns/<name>.dbs의 schema 값이다. */
 async function fixture(name) {
-  const path = new URL(`../../../contracts/fixtures/add_columns/${name}.dbs`, import.meta.url).pathname;
+  const path = new URL(`../../../contracts/fixtures/add_tables_and_columns/${name}.dbs`, import.meta.url).pathname;
   const read = await readDbspecFile(path);
   if (read.text === null) throw new Error(`${path}: ${JSON.stringify(read.diagnostics)}`);
   const parsed = parseDbspec(read.text, {});
@@ -67,11 +69,11 @@ async function installed(driver, dsn) {
   return db;
 }
 
-async function addColumns(driver, dsn) {
+async function addTablesAndColumns(driver, dsn) {
   const db = await installed(driver, dsn);
   try {
-    const added = await db.utils().schema().addColumns(await fixture('v2'));
-    check(same(added, ADDED), `addColumns = ${JSON.stringify(added)}`);
+    const added = await db.utils().schema().addTablesAndColumns(await fixture('v2'));
+    check(same(added, ADDED), `addTablesAndColumns = ${JSON.stringify(added)}`);
     // row는 그대로이고 새 column은 NULL이거나 default다.
     const items = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'");
     check(items === 1, `items with their values and the new defaults ${items}`);
@@ -84,30 +86,41 @@ async function addColumns(driver, dsn) {
     await nativeQuery(driver, dsn, ["UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1"]);
     const history = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
     check(history === 1, `history rows of the update with the new columns ${history}`);
-    let extra = null;
-    try { await nativeQuery(driver, dsn, ['SELECT COUNT(*) AS n FROM addcol_extra']); } catch (error) { extra = error; }
-    check(extra !== null, 'addColumns created the missing table addcol_extra');
-    const again = await db.utils().schema().addColumns(await fixture('v2'));
-    check(same(again, []), `repeated addColumns = ${JSON.stringify(again)}`);
-    // install은 set을 통째로만 만든다(docs/schema.md "Schema installation").
+    // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
+    await nativeQuery(driver, dsn, ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, 'extra', 3)"]);
+    const inserted = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'");
+    check(inserted === 1, `history rows of the insert into the created table ${inserted}`);
+    for (const [statement, what] of [
+      ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)", 'foreign key'],
+      ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)", 'check'],
+      ['DELETE FROM addcol_extra', 'audit delete'],
+    ]) {
+      let refused = null;
+      try { await nativeQuery(driver, dsn, [statement]); } catch (error) { refused = error; }
+      check(refused !== null, `the ${what} of the created table accepted ${statement}`);
+    }
+    check(await countOf(driver, dsn, 'SELECT COUNT(*) AS n FROM addcol_extra') === 1, 'rows of the created table');
+    const again = await db.utils().schema().addTablesAndColumns(await fixture('v2'));
+    check(same(again, []), `repeated addTablesAndColumns = ${JSON.stringify(again)}`);
+    // 모든 table이 있으므로 install은 아무것도 바꾸지 않는다(docs/schema.md "Schema installation").
     const install = await thrown(async () => db.utils().schema().install(await fixture('v2')));
-    check(install?.code === 'CONFIG', `install of version 2 over its existing tables: ${install?.message ?? 'no error'}`);
+    check(install === null, `install of version 2 over its tables: ${install?.message}`);
   } finally { await db.close(); }
 }
 
-async function addColumnsDiffers(driver, dsn) {
+async function addTablesAndColumnsDiffers(driver, dsn) {
   const db = await installed(driver, dsn);
   try {
     for (const name of DIFFERS) {
-      const error = await thrown(async () => db.utils().schema().addColumns(await fixture(name)));
+      const error = await thrown(async () => db.utils().schema().addTablesAndColumns(await fixture(name)));
       check(error?.code === 'SCHEMA_DIFFERS', `${name}: ${error?.message ?? 'no error'}`);
     }
-    const added = await db.utils().schema().addColumns(await fixture('v2'));
-    check(same(added, ADDED), `addColumns after the differences = ${JSON.stringify(added)}`);
+    const added = await db.utils().schema().addTablesAndColumns(await fixture('v2'));
+    check(same(added, ADDED), `addTablesAndColumns after the differences = ${JSON.stringify(added)}`);
   } finally { await db.close(); }
 }
 
-async function addColumnsTransaction(driver, dsn) {
+async function addTablesAndColumnsTransaction(driver, dsn) {
   const db = await installed(driver, dsn);
   try {
     const v2 = await fixture('v2');
@@ -116,39 +129,39 @@ async function addColumnsTransaction(driver, dsn) {
       let failure = null;
       try {
         await db.transaction(async () => {
-          const added = await db.utils().schema().addColumns(v2);
-          check(same(added, ADDED), `addColumns in the transaction = ${JSON.stringify(added)}`);
+          const added = await db.utils().schema().addTablesAndColumns(v2);
+          check(same(added, ADDED), `addTablesAndColumns in the transaction = ${JSON.stringify(added)}`);
           throw rollback;
         }, { retry: 0 });
       } catch (error) { failure = error; }
       check(failure === rollback, `the transaction did not roll back: ${failure}`);
     } else {
       let inside = null;
-      await db.transaction(async () => { inside = await thrown(() => db.utils().schema().addColumns(v2)); }, { retry: 0 });
-      check(inside?.code === 'CONFIG', `addColumns in a ${driver} transaction: ${inside?.message ?? 'no error'}`);
+      await db.transaction(async () => { inside = await thrown(() => db.utils().schema().addTablesAndColumns(v2)); }, { retry: 0 });
+      check(inside?.code === 'CONFIG', `addTablesAndColumns in a ${driver} transaction: ${inside?.message ?? 'no error'}`);
     }
-    const added = await db.utils().schema().addColumns(v2);
-    check(same(added, ADDED), `addColumns after the transaction = ${JSON.stringify(added)}`);
+    const added = await db.utils().schema().addTablesAndColumns(v2);
+    check(same(added, ADDED), `addTablesAndColumns after the transaction = ${JSON.stringify(added)}`);
   } finally { await db.close(); }
 }
 
-async function addColumnsEditedManifest(driver, dsn) {
+async function addTablesAndColumnsEditedManifest(driver, dsn) {
   const db = await installed(driver, dsn);
   try {
     const v2 = await fixture('v2');
     const edited = { manifestText: v2.manifestText.replaceAll(' note ', ' memo '), manifestHash: v2.manifestHash };
-    const error = await thrown(() => db.utils().schema().addColumns(edited));
-    check(error?.code === 'CONFIG', `addColumns of an edited manifest: ${error?.message ?? 'no error'}`);
-    const added = await db.utils().schema().addColumns(v2);
-    check(same(added, ADDED), `addColumns after the edited manifest = ${JSON.stringify(added)}`);
+    const error = await thrown(() => db.utils().schema().addTablesAndColumns(edited));
+    check(error?.code === 'CONFIG', `addTablesAndColumns of an edited manifest: ${error?.message ?? 'no error'}`);
+    const added = await db.utils().schema().addTablesAndColumns(v2);
+    check(same(added, ADDED), `addTablesAndColumns after the edited manifest = ${JSON.stringify(added)}`);
   } finally { await db.close(); }
 }
 
 const cases = {
-  add_columns: addColumns,
-  add_columns_differs: addColumnsDiffers,
-  add_columns_transaction: addColumnsTransaction,
-  add_columns_edited_manifest: addColumnsEditedManifest,
+  add_tables_and_columns: addTablesAndColumns,
+  add_tables_and_columns_differs: addTablesAndColumnsDiffers,
+  add_tables_and_columns_transaction: addTablesAndColumnsTransaction,
+  add_tables_and_columns_edited_manifest: addTablesAndColumnsEditedManifest,
 };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
@@ -160,7 +173,7 @@ for (const name of selected) {
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
     const before = failures;
     current = `${name}/${driver}`;
-    const passed = await runCase(`add-columns/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+    const passed = await runCase(`add-tables-and-columns/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
       await withCaseDatabase(driver, step, database => run(driver, database.dsn));
       if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
     });

@@ -264,18 +264,19 @@ impl SchemaUtils<'_> {
             .await
     }
 
-    /// generated schema의 document set에서 database에 이미 있는 table에 빠진 column 가운데
-    /// null이거나 default가 있는 column을 더한다(docs/schema.md, "Adding columns"). 연결의
-    /// database를 introspect해 set의 table만 비교하고 `dbspec::add_column_steps`의 plan
-    /// step을 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다.
-    /// database에 없는 set의 table과 다른 set의 table은 그대로 두며 set을 등록하지 않는다.
-    /// 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로
-    /// hash되지 않으면 먼저 CONFIG다. PostgreSQL은 활성 transaction이나 새 transaction에서
-    /// 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈
-    /// 채 table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지
-    /// 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 더한 column을 table
-    /// 이름, column 순서로 "table.column"으로 돌려준다.
-    pub async fn add_columns(&self, schema: &Schema) -> Result<Vec<String>> {
+    /// 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md,
+    /// "Adding tables and columns"). 연결의 database를 introspect해 database에 있는 set의 table을
+    /// set과 비교하고, database에 없는 set의 table을 index, foreign key, check, trigger와 함께
+    /// 만들며, 있는 table에 빠진 column 가운데 null이거나 default가 있는 column을 더한다.
+    /// `dbspec::add_tables_and_columns_steps`의 plan step을 실행하므로 바뀐 table의 audit
+    /// trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로 두며 set을 등록하지
+    /// 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가 선언한
+    /// hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 활성 transaction이나 새 transaction에서
+    /// 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채
+    /// table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지
+    /// 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한
+    /// column은 "table.column"으로 table 이름, column 순서로 돌려준다.
+    pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
@@ -294,17 +295,17 @@ impl SchemaUtils<'_> {
                         let Some(TxInner::Postgres(conn)) = guard.as_mut() else {
                             return Err(Error::internal("a PostgreSQL transaction holds another connection"));
                         };
-                        add_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target).await
+                        add_tables_and_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target).await
                     })
                     .await
             }
             _ if active_for(self.u.db).is_some() => Err(Error::Config(format!(
-                "{} adds columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
+                "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
                 self.u.db.driver()
             ))),
             crate::db::Pool::MySql(pool) => {
                 let mut conn = pool.acquire().await?;
-                add_columns_on(&mut *conn, dbspec::Dialect::MySql, &target).await
+                add_tables_and_columns_on(&mut *conn, dbspec::Dialect::MySql, &target).await
             }
             crate::db::Pool::Sqlite(pool) => {
                 let mut conn = pool.acquire().await?;
@@ -615,8 +616,8 @@ impl AesUtils<'_> {
     }
 }
 
-/// 연결의 database를 introspect하고 `dbspec::add_column_steps`의 step을 실행한다.
-async fn add_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document) -> Result<Vec<String>>
+/// 연결의 database를 introspect하고 `dbspec::add_tables_and_columns_steps`의 step을 실행한다.
+async fn add_tables_and_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document) -> Result<Vec<String>>
 where
     C: crate::dbspec::CatalogQuerier + Send,
     for<'c> &'c mut C: sqlx::Executor<'c>,
@@ -625,12 +626,12 @@ where
         crate::dbspec::IntrospectError::Query(e) => Error::from(e),
         crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
     })?;
-    let planned = dbspec::add_column_steps(&live.document, &live.unsupported, target, dialect);
+    let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
     if !planned.differences.is_empty() {
         return Err(Error::Engine {
             code: codes::SCHEMA_DIFFERS.into(),
             msg: format!(
-                "the existing tables of the document set differ beyond missing columns that are null or have a default: {}",
+                "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: {}",
                 planned.differences.join("; ")
             ),
         });
@@ -641,7 +642,7 @@ where
     Ok(planned.added)
 }
 
-/// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 column을 더한 뒤 foreign
+/// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
 /// key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md,
 /// "Apply"의 SQLite 다시 만들기).
 async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Document) -> Result<Vec<String>> {
@@ -649,7 +650,7 @@ async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Docume
     let result = async {
         sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut *conn).await?;
         let applied = async {
-            let added = add_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target).await?;
+            let added = add_tables_and_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target).await?;
             let broken: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_foreign_key_check").fetch_one(&mut *conn).await?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));

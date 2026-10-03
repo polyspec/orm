@@ -44,13 +44,13 @@ var outputs = map[string]map[string]string{
 	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
 	// dbspec parse returns the document or every diagnostic, never both.
-	"DbspecReadResult":     {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult"},
-	"DbspecBytesResult":    {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult"},
-	"DbspecParseResult":    {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult"},
-	"DbspecText":           {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
-	"DbspecRenderResult":   {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
-	"DbspecManifestResult": {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
-	"AddedColumns":         {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
+	"DbspecReadResult":      {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult"},
+	"DbspecBytesResult":     {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult"},
+	"DbspecParseResult":     {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult"},
+	"DbspecText":            {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
+	"DbspecRenderResult":    {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
+	"DbspecManifestResult":  {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
+	"AddedTablesAndColumns": {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
 }
 
 // inputs maps a common argument list to the native parameters of each

@@ -180,7 +180,7 @@ await master.transaction(async () => {
 
 `orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
 
-Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addColumns(schema)` adds the missing columns of its existing tables that are null or have a default and returns `SCHEMA_DIFFERS` before any change for every other difference ([schema.md](schema.md#_5-adding-columns)).
+Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed set to a version that only adds: it creates the tables the database lacks, adds the missing columns of its existing tables that are null or have a default, and returns `SCHEMA_DIFFERS` before any change for every other difference ([schema.md](schema.md#_5-adding-tables-and-columns)).
 
 ---
 
@@ -374,7 +374,7 @@ The same statement produces the same result on all three databases, although sta
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
-| Add the missing columns of existing tables | `connection.utils().schema().addColumns(...)` ([schema.md](schema.md#_5-adding-columns)) |
+| Add the missing tables and columns of an installed set | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 
 ---
 

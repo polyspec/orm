@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T8.8.5: 네 client에서 `utils().schema().addColumns`는 이제 `addTablesAndColumns`(Go `AddTablesAndColumns`, Rust `add_tables_and_columns`)다. 설치한 document set을 더해서만 올리는 이 호출은 database에 없는 set의 table도 같은 plan step으로 index, foreign key, check, audit과 immutable trigger와 함께 모두 만들고, 만든 table은 `table`, 더한 column은 `table.column`으로 돌려준다. 다른 모든 차이는 여전히 어떤 statement보다 먼저 `SCHEMA_DIFFERS`다. step 함수는 `AddTablesAndColumnsSteps`, `Dbspec::addTablesAndColumnsSteps`, `addTablesAndColumnsSteps`, `add_tables_and_columns_steps`로 바뀌었고, fixture는 contracts/fixtures/add_tables_and_columns로 옮겼다.
+
 - T8.8.4: N18, N19, N19.1과 함께 main을 dbspec branch에 다시 merge했다. 네 client에서 MySQL DSN은 `ssl-mode=VERIFY_IDENTITY`와 절대 경로 `ssl-ca`로 TLS 연결하고, PHP와 TypeScript client는 scheme마다 정한 집합 밖의 DSN parameter를 거부한다. `utils().schema().addColumns(schema)`(Go `AddColumns`, Rust `add_columns`)는 generated schema 값을 받아 database를 introspect하고 document set의 기존 table만 비교하며, 모든 차이가 null이거나 default가 있는 빠진 column이면 그 table들에서 set까지의 plan step(각 client dbspec module의 `AddColumnSteps`)을 실행한다. 이 step은 바뀐 table의 audit trigger도 바꾼다. 다른 차이는 어떤 statement보다 먼저 새 code `SCHEMA_DIFFERS`를 반환한다. MySQL과 SQLite는 transaction 밖에서, SQLite는 foreign key를 끈 `BEGIN IMMEDIATE` transaction 하나에서 column을 더한다.
 
 - T28: version은 0.0.2다. 새 VERSION 파일이 이를 적고, `make version-check`(`make check`의 일부)는 orm crate의 Rust manifest나 lockfile 항목, PHP composer 파일, TypeScript package나 lockfile, contracts/features.json, 문서의 version이 이와 다르면 실패한다.
