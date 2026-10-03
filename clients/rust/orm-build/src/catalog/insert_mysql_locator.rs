@@ -38,7 +38,8 @@ impl Locator {
         Ok(())
     }
     pub(super) async fn returned_keys(&self, connection: &mut Conn, metadata: &TableMetadata, values: &[(String, P)]) -> Result<Vec<P>, String> {
-        let result = self.read(connection).await?;
+        let mut result = self.read(connection).await?;
+        super::temporal::declared_precision(metadata, "mysql", &mut result)?;
         row_snapshot::projection(metadata, &result)?;
         if result.rows.len() != 1 {
             return Err("ROW_IDENTITY_AMBIGUOUS: expected exactly one inserted locator row".into());

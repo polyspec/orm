@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from '../dist/index.js';
+import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;
 const aesVectors = JSON.parse(await readFile('tests/codec/aes-vectors.json', 'utf8')).vectors;
@@ -14,133 +15,134 @@ const same = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical
 const shown = value => JSON.stringify(canonical(value));
 const output = {};
 let failures = 0;
-if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') failures++;
+// The vectors name the Mermaid styles; json and jsons are both the ordered_json stage.
+const stagesOf = styles => styles.map(style => (style === 'json' || style === 'jsons' ? 'ordered_json' : style));
+// codec vector check는 memory 안의 codec vector, AES vector, 값 검사를 한 case로 실행한다.
+const suite = cases();
+await suite.run('codec-vector', COMPUTE, async () => {
+  if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') failures++;
 
-for (const vector of vectors) {
-  const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');
-  let decoded;
-  try {
-    decoded = decodeCodec(vector.styles, raw);
-  } catch (error) {
-    console.error(`${vector.name}: decode ${String(error)}`);
-    failures++;
-    continue;
-  }
-  const jsonStage = vector.styles.includes('json') || vector.styles.includes('jsons');
-  const kind = raw === null ? 'sql-null' : 'value';
-  if (!(decoded instanceof StyledValue) || decoded.kind !== kind) {
-    console.error(`${vector.name}: decoded state ${shown(decoded)} want ${kind}`);
-    failures++;
-    continue;
-  }
-  const payload = kind === 'value' ? decoded.payload() : null;
-  if (jsonStage && kind === 'value' && !(payload instanceof JsonValue)) {
-    console.error(`${vector.name}: a json stage decoded ${typeof decoded}, not an ordered-json value`);
-    failures++;
-  }
-  if (!same(payload, vector.value)) {
-    console.error(`${vector.name}: decoded ${shown(payload)} want ${JSON.stringify(vector.value)}`);
-    failures++;
-  }
-  const encoded = encodeCodec(vector.styles, decoded);
-  const encodedBase64 = encoded === null ? null : Buffer.from(encoded).toString('base64');
-  output[vector.name] = encodedBase64;
-  const integralFloat = vector.name.endsWith('/integral_float') && vector.styles.includes('serialize');
-  if (vector.deterministic && !integralFloat && encodedBase64 !== vector.encoded_b64) {
-    console.error(`${vector.name}: encoded ${encodedBase64} want ${vector.encoded_b64}`);
-    failures++;
-  }
-  const roundTrip = decodeCodec(vector.styles, encoded);
-  if (!(roundTrip instanceof StyledValue) || roundTrip.kind !== kind || !same(kind === 'value' ? roundTrip.payload() : null, vector.value)) {
-    console.error(`${vector.name}: round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
-    failures++;
-  }
-}
-
-for (const [name, operation, code] of [
-  ['bad JSON', () => decodeCodec(['json'], '{bad'), 'CODEC_DECODE'],
-  ['bad base64', () => decodeCodec(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
-  ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
-  ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
-  ['unknown style', () => encodeCodec(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
-  ['unknown encode style', () => encodeCodec(['filepart', 'serialize'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
-  ['unknown decode style', () => decodeCodec(['filepart'], 'a:0:{}'), 'CODEC_UNSUPPORTED'],
-  ['duplicate YAML key', () => decodeCodec(['yaml'], 'a: 1\na: 2\n'), 'CODEC_DECODE'],
-  ['multiple YAML documents', () => decodeCodec(['yaml'], '---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'],
-  ['YAML alias', () => decodeCodec(['yaml'], 'a: &x [1]\nb: *x\n'), 'CODEC_DECODE'],
-  ['YAML custom tag', () => decodeCodec(['yaml'], 'a: !custom value\n'), 'CODEC_DECODE'],
-  ['YAML non-finite number', () => decodeCodec(['yaml'], 'value: .inf\n'), 'CODEC_DECODE'],
-  ['YAML boolean map key', () => decodeCodec(['yaml'], 'true: value\n'), 'CODEC_DECODE'],
-  ['invalid YAML order', () => encodeCodec(['serialize', 'yaml'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
-]) {
-  try {
-    operation();
-    console.error(`${name}: expected ${code}`);
-    failures++;
-  } catch (error) {
-    if (!(error instanceof CodecError) || error.code !== code) {
-      console.error(`${name}: ${String(error)} want ${code}`);
+  for (const vector of vectors) {
+    const raw = vector.encoded_b64 === null ? null : Buffer.from(vector.encoded_b64, 'base64');
+    let decoded;
+    try {
+      decoded = decodeCodec(stagesOf(vector.styles), raw);
+    } catch (error) {
+      console.error(`${vector.name}: decode ${String(error)}`);
+      failures++;
+      continue;
+    }
+    const jsonStage = stagesOf(vector.styles).includes('ordered_json');
+    const kind = raw === null ? 'sql-null' : 'value';
+    if (!(decoded instanceof StyledValue) || decoded.kind !== kind) {
+      console.error(`${vector.name}: decoded state ${shown(decoded)} want ${kind}`);
+      failures++;
+      continue;
+    }
+    const payload = kind === 'value' ? decoded.payload() : null;
+    if (jsonStage && kind === 'value' && !(payload instanceof JsonValue)) {
+      console.error(`${vector.name}: a json stage decoded ${typeof decoded}, not an ordered-json value`);
+      failures++;
+    }
+    if (!same(payload, vector.value)) {
+      console.error(`${vector.name}: decoded ${shown(payload)} want ${JSON.stringify(vector.value)}`);
+      failures++;
+    }
+    const encoded = encodeCodec(stagesOf(vector.styles), decoded);
+    const encodedBase64 = encoded === null ? null : Buffer.from(encoded).toString('base64');
+    output[vector.name] = encodedBase64;
+    const integralFloat = vector.name.endsWith('/integral_float') && vector.styles.includes('serialize');
+    if (vector.deterministic && !integralFloat && encodedBase64 !== vector.encoded_b64) {
+      console.error(`${vector.name}: encoded ${encodedBase64} want ${vector.encoded_b64}`);
+      failures++;
+    }
+    const roundTrip = decodeCodec(stagesOf(vector.styles), encoded);
+    if (!(roundTrip instanceof StyledValue) || roundTrip.kind !== kind || !same(kind === 'value' ? roundTrip.payload() : null, vector.value)) {
+      console.error(`${vector.name}: round trip ${shown(roundTrip)} want ${JSON.stringify(vector.value)}`);
       failures++;
     }
   }
-}
 
-for (const vector of aesVectors) {
-  const encoded = hostEncode(vector.plain, ['aes', 'hex'], vector.key);
-  const decoded = hostDecode(encoded, ['aes', 'hex'], vector.key);
-  if (decoded !== vector.plain) { console.error(`aes round trip ${JSON.stringify(vector.plain)}: ${decoded}`); failures++; }
-  const fixedDecoded = hostDecode(vector.envelope_hex, ['aes', 'hex'], vector.key);
-  if (fixedDecoded !== vector.plain) { console.error(`aes fixed vector: ${fixedDecoded} want ${vector.plain}`); failures++; }
-}
-{
-  const encoded = hostEncode('tamper@example.test', ['aes'], 'tamper-key');
-  const tampered = new Uint8Array(encoded);
-  tampered[tampered.length - 1] ^= 1;
-  let rejected = false;
-  try { hostDecode(tampered, ['aes'], 'tamper-key'); } catch (error) { rejected = error?.code === 'CODEC_DECODE'; }
-  if (!rejected) { console.error('tampered AES ciphertext was accepted'); failures++; }
-}
-for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
-  const encoded = hostEncode(address, ['ip'], '');
-  const decoded = hostDecode(encoded, ['ip'], '');
-  const expected = address === '::ffff:10.1.2.3' ? '10.1.2.3' : address;
-  if (decoded !== expected) { console.error(`ip ${address}: ${decoded} want ${expected}`); failures++; }
-}
+  for (const [name, operation, code] of [
+    ['bad JSON', () => decodeCodec(['ordered_json'], '{bad'), 'CODEC_DECODE'],
+    ['bad base64', () => decodeCodec(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
+    ['serialized object', () => decodeCodec(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
+    ['bad zlib', () => decodeCodec(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
+    ['unknown style', () => encodeCodec(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
+    ['unknown encode style', () => encodeCodec(['filepart', 'serialize'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
+    ['unknown decode style', () => decodeCodec(['filepart'], 'a:0:{}'), 'CODEC_UNSUPPORTED'],
+    ['duplicate YAML key', () => decodeCodec(['yaml'], 'a: 1\na: 2\n'), 'CODEC_DECODE'],
+    ['multiple YAML documents', () => decodeCodec(['yaml'], '---\na: 1\n---\na: 2\n'), 'CODEC_DECODE'],
+    ['YAML alias', () => decodeCodec(['yaml'], 'a: &x [1]\nb: *x\n'), 'CODEC_DECODE'],
+    ['YAML custom tag', () => decodeCodec(['yaml'], 'a: !custom value\n'), 'CODEC_DECODE'],
+    ['YAML non-finite number', () => decodeCodec(['yaml'], 'value: .inf\n'), 'CODEC_DECODE'],
+    ['YAML boolean map key', () => decodeCodec(['yaml'], 'true: value\n'), 'CODEC_DECODE'],
+    ['invalid YAML order', () => encodeCodec(['serialize', 'yaml'], StyledValue.value({})), 'CODEC_UNSUPPORTED'],
+  ]) {
+    try {
+      operation();
+      console.error(`${name}: expected ${code}`);
+      failures++;
+    } catch (error) {
+      if (!(error instanceof CodecError) || error.code !== code) {
+        console.error(`${name}: ${String(error)} want ${code}`);
+        failures++;
+      }
+    }
+  }
 
-const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
-const orderedRead = decodeCodec(['json'], orderedText);
-if (!(orderedRead instanceof StyledValue) || orderedRead.kind !== 'value' || !(orderedRead.payload() instanceof JsonValue) || stringifyJson(orderedRead.payload()) !== orderedText) {
-  console.error(`json read: ${orderedRead instanceof StyledValue && orderedRead.kind === 'value' ? stringifyJson(orderedRead.payload()) : String(orderedRead)}`);
-  failures++;
-}
-for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
-  const written = encodeCodec(['json'], StyledValue.value(value));
-  if (written !== orderedText) { console.error(`json write of ${name}: ${written}`); failures++; }
-}
-for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
-  try { encodeCodec(['json'], StyledValue.value(value)); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
-  catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
-}
-try { encodeCodec(['serialize'], StyledValue.value(parseJson('{}'))); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
-catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`serialize of an ordered-json value: ${String(error)}`); failures++; } }
-if (!same(decodeCodec(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
-  console.error('YAML integer map key: expected string key');
-  failures++;
-}
-if (!same(parsePoint('POINT(1.25 -2)'), [1.25, -2]) || !same(parsePoint('(1.25,-2)'), [1.25, -2]) || pointText([1.25, -2]) !== 'POINT(1.25 -2)') {
-  console.error('point conversion failed');
-  failures++;
-}
-if (pointText([-0, 0]) !== 'POINT(0 0)') { console.error('point negative zero normalization failed'); failures++; }
-for (const [name, operation, code] of [
-  ['invalid point text', () => parsePoint('POINT(1)'), 'CODEC_DECODE'],
-  ['non-finite point', () => pointText([1, Number.NaN]), 'CODEC_ENCODE'],
-]) {
-  try { operation(); console.error(`${name}: expected ${code}`); failures++; }
-  catch (error) { if (!(error instanceof CodecError) || error.code !== code) { console.error(`${name}: ${String(error)} want ${code}`); failures++; } }
-}
+  for (const vector of aesVectors) {
+    const encoded = hostEncode(vector.plain, ['aes', 'hex'], vector.key);
+    const decoded = hostDecode(encoded, ['aes', 'hex'], vector.key);
+    if (decoded !== vector.plain) { console.error(`aes round trip ${JSON.stringify(vector.plain)}: ${decoded}`); failures++; }
+    const fixedDecoded = hostDecode(vector.envelope_hex, ['aes', 'hex'], vector.key);
+    if (fixedDecoded !== vector.plain) { console.error(`aes fixed vector: ${fixedDecoded} want ${vector.plain}`); failures++; }
+  }
+  {
+    const encoded = hostEncode('tamper@example.test', ['aes'], 'tamper-key');
+    const tampered = new Uint8Array(encoded);
+    tampered[tampered.length - 1] ^= 1;
+    let rejected = false;
+    try { hostDecode(tampered, ['aes'], 'tamper-key'); } catch (error) { rejected = error?.code === 'CODEC_DECODE'; }
+    if (!rejected) { console.error('tampered AES ciphertext was accepted'); failures++; }
+  }
+  for (const address of ['10.1.2.3', '2001:db8::1', '::1', '::ffff:10.1.2.3']) {
+    const encoded = hostEncode(address, ['ip'], '');
+    const decoded = hostDecode(encoded, ['ip'], '');
+    const expected = address === '::ffff:10.1.2.3' ? '10.1.2.3' : address;
+    if (decoded !== expected) { console.error(`ip ${address}: ${decoded} want ${expected}`); failures++; }
+  }
 
-await mkdir('tests/codec/out', { recursive: true });
-await writeFile('tests/codec/out/typescript.json', `${JSON.stringify(output, null, 2)}\n`);
-if (failures > 0) throw new Error(`TypeScript codec vectors: ${failures} failure(s)`);
-console.log(`typescript: ${vectors.length} codec vectors passed`);
+  const orderedText = '{"b":1,"a":[],"c":{},"n":1.50}';
+  const orderedRead = decodeCodec(['ordered_json'], orderedText);
+  if (!(orderedRead instanceof StyledValue) || orderedRead.kind !== 'value' || !(orderedRead.payload() instanceof JsonValue) || stringifyJson(orderedRead.payload()) !== orderedText) {
+    console.error(`json read: ${orderedRead instanceof StyledValue && orderedRead.kind === 'value' ? stringifyJson(orderedRead.payload()) : String(orderedRead)}`);
+    failures++;
+  }
+  for (const [name, value] of [['ordered-json value', parseJson(orderedText)], ['common value model with a nested ordered-json value', { b: 1, a: [], c: {}, n: parseJson('1.50') }]]) {
+    const written = encodeCodec(['ordered_json'], StyledValue.value(value));
+    if (written !== orderedText) { console.error(`json write of ${name}: ${written}`); failures++; }
+  }
+  for (const value of [Number.NaN, { a: undefined }, new Uint8Array([1])]) {
+    try { encodeCodec(['ordered_json'], StyledValue.value(value)); console.error(`json write of ${String(value)}: expected CODEC_ENCODE`); failures++; }
+    catch (error) { if (error?.code !== 'CODEC_ENCODE') { console.error(`json write: ${String(error)} want CODEC_ENCODE`); failures++; } }
+  }
+  try { encodeCodec(['serialize'], StyledValue.value(parseJson('{}'))); console.error('serialize of an ordered-json value: expected CODEC_ENCODE'); failures++; }
+  catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`serialize of an ordered-json value: ${String(error)}`); failures++; } }
+  if (!same(decodeCodec(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
+    console.error('YAML integer map key: expected string key');
+    failures++;
+  }
+  for (const [name, stage] of [['gz', 'gz'], ['base64', 'base64']]) {
+    const written = encodeCodec([stage], StyledValue.value('stored text'));
+    const read = decodeCodec([stage], written);
+    if (read.kind !== 'value' || read.payload() !== 'stored text') { console.error(`${name} of a string: ${String(read.payload())}`); failures++; }
+    try { encodeCodec([stage], StyledValue.value({ a: 1 })); console.error(`${name} of a map: expected CODEC_ENCODE`); failures++; }
+    catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`${name} of a map: ${String(error)}`); failures++; } }
+  }
+
+  await mkdir('tests/codec/out', { recursive: true });
+  await writeFile('tests/codec/out/typescript.json', `${JSON.stringify(output, null, 2)}\n`);
+  if (failures > 0) throw new Error(`TypeScript codec vectors: ${failures} failure(s)`);
+});
+suite.finish();

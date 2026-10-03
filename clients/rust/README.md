@@ -5,8 +5,8 @@
 | Crate | Contents |
 |---|---|
 | `orm` (`clients/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
-| `orm-schema` (`clients/rust/orm-schema`) | schema definitions: Mermaid → `schema.json`, the DDL and migration renderer, and SQL statement splitting; the runtime installs schemas with it, and `orm-build` re-exports it as `orm_build::schema` and `orm_build::ddl` |
-| `orm-build` (`clients/rust/orm-build`) | the build-time generator: reads `schema.json`, scans the crate's source, and writes the models it calls into `OUT_DIR`; with the `cli` feature, the `orm-gen` schema tool |
+| `orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `orm-build` share, and SQL statement splitting |
+| `orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
 | `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
 
 Adopting the client needs only these crates. Statements are planned in the process; there is no service to run.
@@ -26,7 +26,7 @@ orm-build = { path = "…/clients/rust/orm-build" }
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new("schema/schema.json").scan("src").generate();
+    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -36,39 +36,41 @@ orm::models!();
 
 use model::Author;
 
-let db = orm::Db::connect(&dsn, 8, orm::Config::default()).await?;
+let db = model::connect(&dsn, 8, orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
-Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc`, …). The chain, join, relation, column, and getter methods of the [DSL](../../docs/dsl.md) are generated for the calls the scanned source makes. An unknown column, operator, or argument count on a model the source names stops the build with the file position. The generated module embeds its schema, so one connection serves models of any schema.
+Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order_by_<col>_asc`, …). The chain, join, relation, column, and getter methods of the [DSL](../../docs/dsl.md) are generated for the calls the scanned source makes. An unknown column, operator, or argument count on a model the source names stops the build with the file position. The generated module embeds the manifest text of its document set and its `manifestHash` (`model::SCHEMA`, `model::MANIFEST_HASH`) and its connect helper `model::connect`, which opens a connection with `Db::connect_schema` and registers the set on it. A connection plans only the sets registered on it ([protocol](../../docs/protocol.md)).
 
 ## Connection
 
-`Db::connect(dsn, pool_size, config)` takes a DSN URI; the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
+`model::connect(dsn, pool_size, config)` and `Db::connect(dsn, pool_size, config)` take a DSN URI; `Db::connect` opens a connection without any registered set. the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
-`db.utils().schema().install(schema_json)` creates the tables and indexes of a manifest in one transaction and keeps existing ones.
+`db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist.
+`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await` upgrades the installed set: it creates the tables the database lacks and adds the missing columns of the existing tables that are null or have a default with the plan steps of the dialect (`orm_schema::dbspec::add_tables_and_columns_steps`), which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table, and returns the created tables as `table` and the added columns as `table.column`; every other difference returns `SCHEMA_DIFFERS` before any statement (docs/schema.md, "Adding tables and columns"). MySQL and SQLite add them outside a transaction.
 
 ## Required calls
 
 | Operation | Rust API |
 |---|---|
-| Validate a generated schema hash | `Schema::manifest()` validates the embedded manifest and its generated hash; `Manifest::load(bytes)` validates another manifest |
-| Select an engine and expose models | `Db::connect` selects the dialect from the DSN; each generated model embeds its schema and registers its entity descriptor in its generated module, so no global registration call is required |
-| Install schema objects | `db.utils().schema().install(model::SCHEMA.json())` |
+| Validate a generated manifest hash | `Schema::manifest()` builds the runtime model from the embedded manifest text and checks its `manifestHash`; `Manifest::load(text, hash)` does the same for another manifest text |
+| Select an engine and expose models | `model::connect` selects the dialect from the DSN and registers the set of the generated models on the connection; a request of a set that is not registered on its connection returns `SCHEMA_HASH_MISMATCH` |
+| Install schema objects | `db.utils().schema().install(&model::SCHEMA)` |
+| Add the missing tables and columns of an installed set | `db.utils().schema().add_tables_and_columns(&model::SCHEMA)` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | Run a callback with a `Send` future | `db.transaction_send(callback).await` |
 | Preserve a one-time callback's own error | `db.transaction_once(callback).await`; returns `TransactionOnceError::Callback(error)` after rollback |
 | Bound a transaction callback | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
 | Cancel a statement or transaction callback | Drop its future; `timeout_ms` cancels the callback on expiry and awaits rollback |
-| Encrypt model columns | Declare `aes` and `aes_key_version` in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
+| Encrypt model columns | Declare the `aes` codec stage and the `aes_version` setting in the schema, and pass `Config::aes_key` or `Config::aes_keys` with `Config::aes_version` |
 
 For Rust connections, `aes_version` must be positive. Every declared key version must be positive
 and have a nonempty key. If `aes_keys` is present, it must contain the current version; an
 `aes_key` supplied alongside it must equal that version's key. `Db::connect` returns `CONFIG`
 before opening a connection for invalid key configuration. A connection without AES columns may
 leave both key fields empty.
-| Record audited writes | Declare `audit_log` and `audit` in the schema, install the audit tables, then set the named context with `db.utils().set_local` inside the transaction |
+| Record audited writes | Declare the `audit` setting in the schema and name the operation of the unit of work with `db.transaction(callback).operation(id).await` ([usage](../../docs/usage.md#rust)) |
 
 `timeout_ms(0)` disables the callback deadline. A positive deadline covers callback execution,
 including statements it starts. Expiry returns `CANCELED` only after rollback succeeds; if
@@ -100,7 +102,7 @@ group result does not contain partially populated model fields.
 `GroupRow::value(name)` returns `Result<&Val>` and reports `COLUMN_UNSELECTED` for a name that
 was not selected. A selected SQL NULL remains `Val::Null`.
 
-Generated setters for `json`, `jsons`, `serialize`, and `yaml` columns take
+Generated setters for columns with an `ordered_json`, `serialize`, `yaml`, `gz`, or `base64` codec stage take
 `StyledValue<T>` and return `Result<Self>`. `StyledValue::SqlNull` writes SQL NULL;
 `StyledValue::Value(v)` stores the encoded value, including a JSON or other encoded null.
 A non-null column rejects `SqlNull` with `CODEC_ENCODE` at the setter. Getters return
@@ -109,7 +111,7 @@ assigned. Row arrays and model JSON use `{"kind":"sql-null"}` or
 `{"kind":"value","value":...}` for each styled column. Invalid stored text
 returns `CODEC_DECODE` with the entity and column name.
 
-`Val` numeric, boolean, date, time, text, byte, JSON and point conversions return `Result`.
+`Val` numeric, boolean, date, time, text, byte and JSON conversions return `Result`.
 An incompatible kind, invalid text, integer overflow, non-finite float, invalid UTF-8 or
 precision-losing decimal conversion returns `CODEC_DECODE`. A non-finite float also fails JSON
 output. Generated model `assign` returns `Result<bool>`: `Ok(false)` means the column name is
@@ -126,7 +128,7 @@ of `Val::as_f64` for ordinary values.
 
 ## Errors
 
-`orm::codes` is generated from `docs/errors.yaml` (`ormgen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default).
+`orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried.
 
 ## The statement hook
 
@@ -159,16 +161,16 @@ types fail rather than being converted. This is not a read-only SQL sandbox.
 ```sh
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… cargo test --workspace
-cargo build --release -p orm-tests
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/schema.json
-./target/release/conformance --driver mysql --dsn "mysql://…" ../../schema/schema.json
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
+cargo build -p orm-tests
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../schema/bench.dbs
+./target/debug/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```
 
-`integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. The tests drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.
+`integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler, and the dbspec tests (`dbspec_*`) create and change their databases through them; `dbspec_apply` also requires `ORM_TEST_PGBOUNCER_DSN` for its transaction pooler case; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.
 The Rust conformance output fails when a bind cannot be represented without loss, a requested
 selected field or relation is absent, or a derived integer is invalid or out of range. It never
-substitutes null, zero, replacement text, or an empty point for those errors.
+substitutes null, zero, or replacement text for those errors.
 
 The Rust source scanner recognizes `expect` and `unwrap` immediately after a styled setter
 as Result handling. It retains the model for following calls and rejects unknown model methods.

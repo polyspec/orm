@@ -120,7 +120,7 @@ func (s *shape) sub(q *ir.Sub) {
 
 func (s *shape) request(r *ir.Request) {
 	s.int(r.IRVersion)
-	s.str(r.SchemaHash)
+	s.str(r.ManifestHash)
 	s.str(r.Kind)
 	s.query(&r.Query)
 	s.assigns(r.Set)
@@ -177,8 +177,11 @@ func (s *shape) query(q *ir.Query) {
 		s.byte(1)
 		s.str(rl.Rel)
 		s.str(rl.Kind)
-		s.str(rl.Left)
-		s.str(rl.Right)
+		s.int(len(rl.Keys))
+		for _, k := range rl.Keys {
+			s.str(k.Left)
+			s.str(k.Right)
+		}
 		s.queryPtr(rl.Query)
 	}
 	s.int(len(q.Order))
@@ -253,7 +256,6 @@ func (s *shape) group(g *ir.Group) {
 				s.str(it.Pred.Ref.Column)
 			}
 			s.str(it.Pred.Expr)
-			s.strs(it.Pred.Match)
 			s.fn(it.Pred.Fn)
 			s.fn(it.Pred.Value)
 			s.strs(it.Pred.Cols)

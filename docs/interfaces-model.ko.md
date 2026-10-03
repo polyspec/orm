@@ -102,6 +102,7 @@ classDiagram
         ConnectionPool pool
         Cache_Sql_Statement statements
         connect()
+        connectSchema()
         transaction()
         utils()
         close()
@@ -175,6 +176,16 @@ classDiagram
         Text code
         Text message
     }
+    class Dbspec {
+        readFile()
+        readBytes()
+        parse()
+        emit()
+        manifest()
+        render()
+    }
+    class DbspecDocument {
+    }
     Model *-- Core : stores chain state
     Core --> Db : uses connection
     Core --> TransactionFlow : uses flow transaction
@@ -210,17 +221,19 @@ classDiagram
 | Plan | request 모양별로 cache하는 불변 statement와 조립 정보다. |
 | Step | plan의 SQL statement 하나다. |
 | Assemble | 결과 컬럼을 위치로 model, join, relation에 대응시킨다. |
-| Db | pool, 등록된 schema의 planner, plan cache, statement cache를 가진다. |
+| Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다. |
 | TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. |
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
 | Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
-| SchemaUtils | client DDL 렌더러로 manifest를 설치한다. |
+| SchemaUtils | client DDL 렌더러로 generated schema의 set을 설치하고 연결에 등록한다. |
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
 | AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
 | AESRotationStatus | key version별 행 수다. |
-| Generator | 언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
+| Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
 | Error | docs/errors.yaml의 안정적인 code다. |
+| Dbspec | signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md). |
+| DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |
 
 | 시작 | 대상 | 관계 |
 |---|---|---|

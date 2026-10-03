@@ -1,24 +1,53 @@
 //! A complex statement in every client language, one JSON document. Run:
 //!
-//!   clients/rust/target/release/complex
+//!   clients/rust/target/debug/complex
 orm::models!();
 
 use model::{Author, Service, ServiceMember, User};
-use serde_json::json;
+use serde::Serialize;
 
+/// 출력 문서의 member를 Go와 PHP 프로그램과 같은 순서로 선언한다.
+#[derive(Serialize)]
+struct Output<'a, R: Serialize> {
+    rows: &'a R,
+    groups: usize,
+    read_sum: serde_json::Number,
+    like_avg: serde_json::Number,
+    page_total: i64,
+    page_pages: i64,
+    page_length: usize,
+}
+
+/// binary64 값을 Go와 PHP처럼 가장 짧은 십진 표기로, 정수 값에는 소수부 없이 쓴다.
+/// serde_json은 f64에 항상 소수부를 붙인다(456000.0).
+fn shortest_number(v: f64) -> serde_json::Result<serde_json::Number> {
+    v.to_string().parse()
+}
+
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
+/// 않고 그 변수 이름을 출력하며 끝난다.
 fn dsn() -> String {
-    std::env::var("ORM_BENCH_MYSQL_DSN")
-        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            std::process::exit(1)
+        }
+        Err(e) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
+            std::process::exit(1)
+        }
+    }
 }
 
 #[tokio::main]
-async fn main() -> orm::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = orm::Config {
         aes_key: "bench-salt".into(),
         blind_index_key: "bench-blind-index".into(),
         ..Default::default()
     };
-    let db = orm::Db::connect(&dsn(), 4, config).await?;
+    let db = model::connect(&dsn(), 4, config).await?;
 
     // A join child with its own ON conditions whose WHERE conditions are placed
     // in a group, and two levels of relations with options.
@@ -86,16 +115,17 @@ async fn main() -> orm::Result<()> {
         .gets_page(2, 10)
         .await?;
 
-    let out = json!({
-        "rows": rows,
-        "groups": groups.len(),
-        "read_sum": sum,
-        "like_avg": avg,
-        "page_total": page.total_count,
-        "page_pages": page.total_pages,
-        "page_length": page.items.len(),
-    });
-    println!("{}", serde_json::to_string_pretty(&out).unwrap());
+    // 세 언어가 같은 byte를 내도록 member 순서는 Output이 고정하고 compact JSON으로 쓴다.
+    let out = Output {
+        rows: &rows,
+        groups: groups.len(),
+        read_sum: shortest_number(sum)?,
+        like_avg: shortest_number(avg)?,
+        page_total: page.total_count,
+        page_pages: page.total_pages,
+        page_length: page.items.len(),
+    };
+    println!("{}", serde_json::to_string(&out)?);
     db.close().await;
     Ok(())
 }

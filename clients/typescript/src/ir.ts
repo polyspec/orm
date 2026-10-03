@@ -24,7 +24,7 @@ export interface RequestQuery {
 
 export interface Request extends RequestQuery {
   ir_version: 1;
-  schema_hash: string;
+  manifest_hash: string;
   kind: QueryKind;
   set?: Assignment[];
   on_duplicate?: Assignment[];
@@ -60,7 +60,6 @@ export interface Predicate {
   ps?: number[];
   ref?: ColumnReferenceIR;
   expr?: string;
-  match?: string[];
   fn?: OrmFunction;
   value?: OrmFunction;
   cols?: string[];
@@ -79,9 +78,11 @@ export interface Relation {
   rel: string;
   query: RequestQuery;
   kind?: 'one' | 'many';
-  left?: string;
-  right?: string;
+  keys?: KeyPair[];
 }
+
+/** 한 relation key 성분: 부모 column left와 자식 column right가 같다. composite key는 성분마다 한 쌍을 key 순서로 담는다. */
+export interface KeyPair { left: string; right: string; }
 
 export interface Join {
   rel: string;
@@ -92,7 +93,7 @@ export interface Join {
 }
 
 export interface Plan {
-  schema_hash: string;
+  manifest_hash: string;
   kind: QueryKind;
   steps: PlanStep[];
 }
@@ -102,6 +103,7 @@ export interface BindSlot { from: string; param: number; transform: string; name
 export interface PlanIfParent { column: string; index: number; param: number; }
 export interface KeyReference { column: string; index: number; }
 export interface ParentReference { step: number; keys: KeyReference[]; if_parent?: PlanIfParent; }
-export interface Assemble { entity: string; alias: string; columns: OutputColumn[]; children: Child[]; key: KeyReference[]; }
+// aes_version은 AES column을 읽는 node에서 key version을 담은 columns 위치다.
+export interface Assemble { entity: string; alias: string; columns: OutputColumn[]; children: Child[]; key: KeyReference[]; aes_version?: number; }
 export interface OutputColumn { index: number; name: string; column: string; type: string; styles: string[]; hidden: boolean; }
 export interface Child { rel: string; kind: string; step: number; parent_keys: KeyReference[]; child_keys: KeyReference[]; key: KeyReference[]; flatten: boolean; cascade: boolean; assemble?: Assemble; }

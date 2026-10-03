@@ -11,9 +11,9 @@ intermediate query or model layer.
 
 | Specification call | Rust API and behavior |
 |---|---|
-| Engine selection and connection | `Db::connect(dsn, pool_size, Config)` selects MySQL, PostgreSQL, or SQLite from the DSN and creates the bounded pool. |
-| Schema hash check | A generated `Schema::new(schema_json, schema_hash)` validates the embedded manifest; the engine rejects a request whose hash differs with `SCHEMA_HASH_MISMATCH`. |
-| Schema installation and inspection | `db.utils().schema().install(manifest)` installs the manifest; `exists`, `installed`, and `empty` inspect the selected database. Audit directives in the manifest are installed with the audit tables and triggers. |
+| Engine selection and connection | `Db::connect(dsn, pool_size, Config)` selects MySQL, PostgreSQL, or SQLite from the DSN and creates the bounded pool without any registered set; `Db::connect_schema(dsn, &SCHEMA, pool_size, Config)`, which the generated `model::connect` calls, also registers the set of the generated models. |
+| Schema hash check | A generated `Schema::new(manifest_text, manifest_hash)` validates the embedded manifest text; the engine rejects a request whose hash differs with `SCHEMA_HASH_MISMATCH`. |
+| Schema installation and inspection | `db.utils().schema().install(&model::SCHEMA)` installs the set and registers it on the connection; `exists`, `installed`, and `empty` inspect the selected database. Audit directives in the manifest are installed with the audit tables and triggers. |
 | Transaction isolation, read-only, timeout, and retry | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)` applies the declared options; `retry(0)` runs the callback once. `Db::transaction_once` preserves the callback error and does not retry. |
 | Cancellation | Dropping a statement or transaction future closes its checked-out connection so the server operation is canceled or rolled back before that slot is reused; driver cancellation maps to `CANCELED`. |
 | Encrypted columns | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, and `db.utils().aes()` provide key validation, encrypted writes, blind indexes, status, and rotation for generated encrypted columns. |
@@ -24,7 +24,7 @@ case uses the same generated models through a one-slot PgBouncer connection.
 | Interface | Implementation and verification |
 |---|---|
 | IF-01, IF-18, IF-32 | Each client plans requests in its own process with a port of the same planner and checks the schema hash of its models. The conformance vectors compare the planned SQL and binds of the four clients. `tests/interfaces/check` compares the 20 request records of Go, PHP, Rust, and TypeScript field by field |
-| IF-02 | Column values keep their logical type. `TestConnectionTimeZone` and the equivalent PHP and TypeScript cases check date and time values in four time zones on three databases, including SQLite string datetime comparisons in the stored six-digit form. Rust generated models use typed `NaiveDateTime` values and cover the same database time behavior in integration cases |
+| IF-02 | Column values keep their logical type. `TestConnectionsUseUTC` and the equivalent PHP, TypeScript and Rust cases check that date and time values are written and read in UTC on SQLite and on MySQL and PostgreSQL servers whose zone is KST, including SQLite string datetime comparisons in the stored six-digit form. Rust generated models use typed `NaiveDateTime` values and cover the same database time behavior in integration cases |
 | IF-03 ~ IF-08 | Generated models store the chain state in one core object. The `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, and `errors` vectors check connectors, groups, value shapes, join placement, and invalid chains |
 | IF-09 ~ IF-12 | 22 model methods are fixed per language: the generated Go models, the PHP and TypeScript base classes, and the Rust `orm-build` template. `terminal_by` and `terminal_reuse` check terminals and the reuse of one model |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, and the AES utilities are fixed per language. The `transactions` vector and the client transaction tests check savepoints, row locks, named locks, and local values |

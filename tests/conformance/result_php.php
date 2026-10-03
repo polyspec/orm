@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
+require_once dirname(__DIR__) . '/testcase.php';
 
 use Orm\Model;
 
+// result check는 memory 안에서 result 값 몇 개를 쓰고 비교하는 case 하나다.
+testcase_begin('conformance_result_php', TESTCASE_COMPUTE);
 $result = [
     'exact' => OrderedJson\parse('9007199254740993'),
     'styled' => ['kind' => 'value', 'value' => OrderedJson\parse('{"n":9007199254740993}')],
@@ -43,4 +46,4 @@ $value = executeVector('write', static fn(): int => 7, static function (callable
 if (!$transactionCalled || $value !== 7) {
     throw new RuntimeException('write vector did not use its transaction');
 }
-echo "PHP conformance result preserves exact numbers and styled states\n";
+testcase_end();

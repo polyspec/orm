@@ -62,9 +62,6 @@ pub trait Src {
     fn f64(&mut self, i: usize) -> Result<f64>;
     fn bool(&mut self, i: usize) -> Result<bool>;
     fn string(&mut self, i: usize) -> Result<String>;
-    fn point(&mut self, i: usize) -> Result<crate::Point> {
-        crate::parse_point(&self.string(i)?)
-    }
     fn datetime(&mut self, i: usize) -> Result<NaiveDateTime>;
     fn date(&mut self, i: usize) -> Result<NaiveDate>;
     /// A styled cell after decoding (docs/codec.md): `Val::Json`, `Val::Str`, or `Val::Null` for SQL NULL.
@@ -297,10 +294,9 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
     for row in data.iter_mut() {
         let version = if styled.iter().any(|c| c.host.iter().any(|style| style == "aes")) {
             let column = asm
-                .columns
-                .iter()
-                .find(|c| c.hidden && c.column == "aes_key_version")
-                .ok_or_else(|| Error::Config("AES column requires aes_key_version".into()))?;
+                .aes_version
+                .map(|at| &asm.columns[at])
+                .ok_or_else(|| Error::Config(format!("{}: the plan reads an AES column without its key version column", asm.entity)))?;
             i32::try_from(row[column.index].as_i64()?).map_err(|_| Error::Config("AES key version is outside i32 range".into()))?
         } else {
             0
@@ -352,6 +348,7 @@ mod declared_boolean_tests {
 
     #[test]
     fn selected_boolean_groups_keep_their_declared_type() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let child = Assemble { columns: vec![OutCol { index: 2, name: "child_flag".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
         let assemble = Assemble {
             columns: vec![

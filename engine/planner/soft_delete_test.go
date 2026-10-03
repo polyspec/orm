@@ -1,28 +1,23 @@
 package planner
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
-func softDeleteManifest(t *testing.T) *schema.Manifest {
+func softDeleteManifest(t *testing.T) *runtimemodel.Model {
 	t.Helper()
-	d, err := schema.Parse("erDiagram\n account {\n bigint id PK\n datetime deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return m
+	return testModel(t, "dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n")
 }
 
 func TestSoftDeleteFiltersReads(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	plan, err := p.Compile(&ir.Request{Kind: "all", Query: ir.Query{Entity: "account"}})
 	if err != nil {
@@ -34,6 +29,7 @@ func TestSoftDeleteFiltersReads(t *testing.T) {
 }
 
 func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	param := 0
 	plan, err := p.Compile(&ir.Request{
@@ -53,27 +49,21 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 	}
 }
 
-// TestSoftDeleteClockPrecision checks that a soft deletion assigns the
-// database clock with the declared fraction digits of the column.
+// TestSoftDeleteClockPrecision는 soft delete가 column에 선언된 소수 자리로
+// database clock을 쓰는지 확인한다.
 func TestSoftDeleteClockPrecision(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
 		column  string
 		dialect dialect.Dialect
 		want    string
 	}{
 		{"datetime(6)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE"},
-		{"datetime", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP WHERE"},
+		{"datetime(0)", dialect.MySQL{}, "UPDATE `account` SET `deleted_at` = CURRENT_TIMESTAMP WHERE"},
 		{"datetime(6)", dialect.Postgres{}, `UPDATE "account" SET "deleted_at" = CURRENT_TIMESTAMP WHERE`},
 		{"datetime(6)", dialect.SQLite{}, `UPDATE "account" SET "deleted_at" = ? WHERE`},
 	} {
-		d, err := schema.Parse("erDiagram\n account {\n bigint id PK\n " + tc.column + " deleted_at \"?\"\n }\n %% soft_delete account deleted_at\n")
-		if err != nil {
-			t.Fatal(err)
-		}
-		m, err := schema.Build(d)
-		if err != nil {
-			t.Fatal(err)
-		}
+		m := testModel(t, "dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at "+tc.column+" null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n")
 		param := 0
 		plan, err := (&Planner{M: m, D: tc.dialect}).Compile(&ir.Request{
 			Kind:    "delete",
@@ -85,6 +75,28 @@ func TestSoftDeleteClockPrecision(t *testing.T) {
 		}
 		if sql := plan.Steps[0].SQL; !strings.HasPrefix(sql, tc.want) {
 			t.Errorf("%s %s: %s, want prefix %s", tc.dialect.Name(), tc.column, sql, tc.want)
+		}
+	}
+}
+
+// TestSoftDeleteClockSlotPrecision는 SQLite soft delete의 now slot이 column의 소수
+// 자리를 가지는지 확인한다. executor는 그 자리로 clock을 잘라 SQLite의
+// datetime(p) CHECK를 만족한다.
+func TestSoftDeleteClockSlotPrecision(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, precision := range []int{0, 3, 6} {
+		m := testModel(t, fmt.Sprintf("dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(%d) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n", precision))
+		param := 0
+		plan, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(&ir.Request{
+			Kind:    "delete",
+			Query:   ir.Query{Entity: "account", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "id", Op: "eq", P: &param}}}}},
+			NParams: 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slot := plan.Steps[0].BindSlots[0]; slot.From != "now" || slot.Precision != precision {
+			t.Errorf("datetime(%d) soft delete slot = %+v", precision, slot)
 		}
 	}
 }

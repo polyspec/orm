@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -44,7 +45,10 @@ func (d *DB) exec(ctx context.Context, sqlText string, args ...any) (sql.Result,
 
 // txConn is one active transaction.
 type txConn struct {
-	db         *DB
+	db *DB
+	// conn은 transaction이 끝날 때까지 잡아 두는 pool connection이다. rollback이
+	// 실패하면 driver가 그 connection을 닫았는지 확인한다.
+	conn       *sql.Conn
 	tx         *sql.Tx
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -58,7 +62,9 @@ type txConn struct {
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
-	contextRow bool
+	// operation은 이 transaction(unit of work)의 operation id다. audit table의
+	// insert와 update가 operation column에 쓴다. 없으면 nil이다.
+	operation any
 	// inserted records generated ORM inserts that succeeded in this
 	// transaction. It is an adapter-neutral transaction fact used by callers
 	// that must distinguish a row created in this transaction from a matching
@@ -236,6 +242,7 @@ type txOptions struct {
 	readOnly  bool
 	timeoutMs int
 	retry     int
+	operation any
 	set       bool
 }
 
@@ -257,6 +264,14 @@ func TimeoutMs(ms int) TransactionOption {
 	return func(o *txOptions) { o.timeoutMs, o.set = ms, true }
 }
 
+// Operation은 transaction을 operation id의 unit of work로 만든다. audit table에
+// 대한 transaction 안의 모든 insert와 update는 이 id를 table의 operation
+// column에 쓴다. id는 i64 operation column이면 int64, uuid column이면
+// 소문자 UUID string이다. nested transaction은 바깥 transaction의 id를 쓴다.
+func Operation(id any) TransactionOption {
+	return func(o *txOptions) { o.operation, o.set = id, true }
+}
+
 // Retry sets how many times a deadlocked callback runs again; 0 disables retry.
 func Retry(n int) TransactionOption {
 	return func(o *txOptions) { o.retry = n }
@@ -276,6 +291,11 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	}
 	if o.timeoutMs < 0 {
 		return configErr("transaction timeoutMs must not be negative")
+	}
+	switch o.operation.(type) {
+	case nil, int64, string:
+	default:
+		return configErr("operation id is %T; an operation id is an int64 or a UUID string", o.operation)
 	}
 	if outer := activeFor(d); outer != nil {
 		if o.set {
@@ -305,41 +325,59 @@ func (d *DB) runTransaction(fn func() error, o txOptions) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
-		// A panic or Goexit has no error result, so its rollback error
-		// cannot be returned.
+		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
+		// rollback은 panic으로 보고한다.
 		if r := recover(); r != nil {
-			_ = t.rollback()
+			if rollbackErr := t.rollback(); rollbackErr != nil {
+				panic(rollbackFailed(r, rollbackErr))
+			}
 			panic(r)
 		}
 		if !returned {
-			_ = t.rollback()
+			if rollbackErr := t.rollback(); rollbackErr != nil {
+				panic(rollbackFailed("callback exited without returning", rollbackErr))
+			}
 		}
 	}()
 	err = fn()
 	returned = true
 	if err != nil {
-		if rbErr := t.rollback(); rbErr != nil {
-			return rollbackErr(err, rbErr)
+		if rollbackErr := t.rollback(); rollbackErr != nil {
+			return rollbackFailed(err, rollbackErr)
 		}
 		if d.m.rollbackFault.CompareAndSwap(true, false) {
-			return rollbackErr(err, rollbackFaultErr())
+			return rollbackFailed(err, rollbackFaultErr())
 		}
 		return err
 	}
 	return t.commit()
 }
 
-// rollbackFaultErr is the rollback error that an armed test fault reports
-// after the rollback ran (FailNextRollback, build tag ormtest).
-func rollbackFaultErr() error {
-	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
+// rollbackFailed는 transaction이나 savepoint를 끝낸 원인과 실패한 rollback을
+// 하나의 ROLLBACK 오류로 보고한다 (docs/errors.yaml, docs/interfaces.md). 오류의
+// Cause는 원인과 rollback 오류의 errors.Join이므로 errors.Is와 errors.As가 둘을
+// 모두 찾는다. panic 값처럼 error가 아닌 원인은 그 text의 error가 된다.
+func rollbackFailed(cause any, rollbackErr error) error {
+	causeErr, ok := cause.(error)
+	if !ok {
+		causeErr = errors.New(fmt.Sprint(cause))
+	}
+	return &ir.Error{Code: CodeRollback, Msg: fmt.Sprintf("transaction failed (%v) and rollback failed (%v)", causeErr, rollbackErr), Cause: errors.Join(causeErr, rollbackErr)}
 }
 
-// rollbackErr reports a callback that failed and whose rollback failed too.
-// The error unwraps to both: errors.Join of the callback error and the
-// rollback error, in that order.
-func rollbackErr(callback, rollback error) error {
-	return &ir.Error{Code: CodeRollback, Msg: fmt.Sprintf("callback failed (%v) and rollback failed (%v)", callback, rollback), Cause: errors.Join(callback, rollback)}
+// rollbackAfter는 cause로 끝나는 transaction을 rollback하고 cause를 돌려준다.
+// rollback도 실패하면 두 오류를 함께 돌려준다.
+func (t *txConn) rollbackAfter(cause error) error {
+	if rollbackErr := t.rollback(); rollbackErr != nil {
+		return rollbackFailed(cause, rollbackErr)
+	}
+	return cause
+}
+
+// rollbackFaultErr는 설정된 test fault가 rollback이 실행된 뒤 보고하는 rollback
+// 오류다 (FailNextRollback, build tag ormtest).
+func rollbackFaultErr() error {
+	return &ir.Error{Code: CodeFault, Msg: "test fault: the rollback of the transaction ran and is reported as failed"}
 }
 
 func (d *DB) begin(o txOptions) (*txConn, error) {
@@ -375,61 +413,79 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		}
 	}
 	ctx, cancel := context.WithCancel(d.ctx)
-	native, err := d.sql.BeginTx(ctx, txo)
+	conn, err := d.sql.Conn(ctx)
 	if err != nil {
 		cancel()
 		return nil, mapDriverErr(err)
 	}
-	t := &txConn{db: d, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation}
+	native, err := conn.BeginTx(ctx, txo)
+	if err != nil {
+		cancel()
+		if closeErr := conn.Close(); closeErr != nil {
+			return nil, errors.Join(mapDriverErr(err), closeErr)
+		}
+		return nil, mapDriverErr(err)
+	}
+	t := &txConn{db: d, conn: conn, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, operation: o.operation}
 	if o.timeoutMs > 0 {
 		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)); err != nil {
-			if rbErr := t.abort(); rbErr != nil {
-				return nil, rollbackErr(mapDriverErr(err), rbErr)
-			}
-			return nil, mapDriverErr(err)
+			return nil, t.rollbackAfter(mapDriverErr(err))
 		}
 	}
 	if d.driver == "sqlite" {
 		if err := t.beginSQLiteMode(); err != nil {
-			if rbErr := t.abort(); rbErr != nil {
-				return nil, rollbackErr(err, rbErr)
-			}
-			return nil, err
+			return nil, t.rollbackAfter(err)
 		}
 	}
 	return t, nil
 }
 
-// abort rolls the transaction back and returns the rollback error. When the
-// transaction's context is cancelled, database/sql has already rolled the
-// transaction back, so the result of the second rollback is not an error.
-func (t *txConn) abort() error {
-	if !t.finished.Load() {
-		t.releaseLocks()
-		t.clearLocals()
-	}
-	t.finished.Store(true)
-	t.closeStatements()
-	canceled := t.ctx.Err() != nil
-	err := t.tx.Rollback()
-	t.cancel()
-	if err == nil || canceled {
-		return nil
-	}
-	return mapDriverErr(err)
-}
-
-// rollback rolls an unfinished transaction back and returns the first error
-// of restoring the SQLite modes and of the rollback.
+// rollback은 SQLite mode 복원, named lock 해제, local 값 reset, native
+// rollback을 모두 시도하고 실패한 것을 모두 돌려준다. transaction의 context가
+// 취소되었으면 그 context로 statement를 실행할 수 없으므로 connection을 닫는다.
 func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
 	}
-	modeErr := t.finishSQLiteMode()
-	if err := t.abort(); err != nil {
+	if t.ctx.Err() != nil {
+		t.finished.Store(true)
+		t.closeStatements()
+		err := t.closeSession()
+		t.cancel()
 		return err
 	}
-	return modeErr
+	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
+	t.finished.Store(true)
+	t.closeStatements()
+	errs = append(errs, t.rollbackNative(), t.conn.Close())
+	t.cancel()
+	return errors.Join(errs...)
+}
+
+// closeSession은 transaction connection을 pool에 돌려주지 않고 닫는다. 취소된
+// transaction은 database/sql이 rollback하지만, driver.SessionResetter와
+// driver.Validator를 구현한 driver(go-sql-driver)의 connection은 pool에 남아 named
+// lock, user variable, SQLite mode를 다음 사용자에게 넘긴다. 닫힌 connection의
+// session은 server가 transaction과 그 상태와 함께 끝낸다. database/sql이 이미 닫은
+// connection은 sql.ErrConnDone이다.
+func (t *txConn) closeSession() error {
+	err := t.conn.Raw(func(any) error { return driver.ErrBadConn })
+	if errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {
+		return nil
+	}
+	return err
+}
+
+// rollbackNative는 native transaction을 rollback한다. transaction의 context가
+// 취소되면 database/sql이 이미 rollback했으므로 sql.ErrTxDone은 실패가 아니다.
+// 그 밖의 실패는, driver나 server가 connection을 닫아 실패한 rollback도, 실패로
+// 보고한다 (docs/interfaces.md).
+func (t *txConn) rollbackNative() error {
+	err := t.tx.Rollback()
+	if err == nil || errors.Is(err, sql.ErrTxDone) && t.ctx.Err() != nil {
+		return nil
+	}
+	return mapDriverErr(err)
 }
 
 func (t *txConn) commit() error {
@@ -439,30 +495,22 @@ func (t *txConn) commit() error {
 	// A cancelled context (the handle's, or the transaction timeout) has
 	// already rolled the transaction back under database/sql.
 	if err := t.ctx.Err(); err != nil {
-		canceled := &ir.Error{Code: CodeCanceled, Msg: err.Error()}
-		if rbErr := t.abort(); rbErr != nil {
-			return rollbackErr(canceled, rbErr)
-		}
-		return canceled
-	}
-	if t.contextRow {
-		if _, err := t.tx.ExecContext(t.ctx, "DELETE FROM orm__context"); err != nil {
-			if rbErr := t.abort(); rbErr != nil {
-				return rollbackErr(mapDriverErr(err), rbErr)
-			}
-			return mapDriverErr(err)
-		}
+		return t.rollbackAfter(&ir.Error{Code: CodeCanceled, Msg: err.Error()})
 	}
 	if err := t.finishSQLiteMode(); err != nil {
-		if rbErr := t.abort(); rbErr != nil {
-			return rollbackErr(err, rbErr)
-		}
-		return err
+		return t.rollbackAfter(err)
 	}
-	t.releaseLocks()
-	t.clearLocals()
+	if err := t.releaseLocks(); err != nil {
+		return t.rollbackAfter(err)
+	}
+	if err := t.clearLocals(); err != nil {
+		return t.rollbackAfter(err)
+	}
 	t.closeStatements()
 	err := mapDriverErr(t.tx.Commit())
+	if closeErr := t.conn.Close(); closeErr != nil {
+		err = errors.Join(err, closeErr)
+	}
 	t.finished.Store(true)
 	t.cancel()
 	return err
@@ -481,33 +529,49 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	returned := false
 	defer func() {
 		popFrame()
+		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
+		// savepoint rollback은 panic으로 보고한다.
 		if r := recover(); r != nil {
 			t.inserted = insertedBefore
-			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
+			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+				panic(rollbackFailed(r, rollbackErr))
+			}
 			panic(r)
 		}
 		if !returned {
 			t.inserted = insertedBefore
-			_, _ = t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name)
-			_, _ = t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name)
+			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+				panic(rollbackFailed("callback exited without returning", rollbackErr))
+			}
 		}
 	}()
 	err = fn()
 	returned = true
 	if err != nil {
 		t.inserted = insertedBefore
-		if _, rbErr := t.tx.ExecContext(t.ctx, "ROLLBACK TO SAVEPOINT "+name); rbErr != nil {
-			return rollbackErr(err, mapDriverErr(rbErr))
-		}
-		if _, rbErr := t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name); rbErr != nil {
-			return rollbackErr(err, mapDriverErr(rbErr))
+		if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
+			return rollbackFailed(err, rollbackErr)
 		}
 		return err
 	}
-	if _, err := t.tx.ExecContext(t.ctx, "RELEASE SAVEPOINT "+name); err != nil {
-		return mapDriverErr(err)
+	return t.endSavepoint("RELEASE SAVEPOINT " + name)
+}
+
+// rollbackSavepoint는 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두
+// statement를 모두 시도하고 실패를 모두 돌려준다.
+func (t *txConn) rollbackSavepoint(name string) error {
+	return errors.Join(t.endSavepoint("ROLLBACK TO SAVEPOINT "+name), t.endSavepoint("RELEASE SAVEPOINT "+name))
+}
+
+// endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction의
+// context가 취소되면 database/sql이 transaction 전체를 rollback했으므로
+// savepoint도 함께 끝났고 실패가 아니다. 그 밖의 실패는 보고한다.
+func (t *txConn) endSavepoint(statement string) error {
+	_, err := t.tx.ExecContext(t.ctx, statement)
+	if err == nil || t.ctx.Err() != nil {
+		return nil
 	}
-	return nil
+	return mapDriverErr(err)
 }
 
 func cloneInserted(src map[string]map[int64]struct{}) map[string]map[int64]struct{} {
@@ -538,7 +602,10 @@ func (t *txConn) recordInserted(entity string, key int64) {
 	t.inserted[entity][key] = struct{}{}
 }
 
+// beginSQLiteMode는 첫 PRAGMA 전에 mode를 표시하므로 일부만 적용된 mode도
+// finishSQLiteMode가 되돌린다.
 func (t *txConn) beginSQLiteMode() error {
+	t.sqliteMode = t.isolation == ReadUncommitted || t.readOnly
 	if t.isolation == ReadUncommitted {
 		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA read_uncommitted = 1"); err != nil {
 			return mapDriverErr(err)
@@ -549,24 +616,27 @@ func (t *txConn) beginSQLiteMode() error {
 			return mapDriverErr(err)
 		}
 	}
-	t.sqliteMode = t.isolation == ReadUncommitted || t.readOnly
 	return nil
 }
 
+// finishSQLiteMode는 transaction 안에서 바꾼 SQLite mode를 되돌린다. PRAGMA
+// 값은 transaction 뒤에도 connection에 남으므로 실패를 모두 돌려준다. 한 번
+// 시도한 mode는 다시 되돌리지 않는다.
 func (t *txConn) finishSQLiteMode() error {
 	if !t.sqliteMode {
 		return nil
 	}
+	t.sqliteMode = false
+	var errs []error
 	if t.readOnly {
 		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA query_only = 0"); err != nil {
-			return mapDriverErr(err)
+			errs = append(errs, mapDriverErr(err))
 		}
 	}
 	if t.isolation == ReadUncommitted {
 		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA read_uncommitted = 0"); err != nil {
-			return mapDriverErr(err)
+			errs = append(errs, mapDriverErr(err))
 		}
 	}
-	t.sqliteMode = false
-	return nil
+	return errors.Join(errs...)
 }

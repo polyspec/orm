@@ -1,24 +1,27 @@
-// Several schemas on one connection, on SQLite, MySQL and PostgreSQL. A core
-// schema and a module schema register their models in one process. A
-// connection opened with the core schema installs both manifests and plans
-// each model request with the engine of that model's schema. A connection
-// that has not installed the module schema rejects a module model request
-// with SCHEMA_HASH_MISMATCH, and install rejects a manifest whose hash differs
-// from its content. Register adds an installed schema to a connection without
-// creating anything. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test
-// databases; the test fails when either is unset.
+// Several dbspec document sets in one process, on SQLite, MySQL and
+// PostgreSQL. The bench set (schema/bench.dbs) and the decimal set
+// (contracts/fixtures/decimal_schema.dbs) declare their models as generated
+// code does, each with the manifest hash of its own set. A connection plans
+// only the sets registered on it: the connect helper of generated code
+// (Db.connectSchema) and install register a set, and a raw connection
+// registers none. A request of a set that is not registered on its
+// connection fails with SCHEMA_HASH_MISMATCH before any statement, also when
+// another connection installed the set. A manifest text that does not hash to
+// its declared hash fails with CONFIG when it is connected or installed.
+// Each case runs on a case database of its own (case-database.mjs).
+// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test servers; the
+// test fails when either is unset.
 //
 // Usage: node clients/typescript/tests/schema-set.mjs [case ...] (after npm run typescript:build)
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { CORE, Db, Model, OrmError, registerSchema } from '../dist/index.js';
-import { buildManifest, encodeManifest } from '../dist/schema/build.js';
-import { parseDiagram } from '../dist/schema/mermaid.js';
+import { readFile } from 'node:fs/promises';
+import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { runCase } from '../../../tests/testcase.mjs';
+import { withCaseDatabase } from './case-database.mjs';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-schema-set-'));
+const benchText = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
+const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
+const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
 let current = '';
 function check(cond, message) {
@@ -28,175 +31,128 @@ async function code(run) {
   try { await run(); return ''; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
-/** A manifest built from Mermaid, written to $work/$name.json, and a model class for each entity. */
-async function generated(name, source) {
-  const manifest = buildManifest([parseDiagram(source)]);
-  const entities = new Map(Object.values(manifest.entities).map(e => [e.name, {
-    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [],
-    columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable, styles: c.styles }])),
-  }]));
-  const set = { hash: manifest.schema_hash, entities };
-  registerSchema(set);
-  const models = {};
-  for (const entity of entities.keys()) {
-    const model = class extends Model {};
-    model.entity = { schema: entities.get(entity), set, create: core => new model(core) };
-    models[entity] = model;
-  }
-  const json = encodeManifest(manifest);
-  const path = join(work, `${name}.json`);
-  await writeFile(path, json);
-  return { json, path, models };
+/** The manifest of a document set. */
+function manifestOf(text) {
+  const parsed = parseDbspec(text, {});
+  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
+  return dbspecManifest([parsed.document]).manifest;
 }
 
-const core = await generated('core', 'erDiagram\n  schema_set_note {\n    bigint seq PK "auto"\n    varchar(64) title\n  }\n');
-const module = await generated('module', 'erDiagram\n  schema_set_item {\n    bigint seq PK "auto"\n    varchar(64) label\n    int amount\n  }\n');
-const { schema_set_note: Note } = core.models;
-const { schema_set_item: Item } = module.models;
-const note = (db, title) => { const m = new Note().connect(db); m[CORE].setValue('title', title); return m; };
-const item = (db, label, amount) => { const m = new Item().connect(db); m[CORE].setValue('label', label); m[CORE].setValue('amount', amount); return m; };
-const ordered = (model, db) => { const q = new model().connect(db).addAllColumns(); q[CORE].orderBy('seq', false, []); return q; };
-
-/** Drops the test tables with the database driver; SQLite uses a new file per run. */
-async function dropTables(driver, dsn) {
-  const tables = ['schema_set_item', 'schema_set_note'];
-  const url = new URL(dsn);
-  if (driver === 'mysql') {
-    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-    try { for (const table of tables) await conn.query(`DROP TABLE IF EXISTS ${table}`); } finally { await conn.end(); }
-  } else if (driver === 'postgres') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
-    await client.connect();
-    try { for (const table of tables) await client.query(`DROP TABLE IF EXISTS ${table}`); } finally { await client.end(); }
-  } else {
-    await rm(url.pathname, { force: true });
+/** A model class per entity of a runtime model, as generated code declares them. */
+function classes(model) {
+  const out = {};
+  for (const entity of model.entities.values()) {
+    const cls = class extends Model {};
+    cls.entity = { model, entity, create: core => new cls(core) };
+    out[entity.name] = cls;
   }
+  return out;
 }
 
-/** A connection opened with the core schema serves the models of both schemas after installing them. */
+// generated code처럼 각 set의 manifest text와 manifestHash로 model을 등록한다.
+const bench = manifestOf(benchText);
+const decimal = manifestOf(decimalText);
+// generated code가 내보내는 schema 값: manifest text와 선언한 manifestHash다.
+const benchSchema = { manifestText: bench.manifestText, manifestHash: bench.manifestHash };
+const decimalSchema = { manifestText: decimal.manifestText, manifestHash: decimal.manifestHash };
+const { user: User } = classes(registerModel(bench.manifestText, bench.manifestHash));
+const decimalModel = registerModel(decimal.manifestText, decimal.manifestHash);
+const { decimal_case: DecimalCase } = classes(decimalModel);
+const user = (db, name) => { const m = new User().connect(db); m[CORE].setValue('name', name); return m; };
+const decimalRow = (db, seq, amount) => { const m = new DecimalCase().connect(db); m[CORE].setValue('seq', seq); m[CORE].setValue('amount', amount); return m; };
+const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).raw('{seq} = ?', seq).get())[CORE].column('amount');
+
+/**
+ * The bench helper connects, installs the bench set and the decimal set (the
+ * decimal set twice; the second install changes nothing) and uses the models
+ * of both sets in and outside a transaction.
+ */
 async function severalSchemas(dsn) {
-  const db = await Db.connect(dsn, core.path);
+  const db = await Db.connectSchema(dsn, benchSchema);
   try {
-    await db.utils().schema().install(core.json);
-    await db.utils().schema().install(module.json);
-    // A repeated install keeps the tables and the registered engine.
-    await db.utils().schema().install(module.json);
-    await note(db, 'core').create();
-    await item(db, 'module', 7).create();
+    for (const schema of [benchSchema, decimalSchema, decimalSchema]) await db.utils().schema().install(schema);
+    await user(db, 'core').create();
+    await decimalRow(db, 1, '48.0450').create();
     await db.transaction(async () => {
-      await note(db, 'core-tx').create();
-      await item(db, 'module-tx', 8).create();
+      await user(db, 'core-tx').create();
+      await decimalRow(db, 2, '1.5000').create();
     }, { retry: 0 });
-    const notes = [...(await ordered(Note, db).gets()).values()].map(r => r[CORE].column('title'));
-    const items = [...(await ordered(Item, db).gets()).values()].map(r => `${r[CORE].column('label')}:${r[CORE].column('amount')}`);
-    check(notes.join(',') === 'core,core-tx', `core rows ${notes}`);
-    check(items.join(',') === 'module:7,module-tx:8', `module rows ${items}`);
-    check(await new Item().connect(db).getCount() === 2, 'module count');
-  } finally { await db.close(); }
-}
-
-/** A connection that has not installed the module schema rejects its models; no other engine plans them. */
-async function unregisteredSchema(dsn) {
-  const installer = await Db.connect(dsn, core.path);
-  try {
-    await installer.utils().schema().install(core.json);
-    await installer.utils().schema().install(module.json);
-  } finally { await installer.close(); }
-  const db = await Db.connect(dsn, core.path);
-  try {
-    check(await code(() => new Item().connect(db).addAllColumns().gets()) === 'SCHEMA_HASH_MISMATCH', 'module read before install');
-    check(await code(() => item(db, 'x', 1).create()) === 'SCHEMA_HASH_MISMATCH', 'module write before install');
-    check(await new Note().connect(db).getCount() === 0, 'core read');
-    await db.utils().schema().install(module.json);
-    check(await new Item().connect(db).getCount() === 0, 'module read after install');
-  } finally { await db.close(); }
-}
-
-/** Install verifies the manifest hash against its content before any statement runs. */
-async function editedManifest(dsn) {
-  const edited = module.json.replaceAll('"schema_set_item"', '"schema_set_edit"');
-  check(edited !== module.json, 'edited manifest differs');
-  const db = await Db.connect(dsn, core.path);
-  try {
-    check(await code(() => db.utils().schema().install(edited)) === 'CONFIG', 'install of an edited manifest');
-    check(await code(() => new Item().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'edited manifest is not registered');
+    check(await new User().connect(db).getCount() === 2, 'bench rows');
+    check(await decimalAmount(db, 1) === '48.0450', 'decimal amount');
+    check(await new DecimalCase().connect(db).getCount() === 2, 'decimal rows');
   } finally { await db.close(); }
 }
 
 /**
- * Register adds the engine of an installed schema to a connection and creates
- * nothing: before installation the module table stays absent, and after
- * installation by another connection the module models read and write.
+ * A request of a set that is not registered on its connection fails with
+ * SCHEMA_HASH_MISMATCH before any statement: a raw connection registers no
+ * set, and a connection of the bench helper does not register the decimal
+ * set that another connection installed. A connection of the decimal helper
+ * uses it.
  */
-async function registerSchemaCase(dsn) {
-  const fresh = await Db.connect(dsn, core.path);
+async function unregisteredSchema(dsn) {
+  const statements = [];
+  const onQuery = event => statements.push(event.sql);
+  const raw = await Db.connect(dsn, { onQuery });
   try {
-    await fresh.utils().schema().register(module.json);
-    check(await code(() => new Item().connect(fresh).getCount()) === 'DRIVER', 'register creates no table');
-  } finally { await fresh.close(); }
-  const installer = await Db.connect(dsn, core.path);
+    check(await code(() => new User().connect(raw).getCount()) === 'SCHEMA_HASH_MISMATCH', 'bench read on a raw connection');
+  } finally { await raw.close(); }
+  const core = await Db.connectSchema(dsn, benchSchema, { onQuery });
   try {
-    await installer.utils().schema().install(core.json);
-    await installer.utils().schema().install(module.json);
-  } finally { await installer.close(); }
-  const db = await Db.connect(dsn, core.path);
+    const installer = await Db.connectSchema(dsn, decimalSchema);
+    try {
+      await installer.utils().schema().install(decimalSchema);
+      await decimalRow(installer, 1, '1.0000').create();
+    } finally { await installer.close(); }
+    check(await code(() => new DecimalCase().connect(core).getCount()) === 'SCHEMA_HASH_MISMATCH', 'decimal read on the bench connection');
+    check(await code(() => decimalRow(core, 2, '2.0000').create()) === 'SCHEMA_HASH_MISMATCH', 'decimal write on the bench connection');
+    check(statements.length === 0, `unregistered requests ran ${statements.length} statements`);
+  } finally { await core.close(); }
+  const decimal = await Db.connectSchema(dsn, decimalSchema);
   try {
-    check(await code(() => new Item().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'module read before register');
-    await db.utils().schema().register(module.json);
-    // A repeated register keeps the registered engine.
-    await db.utils().schema().register(module.json);
-    await item(db, 'registered', 3).create();
-    check(await new Item().connect(db).amount(3).getCount() === 1, 'module write and read after register');
+    check(await new DecimalCase().connect(decimal).getCount() === 1, 'decimal rows through the decimal helper');
+  } finally { await decimal.close(); }
+}
+
+/**
+ * A manifest text that does not hash to its declared manifest hash fails with
+ * CONFIG before any statement when it is connected or installed, and creates
+ * nothing; generated code of that text fails with SCHEMA_HASH_MISMATCH when it
+ * loads.
+ */
+async function editedManifest(dsn) {
+  const edited = { manifestText: decimal.manifestText.replaceAll('decimal(13,4)', 'decimal(14,4)'), manifestHash: decimal.manifestHash };
+  check(edited.manifestText !== decimal.manifestText, 'edited manifest differs');
+  check(await code(() => Db.connectSchema(dsn, edited)) === 'CONFIG', 'connect with an edited manifest');
+  check(await code(() => registerModel(edited.manifestText, edited.manifestHash)) === 'SCHEMA_HASH_MISMATCH', 'generated code of an edited manifest');
+  const statements = [];
+  const db = await Db.connectSchema(dsn, decimalSchema, { onQuery: event => statements.push(event.sql) });
+  try {
+    check(await code(() => db.utils().schema().install(edited)) === 'CONFIG', 'install of an edited manifest');
+    check(statements.length === 0, `the edited manifest ran ${statements.length} statements`);
+    await db.utils().schema().install(decimalSchema);
+    await decimalRow(db, 4, '123456789.1234').create();
+    check(await decimalAmount(db, 4) === '123456789.1234', 'decimal(13,4) column after the edited manifest');
+    check(await new DecimalCase().connect(db).getCount() === 1, 'decimal rows after the rejected manifest');
   } finally { await db.close(); }
 }
 
-/** Register verifies the manifest hash against its content and registers nothing when they differ. */
-async function registerEditedManifest(dsn) {
-  const edited = module.json.replaceAll('"schema_set_item"', '"schema_set_edit"');
-  const db = await Db.connect(dsn, core.path);
-  try {
-    check(await code(() => db.utils().schema().register(edited)) === 'CONFIG', 'register of an edited manifest');
-    check(await code(() => new Item().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'edited manifest is not registered');
-  } finally { await db.close(); }
-}
-
-const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest,
-  register_schema: registerSchemaCase, register_edited_manifest: registerEditedManifest };
+const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-const targets = { sqlite: `sqlite://${join(work, 'schema-set.sqlite')}` };
-for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {
-  const value = process.env[env];
-  if (!value) throw new Error(`${env} is required; database tests never skip`);
-  targets[driver] = value;
+for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);
 }
-try {
-  for (const name of selected) {
-    const run = cases[name];
-    if (run === undefined) throw new Error(`unknown case ${name}`);
+for (const name of selected) {
+  const run = cases[name];
+  if (run === undefined) throw new Error(`unknown case ${name}`);
+  for (const driver of ['sqlite', 'mysql', 'postgres']) {
     const before = failures;
-    for (const [driver, dsn] of Object.entries(targets)) {
-      current = `${name}/${driver}`;
-      const start = performance.now();
-      console.log(`RUN  ${current}`);
-      try {
-        await dropTables(driver, dsn);
-        await run(dsn);
-      } catch (error) {
-        failures++;
-        console.error(`FAIL ${current}: ${error?.stack ?? error}`);
-      } finally {
-        await dropTables(driver, dsn);
-      }
-      console.log(`${failures === before ? 'ok  ' : 'FAIL'} ${current} ${((performance.now() - start) / 1000).toFixed(3)}s`);
-    }
-    if (failures === before) console.log(`CASE ${name} PASS`);
+    current = `${name}/${driver}`;
+    const passed = await runCase(`schema-set/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+      await withCaseDatabase(driver, step, database => run(database.dsn));
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
-} finally {
-  await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript schema set test: ${failures} failures`);
-  process.exit(1);
-}
-console.log(`typescript schema set test: ${selected.length} cases on ${Object.keys(targets).length} databases passed`);
+if (failures > 0) process.exitCode = 1;

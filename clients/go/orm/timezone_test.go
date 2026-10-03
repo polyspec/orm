@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,24 +10,16 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
-
-const zoneSchema = `erDiagram
-  zone_event {
-    bigint       seq     PK "auto"
-    datetime(6)  start_dt
-    datetime(6)  created_ts "=now"
-  }
-`
 
 var zoneColumns = []string{"seq", "start_dt", "created_ts"}
 
-func zoneEntity(hash string) *orm.Entity {
+func zoneEntity(s *orm.Schema) *orm.Entity {
 	return &orm.Entity{
 		Name:   "zone_event",
-		Schema: &orm.Schema{Hash: hash},
+		Schema: s,
 		New: func(c *orm.Core) orm.Model {
 			r := &keywordRow{m: c, vals: map[string]any{}}
 			c.Bind(r)
@@ -53,49 +44,27 @@ func zoneEntity(hash string) *orm.Entity {
 	}
 }
 
-// TestConnectionTimeZone writes a wall-clock value and reads it back in the
-// connection time zone, and checks that the database clock default is in the
-// same zone.
-func TestConnectionTimeZone(t *testing.T) {
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	targets := map[string]string{
-		"sqlite":   "sqlite://",
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	for driver, base := range targets {
-		if base == "" && driver != "sqlite" {
-			t.Run(driver, func(t *testing.T) { requireTarget(t, driver, base) })
-			continue
-		}
-		for _, zone := range []string{"+00:00", "+09:00", "-05:30", "Asia/Seoul"} {
+// TestConnectionsUseUTC는 모든 connection이 server의 time zone과 상관없이
+// datetime을 UTC로 읽고 쓰는지 확인한다(docs/dialects.md "Date and time"). 시험
+// server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다. offset이 있는 값은
+// UTC wall clock으로 저장되고 UTC location으로 읽히며, clock default도 UTC다.
+func TestConnectionsUseUTC(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	s := fixtureSchema(t, "zone")
+	manifest := s
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+		for _, zone := range []string{"", "UTC", "+00:00"} {
 			t.Run(driver+"/"+zone, func(t *testing.T) {
-				if driver == "sqlite" {
-					base = "sqlite://" + filepath.Join(t.TempDir(), "zone.sqlite")
+				base := newDatabase(t, driver)
+				dsn := base
+				if zone != "" {
+					sep := "?"
+					if strings.Contains(base, "?") {
+						sep = "&"
+					}
+					dsn = base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
 				}
-				sep := "?"
-				if strings.Contains(base, "?") {
-					sep = "&"
-				}
-				dsn := base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
-				dropTable(t, driver, base, "zone_event")
-				defer dropTable(t, driver, base, "zone_event")
-				eng, err := engine.New(m, driver)
-				if err != nil {
-					t.Fatal(err)
-				}
-				db, err := orm.Open(dsn, eng, orm.Config{})
+				db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -103,23 +72,14 @@ func TestConnectionTimeZone(t *testing.T) {
 				if err := db.Utils().Schema().Install(manifest); err != nil {
 					t.Fatal(err)
 				}
-				loc := time.FixedZone("", 0)
-				switch zone {
-				case "+09:00":
-					loc = time.FixedZone(zone, 9*3600)
-				case "-05:30":
-					loc = time.FixedZone(zone, -(5*3600 + 1800))
-				case "Asia/Seoul":
-					loc, _ = time.LoadLocation(zone)
-				}
-				ent := zoneEntity(m.SchemaHash)
+				ent := zoneEntity(s)
 				model := func() *orm.Core {
 					c := orm.NewCore(ent)
 					ent.New(c)
 					c.Connect(db)
 					return c
 				}
-				start := time.Date(2026, 1, 2, 0, 0, 0, 0, loc)
+				start := time.Date(2026, 1, 2, 0, 0, 0, 0, time.FixedZone("+09:00", 9*3600))
 				c := model()
 				c.Set("start_dt", start)
 				before := time.Now()
@@ -132,18 +92,12 @@ func TestConnectionTimeZone(t *testing.T) {
 				}
 				vals := row.(*keywordRow).vals
 				got, ok := vals["start_dt"].(time.Time)
-				if !ok || !got.Equal(start) || got.Format("15:04") != "00:00" {
-					t.Fatalf("start_dt = %v, want %v", vals["start_dt"], start)
+				if !ok || !got.Equal(start) || got.Location() != time.UTC || got.Format("2006-01-02 15:04") != "2026-01-01 15:00" {
+					t.Fatalf("start_dt = %v, want %v in UTC", vals["start_dt"], start.UTC())
 				}
 				created, ok := vals["created_ts"].(time.Time)
-				if !ok || created.Sub(before).Abs() > time.Minute {
-					t.Fatalf("created_ts = %v, want about %v", vals["created_ts"], before.In(loc))
-				}
-				filter := model()
-				filter.Where("", []orm.ChainKey{{Column: "start_dt"}}, start)
-				found, err := filter.GetCount()
-				if err != nil || found != 1 {
-					t.Fatalf("where start_dt: %d %v", found, err)
+				if !ok || created.Location() != time.UTC || created.Sub(before).Abs() > time.Minute {
+					t.Fatalf("created_ts = %v, want about %v in UTC", vals["created_ts"], before.UTC())
 				}
 				text := model()
 				text.Set("start_dt", "2026-01-03 00:00:00")
@@ -156,10 +110,11 @@ func TestConnectionTimeZone(t *testing.T) {
 					arg  any
 					want int64
 				}{
-					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-02 00:00:00", 1},
+					{"instant", orm.ChainKey{Column: "start_dt"}, start, 1},
+					{"equal", orm.ChainKey{Column: "start_dt"}, "2026-01-01 15:00:00", 1},
 					{"fraction", orm.ChainKey{Column: "start_dt"}, "2026-01-03T00:00:00.0", 1},
-					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-02 00:00:00", "2026-01-03 00:00:00"}, 2},
-					{"between", orm.ChainKey{Op: "between", Column: "start_dt"}, [2]string{"2026-01-02 00:00:00", "2026-01-02 23:59:59"}, 1},
+					{"in", orm.ChainKey{Column: "start_dt"}, []string{"2026-01-01 15:00:00", "2026-01-03 00:00:00"}, 2},
+					{"between", orm.ChainKey{Op: "between", Column: "start_dt"}, [2]string{"2026-01-01 15:00:00", "2026-01-02 23:59:59"}, 1},
 				} {
 					q := model()
 					q.Where("", []orm.ChainKey{filter.key}, filter.arg)
@@ -184,27 +139,17 @@ func TestConnectionTimeZone(t *testing.T) {
 // PoolSize is zero, and never runs more concurrent transactions or opens more
 // connections than the maximum.
 func TestPoolSize(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "zone")
 	for driver, dsn := range targets {
 		requireTarget(t, driver, dsn)
 		t.Run(driver, func(t *testing.T) {
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
-			db, err := orm.Open(dsn, eng, orm.Config{PoolSize: 3})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -212,10 +157,10 @@ func TestPoolSize(t *testing.T) {
 			if got := db.Stats().MaxOpenConnections; got != 3 {
 				t.Fatalf("max open connections = %d, want 3", got)
 			}
-			if _, err := orm.Open(dsn, eng, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+			if _, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative pool size: %v", err)
 			}
-			unset, err := orm.Open(dsn, eng, orm.Config{})
+			unset, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -228,7 +173,7 @@ func TestPoolSize(t *testing.T) {
 			}
 			// Each transaction holds a connection while it runs, so six
 			// transactions on a pool of two run at most two at a time.
-			bounded, err := orm.Open(dsn, eng, orm.Config{PoolSize: 2})
+			bounded, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 2})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -267,35 +212,25 @@ func TestPoolSize(t *testing.T) {
 // closes a connection PoolLifetimeMs after it was opened, and rejects a
 // negative value or an idle size above the pool size with CONFIG.
 func TestPoolIdleSizeAndLifetime(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-idle.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
 	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := fixtureSchema(t, "zone")
 	for driver, dsn := range targets {
 		t.Run(driver, func(t *testing.T) {
 			requireTarget(t, driver, dsn)
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
 			for _, cfg := range []orm.Config{{PoolIdleSize: -1}, {PoolSize: 3, PoolIdleSize: 4}, {PoolIdleSize: 11}, {PoolLifetimeMs: -1}} {
-				if _, err := orm.Open(dsn, eng, cfg); orm.ErrorCode(err) != orm.CodeConfig {
+				if _, err := orm.ConnectSchema(dsn, s, cfg); orm.ErrorCode(err) != orm.CodeConfig {
 					t.Fatalf("pool idle size %d, lifetime %d: %v, want CONFIG", cfg.PoolIdleSize, cfg.PoolLifetimeMs, err)
 				}
 			}
 			// Three read-only transactions hold three connections at once,
 			// and SQLite begins them without the write lock; after they end
 			// the pool keeps one idle connection and closes the others.
-			idle, err := orm.Open(dsn, eng, orm.Config{PoolSize: 3, PoolIdleSize: 1})
+			idle, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3, PoolIdleSize: 1})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -327,7 +262,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if st := idle.Stats(); st.Idle != 1 || st.OpenConnections != 1 {
 				t.Fatalf("pool idle size 1 keeps %d idle of %d open connections", st.Idle, st.OpenConnections)
 			}
-			unset, err := orm.Open(dsn, eng, orm.Config{PoolSize: 3})
+			unset, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -351,7 +286,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			}
 			// The pool closes an idle connection whose lifetime has passed
 			// on its next cleanup, which runs at least once a second.
-			aged, err := orm.Open(dsn, eng, orm.Config{PoolLifetimeMs: 100})
+			aged, err := orm.ConnectSchema(dsn, s, orm.Config{PoolLifetimeMs: 100})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -371,40 +306,21 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 // SELECT statements, PostgreSQL bounds every statement, and SQLite has no
 // session timeout.
 func TestStatementTimeout(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	// MySQL interrupts a statement that does work; its timeout does not
 	// interrupt SLEEP. PostgreSQL interrupts any statement.
 	slow := map[string]string{
 		"mysql":    "(SELECT COUNT(*) FROM zone_event a, zone_event b WHERE MD5(a.start_dt) < MD5(b.start_dt)) >= 0",
 		"postgres": "pg_sleep(2) IS NULL",
 	}
-	targets := map[string]string{
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for driver, dsn := range targets {
-		requireTarget(t, driver, dsn)
+	s := fixtureSchema(t, "zone")
+	manifest := s
+	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			dropTable(t, driver, dsn, "zone_event")
-			defer dropTable(t, driver, dsn, "zone_event")
-			eng, err := engine.New(m, driver)
-			if err != nil {
-				t.Fatal(err)
-			}
+			dsn := newDatabase(t, driver)
 			// The table and its rows are created without a statement timeout;
 			// only the checked statement runs on the connection with the timeout.
-			setup, err := orm.Open(dsn, eng, orm.Config{})
+			setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -412,7 +328,7 @@ func TestStatementTimeout(t *testing.T) {
 			if err := setup.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			ent := zoneEntity(m.SchemaHash)
+			ent := zoneEntity(s)
 			{
 				rows := 2000
 				if driver == "postgres" {
@@ -428,7 +344,7 @@ func TestStatementTimeout(t *testing.T) {
 					}
 				}
 			}
-			db, err := orm.Open(dsn, eng, orm.Config{StatementTimeoutMs: 200})
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -440,7 +356,7 @@ func TestStatementTimeout(t *testing.T) {
 			if _, err := c.GetCount(); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
 			}
-			if _, err := orm.Open(dsn, eng, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+			if _, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative statement timeout: %v", err)
 			}
 		})
@@ -451,28 +367,26 @@ func TestStatementTimeout(t *testing.T) {
 // connection bounds only the statements of that connection when a pooler in
 // transaction mode hands one server session to every client in turn: through
 // ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
+// PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case
+// database에 닿지 못하므로, case는 그 database에 자기 이름(testdb.Name)의 table 하나를
+// 만들고 끝날 때 실패한 뒤에도 그 table만 지운다.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
+	c := testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
 	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "postgres")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dropTable(t, "postgres", base, "zone_event")
-	defer dropTable(t, "postgres", base, "zone_event")
-	setup, err := orm.Open(base, eng, orm.Config{})
+	table := testdb.Name()
+	s := documentSchema(t, "dbspec 1 zone\n\ntable "+table+" {\n  seq i64 identity\n  start_dt datetime(6)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n")
+	manifest := s
+	t.Cleanup(func() {
+		raw := openNative(t, "postgres", base)
+		defer raw.Close()
+		if _, err := raw.Exec(`DROP TABLE IF EXISTS "` + table + `"`); err != nil {
+			t.Errorf("drop case table %s: %v", table, err)
+			return
+		}
+		c.Step("table %s dropped", table)
+	})
+	setup, err := orm.ConnectSchema(base, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,7 +394,8 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err := setup.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
-	ent := zoneEntity(m.SchemaHash)
+	c.Step("table %s created", table)
+	ent := rowEntity(table, s, zoneColumns...)
 	// Three rows sleep 0.1 s each, so the statement runs past 200 ms.
 	for i := 0; i < 3; i++ {
 		row := orm.NewCore(ent)
@@ -498,7 +413,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 		c.Raw("", "pg_sleep(0.1) IS NOT NULL", nil)
 		return c.GetCount()
 	}
-	bounded, err := orm.Open(single, eng, orm.Config{StatementTimeoutMs: 200})
+	bounded, err := orm.ConnectSchema(single, s, orm.Config{StatementTimeoutMs: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -506,7 +421,7 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection through the pooler: %v", err)
 	}
-	plain, err := orm.Open(single, eng, orm.Config{})
+	plain, err := orm.ConnectSchema(single, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

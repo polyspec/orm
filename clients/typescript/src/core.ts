@@ -1,6 +1,7 @@
 import type { Db } from './database.js';
-import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
-import type { ChainKey, EntitySchema, SchemaSet } from './names.js';
+import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
+import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
+import type { ChainKey } from './names.js';
 import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
@@ -12,10 +13,24 @@ export const CORE: unique symbol = Symbol('orm.core');
 export interface ModelLike { readonly [CORE]: Core; }
 
 export interface EntityDef {
-  readonly schema: EntitySchema;
-  readonly set: SchemaSet;
+  readonly model: RuntimeModel;
+  readonly entity: Entity;
   create(core: Core): ModelLike;
 }
+
+/** Codec stages that keep the plain value; any other stage makes the column a styled value. */
+const plainStages = new Set(['aes', 'hex', 'ip']);
+
+/** Whether a column holds a styled value (docs/dbspec.md "Runtime model", codecs). */
+export function styledField(f: Field): boolean {
+  return f.stages.some(stage => !plainStages.has(stage));
+}
+
+const integerRanges: Readonly<Record<string, readonly [number, number]>> = {
+  i16: [-32768, 32767],
+  i32: [-2147483648, 2147483647],
+  i64: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+};
 
 type Fn = ValueFunction | ColumnFunction;
 
@@ -28,7 +43,7 @@ interface PredSpec {
   ref?: Core;
   refCol?: string;
   sub?: Core;
-  kind: 'value' | 'list' | 'null' | 'between' | 'tuple' | 'fulltext' | 'ref' | 'sub' | 'column_fn' | 'value_fn';
+  kind: 'value' | 'list' | 'null' | 'between' | 'tuple' | 'ref' | 'sub' | 'column_fn' | 'value_fn';
 }
 
 interface RawSpec { sql: string; binds: readonly unknown[]; }
@@ -134,8 +149,8 @@ export class Core {
   public agg = '';
   public aggFn = '';
 
-  public matchLeft = '';
-  public matchRight = '';
+  /** relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다. */
+  public matches: KeyPair[] = [];
   public alias = '';
   public parentNode = false;
   public possible: { column: string; value: unknown } | undefined;
@@ -242,9 +257,6 @@ export class Core {
   private predicate(key: ChainKey, value: unknown, rest: readonly unknown[], single: boolean): [PredSpec, number] {
     const p = (fields: Omit<PredSpec, 'column'>): PredSpec => ({ column: key.column, ...fields });
     switch (key.op) {
-      case 'fulltext': case 'fulltext_boolean':
-        if (typeof value !== 'string') throw configError(`full-text value must be a string`);
-        return [p({ kind: 'fulltext', op: key.op === 'fulltext' ? 'match' : 'match_boolean', cols: key.columns, value }), 0];
       case 'tuple': case 'ne_tuple': {
         if (!Array.isArray(value)) throw configError('tuple values must be a list');
         if (value.length === 0) throw new OrmError('EMPTY_IN', 'tuple condition received an empty list');
@@ -300,7 +312,7 @@ export class Core {
     if (this.group) return this.fail('relation is not allowed inside a group callback');
     if (!isModel(child)) return this.fail('relation requires a model');
     const ch = child[CORE];
-    if (ch.matchLeft === '') return this.fail(`relation child ${ch.ent.schema.name} requires match<L>With<R>()`);
+    if (ch.matches.length === 0) return this.fail(`relation child ${ch.ent.entity.name} requires match<L>With<R>()`);
     this.relations.push({ many, child: ch });
   }
 
@@ -337,25 +349,29 @@ export class Core {
   }
   public aggregate(fn: string, column: string): void { this.aggFn = fn; this.agg = column; }
 
+  /** Returns a selected or assigned column value; any other column is COLUMN_UNSELECTED. */
   public column(name: string): unknown {
     if (this.values.has(name)) return this.values.get(name);
-    const styled = this.ent.schema.columns[name]?.styles?.some(style => ['json', 'jsons', 'serialize', 'yaml'].includes(style));
-    if (styled) throw new OrmError('COLUMN_UNSELECTED', `${name} was not selected`);
-    return null;
+    if (fieldOf(this.ent.entity, name) === undefined) throw new OrmError('COLUMN_UNKNOWN', `${this.ent.entity.name}.${name}`);
+    throw new OrmError('COLUMN_UNSELECTED', `${this.ent.entity.name}.${name} was neither selected nor assigned`);
   }
   /** Stores a column value and records it for the next write; null stores NULL. */
   public setValue(column: string, value: unknown): void {
-    const schema = this.ent.schema.columns[column];
-    if (schema === undefined) throw new OrmError('COLUMN_UNKNOWN', column);
-    const styled = schema.styles?.some(style => ['json', 'jsons', 'serialize', 'yaml'].includes(style));
-    if (schema.type === 'decimal' && value !== null) {
-      if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${column} requires exact decimal text`);
-      value = normalizeDecimal(value, schema.precision ?? 0, schema.scale ?? 0);
-    }
-    if (styled) {
+    const field = fieldOf(this.ent.entity, column);
+    if (field === undefined) throw new OrmError('COLUMN_UNKNOWN', column);
+    if (styledField(field)) {
       if (!(value instanceof StyledValue)) throw new OrmError('CODEC_ENCODE', `${column} requires StyledValue`);
-      if (!schema.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);
+      if (!field.nullable && value.kind === 'sql-null') throw new OrmError('CODEC_ENCODE', `${column} does not accept SQL NULL`);
       if (value.kind === 'value') value.payload();
+    } else if (value !== null) {
+      const range = integerRanges[field.type];
+      if (range !== undefined && (!Number.isSafeInteger(value) || (value as number) < range[0] || (value as number) > range[1])) {
+        throw new OrmError('CODEC_ENCODE', `${column} (${field.type}) requires an integer from ${range[0]} to ${range[1]}`);
+      }
+      if (field.type === 'decimal') {
+        if (typeof value !== 'string') throw new OrmError('CODEC_ENCODE', `${column} requires exact decimal text`);
+        value = normalizeDecimal(value, field.precision, field.scale);
+      }
     }
     this.values.set(column, value);
     this.putSet(value === null || (value instanceof StyledValue && value.kind === 'sql-null')
@@ -391,6 +407,7 @@ export class Core {
     out.where.pending = this.where.pending;
     out.joins = [...this.joins];
     out.relations = [...this.relations];
+    out.matches = [...this.matches];
     out.columns = this.columns.clone();
     out.order = [...this.order];
     out.groupBy = [...this.groupBy];
@@ -412,11 +429,11 @@ export class Core {
 
   public resultName(many: boolean): string {
     if (this.alias !== '') return this.alias;
-    return `${this.ent.schema.name}_${many ? 'models' : 'model'}`;
+    return `${this.ent.entity.name}_${many ? 'models' : 'model'}`;
   }
 
   public build(kind: QueryKind): BuiltRequest {
-    const r = new BuiltRequest(kind, this.ent.set.hash);
+    const r = new BuiltRequest(kind, this.ent.model.manifestHash);
     if (this.error) { r.fail(this.error); return r; }
     const q = r.query(this, new Frame(this, undefined), '');
     if (q) Object.assign(r.ir, q);
@@ -444,7 +461,7 @@ class Frame {
     const path = this.paths.get(c);
     if (path !== undefined) return path;
     if (this.outer !== undefined && c === this.outer) return '^';
-    throw configError(`${c.ent.schema.name} is not part of the statement`);
+    throw configError(`${c.ent.entity.name} is not part of the statement`);
   }
 }
 
@@ -466,7 +483,7 @@ export class BuiltRequest {
   public readonly external = new Map<Core, RelSpec[]>();
 
   public constructor(kind: QueryKind, hash: string) {
-    this.ir = { ir_version: 1, schema_hash: hash, kind, entity: '', n_params: 0 };
+    this.ir = { ir_version: 1, manifest_hash: hash, kind, entity: '', n_params: 0 };
   }
 
   public param(value: unknown): number {
@@ -486,7 +503,7 @@ export class BuiltRequest {
   public query(c: Core, f: Frame, path: string): RequestQuery | undefined {
     if (c.error) { this.fail(c.error); return undefined; }
     if (c.where.pending !== '') { this.fail(configError(`connector ${c.where.pending} without a following condition`)); return undefined; }
-    const q: RequestQuery = { entity: c.ent.schema.name };
+    const q: RequestQuery = { entity: c.ent.entity.name };
     if (c.index !== '') q.force_index = c.index;
     if (c.lock !== '') q.lock = c.lock;
     if (c.limit) q.limit = { ...c.limit };
@@ -507,7 +524,7 @@ export class BuiltRequest {
     if (c.where.items.length > 0) q.where = this.group(c.where, c, f);
     for (const rel of c.relations) {
       if (rel.child.conn !== undefined) {
-        if (rel.child.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${rel.child.ent.schema.name} relation uses limit; use groupLimit`)); return undefined; }
+        if (rel.child.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${rel.child.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
         const list = this.external.get(c) ?? [];
         list.push(rel);
         this.external.set(c, list);
@@ -537,13 +554,13 @@ export class BuiltRequest {
     const ch = rel.child;
     const q = this.query(ch, new Frame(ch, undefined), '');
     if (!q) return undefined;
-    if (ch.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${ch.ent.schema.name} relation uses limit; use groupLimit`)); return undefined; }
+    if (ch.limit) { this.fail(new OrmError('LIMIT_IN_RELATION', `${ch.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
     if (ch.parentNode) q.flatten = true;
     if (ch.groupLimit > 0) q.limit_per_parent = ch.groupLimit;
     if (ch.deleteLock) q.no_cascade_delete = true;
     if (ch.keyName !== '') q.key_by = ch.keyName;
     if (ch.possible) q.if_parent = { column: ch.possible.column, p: this.param(ch.possible.value) };
-    return { rel: ch.resultName(rel.many), kind: rel.many ? 'many' : 'one', left: ch.matchLeft, right: ch.matchRight, query: q };
+    return { rel: ch.resultName(rel.many), kind: rel.many ? 'many' : 'one', keys: ch.matches.map(k => ({ ...k })), query: q };
   }
 
   private columns(c: Core): RequestQuery['columns'] {
@@ -603,11 +620,11 @@ export class BuiltRequest {
       } else if (node.joined) {
         const child = node.joined;
         const path = f.paths.get(child);
-        if (path === undefined || child === f.root) { this.fail(configError(`${child.ent.schema.name} is not joined in the statement`)); return out; }
-        if (f.parent.get(child) !== owner.subject()) { this.fail(configError(`${child.ent.schema.name} conditions must be placed in the model it is joined to`)); return out; }
-        if (f.placed.has(child)) { this.fail(configError(`${child.ent.schema.name} conditions are placed twice`)); return out; }
+        if (path === undefined || child === f.root) { this.fail(configError(`${child.ent.entity.name} is not joined in the statement`)); return out; }
+        if (f.parent.get(child) !== owner.subject()) { this.fail(configError(`${child.ent.entity.name} conditions must be placed in the model it is joined to`)); return out; }
+        if (f.placed.has(child)) { this.fail(configError(`${child.ent.entity.name} conditions are placed twice`)); return out; }
         f.placed.add(child);
-        if (child.where.items.length === 0) { this.fail(configError(`${child.ent.schema.name} has no condition to place`)); return out; }
+        if (child.where.items.length === 0) { this.fail(configError(`${child.ent.entity.name} has no condition to place`)); return out; }
         item.joined = { join: path.slice(path.lastIndexOf('/') + 1) };
         if (node.conn !== '') item.joined.conn = node.conn;
       }
@@ -619,11 +636,6 @@ export class BuiltRequest {
   private pred(p: PredSpec, owner: Core, f: Frame): Predicate | undefined {
     const out: Predicate = { column: p.column, op: p.op };
     switch (p.kind) {
-      case 'fulltext':
-        delete out.column;
-        out.match = p.cols;
-        out.p = this.param(p.value);
-        break;
       case 'tuple':
         delete out.column;
         out.cols = p.cols;

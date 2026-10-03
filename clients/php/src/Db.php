@@ -24,20 +24,18 @@ final class Db
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
-    /** @var array<string, Engine> the engines of the registered schemas by schema hash */
-    private array $engines = [];
-    /** The test fault that Orm\Testing\Faults::failNextRollback arms; only that test entry point sets it. */
+    /** Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
     private bool $rollbackFault = false;
+    /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
+    private array $sets = [];
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
         private readonly \PDO $pdo,
         private readonly string $driver,
         private readonly Config $config,
-        Engine $engine,
         private readonly \DateTimeZone $zone,
     ) {
-        $this->engines[$engine->manifest->schemaHash] = $engine;
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
@@ -52,6 +50,16 @@ final class Db
     public function poolSize(): int
     {
         return $this->config->poolSize;
+    }
+
+    /**
+     * @internal Orm::connectSchema와 SchemaUtils::install만 부른다. schema의 set을
+     * 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+     */
+    public function registerSet(Schema $schema): void
+    {
+        $schema->verify();
+        $this->sets[$schema->manifestHash] = true;
     }
 
     /** The database of the connection: mysql, postgres, or sqlite. */
@@ -181,8 +189,13 @@ final class Db
      * back; models without connect inside $fn use this transaction. A
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
+     *
+     * $operation은 이 작업 단위의 operation id다. executor는 transaction 안에서
+     * insert하거나 update하는 모든 감사 대상 행의 operation column에 그 값을 쓴다
+     * (docs/dbspec.md "Audit"). 감사 대상 table의 operation column이 i64면 int,
+     * uuid면 string이다. 중첩 transaction은 바깥 transaction의 operation id를 쓴다.
      */
-    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3): mixed
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, int|string|null $operation = null): mixed
     {
         if ($retry < 0) {
             throw new OrmException(Code::CONFIG, 'transaction retry must not be negative');
@@ -195,14 +208,14 @@ final class Db
         }
         $outer = self::activeFor($this);
         if ($outer !== null) {
-            if ($isolation !== '' || $readOnly || $timeoutMs !== 0) {
+            if ($isolation !== '' || $readOnly || $timeoutMs !== 0 || $operation !== null) {
                 throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the retry option');
             }
             return $this->savepoint($outer, $fn);
         }
         for ($attempt = 0; ; $attempt++) {
             try {
-                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
+                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs, $operation);
             } catch (OrmException $e) {
                 if ($e->code_ !== Code::DEADLOCK || $attempt >= $retry) {
                     throw $e;
@@ -212,25 +225,27 @@ final class Db
         }
     }
 
-    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
+    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs, int|string|null $operation): mixed
     {
         $frame = $this->begin($isolation, $readOnly, $timeoutMs);
+        $frame->operation = $operation;
         self::$frames[] = $frame;
         try {
             $v = $fn();
         } catch (\Throwable $e) {
             array_pop(self::$frames);
-            $e = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
             try {
                 $this->finish($frame, false);
-            } catch (\Throwable $rollback) {
-                throw OrmException::rollback($e, $rollback);
+            } catch (\Throwable $cleanup) {
+                // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
+                throw OrmException::rollback($failure, $cleanup);
             }
             if ($this->rollbackFault) {
                 $this->rollbackFault = false;
-                throw OrmException::rollback($e, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
+                throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
-            throw $e;
+            throw $failure;
         }
         array_pop(self::$frames);
         $this->finish($frame, true);
@@ -246,6 +261,7 @@ final class Db
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
+        $frame = null;
         try {
             if ($this->driver === 'mysql') {
                 if ($isolation !== '') {
@@ -285,76 +301,149 @@ final class Db
             }
             return $frame;
         } catch (\PDOException $e) {
-            if ($this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            $failure = OrmException::fromDriver($e, $this->driver);
+            try {
+                // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다.
+                if ($frame !== null) {
+                    $this->finish($frame, false);
+                } elseif ($this->pdo->inTransaction()) {
+                    $this->pdo->rollBack();
+                }
+            } catch (\Throwable $cleanup) {
+                throw OrmException::rollback($failure, $cleanup);
             }
-            throw OrmException::fromDriver($e, $this->driver);
+            throw $failure;
         }
     }
 
+    /**
+     * transaction을 끝낸다. 끝내기 전에 MySQL named lock을 풀고 MySQL local 값을
+     * 지우고 SQLite mode를 되돌린다. 이 상태는 COMMIT과 ROLLBACK 뒤에도
+     * connection에 남으므로 모든 단계를 시도하고 실패를 모두 보고한다. cleanup이
+     * 실패한 commit은 rollback하고 cleanup 오류를 던진다.
+     */
     private function finish(TxFrame $frame, bool $commit): void
     {
         $frame->finished = true;
-        try {
-            foreach ($frame->locks as $key) {
-                $this->pdo->prepare('SELECT RELEASE_LOCK(?)')->execute([$key]);
+        $failure = self::joined($this->cleanup($frame));
+        if ($commit && $failure === null) {
+            try {
+                $this->pdo->commit();
+                return;
+            } catch (\PDOException $e) {
+                $failure = OrmException::fromDriver($e, $this->driver);
             }
-            if ($this->driver === 'mysql') {
-                foreach ($frame->locals as $key => $_) {
-                    $this->pdo->exec('SET @`orm.' . $key . '` = NULL');
-                }
-            }
-            if ($commit && $frame->contextRow) {
-                $this->pdo->exec('DELETE FROM "orm__context"');
-            }
-            if ($this->driver === 'sqlite') {
-                if ($frame->readOnly) {
-                    $this->pdo->exec('PRAGMA query_only = 0');
-                }
-                if ($frame->isolation === 'read_uncommitted') {
-                    $this->pdo->exec('PRAGMA read_uncommitted = 0');
-                }
-            }
-            $commit ? $this->pdo->commit() : $this->pdo->rollBack();
-        } catch (\PDOException $e) {
-            $e = OrmException::fromDriver($e, $this->driver);
-            if ($commit && $this->pdo->inTransaction()) {
-                try {
-                    $this->pdo->rollBack();
-                } catch (\PDOException $rollback) {
-                    throw OrmException::rollback($e, OrmException::fromDriver($rollback, $this->driver));
-                }
-            }
-            throw $e;
         }
+        $rollback = null;
+        try {
+            // 실패한 COMMIT은 server가 transaction을 끝냈을 수 있으므로 남은 transaction만
+            // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
+            // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
+            if (!$commit || $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+        } catch (\PDOException $e) {
+            $rollback = OrmException::fromDriver($e, $this->driver);
+        }
+        if ($commit) {
+            throw $rollback === null ? $failure : OrmException::rollback($failure, $rollback);
+        }
+        $failure = self::joined(array_values(array_filter([$failure, $rollback])));
+        if ($failure !== null) {
+            throw $failure;
+        }
+    }
+
+    /** @return list<\Throwable> transaction 끝의 cleanup에서 실패한 단계들이다. */
+    private function cleanup(TxFrame $frame): array
+    {
+        $errors = [];
+        $attempt = function (callable $step) use (&$errors): void {
+            try {
+                $step();
+            } catch (\PDOException $e) {
+                $errors[] = OrmException::fromDriver($e, $this->driver);
+            } catch (OrmException $e) {
+                $errors[] = $e;
+            }
+        };
+        foreach ($frame->locks as $key) {
+            $attempt(function () use ($key): void {
+                $st = $this->pdo->prepare('SELECT RELEASE_LOCK(?)');
+                $st->execute([$key]);
+                // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+                if ((string) $st->fetchColumn() !== '1') {
+                    throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
+                }
+            });
+        }
+        $frame->locks = [];
+        if ($this->driver === 'mysql') {
+            foreach ($frame->locals as $key => $_) {
+                $attempt(fn() => $this->pdo->exec('SET @`orm.' . $key . '` = NULL'));
+            }
+        }
+        if ($this->driver === 'sqlite') {
+            if ($frame->readOnly) {
+                $attempt(fn() => $this->pdo->exec('PRAGMA query_only = 0'));
+            }
+            if ($frame->isolation === 'read_uncommitted') {
+                $attempt(fn() => $this->pdo->exec('PRAGMA read_uncommitted = 0'));
+            }
+        }
+        return $errors;
+    }
+
+    /** @param list<\Throwable> $errors 하나면 그 오류, 여럿이면 message를 모은 CONFIG다. */
+    private static function joined(array $errors): ?\Throwable
+    {
+        if (count($errors) <= 1) {
+            return $errors[0] ?? null;
+        }
+        return new OrmException(Code::CONFIG, implode('; ', array_map(static fn(\Throwable $e): string => $e->getMessage(), $errors)), $errors[0]);
     }
 
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
         try {
-            $this->pdo->exec("SAVEPOINT $name");
+            try {
+                $this->pdo->exec("SAVEPOINT $name");
+            } catch (\PDOException $e) {
+                throw OrmException::fromDriver($e, $this->driver);
+            }
             self::$frames[] = $frame;
             try {
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $e = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
-                try {
-                    $this->pdo->exec("ROLLBACK TO SAVEPOINT $name");
-                    $this->pdo->exec("RELEASE SAVEPOINT $name");
-                } catch (\PDOException $rollback) {
-                    throw OrmException::rollback($e, OrmException::fromDriver($rollback, $this->driver));
-                }
-                throw $e;
+                $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
+                $ended = self::joined(array_values(array_filter([
+                    $this->endSavepoint("ROLLBACK TO SAVEPOINT $name"),
+                    $this->endSavepoint("RELEASE SAVEPOINT $name"),
+                ])));
+                throw $ended === null ? $failure : OrmException::rollback($failure, $ended);
             }
             array_pop(self::$frames);
-            $this->pdo->exec("RELEASE SAVEPOINT $name");
+            $released = $this->endSavepoint("RELEASE SAVEPOINT $name");
+            if ($released !== null) {
+                throw $released;
+            }
             return $v;
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->driver);
         } finally {
             $frame->savepoints--;
+        }
+    }
+
+    /** savepoint를 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
+    private function endSavepoint(string $statement): ?\Throwable
+    {
+        try {
+            $this->pdo->exec($statement);
+            return null;
+        } catch (\PDOException $e) {
+            return OrmException::fromDriver($e, $this->driver);
         }
     }
 
@@ -375,22 +464,23 @@ final class Db
 
     private function plan(Request $r): array
     {
-        return $this->engine($r)->plan($r->shape());
+        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
+        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        $hash = $r->ir['manifest_hash'];
+        if (!isset($this->sets[$hash])) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
+        }
+        $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
+        $shape = $r->shape();
+        if (count($r->params) <= self::bindLimit($this->driver)) {
+            return $engine->plan($shape);
+        }
+        // bind 한도보다 많은 값의 요청은 나뉜 요청(rootInParts)의 plan으로 실행된다.
+        // 값마다 bind slot을 가진 이 plan은 수십 MB이므로 plan cache에 남기지 않는다.
+        $plan = $engine->compile($shape);
+        Assemble::index($plan, hash('xxh3', json_encode($shape, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)), $engine->model);
+        return $plan;
     }
-
-    /** The engine of the request's schema; a schema the connection has not registered fails. */
-    private function engine(Request $r): Engine
-    {
-        $hash = (string) $r->ir['schema_hash'];
-        return $this->engines[$hash] ?? throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "the models use schema $hash, which the connection has not loaded");
-    }
-
-    /** @internal adds an installed schema to the connection */
-    public function registerEngine(Engine $engine): void
-    {
-        $this->engines[$engine->manifest->schemaHash] = $engine;
-    }
-
 
     /** @internal @return array{0: array, 1: array} the plan and its positional result */
     public function select(?TxFrame $frame, Request $r): array
@@ -457,7 +547,7 @@ final class Db
     {
         $this->enter($frame, $r->ir);
         $step = $this->plan($r)['steps'][0];
-        $args = $this->args($step, $r->params);
+        $args = $this->args($step, $r->params, [], $frame);
         $insert = $r->ir['kind'] === 'insert';
         $start = microtime(true);
         $st = null;
@@ -470,8 +560,8 @@ final class Db
                 $affected = 1;
             } else {
                 $affected = $st->rowCount();
-                $entity = $this->engine($r)->manifest->entity($r->ir['entity']);
-                $id = $insert && !isset($r->ir['rows']) && ($entity['auto'] ?? '') !== ''
+                $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
+                $id = $insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
                     ? $this->pdo->lastInsertId() : null;
             }
         } catch (\PDOException $e) {
@@ -502,26 +592,24 @@ final class Db
         return ['sql' => $step['sql'], 'binds' => $args];
     }
 
-    /**
-     * The executor clock in the connection time zone. PostgreSQL receives the
-     * offset because its columns store instants.
-     */
-    private function now(): string
+    /** 'Y-m-d H:i:s'에 precision 자리의 소수를 붙인 text다. */
+    private static function timeText(\DateTimeImmutable $t, int $precision): string
     {
-        return (new \DateTimeImmutable('now', $this->zone))->format($this->driver === 'postgres' ? 'Y-m-d H:i:s.uP' : 'Y-m-d H:i:s.u');
+        return $t->format('Y-m-d H:i:s') . ($precision > 0 ? '.' . substr($t->format('u'), 0, $precision) : '');
     }
 
     /**
-     * Writes a datetime or date value in the text form SQLite stores, so a
-     * string value compares equal to the stored value. A datetime string with
-     * an offset is converted to the connection time zone.
+     * datetime이나 date 값을 offset 없는 text로 쓴다. datetime은 UTC로 바꾸고
+     * column precision 자리의 소수를 가지므로, SQLite에 저장된 text와 같고
+     * MySQL과 PostgreSQL은 offset literal을 받지 않는다(docs/dialects.md). date는
+     * 값의 달력 날짜다.
      */
-    private function sqliteTimeValue(mixed $v, string $colType): mixed
+    private function bindTimeValue(mixed $v, string $colType, int $precision): mixed
     {
         if ($v instanceof \DateTimeInterface) {
             return $colType === 'date'
-                ? \DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone)->format('Y-m-d')
-                : $v;
+                ? $v->format('Y-m-d')
+                : self::timeText(\DateTimeImmutable::createFromInterface($v)->setTimezone($this->zone), $precision);
         }
         if (!is_string($v)) {
             return $v;
@@ -544,13 +632,13 @@ final class Db
             if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
                 throw self::invalidTimeText($v, $colType);
             }
-            return $text;
+            return self::timeText($t, $precision);
         }
         $t = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s.uP', $text . ($zone === 'Z' ? '+00:00' : $zone));
         if ($t === false || $t->format('Y-m-d H:i:s.u') !== $text) {
             throw self::invalidTimeText($v, $colType);
         }
-        return $t->setTimezone($this->zone)->format('Y-m-d H:i:s.u');
+        return self::timeText($t->setTimezone($this->zone), $precision);
     }
 
     private static function invalidTimeText(string $v, string $colType): OrmException
@@ -559,13 +647,14 @@ final class Db
         return new OrmException(Code::CODEC_ENCODE, "$colType value \"$v\" is not $form");
     }
 
-    private function args(array $step, array $params, array $parentVals = []): array
+    private function args(array $step, array $params, array $parentVals = [], ?TxFrame $frame = null): array
     {
         $out = [];
         $this->masks = [];
         $this->typed = $this->driver === 'sqlite';
         $cfg = $this->config;
         // One statement reads the clock once, so its clock columns are equal.
+        /** @var ?\DateTimeImmutable $clock */
         $clock = null;
         foreach ($step['bind_slots'] ?? [] as $b) {
             switch ($b['from']) {
@@ -577,8 +666,8 @@ final class Db
                 case 'param':
                     $v = $params[$b['param']];
                     $colType = $b['col_type'] ?? '';
-                    if ($this->driver === 'sqlite' && ($colType === 'datetime' || $colType === 'date') && $v !== null) {
-                        $v = $this->sqliteTimeValue($v, $colType);
+                    if (($colType === 'datetime' || $colType === 'date') && $v !== null) {
+                        $v = $this->bindTimeValue($v, $colType, $b['precision'] ?? 0);
                     }
                     if ($colType === 'decimal' && $v !== null) {
                         if (!is_string($v)) {
@@ -601,9 +690,6 @@ final class Db
                     } elseif (is_bool($v) || $v instanceof Bytes) {
                         $this->typed = true;
                     }
-                    if ($colType === 'point' && $v !== null) {
-                        $v = $this->driver === 'postgres' ? Codec::postgresPointText($v) : Codec::pointText($v);
-                    }
                     $out[] = $v;
                     break;
                 case 'secret':
@@ -621,7 +707,19 @@ final class Db
                     break;
                 case 'now':
                     $this->masks[count($out)] = self::NOW;
-                    $out[] = $clock ??= $this->now();
+                    $clock ??= new \DateTimeImmutable('now', $this->zone);
+                    // 한 statement는 clock을 한 번 읽고 slot의 소수 자리로 자른다.
+                    $out[] = self::timeText($clock, $b['precision']);
+                    break;
+                case 'operation':
+                    $operation = $frame?->operation ?? throw new OrmException(Code::CONFIG, 'an insert or update of an audited table needs an operation id: run it in transaction(..., operation: $id)');
+                    $valid = $b['col_type'] === 'i64'
+                        ? is_int($operation)
+                        : is_string($operation) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $operation) === 1;
+                    if (!$valid) {
+                        throw new OrmException(Code::CONFIG, 'operation id ' . var_export($operation, true) . " is not a value of the {$b['col_type']} operation column");
+                    }
+                    $out[] = $operation;
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
@@ -1022,7 +1120,8 @@ final class TxFrame
     public array $locals = [];
     /** @var list<string> */
     public array $locks = [];
-    public bool $contextRow = false;
+    /** 작업 단위의 operation id다. 감사 대상 행의 operation column에 쓴다. */
+    public int|string|null $operation = null;
 
     public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation) {}
 }
@@ -1033,9 +1132,6 @@ final class Transform
     public static function apply(string $kind, string $s): string
     {
         switch ($kind) {
-            case 'fulltext_boolean':
-                $s = trim($s);
-                return $s === '' ? $s : '+' . str_replace(' ', ' +', $s) . '*';
             case 'like_contains':
                 return '%' . self::esc($s) . '%';
             case 'like_starts':

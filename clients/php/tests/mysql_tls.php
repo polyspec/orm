@@ -1,9 +1,9 @@
 <?php
-// The DSN parameters of the PHP client and its MySQL TLS connection (docs/config.md): a DSN names
-// only the parameters of its scheme, `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` and a
-// host name is the one MySQL TLS mode, and every other parameter or mode returns CONFIG. The
-// connection cases need ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN and
-// ORM_TEST_MYSQL_TLS_MISMATCH_DSN of `make test-servers`; a missing one fails.
+// PHP client의 DSN parameter와 MySQL TLS 연결(docs/config.md): DSN은 scheme의 parameter만
+// 쓰고, 절대 경로 `ssl-ca`와 host 이름을 둔 `ssl-mode=VERIFY_IDENTITY`가 유일한 MySQL TLS
+// mode이며, 다른 parameter와 mode는 모두 CONFIG다. 연결 case는 `make test-servers`의
+// ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, ORM_TEST_MYSQL_TLS_MISMATCH_DSN이
+// 필요하며, 하나라도 없으면 실패한다.
 // Usage: php clients/php/tests/mysql_tls.php
 declare(strict_types=1);
 
@@ -16,7 +16,7 @@ use Orm\OrmException;
 
 $started = hrtime(true);
 $elapsed = static fn (): string => sprintf('%.3fms', (hrtime(true) - $started) / 1e6);
-// The deadline of the test, far above its run of about a second.
+// test의 deadline이며, 약 1초인 실행 시간보다 훨씬 길다.
 pcntl_async_signals(true);
 pcntl_signal(SIGALRM, static function () use ($elapsed): void {
     echo 'TIMEOUT php mysql tls ' . $elapsed() . "\n";
@@ -53,7 +53,7 @@ foreach (['127.0.0.1', '[::1]'] as $host) {
 }
 $refused('mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem', 'socket');
 $parsed = Orm::parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
-if ($parsed[0] !== 'mysql' || ($parsed[6] ?? null) !== '/tmp/ca.pem') {
+if ($parsed[0] !== 'mysql' || $parsed[5] !== '/tmp/ca.pem') {
     $failures[] = 'parsed ' . json_encode($parsed);
 }
 foreach (['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
@@ -66,7 +66,7 @@ foreach (['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', '
 }
 
 echo "START php mysql tls: connections\n";
-$config = new Config(schemaPath: dirname(__DIR__, 3) . '/schema/schema.json', aesVersion: 1, aesKeys: [1 => str_repeat('k', 32)]);
+$config = new Config();
 $sslVersion = static function (string $dsn) use ($config): string {
     $db = Orm::connect($dsn, $config);
     try {

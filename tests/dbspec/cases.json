@@ -1,0 +1,4999 @@
+{
+  "version": 1,
+  "note": "Each case lists its documents by name; main names the document to parse. Lines join with LF, or with CRLF when crlf is true, or alternate LF and CRLF starting with CRLF when mixed is true; every case ends with one line end, except a mixed case, whose last line has none. Columns count Unicode code points. canonical cases emit unchanged; normalize cases emit their canonical lines; invalid cases report exactly the listed errors in order. hashes cases parse every listed document as the document set; manifestText and schemaText are the lines of the document set texts, each line followed by LF, and the hashes are taken over those texts. sets cases give the documents of a set as a list; each is parsed against the other listed documents and the parsing documents, and the set must give exactly errors from both the manifest and the rendering of every dialect. files cases name a file under tests/dbspec by its path relative to this file; each client reads it twice: with its dbspec file reader (Go dbspec.ReadFile, PHP Dbspec::readFile, TypeScript readDbspecFile, Rust dbspec::read_file) given the path, and with its byte check (Go dbspec.ReadBytes, PHP Dbspec::readBytes, TypeScript readDbspecBytes, Rust dbspec::read_bytes) given the bytes of the file and the case path as name. A case with errors reads exactly those errors and no text; a signature error has the message \"<name> is not a dbspec document\" and an encoding error the message \"<name> is not valid UTF-8\", where <name> is the path given to the file reader or the name given to the byte check. A case without errors reads the bytes of the file, which parse and emit unchanged.",
+  "canonical": [
+    {
+      "id": "minimal-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  email varchar(191)",
+          "  primary key (id)",
+          "  unique uq_users_email (email)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "every-line-kind",
+      "documents": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  status varchar(32) default 'pending'",
+          "  total decimal(13,2) default 0.00",
+          "  coupon_code varchar(32) null",
+          "  placed_at datetime(6) default now",
+          "  primary key (id)",
+          "  unique uq_orders_coupon (coupon_code)",
+          "  index ix_orders_status (status, placed_at desc)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "  check ck_orders_total (total >= 0.00)",
+          "  settings {",
+          "    updated placed_at",
+          "    select explicit coupon_code",
+          "  }",
+          "}",
+          "",
+          "diagram main {",
+          "  orders at 120 340",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "audit-history",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (id)",
+          "  index ix_service_operation (operation_id)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_service_history_row (id)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "comments-and-diagrams",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "# accounts of the shop",
+          "table users {",
+          "  # surrogate key",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  users at 0 0",
+          "}",
+          "",
+          "diagram empty {",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "comment-positions-and-written-orders",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  body text",
+          "  note text",
+          "  primary key (id)",
+          "  settings {",
+          "    select explicit note body",
+          "    # end of settings",
+          "  }",
+          "  # end of table",
+          "}",
+          "",
+          "# end of document"
+        ]
+      }
+    },
+    {
+      "id": "check-typed-predicates",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t_active (active = true)",
+          "  check ck_t_at (at < '2100-01-01 00:00:00.000000')",
+          "  check ck_t_cost (cost <= price)",
+          "  check ck_t_day (day >= '2000-01-01' and day <= '2099-12-31')",
+          "  check ck_t_name (name <> '' and name not in ('none', 'null'))",
+          "  check ck_t_note (note <> name or note is null)",
+          "  check ck_t_price (price >= 0.00 and price <= 99999.99)",
+          "  check ck_t_qty (qty >= -10 and qty <= 100 and qty <= big)",
+          "  check ck_t_ratio (ratio < 1.5 and active = true)",
+          "  check ck_t_time (at_time < '12:00:00')",
+          "  check ck_t_token (token <> '00000000-0000-0000-0000-000000000000')",
+          "}"
+        ]
+      }
+    },
+    {
+      "id": "generated-names-at-63-bytes",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
+          "  id i64 identity",
+          "  cccccccccccccccccccccc i32",
+          "  body text",
+          "  primary key (id)",
+          "}"
+        ]
+      }
+    },
+    {
+      "id": "audit-without-soft-delete",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table ledger {",
+          "  id i64 identity",
+          "  amount i64",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  settings {",
+          "    audit into ledger_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table ledger_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  amount i64",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "audit-exclude",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "audit-include",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    }
+  ],
+  "normalize": [
+    {
+      "id": "spacing-asc-and-order",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "table users {",
+          "    id   i64   identity",
+          "  email varchar( 191 )",
+          "  primary key ( id )",
+          "  index ix_b (email asc)",
+          "  index ix_a (email)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  email varchar(191)",
+        "  primary key (id)",
+        "  index ix_a (email)",
+        "  index ix_b (email)",
+        "}"
+      ]
+    },
+    {
+      "id": "crlf-actions-and-literals",
+      "crlf": true,
+      "documents": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "shop": [
+          "dbspec 1 shop",
+          "use core { users }",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  total decimal(13,2) default 1",
+          "  placed_at datetime(0) default '2026-01-01 00:00:00'",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "use core { users }",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  total decimal(13,2) default 1.00",
+        "  placed_at datetime(0) default '2026-01-01 00:00:00'",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}"
+      ]
+    },
+    {
+      "id": "constraints-any-order-sorted",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  check ck_users_code (code <> '')",
+          "  unique uq_users_code (code)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  code varchar(8)",
+        "  primary key (id)",
+        "  unique uq_users_code (code)",
+        "  check ck_users_code (code <> '')",
+        "}"
+      ]
+    },
+    {
+      "id": "f64-and-decimal-literals",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  ratio f64 default 001.500",
+          "  zero f64 default -0.0",
+          "  whole f64 default 3.0",
+          "  price decimal(13,2) default 7.5",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  ratio f64 default 1.5",
+        "  zero f64 default 0",
+        "  whole f64 default 3",
+        "  price decimal(13,2) default 7.50",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "id": "empty-settings-omitted",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ]
+    },
+    {
+      "id": "missing-final-line-end-and-mixed-ends",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "mixed": true
+    },
+    {
+      "id": "blind-index-sorted",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  key_version i32",
+          "  email bytes",
+          "  phone bytes",
+          "  email_hash varchar(64)",
+          "  phone_hash varchar(64)",
+          "  primary key (id)",
+          "  unique uq_users_email_hash (email_hash)",
+          "  unique uq_users_phone_hash (phone_hash)",
+          "  settings {",
+          "    codec email aes",
+          "    codec phone aes",
+          "    aes_version key_version",
+          "    blind_index phone phone_hash",
+          "    blind_index email email_hash",
+          "  }",
+          "}"
+        ]
+      },
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  key_version i32",
+        "  email bytes",
+        "  phone bytes",
+        "  email_hash varchar(64)",
+        "  phone_hash varchar(64)",
+        "  primary key (id)",
+        "  unique uq_users_email_hash (email_hash)",
+        "  unique uq_users_phone_hash (phone_hash)",
+        "  settings {",
+        "    codec email aes",
+        "    codec phone aes",
+        "    aes_version key_version",
+        "    blind_index email email_hash",
+        "    blind_index phone phone_hash",
+        "  }",
+        "}"
+      ]
+    },
+    {
+      "id": "check-literals-take-column-form",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t_price (price >= 0 and price < 7.5)",
+          "  check ck_t_qty (qty > 007)",
+          "  check ck_t_ratio (ratio < 1.50)",
+          "  check ck_t_at (at < '2100-01-01 00:00:00')",
+          "  check ck_t_token (token <> '0000000A-0000-0000-0000-000000000000')",
+          "}"
+        ]
+      },
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  qty i32",
+        "  big i64",
+        "  price decimal(13,2)",
+        "  cost decimal(13,2)",
+        "  rate decimal(8,4)",
+        "  ratio f64",
+        "  active bool",
+        "  name varchar(32)",
+        "  note text",
+        "  token uuid",
+        "  day date",
+        "  at_time time(0)",
+        "  at datetime(6)",
+        "  raw bytes",
+        "  primary key (id)",
+        "  check ck_t_at (at < '2100-01-01 00:00:00.000000')",
+        "  check ck_t_price (price >= 0.00 and price < 7.50)",
+        "  check ck_t_qty (qty > 7)",
+        "  check ck_t_ratio (ratio < 1.5)",
+        "  check ck_t_token (token <> '0000000a-0000-0000-0000-000000000000')",
+        "}"
+      ]
+    },
+    {
+      "id": "check-redundant-parentheses",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t_a (((qty > 1)) and (name <> 'a' and (big > 2)))",
+          "  check ck_t_b ((qty > 1 or big > 2) and name <> 'a')",
+          "  check ck_t_c (qty > 1 or (big > 2 and name <> 'a'))",
+          "}"
+        ]
+      },
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table t {",
+        "  id i64 identity",
+        "  qty i32",
+        "  big i64",
+        "  price decimal(13,2)",
+        "  cost decimal(13,2)",
+        "  rate decimal(8,4)",
+        "  ratio f64",
+        "  active bool",
+        "  name varchar(32)",
+        "  note text",
+        "  token uuid",
+        "  day date",
+        "  at_time time(0)",
+        "  at datetime(6)",
+        "  raw bytes",
+        "  primary key (id)",
+        "  check ck_t_a (qty > 1 and name <> 'a' and big > 2)",
+        "  check ck_t_b ((qty > 1 or big > 2) and name <> 'a')",
+        "  check ck_t_c (qty > 1 or big > 2 and name <> 'a')",
+        "}"
+      ]
+    },
+    {
+      "id": "audit-list-spacing",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include( seq ,title,  deleted_at )",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    soft_delete deleted_at",
+        "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
+        "}"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "id": "missing-header",
+      "documents": {
+        "shop": [
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "upper-case-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table Users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "name-too-long",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa i64",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 3,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "unknown-type",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  flag tinyint",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "decimal-precision",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  amount decimal(19,2)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 10,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "identity-not-i64",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i32 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "identity-without-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "missing-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "text-in-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  body text",
+          "  primary key (id)",
+          "  index ix_users_body (body)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "set-null-on-required-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "check-function",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(20)",
+          "  primary key (id)",
+          "  check ck_users_name (length(name) > 0)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-on-cascade-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete cascade",
+          "  check ck_orders_user (user_id > 0)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 25,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "immutable-on-cascade-child",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete cascade",
+          "  settings {",
+          "    immutable",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 15,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-on-set-null-child",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  user_id i64 null",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  index ix_service_user (user_id)",
+          "  index ix_service_operation (operation_id)",
+          "  foreign key fk_service_user (user_id) references users (id) on update set_null",
+          "  settings {",
+          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  user_id i64 null",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 17,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "unknown-setting",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  body text",
+          "  primary key (id)",
+          "  settings {",
+          "    lazy body",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "unknown-used-document",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use billing { invoices }",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 5,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "diagram-unknown-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  orders at 0 0",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "diagram"
+        }
+      ]
+    },
+    {
+      "id": "constraint-name-across-tables",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_code (code)",
+          "}",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_code (code)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 10,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "every-error-in-order",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  Flag bool",
+          "  size tinyint",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        },
+        {
+          "line": 6,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "tab-separator",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id\ti64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 5,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "unclosed-block",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "blank-line-before-header",
+      "documents": {
+        "shop": [
+          "",
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "second-settings-block",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "table-without-columns",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "column"
+        },
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "index-named-like-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  index users (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 9,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "aes-version-without-aes",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  key_version i32",
+          "  primary key (id)",
+          "  settings {",
+          "    aes_version key_version",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "repeated-setting",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "    entity person",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "use-cycle",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "core": [
+          "dbspec 1 core",
+          "",
+          "use shop { orders }",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 5,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "use-self",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use shop { users }",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 5,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "diagram-coordinate-range",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  users at 2147483648 0",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 12,
+          "rule": "diagram"
+        }
+      ]
+    },
+    {
+      "id": "reserved-word-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  default i64",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "decimal-default-extra-digits",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  price decimal(13,1) default 1.50",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 31,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "default-null",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  note varchar(8) null default null",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 32,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "code-point-columns",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(8) default '가나다' extra",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 33,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "stop-error-after-earlier-errors",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table Users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table wide {",
+          "  id i64 identity",
+          "  c0001 i32",
+          "  c0002 i32",
+          "  c0003 i32",
+          "  c0004 i32",
+          "  c0005 i32",
+          "  c0006 i32",
+          "  c0007 i32",
+          "  c0008 i32",
+          "  c0009 i32",
+          "  c0010 i32",
+          "  c0011 i32",
+          "  c0012 i32",
+          "  c0013 i32",
+          "  c0014 i32",
+          "  c0015 i32",
+          "  c0016 i32",
+          "  c0017 i32",
+          "  c0018 i32",
+          "  c0019 i32",
+          "  c0020 i32",
+          "  c0021 i32",
+          "  c0022 i32",
+          "  c0023 i32",
+          "  c0024 i32",
+          "  c0025 i32",
+          "  c0026 i32",
+          "  c0027 i32",
+          "  c0028 i32",
+          "  c0029 i32",
+          "  c0030 i32",
+          "  c0031 i32",
+          "  c0032 i32",
+          "  c0033 i32",
+          "  c0034 i32",
+          "  c0035 i32",
+          "  c0036 i32",
+          "  c0037 i32",
+          "  c0038 i32",
+          "  c0039 i32",
+          "  c0040 i32",
+          "  c0041 i32",
+          "  c0042 i32",
+          "  c0043 i32",
+          "  c0044 i32",
+          "  c0045 i32",
+          "  c0046 i32",
+          "  c0047 i32",
+          "  c0048 i32",
+          "  c0049 i32",
+          "  c0050 i32",
+          "  c0051 i32",
+          "  c0052 i32",
+          "  c0053 i32",
+          "  c0054 i32",
+          "  c0055 i32",
+          "  c0056 i32",
+          "  c0057 i32",
+          "  c0058 i32",
+          "  c0059 i32",
+          "  c0060 i32",
+          "  c0061 i32",
+          "  c0062 i32",
+          "  c0063 i32",
+          "  c0064 i32",
+          "  c0065 i32",
+          "  c0066 i32",
+          "  c0067 i32",
+          "  c0068 i32",
+          "  c0069 i32",
+          "  c0070 i32",
+          "  c0071 i32",
+          "  c0072 i32",
+          "  c0073 i32",
+          "  c0074 i32",
+          "  c0075 i32",
+          "  c0076 i32",
+          "  c0077 i32",
+          "  c0078 i32",
+          "  c0079 i32",
+          "  c0080 i32",
+          "  c0081 i32",
+          "  c0082 i32",
+          "  c0083 i32",
+          "  c0084 i32",
+          "  c0085 i32",
+          "  c0086 i32",
+          "  c0087 i32",
+          "  c0088 i32",
+          "  c0089 i32",
+          "  c0090 i32",
+          "  c0091 i32",
+          "  c0092 i32",
+          "  c0093 i32",
+          "  c0094 i32",
+          "  c0095 i32",
+          "  c0096 i32",
+          "  c0097 i32",
+          "  c0098 i32",
+          "  c0099 i32",
+          "  c0100 i32",
+          "  c0101 i32",
+          "  c0102 i32",
+          "  c0103 i32",
+          "  c0104 i32",
+          "  c0105 i32",
+          "  c0106 i32",
+          "  c0107 i32",
+          "  c0108 i32",
+          "  c0109 i32",
+          "  c0110 i32",
+          "  c0111 i32",
+          "  c0112 i32",
+          "  c0113 i32",
+          "  c0114 i32",
+          "  c0115 i32",
+          "  c0116 i32",
+          "  c0117 i32",
+          "  c0118 i32",
+          "  c0119 i32",
+          "  c0120 i32",
+          "  c0121 i32",
+          "  c0122 i32",
+          "  c0123 i32",
+          "  c0124 i32",
+          "  c0125 i32",
+          "  c0126 i32",
+          "  c0127 i32",
+          "  c0128 i32",
+          "  c0129 i32",
+          "  c0130 i32",
+          "  c0131 i32",
+          "  c0132 i32",
+          "  c0133 i32",
+          "  c0134 i32",
+          "  c0135 i32",
+          "  c0136 i32",
+          "  c0137 i32",
+          "  c0138 i32",
+          "  c0139 i32",
+          "  c0140 i32",
+          "  c0141 i32",
+          "  c0142 i32",
+          "  c0143 i32",
+          "  c0144 i32",
+          "  c0145 i32",
+          "  c0146 i32",
+          "  c0147 i32",
+          "  c0148 i32",
+          "  c0149 i32",
+          "  c0150 i32",
+          "  c0151 i32",
+          "  c0152 i32",
+          "  c0153 i32",
+          "  c0154 i32",
+          "  c0155 i32",
+          "  c0156 i32",
+          "  c0157 i32",
+          "  c0158 i32",
+          "  c0159 i32",
+          "  c0160 i32",
+          "  c0161 i32",
+          "  c0162 i32",
+          "  c0163 i32",
+          "  c0164 i32",
+          "  c0165 i32",
+          "  c0166 i32",
+          "  c0167 i32",
+          "  c0168 i32",
+          "  c0169 i32",
+          "  c0170 i32",
+          "  c0171 i32",
+          "  c0172 i32",
+          "  c0173 i32",
+          "  c0174 i32",
+          "  c0175 i32",
+          "  c0176 i32",
+          "  c0177 i32",
+          "  c0178 i32",
+          "  c0179 i32",
+          "  c0180 i32",
+          "  c0181 i32",
+          "  c0182 i32",
+          "  c0183 i32",
+          "  c0184 i32",
+          "  c0185 i32",
+          "  c0186 i32",
+          "  c0187 i32",
+          "  c0188 i32",
+          "  c0189 i32",
+          "  c0190 i32",
+          "  c0191 i32",
+          "  c0192 i32",
+          "  c0193 i32",
+          "  c0194 i32",
+          "  c0195 i32",
+          "  c0196 i32",
+          "  c0197 i32",
+          "  c0198 i32",
+          "  c0199 i32",
+          "  c0200 i32",
+          "  c0201 i32",
+          "  c0202 i32",
+          "  c0203 i32",
+          "  c0204 i32",
+          "  c0205 i32",
+          "  c0206 i32",
+          "  c0207 i32",
+          "  c0208 i32",
+          "  c0209 i32",
+          "  c0210 i32",
+          "  c0211 i32",
+          "  c0212 i32",
+          "  c0213 i32",
+          "  c0214 i32",
+          "  c0215 i32",
+          "  c0216 i32",
+          "  c0217 i32",
+          "  c0218 i32",
+          "  c0219 i32",
+          "  c0220 i32",
+          "  c0221 i32",
+          "  c0222 i32",
+          "  c0223 i32",
+          "  c0224 i32",
+          "  c0225 i32",
+          "  c0226 i32",
+          "  c0227 i32",
+          "  c0228 i32",
+          "  c0229 i32",
+          "  c0230 i32",
+          "  c0231 i32",
+          "  c0232 i32",
+          "  c0233 i32",
+          "  c0234 i32",
+          "  c0235 i32",
+          "  c0236 i32",
+          "  c0237 i32",
+          "  c0238 i32",
+          "  c0239 i32",
+          "  c0240 i32",
+          "  c0241 i32",
+          "  c0242 i32",
+          "  c0243 i32",
+          "  c0244 i32",
+          "  c0245 i32",
+          "  c0246 i32",
+          "  c0247 i32",
+          "  c0248 i32",
+          "  c0249 i32",
+          "  c0250 i32",
+          "  c0251 i32",
+          "  c0252 i32",
+          "  c0253 i32",
+          "  c0254 i32",
+          "  c0255 i32",
+          "  c0256 i32",
+          "  c0257 i32",
+          "  c0258 i32",
+          "  c0259 i32",
+          "  c0260 i32",
+          "  c0261 i32",
+          "  c0262 i32",
+          "  c0263 i32",
+          "  c0264 i32",
+          "  c0265 i32",
+          "  c0266 i32",
+          "  c0267 i32",
+          "  c0268 i32",
+          "  c0269 i32",
+          "  c0270 i32",
+          "  c0271 i32",
+          "  c0272 i32",
+          "  c0273 i32",
+          "  c0274 i32",
+          "  c0275 i32",
+          "  c0276 i32",
+          "  c0277 i32",
+          "  c0278 i32",
+          "  c0279 i32",
+          "  c0280 i32",
+          "  c0281 i32",
+          "  c0282 i32",
+          "  c0283 i32",
+          "  c0284 i32",
+          "  c0285 i32",
+          "  c0286 i32",
+          "  c0287 i32",
+          "  c0288 i32",
+          "  c0289 i32",
+          "  c0290 i32",
+          "  c0291 i32",
+          "  c0292 i32",
+          "  c0293 i32",
+          "  c0294 i32",
+          "  c0295 i32",
+          "  c0296 i32",
+          "  c0297 i32",
+          "  c0298 i32",
+          "  c0299 i32",
+          "  c0300 i32",
+          "  c0301 i32",
+          "  c0302 i32",
+          "  c0303 i32",
+          "  c0304 i32",
+          "  c0305 i32",
+          "  c0306 i32",
+          "  c0307 i32",
+          "  c0308 i32",
+          "  c0309 i32",
+          "  c0310 i32",
+          "  c0311 i32",
+          "  c0312 i32",
+          "  c0313 i32",
+          "  c0314 i32",
+          "  c0315 i32",
+          "  c0316 i32",
+          "  c0317 i32",
+          "  c0318 i32",
+          "  c0319 i32",
+          "  c0320 i32",
+          "  c0321 i32",
+          "  c0322 i32",
+          "  c0323 i32",
+          "  c0324 i32",
+          "  c0325 i32",
+          "  c0326 i32",
+          "  c0327 i32",
+          "  c0328 i32",
+          "  c0329 i32",
+          "  c0330 i32",
+          "  c0331 i32",
+          "  c0332 i32",
+          "  c0333 i32",
+          "  c0334 i32",
+          "  c0335 i32",
+          "  c0336 i32",
+          "  c0337 i32",
+          "  c0338 i32",
+          "  c0339 i32",
+          "  c0340 i32",
+          "  c0341 i32",
+          "  c0342 i32",
+          "  c0343 i32",
+          "  c0344 i32",
+          "  c0345 i32",
+          "  c0346 i32",
+          "  c0347 i32",
+          "  c0348 i32",
+          "  c0349 i32",
+          "  c0350 i32",
+          "  c0351 i32",
+          "  c0352 i32",
+          "  c0353 i32",
+          "  c0354 i32",
+          "  c0355 i32",
+          "  c0356 i32",
+          "  c0357 i32",
+          "  c0358 i32",
+          "  c0359 i32",
+          "  c0360 i32",
+          "  c0361 i32",
+          "  c0362 i32",
+          "  c0363 i32",
+          "  c0364 i32",
+          "  c0365 i32",
+          "  c0366 i32",
+          "  c0367 i32",
+          "  c0368 i32",
+          "  c0369 i32",
+          "  c0370 i32",
+          "  c0371 i32",
+          "  c0372 i32",
+          "  c0373 i32",
+          "  c0374 i32",
+          "  c0375 i32",
+          "  c0376 i32",
+          "  c0377 i32",
+          "  c0378 i32",
+          "  c0379 i32",
+          "  c0380 i32",
+          "  c0381 i32",
+          "  c0382 i32",
+          "  c0383 i32",
+          "  c0384 i32",
+          "  c0385 i32",
+          "  c0386 i32",
+          "  c0387 i32",
+          "  c0388 i32",
+          "  c0389 i32",
+          "  c0390 i32",
+          "  c0391 i32",
+          "  c0392 i32",
+          "  c0393 i32",
+          "  c0394 i32",
+          "  c0395 i32",
+          "  c0396 i32",
+          "  c0397 i32",
+          "  c0398 i32",
+          "  c0399 i32",
+          "  c0400 i32",
+          "  c0401 i32",
+          "  c0402 i32",
+          "  c0403 i32",
+          "  c0404 i32",
+          "  c0405 i32",
+          "  c0406 i32",
+          "  c0407 i32",
+          "  c0408 i32",
+          "  c0409 i32",
+          "  c0410 i32",
+          "  c0411 i32",
+          "  c0412 i32",
+          "  c0413 i32",
+          "  c0414 i32",
+          "  c0415 i32",
+          "  c0416 i32",
+          "  c0417 i32",
+          "  c0418 i32",
+          "  c0419 i32",
+          "  c0420 i32",
+          "  c0421 i32",
+          "  c0422 i32",
+          "  c0423 i32",
+          "  c0424 i32",
+          "  c0425 i32",
+          "  c0426 i32",
+          "  c0427 i32",
+          "  c0428 i32",
+          "  c0429 i32",
+          "  c0430 i32",
+          "  c0431 i32",
+          "  c0432 i32",
+          "  c0433 i32",
+          "  c0434 i32",
+          "  c0435 i32",
+          "  c0436 i32",
+          "  c0437 i32",
+          "  c0438 i32",
+          "  c0439 i32",
+          "  c0440 i32",
+          "  c0441 i32",
+          "  c0442 i32",
+          "  c0443 i32",
+          "  c0444 i32",
+          "  c0445 i32",
+          "  c0446 i32",
+          "  c0447 i32",
+          "  c0448 i32",
+          "  c0449 i32",
+          "  c0450 i32",
+          "  c0451 i32",
+          "  c0452 i32",
+          "  c0453 i32",
+          "  c0454 i32",
+          "  c0455 i32",
+          "  c0456 i32",
+          "  c0457 i32",
+          "  c0458 i32",
+          "  c0459 i32",
+          "  c0460 i32",
+          "  c0461 i32",
+          "  c0462 i32",
+          "  c0463 i32",
+          "  c0464 i32",
+          "  c0465 i32",
+          "  c0466 i32",
+          "  c0467 i32",
+          "  c0468 i32",
+          "  c0469 i32",
+          "  c0470 i32",
+          "  c0471 i32",
+          "  c0472 i32",
+          "  c0473 i32",
+          "  c0474 i32",
+          "  c0475 i32",
+          "  c0476 i32",
+          "  c0477 i32",
+          "  c0478 i32",
+          "  c0479 i32",
+          "  c0480 i32",
+          "  c0481 i32",
+          "  c0482 i32",
+          "  c0483 i32",
+          "  c0484 i32",
+          "  c0485 i32",
+          "  c0486 i32",
+          "  c0487 i32",
+          "  c0488 i32",
+          "  c0489 i32",
+          "  c0490 i32",
+          "  c0491 i32",
+          "  c0492 i32",
+          "  c0493 i32",
+          "  c0494 i32",
+          "  c0495 i32",
+          "  c0496 i32",
+          "  c0497 i32",
+          "  c0498 i32",
+          "  c0499 i32",
+          "  c0500 i32",
+          "  c0501 i32",
+          "  c0502 i32",
+          "  c0503 i32",
+          "  c0504 i32",
+          "  c0505 i32",
+          "  c0506 i32",
+          "  c0507 i32",
+          "  c0508 i32",
+          "  c0509 i32",
+          "  c0510 i32",
+          "  c0511 i32",
+          "  c0512 i32",
+          "  c0513 i32",
+          "  c0514 i32",
+          "  c0515 i32",
+          "  c0516 i32",
+          "  c0517 i32",
+          "  c0518 i32",
+          "  c0519 i32",
+          "  c0520 i32",
+          "  c0521 i32",
+          "  c0522 i32",
+          "  c0523 i32",
+          "  c0524 i32",
+          "  c0525 i32",
+          "  c0526 i32",
+          "  c0527 i32",
+          "  c0528 i32",
+          "  c0529 i32",
+          "  c0530 i32",
+          "  c0531 i32",
+          "  c0532 i32",
+          "  c0533 i32",
+          "  c0534 i32",
+          "  c0535 i32",
+          "  c0536 i32",
+          "  c0537 i32",
+          "  c0538 i32",
+          "  c0539 i32",
+          "  c0540 i32",
+          "  c0541 i32",
+          "  c0542 i32",
+          "  c0543 i32",
+          "  c0544 i32",
+          "  c0545 i32",
+          "  c0546 i32",
+          "  c0547 i32",
+          "  c0548 i32",
+          "  c0549 i32",
+          "  c0550 i32",
+          "  c0551 i32",
+          "  c0552 i32",
+          "  c0553 i32",
+          "  c0554 i32",
+          "  c0555 i32",
+          "  c0556 i32",
+          "  c0557 i32",
+          "  c0558 i32",
+          "  c0559 i32",
+          "  c0560 i32",
+          "  c0561 i32",
+          "  c0562 i32",
+          "  c0563 i32",
+          "  c0564 i32",
+          "  c0565 i32",
+          "  c0566 i32",
+          "  c0567 i32",
+          "  c0568 i32",
+          "  c0569 i32",
+          "  c0570 i32",
+          "  c0571 i32",
+          "  c0572 i32",
+          "  c0573 i32",
+          "  c0574 i32",
+          "  c0575 i32",
+          "  c0576 i32",
+          "  c0577 i32",
+          "  c0578 i32",
+          "  c0579 i32",
+          "  c0580 i32",
+          "  c0581 i32",
+          "  c0582 i32",
+          "  c0583 i32",
+          "  c0584 i32",
+          "  c0585 i32",
+          "  c0586 i32",
+          "  c0587 i32",
+          "  c0588 i32",
+          "  c0589 i32",
+          "  c0590 i32",
+          "  c0591 i32",
+          "  c0592 i32",
+          "  c0593 i32",
+          "  c0594 i32",
+          "  c0595 i32",
+          "  c0596 i32",
+          "  c0597 i32",
+          "  c0598 i32",
+          "  c0599 i32",
+          "  c0600 i32",
+          "  c0601 i32",
+          "  c0602 i32",
+          "  c0603 i32",
+          "  c0604 i32",
+          "  c0605 i32",
+          "  c0606 i32",
+          "  c0607 i32",
+          "  c0608 i32",
+          "  c0609 i32",
+          "  c0610 i32",
+          "  c0611 i32",
+          "  c0612 i32",
+          "  c0613 i32",
+          "  c0614 i32",
+          "  c0615 i32",
+          "  c0616 i32",
+          "  c0617 i32",
+          "  c0618 i32",
+          "  c0619 i32",
+          "  c0620 i32",
+          "  c0621 i32",
+          "  c0622 i32",
+          "  c0623 i32",
+          "  c0624 i32",
+          "  c0625 i32",
+          "  c0626 i32",
+          "  c0627 i32",
+          "  c0628 i32",
+          "  c0629 i32",
+          "  c0630 i32",
+          "  c0631 i32",
+          "  c0632 i32",
+          "  c0633 i32",
+          "  c0634 i32",
+          "  c0635 i32",
+          "  c0636 i32",
+          "  c0637 i32",
+          "  c0638 i32",
+          "  c0639 i32",
+          "  c0640 i32",
+          "  c0641 i32",
+          "  c0642 i32",
+          "  c0643 i32",
+          "  c0644 i32",
+          "  c0645 i32",
+          "  c0646 i32",
+          "  c0647 i32",
+          "  c0648 i32",
+          "  c0649 i32",
+          "  c0650 i32",
+          "  c0651 i32",
+          "  c0652 i32",
+          "  c0653 i32",
+          "  c0654 i32",
+          "  c0655 i32",
+          "  c0656 i32",
+          "  c0657 i32",
+          "  c0658 i32",
+          "  c0659 i32",
+          "  c0660 i32",
+          "  c0661 i32",
+          "  c0662 i32",
+          "  c0663 i32",
+          "  c0664 i32",
+          "  c0665 i32",
+          "  c0666 i32",
+          "  c0667 i32",
+          "  c0668 i32",
+          "  c0669 i32",
+          "  c0670 i32",
+          "  c0671 i32",
+          "  c0672 i32",
+          "  c0673 i32",
+          "  c0674 i32",
+          "  c0675 i32",
+          "  c0676 i32",
+          "  c0677 i32",
+          "  c0678 i32",
+          "  c0679 i32",
+          "  c0680 i32",
+          "  c0681 i32",
+          "  c0682 i32",
+          "  c0683 i32",
+          "  c0684 i32",
+          "  c0685 i32",
+          "  c0686 i32",
+          "  c0687 i32",
+          "  c0688 i32",
+          "  c0689 i32",
+          "  c0690 i32",
+          "  c0691 i32",
+          "  c0692 i32",
+          "  c0693 i32",
+          "  c0694 i32",
+          "  c0695 i32",
+          "  c0696 i32",
+          "  c0697 i32",
+          "  c0698 i32",
+          "  c0699 i32",
+          "  c0700 i32",
+          "  c0701 i32",
+          "  c0702 i32",
+          "  c0703 i32",
+          "  c0704 i32",
+          "  c0705 i32",
+          "  c0706 i32",
+          "  c0707 i32",
+          "  c0708 i32",
+          "  c0709 i32",
+          "  c0710 i32",
+          "  c0711 i32",
+          "  c0712 i32",
+          "  c0713 i32",
+          "  c0714 i32",
+          "  c0715 i32",
+          "  c0716 i32",
+          "  c0717 i32",
+          "  c0718 i32",
+          "  c0719 i32",
+          "  c0720 i32",
+          "  c0721 i32",
+          "  c0722 i32",
+          "  c0723 i32",
+          "  c0724 i32",
+          "  c0725 i32",
+          "  c0726 i32",
+          "  c0727 i32",
+          "  c0728 i32",
+          "  c0729 i32",
+          "  c0730 i32",
+          "  c0731 i32",
+          "  c0732 i32",
+          "  c0733 i32",
+          "  c0734 i32",
+          "  c0735 i32",
+          "  c0736 i32",
+          "  c0737 i32",
+          "  c0738 i32",
+          "  c0739 i32",
+          "  c0740 i32",
+          "  c0741 i32",
+          "  c0742 i32",
+          "  c0743 i32",
+          "  c0744 i32",
+          "  c0745 i32",
+          "  c0746 i32",
+          "  c0747 i32",
+          "  c0748 i32",
+          "  c0749 i32",
+          "  c0750 i32",
+          "  c0751 i32",
+          "  c0752 i32",
+          "  c0753 i32",
+          "  c0754 i32",
+          "  c0755 i32",
+          "  c0756 i32",
+          "  c0757 i32",
+          "  c0758 i32",
+          "  c0759 i32",
+          "  c0760 i32",
+          "  c0761 i32",
+          "  c0762 i32",
+          "  c0763 i32",
+          "  c0764 i32",
+          "  c0765 i32",
+          "  c0766 i32",
+          "  c0767 i32",
+          "  c0768 i32",
+          "  c0769 i32",
+          "  c0770 i32",
+          "  c0771 i32",
+          "  c0772 i32",
+          "  c0773 i32",
+          "  c0774 i32",
+          "  c0775 i32",
+          "  c0776 i32",
+          "  c0777 i32",
+          "  c0778 i32",
+          "  c0779 i32",
+          "  c0780 i32",
+          "  c0781 i32",
+          "  c0782 i32",
+          "  c0783 i32",
+          "  c0784 i32",
+          "  c0785 i32",
+          "  c0786 i32",
+          "  c0787 i32",
+          "  c0788 i32",
+          "  c0789 i32",
+          "  c0790 i32",
+          "  c0791 i32",
+          "  c0792 i32",
+          "  c0793 i32",
+          "  c0794 i32",
+          "  c0795 i32",
+          "  c0796 i32",
+          "  c0797 i32",
+          "  c0798 i32",
+          "  c0799 i32",
+          "  c0800 i32",
+          "  c0801 i32",
+          "  c0802 i32",
+          "  c0803 i32",
+          "  c0804 i32",
+          "  c0805 i32",
+          "  c0806 i32",
+          "  c0807 i32",
+          "  c0808 i32",
+          "  c0809 i32",
+          "  c0810 i32",
+          "  c0811 i32",
+          "  c0812 i32",
+          "  c0813 i32",
+          "  c0814 i32",
+          "  c0815 i32",
+          "  c0816 i32",
+          "  c0817 i32",
+          "  c0818 i32",
+          "  c0819 i32",
+          "  c0820 i32",
+          "  c0821 i32",
+          "  c0822 i32",
+          "  c0823 i32",
+          "  c0824 i32",
+          "  c0825 i32",
+          "  c0826 i32",
+          "  c0827 i32",
+          "  c0828 i32",
+          "  c0829 i32",
+          "  c0830 i32",
+          "  c0831 i32",
+          "  c0832 i32",
+          "  c0833 i32",
+          "  c0834 i32",
+          "  c0835 i32",
+          "  c0836 i32",
+          "  c0837 i32",
+          "  c0838 i32",
+          "  c0839 i32",
+          "  c0840 i32",
+          "  c0841 i32",
+          "  c0842 i32",
+          "  c0843 i32",
+          "  c0844 i32",
+          "  c0845 i32",
+          "  c0846 i32",
+          "  c0847 i32",
+          "  c0848 i32",
+          "  c0849 i32",
+          "  c0850 i32",
+          "  c0851 i32",
+          "  c0852 i32",
+          "  c0853 i32",
+          "  c0854 i32",
+          "  c0855 i32",
+          "  c0856 i32",
+          "  c0857 i32",
+          "  c0858 i32",
+          "  c0859 i32",
+          "  c0860 i32",
+          "  c0861 i32",
+          "  c0862 i32",
+          "  c0863 i32",
+          "  c0864 i32",
+          "  c0865 i32",
+          "  c0866 i32",
+          "  c0867 i32",
+          "  c0868 i32",
+          "  c0869 i32",
+          "  c0870 i32",
+          "  c0871 i32",
+          "  c0872 i32",
+          "  c0873 i32",
+          "  c0874 i32",
+          "  c0875 i32",
+          "  c0876 i32",
+          "  c0877 i32",
+          "  c0878 i32",
+          "  c0879 i32",
+          "  c0880 i32",
+          "  c0881 i32",
+          "  c0882 i32",
+          "  c0883 i32",
+          "  c0884 i32",
+          "  c0885 i32",
+          "  c0886 i32",
+          "  c0887 i32",
+          "  c0888 i32",
+          "  c0889 i32",
+          "  c0890 i32",
+          "  c0891 i32",
+          "  c0892 i32",
+          "  c0893 i32",
+          "  c0894 i32",
+          "  c0895 i32",
+          "  c0896 i32",
+          "  c0897 i32",
+          "  c0898 i32",
+          "  c0899 i32",
+          "  c0900 i32",
+          "  c0901 i32",
+          "  c0902 i32",
+          "  c0903 i32",
+          "  c0904 i32",
+          "  c0905 i32",
+          "  c0906 i32",
+          "  c0907 i32",
+          "  c0908 i32",
+          "  c0909 i32",
+          "  c0910 i32",
+          "  c0911 i32",
+          "  c0912 i32",
+          "  c0913 i32",
+          "  c0914 i32",
+          "  c0915 i32",
+          "  c0916 i32",
+          "  c0917 i32",
+          "  c0918 i32",
+          "  c0919 i32",
+          "  c0920 i32",
+          "  c0921 i32",
+          "  c0922 i32",
+          "  c0923 i32",
+          "  c0924 i32",
+          "  c0925 i32",
+          "  c0926 i32",
+          "  c0927 i32",
+          "  c0928 i32",
+          "  c0929 i32",
+          "  c0930 i32",
+          "  c0931 i32",
+          "  c0932 i32",
+          "  c0933 i32",
+          "  c0934 i32",
+          "  c0935 i32",
+          "  c0936 i32",
+          "  c0937 i32",
+          "  c0938 i32",
+          "  c0939 i32",
+          "  c0940 i32",
+          "  c0941 i32",
+          "  c0942 i32",
+          "  c0943 i32",
+          "  c0944 i32",
+          "  c0945 i32",
+          "  c0946 i32",
+          "  c0947 i32",
+          "  c0948 i32",
+          "  c0949 i32",
+          "  c0950 i32",
+          "  c0951 i32",
+          "  c0952 i32",
+          "  c0953 i32",
+          "  c0954 i32",
+          "  c0955 i32",
+          "  c0956 i32",
+          "  c0957 i32",
+          "  c0958 i32",
+          "  c0959 i32",
+          "  c0960 i32",
+          "  c0961 i32",
+          "  c0962 i32",
+          "  c0963 i32",
+          "  c0964 i32",
+          "  c0965 i32",
+          "  c0966 i32",
+          "  c0967 i32",
+          "  c0968 i32",
+          "  c0969 i32",
+          "  c0970 i32",
+          "  c0971 i32",
+          "  c0972 i32",
+          "  c0973 i32",
+          "  c0974 i32",
+          "  c0975 i32",
+          "  c0976 i32",
+          "  c0977 i32",
+          "  c0978 i32",
+          "  c0979 i32",
+          "  c0980 i32",
+          "  c0981 i32",
+          "  c0982 i32",
+          "  c0983 i32",
+          "  c0984 i32",
+          "  c0985 i32",
+          "  c0986 i32",
+          "  c0987 i32",
+          "  c0988 i32",
+          "  c0989 i32",
+          "  c0990 i32",
+          "  c0991 i32",
+          "  c0992 i32",
+          "  c0993 i32",
+          "  c0994 i32",
+          "  c0995 i32",
+          "  c0996 i32",
+          "  c0997 i32",
+          "  c0998 i32",
+          "  c0999 i32",
+          "  c1000 i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "name.format"
+        },
+        {
+          "line": 1009,
+          "column": 3,
+          "rule": "limit"
+        }
+      ]
+    },
+    {
+      "id": "failed-primary-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key id",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-index-line-under-foreign-key",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user user_id",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 12,
+          "column": 24,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-target-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  code varchar(8)",
+          "  primary key (id)",
+          "  unique uq_users_code code",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_code varchar(8)",
+          "  primary key (id)",
+          "  index ix_orders_user (user_code)",
+          "  foreign key fk_orders_user (user_code) references users (code)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 7,
+          "column": 24,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "tab-in-primary-key-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key\t(id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 14,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "leading-tab-column-line",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "\tid i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 4,
+          "column": 1,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "header-extra-word",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop extra",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 14,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-double-space",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1  shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-tab",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec\t1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 7,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-version",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 2 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 8,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-missing-name",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 9,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-leading-space",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          " dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "header-double-space-before-version",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec  1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 8,
+          "rule": "header"
+        }
+      ]
+    },
+    {
+      "id": "check-arithmetic",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty + 1 > 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 19,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-null-literal",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (name = null)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 22,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bytes-column",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (raw is null)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-decimal-scale-mismatch",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (price < rate)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 23,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-decimal-extra-digits",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (price >= 0.001)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 24,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-decimal-too-many-digits",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (rate < 12345.0)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 22,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-integer-out-of-range",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty < 3000000000)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 21,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-integer-against-decimal-literal",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty < 1.5)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 21,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bool-ordering",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (active < true)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 22,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bool-against-integer",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (active = 1)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 24,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-integer-against-string",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty = 'a')",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 21,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-uuid-form",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (token = 'not-a-uuid')",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 23,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-date-form",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (day > '2020-1-1')",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 21,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-time-extra-fraction-digits",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (at_time < '12:00:00.5')",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 25,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-datetime-against-date",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (at > day)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 20,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-two-literals",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (1 = 1)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-non-bool-column-alone",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-f64-against-decimal",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (ratio < price)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 23,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-in-list-literal",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty in (1, 'x'))",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 26,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-reading-before-columns",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (nope > 0 or 1 = 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 27,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-unknown-column-before-types",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (nope > 0 or qty = 'a')",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-literal-left-not-default",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t ('a' = qty)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-literal-subject",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (1 in (1, 2))",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bytes-under-arithmetic",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (raw + 1 > 0)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 19,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-literal-then-arithmetic",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (1 + qty > 0)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 17,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bool-literal-ordering",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty < true)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 19,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "generated-check-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
+          "  id i64 identity",
+          "  ccccccccccccccccccccccc i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "generated-immutable-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    immutable",
+          "  }",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 7,
+          "column": 5,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "generated-audit-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table ddddddddddddddddddddddddddddddddddddddddddddddddddd {",
+          "  id i64 identity",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (id)",
+          "  index ix_op (op)",
+          "  settings {",
+          "    soft_delete gone",
+          "    audit into h operation op action change previous before",
+          "  }",
+          "}",
+          "",
+          "table h {",
+          "  hid i64 identity",
+          "  change varchar(8)",
+          "  before i64 null",
+          "  id i64",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (hid)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 11,
+          "column": 5,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-unknown-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, missing)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-repeated-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-both-lists",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret) include (title)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-excludes-operation",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, operation_id)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-includes-operation",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, operation_id, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 118,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-history-has-excluded-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-history-differs-from-included-columns",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        },
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-without-parentheses",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude secret",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 105,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-trailing-word",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret) now",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "reserved-predicate-keywords",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table or {",
+          "  id i64 identity",
+          "  between i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "name.format"
+        },
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "check-not-operator",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (not (qty > 1))",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-between",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (qty between 1 and 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 19,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-bool-column-alone",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (active)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 15,
+          "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "check-literal-before-not",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  qty i32",
+          "  big i64",
+          "  price decimal(13,2)",
+          "  cost decimal(13,2)",
+          "  rate decimal(8,4)",
+          "  ratio f64",
+          "  active bool",
+          "  name varchar(32)",
+          "  note text",
+          "  token uuid",
+          "  day date",
+          "  at_time time(0)",
+          "  at datetime(6)",
+          "  raw bytes",
+          "  primary key (id)",
+          "  check ck_t (1 not between 0 and 2)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 20,
+          "column": 17,
+          "rule": "check"
+        }
+      ]
+    }
+  ],
+  "hashes": [
+    {
+      "id": "comments-diagrams-and-manifest-settings",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "# accounts of the shop",
+          "table users {",
+          "  id i64 identity",
+          "  # the login name",
+          "  email varchar(191)",
+          "  note text null",
+          "  primary key (id)",
+          "  unique uq_users_email (email)",
+          "  settings {",
+          "    entity user",
+          "    select explicit note",
+          "    immutable",
+          "  }",
+          "}",
+          "",
+          "diagram main {",
+          "  users at 0 0",
+          "}",
+          "",
+          "# end of document"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  email varchar(191)",
+        "  note text null",
+        "  primary key (id)",
+        "  unique uq_users_email (email)",
+        "  settings {",
+        "    entity user",
+        "    select explicit note",
+        "    immutable",
+        "  }",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  email varchar(191)",
+        "  note text null",
+        "  primary key (id)",
+        "  unique uq_users_email (email)",
+        "  settings {",
+        "    immutable",
+        "  }",
+        "}"
+      ],
+      "manifestHash": "sha256:12ce8622c5edf4718d8b93613ff0a0272022d6add42f1cd39ebc200c7d8f3aa7",
+      "schemaHash": "sha256:9d0085b4842e7e857c7f1017798d7ca0384890561a9e00402ca039f36e286d55"
+    },
+    {
+      "id": "audit-kept-in-schema",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service {",
+          "  id i64 identity",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (id)",
+          "  index ix_service_operation (operation_id)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "  }",
+          "}",
+          "",
+          "table service_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  name varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_service_history_row (id)",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table service {",
+        "  id i64 identity",
+        "  name varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (id)",
+        "  index ix_service_operation (operation_id)",
+        "  settings {",
+        "    soft_delete deleted_at",
+        "    audit into service_history operation operation_id action change previous previous_operation_id",
+        "  }",
+        "}",
+        "",
+        "table service_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  name varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_service_history_row (id)",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table service {",
+        "  id i64 identity",
+        "  name varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (id)",
+        "  index ix_service_operation (operation_id)",
+        "  settings {",
+        "    audit into service_history operation operation_id action change previous previous_operation_id",
+        "  }",
+        "}",
+        "",
+        "table service_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  name varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_service_history_row (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:c939667265fc8c9ad1f888026d20d23b56c4b55fc4d741fe6d1d0af984fa0c26",
+      "schemaHash": "sha256:bcd63cfcf1d016672aabd58c8e7da78942472072b3c6d672f1c1d6019576d1e1"
+    },
+    {
+      "id": "document-set-in-name-order",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "  settings {",
+          "    navigation fk_orders_user orders user",
+          "  }",
+          "}"
+        ],
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 core",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "dbspec 1 shop",
+        "",
+        "use core { users }",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "  settings {",
+        "    navigation fk_orders_user orders user",
+        "  }",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:3baef9cbcd47dde7ab5812ef63385c74d230df2086c895d40a66b00929321ef0",
+      "schemaHash": "sha256:9d2367df806c4aba30bbb9939b1eae2e84f95dec1b2ba65c63d9d65aea14f140"
+    },
+    {
+      "id": "same-tables-in-one-document",
+      "documents": {
+        "store": [
+          "dbspec 1 store",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 store",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:a1c2006b964f3f3694899b5cbdb3903b905283340de3216e6f572d13e320745c",
+      "schemaHash": "sha256:9d2367df806c4aba30bbb9939b1eae2e84f95dec1b2ba65c63d9d65aea14f140"
+    },
+    {
+      "id": "audit-list-in-schema-text",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}",
+          "",
+          "table tag {",
+          "  id i64 identity",
+          "  label varchar(64)",
+          "  color varchar(16) null",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  settings {",
+          "    audit into tag_history operation operation_id action change previous previous_operation_id include (id, label)",
+          "  }",
+          "}",
+          "",
+          "table tag_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  label varchar(64)",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    soft_delete deleted_at",
+        "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
+        "}",
+        "",
+        "table tag {",
+        "  id i64 identity",
+        "  label varchar(64)",
+        "  color varchar(16) null",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into tag_history operation operation_id action change previous previous_operation_id include (id, label)",
+        "  }",
+        "}",
+        "",
+        "table tag_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  label varchar(64)",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
+        "}",
+        "",
+        "table tag {",
+        "  id i64 identity",
+        "  label varchar(64)",
+        "  color varchar(16) null",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into tag_history operation operation_id action change previous previous_operation_id exclude (color)",
+        "  }",
+        "}",
+        "",
+        "table tag_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  label varchar(64)",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}"
+      ],
+      "manifestHash": "sha256:2e3f6bddd2860484d1393c69f1619a16bb13263ba356e97531fdfb6b1063bbd9",
+      "schemaHash": "sha256:e222d2bef332282626629e62f347b002d4b384cbe4638e137b60447bbd08500b"
+    }
+  ],
+  "sets": [
+    {
+      "id": "repeated-document-name",
+      "documents": [
+        [
+          "dbspec 1 shop",
+          "",
+          "table a {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        [
+          "dbspec 1 shop",
+          "",
+          "table b {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      ],
+      "parsing": {},
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "used-document-missing",
+      "documents": [
+        [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      ],
+      "parsing": {
+        "core": [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 1,
+          "column": 10,
+          "rule": "use"
+        }
+      ]
+    },
+    {
+      "id": "complete-set",
+      "documents": [
+        [
+          "dbspec 1 core",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  user_id i64",
+          "  primary key (id)",
+          "  index ix_orders_user (user_id)",
+          "  foreign key fk_orders_user (user_id) references users (id)",
+          "}"
+        ]
+      ],
+      "parsing": {},
+      "errors": []
+    }
+  ],
+  "files": [
+    {
+      "id": "dbschema-project",
+      "path": "files/dbschema.dbs",
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "signature"
+        }
+      ]
+    },
+    {
+      "id": "empty-file",
+      "path": "files/empty.dbs",
+      "errors": [
+        {
+          "line": 1,
+          "column": 1,
+          "rule": "signature"
+        }
+      ]
+    },
+    {
+      "id": "invalid-utf8-file",
+      "path": "files/invalid-utf8.dbs",
+      "errors": [
+        {
+          "line": 3,
+          "column": 8,
+          "rule": "encoding"
+        }
+      ]
+    },
+    {
+      "id": "document-file",
+      "path": "files/shop.dbs",
+      "errors": []
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // rowState is the state of a loaded or created row.
@@ -88,9 +88,33 @@ func (c *Core) Related(name string) any {
 	return c.row.related[name]
 }
 
-// entitySchema returns the manifest entity of the model.
-func (c *Core) entitySchema(d *DB) *schema.Entity {
-	return manifestEntity(d.engineFor(c.ent.Schema.Hash), c.ent.Name)
+// RelatedAs는 relation result name의 값을 T로 돌려준다. row나 related row가
+// 없으면 T의 zero value이고, 저장된 값의 type이 T가 아니면 INTERNAL error다.
+// generated relation getter가 이 함수로 읽어 type assertion 실패를 버리지 않는다.
+func RelatedAs[T any](c *Core, name string) (T, error) {
+	var zero T
+	v := c.Related(name)
+	if v == nil {
+		return zero, nil
+	}
+	r, ok := v.(T)
+	if !ok {
+		return zero, codecErr(CodeInternal, "relation result %s holds %T, not %T", name, v, zero)
+	}
+	return r, nil
+}
+
+// entityModel은 model의 runtime model entity를 반환한다.
+func (c *Core) entityModel(d *DB) (*runtimemodel.Entity, error) {
+	eng, err := d.engineFor(c.ent.Schema)
+	if err != nil {
+		return nil, err
+	}
+	ent := eng.M.Entities[c.ent.Name]
+	if ent == nil {
+		return nil, configErr("entity %s is not in the manifest %s", c.ent.Name, c.ent.Schema.Hash)
+	}
+	return ent, nil
 }
 
 func (c *Core) value(name string) any {
@@ -139,9 +163,9 @@ type rowShape struct {
 	time     []bool
 }
 
-func (a *assembler) shape(b *Core, asm *plan.Assemble) *rowShape {
+func (a *assembler) shape(b *Core, asm *plan.Assemble) (*rowShape, error) {
 	if sh, ok := a.res.cache.shapes.Load(asm); ok {
-		return sh.(*rowShape)
+		return sh.(*rowShape), nil
 	}
 	sh := &rowShape{time: make([]bool, len(asm.Columns))}
 	for i, col := range asm.Columns {
@@ -160,7 +184,11 @@ func (a *assembler) shape(b *Core, asm *plan.Assemble) *rowShape {
 	for _, key := range asm.Key {
 		sh.keys = append(sh.keys, asm.Columns[key.Index-asm.Columns[0].Index].Name)
 	}
-	if version := updatedColumn(b.entitySchema(a.db)); version != "" && slices.Contains(sh.names, version) {
+	ent, err := b.entityModel(a.db)
+	if err != nil {
+		return nil, err
+	}
+	if version := ent.Updated; version != "" && slices.Contains(sh.names, version) {
 		sh.updated = version
 	}
 	sh.original = len(sh.keys)
@@ -168,11 +196,14 @@ func (a *assembler) shape(b *Core, asm *plan.Assemble) *rowShape {
 		sh.original++
 	}
 	a.res.cache.shapes.Store(asm, sh)
-	return sh
+	return sh, nil
 }
 
 func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error) {
-	sh := a.shape(b, asm)
+	sh, err := a.shape(b, asm)
+	if err != nil {
+		return nil, err
+	}
 	core, st := a.newRow(b.ent)
 	m := b.ent.New(core).Orm_()
 	m.conn = a.conn
@@ -409,6 +440,39 @@ func (a *assembler) external(r *request) error {
 	return nil
 }
 
+// matchColumns는 relation key의 부모 column이나(child가 false) 자식 column을 key 순서로 반환한다.
+func matchColumns(matches []ir.KeyPair, child bool) []string {
+	out := make([]string, len(matches))
+	for i, k := range matches {
+		out[i] = k.Left
+		if child {
+			out[i] = k.Right
+		}
+	}
+	return out
+}
+
+// matchKey는 model의 relation key 값과 그 collection key를 반환한다. 한 성분이면
+// 값 하나, composite key이면 성분 값의 slice다. 성분 하나라도 null이면 false다.
+func matchKey(m *Core, matches []ir.KeyPair, child bool) (any, Key, bool, error) {
+	columns := matchColumns(matches, child)
+	values := make([]any, len(columns))
+	for i, column := range columns {
+		values[i] = m.value(column)
+		if values[i] == nil {
+			return nil, Key{}, false, nil
+		}
+	}
+	key, err := keyFromValues(values)
+	if err != nil {
+		return nil, Key{}, false, err
+	}
+	if len(values) == 1 {
+		return values[0], key, true, nil
+	}
+	return values, key, true, nil
+}
+
 func attachExternal(parents []*Core, rel relSpec) error {
 	ch := rel.child
 	var values []any
@@ -423,15 +487,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 				continue
 			}
 		}
-		v := p.value(ch.matchLeft)
-		if v == nil {
-			continue
-		}
-		key, err := KeyOf(v)
+		v, key, ok, err := matchKey(p, ch.matches, false)
 		if err != nil {
 			return err
 		}
-		if seen[key] {
+		if !ok || seen[key] {
 			continue
 		}
 		seen[key] = true
@@ -444,8 +504,16 @@ func attachExternal(parents []*Core, rel relSpec) error {
 	byKey := map[Key][]entry{}
 	if len(values) > 0 {
 		q := ch.Clone()
-		q.matchLeft, q.alias = "", ""
-		match := condNode{pred: &predSpec{column: ch.matchRight, op: "in", value: values, list: true}}
+		q.matches, q.alias = nil, ""
+		match := condNode{pred: &predSpec{column: ch.matches[0].Right, op: "in", value: values, list: true}}
+		if len(ch.matches) > 1 {
+			// composite key는 자식 key column 전체를 tuple로 거른다.
+			rows := make([][]any, len(values))
+			for i, v := range values {
+				rows[i] = v.([]any)
+			}
+			match = condNode{pred: &predSpec{op: "tuple_in", cols: matchColumns(ch.matches, true), value: rows, tuple: true}}
+		}
 		if len(q.where.items) > 0 {
 			q.where = condGroup{items: []condNode{{group: &condGroup{items: q.where.items}}}}
 			match.conn = "and"
@@ -457,9 +525,12 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		}
 		for _, k := range rows.keys {
 			m := rows.items[k]
-			key, err := KeyOf(m.value(ch.matchRight))
+			_, key, ok, err := matchKey(m, ch.matches, true)
 			if err != nil {
 				return err
+			}
+			if !ok {
+				continue
 			}
 			if ch.groupLimit > 0 && len(byKey[key]) >= ch.groupLimit {
 				continue
@@ -473,11 +544,11 @@ func attachExternal(parents []*Core, rel relSpec) error {
 			return configErr("relation result name %s is used twice", name)
 		}
 		var matched []entry
-		if value := p.value(ch.matchLeft); value != nil {
-			key, err := KeyOf(value)
-			if err != nil {
-				return err
-			}
+		_, key, ok, err := matchKey(p, ch.matches, false)
+		if err != nil {
+			return err
+		}
+		if ok {
 			matched = byKey[key]
 		}
 		if ch.possible != nil {
@@ -504,14 +575,6 @@ func attachExternal(parents []*Core, rel relSpec) error {
 		p.row.setRelated(name, v, !ch.deleteLock, ch.parentNode)
 	}
 	return nil
-}
-
-// updatedColumn is the column that records the last update of a row.
-func updatedColumn(ent *schema.Entity) string {
-	if ent == nil || ent.Timestamps == nil {
-		return ""
-	}
-	return ent.Timestamps.Updated
 }
 
 // Get runs the query and returns the first model. It returns CodeNoRows when
@@ -557,7 +620,10 @@ func GetsCount(c *Core) (*GroupRows, error) {
 	if err := validateGroupColumns(columns); err != nil {
 		return nil, err
 	}
-	entity := c.entitySchema(ex.base())
+	entity, err := c.entityModel(ex.base())
+	if err != nil {
+		return nil, err
+	}
 	rows := &GroupRows{rows: make([]GroupRow, 0, len(res.main))}
 	for _, rawRow := range res.main {
 		values := make([]groupValue, 0, len(columns))
@@ -568,9 +634,9 @@ func GetsCount(c *Core) (*GroupRows, error) {
 			if column.Index < 0 || column.Index >= len(rawRow) {
 				return nil, codecErr(CodeInternal, "group result column %s is missing", column.Name)
 			}
-			var declared *schema.Col
+			var declared *runtimemodel.Field
 			if column.Column != "" {
-				declared = entity.Column(column.Column)
+				declared = entity.Field(column.Column)
 			}
 			value, err := groupColumnValue(c, ex.base(), column, declared, rawRow[column.Index])
 			if err != nil {
@@ -674,15 +740,7 @@ func inTransaction(conn *DB, fn func() error) error {
 	return conn.Transaction(fn, Retry(0))
 }
 
-func (c *Core) writer(d *DB) (*schema.Entity, error) {
-	ent := c.entitySchema(d)
-	if ent == nil {
-		return nil, configErr("entity %s is not registered for the connection", c.ent.Name)
-	}
-	return ent, nil
-}
-
-func (r *request) assign(ent *schema.Entity, s setSpec) (ir.Assign, error) {
+func (r *request) assign(ent *runtimemodel.Entity, s setSpec) (ir.Assign, error) {
 	a := ir.Assign{Column: s.column}
 	switch {
 	case s.null:
@@ -711,8 +769,8 @@ func (r *request) assign(ent *schema.Entity, s setSpec) (ir.Assign, error) {
 	return a, nil
 }
 
-func encodeValue(ent *schema.Entity, column string, v any) (any, error) {
-	col := ent.Column(column)
+func encodeValue(ent *runtimemodel.Entity, column string, v any) (any, error) {
+	col := ent.Field(column)
 	if col == nil {
 		return nil, &ir.Error{Code: CodeColumnUnknown, Msg: ent.Name + "." + column}
 	}
@@ -720,7 +778,7 @@ func encodeValue(ent *schema.Entity, column string, v any) (any, error) {
 		return nil, nil
 	}
 	var codec []string
-	for _, s := range col.Styles {
+	for _, s := range col.Codec {
 		if s != "aes" && s != "hex" && s != "ip" {
 			codec = append(codec, s)
 		}
@@ -732,20 +790,20 @@ func encodeValue(ent *schema.Entity, column string, v any) (any, error) {
 	if !ok {
 		return nil, codecErr(CodeCodecEncode, "column %s requires StyledValue, got %T", column, v)
 	}
-	if _, err := NormalizeStyled(codec, col.Nullable, styled); err != nil {
+	if _, err := NormalizeStyled(codec, col.Null, styled); err != nil {
 		return nil, err
 	}
 	return Encode(codec, styled)
 }
 
-func (c *Core) writeRequest(kind string, d *DB) (*request, *schema.Entity, error) {
-	ent, err := c.writer(d)
+func (c *Core) writeRequest(kind string, d *DB) (*request, *runtimemodel.Entity, error) {
+	ent, err := c.entityModel(d)
 	if err != nil {
 		return nil, nil, err
 	}
-	r := &request{}
+	r := &request{schema: c.ent.Schema}
 	r.ir.IRVersion = ir.Version
-	r.ir.SchemaHash = c.ent.Schema.Hash
+	r.ir.ManifestHash = c.ent.Schema.Hash
 	r.ir.Kind = kind
 	r.ir.Entity = c.ent.Name
 	return r, ent, nil
@@ -812,25 +870,25 @@ func (c *Core) Create() (Model, error) {
 			}
 		}
 	}
-	if err := validateAutoAssignment(ent, c.ent, m.self); err != nil {
+	if err := validateIdentityAssignment(ent, c.ent, m.self); err != nil {
 		return nil, err
 	}
 	id, _, err := write(ex, r)
 	if err != nil {
 		return nil, err
 	}
-	if ent.Auto != "" {
-		st.addName(ent.Auto)
-		assigned, err := c.ent.Assign(m.self, ent.Auto, id)
+	if ent.Identity != "" {
+		st.addName(ent.Identity)
+		assigned, err := c.ent.Assign(m.self, ent.Identity, id)
 		if err != nil {
 			return nil, err
 		}
 		if !assigned {
-			return nil, codecErr(CodeInternal, "auto column %q is not in generated model", ent.Auto)
+			return nil, codecErr(CodeInternal, "identity column %q is not in generated model", ent.Identity)
 		}
 	}
 	st.loaded = true
-	if tx := ex.transaction(); tx != nil && ent.Auto != "" {
+	if tx := ex.transaction(); tx != nil && ent.Identity != "" {
 		tx.recordInserted(c.ent.Name, id)
 	}
 	for _, pk := range ent.PK {
@@ -848,26 +906,18 @@ func (c *Core) Create() (Model, error) {
 	return m.self, nil
 }
 
-func validateAutoAssignment(ent *schema.Entity, generated *Entity, m Model) error {
-	if ent.Auto == "" {
+// validateIdentityAssignment는 identity field가 generated model에 있는지
+// 확인하고 insert 전 model의 identity 값을 0으로 둔다.
+func validateIdentityAssignment(ent *runtimemodel.Entity, generated *Entity, m Model) error {
+	if ent.Identity == "" {
 		return nil
 	}
-	var auto *schema.Col
-	for _, col := range ent.Columns {
-		if col.Name == ent.Auto {
-			auto = col
-			break
-		}
-	}
-	if auto == nil || auto.Type != "i64" || auto.Nullable || auto.Unsigned || !auto.PK {
-		return codecErr(CodeSchemaInvalid, "automatic key %q must be a signed non-null i64 primary key", ent.Auto)
-	}
-	assigned, err := generated.Assign(m, ent.Auto, int64(0))
+	assigned, err := generated.Assign(m, ent.Identity, int64(0))
 	if err != nil {
 		return err
 	}
 	if !assigned {
-		return codecErr(CodeInternal, "auto column %q is not in generated model", ent.Auto)
+		return codecErr(CodeInternal, "identity column %q is not in generated model", ent.Identity)
 	}
 	return nil
 }
@@ -960,7 +1010,7 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 	return total, err
 }
 
-func (c *Core) keyValues(ent *schema.Entity) (map[string]any, error) {
+func (c *Core) keyValues(ent *runtimemodel.Entity) (map[string]any, error) {
 	keys := map[string]any{}
 	for _, pk := range ent.PK {
 		if c.row != nil && c.row.loaded {
@@ -980,7 +1030,7 @@ func (c *Core) keyValues(ent *schema.Entity) (map[string]any, error) {
 	return keys, nil
 }
 
-func keyWhere(r *request, ent *schema.Entity, keys map[string]any) {
+func keyWhere(r *request, ent *runtimemodel.Entity, keys map[string]any) {
 	r.ir.Where = &ir.Group{}
 	for i, pk := range ent.PK {
 		p := r.param(keys[pk])
@@ -1031,7 +1081,7 @@ func (c *Core) Update(optimistic []bool) error {
 		return nil
 	}
 	keyWhere(r, ent, keys)
-	column := updatedColumn(ent)
+	column := ent.Updated
 	if len(optimistic) == 1 && optimistic[0] {
 		version, ok := any(nil), false
 		if loaded && column != "" {
@@ -1060,14 +1110,14 @@ func (c *Core) Update(optimistic []bool) error {
 
 // withAESColumns adds the other AES columns of a loaded row when one AES
 // column changes, so every AES column is written with the same key version.
-func (c *Core) withAESColumns(ent *schema.Entity) ([]setSpec, error) {
+func (c *Core) withAESColumns(ent *runtimemodel.Entity) ([]setSpec, error) {
 	sets := c.sets
 	if ent.AESVersion == "" {
 		return sets, nil
 	}
 	changed := false
 	for _, s := range sets {
-		if col := ent.Column(s.column); col != nil && slices.Contains(col.Styles, "aes") {
+		if col := ent.Field(s.column); col != nil && col.Encrypted() {
 			changed = true
 		}
 	}
@@ -1075,8 +1125,8 @@ func (c *Core) withAESColumns(ent *schema.Entity) ([]setSpec, error) {
 		return sets, nil
 	}
 	out := slices.Clone(sets)
-	for _, col := range ent.Columns {
-		if !slices.Contains(col.Styles, "aes") || slices.ContainsFunc(sets, func(s setSpec) bool { return s.column == col.Name }) {
+	for _, col := range ent.Fields {
+		if !col.Encrypted() || slices.ContainsFunc(sets, func(s setSpec) bool { return s.column == col.Name }) {
 			continue
 		}
 		if c.row == nil || !slices.Contains(c.row.names, col.Name) {
@@ -1099,7 +1149,7 @@ func (c *Core) Save() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	ent, err := c.writer(ex.base())
+	ent, err := c.entityModel(ex.base())
 	if err != nil {
 		return nil, err
 	}
@@ -1250,8 +1300,6 @@ func arrayValue(v any) any {
 			return nil
 		}
 		return x.Format("2006-01-02 15:04:05.000000")
-	case Point:
-		return []float64{x[0], x[1]}
 	case *orderedjson.Value:
 		return x
 	}

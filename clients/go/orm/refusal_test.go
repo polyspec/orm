@@ -2,88 +2,30 @@ package orm_test
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var refusalColumns = []string{"seq", "amount"}
 
-func refusalEntity(hash string) *orm.Entity {
-	return &orm.Entity{
-		Name:   "refused_row",
-		Schema: &orm.Schema{Hash: hash},
-		New: func(c *orm.Core) orm.Model {
-			r := &keywordRow{m: c, vals: map[string]any{}}
-			c.Bind(r)
-			return r
-		},
-		Assign: func(m orm.Model, name string, v any) (bool, error) {
-			for _, c := range refusalColumns {
-				if c == name {
-					m.(*keywordRow).vals[name] = v
-					return true, nil
-				}
-			}
-			return false, nil
-		},
-		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*keywordRow).vals[name]
-			return v, ok
-		},
-		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
-			return orm.CollectOf[*keywordRow](keys, items, fetched)
-		},
-	}
-}
-
-// refusalModels installs refused_row, whose immutable triggers refuse every
-// update and whose CHECK constraint refuses a nonpositive amount, and returns
-// a constructor of connected models.
+// refusalModels는 immutable trigger가 모든 update를 거절하고 CHECK constraint가
+// 양수가 아닌 amount를 거절하는 refused_row를 새 database에 설치하고, 연결된
+// model 생성 함수를 돌려준다.
 func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	t.Helper()
-	manifest, err := os.ReadFile("../../../contracts/fixtures/refusal_schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Load(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dsn := "sqlite://" + filepath.Join(t.TempDir(), "refusal.sqlite")
-	if driver != "sqlite" {
-		dsn = requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_DSN")
-	}
-	drop := func() {
-		dropTable(t, driver, dsn, "refused_row")
-		if driver == "postgres" {
-			raw := openNative(t, driver, dsn)
-			defer raw.Close()
-			if _, err := raw.Exec("DROP FUNCTION IF EXISTS refused_row_immutable_reject()"); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	drop()
-	t.Cleanup(drop)
-	eng, err := engine.New(m, driver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.Open(dsn, eng, orm.Config{})
+	s := fixtureSchema(t, "refusal")
+	db, err := orm.ConnectSchema(newDatabase(t, driver), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := db.Utils().Schema().Install(manifest); err != nil {
+	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
-	ent := refusalEntity(m.SchemaHash)
+	ent := rowEntity("refused_row", s, refusalColumns...)
 	return func() *orm.Core {
 		c := orm.NewCore(ent)
 		ent.New(c)
@@ -92,9 +34,9 @@ func refusalModels(t *testing.T, driver string) func() *orm.Core {
 	}
 }
 
-// triggerRefused updates an immutable row: the trigger refuses the write with
-// a database error that the catalog does not list, which the client reports
-// as DRIVER with the driver message and the driver error as its cause.
+// triggerRefused는 immutable row를 update한다. trigger가 catalog에 없는
+// database 오류로 write를 거절하고, client는 그것을 driver message와 driver
+// 오류를 cause로 가진 DRIVER로 보고한다.
 func triggerRefused(t *testing.T, driver string) {
 	model := refusalModels(t, driver)
 	c := model()
@@ -111,7 +53,7 @@ func triggerRefused(t *testing.T, driver string) {
 	if got := orm.ErrorCode(err); got != orm.CodeDriver {
 		t.Fatalf("refused update = %v (code %q), want DRIVER", err, got)
 	}
-	if !strings.Contains(err.Error(), "immutable table: refused_row") {
+	if !strings.Contains(err.Error(), "table refused_row is immutable") {
 		t.Fatalf("refused update message: %v", err)
 	}
 	var coded *orm.Error
@@ -130,8 +72,8 @@ func triggerRefused(t *testing.T, driver string) {
 	}
 }
 
-// checkRefused inserts a row that the CHECK constraint refuses, which the
-// client reports as CONSTRAINT.
+// checkRefused는 CHECK constraint가 거절하는 row를 insert하고, client는 그것을
+// CONSTRAINT로 보고한다.
 func checkRefused(t *testing.T, driver string) {
 	model := refusalModels(t, driver)
 	c := model()
@@ -153,9 +95,27 @@ func checkRefused(t *testing.T, driver string) {
 	}
 }
 
-func TestTriggerRefusedSQLite(t *testing.T)   { triggerRefused(t, "sqlite") }
-func TestTriggerRefusedMySQL(t *testing.T)    { triggerRefused(t, "mysql") }
-func TestTriggerRefusedPostgres(t *testing.T) { triggerRefused(t, "postgres") }
-func TestCheckRefusedSQLite(t *testing.T)     { checkRefused(t, "sqlite") }
-func TestCheckRefusedMySQL(t *testing.T)      { checkRefused(t, "mysql") }
-func TestCheckRefusedPostgres(t *testing.T)   { checkRefused(t, "postgres") }
+func TestTriggerRefusedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "sqlite")
+}
+func TestTriggerRefusedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "mysql")
+}
+func TestTriggerRefusedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "postgres")
+}
+func TestCheckRefusedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "sqlite")
+}
+func TestCheckRefusedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "mysql")
+}
+func TestCheckRefusedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "postgres")
+}

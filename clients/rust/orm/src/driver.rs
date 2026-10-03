@@ -42,7 +42,6 @@ pub(crate) fn same_scalar(v: &Val, p: &Param) -> Result<bool> {
             .to_owned(),
         Param::DateTime(t) => t.format("%Y-%m-%d %H:%M:%S%.6f").to_string(),
         Param::Date(d) => d.to_string(),
-        Param::Point(p) => crate::point_text(*p)?,
     };
     Ok(a == b)
 }
@@ -72,7 +71,6 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
                     Val::F64(x) => Param::F64(*x),
                     Val::DateTime(t) => Param::DateTime(*t),
                     Val::Date(d) => Param::Date(*d),
-                    Val::Point(p) => Param::Point(*p),
                     Val::Json(j) => Param::Str(j.to_string()),
                     Val::Ordered(j) => Param::Str(j.compact()),
                     Val::Null => Param::Null,
@@ -237,7 +235,6 @@ pub(crate) fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> 
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
-        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -252,7 +249,6 @@ pub(crate) fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'
         Param::Bytes(b) => q.bind(b.as_slice()),
         Param::DateTime(t) => q.bind(*t),
         Param::Date(d) => q.bind(*d),
-        Param::Point(_) => unreachable!("point is converted to text before binding"),
     }
 }
 
@@ -324,7 +320,6 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
             Param::DateTime(t) => q.bind(t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
             Param::Date(d) => q.bind(d.to_string()),
             Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
-            Param::Point(point) => q.bind(crate::point_text(*point)?),
         },
         "TIMESTAMP" => match p {
             Param::Null => q.bind(Option::<NaiveDateTime>::None),
@@ -662,12 +657,11 @@ impl<DB: sqlx::Database> Drop for CancellableConnection<DB> {
     fn drop(&mut self) {
         if self.close_on_drop {
             if let Some(connection) = self.connection.take() {
-                let raw = connection.detach();
-                if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                    handle.spawn(async move {
-                        let _ = sqlx::Connection::close_hard(raw).await;
-                    });
-                }
+                // pool에서 떼어낸 connection을 그 자리에서 drop해 socket을 닫는다. server는 EOF를 받고
+                // session의 transaction과 lock을 끝낸다. close_hard는 shutdown 전에 flush하는데, sqlx의 rustls
+                // flush는 보낼 data가 없으면 server가 보내지 않는 data를 읽을 때까지 기다려 끝나지 않는다.
+                // SQLite의 close_hard도 drop이다.
+                drop(connection.detach());
             }
         }
     }

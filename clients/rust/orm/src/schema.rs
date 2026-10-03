@@ -1,260 +1,145 @@
-//! The schema manifest (schema.json) and the embedded schema of generated
-//! models.
+//! generated model의 schema: dbspec document set의 manifest text와 `manifestHash`,
+//! 그리고 그 둘로 만든 runtime model (docs/dbspec.md, "Manifest and hashes",
+//! "Runtime model").
 
-use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, OnceLock};
 
-use serde::Deserialize;
-use sha2::{Digest, Sha256};
+use orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
 use crate::{codes, Error, Result};
 
-#[derive(Deserialize, Debug, Clone)]
+/// hash를 확인한 manifest text의 runtime model.
+#[derive(Debug, Clone)]
 pub struct Manifest {
-    pub schema_hash: String,
-    #[serde(default)]
-    pub order: Vec<String>,
-    pub entities: HashMap<String, EntitySchema>,
-    #[serde(default)]
-    pub external_fks: Vec<ExternalFk>,
-    #[serde(default)]
-    pub immutable: Vec<String>,
+    pub manifest_hash: String,
+    pub model: RuntimeModel,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct ExternalFk {
-    pub entity: String,
-    pub columns: Vec<String>,
-    pub target_table: String,
-    pub target_columns: Vec<String>,
-    #[serde(default)]
-    pub name: String,
-    #[serde(default)]
-    pub on_delete: String,
-    #[serde(default)]
-    pub deferred: bool,
+fn invalid(msg: String) -> Error {
+    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct EntitySchema {
-    pub name: String,
-    pub table: String,
-    #[serde(default)]
-    pub comment: String,
-    #[serde(default)]
-    pub pk: Vec<String>,
-    #[serde(default)]
-    pub auto: String,
-    pub columns: Vec<ColumnSchema>,
-    #[serde(default)]
-    pub relations: BTreeMap<String, Relation>,
-    #[serde(default)]
-    pub unique: Vec<Vec<String>>,
-    #[serde(default)]
-    pub indexes: BTreeMap<String, Vec<String>>,
-    #[serde(default)]
-    pub fulltext: Vec<Vec<String>>,
-    #[serde(default)]
-    pub checks: Vec<Check>,
-    #[serde(default)]
-    pub timestamps: Option<Timestamps>,
-    #[serde(default)]
-    pub soft_delete: String,
-    #[serde(default)]
-    pub aes_version: String,
+fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
+    invalid(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct Check {
-    pub name: String,
-    pub expr: String,
-}
-
-#[derive(Deserialize, Debug, Clone, Default)]
-pub struct Timestamps {
-    #[serde(default)]
-    pub created: String,
-    #[serde(default)]
-    pub updated: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ColumnSchema {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub typ: String,
-    #[serde(default)]
-    pub raw: String,
-    #[serde(default)]
-    pub nullable: bool,
-    #[serde(default)]
-    pub default: Option<String>,
-    #[serde(default)]
-    pub auto: bool,
-    #[serde(default)]
-    pub on_update: bool,
-    #[serde(default)]
-    pub unsigned: bool,
-    #[serde(default)]
-    pub lazy: bool,
-    #[serde(default)]
-    pub len: i64,
-    #[serde(default)]
-    pub precision: i64,
-    #[serde(default)]
-    pub scale: i64,
-    #[serde(default)]
-    pub styles: Vec<String>,
-    #[serde(default)]
-    pub blind_index: String,
-    #[serde(default, rename = "ref")]
-    pub reference: Option<ColumnRef>,
-    #[serde(default)]
-    pub pk: bool,
-    #[serde(default)]
-    pub fk: bool,
-    #[serde(default)]
-    pub comment: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct ColumnRef {
-    pub entity: String,
-    pub column: String,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct Relation {
-    pub name: String,
-    pub kind: String,
-    pub target: String,
-    #[serde(default)]
-    pub keys: Vec<RelationKey>,
-    #[serde(default)]
-    pub on_delete: String,
-    #[serde(default)]
-    pub foreign_key: bool,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct RelationKey {
-    pub local: String,
-    pub target: String,
+/// manifest text의 document. 그 document의 manifest가 text 자신이고 hash가 `hash`여야 한다.
+fn documents(text: &str, hash: &str) -> Result<Vec<Document>> {
+    let documents = dbspec::parse_manifest(text).map_err(diagnostics)?;
+    let refs: Vec<&Document> = documents.iter().collect();
+    let manifest = dbspec::manifest(&refs).map_err(diagnostics)?;
+    if manifest.manifest_text != text {
+        return Err(invalid("the embedded text is not the manifest text of its documents".into()));
+    }
+    if manifest.manifest_hash != hash {
+        // text는 manifest지만 선언한 hash로 hash되지 않는다 (docs/dbspec.md, "Manifest and hashes").
+        return Err(Error::Engine {
+            code: codes::SCHEMA_HASH_MISMATCH.into(),
+            msg: format!("models were generated from manifest {hash} but the embedded manifest is {}", manifest.manifest_hash),
+        });
+    }
+    Ok(documents)
 }
 
 impl Manifest {
-    /// Reads a schema.json and checks that its content matches its hash.
-    pub fn load(schema_json: &[u8]) -> Result<Manifest> {
-        let invalid = |msg: String| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg };
-        let manifest: Manifest = serde_json::from_slice(schema_json).map_err(|e| invalid(format!("schema manifest: {e}")))?;
-        let text = std::str::from_utf8(schema_json).map_err(|e| invalid(format!("schema manifest: {e}")))?;
-        let hash = content_hash(text).ok_or_else(|| invalid("schema manifest must start with schema_hash".into()))?;
-        if hash != manifest.schema_hash {
-            return Err(invalid(format!("schema.json was edited by hand: hash {} does not match content {hash}", manifest.schema_hash)));
-        }
-        for entity in manifest.entities.values() {
-            for column in &entity.columns {
-                if column.typ == "decimal" && !(1..=18).contains(&column.precision) {
-                    return Err(invalid(format!("{}.{}: decimal precision must be 1..18", entity.name, column.name)));
-                }
-                if column.typ == "decimal" && (column.scale < 0 || column.scale > column.precision) {
-                    return Err(invalid(format!("{}.{}: decimal scale must be 0..precision", entity.name, column.name)));
-                }
-            }
-        }
-        Ok(manifest)
+    /// manifest text의 runtime model을 만들고 text의 hash가 `manifest_hash`인지 확인한다.
+    pub fn load(manifest_text: &str, manifest_hash: &str) -> Result<Manifest> {
+        let documents = documents(manifest_text, manifest_hash)?;
+        let refs: Vec<&Document> = documents.iter().collect();
+        let model = dbspec::runtime_model(&refs).map_err(diagnostics)?;
+        Ok(Manifest { manifest_hash: manifest_hash.to_owned(), model })
     }
 
-    pub fn entity(&self, name: &str) -> Result<&EntitySchema> {
-        self.entities.get(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned() })
+    pub fn entity(&self, name: &str) -> Result<&Entity> {
+        self.model.entity(name).ok_or_else(|| Error::Engine { code: codes::ENTITY_UNKNOWN.into(), msg: name.to_owned() })
     }
 }
 
-/// The hash of a generated manifest: SHA-256 of the compact JSON with an empty
-/// schema_hash, first 8 bytes in hex. The generator writes keys in a fixed
-/// order, so compacting the text reproduces the hashed bytes.
-fn content_hash(text: &str) -> Option<String> {
-    let mut compact = String::with_capacity(text.len());
-    let mut in_string = false;
-    let mut escaped = false;
-    for ch in text.chars() {
-        if in_string {
-            compact.push(ch);
-            if escaped {
-                escaped = false;
-            } else if ch == '\\' {
-                escaped = true;
-            } else if ch == '"' {
-                in_string = false;
-            }
-        } else if !ch.is_ascii_whitespace() {
-            if ch == '"' {
-                in_string = true;
-            }
-            compact.push(ch);
-        }
-    }
-    let head = "{\"schema_hash\":\"";
-    let rest = compact.strip_prefix(head)?;
-    let end = rest.find('"')?;
-    let canonical = format!("{head}{}", &rest[end..]);
-    let sum = Sha256::digest(canonical.as_bytes());
-    Some(sum[..8].iter().map(|b| format!("{b:02x}")).collect())
-}
-
-impl EntitySchema {
-    pub fn column(&self, name: &str) -> Option<&ColumnSchema> {
-        self.columns.iter().find(|c| c.name == name)
-    }
-
-    /// The column that records the last update of a row.
-    pub fn updated_column(&self) -> &str {
-        self.timestamps.as_ref().map(|t| t.updated.as_str()).unwrap_or("")
-    }
-}
-
-impl ColumnSchema {
-    /// The codec stages the executor applies (aes/hex/ip stay host stages).
-    pub fn codec_styles(&self) -> Vec<&str> {
-        self.styles.iter().map(String::as_str).filter(|s| !matches!(*s, "aes" | "hex" | "ip")).collect()
-    }
-
-    pub fn is_aes(&self) -> bool {
-        self.styles.iter().any(|s| s == "aes")
-    }
-}
-
-/// The schema embedded in generated models. It is parsed once, on first use.
+/// generated model에 들어 있는 schema: manifest text와 그 hash.
+/// runtime model은 처음 쓸 때 한 번 만든다.
 pub struct Schema {
-    json: &'static [u8],
+    text: &'static str,
     hash: &'static str,
-    manifest: OnceLock<std::result::Result<Arc<Manifest>, String>>,
+    /// 처음 만든 runtime model, 또는 그때 난 오류의 code와 message.
+    manifest: OnceLock<std::result::Result<Arc<Manifest>, (String, String)>>,
 }
 
 impl Schema {
-    pub const fn new(json: &'static [u8], hash: &'static str) -> Schema {
-        Schema { json, hash, manifest: OnceLock::new() }
+    pub const fn new(manifest_text: &'static str, manifest_hash: &'static str) -> Schema {
+        Schema { text: manifest_text, hash: manifest_hash, manifest: OnceLock::new() }
     }
 
-    /// The hash the models were generated from.
+    /// model을 생성한 `manifestHash`.
     pub fn hash(&self) -> &'static str {
         self.hash
     }
 
-    /// The schema.json text.
-    pub fn json(&self) -> &'static [u8] {
-        self.json
+    /// manifest text.
+    pub fn text(&self) -> &'static str {
+        self.text
     }
 
-    /// The parsed manifest.
+    /// statement를 render할 manifest text의 document.
+    pub fn documents(&self) -> Result<Vec<Document>> {
+        documents(self.text, self.hash)
+    }
+
+    /// 등록할 schema의 runtime model. text가 선언한 hash로 hash되지 않으면 어떤
+    /// statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+    pub(crate) fn registered(&self) -> Result<Arc<Manifest>> {
+        self.manifest().map_err(|e| match e {
+            Error::Engine { code, msg } if code == codes::SCHEMA_HASH_MISMATCH => Error::Config(format!("invalid schema manifest: {msg}")),
+            other => other,
+        })
+    }
+
+    /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest
-            .get_or_init(|| match Manifest::load(self.json) {
-                Ok(m) if m.schema_hash == self.hash => Ok(Arc::new(m)),
-                Ok(m) => Err(format!("models were generated from schema {} but the embedded schema is {}", self.hash, m.schema_hash)),
-                Err(e) => Err(e.to_string()),
+            .get_or_init(|| {
+                Manifest::load(self.text, self.hash).map(Arc::new).map_err(|e| match e {
+                    Error::Engine { code, msg } => (code, msg),
+                    other => (codes::SCHEMA_INVALID.to_owned(), other.to_string()),
+                })
             })
             .clone()
-            .map_err(|msg| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg })
+            .map_err(|(code, msg)| Error::Engine { code, msg })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// contracts/fixtures/rollback.dbs의 manifest text와 manifestHash.
+    fn rollback_manifest() -> (String, String) {
+        let text = include_str!("../../../../contracts/fixtures/rollback.dbs");
+        let document = dbspec::parse(text, &Default::default()).expect("rollback.dbs parses");
+        let manifest = dbspec::manifest(&[&document]).expect("rollback.dbs manifest");
+        (manifest.manifest_text, manifest.manifest_hash)
+    }
+
+    fn leak(text: String) -> &'static str {
+        Box::leak(text.into_boxed_str())
+    }
+
+    // 선언한 hash로 hash되지 않는 manifest text는 SCHEMA_HASH_MISMATCH이고, manifest가 아닌 text는 SCHEMA_INVALID다.
+    #[test]
+    fn manifest_hash_mismatch_is_reported() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let (text, hash) = rollback_manifest();
+        assert_eq!(Manifest::load(&text, &hash).expect("matching manifest").manifest_hash, hash);
+        let edited = text.replace("label varchar(32)", "label varchar(64)");
+        assert_ne!(edited, text, "the fixture declares label varchar(32)");
+        for schema in [Schema::new(leak(edited.clone()), leak(hash.clone())), Schema::new(leak(text.clone()), "0000000000000000")] {
+            let error = schema.manifest().expect_err("edited manifest");
+            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+            let error = schema.documents().expect_err("edited manifest documents");
+            assert_eq!(error.code(), codes::SCHEMA_HASH_MISMATCH, "{error}");
+        }
+        for invalid in ["not a manifest", "dbspec 1 rollback\n\ntable rollback_probe {\n"] {
+            let error = Schema::new(invalid, leak(hash.clone())).manifest().expect_err("invalid manifest");
+            assert_eq!(error.code(), codes::SCHEMA_INVALID, "{error}");
+        }
     }
 }

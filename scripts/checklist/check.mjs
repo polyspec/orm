@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
 const states = new Set([' ', '~', 'o', '!']);
 
@@ -54,6 +55,9 @@ export function checkChecklistPair(english, korean) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // checklist check는 두 checklist file을 읽고 비교하는 case 하나다.
+  const log = sections();
+  log.begin('checklist', COMPUTE);
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   const english = await readFile(resolve(root, 'docs/checklist.md'), 'utf8');
   const korean = await readFile(resolve(root, 'docs/checklist.ko.md'), 'utf8');
@@ -61,4 +65,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   for (const error of errors) console.error(`checklist: ${error}`);
   if (errors.length) process.exitCode = 1;
   else console.log('checklist: item IDs and four states agree');
+  log.end(errors.length ? `${errors.length} error(s); each checklist line above names one` : undefined);
 }

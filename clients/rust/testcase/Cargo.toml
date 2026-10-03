@@ -1,0 +1,10 @@
+[package]
+name = "orm-testcase"
+version = "0.0.2"
+edition = "2021"
+publish = false
+description = "Case reports and per-case deadlines for the Rust ORM tests"
+license = "MIT"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

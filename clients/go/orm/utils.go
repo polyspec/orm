@@ -3,14 +3,15 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
-	"github.com/polyspec/orm/engine"
+	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/ir"
-	"github.com/polyspec/orm/engine/schema"
-	"github.com/polyspec/orm/internal/ormgen"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Utils provides operations outside the query syntax.
@@ -101,15 +102,29 @@ func (u *Utils) Lock(key string) error {
 	return nil
 }
 
-// releaseLocks releases MySQL named locks before the transaction ends.
-func (t *txConn) releaseLocks() {
-	for _, key := range t.locks {
-		_, _ = t.tx.ExecContext(t.ctx, "SELECT RELEASE_LOCK(?)", key)
-	}
+// releaseLocks는 transaction이 끝나기 전에 MySQL named lock을 푼다. named lock은
+// COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 실패한 해제와 1이 아닌
+// RELEASE_LOCK 결과(lock을 갖고 있지 않음)를 모두 오류로 돌려준다. 한 번 시도한
+// lock은 다시 풀지 않는다.
+func (t *txConn) releaseLocks() error {
+	locks := t.locks
 	t.locks = nil
+	var errs []error
+	for _, key := range locks {
+		var released sql.NullInt64
+		if err := t.tx.QueryRowContext(t.ctx, "SELECT RELEASE_LOCK(?)", key).Scan(&released); err != nil {
+			errs = append(errs, mapDriverErr(err))
+			continue
+		}
+		if !released.Valid || released.Int64 != 1 {
+			errs = append(errs, configErr("lock %s was not held at transaction end", key))
+		}
+	}
+	return errors.Join(errs...)
 }
 
-// SetLocal sets a transaction-local value.
+// SetLocal은 transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은
+// user variable에 쓰고 SQLite는 transaction 안에만 둔다.
 func (u *Utils) SetLocal(key, value string) error {
 	t, err := u.active("setLocal")
 	if err != nil {
@@ -127,14 +142,6 @@ func (u *Utils) SetLocal(key, value string) error {
 		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = ?", value); err != nil {
 			return mapDriverErr(err)
 		}
-	default:
-		if _, err := t.tx.ExecContext(t.ctx, `CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)`); err != nil {
-			return mapDriverErr(err)
-		}
-		if _, err := t.tx.ExecContext(t.ctx, `INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"`, key, value); err != nil {
-			return mapDriverErr(err)
-		}
-		t.contextRow = true
 	}
 	if t.locals == nil {
 		t.locals = map[string]string{}
@@ -143,14 +150,23 @@ func (u *Utils) SetLocal(key, value string) error {
 	return nil
 }
 
-// clearLocals resets MySQL session variables before the transaction ends.
-func (t *txConn) clearLocals() {
+// clearLocals는 transaction이 끝나기 전에 MySQL session variable을 지운다.
+// MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로
+// (mysql.context.user_variable_session_scope) 실패한 reset은 오류로 돌려준다.
+// 한 번 시도한 값은 다시 지우지 않는다.
+func (t *txConn) clearLocals() error {
+	locals := t.locals
+	t.locals = nil
 	if t.db.driver != "mysql" {
-		return
+		return nil
 	}
-	for key := range t.locals {
-		_, _ = t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = NULL")
+	var errs []error
+	for key := range locals {
+		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = NULL"); err != nil {
+			errs = append(errs, mapDriverErr(err))
+		}
 	}
+	return errors.Join(errs...)
 }
 
 // Local returns a value set with SetLocal; NO_ROWS when it is missing.
@@ -188,25 +204,55 @@ type SchemaUtils struct{ u *Utils }
 // Schema returns the schema utilities.
 func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 
-// Install installs the canonical schema manifest and registers it with the
-// connection. PostgreSQL and SQLite apply it in the active transaction or in a
-// new one; MySQL commits schema statements implicitly, so it applies them
-// outside a transaction and returns CONFIG inside one.
-func (s *SchemaUtils) Install(manifestJSON []byte) error {
+// Install은 generated schema의 document set을 이 연결의 dialect로 render해
+// 적용하고 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
+// 않으면 어떤 statement보다 먼저 CONFIG다. set의 table이 하나도 없으면 모두
+// 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG다.
+// PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용한다.
+// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서
+// 적용하고 안에서는 CONFIG다.
+func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
-	manifest, compiled, err := s.engine(manifestJSON)
+	m, err := schema.registered()
 	if err != nil {
 		return err
 	}
-	ddl, err := ormgen.RenderCreateDDL(manifest, d.driver)
-	if err != nil {
-		return configErr("render schema: %v", err)
+	if err := s.apply(m); err != nil {
+		return err
 	}
-	statements := ormgen.SplitSQL(ddl)
-	if len(statements) == 0 {
-		return configErr("schema manifest produced no statements")
+	return d.register(schema)
+}
+
+// apply는 runtime model의 table을 만든다(Install 참고).
+func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
+	d := s.u.db
+	statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(d.driver))
+	if len(diagnostics) > 0 {
+		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	if d.driver == "mysql" && activeFor(d) != nil {
+		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
 	}
 	apply := func(ctx context.Context, q querier) error {
+		var present, missing []string
+		for _, name := range m.Order {
+			table := m.Entities[name].Table
+			found, err := tableExists(ctx, q, d.driver, table)
+			if err != nil {
+				return err
+			}
+			if found {
+				present = append(present, table)
+			} else {
+				missing = append(missing, table)
+			}
+		}
+		switch {
+		case len(missing) == 0:
+			return nil
+		case len(present) > 0:
+			return configErr("the manifest is partly installed: tables %s exist and %s do not", strings.Join(present, ", "), strings.Join(missing, ", "))
+		}
 		for _, statement := range statements {
 			if _, err := q.ExecContext(ctx, statement); err != nil {
 				return mapDriverErr(err)
@@ -215,59 +261,66 @@ func (s *SchemaUtils) Install(manifestJSON []byte) error {
 		return nil
 	}
 	if d.driver == "mysql" {
-		if activeFor(d) != nil {
-			return configErr("MySQL commits schema statements implicitly; install outside a transaction")
-		}
-		err = apply(d.ctx, d.sql)
-	} else {
-		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+		return apply(d.ctx, d.sql)
 	}
-	if err != nil {
-		return err
-	}
-	return s.register(compiled)
+	return s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
 }
 
-// AddColumns adds every missing column of the existing tables of a schema
-// manifest that is nullable or has a default, and replaces the audit triggers
-// of each changed table so that they record the new columns. A table that
-// does not exist and the tables of other manifests are left unchanged. Any
-// other difference between the existing tables and the manifest returns
-// SCHEMA_DIFFERS before any statement runs. The manifest hash is verified
-// against its content first. PostgreSQL and SQLite apply the statements in the
-// active transaction or in a new one; MySQL commits schema statements
-// implicitly, so it applies them outside a transaction and returns CONFIG
-// inside one. It returns the added columns as table.column, in manifest order.
-func (s *SchemaUtils) AddColumns(manifestJSON []byte) ([]string, error) {
+// AddTablesAndColumns는 설치한 document set을 generated schema의 새 version으로
+// 더해서만 올린다(docs/schema.md "Adding tables and columns"). 연결의 database를
+// introspect해 database에 있는 set의 table을 set과 비교하고, database에 없는 set의
+// table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진 column
+// 가운데 null이거나 default가 있는 column을 더한다. dbspec.AddTablesAndColumnsSteps의
+// plan step을 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다.
+// 다른 set의 table은 그대로 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다
+// 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다.
+// PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다. MySQL은 schema
+// statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어
+// column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다
+// transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한 column은
+// "table.column"으로 table 이름, column 순서로 돌려준다.
+func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	d := s.u.db
-	manifest, _, err := s.engine(manifestJSON)
+	m, err := schema.registered()
 	if err != nil {
 		return nil, err
 	}
+	manifest, diagnostics := dbspec.ManifestOf(m.Documents)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	target, diagnostics := dbspec.Parse(manifest.SchemaText, nil)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	dialect := dbspec.Dialect(d.driver)
 	var added []string
-	apply := func(ctx context.Context, q interface {
-		ormgen.Catalog
-		ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	}) error {
-		statements, columns, err := ormgen.PlanAddColumns(ctx, q, d.sql, d.driver, manifest)
+	apply := func(ctx context.Context, q dbspec.Execer) error {
+		live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 		if err != nil {
 			return mapDriverErr(err)
 		}
-		for _, statement := range statements {
-			if _, err := q.ExecContext(ctx, statement); err != nil {
+		additions, steps, differences := dbspec.AddTablesAndColumnsSteps(live, unsupported, target, dialect)
+		if len(differences) > 0 {
+			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: " + strings.Join(differences, "; ")}
+		}
+		for _, step := range steps {
+			if _, err := q.ExecContext(ctx, step.Statement); err != nil {
 				return mapDriverErr(err)
 			}
 		}
-		added = columns
+		added = additions
 		return nil
 	}
-	if d.driver == "mysql" {
-		if activeFor(d) != nil {
-			return nil, configErr("MySQL commits schema statements implicitly; add columns outside a transaction")
-		}
-		err = apply(d.ctx, d.sql)
-	} else {
+	switch {
+	case d.driver == "postgres":
 		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+	case activeFor(d) != nil:
+		return nil, configErr("%s adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
+	case d.driver == "mysql":
+		err = apply(d.ctx, d.sql)
+	default:
+		err = sqliteWithoutForeignKeys(d, apply)
 	}
 	if err != nil {
 		return nil, err
@@ -275,38 +328,72 @@ func (s *SchemaUtils) AddColumns(manifestJSON []byte) ([]string, error) {
 	return added, nil
 }
 
-// Register adds the engine of an installed schema manifest to the
-// connection, as Install does after its statements, without running any
-// statement. The manifest hash is verified against its content; a manifest
-// that does not match returns CONFIG.
-func (s *SchemaUtils) Register(manifestJSON []byte) error {
-	_, compiled, err := s.engine(manifestJSON)
+// sqliteWithoutForeignKeys는 연결 하나에서 foreign key를 끄고 BEGIN IMMEDIATE
+// transaction으로 fn을 실행한 뒤 foreign key 검사가 row를 돌려주지 않을 때만
+// commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
+// foreign key를 다시 켜지 못한 연결은 pool에 돌려주지 않고 닫는다.
+func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Execer) error) (err error) {
+	ctx := d.ctx
+	conn, err := d.sql.Conn(ctx)
 	if err != nil {
-		return err
+		return mapDriverErr(err)
 	}
-	return s.register(compiled)
+	restored := false
+	defer func() {
+		if !restored {
+			// foreign key가 꺼졌을 수 있는 연결은 버린다.
+			err = errors.Join(err, conn.Raw(func(any) error { return driver.ErrBadConn }))
+		}
+		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, driver.ErrBadConn) {
+			err = errors.Join(err, mapDriverErr(closeErr))
+		}
+	}()
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return mapDriverErr(err)
+	}
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return mapDriverErr(err)
+	}
+	err = fn(ctx, tx)
+	if err == nil {
+		var broken int
+		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM pragma_foreign_key_check").Scan(&broken); err != nil {
+			err = mapDriverErr(err)
+		} else if broken > 0 {
+			err = &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("the rebuilt tables break %d foreign keys", broken)}
+		}
+	}
+	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			err = rollbackFailed(err, mapDriverErr(rollbackErr))
+		}
+	} else if err = tx.Commit(); err != nil {
+		err = mapDriverErr(err)
+	}
+	if _, onErr := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); onErr != nil {
+		return errors.Join(err, mapDriverErr(onErr))
+	}
+	restored = true
+	return err
 }
 
-// engine loads a manifest whose hash matches its content and compiles it for
-// the connection's driver.
-func (s *SchemaUtils) engine(manifestJSON []byte) (*schema.Manifest, *engine.Engine, error) {
-	manifest, err := schema.Load(manifestJSON)
-	if err != nil {
-		return nil, nil, configErr("invalid schema manifest: %v", err)
+// tableExists는 연결의 현재 database나 schema에 table이 있는지 알린다.
+func tableExists(ctx context.Context, q querier, driver, table string) (bool, error) {
+	var query string
+	switch driver {
+	case "postgres":
+		query = "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1)"
+	case "mysql":
+		query = "SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)"
+	default:
+		query = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)"
 	}
-	compiled, err := engine.New(manifest, s.u.db.driver)
-	if err != nil {
-		return nil, nil, configErr("compile schema: %v", err)
+	var found bool
+	if err := q.QueryRowContext(ctx, query, table).Scan(&found); err != nil {
+		return false, mapDriverErr(err)
 	}
-	return manifest, compiled, nil
-}
-
-func (s *SchemaUtils) register(compiled *engine.Engine) error {
-	d := s.u.db
-	d.m.engineMu.Lock()
-	d.engines[compiled.M.SchemaHash] = compiled
-	d.m.engineMu.Unlock()
-	return RegisterEngine(compiled)
+	return found, nil
 }
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
@@ -487,15 +574,15 @@ func (a *AESUtils) spec(m Model) (*aesSpec, error) {
 		return nil, configErr("aes requires a model")
 	}
 	c := m.Orm_()
-	ent := c.entitySchema(a.u.db)
-	if ent == nil {
-		return nil, configErr("entity %s is not registered for the connection", c.ent.Name)
+	ent, err := c.entityModel(a.u.db)
+	if err != nil {
+		return nil, err
 	}
 	spec := &aesSpec{table: ent.Table, keys: ent.PK, version: ent.AESVersion}
-	for _, col := range ent.Columns {
-		if slices.Contains(col.Styles, "aes") {
+	for _, col := range ent.Fields {
+		if col.Encrypted() {
 			var host []string
-			for _, s := range col.Styles {
+			for _, s := range col.Codec {
 				if s == "aes" || s == "hex" {
 					host = append(host, s)
 				}

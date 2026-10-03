@@ -6,17 +6,24 @@ use std::fmt::Write as _;
 
 use syn::Expr;
 
-use crate::manifest::{check_column_name, Column, Entity, Manifest};
+use crate::manifest::{check_column_name, function_column, numeric, styled, DocumentSet};
 use crate::names::{column_name, parse_chain, parse_order, pascal, snake_to_pascal, split_pair, ChainKey};
 use crate::scan::{Call, Scan};
+use orm_schema::dbspec::{Entity, Field, RuntimeModel, Type};
 
-pub(crate) fn fallible_setters(manifest: &Manifest) -> HashSet<(String, String)> {
-    manifest.entities().flat_map(|entity| {
-        let model = pascal(&entity.name);
-        entity.columns.iter()
-            .filter(|column| is_styled_value(column) || column.typ == "decimal")
-            .map(move |column| (model.clone(), format!("set_{}", column.name)))
-    }).collect()
+pub(crate) fn fallible_setters(model: &RuntimeModel) -> HashSet<(String, String)> {
+    model
+        .entities
+        .iter()
+        .flat_map(|entity| {
+            let model = pascal(&entity.name);
+            entity
+                .fields
+                .iter()
+                .filter(|column| column.styled_value() || matches!(column.ty, Type::Decimal(..)))
+                .map(move |column| (model.clone(), format!("set_{}", column.name)))
+        })
+        .collect()
 }
 
 const RUST_RESERVED: &[&str] = &[
@@ -72,7 +79,7 @@ const FIXED: &[&str] = &[
 /// Methods every model has from its derived traits.
 const DERIVED: &[&str] = &["clone", "clone_from", "serialize"];
 
-const COLUMN_FUNCTIONS: &[&str] = &["day_of_week", "year", "month", "date", "distance", "point_x", "point_y"];
+const COLUMN_FUNCTIONS: &[&str] = &["day_of_week", "year", "month", "date"];
 
 fn ident(s: &str) -> String {
     if RUST_RESERVED.contains(&s) {
@@ -103,46 +110,75 @@ fn index_method(name: &str) -> String {
     out
 }
 
-/// The Rust value type of a column without null.
-fn base(c: &Column) -> &'static str {
-    if c.styles.iter().any(|s| s == "json" || s == "jsons") {
+/// null을 뺀 column의 Rust value type (docs/dbspec.md, "Runtime model"). codec이
+/// 있는 column은 첫 stage가 `ordered_json`이면 ordered-json styled value, 다른
+/// styled value stage가 있으면 common value model의 styled value, `aes`, `hex`,
+/// `ip`만 있으면 string이다.
+fn base(c: &Field) -> &'static str {
+    if c.codec.first().is_some_and(|s| s == "ordered_json") {
         return ORDERED;
     }
-    if c.styled() || c.typ == "jsontext" {
+    if c.styled_value() {
         return "orm::serde_json::Value";
     }
-    match c.typ.as_str() {
-        "i32" => "i32",
-        "i64" => "i64",
-        "f64" => "f64",
-        "bool" => "bool",
-        "datetime" => "orm::chrono::NaiveDateTime",
-        "date" => "orm::chrono::NaiveDate",
-        "bytes" => "Vec<u8>",
-        "point" => "orm::Point",
-        _ => "String",
+    if !c.codec.is_empty() {
+        return "String";
+    }
+    match c.ty {
+        Type::I16 => "i16",
+        Type::I32 => "i32",
+        Type::I64 => "i64",
+        Type::F64 => "f64",
+        Type::Bool => "bool",
+        Type::DateTime(_) => "orm::chrono::NaiveDateTime",
+        Type::Date => "orm::chrono::NaiveDate",
+        Type::Bytes => "Vec<u8>",
+        Type::Decimal(..) | Type::Varchar(_) | Type::Text | Type::Uuid | Type::Time(_) => "String",
     }
 }
 
 #[cfg(test)]
-mod decimal_field_tests {
+mod field_type_tests {
     use super::*;
 
+    fn field_of(ty: Type, codec: &[&str]) -> Field {
+        Field {
+            name: "value".into(),
+            ty,
+            nullable: true,
+            identity: false,
+            primary_key: false,
+            foreign_key: false,
+            default: None,
+            select_explicit: false,
+            codec: codec.iter().map(|s| s.to_string()).collect(),
+            blind_index: None,
+        }
+    }
+
     #[test]
-    fn generated_decimal_field_uses_exact_text() {
-        let column = Column { name: "price".into(), typ: "decimal".into(), nullable: true, styles: Vec::new(), precision: 13, scale: 3 };
-        assert_eq!(base(&column), "String");
+    fn generated_field_types_follow_the_runtime_model() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
+        assert_eq!(base(&field_of(Type::Decimal(13, 3), &[])), "String");
+        assert_eq!(base(&field_of(Type::I16, &[])), "i16");
+        assert_eq!(base(&field_of(Type::Uuid, &[])), "String");
+        assert_eq!(base(&field_of(Type::Time(3), &[])), "String");
+        assert_eq!(base(&field_of(Type::Text, &["ordered_json"])), ORDERED);
+        assert_eq!(base(&field_of(Type::Bytes, &["ordered_json", "aes"])), ORDERED);
+        assert_eq!(base(&field_of(Type::Varchar(255), &["aes", "hex"])), "String");
+        assert_eq!(base(&field_of(Type::Bytes, &["ip"])), "String");
+        for codec in [&["gz"][..], &["base64"], &["serialize"], &["yaml"]] {
+            let column = field_of(if codec[0] == "gz" { Type::Bytes } else { Type::Text }, codec);
+            assert_eq!(base(&column), "orm::serde_json::Value", "{codec:?}");
+            assert!(column.styled_value(), "{codec:?}: a styled value");
+        }
     }
 }
 
-/// The type of a column with the `json` or `jsons` stage.
+/// The type of a column with the `ordered_json` stage.
 const ORDERED: &str = "orm::ordered_json::Value";
 
-fn is_styled_value(c: &Column) -> bool {
-    c.typ == "jsontext" || c.styles.iter().any(|style| matches!(style.as_str(), "json" | "jsons" | "serialize" | "yaml"))
-}
-
-fn field(c: &Column) -> String {
+fn field(c: &Field) -> String {
     let t = base(c);
     if c.nullable {
         format!("Option<{t}>")
@@ -157,13 +193,13 @@ fn copy_type(t: &str) -> bool {
 
 fn convert(t: &str) -> &'static str {
     match t {
+        "i16" => "v.as_i16()?",
         "i32" => "v.as_i32()?",
         "i64" => "v.as_i64()?",
         "f64" => "v.as_f64()?",
         "bool" => "v.as_bool()?",
         "orm::chrono::NaiveDateTime" => "v.as_datetime()?",
         "orm::chrono::NaiveDate" => "v.as_date()?",
-        "orm::Point" => "v.as_point()?",
         "orm::serde_json::Value" => "v.into_json()?",
         ORDERED => "v.take_ordered()?",
         "Vec<u8>" => "v.take_bytes()?",
@@ -173,13 +209,12 @@ fn convert(t: &str) -> &'static str {
 
 fn to_val(t: &str, x: &str) -> String {
     match t {
-        "i32" => format!("orm::Val::I64({x} as i64)"),
+        "i16" | "i32" => format!("orm::Val::I64({x} as i64)"),
         "i64" => format!("orm::Val::I64({x})"),
         "f64" => format!("orm::Val::F64({x})"),
         "bool" => format!("orm::Val::Bool({x})"),
         "orm::chrono::NaiveDateTime" => format!("orm::Val::DateTime({x})"),
         "orm::chrono::NaiveDate" => format!("orm::Val::Date({x})"),
-        "orm::Point" => format!("orm::Val::Point({x})"),
         "orm::serde_json::Value" => format!("orm::Val::Json({x}.clone())"),
         ORDERED => format!("orm::Val::ordered({x}.clone())"),
         "Vec<u8>" => format!("orm::Val::Bytes({x}.clone())"),
@@ -188,19 +223,20 @@ fn to_val(t: &str, x: &str) -> String {
 }
 
 /// The value kind that bounds the condition arguments of a column.
-fn kind(c: &Column) -> String {
-    let k = if c.styled() || c.typ == "jsontext" {
+fn kind(c: &Field) -> String {
+    let k = if styled(c) {
         "Styled"
+    } else if !c.codec.is_empty() {
+        "Text"
     } else {
-        match c.typ.as_str() {
-            "i32" | "i64" => "Int",
-            "f64" => "Float",
-            "decimal" => "Decimal",
-            "bool" => "Bool",
-            "date" | "datetime" => "Time",
-            "bytes" => "Bytes",
-            "point" => "Point",
-            _ => "Text",
+        match c.ty {
+            Type::I16 | Type::I32 | Type::I64 => "Int",
+            Type::F64 => "Float",
+            Type::Decimal(..) => "Decimal",
+            Type::Bool => "Bool",
+            Type::Date | Type::DateTime(_) => "Time",
+            Type::Bytes => "Bytes",
+            Type::Varchar(_) | Type::Text | Type::Uuid | Type::Time(_) => "Text",
         }
     };
     format!("orm::args::kind::{k}{}", if c.nullable { "Null" } else { "" })
@@ -226,7 +262,7 @@ struct Model<'m> {
 }
 
 struct Gen<'m> {
-    m: &'m Manifest,
+    m: &'m RuntimeModel,
     models: Vec<Model<'m>>,
     by_type: HashMap<String, usize>,
     owners: BTreeSet<String>,
@@ -236,19 +272,19 @@ struct Gen<'m> {
 impl<'m> Model<'m> {
     fn new(e: &'m Entity) -> Model<'m> {
         let mut fixed: BTreeSet<String> = FIXED.iter().map(|s| s.to_string()).collect();
-        for c in &e.columns {
+        for c in &e.fields {
             for p in ["get_", "set_", "set_raw_", "add_column_", "remove_column_", "group_by_", "key_name_"] {
                 fixed.insert(format!("{p}{}", c.name));
             }
             fixed.insert(format!("order_by_{}_asc", c.name));
             fixed.insert(format!("order_by_{}_desc", c.name));
-            if c.numeric() {
+            if numeric(c) {
                 for p in ["plus_", "minus_", "sum_", "avg_"] {
                     fixed.insert(format!("{p}{}", c.name));
                 }
             }
         }
-        for name in e.indexes.keys() {
+        for name in index_names(e) {
             fixed.insert(format!("force_index_{}", index_method(name)));
         }
         let module = if RUST_RESERVED.contains(&e.name.as_str()) || matches!(e.name.as_str(), "orm" | "std" | "core" | "alloc") {
@@ -258,6 +294,13 @@ impl<'m> Model<'m> {
         };
         Model { e, typ: pascal(&e.name), module, fixed, methods: BTreeMap::new(), getters: BTreeMap::new(), order_fn: BTreeMap::new() }
     }
+}
+
+/// index hint를 받는 index와 unique key의 이름, 이름 순서.
+fn index_names(e: &Entity) -> Vec<&str> {
+    let mut names: Vec<&str> = e.indexes.iter().chain(&e.uniques).map(|k| k.name.as_str()).collect();
+    names.sort_unstable();
+    names
 }
 
 fn function_arg(e: &Expr) -> bool {
@@ -367,7 +410,7 @@ impl<'m> Gen<'m> {
             self.fail(r, format!("{typ}: {name:?} is not a snake_case output name"));
             return false;
         }
-        if self.models[gi].e.column(name).is_some() {
+        if self.models[gi].e.field(name).is_some() {
             self.fail(r, format!("{typ}: {name} is a column name"));
             return false;
         }
@@ -395,10 +438,8 @@ impl<'m> Gen<'m> {
         let e = self.models[gi].e;
         if args.len() == keys.len() + 1 {
             let k = &keys[0];
-            let ok = keys.len() == 1
-                && e.column(&k.column).map(|c| c.function_column()).unwrap_or(false)
-                && k.compare.is_empty()
-                && !matches!(k.op, "between" | "lk" | "lb");
+            let ok =
+                keys.len() == 1 && e.field(&k.column).map(function_column).unwrap_or(false) && k.compare.is_empty() && !matches!(k.op, "between" | "lk" | "lb");
             if !ok {
                 self.fail(r, format!("{typ}::{name} takes {} values, not {}", keys.len(), args.len()));
                 return None;
@@ -413,12 +454,8 @@ impl<'m> Gen<'m> {
         for (i, k) in keys.iter().enumerate() {
             let p = format!("v{i}");
             match k.op {
-                "fulltext" | "fulltext_boolean" => {
-                    params.push(format!("{p}: impl Into<String>"));
-                    call.push(format!("orm::core::Arg::Text({p}.into())"));
-                }
                 "tuple" | "ne_tuple" => {
-                    let cols: Vec<&Column> = k.columns.iter().filter_map(|c| e.column(c)).collect();
+                    let cols: Vec<&Field> = k.columns.iter().filter_map(|c| e.field(c)).collect();
                     let types: Vec<&str> = cols.iter().map(|c| base(c)).collect();
                     let vars: Vec<String> = (0..cols.len()).map(|j| format!("a{j}")).collect();
                     let conv: Vec<String> = (0..cols.len()).map(|j| format!("orm::Param::from(a{j})")).collect();
@@ -426,7 +463,7 @@ impl<'m> Gen<'m> {
                     call.push(format!("orm::core::Arg::Tuples({p}.into_iter().map(|({})| vec![{}]).collect())", vars.join(", "), conv.join(", ")));
                 }
                 _ => {
-                    let c = e.column(&k.column).expect("parsed column");
+                    let c = e.field(&k.column).expect("parsed column");
                     if !k.compare.is_empty() {
                         self.owners.insert(k.compare.clone());
                         params.push(format!("{p}: &impl super::{}", has_trait(&k.compare)));
@@ -529,7 +566,7 @@ impl<'m> Gen<'m> {
                 Err(err) => return self.fail(r, format!("{typ}::{name}: {err}")),
             };
             let code = format!(
-                "    /// Matches parent.{left} = {right}.\n    pub fn {name}(mut self) -> Self {{\n        self.__orm.set_match({left:?}, {right:?});\n        self\n    }}\n"
+                "    /// Adds the relation key component parent.{left} = {right}.\n    pub fn {name}(mut self) -> Self {{\n        self.__orm.add_match({left:?}, {right:?});\n        self\n    }}\n"
             );
             return self.add_method(gi, r, name, argc, code);
         }
@@ -634,10 +671,10 @@ impl<'m> Gen<'m> {
         let name = r.call.name.as_str();
         let argc = r.call.args.len();
         let gm = &self.models[gi];
-        let Some(c) = gm.e.columns.iter().find(|c| name == format!("order_by_{}_asc", c.name) || name == format!("order_by_{}_desc", c.name)) else {
+        let Some(c) = gm.e.fields.iter().find(|c| name == format!("order_by_{}_asc", c.name) || name == format!("order_by_{}_desc", c.name)) else {
             return false;
         };
-        if !c.function_column() {
+        if !function_column(c) {
             return true;
         }
         let typ = gm.typ.clone();
@@ -658,34 +695,39 @@ impl<'m> Gen<'m> {
         let typ = format!("super::{module}::{ctyp}");
         let g = if many {
             Getter {
-                result: format!("Option<&orm::Collection<{typ}>>"),
+                result: format!("orm::Result<Option<&orm::Collection<{typ}>>>"),
                 expr: format!("self.__orm.related_many::<{typ}>({key:?})"),
                 origin: format!("the {table} result {key}"),
             }
         } else {
-            Getter { result: format!("Option<&{typ}>"), expr: format!("self.__orm.related_one::<{typ}>({key:?})"), origin: format!("the {table} result {key}") }
+            Getter {
+                result: format!("orm::Result<Option<&{typ}>>"),
+                expr: format!("self.__orm.related_one::<{typ}>({key:?})"),
+                origin: format!("the {table} result {key}"),
+            }
         };
         self.add_getter(parent, r, &r.call.name.clone(), g);
     }
 }
 
-/// The generated source of one manifest and scan.
-pub fn generate(m: &Manifest, scan: &Scan, schema_file: &str) -> Result<String, String> {
+/// 한 document set과 scan의 generated source. `manifest_file`은 manifest text를 담은 file이다.
+pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<String, String> {
+    let m = &set.model;
     let mut errors = Vec::new();
-    for e in m.entities() {
-        for c in &e.columns {
+    for e in &m.entities {
+        for c in &e.fields {
             if let Err(err) = check_column_name(&c.name) {
                 errors.push(format!("{}.{}: {err}", e.name, c.name));
             }
         }
-        if e.name == "schema" || e.name == "schema_hash" {
+        if e.name == "schema" || e.name == "manifest_hash" {
             errors.push(format!("{}: the entity name collides with a generated item", e.name));
         }
     }
-    let mut g = Gen { m, models: m.entities().map(Model::new).collect(), by_type: HashMap::new(), owners: BTreeSet::new(), errors };
+    let mut g = Gen { m, models: m.entities.iter().map(Model::new).collect(), by_type: HashMap::new(), owners: BTreeSet::new(), errors };
     for (i, gm) in g.models.iter().enumerate() {
         g.by_type.insert(gm.typ.clone(), i);
-        for c in &gm.e.columns {
+        for c in &gm.e.fields {
             if gm.fixed.contains(&c.name) {
                 g.errors.push(format!("{}.{}: the condition method {} is also a fixed method of {}", gm.e.name, c.name, c.name, gm.typ));
             }
@@ -767,16 +809,19 @@ pub fn generate(m: &Manifest, scan: &Scan, schema_file: &str) -> Result<String, 
         g.errors.dedup();
         return Err(g.errors.join("\n"));
     }
-    Ok(emit(&g, schema_file))
+    Ok(emit(&g, &set.manifest_hash, manifest_file))
 }
 
-fn emit(g: &Gen<'_>, schema_file: &str) -> String {
+fn emit(g: &Gen<'_>, manifest_hash: &str, manifest_file: &str) -> String {
     let mut b = String::new();
     b.push_str("// Code generated by orm-build; DO NOT EDIT.\n\n");
-    let _ = writeln!(b, "/// The hash of the schema the models were generated from.\npub const SCHEMA_HASH: &str = {:?};\n", g.m.schema_hash);
+    let _ = writeln!(b, "/// The manifestHash of the document set the models were generated from.\npub const MANIFEST_HASH: &str = {manifest_hash:?};\n");
     let _ = writeln!(
         b,
-        "/// The schema the models were generated from.\npub static SCHEMA: orm::Schema = orm::Schema::new(include_bytes!({schema_file:?}), SCHEMA_HASH);\n"
+        "/// The manifest text of the document set the models were generated from.\npub static SCHEMA: orm::Schema = orm::Schema::new(include_str!({manifest_file:?}), MANIFEST_HASH);\n"
+    );
+    b.push_str(
+        "/// Connects to the database selected by the DSN URI and registers the set of these models on the connection.\npub async fn connect(dsn: &str, pool_size: u32, cfg: orm::Config) -> orm::Result<orm::Db> {\n    orm::Db::connect_schema(dsn, &SCHEMA, pool_size, cfg).await\n}\n\n",
     );
     for gm in &g.models {
         let _ = writeln!(b, "pub use {}::{};", gm.module, gm.typ);
@@ -785,7 +830,7 @@ fn emit(g: &Gen<'_>, schema_file: &str) -> String {
         let tr = has_trait(c);
         let _ = writeln!(b, "\n/// A model with the column {c}.\npub trait {tr}: orm::Model {{}}");
         for gm in &g.models {
-            if gm.e.column(c).is_some() {
+            if gm.e.field(c).is_some() {
                 let _ = writeln!(b, "impl {tr} for {} {{}}", gm.typ);
             }
         }
@@ -804,7 +849,7 @@ fn model_source(gm: &Model<'_>) -> String {
     let (e, t) = (gm.e, gm.typ.as_str());
     let mut b = String::new();
     let _ = write!(b, "/// A {} model or row.\n#[derive(Clone)]\npub struct {t} {{\n    __orm: orm::Core,\n", e.name);
-    for c in &e.columns {
+    for c in &e.fields {
         let _ = writeln!(b, "    {}: {},", ident(&c.name), field(c));
     }
     b.push_str("}\n\n");
@@ -818,7 +863,7 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("    fn core(&self) -> &orm::Core {\n        &self.__orm\n    }\n\n");
     b.push_str("    fn core_mut(&mut self) -> &mut orm::Core {\n        &mut self.__orm\n    }\n\n");
     let _ = write!(b, "    fn from_core(core: orm::Core) -> Self {{\n        {t} {{\n            __orm: core,\n");
-    for c in &e.columns {
+    for c in &e.fields {
         let init = if c.nullable {
             "None"
         } else if base(c) == ORDERED {
@@ -831,9 +876,12 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("        }\n    }\n\n");
     b.push_str("    fn into_core(self) -> orm::Core {\n        self.__orm\n    }\n\n");
     b.push_str("    #[allow(unused_mut)]\n    fn assign(&mut self, name: &str, mut v: orm::Val) -> orm::Result<bool> {\n        match name {\n");
-    for c in &e.columns {
+    for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));
-        let conversion = if c.typ == "decimal" { format!("orm::decimal::decode(v, {}, {})?", c.precision, c.scale) } else { convert(bt).to_owned() };
+        let conversion = match c.ty {
+            Type::Decimal(precision, scale) if c.codec.is_empty() => format!("orm::decimal::decode(v, {precision}, {scale})?"),
+            _ => convert(bt).to_owned(),
+        };
         if field(c) != bt {
             let _ = writeln!(b, "            {:?} => self.{id} = if v.is_null() {{ None }} else {{ Some({conversion}) }},", c.name);
         } else {
@@ -842,7 +890,7 @@ fn model_source(gm: &Model<'_>) -> String {
     }
     b.push_str("            _ => return Ok(false),\n        }\n        self.__orm.mark_field_ready(name);\n        Ok(true)\n    }\n\n");
     b.push_str("    fn value(&self, name: &str) -> Option<orm::Val> {\n        if !self.__orm.field_ready(name) { return None; }\n        Some(match name {\n");
-    for c in &e.columns {
+    for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));
         if field(c) != bt {
             let x = if copy_type(bt) { "*x" } else { "x" };
@@ -866,10 +914,10 @@ fn model_source(gm: &Model<'_>) -> String {
         "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::raw_json(orm::model::to_json(self)).map_err(orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
     );
     b.push_str(&FIXED_CODE.replacen("impl T {", &format!("impl {t} {{"), 1));
-    for c in &e.columns {
+    for c in &e.fields {
         let (bt, fd, id, col) = (base(c), field(c), ident(&c.name), c.name.as_str());
         b.push('\n');
-        if is_styled_value(c) {
+        if c.styled_value() {
             let value = if c.nullable {
                 format!("match &self.{id} {{ None => orm::StyledValue::SqlNull, Some(value) => orm::StyledValue::Value(value.clone()) }}")
             } else {
@@ -897,7 +945,7 @@ fn model_source(gm: &Model<'_>) -> String {
         } else {
             let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         }
-        if is_styled_value(c) {
+        if c.styled_value() {
             let store = if bt == ORDERED { "set_ordered" } else { "set_json" };
             let sql_null = if c.nullable {
                 format!("self.__orm.set({col:?}, orm::Param::Null);\n                self.{id} = None;")
@@ -909,9 +957,7 @@ fn model_source(gm: &Model<'_>) -> String {
                 b,
                 "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: orm::StyledValue<{bt}>) -> orm::Result<Self> {{\n        match v {{\n            orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
             );
-        } else if c.typ == "decimal" {
-            let precision = c.precision;
-            let scale = c.scale;
+        } else if let Type::Decimal(precision, scale) = c.ty {
             if c.nullable {
                 let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<String>) -> orm::Result<Self> {{\n        let value = v.into_nullable();\n        let value = match value {{ Some(text) => Some(orm::decimal::normalize(&text, {precision}, {scale})?), None => None }};\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
             } else {
@@ -954,14 +1000,14 @@ fn model_source(gm: &Model<'_>) -> String {
                 );
             }
         }
-        if c.numeric() {
+        if numeric(c) {
             let _ = writeln!(b, "\n    /// Adds n to {col}.\n    pub fn plus_{col}(mut self, n: {bt}) -> Self {{\n        self.__orm.plus({col:?}, n.into());\n        self\n    }}");
             let _ = writeln!(b, "\n    /// Subtracts n from {col}.\n    pub fn minus_{col}(mut self, n: {bt}) -> Self {{\n        self.__orm.minus({col:?}, n.into());\n        self\n    }}");
             let _ = writeln!(b, "\n    /// Selects the sum of {col} for get_sum.\n    pub fn sum_{col}(mut self) -> Self {{\n        self.__orm.aggregate(\"sum\", {col:?});\n        self\n    }}");
             let _ = writeln!(b, "\n    /// Selects the average of {col} for get_avg.\n    pub fn avg_{col}(mut self) -> Self {{\n        self.__orm.aggregate(\"avg\", {col:?});\n        self\n    }}");
         }
     }
-    for name in e.indexes.keys() {
+    for name in index_names(e) {
         let _ = writeln!(
             b,
             "\n    /// Adds the index hint {name}.\n    pub fn force_index_{}(mut self) -> Self {{\n        self.__orm.force_index({name:?});\n        self\n    }}",

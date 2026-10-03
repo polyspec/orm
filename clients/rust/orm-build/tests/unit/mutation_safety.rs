@@ -2,8 +2,7 @@ use super::*;
 
 #[tokio::test]
 async fn borrowed_bind_validation_stops_at_its_count_budget() {
-    let began = std::time::Instant::now();
-    eprintln!("running borrowed_bind_budget");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let value = P::I(1);
         let error = tool_db::validate_param_refs(std::iter::repeat(&value), "postgres").unwrap_err();
@@ -11,13 +10,11 @@ async fn borrowed_bind_validation_stops_at_its_count_budget() {
     })
     .await
     .expect("borrowed bind deadline");
-    eprintln!("passed borrowed_bind_budget {:?}", began.elapsed());
 }
 
 #[tokio::test]
 async fn absent_trigger_privilege_is_not_proof_of_absent_triggers() {
-    let began = std::time::Instant::now();
-    eprintln!("running mutation_trigger_visibility");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let mut result = GridQueryResult { columns: vec![], rows: vec![] };
         assert!(require_trigger_privilege(&result).unwrap_err().starts_with("ROW_MUTATION_UNSUPPORTED"));
@@ -28,5 +25,4 @@ async fn absent_trigger_privilege_is_not_proof_of_absent_triggers() {
     })
     .await
     .expect("trigger visibility deadline");
-    eprintln!("passed mutation_trigger_visibility {:?}", began.elapsed());
 }

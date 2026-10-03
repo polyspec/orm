@@ -1,64 +1,52 @@
-// The client clock of the `now` bind slot, on SQLite, MySQL and PostgreSQL.
-// Each insert of clock_event fills created_ts from the client clock, so its
-// stored fraction holds the microseconds of the wall clock. A clock with
-// millisecond resolution stores every value as `.mmm000`. ORM_TEST_MYSQL_DSN
-// and ORM_TEST_POSTGRES_DSN name test databases; the test fails when either
-// is unset.
+// The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL, with the
+// fixtures contracts/fixtures/clock.dbs and clock_mark.dbs. An insert
+// that omits created_ts (default now) takes the database clock on MySQL and
+// PostgreSQL and binds the client clock of the `now` slot on SQLite, whose
+// database clock has milliseconds only; either way the stored fraction holds
+// microseconds. A clock with millisecond resolution stores every value as
+// `.mmm000`. Each case runs on a case database of its own on the servers of
+// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, or a new SQLite file
+// (case-database.mjs); the test fails when either DSN is unset.
 //
 // Usage: node clients/typescript/tests/clock.mjs [case ...] (after npm run typescript:build)
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
-import { CORE, Db, Model, orm, registerSchema } from '../dist/index.js';
+import { CORE, Db, Model, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
+import { runCase } from '../../../tests/testcase.mjs';
+import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
-const schemaPath = new URL('../../../contracts/fixtures/clock_schema.json', import.meta.url).pathname;
-const schemaJson = await readFile(schemaPath, 'utf8');
-const manifest = JSON.parse(schemaJson);
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-clock-'));
+const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
+const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbs', import.meta.url), 'utf8');
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 
-/** Registers the entities of a manifest as the generated model files do. */
-function schemaSet(m) {
-  const entities = new Map(Object.values(m.entities).map(e => [e.name, {
-    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [],
-    columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable ?? false, styles: c.styles }])),
-  }]));
-  const set = { hash: m.schema_hash, entities };
-  registerSchema(set);
-  return set;
-}
-const set = schemaSet(manifest);
-class ClockEvent extends Model {}
-ClockEvent.entity = { schema: set.entities.get('clock_event'), set, create: core => new ClockEvent(core) };
-const markSchemaPath = new URL('../../../contracts/fixtures/clock_mark_schema.json', import.meta.url).pathname;
-const markSchemaJson = await readFile(markSchemaPath, 'utf8');
-const markSet = schemaSet(JSON.parse(markSchemaJson));
-class ClockMark extends Model {}
-ClockMark.entity = { schema: markSet.entities.get('clock_mark'), set: markSet, create: core => new ClockMark(core) };
-
-/** Drops the test table with the database driver; SQLite uses a new file per run. */
-async function dropTable(driver, dsn) {
-  const url = new URL(dsn);
-  if (driver === 'mysql') {
-    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-    try { await conn.query('DROP TABLE IF EXISTS clock_event'); await conn.query('DROP TABLE IF EXISTS clock_mark'); } finally { await conn.end(); }
-  } else if (driver === 'postgres') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
-    await client.connect();
-    try { await client.query('DROP TABLE IF EXISTS clock_event'); await client.query('DROP TABLE IF EXISTS clock_mark'); } finally { await client.end(); }
-  } else {
-    await rm(url.pathname, { force: true });
+/** Registers the model of a document set as generated code does and returns a model class per entity. */
+function models(text) {
+  const parsed = parseDbspec(text, {});
+  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
+  const { manifest } = dbspecManifest([parsed.document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
+  const out = {};
+  for (const entity of model.entities.values()) {
+    const cls = class extends Model {};
+    cls.entity = { model, entity, create: core => new cls(core) };
+    out[entity.name] = cls;
   }
+  return out;
 }
+const { clock_event: ClockEvent } = models(clockText);
+const { clock_mark: ClockMark } = models(markText);
 
 /**
  * Sixteen inserts in separate statements store created_ts with six fraction
@@ -66,9 +54,9 @@ async function dropTable(driver, dsn) {
  * whose last three digits are not 000; a millisecond clock never does.
  */
 async function clockMicroseconds(dsn) {
-  const db = await Db.connect(`${dsn}${dsn.includes('?') ? '&' : '?'}timezone=%2B00:00`, schemaPath);
+  const db = await Db.connect(dsn);
   try {
-    await db.utils().schema().install(schemaJson);
+    await db.utils().schema().install(schemaOf(clockText));
     const before = Date.now();
     for (let i = 0; i < 16; i++) {
       const event = new ClockEvent().connect(db);
@@ -94,12 +82,11 @@ async function readMarks(dsn, column) {
   const url = new URL(dsn);
   const sql = `SELECT ${column} AS v FROM clock_mark ORDER BY seq`;
   if (url.protocol === 'mysql:') {
-    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
+    const conn = await mysqlConnection(dsn);
     try { return (await conn.query(sql))[0].map(row => row.v); } finally { await conn.end(); }
   }
   if (url.protocol === 'postgres:') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
+    const client = postgresClient(dsn);
     await client.connect();
     try { return (await client.query(sql)).rows.map(row => row.v); } finally { await client.end(); }
   }
@@ -108,8 +95,8 @@ async function readMarks(dsn, column) {
 }
 
 async function markDb(dsn) {
-  const db = await Db.connect(`${dsn}${dsn.includes('?') ? '&' : '?'}timezone=%2B00:00`, markSchemaPath);
-  await db.utils().schema().install(markSchemaJson);
+  const db = await Db.connect(dsn);
+  await db.utils().schema().install(schemaOf(markText));
   return db;
 }
 
@@ -170,43 +157,20 @@ const cases = {
   clock_now_condition: clockNowCondition,
 };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-const targets = { sqlite: `sqlite://${join(work, 'clock.sqlite')}` };
-for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {
-  const value = process.env[env];
-  if (!value) throw new Error(`${env} is required; database tests never skip`);
-  targets[driver] = value;
+for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);
 }
-try {
-  for (const name of selected) {
-    const run = cases[name];
-    if (run === undefined) throw new Error(`unknown case ${name}`);
-    const caseBefore = failures;
-    for (const [driver, dsn] of Object.entries(targets)) {
-      const before = failures;
-      current = `${name}/${driver}`;
-      const start = performance.now();
-      console.log(`RUN  ${current}`);
-      let timer;
-      try {
-        await dropTable(driver, dsn);
-        const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timeout after ${CASE_DEADLINE_MS} ms`)), CASE_DEADLINE_MS); });
-        await Promise.race([run(dsn), deadline]);
-      } catch (error) {
-        failures++;
-        console.error(`FAIL ${current}: ${error?.stack ?? error}`);
-      } finally {
-        clearTimeout(timer);
-        await dropTable(driver, dsn);
-      }
-      console.log(`${failures === before ? 'ok  ' : 'FAIL'} ${current} ${((performance.now() - start) / 1000).toFixed(3)}s`);
-    }
-    if (failures === caseBefore) console.log(`CASE ${name} PASS`);
+for (const name of selected) {
+  const run = cases[name];
+  if (run === undefined) throw new Error(`unknown case ${name}`);
+  for (const driver of ['sqlite', 'mysql', 'postgres']) {
+    const before = failures;
+    current = `${name}/${driver}`;
+    const passed = await runCase(`clock/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+      await withCaseDatabase(driver, step, database => run(database.dsn));
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
-} finally {
-  await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript clock test: ${failures} failures`);
-  process.exit(1);
-}
-console.log(`typescript clock test: ${selected.length} cases on ${Object.keys(targets).length} databases passed`);
+if (failures > 0) process.exitCode = 1;

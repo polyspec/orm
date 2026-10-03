@@ -1,6 +1,6 @@
-# orm 0.0.1
+# orm 0.0.2
 
-**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 모델 query grammar다. 버전은 0.0.1이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 있다.
+**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 모델 query grammar다. 버전은 0.0.2이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 있다.
 
 네 클라이언트는 같은 query 구조에서 같은 SQL, bind, 결과를 생성한다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사한다.
 
@@ -26,9 +26,9 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 
 ## 동작 구조
 
-- **Schema**: 직접 작성한 Mermaid `erDiagram`(`schema/*.mmd`)를 `ormgen build`로 `schema.json` manifest로 변환한다. manifest에는 `schema_hash`가 포함된다.
+- **Schema**: 직접 작성한 dbspec document 집합(`schema/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
 - **Models**: 각 언어는 자기 빌드 도구로 모델을 생성한다. Go는 `go generate`, PHP는 `vendor/bin/orm-gen`, TypeScript는 `npm run build` 안의 `orm-gen` npm bin, Rust는 `build.rs`의 `orm-build` crate를 사용한다.
-- **Runtime**: 클라이언트 라이브러리가 각 문장 구조를 `schema.json`으로 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 그 옆에서 실행되는 서비스, 데몬, 확장은 없다.
+- **Runtime**: 클라이언트 라이브러리가 담긴 manifest로 만든 runtime model로 각 문장 구조를 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 그 옆에서 실행되는 서비스, 데몬, 확장은 없다.
 - **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+에서 같은 request와 result 규칙을 사용한다.
 - **Equality**: `tests/conformance`는 네 클라이언트에서 같은 벡터를 실행하고 SQL, bind, 결과를 비교한다.
 
@@ -37,9 +37,8 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 ```sh
 make test-servers
 . .runtime/servers/env
-go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 (cd clients/go/model && go generate)
-php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 (cd clients/typescript && npm run build)
 (cd clients/rust && cargo build --release)
 go test ./...
@@ -50,7 +49,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"
 
 ## 도구
 
-`ormgen build | gen --lang go | import --dsn | validate --dsn | ddl --dialect | diff | errors --lang`, PHP `vendor/bin/orm-gen gen | build | import | validate | ddl | diff | migrate`, TypeScript `orm-gen`, Rust `orm-build`, `tests/conformance/check run|compare|record`.
+Go `orm-gen gen --lang go | errors --lang`, PHP `vendor/bin/orm-gen gen`, TypeScript `orm-gen gen`, Rust `orm-build`, `tests/conformance/check run|compare|record`.
 
 ## 문서
 

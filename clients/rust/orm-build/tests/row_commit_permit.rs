@@ -3,18 +3,18 @@ use orm_build::{
     tool_db::{self, P},
 };
 use std::sync::{
-    Arc, Mutex,
     atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc, Mutex,
 };
 
 #[tokio::test]
 async fn rejected_commit_permits_rollback_all_native_mutations() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-commit-permit-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         for dialect in ["sqlite", "mysql", "postgres"] {
-            let started = std::time::Instant::now();
-            eprintln!("running commit_permit:{dialect}");
+            orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -42,12 +42,10 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
                 counted.fetch_add(1, Ordering::SeqCst);
                 Err("fixture durable intent rejected".into())
             });
-            assert!(
-                catalog
-                    .update_row(&baseline, &[("missing".into(), P::I(11))], Arc::new(AtomicBool::new(false)), publish.clone(), reject.clone())
-                    .await
-                    .is_err()
-            );
+            assert!(catalog
+                .update_row(&baseline, &[("missing".into(), P::I(11))], Arc::new(AtomicBool::new(false)), publish.clone(), reject.clone())
+                .await
+                .is_err());
             assert_eq!(calls.load(Ordering::SeqCst), 0, "invalid changes cannot reach commit permission");
             for operation in 0..3 {
                 phases.lock().unwrap().clear();
@@ -78,7 +76,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             catalog.close().await;
             drop(seed);
             db.close().await;
-            eprintln!("passed commit_permit:{dialect} {:?}", started.elapsed());
+            orm_testcase::step(format_args!("{dialect} passed"));
         }
         std::fs::remove_file(path).unwrap();
     })

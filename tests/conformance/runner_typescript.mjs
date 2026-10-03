@@ -2,23 +2,38 @@
 // database and prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}
 // with the same chains, result shapes, and masking as runner_go.
 //
-// Usage: node runner_typescript.mjs --dsn URI <schema.json>
+// Usage: node runner_typescript.mjs --dsn URI [--vector NAME]...
+// Each --vector selects one vector by name; without one every vector runs.
+// The models embed the manifest of schema/bench.dbs.
 import {
-  AesKeyring, Author, CompositeAccount, Db, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, orm,
+  AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, connect, orm,
 } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
-const args = process.argv.slice(2);
-let dsn = '';
-const rest = [];
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--dsn') dsn = args[++i];
-  else rest.push(args[i]);
+const usage = 'usage: runner_typescript.mjs --dsn URI [--vector NAME]...';
+
+/** Reads --dsn URI once and --vector NAME any number of times, each name once. */
+function parseArgs(args) {
+  let dsn = null;
+  const vectors = [];
+  for (let i = 0; i < args.length; i += 2) {
+    const [flag, value] = [args[i], args[i + 1]];
+    if (value === undefined || value === '') throw new Error(`${flag} requires a nonempty value; ${usage}`);
+    if (flag === '--dsn' && dsn === null) dsn = value;
+    else if (flag === '--vector' && !vectors.includes(value)) vectors.push(value);
+    else if (flag === '--vector') throw new Error(`vector ${value} is selected twice`);
+    else throw new Error(`unexpected argument ${flag}; ${usage}`);
+  }
+  if (dsn === null) throw new Error(`--dsn is required; ${usage}`);
+  return { dsn, vectors };
 }
-if (rest.length !== 1 || !dsn) {
-  console.error('usage: runner_typescript.mjs --dsn URI <schema.json>');
+
+let parsed;
+try { parsed = parseArgs(process.argv.slice(2)); } catch (error) {
+  console.error(error.message);
   process.exit(2);
 }
+const { dsn, vectors: selected } = parsed;
 
 let log = [];
 let maskSeqs = new Set();
@@ -98,14 +113,17 @@ const picks = (rows, ...names) => rows.values().map(m => pick(m, ...names));
 const keysOf = rows => rows.keys();
 
 async function main() {
-  const db = await Db.connect(dsn, rest[0], {
+  const db = await connect(dsn, {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },
   });
   const out = {};
   const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive']);
+  const declared = new Set();
   const run = async (name, fn) => {
+    declared.add(name);
+    if (selected.length > 0 && !selected.includes(name)) return;
     log = []; maskSeqs = new Set(); maskTs = new Set();
     let res;
     res = resultValue(await executeVector(name, fn, writeVectors.has(name) ? task => db.transaction(task, { retry: 0 }) : null));
@@ -397,6 +415,8 @@ async function main() {
   });
 
   await db.close();
+  const unknown = selected.filter(name => !declared.has(name));
+  if (unknown.length > 0) throw new Error(`unknown vector ${unknown.join(', ')}`);
   process.stdout.write(JSON.stringify(out, null, 1) + '\n');
 }
 

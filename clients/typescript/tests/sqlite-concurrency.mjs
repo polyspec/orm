@@ -10,9 +10,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Db, OrmError, Service } from '../dist/index.js';
+import { OrmError, SCHEMA, Service, connect } from '../dist/index.js';
+import { PROCESS, runCase } from '../../../tests/testcase.mjs';
 
-const schemaPath = fileURLToPath(new URL('../../../schema/schema.json', import.meta.url));
+const benchPath = fileURLToPath(new URL('../../../schema/bench.dbs', import.meta.url));
 
 /** Runs count transactions that read the service count and then insert one service. */
 async function writeServices(db, name, count) {
@@ -26,7 +27,7 @@ async function writeServices(db, name, count) {
 
 if (process.argv[2] === 'writer') {
   const [, , , dsn, name, count] = process.argv;
-  const db = await Db.connect(dsn, schemaPath);
+  const db = await connect(dsn);
   try {
     await writeServices(db, name, Number(count));
   } catch (error) {
@@ -37,7 +38,7 @@ if (process.argv[2] === 'writer') {
 }
 
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-sqlite-lock-'));
-const manifestJson = await readFile(schemaPath, 'utf8');
+const bench = await readFile(benchPath, 'utf8');
 let failures = 0;
 let current = '';
 function check(cond, message) {
@@ -47,13 +48,13 @@ function check(cond, message) {
 /** A new SQLite file with the schema installed and its DSN. */
 async function database(name) {
   const dsn = `sqlite://${join(work, `${name}.sqlite`)}`;
-  const db = await Db.connect(dsn, schemaPath);
-  try { await db.utils().schema().install(manifestJson); } finally { await db.close(); }
+  const db = await connect(dsn);
+  try { await db.utils().schema().install(SCHEMA); } finally { await db.close(); }
   return dsn;
 }
 
 async function count(dsn) {
-  const db = await Db.connect(dsn, schemaPath);
+  const db = await connect(dsn);
   try { return await new Service().connect(db).getCount(); } finally { await db.close(); }
 }
 
@@ -78,8 +79,8 @@ const tests = {
   },
   async readsDuringWrite() {
     const dsn = await database('reads');
-    const writer = await Db.connect(dsn, schemaPath);
-    const reader = await Db.connect(dsn, schemaPath);
+    const writer = await connect(dsn);
+    const reader = await connect(dsn);
     try {
       await writer.transaction(async () => {
         await new Service().setName('pending').create();
@@ -97,8 +98,8 @@ const tests = {
   },
   async lockWaitExpires() {
     const dsn = await database('expiry');
-    const holder = await Db.connect(dsn, schemaPath);
-    const waiter = await Db.connect(`${dsn}?_pragma=busy_timeout(200)`, schemaPath);
+    const holder = await connect(dsn);
+    const waiter = await connect(`${dsn}?_pragma=busy_timeout(200)`);
     try {
       await holder.transaction(async () => {
         await new Service().setName('holder').create();
@@ -116,20 +117,19 @@ const tests = {
   },
 };
 
+// 각 case의 기한은 PROCESS다. 가장 큰 case가 writer process 6개를 띄우고 각각 transaction
+// 40개를 commit한다.
 try {
   for (const [name, test] of Object.entries(tests)) {
     current = name;
     const before = failures;
-    const started = performance.now();
-    console.log(`RUN  ${name}`);
-    try { await test(); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${failures === before ? 'PASS' : 'FAIL'} ${name} (${((performance.now() - started) / 1000).toFixed(2)}s)`);
+    const passed = await runCase(`sqlite-concurrency/${name}`, PROCESS, async () => {
+      await test();
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript sqlite concurrency: ${failures} failures`);
-  process.exit(1);
-}
-console.log('typescript sqlite concurrency passed');
+if (failures > 0) process.exitCode = 1;

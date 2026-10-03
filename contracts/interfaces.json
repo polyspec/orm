@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "schema": "schema/schema.json",
+  "schema": "schema/bench.dbs",
   "languages": {
     "go": {
       "roots": [
@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:adf4fd00921fd6c53859b8b06fd2a14192cd6e222fa5779bec7d2b91ffc24290",
-    "php": "sha256:450432eecf7830d5bdd20de8e18afacf7fbf83a2fa6f3f63187574db45ca19a4",
-    "rust": "sha256:3391e7315e1c9163aca2f3dfadeaa1f34ceeeac43ec21bcd5365119357129fc5",
-    "typescript": "sha256:88ea469fea38a92275166a8f3fd33506f3072b8d17b994388edaa7ba3f3f93ef"
+    "go": "sha256:066701109e2980e7ef9d4b031fdb9c2cd473b65a834c72e86bc84cc871554ac6",
+    "php": "sha256:dec4442582de4ee5c3fdafe4b907d79152bf689a0e070f3c68bfd4db07208f41",
+    "rust": "sha256:4ca54b91101a4433b9231dd55904ebacef70caba3f0149873c12b3425261a1de",
+    "typescript": "sha256:6b19d92608100af6c99bebb50cee949072e23b5f626bcb054740b50b91c31888"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -211,13 +211,14 @@
       },
       "methods": [
         "connect",
+        "connectSchema",
         "transaction",
         "utils",
         "close",
         "stats"
       ],
-      "ownership": "Owns the pool, the planners of registered schemas, and the plan and statement caches.",
-      "ownership_ko": "pool, 등록된 schema의 planner, plan cache, statement cache를 가진다."
+      "ownership": "Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches.",
+      "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다."
     },
     {
       "id": "TransactionFlow",
@@ -292,8 +293,8 @@
         "installed",
         "empty"
       ],
-      "ownership": "Installs a manifest with the client DDL renderer.",
-      "ownership_ko": "client DDL 렌더러로 manifest를 설치한다."
+      "ownership": "Installs the set of a generated schema with the client DDL renderer and registers it on the connection.",
+      "ownership_ko": "client DDL 렌더러로 generated schema의 set을 설치하고 연결에 등록한다."
     },
     {
       "id": "AesUtils",
@@ -340,8 +341,8 @@
       "methods": [
         "generate"
       ],
-      "ownership": "One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call.",
-      "ownership_ko": "언어마다 하나다. schema.json을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다."
+      "ownership": "One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call.",
+      "ownership_ko": "언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다."
     },
     {
       "id": "Error",
@@ -353,6 +354,27 @@
       "methods": [],
       "ownership": "A stable code from docs/errors.yaml.",
       "ownership_ko": "docs/errors.yaml의 안정적인 code다."
+    },
+    {
+      "id": "Dbspec",
+      "fields": {},
+      "methods": [
+        "readFile",
+        "readBytes",
+        "parse",
+        "emit",
+        "manifest",
+        "render"
+      ],
+      "ownership": "Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md).",
+      "ownership_ko": "signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md)."
+    },
+    {
+      "id": "DbspecDocument",
+      "fields": {},
+      "methods": [],
+      "ownership": "One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text.",
+      "ownership_ko": "parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다."
     }
   ],
   "rules": [
@@ -1025,11 +1047,11 @@
         "SCHEMA_HASH_MISMATCH",
         "driver error"
       ],
-      "state": "Opens the pool selected by the DSN URI scheme",
+      "state": "Opens the pool selected by the DSN URI scheme without any registered schema set",
       "native": {
         "go": {
-          "symbol": "clients/go/model/orm.go::Connect",
-          "signature": "func(dsn, schemaPath string, cfg orm.Config) (*orm.DB, error)"
+          "symbol": "clients/go/orm/db.go::Connect",
+          "signature": "func(dsn string, cfg Config) (*DB, error)"
         },
         "php": {
           "symbol": "clients/php/src/Orm.php::Orm\\Orm::connect",
@@ -1041,7 +1063,38 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.connect",
-          "signature": "public static async connect(dsn: string, schemaPath: string, options: ConnectOptions = {}): Promise<Db>"
+          "signature": "public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db>"
+        }
+      }
+    },
+    {
+      "id": "Db.connectSchema",
+      "for": "once",
+      "inputs": [
+        "SchemaConnection"
+      ],
+      "output": "Db",
+      "errors": [
+        "CONFIG",
+        "driver error"
+      ],
+      "state": "Opens the pool selected by the DSN URI scheme and registers the set of a generated schema on it; the connect helper of generated code calls it, and a manifest text that does not hash to its manifestHash returns CONFIG before the connection opens",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/db.go::ConnectSchema",
+          "signature": "func(dsn string, s *Schema, cfg Config) (*DB, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Orm.php::Orm\\Orm::connectSchema",
+          "signature": "public static function connectSchema(string $dsn, Orm\\Schema $schema, Orm\\Config $config): Orm\\Db"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/db.rs::Db::connect_schema",
+          "signature": "pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.connectSchema",
+          "signature": "public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db>"
         }
       }
     },
@@ -1065,7 +1118,7 @@
         },
         "php": {
           "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
-          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3): mixed"
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, string|int|null $operation=null): mixed"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/tx.rs::Db::transaction",
@@ -1164,7 +1217,7 @@
       "id": "SchemaUtils.install",
       "for": "once",
       "inputs": [
-        "ManifestJson"
+        "GeneratedSchema"
       ],
       "output": "Success",
       "errors": [
@@ -1172,86 +1225,56 @@
         "SCHEMA_INVALID",
         "driver error"
       ],
-      "state": "Creates the missing tables of the manifest and registers the manifest with the connection",
+      "state": "Creates the tables of the document set of a generated schema when none of them exists, changes nothing when all exist, and registers the set on the connection; a manifest text that does not hash to its manifestHash returns CONFIG before any statement",
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",
-          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) error"
+          "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
           "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
-          "signature": "public function install(string $manifestJson): void"
+          "signature": "public function install(Orm\\Schema $schema): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
-          "signature": "pub async fn install(&self, manifest_json: &[u8]) -> Result<()>"
+          "signature": "pub async fn install(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
-          "signature": "public async install(manifestJson: string): Promise<void>"
+          "signature": "public async install(schema: Schema): Promise<void>"
         }
       }
     },
     {
-      "id": "SchemaUtils.register",
+      "id": "SchemaUtils.addTablesAndColumns",
       "for": "once",
       "inputs": [
-        "ManifestJson"
+        "GeneratedSchema"
       ],
-      "output": "Success",
-      "errors": [
-        "CONFIG"
-      ],
-      "state": "Registers an installed manifest with the connection without running a statement",
-      "native": {
-        "go": {
-          "symbol": "clients/go/orm/utils.go::SchemaUtils.Register",
-          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) error"
-        },
-        "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::register",
-          "signature": "public function register(string $manifestJson): void"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
-          "signature": "pub async fn register(&self, manifest_json: &[u8]) -> Result<()>"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.register",
-          "signature": "public async register(manifestJson: string): Promise<void>"
-        }
-      }
-    },
-    {
-      "id": "SchemaUtils.addColumns",
-      "for": "once",
-      "inputs": [
-        "ManifestJson"
-      ],
-      "output": "AddedColumns",
+      "output": "AddedTablesAndColumns",
       "errors": [
         "CONFIG",
+        "SCHEMA_INVALID",
         "SCHEMA_DIFFERS",
-        "CAPABILITY_UNSUPPORTED",
         "driver error"
       ],
-      "state": "Adds the missing nullable or defaulted columns of the existing tables of the manifest and replaces the audit triggers of each changed table",
+      "state": "Upgrades the installed document set of a generated schema by the tables the database lacks and the missing null or defaulted columns of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; leaves the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement",
       "native": {
         "go": {
-          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddColumns",
-          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) ([]string, error)"
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddTablesAndColumns",
+          "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addColumns",
-          "signature": "public function addColumns(string $manifestJson): array"
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addTablesAndColumns",
+          "signature": "public function addTablesAndColumns(Orm\\Schema $schema): array"
         },
         "rust": {
-          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_columns",
-          "signature": "pub async fn add_columns(&self, manifest_json: &[u8]) -> Result<Vec<String>>"
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
+          "signature": "pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>>"
         },
         "typescript": {
-          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addColumns",
-          "signature": "public async addColumns(manifestJson: string): Promise<string[]>"
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addTablesAndColumns",
+          "signature": "public async addTablesAndColumns(schema: Schema): Promise<string[]>"
         }
       }
     },
@@ -1340,6 +1363,174 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::AesUtils.rotate",
           "signature": "public async rotate(model: unknown, keyring: AesKeyring): Promise<number>"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.readFile",
+      "for": "once",
+      "inputs": [
+        "DbspecFilePath"
+      ],
+      "output": "DbspecReadResult",
+      "errors": [],
+      "state": "Reads the document file at the path and gives its bytes to Dbspec.readBytes with the path as name. A file that cannot be read is the read error of the platform",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/file.go::ReadFile",
+          "signature": "func(path string) (string, []Diagnostic, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readFile",
+          "signature": "public static function readFile(string $path): Orm\\Dbspec\\ReadResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_file",
+          "signature": "pub fn read_file(path: &Path) -> Result<String, ReadError>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/file.ts::readDbspecFile",
+          "signature": "export function readDbspecFile(path: string): DbspecReadResult"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.readBytes",
+      "for": "once",
+      "inputs": [
+        "DbspecFileBytes"
+      ],
+      "output": "DbspecBytesResult",
+      "errors": [],
+      "state": "Checks the bytes of a document file that the caller read, before any parse. Bytes that do not start with `dbspec ` return exactly one signature diagnostic at line 1, column 1 with the message `<name> is not a dbspec document` and no text; bytes that are not UTF-8 return exactly one encoding diagnostic at the line and column of the first invalid byte with the message `<name> is not valid UTF-8` and no text; otherwise the bytes as text and no diagnostic",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/file.go::ReadBytes",
+          "signature": "func(name string, b []byte) (string, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readBytes",
+          "signature": "public static function readBytes(string $name, string $bytes): Orm\\Dbspec\\ReadResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_bytes",
+          "signature": "pub fn read_bytes(name: &str, bytes: Vec<u8>) -> Result<String, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/file.ts::readDbspecBytes",
+          "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.parse",
+      "for": "once",
+      "inputs": [
+        "DbspecSource"
+      ],
+      "output": "DbspecParseResult",
+      "errors": [],
+      "state": "Parses and validates the text; documents maps each other document name of the declared set to its text for use lines. Returns the document when it has no diagnostic, otherwise every diagnostic in source order and no document",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::Parse",
+          "signature": "func(text string, documents map[string]string) (*Document, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::parse",
+          "signature": "public static function parse(string $text, array $documents): Orm\\Dbspec\\ParseResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::parse",
+          "signature": "pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Document, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::parseDbspec",
+          "signature": "export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.emit",
+      "for": "once",
+      "inputs": [
+        "DbspecDocument"
+      ],
+      "output": "DbspecText",
+      "errors": [],
+      "state": "Writes the canonical text of the document; emitting a parsed canonical text returns the same bytes",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::Emit",
+          "signature": "func(document *Document) string"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::emit",
+          "signature": "public static function emit(Orm\\Dbspec\\Document $document): string"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::emit",
+          "signature": "pub fn emit(document: &Document) -> String"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::emitDbspec",
+          "signature": "export function emitDbspec(document: DbspecDocument): string"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.manifest",
+      "for": "once",
+      "inputs": [
+        "DbspecDocumentSet"
+      ],
+      "output": "DbspecManifestResult",
+      "errors": [],
+      "state": "Orders the documents by name and returns their manifest text, schema text, manifestHash and schemaHash; a document name that repeats returns one name.duplicate diagnostic and no manifest",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::ManifestOf",
+          "signature": "func(documents []*Document) (*Manifest, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::manifest",
+          "signature": "public static function manifest(array $documents): Orm\\Dbspec\\ManifestResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::manifest",
+          "signature": "pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::dbspecManifest",
+          "signature": "export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult"
+        }
+      }
+    },
+    {
+      "id": "Dbspec.render",
+      "for": "once",
+      "inputs": [
+        "DbspecRenderSource"
+      ],
+      "output": "DbspecRenderResult",
+      "errors": [],
+      "state": "Checks the document set like Dbspec.manifest and returns its diagnostics, or the statements that create its tables in the dialect, in the order and text of docs/dialects.md Rendered statements; an unknown dialect is a programming error",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/render.go::Render",
+          "signature": "func(documents []*Document, dialect Dialect) ([]string, []Diagnostic)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::render",
+          "signature": "public static function render(array $documents, string $dialect): Orm\\Dbspec\\RenderResult"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/render.rs::render",
+          "signature": "pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/render.ts::renderDbspec",
+          "signature": "export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult"
         }
       }
     }
@@ -1610,7 +1801,7 @@
       },
       "fields": {
         "ir_version": "integer",
-        "schema_hash": "text",
+        "manifest_hash": "text",
         "kind": "text",
         "set": "list<IRAssign>",
         "on_duplicate": "list<IRAssign>",
@@ -1731,13 +1922,24 @@
         "rel": "text",
         "query": "IRQuery",
         "kind": "text",
-        "left": "text",
-        "right": "text"
+        "keys": "list<IRKeyPair>"
       },
       "optional": [
-        "left",
-        "right"
+        "keys"
       ]
+    },
+    {
+      "id": "IRKeyPair",
+      "native": {
+        "go": "engine/ir/ir.go::KeyPair",
+        "php": "clients/php/src/Validator.php::Orm\\Validator::KeyPair",
+        "rust": "clients/rust/orm/src/ir.rs::KeyPair",
+        "typescript": "clients/typescript/src/ir.ts::KeyPair"
+      },
+      "fields": {
+        "left": "text",
+        "right": "text"
+      }
     },
     {
       "id": "IRGroup",
@@ -1791,7 +1993,6 @@
         "ps": "list<integer>",
         "ref": "IRColRef",
         "expr": "text",
-        "match": "list<text>",
         "fn": "IRFunc",
         "value": "IRFunc",
         "cols": "list<text>",
@@ -1803,7 +2004,6 @@
         "conn",
         "expr",
         "fn",
-        "match",
         "op",
         "p",
         "ps",
@@ -2099,6 +2299,90 @@
             "total",
             "pending",
             "versions"
+          ]
+        }
+      }
+    },
+    {
+      "id": "DbspecDiagnostic",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::Diagnostic",
+          "fields": [
+            "Rule",
+            "Line",
+            "Column",
+            "Message"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Diagnostic.php::Orm\\Dbspec\\Diagnostic",
+          "fields": [
+            "rule",
+            "line",
+            "column",
+            "message"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::Diagnostic",
+          "fields": [
+            "rule",
+            "line",
+            "column",
+            "message"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/model.ts::DbspecDiagnostic",
+          "fields": [
+            "rule",
+            "line",
+            "column",
+            "message"
+          ]
+        }
+      }
+    },
+    {
+      "id": "DbspecManifest",
+      "for": "once",
+      "native": {
+        "go": {
+          "symbol": "engine/dbspec/dbspec.go::Manifest",
+          "fields": [
+            "ManifestText",
+            "SchemaText",
+            "ManifestHash",
+            "SchemaHash"
+          ]
+        },
+        "php": {
+          "symbol": "clients/php/src/Dbspec/Manifest.php::Orm\\Dbspec\\Manifest",
+          "fields": [
+            "manifestText",
+            "schemaText",
+            "manifestHash",
+            "schemaHash"
+          ]
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::Manifest",
+          "fields": [
+            "manifest_text",
+            "schema_text",
+            "manifest_hash",
+            "schema_hash"
+          ]
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/dbspec/index.ts::DbspecManifest",
+          "fields": [
+            "manifestText",
+            "schemaText",
+            "manifestHash",
+            "schemaHash"
           ]
         }
       }

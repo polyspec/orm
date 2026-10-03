@@ -1,8 +1,7 @@
 use super::validate;
 #[test]
 fn policy_validates_nested_read_shapes_and_rejects_writes() {
-    let started = std::time::Instant::now();
-    eprintln!("running read_only_policy");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     for dialect in ["mysql", "postgres", "sqlite"] {
         for sql in [
             "SELECT 1",
@@ -30,5 +29,4 @@ fn policy_validates_nested_read_shapes_and_rejects_writes() {
     }
     assert!(validate(&std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL "), "postgres").is_err());
     assert!(validate(&format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+")), "postgres").is_err());
-    eprintln!("passed read_only_policy {:?}", started.elapsed());
 }

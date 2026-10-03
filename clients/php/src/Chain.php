@@ -13,24 +13,6 @@ final class Chain
     private const LEADING = ['Ne' => 'ne', 'Eq' => '', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le', 'Lk' => 'lk', 'Lb' => 'lb', 'Between' => 'between'];
     private const COMPARE = ['Eq' => '', 'Ne' => 'ne', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le'];
     public const ENGINE_OP = ['' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte', 'lk' => 'contains', 'lb' => 'contains_binary', 'between' => 'between'];
-    private const OPS_BY_TYPE = [
-        'i32' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'i64' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'f64' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'decimal' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'date' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'time' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'datetime' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'between', 'is_null', 'is_not_null'],
-        'string' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
-        'text' => ['eq', 'not_eq', 'gt', 'gte', 'lt', 'lte', 'contains', 'contains_binary', 'is_null', 'is_not_null'],
-        'enum' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-        'bool' => ['eq', 'not_eq', 'is_null', 'is_not_null'],
-        'inet' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-        'bytes' => ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'],
-        'jsontext' => ['is_null', 'is_not_null'],
-        'point' => ['is_null', 'is_not_null'],
-    ];
-
     /** @var array<string, mixed> parsed names by class and name */
     private static array $cache = [];
 
@@ -51,40 +33,10 @@ final class Chain
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $pascal));
     }
 
-    /**
-     * The engine operator rule for a column (styled columns accept equality
-     * and null checks only, or null checks only).
-     * @param array{type: string, nullable: bool, styles: list<string>} $col
-     */
-    public static function opAllowed(array $col, string $op): bool
-    {
-        if (in_array($op, ['eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col', 'expr', 'match', 'match_boolean'], true)) {
-            return true;
-        }
-        if ($col['styles'] !== [] && $col['type'] !== 'inet') {
-            if ($col['styles'][0] === 'aes') {
-                return in_array($op, ['eq', 'not_eq', 'in', 'not_in', 'is_null', 'is_not_null'], true);
-            }
-            return $op === 'is_null' || $op === 'is_not_null';
-        }
-        return in_array($op, self::OPS_BY_TYPE[$col['type']] ?? [], true);
-    }
-
-    /** @param array{type: string, styles: list<string>} $col */
-    public static function clientStyled(array $col): bool
-    {
-        foreach ($col['styles'] as $s) {
-            if (!Codec::isHostStyle($s)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** @param array{type: string, styles: list<string>} $col */
+    /** date와 datetime column은 column function과 값 function을 받는다. */
     public static function functionColumn(array $col): bool
     {
-        return !self::clientStyled($col) && in_array($col['type'], ['date', 'datetime', 'point'], true);
+        return $col['codec'] === [] && in_array($col['type'], ['date', 'datetime'], true);
     }
 
     /**
@@ -129,7 +81,7 @@ final class Chain
         return self::index($meta)[$pascal] ?? '';
     }
 
-    /** The column with the PascalCase name of any loaded entity of the schema. */
+    /** The column with the PascalCase name of any loaded entity of the document set. */
     public static function schemaColumnName(string $hash, string $pascal): string
     {
         foreach (Registry::models($hash) as $class) {
@@ -141,7 +93,7 @@ final class Chain
         return '';
     }
 
-    /** The column of $side, or of any loaded model of the schema of $other when $side is null. */
+    /** The column of $side, or of any loaded model of the document set of $other when $side is null. */
     private static function sideColumn(?array $side, ?array $other, string $pascal): string
     {
         if ($side !== null) {
@@ -150,7 +102,7 @@ final class Chain
         if ($other === null) {
             self::fail('a column pair needs the model of one side');
         }
-        return self::schemaColumnName($other['schema_hash'], $pascal);
+        return self::schemaColumnName($other['manifest_hash'], $pascal);
     }
 
     private static function parseChain(array $meta, string $name): array
@@ -212,12 +164,6 @@ final class Chain
         if ($ws[0] === 'Tuple') {
             $try(fn() => self::tupleKey($meta, $ix, array_slice($ws, 1), 'tuple'));
         }
-        if ($ws[0] === 'Fulltext') {
-            $try(fn() => self::fulltextKey($meta, $ix, array_slice($ws, 1), 'fulltext'));
-            if (($ws[1] ?? '') === 'Boolean') {
-                $try(fn() => self::fulltextKey($meta, $ix, array_slice($ws, 2), 'fulltext_boolean'));
-            }
-        }
         for ($i = 1; $i < count($ws) - 1; $i++) {
             if (!array_key_exists($ws[$i], self::COMPARE)) {
                 continue;
@@ -227,7 +173,7 @@ final class Chain
                 continue;
             }
             $right = implode('', array_slice($ws, $i + 1));
-            $rightColumn = self::schemaColumnName($meta['schema_hash'], $right);
+            $rightColumn = self::schemaColumnName($meta['manifest_hash'], $right);
             if ($rightColumn === '') {
                 $errors[] = "no model has the column $right";
                 continue;
@@ -248,14 +194,14 @@ final class Chain
     {
         $col = $meta['columns'][$column];
         if ($key['compare'] !== '') {
-            if (!self::opAllowed($col, self::ENGINE_OP[$op] . '_col') || self::clientStyled($col)) {
+            if (!Validator::opAllowed($col, self::ENGINE_OP[$op] . '_col') || $col['codec'] !== []) {
                 self::fail("{$meta['entity']}.$column cannot be compared with a column");
             }
             return $key;
         }
-        $allowed = self::opAllowed($col, self::ENGINE_OP[$op]);
+        $allowed = Validator::opAllowed($col, self::ENGINE_OP[$op]);
         if ($op === '' || $op === 'ne') {
-            $allowed = $allowed || self::opAllowed($col, 'is_null');
+            $allowed = $allowed || Validator::opAllowed($col, 'is_null');
         }
         if (in_array($op, ['', 'gt', 'lt', 'ge', 'le'], true) && self::functionColumn($col)) {
             $allowed = true;
@@ -293,25 +239,11 @@ final class Chain
         }
         foreach ($cols as $c) {
             $col = $meta['columns'][$c];
-            if (self::clientStyled($col) || !self::opAllowed($col, 'in')) {
+            if ($col['codec'] !== [] || !Validator::opAllowed($col, 'in')) {
                 self::fail("{$meta['entity']}.$c cannot be used in a tuple");
             }
         }
         return ['conn' => '', 'op' => $op, 'column' => '', 'columns' => $cols, 'compare' => ''];
-    }
-
-    private static function fulltextKey(array $meta, array $ix, array $ws, string $op): array
-    {
-        $cols = self::splitWith($ix, $ws);
-        if ($cols === null || $cols === []) {
-            self::fail("full-text columns of {$meta['entity']} are not valid");
-        }
-        foreach ($meta['fulltext'] as $index) {
-            if ($index === $cols) {
-                return ['conn' => '', 'op' => $op, 'column' => '', 'columns' => $cols, 'compare' => ''];
-            }
-        }
-        self::fail("{$meta['entity']} has no full-text index on " . implode(', ', $cols));
     }
 
     /** @return list<array{column: string, desc: bool}> */
@@ -347,7 +279,7 @@ final class Chain
 
     /**
      * Parses <L>With<R>: L is a column of $left and R of $right; a null side
-     * accepts a column of any loaded model of the other side's schema.
+     * accepts a column of any loaded model of the other side's document set.
      * @return array{0: string, 1: string}
      */
     public static function pair(?array $left, ?array $right, string $name): array

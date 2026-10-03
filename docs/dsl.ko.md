@@ -76,10 +76,10 @@ Key   = [Operator] Column
 - `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
 - 체인은 모든 컬럼을 조합할 수 있다. PHP는 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다.
 - 각 언어는 자기 빌드 도구로 생성한다.
-  - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/ormgen gen --schema schema.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다.
-  - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --schema schema.json --out src/models --scan src`를 실행한다.
-  - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `orm_build::Builder::new("schema.json").scan("src").generate()`를 실행하고, `orm::models!()`가 결과를 `model` 모듈로 포함한다.
-  - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --schema schema.json --out src/Model --namespace Example\Model`을 실행한다.
+  - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다.
+  - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --schema schema/example.dbs --out src/models --scan src`를 실행한다.
+  - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`를 실행하고, `orm::models!()`가 결과를 `model` 모듈로 포함한다.
+  - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`를 실행한다.
 
 ### 2.3 값 형태
 
@@ -174,7 +174,7 @@ $orders = (new Order)->connect($slave1)
 |---|---|
 | `relation(child)` | 관련 행 하나 연결 |
 | `relations(child)` | 관련 행 컬렉션 연결 |
-| `match<L>With<R>()` | 부모 컬럼 `L`과 자식 컬럼 `R`이 같음 |
+| `match<L>With<R>()` | 부모 컬럼 `L`과 자식 컬럼 `R`이 같음. composite key는 성분마다 key 순서대로 한 번씩 부른다. 예: `matchTenantIdWithTenantId().matchAccountIdWithAccountId()` |
 | `alias<Name>()` | 관계 결과 명칭 |
 | `parentNode()` | 자식 컬럼을 부모 행에 병합 |
 | `possible<Col>(value)` | 부모 컬럼이 값과 같을 때만 자식 조회 |
@@ -256,6 +256,7 @@ rows, err := model.Product().Connect(slave1).
 
 쓰기가 성공하면 속성 변경 기록을 비운다.
 
+- `create()`와 `creates()`는 identity column 값을, `update()`와 `duplication` 모델의 변경은 primary key나 identity column 값을 statement 실행 전에 `IR_INVALID`로 거부한다. PostgreSQL identity는 명시한 key를 지나 나아가지 않아 다음 생성 key가 충돌하므로, identity key는 모두 database가 만든다.
 - `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
 - Go와 Rust는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 Go의 `any`, Rust의 공통 값 타입이다.
@@ -362,12 +363,12 @@ Go는 `orm.Distance(…)`, Rust는 `orm::distance(…)`, TypeScript는 `orm.dist
 
 | 함수 | MySQL | PostgreSQL | SQLite |
 |---|---|---|---|
-| `now()` | `NOW(6)` | `now()` | 클라이언트가 연결 시간대로 계산해 바인드한 값 |
+| `now()` | `NOW(6)` | `now()` | 클라이언트가 UTC로 계산해 바인드한 값 |
 | `today()` | `CURDATE()` | `CURRENT_DATE` | 클라이언트가 계산해 바인드한 값 |
 | `secondsAgo(n)`, `minutesAgo(n)`, `hoursAgo(n)`, `daysAgo(n)`, `monthsAgo(n)` | `DATE_SUB(NOW(6), INTERVAL ? unit)` | `now() - make_interval(unit => ?)` | bind한 클라이언트 clock에 `datetime(clock, '-n units')`를 적용하고 clock의 소수 여섯 자리를 붙인 값 |
 | `secondsLater(n)`, `minutesLater(n)`, `hoursLater(n)`, `daysLater(n)`, `monthsLater(n)` | `DATE_ADD(NOW(6), INTERVAL ? unit)` | `now() + make_interval(unit => ?)` | bind한 클라이언트 clock에 `datetime(clock, '+n units')`를 적용하고 clock의 소수 여섯 자리를 붙인 값 |
 
-- 연결 시간대는 DSN의 `timezone` 매개변수에서 받고, 없으면 서버 환경의 시간대를 사용한다. MySQL과 PostgreSQL 연결은 세션 시간대를 설정한다.
+- 모든 연결은 datetime 값을 UTC로 읽고 쓴다([config](config.ko.md)). MySQL과 PostgreSQL 연결은 세션 시간대를 UTC로 설정한다.
 - 월 계산은 MySQL, PostgreSQL과 같이 대상 월의 마지막 유효 일자를 유지한다.
 
 ### 10.2 컬럼 함수

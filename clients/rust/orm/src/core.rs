@@ -23,7 +23,7 @@ fn next_id() -> u64 {
 pub struct ChainKey {
     /// Connector before this key; empty for the first key.
     pub conn: &'static str,
-    /// "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple.
+    /// "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple.
     pub op: &'static str,
     pub column: &'static str,
     pub columns: &'static [&'static str],
@@ -43,7 +43,6 @@ pub enum Arg {
     /// The identity of a model compared column by column.
     Model(u64),
     Tuples(Vec<Vec<Param>>),
-    Text(String),
 }
 
 #[derive(Clone)]
@@ -80,7 +79,6 @@ pub(crate) enum PredValue {
     List(Vec<Param>),
     Pair(Param, Param),
     Tuples(Vec<&'static str>, Vec<Vec<Param>>),
-    Match(Vec<&'static str>, Param),
     Ref(u64, &'static str),
     Sub(Box<Core>),
     ColumnFn(Func, Param),
@@ -178,8 +176,8 @@ pub struct Core {
     pub(crate) agg: String,
     pub(crate) agg_fn: &'static str,
 
-    pub(crate) match_left: String,
-    pub(crate) match_right: String,
+    /// relation key 성분 (부모 column, 자식 column): `add_match`마다 한 쌍을 호출 순서로 더한다.
+    pub(crate) matches: Vec<(&'static str, &'static str)>,
     pub(crate) alias: String,
     pub(crate) parent_node: bool,
     pub(crate) possible: Option<(String, Param)>,
@@ -225,8 +223,7 @@ impl Core {
             lock: "",
             agg: String::new(),
             agg_fn: "",
-            match_left: String::new(),
-            match_right: String::new(),
+            matches: Vec::new(),
             alias: String::new(),
             parent_node: false,
             possible: None,
@@ -438,16 +435,18 @@ impl Core {
             self.fail("relation is not allowed inside a group callback");
             return;
         }
-        if child.match_left.is_empty() {
+        if child.matches.is_empty() {
             self.fail(format!("relation child {} requires match_<l>_with_<r>()", child.ent.name));
             return;
         }
         self.relations.push(RelSpec { many, child: Box::new(child) });
     }
 
-    pub fn set_match(&mut self, left: &str, right: &str) {
-        self.match_left = left.into();
-        self.match_right = right.into();
+    /// Adds a component to the relation key: parent column `left` equals
+    /// child column `right`. A composite key adds one per component, in key
+    /// order.
+    pub fn add_match(&mut self, left: &'static str, right: &'static str) {
+        self.matches.push((left, right));
     }
 
     pub fn set_alias(&mut self, name: &str) {
@@ -683,13 +682,6 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
     };
     let pred = |op: &'static str, value: PredValue| PredSpec { column: key.column.to_owned(), op, value };
     match key.op {
-        "fulltext" | "fulltext_boolean" => {
-            let Arg::Text(s) = arg else {
-                return Err(config(format!("full-text value for {} must be text", key.column)));
-            };
-            let op = if key.op == "fulltext" { "match" } else { "match_boolean" };
-            return Ok(PredSpec { column: String::new(), op, value: PredValue::Match(key.columns.to_vec(), Param::Str(s)) });
-        }
         "tuple" | "ne_tuple" => {
             let Arg::Tuples(rows) = arg else {
                 return Err(config("tuple values must be a list of value groups"));

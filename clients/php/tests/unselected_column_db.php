@@ -6,7 +6,6 @@ require __DIR__ . '/autoload.php';
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Code;
 use Orm\Config;
-use Orm\Orm;
 use Orm\OrmException;
 
 $driver = getenv('ORM_UNSELECTED_DATABASE');
@@ -26,8 +25,7 @@ function requireUnselected(callable $read, string $column): void
     throw new RuntimeException("unselected $column returned a value");
 }
 
-$schema = dirname(__DIR__, 3) . '/schema/schema.json';
-$db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
+$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 try {
     if ($db->driver() !== $driver) throw new RuntimeException('DSN selected the wrong database');
     $row = (new Author)($db)->removeAllColumns()->addColumnSeq()->getBySeq(1);

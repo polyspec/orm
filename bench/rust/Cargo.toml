@@ -1,6 +1,6 @@
 [package]
 name = "orm-bench"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 publish = false
 
@@ -13,10 +13,15 @@ name = "driver_compare"
 path = "src/driver_compare.rs"
 
 [dependencies]
-sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "chrono"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+orm = { path = "../../clients/rust/orm" }
 
 [profile.release]
 opt-level = 3
 debug = false
+
+[dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../../clients/rust/testcase" }

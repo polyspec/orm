@@ -1,0 +1,880 @@
+{
+  "version": 1,
+  "note": "export cases write the Mermaid lines and the dropped objects [kind, table, name] of their document, parsed with the documents of their set; import cases read their Mermaid lines into the document named imported and the dropped objects; invalid cases report exactly the listed [rule, line, column] diagnostics; round trip cases export the document at their path with exactly the dropped objects, import the export into a document of the same name with exactly the imported objects, and get back the tables, columns, primary keys and foreign keys of the document. Lines join with LF and end with one. docs/mermaid.md.",
+  "export": [
+    {
+      "document": [
+        "dbspec 1 shop",
+        "",
+        "# accounts",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  note varchar(32) null default 'say \"hi\"'",
+        "  primary key (id)",
+        "  unique uq_users_mail (mail)",
+        "  check ck_users_age (age >= 0)",
+        "  settings {",
+        "    immutable",
+        "  }",
+        "}",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64 null",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete set_null on update restrict",
+        "}"
+      ],
+      "documents": {},
+      "dropped": [
+        [
+          "foreign_key",
+          "orders",
+          "fk_orders_user"
+        ],
+        [
+          "index",
+          "orders",
+          "ix_orders_user"
+        ],
+        [
+          "check",
+          "users",
+          "ck_users_age"
+        ],
+        [
+          "comment",
+          "users",
+          "users"
+        ],
+        [
+          "default",
+          "users",
+          "note"
+        ],
+        [
+          "settings",
+          "users",
+          "users"
+        ],
+        [
+          "unique",
+          "users",
+          "uq_users_mail"
+        ]
+      ],
+      "id": "shop",
+      "mermaid": [
+        "erDiagram",
+        "    orders {",
+        "        i64 id PK \"identity\"",
+        "        i64 user_id FK \"null\"",
+        "        decimal(10-2) total \"default 0.00\"",
+        "    }",
+        "    users {",
+        "        i64 id PK \"identity\"",
+        "        varchar(64) mail UK",
+        "        i32 age \"null\"",
+        "        varchar(32) note \"null\"",
+        "    }",
+        "    users |o--o{ orders : \"fk_orders_user (user_id) references (id)\""
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 notes",
+        "",
+        "# uses the people document",
+        "use people { person }",
+        "",
+        "# a note",
+        "table note {",
+        "  # the key",
+        "  id i64 identity",
+        "  # the author",
+        "  author_id i64",
+        "  body varchar(64)",
+        "  # the primary key",
+        "  primary key (id)",
+        "  # the unique key",
+        "  unique uq_note_body (body)",
+        "  # the index",
+        "  index ix_note_author (author_id)",
+        "  # the foreign key",
+        "  foreign key fk_note_author (author_id) references person (id) on delete restrict on update restrict",
+        "  # the check",
+        "  check ck_note_id (id > 0)",
+        "  # the settings",
+        "  settings {",
+        "    # a setting",
+        "    immutable",
+        "    # the end of the settings",
+        "  }",
+        "  # the end of the table",
+        "}",
+        "",
+        "table key_note {",
+        "  id i64",
+        "  # only the primary key",
+        "  primary key (id)",
+        "}",
+        "",
+        "table setting_note {",
+        "  id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    # only a setting",
+        "    immutable",
+        "  }",
+        "}",
+        "",
+        "table closing_note {",
+        "  id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    immutable",
+        "    # only the end of the settings",
+        "  }",
+        "}",
+        "",
+        "# a diagram",
+        "diagram main {",
+        "  # an entry",
+        "  note at 0 0",
+        "  # the end of the diagram",
+        "}",
+        "",
+        "# the end of the document"
+      ],
+      "documents": {
+        "people": [
+          "dbspec 1 people",
+          "",
+          "table person {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "dropped": [
+        [
+          "comment",
+          "",
+          "main"
+        ],
+        [
+          "comment",
+          "",
+          "notes"
+        ],
+        [
+          "comment",
+          "",
+          "people"
+        ],
+        [
+          "diagram",
+          "",
+          "main"
+        ],
+        [
+          "use",
+          "",
+          "people"
+        ],
+        [
+          "comment",
+          "closing_note",
+          "closing_note"
+        ],
+        [
+          "settings",
+          "closing_note",
+          "closing_note"
+        ],
+        [
+          "comment",
+          "key_note",
+          "key_note"
+        ],
+        [
+          "check",
+          "note",
+          "ck_note_id"
+        ],
+        [
+          "comment",
+          "note",
+          "author_id"
+        ],
+        [
+          "comment",
+          "note",
+          "ck_note_id"
+        ],
+        [
+          "comment",
+          "note",
+          "fk_note_author"
+        ],
+        [
+          "comment",
+          "note",
+          "id"
+        ],
+        [
+          "comment",
+          "note",
+          "ix_note_author"
+        ],
+        [
+          "comment",
+          "note",
+          "note"
+        ],
+        [
+          "comment",
+          "note",
+          "uq_note_body"
+        ],
+        [
+          "index",
+          "note",
+          "ix_note_author"
+        ],
+        [
+          "settings",
+          "note",
+          "note"
+        ],
+        [
+          "unique",
+          "note",
+          "uq_note_body"
+        ],
+        [
+          "comment",
+          "setting_note",
+          "setting_note"
+        ],
+        [
+          "settings",
+          "setting_note",
+          "setting_note"
+        ]
+      ],
+      "id": "every-comment",
+      "mermaid": [
+        "erDiagram",
+        "    closing_note {",
+        "        i64 id PK",
+        "    }",
+        "    key_note {",
+        "        i64 id PK",
+        "    }",
+        "    note {",
+        "        i64 id PK \"identity\"",
+        "        i64 author_id FK",
+        "        varchar(64) body UK",
+        "    }",
+        "    setting_note {",
+        "        i64 id PK",
+        "    }",
+        "    person ||--o{ note : \"fk_note_author (author_id) references (id)\""
+      ]
+    }
+  ],
+  "import": [
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64 null",
+        "  total decimal(10,2) default 0.00",
+        "  primary key (id)",
+        "  index ix_orders_user_id (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+        "}",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  age i32 null",
+        "  note varchar(32) null",
+        "  primary key (id)",
+        "}"
+      ],
+      "dropped": [
+        [
+          "index",
+          "orders",
+          "ix_orders_user_id"
+        ],
+        [
+          "unique",
+          "users",
+          "mail"
+        ]
+      ],
+      "id": "export-shop",
+      "mermaid": [
+        "erDiagram",
+        "    orders {",
+        "        i64 id PK \"identity\"",
+        "        i64 user_id FK \"null\"",
+        "        decimal(10-2) total \"default 0.00\"",
+        "    }",
+        "    users {",
+        "        i64 id PK \"identity\"",
+        "        varchar(64) mail UK",
+        "        i32 age \"null\"",
+        "        varchar(32) note \"null\"",
+        "    }",
+        "    users |o--o{ orders : \"fk_orders_user (user_id) references (id)\""
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table customer {",
+        "  id i64 identity",
+        "  code varchar(32)",
+        "  note text",
+        "  ref i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table order_line {",
+        "  id i64",
+        "  customer_id i64",
+        "  price decimal(8,2) default 1.50",
+        "  primary key (id)",
+        "  index ix_order_line_customer_id (customer_id)",
+        "  foreign key fk_line_customer (customer_id) references customer (id) on delete restrict on update restrict",
+        "}"
+      ],
+      "dropped": [
+        [
+          "table",
+          "CUSTOMER",
+          "CUSTOMER"
+        ],
+        [
+          "comment",
+          "customer",
+          "note"
+        ],
+        [
+          "foreign_key",
+          "customer",
+          "ref"
+        ],
+        [
+          "relationship",
+          "customer",
+          "mirrors"
+        ],
+        [
+          "unique",
+          "customer",
+          "code"
+        ],
+        [
+          "index",
+          "order_line",
+          "ix_order_line_customer_id"
+        ],
+        [
+          "relationship",
+          "order_line",
+          "places"
+        ]
+      ],
+      "id": "foreign-diagram",
+      "mermaid": [
+        "erDiagram",
+        "    %% a diagram from another tool",
+        "    CUSTOMER {",
+        "        string name",
+        "        int id PK",
+        "    }",
+        "    customer {",
+        "        i64 id PK \"identity\"",
+        "        varchar(32) code UK",
+        "        text note \"free text\"",
+        "        i64 ref FK",
+        "    }",
+        "    order_line {",
+        "        i64 id PK",
+        "        i64 customer_id FK",
+        "        decimal(8-2) price \"default 1.50\"",
+        "    }",
+        "    customer ||--o{ order_line : places",
+        "    order_line }o--|| customer : \"fk_line_customer (customer_id) references (id)\"",
+        "    customer ||--|| CUSTOMER : mirrors"
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table a {",
+        "  id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table b {",
+        "  id i64",
+        "  x i64",
+        "  y i64",
+        "  primary key (id)",
+        "}"
+      ],
+      "dropped": [
+        [
+          "foreign_key",
+          "b",
+          "x"
+        ],
+        [
+          "foreign_key",
+          "b",
+          "y"
+        ],
+        [
+          "relationship",
+          "b",
+          "fk_b_few"
+        ],
+        [
+          "relationship",
+          "b",
+          "fk_b_many"
+        ]
+      ],
+      "id": "label-column-count",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK",
+        "    }",
+        "    b {",
+        "        i64 id PK",
+        "        i64 x FK",
+        "        i64 y FK",
+        "    }",
+        "    a ||--o{ b : \"fk_b_many (x, y) references (id)\"",
+        "    a ||--o{ b : \"fk_b_few (x) references (id, id)\""
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table a {",
+        "  id i64",
+        "  widest varchar(16383)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table c {",
+        "  id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table d {",
+        "  id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table e {",
+        "  id i64",
+        "  primary key (id)",
+        "}"
+      ],
+      "dropped": [
+        [
+          "column",
+          "a",
+          "big"
+        ],
+        [
+          "column",
+          "a",
+          "empty"
+        ],
+        [
+          "column",
+          "a",
+          "fine"
+        ],
+        [
+          "column",
+          "a",
+          "long"
+        ],
+        [
+          "column",
+          "a",
+          "scale"
+        ],
+        [
+          "column",
+          "a",
+          "wide"
+        ],
+        [
+          "column",
+          "b",
+          "id"
+        ],
+        [
+          "table",
+          "b",
+          "b"
+        ],
+        [
+          "column",
+          "c",
+          "code"
+        ],
+        [
+          "column",
+          "d",
+          "amount"
+        ],
+        [
+          "column",
+          "e",
+          "code"
+        ]
+      ],
+      "id": "type-ranges",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK",
+        "        varchar(99999999999999999999) big",
+        "        varchar(0) empty",
+        "        varchar(16384) long",
+        "        varchar(16383) widest",
+        "        time(7) fine",
+        "        decimal(19-2) wide",
+        "        decimal(4-5) scale",
+        "    }",
+        "    b {",
+        "        varchar(99999999999999999999) id PK",
+        "        i64 n",
+        "    }",
+        "    c {",
+        "        i64 id PK",
+        "        varchar(99999999999999999999) code PK",
+        "    }",
+        "    d {",
+        "        i64 id PK",
+        "        decimal(99999999999999999999-2) amount PK",
+        "    }",
+        "    e {",
+        "        i64 id PK",
+        "        varchar(16384) code PK",
+        "    }"
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table a {",
+        "  id i64 identity",
+        "  n i64",
+        "  p i32",
+        "  q i32 null default 1",
+        "  r i32",
+        "  s i32",
+        "  primary key (id)",
+        "}"
+      ],
+      "dropped": [
+        [
+          "comment",
+          "a",
+          "n"
+        ],
+        [
+          "comment",
+          "a",
+          "p"
+        ],
+        [
+          "comment",
+          "a",
+          "r"
+        ],
+        [
+          "comment",
+          "a",
+          "s"
+        ]
+      ],
+      "id": "comment-spacing",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK \"identity\"",
+        "        i64 n \"nullidentity\"",
+        "        i32 p \"nulldefault 1\"",
+        "        i32 q \"null default 1\"",
+        "        i32 r \"null \"",
+        "        i32 s \" null\"",
+        "    }"
+      ]
+    },
+    {
+      "document": [
+        "dbspec 1 imported",
+        "",
+        "table a {",
+        "  id i64",
+        "  primary key (id)",
+        "}",
+        "",
+        "table b {",
+        "  id i64",
+        "  a_id i64",
+        "  primary key (id)",
+        "  index ix_b_a_id (a_id)",
+        "  foreign key fk_b_one (a_id) references a (id) on delete restrict on update restrict",
+        "  foreign key fk_b_two (a_id) references a (id) on delete restrict on update restrict",
+        "}"
+      ],
+      "dropped": [
+        [
+          "index",
+          "b",
+          "ix_b_a_id"
+        ]
+      ],
+      "id": "repeated-relationship",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK",
+        "    }",
+        "    b {",
+        "        i64 id PK",
+        "        i64 a_id FK",
+        "    }",
+        "    a ||--o{ b : \"fk_b_one (a_id) references (id)\"",
+        "    a ||--o{ b : \"fk_b_two (a_id) references (id)\""
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "errors": [
+        [
+          "mermaid",
+          1,
+          1
+        ]
+      ],
+      "id": "no-header",
+      "mermaid": [
+        "    a {",
+        "    }"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          3,
+          1
+        ]
+      ],
+      "id": "bad-attribute",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64",
+        "    }"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          3,
+          1
+        ]
+      ],
+      "id": "unclosed-block",
+      "mermaid": [
+        "erDiagram",
+        "    a {",
+        "        i64 id PK"
+      ]
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          2,
+          1
+        ]
+      ],
+      "id": "unknown-line",
+      "mermaid": [
+        "erDiagram",
+        "    a -> b"
+      ]
+    }
+  ],
+  "round_trip": [
+    {
+      "dropped": [
+        [
+          "index",
+          "account_project",
+          "ix_account_project_project"
+        ],
+        [
+          "check",
+          "author",
+          "ck_author_counts"
+        ],
+        [
+          "index",
+          "author",
+          "ik"
+        ],
+        [
+          "index",
+          "author",
+          "ix_author_service_member"
+        ],
+        [
+          "index",
+          "author",
+          "ix_email_blind_index"
+        ],
+        [
+          "index",
+          "author",
+          "ix_phone_blind_index"
+        ],
+        [
+          "index",
+          "author",
+          "ix_service"
+        ],
+        [
+          "index",
+          "author",
+          "ix_user"
+        ],
+        [
+          "settings",
+          "author",
+          "author"
+        ],
+        [
+          "unique",
+          "author",
+          "uq_author_uuid"
+        ],
+        [
+          "foreign_key",
+          "composite_membership",
+          "fk_composite_membership_account"
+        ],
+        [
+          "settings",
+          "composite_membership",
+          "composite_membership"
+        ],
+        [
+          "index",
+          "service_member",
+          "ix_service_member_service"
+        ],
+        [
+          "index",
+          "service_member",
+          "ix_service_member_user"
+        ],
+        [
+          "index",
+          "service_region",
+          "ix_service_region_service"
+        ],
+        [
+          "settings",
+          "soft_record",
+          "soft_record"
+        ],
+        [
+          "check",
+          "task",
+          "ck_task_state"
+        ]
+      ],
+      "id": "bench",
+      "imported": [
+        [
+          "index",
+          "account_project",
+          "ix_account_project_project_seq"
+        ],
+        [
+          "index",
+          "author",
+          "ix_author_service_member_seq"
+        ],
+        [
+          "index",
+          "author",
+          "ix_author_service_region_seq"
+        ],
+        [
+          "index",
+          "author",
+          "ix_author_service_seq"
+        ],
+        [
+          "index",
+          "author",
+          "ix_author_user_seq"
+        ],
+        [
+          "unique",
+          "author",
+          "uuid"
+        ],
+        [
+          "index",
+          "service_member",
+          "ix_service_member_service_seq"
+        ],
+        [
+          "index",
+          "service_member",
+          "ix_service_member_user_seq"
+        ],
+        [
+          "index",
+          "service_region",
+          "ix_service_region_service_seq"
+        ]
+      ],
+      "path": "schema/bench.dbs"
+    }
+  ]
+}

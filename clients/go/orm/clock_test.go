@@ -2,85 +2,41 @@ package orm_test
 
 import (
 	"database/sql"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var clockColumns = []string{"seq", "label", "created_ts"}
 
-func clockEntity(hash string) *orm.Entity { return clockEntityOf("clock_event", hash, clockColumns) }
+var clockMarkColumns = []string{"seq", "label", "created_ts", "deleted_at"}
 
-func clockEntityOf(name, hash string, columns []string) *orm.Entity {
-	return &orm.Entity{
-		Name:   name,
-		Schema: &orm.Schema{Hash: hash},
-		New: func(c *orm.Core) orm.Model {
-			r := &keywordRow{m: c, vals: map[string]any{}}
-			c.Bind(r)
-			return r
-		},
-		Assign: func(m orm.Model, name string, v any) (bool, error) {
-			for _, c := range columns {
-				if c == name {
-					m.(*keywordRow).vals[name] = v
-					return true, nil
-				}
-			}
-			return false, nil
-		},
-		Value: func(m orm.Model, name string) (any, bool) {
-			v, ok := m.(*keywordRow).vals[name]
-			return v, ok
-		},
-		Collect: func(keys []orm.Key, items map[orm.Key]*orm.Core, fetched map[orm.Key]any) any {
-			return orm.CollectOf[*keywordRow](keys, items, fetched)
-		},
+// openClock은 contracts/fixtures의 document를 새 SQLite file이나 driver의 새
+// test database에 설치하고 DSN과 connection을 돌려준다.
+func openClock(t *testing.T, driver, document string) (*orm.Schema, string, *orm.DB) {
+	t.Helper()
+	s := fixtureSchema(t, document)
+	dsn := newDatabase(t, driver)
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { db.Close() })
+	if err := db.Utils().Schema().Install(s); err != nil {
+		t.Fatal(err)
+	}
+	return s, dsn, db
 }
 
-// clockMicroseconds inserts sixteen clock_event rows in separate statements
-// and reads created_ts, which the clock fills. Each value lies near the wall
-// clock with microsecond resolution, and at least one has microseconds that
-// a millisecond clock cannot give.
+// clockMicroseconds는 clock_event row 열여섯 개를 따로 insert하고 clock이 채운
+// created_ts를 읽는다. 모든 값은 wall clock 근처의 microsecond 해상도이고, 적어도
+// 하나는 millisecond clock이 줄 수 없는 microsecond를 가진다.
 func clockMicroseconds(t *testing.T, driver string) {
-	manifest, err := os.ReadFile("../../../contracts/fixtures/clock_schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Load(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := "sqlite://" + filepath.Join(t.TempDir(), "clock.sqlite")
-	if driver != "sqlite" {
-		base = requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_DSN")
-	}
-	sep := "?"
-	if strings.Contains(base, "?") {
-		sep = "&"
-	}
-	dropTable(t, driver, base, "clock_event")
-	defer dropTable(t, driver, base, "clock_event")
-	eng, err := engine.New(m, driver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.Open(base+sep+"timezone=%2B00:00", eng, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	if err := db.Utils().Schema().Install(manifest); err != nil {
-		t.Fatal(err)
-	}
-	ent := clockEntity(m.SchemaHash)
+	s, _, db := openClock(t, driver, "clock")
+	ent := rowEntity("clock_event", s, clockColumns...)
 	model := func() *orm.Core {
 		c := orm.NewCore(ent)
 		ent.New(c)
@@ -127,47 +83,24 @@ func clockMicroseconds(t *testing.T, driver string) {
 	}
 }
 
-func TestClockMicrosecondsSQLite(t *testing.T)   { clockMicroseconds(t, "sqlite") }
-func TestClockMicrosecondsMySQL(t *testing.T)    { clockMicroseconds(t, "mysql") }
-func TestClockMicrosecondsPostgres(t *testing.T) { clockMicroseconds(t, "postgres") }
+func TestClockMicrosecondsSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "sqlite")
+}
+func TestClockMicrosecondsMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "mysql")
+}
+func TestClockMicrosecondsPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "postgres")
+}
 
-var clockMarkColumns = []string{"seq", "label", "created_ts", "deleted_at"}
-
-// openClockMark installs the clock_mark schema on a new SQLite file or on the
-// test database of the driver and returns the connection and a model factory.
+// openClockMark은 clock_mark document를 설치하고 DSN과 model 생성 함수를 돌려준다.
 func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Core) {
-	manifest, err := os.ReadFile("../../../contracts/fixtures/clock_mark_schema.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Load(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := "sqlite://" + filepath.Join(t.TempDir(), "clock_mark.sqlite")
-	if driver != "sqlite" {
-		base = requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_DSN")
-	}
-	sep := "?"
-	if strings.Contains(base, "?") {
-		sep = "&"
-	}
-	dropTable(t, driver, base, "clock_mark")
-	t.Cleanup(func() { dropTable(t, driver, base, "clock_mark") })
-	eng, err := engine.New(m, driver)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.Open(base+sep+"timezone=%2B00:00", eng, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { db.Close() })
-	if err := db.Utils().Schema().Install(manifest); err != nil {
-		t.Fatal(err)
-	}
-	ent := clockEntityOf("clock_mark", m.SchemaHash, clockMarkColumns)
-	return base, db, func() *orm.Core {
+	s, dsn, db := openClock(t, driver, "clock_mark")
+	ent := rowEntity("clock_mark", s, clockMarkColumns...)
+	return dsn, db, func() *orm.Core {
 		c := orm.NewCore(ent)
 		ent.New(c)
 		c.Connect(db)
@@ -175,10 +108,10 @@ func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Co
 	}
 }
 
-// clockSoftDeleteMicroseconds soft-deletes sixteen clock_mark rows in
-// separate statements and reads deleted_at with the native driver, because
-// model reads exclude soft-deleted rows. Every value has six fraction digits
-// and at least one has microseconds that a whole-second clock cannot give.
+// clockSoftDeleteMicroseconds는 clock_mark row 열여섯 개를 따로 soft delete하고,
+// model read는 soft delete된 row를 빼므로 deleted_at을 native driver로 읽는다.
+// 모든 값은 소수 여섯 자리이고, 적어도 하나는 초 단위 clock이 줄 수 없는
+// microsecond를 가진다.
 func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 	base, _, model := openClockMark(t, driver)
 	for i := range 16 {
@@ -193,7 +126,9 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 		}
 	}
 	var raw *sql.DB
-	query := "SELECT deleted_at FROM clock_mark ORDER BY seq"
+	// modernc driver는 DATETIME으로 선언된 column을 time.Time으로 읽으므로 저장된
+	// text를 CAST로 읽는다.
+	query := "SELECT CAST(deleted_at AS TEXT) FROM clock_mark ORDER BY seq"
 	switch driver {
 	case "sqlite":
 		var err error
@@ -245,10 +180,9 @@ func clockSoftDeleteMicroseconds(t *testing.T, driver string) {
 	}
 }
 
-// clockNowCondition creates sixteen clock_mark rows and reads each one back
-// right after its insert with created_ts <= now() and created_ts <=
-// secondsLater(0). The database clock of the condition is later than the
-// stored creation time, so both conditions match the row.
+// clockNowCondition은 clock_mark row 열여섯 개를 만들고 각 insert 직후
+// created_ts <= now()와 created_ts <= secondsLater(0)으로 다시 읽는다. 조건의
+// database clock은 저장된 생성 시각보다 늦으므로 두 조건 모두 row에 맞는다.
 func clockNowCondition(t *testing.T, driver string) {
 	_, _, model := openClockMark(t, driver)
 	for i := range 16 {
@@ -274,11 +208,27 @@ func clockNowCondition(t *testing.T, driver string) {
 	}
 }
 
-func TestClockSoftDeleteMicrosecondsSQLite(t *testing.T) { clockSoftDeleteMicroseconds(t, "sqlite") }
-func TestClockSoftDeleteMicrosecondsMySQL(t *testing.T)  { clockSoftDeleteMicroseconds(t, "mysql") }
+func TestClockSoftDeleteMicrosecondsSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockSoftDeleteMicroseconds(t, "sqlite")
+}
+func TestClockSoftDeleteMicrosecondsMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockSoftDeleteMicroseconds(t, "mysql")
+}
 func TestClockSoftDeleteMicrosecondsPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	clockSoftDeleteMicroseconds(t, "postgres")
 }
-func TestClockNowConditionSQLite(t *testing.T)   { clockNowCondition(t, "sqlite") }
-func TestClockNowConditionMySQL(t *testing.T)    { clockNowCondition(t, "mysql") }
-func TestClockNowConditionPostgres(t *testing.T) { clockNowCondition(t, "postgres") }
+func TestClockNowConditionSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "sqlite")
+}
+func TestClockNowConditionMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "mysql")
+}
+func TestClockNowConditionPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "postgres")
+}

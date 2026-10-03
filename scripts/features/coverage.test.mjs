@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { caseTest } from '../../tests/testcase.mjs';
 import { mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { checkCoverage, databases, executeCoverage, languages, selectFeatures } from './coverage.mjs';
+
+// sample crate는 orm workspace가 아니므로 Makefile이 정한 orm workspace의 test feature를 쓰지 않는다.
+delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests = {
   go: 'clients/go/orm/dsn_test.go', php: 'clients/php/tests/dsn.php',
@@ -12,14 +15,16 @@ const ownerTests = {
 };
 const dependentTest = 'clients/go/model/model_test.go';
 
-test('one feature can run without declaring unrelated coverage complete', { timeout: 1000 }, () => {
+// 각 case의 기한: memory 안의 검사는 1 s, node process 몇 개를 실행하는 case는 8 s, Go test
+// binary, Rust test binary나 state reader를 build하고 실행하는 case는 120 s다.
+caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
   assert.equal(selectFeatures(manifest).features.length, 2);
   assert.throws(() => selectFeatures(manifest, 'missing'), /unknown feature missing/);
 });
 
-test('aggregate numeric TypeScript cases are owned by the client', { timeout: 1000 }, async () => {
+caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, async () => {
   const root = new URL('../..', import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('contracts/features.json', root), 'utf8'));
   const feature = manifest.features.find(item => item.id === 'model_queries');
@@ -28,10 +33,9 @@ test('aggregate numeric TypeScript cases are owned by the client', { timeout: 10
   assert.ok((await stat(new URL('clients/typescript/tests/aggregate_numeric.mjs', root))).isFile());
 });
 
-test('TypeScript behavior tests stay in their client directory', { timeout: 1000 }, async () => {
+caseTest('TypeScript behavior tests stay in their client directory', 1000, async () => {
   const root = new URL('../..', import.meta.url);
-  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model',
-    'schema-cases', 'schema-tools', 'sqlite-auto-import', 'sqlite-concurrency'];
+  const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
   const entries = await readdir(new URL('clients/typescript/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });
@@ -70,12 +74,12 @@ function mutation(change, kind = 'database') {
   return checkCoverage(manifest, reports).join('\n');
 }
 
-test('owner and dependent cases execute in four languages and three databases', { timeout: 1000 }, () => {
+caseTest('owner and dependent cases execute in four languages and three databases', 1000, () => {
   assert.deepEqual(checkCoverage(contract(), complete()), []);
   assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
 });
 
-test('missing owner, dependent, database, case, and repeat are RED', { timeout: 1000 }, () => {
+caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, () => {
   assert.match(mutation((m) => { m.features[0].coverage.owners.rust = undefined; }), /sample\/owner\/rust: missing owning client part/);
   assert.match(mutation((_, r) => { delete r['sample/owner/php/mysql']; }), /sample\/owner\/php\/mysql: no executed report/);
   assert.match(mutation((_, r) => { delete r['sample/dependent/service/go/mysql']; }), /sample\/dependent\/service\/go\/mysql: no executed report/);
@@ -93,7 +97,7 @@ test('missing owner, dependent, database, case, and repeat are RED', { timeout: 
   assert.match(mutation((_, r) => { r['sample/owner/typescript/postgres'].pop(); }), /exactly two executions required/);
 });
 
-test('identity, result, state, and unknown report mutations are RED', { timeout: 1000 }, () => {
+caseTest('identity, result, state, and unknown report mutations are RED', 1000, () => {
   assert.match(mutation((m) => { m.features[0].clients.rust = 'planned'; }), /lacks a passing client/);
   assert.match(mutation((_, r) => { r['sample/owner/go/mysql'][0].part = 'clients/php'; }), /report identity differs/);
   assert.match(mutation((_, r) => { r['sample/dependent/service/go/mysql'][0].role = 'owner'; }), /report identity differs/);
@@ -107,7 +111,7 @@ test('identity, result, state, and unknown report mutations are RED', { timeout:
   assert.match(mutation((m) => { m.features[0].coverage.cases = ['first', 'first']; }), /distinct nonempty IDs/);
 });
 
-test('native owner and dependent files execute twice from their own parts', { timeout: 8000 }, async () => {
+caseTest('native owner and dependent files execute twice from their own parts', 8000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
   const owner = 'clients/typescript/tests/owner.mjs';
   const dependent = 'clients/typescript/use/dependent.mjs';
@@ -132,7 +136,43 @@ test('native owner and dependent files execute twice from their own parts', { ti
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('invented JSON success from an arbitrary command is not execution evidence', { timeout: 8000 }, async () => {
+// Go test cache가 두 번째 실행을 대신하면 실행 증거가 아니므로, 각 실행이
+// test process를 실제로 실행해 directory를 하나씩 남기는지 확인한다.
+caseTest('every Go execution runs the test instead of reading the test cache', 120000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
+  const owner = 'clients/go/sample/sample_test.go';
+  const runs = join(root, 'runs');
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'],
+      owners: { go: { part: 'clients/go/sample', tests: [owner],
+        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
+      dependents: [] } }] };
+  try {
+    await mkdir(join(root, 'clients/go/sample'), { recursive: true });
+    await mkdir(runs);
+    await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
+    await writeFile(join(root, owner), `//go:build featurecoverage
+
+package sample
+
+import (
+	"os"
+	"testing"
+)
+
+func TestFirst(t *testing.T) {
+	// Mkdir는 test cache가 기록하는 file 읽기가 아니므로 cache된 결과에는 흔적이 남지 않는다.
+	if _, err := os.MkdirTemp(${JSON.stringify(runs)}, "run-"); err != nil {
+		t.Fatal(err)
+	}
+}
+`);
+    assert.deepEqual(await executeCoverage(manifest, root, 60000), []);
+    assert.equal((await readdir(runs)).length, 2);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+caseTest('invented JSON success from an arbitrary command is not execution evidence', 8000, async () => {
   const manifest = contract('independent');
   const report = (role, part, tests, language, cases, dependent) => JSON.stringify({
     feature: 'sample', role, part, tests, language, database: 'none', success: true, cases,
@@ -146,7 +186,7 @@ test('invented JSON success from an arbitrary command is not execution evidence'
     /invalid native test command/);
 });
 
-test('checker reads physical database state around each native test run', { timeout: 120000 }, async () => {
+caseTest('checker reads physical database state around each native test run', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
   const owner = 'clients/typescript/tests/owner.mjs';
   const databasePath = join(root, 'state.sqlite');
@@ -183,7 +223,7 @@ test('checker reads physical database state around each native test run', { time
   }
 });
 
-test('Go, PHP, and Rust native cases execute through their owning files', { timeout: 120000 }, async () => {
+caseTest('Go, PHP, and Rust native cases execute through their owning files', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases = [
     { language: 'go', part: 'clients/go/orm', file: 'clients/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
@@ -220,6 +260,16 @@ test('Go, PHP, and Rust native cases execute through their owning files', { time
         assert.match((await executeCoverage(manifest, root, 30000)).join('\n'), /invalid native test command/);
       }
     }
+    // 선언된 Rust test file을 compile하는 test binary가 없으면 같은 symbol이 다른 file에 있어도
+    // 실행 증거가 아니다.
+    const unused = 'clients/rust/orm/src/unused.rs';
+    await writeFile(join(root, unused), '#[test] fn first() {}\n');
+    const uncompiled = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial' },
+      coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+        rust: { part: 'clients/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused,
+          cases: ['first'], symbols: { first: 'tests::first' } }] } },
+      } } }] };
+    assert.match((await executeCoverage(uncompiled, root, 30000)).join('\n'), /no test binary compiles .*unused\.rs/);
     const go = cases[0];
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
     const skipped = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
@@ -229,4 +279,42 @@ test('Go, PHP, and Rust native cases execute through their owning files', { time
       } } }] };
     assert.match((await executeCoverage(skipped, root, 30000)).join('\n'), /observed cases .* differ from TestFirst/);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// executeCoverage는 실행마다 하나의 case로 시작, 실행하는 native 명령, 결과와 경과 시간을
+// 실행 중에 출력한다. 실패한 실행은 FAIL 줄에 이유를 담는다.
+caseTest('every native run reports its start, steps, result and elapsed time', 8000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
+  const owner = 'clients/typescript/tests/owner.mjs';
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'], dependents: [],
+      owners: { typescript: { part: 'clients/typescript', tests: [owner],
+        commands: { none: [{ runner: 'node', test: owner, cases: ['first'] }] } } } } }] };
+  const lines = [];
+  const log = console.log;
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
+    await writeFile(join(root, owner), "console.log('CASE first PASS');\n");
+    assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
+    await writeFile(join(root, owner), 'process.exit(3);\n');
+    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /run 1: exit 3/);
+  } finally {
+    console.log = log;
+    await rm(root, { recursive: true, force: true });
+  }
+  const elapsed = 'elapsed=[0-9.]+(µs|ms|s)';
+  const expected = [
+    '^RUN sample/owner/typescript/none run 1 deadline=1s$',
+    `^STEP sample/owner/typescript/none run 1 ${elapsed}: node ${owner}$`,
+    `^PASS sample/owner/typescript/none run 1 ${elapsed}$`,
+    '^RUN sample/owner/typescript/none run 2 deadline=1s$',
+    `^STEP sample/owner/typescript/none run 2 ${elapsed}: node ${owner}$`,
+    `^PASS sample/owner/typescript/none run 2 ${elapsed}$`,
+    '^RUN sample/owner/typescript/none run 1 deadline=1s$',
+    `^STEP sample/owner/typescript/none run 1 ${elapsed}: node ${owner}$`,
+    `^FAIL sample/owner/typescript/none run 1 ${elapsed}: exit 3: $`,
+  ];
+  assert.equal(lines.length, expected.length, lines.join('\n'));
+  lines.forEach((line, index) => assert.match(line, new RegExp(expected[index]), lines.join('\n')));
 });

@@ -1,6 +1,6 @@
-# orm 0.0.1
+# orm 0.0.2
 
-A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.1. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
+A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.2. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
@@ -41,9 +41,9 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 `get` returns one row and returns `NO_ROWS` when no row matches, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
-- **Schema**: one hand-written Mermaid `erDiagram` (`schema/*.mmd`) → `ormgen build` → `schema.json` (manifest with `schema_hash`).
+- **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
 - **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `orm-build` crate in `build.rs` (Rust).
-- **Runtime**: the client library validates each statement shape against `schema.json`, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service, daemon, or extension runs beside it.
+- **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
 - **Equality**: `tests/conformance` runs the same vectors in the four clients and compares the SQL, binds, and results.
 
@@ -51,9 +51,8 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 ```sh
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
-go run ./cmd/ormgen build schema/bench.mmd --out schema/schema.json
 (cd clients/go/model && go generate)                                # Go models
-php clients/php/bin/orm-gen gen --schema schema/schema.json --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 (cd clients/typescript && npm run build)                            # TypeScript models and library
 (cd clients/rust && cargo build --release)                          # build.rs generates the Rust models
 go test ./...
@@ -73,13 +72,12 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 
 [**Security**](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md)
 
-`examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/schema.md` Mermaid dialect, import, validate · `docs/protocol.md` IR/Plan ·
+`examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/dbspec.md` schema language · `docs/schema.md` schema tools · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite ·
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan.
 
 ## Tooling
-`ormgen build | gen --lang go | import --dsn | validate --dsn | ddl --dialect | diff | errors --lang`,
-`vendor/bin/orm-gen gen | build | import | validate | ddl | diff | migrate` (PHP), `orm-gen` (TypeScript), `orm-build` (Rust),
+`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `orm-build` (Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License

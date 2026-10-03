@@ -4,6 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PATH="$HOME/.cargo/bin:$PATH"
 export PATH
+VERSION=$(cat "$ROOT/VERSION")
 
 PACK_JSON=$(mktemp)
 TMP_GO=$(mktemp -d)
@@ -14,7 +15,7 @@ trap 'rm -f "$PACK_JSON"; rm -rf "$TMP_GO" "$TMP_RUST"' EXIT
   cd "$ROOT/clients/typescript"
   npm pack --dry-run --json > "$PACK_JSON"
 )
-node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm-typescript" || p.version !== "0.0.1" || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON"
+node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm-typescript" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
 
 composer validate --working-dir="$ROOT/clients/php" --no-check-publish
 # The Rust client depends on git crates that are not on a registry, so it is
@@ -57,7 +58,7 @@ func TestExternalModuleCanImportClient(t *testing.T) {
     if orm.IsDeadlock(nil) { t.Fatal("nil error reported as deadlock") }
 }
 EOF
-  go get github.com/polyspec/orm@v0.0.1 >/dev/null
+  go get "github.com/polyspec/orm@v$VERSION" >/dev/null
   go mod tidy >/dev/null
   go test ./...
 )

@@ -7,9 +7,12 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestPHPRelativeTypes(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
 		t.Fatalf("php CLI is required; tool tests never skip")
 	}
@@ -39,7 +42,7 @@ class Row extends Base {
 		if err := os.WriteFile(filepath.Join(dir, "fixture.php"), []byte(s), 0600); err != nil {
 			t.Fatal(err)
 		}
-		got, err := extract(dir, "php", []string{"."}, "", root)
+		got, err := extract(t.Context(), dir, "php", []string{"."}, "", root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,6 +74,7 @@ class Row extends Base {
 }
 
 func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
 		t.Fatalf("php CLI is required: %v", err)
 	}
@@ -90,7 +94,7 @@ func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
-		got, err := extract(dir, "php", []string{"."}, "", root)
+		got, err := extract(t.Context(), dir, "php", []string{"."}, "", root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,6 +127,7 @@ func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 }
 
 func TestPHPRecordsMatchCommonContract(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
 		t.Fatalf("php CLI is required: %v", err)
 	}
@@ -132,7 +137,7 @@ func TestPHPRecordsMatchCommonContract(t *testing.T) {
 	}
 	var manifest Manifest
 	readJSON(filepath.Join(root, "contracts/interfaces.json"), &manifest)
-	got, err := extract(root, "php", manifest.Languages["php"].Roots, "", root)
+	got, err := extract(t.Context(), root, "php", manifest.Languages["php"].Roots, "", root)
 	if err != nil {
 		t.Fatal(err)
 	}

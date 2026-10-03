@@ -3,9 +3,9 @@
 package plan
 
 type Plan struct {
-	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"`
-	Steps      []Step `json:"steps"`
+	ManifestHash string `json:"manifest_hash"`
+	Kind         string `json:"kind"`
+	Steps        []Step `json:"steps"`
 }
 
 type Step struct {
@@ -45,9 +45,9 @@ type IfParent struct {
 //   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
+//   - operation: 현재 unit of work의 operation id. audit table의 insert와 update가 operation column에 쓴다.
 //
-// Transform (executor-side, value-level): "" | "fulltext_boolean" (
-// "+w1 +w2*") | "like_contains" (escape % _ \ then wrap in %).
+// Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %).
 type BindSlot struct {
 	From      string `json:"from"`
 	Param     int    `json:"param"`
@@ -59,22 +59,25 @@ type BindSlot struct {
 	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
 	// the bound value before sending it (write order). Empty on MySQL.
 	HostStyles []string `json:"host_styles,omitempty"`
-	// ColType is the canonical type of the column this value is compared with
-	// or assigned to (only date/time/datetime are carried): executors whose
-	// language has no datetime type normalise exactly these, never a bare string
-	// that merely looks like a timestamp.
-	ColType string `json:"col_type,omitempty"`
-	Precision int `json:"precision,omitempty"`
-	Scale int `json:"scale,omitempty"`
+	// ColType은 값이 비교되거나 할당되는 column의 dbspec type이다. param
+	// slot은 date, time, datetime, decimal만 싣고(datetime type이 없는 언어의
+	// executor는 정확히 이 값만 정규화한다), operation slot은 operation
+	// column의 i64 또는 uuid를 싣는다.
+	ColType   string `json:"col_type,omitempty"`
+	Precision int    `json:"precision,omitempty"`
+	Scale     int    `json:"scale,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.
 type Assemble struct {
-	Entity   string   `json:"entity"`
-	Alias    string   `json:"alias"`
-	Columns  []OutCol `json:"columns"`
-	Children []*Child `json:"children,omitempty"`
-	Key      []KeyRef `json:"key"`
+	Entity  string   `json:"entity"`
+	Alias   string   `json:"alias"`
+	Columns []OutCol `json:"columns"`
+	// AESVersion는 node가 AES column을 읽을 때 key version을 담은 column의
+	// Columns 위치다. 고른 column이면 그대로, 아니면 숨은 column이다.
+	AESVersion *int     `json:"aes_version,omitempty"`
+	Children   []*Child `json:"children,omitempty"`
+	Key        []KeyRef `json:"key"`
 }
 
 type OutCol struct {

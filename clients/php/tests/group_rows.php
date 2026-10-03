@@ -2,12 +2,14 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\GroupRow;
 use Orm\GroupRows;
 use Orm\OrmException;
 
+testcase_begin('group_rows/owner', TESTCASE_COMPUTE);
 $row = new GroupRow([['is_close', false], ['row_count', 3]]);
 if ($row->count() !== 3 || $row->value('is_close') !== false || $row->toArray() !== ['is_close' => false, 'row_count' => 3]) {
     throw new RuntimeException('group result lost a selected value or count');
@@ -38,4 +40,4 @@ foreach ([
         if (!in_array($error->code_, [Code::CODEC_DECODE, Code::INTERNAL, Code::CONFIG], true)) throw $error;
     }
 }
-echo "PHP GroupRows owner cases passed\n";
+testcase_end();

@@ -1,15 +1,13 @@
 use orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
-    let began = std::time::Instant::now();
-    eprintln!("running typed_binds");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-typed-binds-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
-            let started = std::time::Instant::now();
-            eprintln!("running typed_binds:{dialect}");
+            orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -36,27 +34,24 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
             }
             drop(connection);
             database.close().await;
-            eprintln!("finished typed_binds:{dialect} {:?}", started.elapsed());
+            orm_testcase::step(format_args!("{dialect} finished"));
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed bind cases failed: {failures:?}");
     })
     .await
     .expect("typed bind deadline");
-    eprintln!("passed typed_binds {:?}", began.elapsed());
 }
 
 #[tokio::test]
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
-    let began = std::time::Instant::now();
-    eprintln!("running typed_writes");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-typed-writes-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
-            let started = std::time::Instant::now();
-            eprintln!("running typed_writes:{dialect}");
+            orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -123,6 +118,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                             GridCell::Text(_) => "text",
                             GridCell::Boolean(_) => "boolean",
                             GridCell::Binary(_) => "binary",
+                            GridCell::Date(_) => "date",
+                            GridCell::Time(_) => "time",
+                            GridCell::DateTime(_) => "datetime",
                         };
                         eprintln!("failed typed_roundtrip:{dialect}:column-{index}:kind-{kind}");
                     }
@@ -165,6 +163,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                 ParamType::Float32,
                 ParamType::Decimal,
                 ParamType::Unsigned,
+                ParamType::Date,
+                ParamType::Time,
+                ParamType::DateTime,
             ];
             for kind in kinds {
                 let supported =
@@ -181,6 +182,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                             ParamType::Float32 => "float4",
                             ParamType::Decimal => "numeric",
                             ParamType::Unsigned => "int8",
+                            ParamType::Date => "date",
+                            ParamType::Time => "time",
+                            ParamType::DateTime => "timestamp",
                         }
                     )
                 } else {
@@ -225,12 +229,11 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
             connection.exec(&format!("DROP TABLE {table}"), &[]).await.expect("remove owned fixture");
             drop(connection);
             database.close().await;
-            eprintln!("finished typed_writes:{dialect} {:?}", started.elapsed());
+            orm_testcase::step(format_args!("{dialect} finished"));
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed write cases failed: {failures:?}");
     })
     .await
     .expect("typed write deadline");
-    eprintln!("passed typed_writes {:?}", began.elapsed());
 }

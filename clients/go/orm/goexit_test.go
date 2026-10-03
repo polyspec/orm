@@ -1,38 +1,23 @@
 package orm_test
 
 import (
-	"encoding/json"
 	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
-	"github.com/polyspec/orm/engine"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestTransactionRollsBackWhenTheCallbackLeaves checks a callback that ends
 // its goroutine instead of returning, which is what t.Fatal does: the
 // transaction rolls back and the connection serves the next statement.
 func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
-	d, err := schema.Parse(zoneSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eng, err := engine.New(m, "sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := orm.Open("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), eng, orm.Config{})
+	testcase.Start(t, testcase.Database)
+	s := fixtureSchema(t, "zone")
+	manifest := s
+	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +25,7 @@ func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
 	if err := db.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
-	ent := zoneEntity(m.SchemaHash)
+	ent := zoneEntity(s)
 	row := func() *orm.Core {
 		c := orm.NewCore(ent)
 		ent.New(c)

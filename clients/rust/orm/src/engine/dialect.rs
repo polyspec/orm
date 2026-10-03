@@ -1,13 +1,11 @@
 //! The database-specific pieces of SQL. The planner never writes a quote or a
 //! placeholder itself.
 
+use orm_schema::dbspec::Type;
+
 /// Replaced in code-owned expression fragments with the dialect's advancing
 /// wall-clock expression.
 pub const CURRENT_TIME_TOKEN: &str = "$CURRENT_TIME";
-
-/// The sphere radius of MySQL `ST_Distance_Sphere`, used by the portable
-/// haversine rendering.
-const EARTH_RADIUS_METERS: &str = "6370986";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dialect {
@@ -20,18 +18,8 @@ pub enum Dialect {
 pub fn column_function_types(name: &str) -> Option<&'static [&'static str]> {
     Some(match name {
         "day_of_week" | "year" | "month" | "date" => &["date", "datetime"],
-        "distance" | "point_x" | "point_y" => &["point"],
         _ => return None,
     })
-}
-
-/// The function arguments of a column function, not counting the compared value.
-pub fn column_function_arity(name: &str) -> usize {
-    if name == "distance" {
-        2
-    } else {
-        0
-    }
 }
 
 /// The interval unit of a relative value function.
@@ -52,29 +40,6 @@ pub fn is_value_function(name: &str) -> bool {
 
 fn quote_with(q: &str, ident: &str) -> String {
     ident.split('.').map(|part| format!("{q}{}{q}", part.replace(q, &format!("{q}{q}")))).collect::<Vec<_>>().join(".")
-}
-
-/// The great-circle distance. `x2` and `y2` are called once per occurrence so
-/// positional placeholders receive one bind each.
-fn haversine(x1: &str, y1: &str, x2: &mut dyn FnMut() -> String, y2: &mut dyn FnMut() -> String) -> String {
-    let rad = |v: String| format!("RADIANS({v})");
-    let a = rad(y2());
-    let b = rad(y2());
-    let c = rad(x2());
-    format!(
-        "(2 * {EARTH_RADIUS_METERS} * ASIN(SQRT(POWER(SIN(({a} - {y1r}) / 2), 2) + COS({y1r}) * COS({b}) * POWER(SIN(({c} - {x1r}) / 2), 2))))",
-        y1r = rad(y1.to_owned()),
-        x1r = rad(x1.to_owned()),
-    )
-}
-
-fn sqlite_point_coordinate(col: &str, second: bool) -> String {
-    let space = format!("instr({col}, ' ')");
-    if second {
-        format!("CAST(substr({col}, {space} + 1, length({col}) - {space} - 1) AS REAL)")
-    } else {
-        format!("CAST(substr({col}, 7, {space} - 7) AS REAL)")
-    }
 }
 
 fn tuple_in(cols: &[String], rows: &[Vec<String>], negate: bool, values: bool) -> String {
@@ -158,17 +123,12 @@ impl Dialect {
         }
     }
 
-    /// Whether a predicate operator exists in this dialect.
-    pub fn supports(self, op: &str) -> bool {
-        self != Dialect::Sqlite || (op != "match" && op != "match_boolean")
-    }
-
-    /// Whether a column style stage is applied in SQL.
+    /// codec stage를 SQL에서 적용하는지 판단한다. PostgreSQL의 `bytes` column은
+    /// `bytea`라서 `ip`도 executor가 적용한다.
     pub fn handles_style(self, style: &str) -> bool {
         match self {
             Dialect::MySql => style == "hex" || style == "ip",
-            Dialect::Postgres => style == "ip",
-            Dialect::Sqlite => false,
+            Dialect::Postgres | Dialect::Sqlite => false,
         }
     }
 
@@ -209,20 +169,6 @@ impl Dialect {
         }
     }
 
-    pub fn fulltext(self, cols: &[String], ph: &str, boolean: bool) -> String {
-        match self {
-            Dialect::MySql => {
-                let mode = if boolean { " IN BOOLEAN MODE" } else { " IN NATURAL LANGUAGE MODE" };
-                format!("MATCH({}) AGAINST ({ph}{mode})", cols.join(", "))
-            }
-            _ => {
-                let doc = if cols.len() > 1 { format!("coalesce({}, '')", cols.join(", '') || ' ' || coalesce(")) } else { cols.join(" || ' ' || ") };
-                let f = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
-                format!("to_tsvector('simple', {doc}) @@ {f}('simple', {ph})")
-            }
-        }
-    }
-
     pub fn upsert(self, conflict: &[String], assigns: &str) -> String {
         match self {
             Dialect::MySql => format!(" ON DUPLICATE KEY UPDATE {assigns}"),
@@ -233,11 +179,15 @@ impl Dialect {
         }
     }
 
-    /// Wraps the SQL-side read stages of a column.
-    pub fn read_expr(self, col: &str, col_type: &str, styles: &[&str]) -> String {
+    /// column을 읽는 expression: SQL에서 적용하는 read stage와 text로 읽는 type을 감싼다.
+    /// `time(p)`는 소수 p자리의 `HH:MM:SS` text로, PostgreSQL `uuid`는 text로 읽는다.
+    pub fn read_expr(self, col: &str, ty: Type, styles: &[&str]) -> String {
         match self {
             Dialect::MySql => {
-                let mut expr = if col_type == "point" { format!("ST_AsText({col})") } else { col.to_owned() };
+                let mut expr = match ty {
+                    Type::Time(_) => format!("CAST({col} AS CHAR)"),
+                    _ => col.to_owned(),
+                };
                 for s in styles.iter().rev() {
                     match *s {
                         "hex" => expr = format!("UNHEX({expr})"),
@@ -247,22 +197,22 @@ impl Dialect {
                 }
                 expr
             }
-            Dialect::Postgres => {
-                let col = if col_type == "point" { format!("({col})::text") } else { col.to_owned() };
-                if styles.contains(&"ip") {
-                    return format!("host({col})");
-                }
-                col
-            }
+            Dialect::Postgres => match ty {
+                Type::Uuid => format!("CAST({col} AS text)"),
+                Type::Time(0) => format!("to_char({col}, 'HH24:MI:SS')"),
+                Type::Time(p) => format!("substr(to_char({col}, 'HH24:MI:SS.US'), 1, {})", 9 + p as usize),
+                _ => col.to_owned(),
+            },
             Dialect::Sqlite => col.to_owned(),
         }
     }
 
-    /// Wraps a bound value with the SQL-side write stages of a column.
-    pub fn write_expr(self, ph: String, col_type: &str, styles: &[&str]) -> String {
+    /// bind 값을 column에 쓰는 expression: SQL에서 적용하는 write stage와 text로
+    /// 보내는 type을 감싼다. PostgreSQL `uuid`와 `time`은 text를 cast한다.
+    pub fn write_expr(self, ph: String, ty: Type, styles: &[&str]) -> String {
         match self {
             Dialect::MySql => {
-                let mut expr = if col_type == "point" { format!("ST_PointFromText({ph})") } else { ph };
+                let mut expr = ph;
                 for s in styles {
                     match *s {
                         "hex" => expr = format!("HEX({expr})"),
@@ -272,57 +222,30 @@ impl Dialect {
                 }
                 expr
             }
-            Dialect::Postgres => {
-                let mut expr = if col_type == "point" { format!("CAST({ph} AS text)::point") } else { ph };
-                for s in styles {
-                    if *s == "ip" {
-                        expr = format!("({expr})::inet");
-                    }
-                }
-                expr
-            }
+            Dialect::Postgres => match ty {
+                Type::Uuid => format!("CAST(CAST({ph} AS text) AS uuid)"),
+                Type::Time(_) => format!("CAST(CAST({ph} AS text) AS time)"),
+                _ => ph,
+            },
             Dialect::Sqlite => ph,
         }
     }
 
-    /// Renders a column function applied to `col`; `arg(i)` binds the i-th
-    /// function argument.
-    pub fn column_function(self, name: &str, col: &str, arg: &mut dyn FnMut(usize) -> String) -> Option<String> {
+    /// `col`에 적용한 column function을 render한다. column function은 인자를 받지 않는다.
+    pub fn column_function(self, name: &str, col: &str) -> Option<String> {
         Some(match (self, name) {
             (Dialect::MySql, "day_of_week") => format!("DAYOFWEEK({col})"),
             (Dialect::MySql, "year") => format!("YEAR({col})"),
             (Dialect::MySql, "month") => format!("MONTH({col})"),
             (Dialect::MySql, "date") => format!("DATE({col})"),
-            (Dialect::MySql, "distance") => {
-                let (x, y) = (arg(0), arg(1));
-                format!("ST_Distance_Sphere({col}, POINT({x}, {y}))")
-            }
-            (Dialect::MySql, "point_x") => format!("ST_X({col})"),
-            (Dialect::MySql, "point_y") => format!("ST_Y({col})"),
             (Dialect::Postgres, "day_of_week") => format!("(EXTRACT(DOW FROM {col})::int + 1)"),
             (Dialect::Postgres, "year") => format!("EXTRACT(YEAR FROM {col})::int"),
             (Dialect::Postgres, "month") => format!("EXTRACT(MONTH FROM {col})::int"),
             (Dialect::Postgres, "date") => format!("CAST({col} AS date)"),
-            (Dialect::Postgres, "distance") => {
-                let cell = std::cell::RefCell::new(arg);
-                let mut x = || format!("CAST({} AS double precision)", (cell.borrow_mut())(0));
-                let mut y = || format!("CAST({} AS double precision)", (cell.borrow_mut())(1));
-                haversine(&format!("{col}[0]"), &format!("{col}[1]"), &mut x, &mut y)
-            }
-            (Dialect::Postgres, "point_x") => format!("{col}[0]"),
-            (Dialect::Postgres, "point_y") => format!("{col}[1]"),
             (Dialect::Sqlite, "day_of_week") => format!("(CAST(strftime('%w', {col}) AS INTEGER) + 1)"),
             (Dialect::Sqlite, "year") => format!("CAST(strftime('%Y', {col}) AS INTEGER)"),
             (Dialect::Sqlite, "month") => format!("CAST(strftime('%m', {col}) AS INTEGER)"),
             (Dialect::Sqlite, "date") => format!("date({col})"),
-            (Dialect::Sqlite, "distance") => {
-                let cell = std::cell::RefCell::new(arg);
-                let mut x = || (cell.borrow_mut())(0);
-                let mut y = || (cell.borrow_mut())(1);
-                haversine(&sqlite_point_coordinate(col, false), &sqlite_point_coordinate(col, true), &mut x, &mut y)
-            }
-            (Dialect::Sqlite, "point_x") => sqlite_point_coordinate(col, false),
-            (Dialect::Sqlite, "point_y") => sqlite_point_coordinate(col, true),
             _ => return None,
         })
     }

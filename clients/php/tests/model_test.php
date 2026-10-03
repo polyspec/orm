@@ -1,10 +1,15 @@
 <?php
-// Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name empty test databases; the test fails when either is unset.
+// Model integration test on SQLite, MySQL and PostgreSQL. A case that installs
+// the schema runs in a case database of its own (case_database.php) created
+// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
+// connect use those databases and create nothing there. The test fails when
+// either is unset.
 // Usage: php clients/php/tests/model_test.php
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;
@@ -19,18 +24,54 @@ use Orm\Code;
 use Orm\Collection;
 use Orm\Config;
 use Orm\Db;
+use Orm\Generator;
 use Orm\Model;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\RuntimeModel;
 use Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
-$schema = "$root/schema/schema.json";
+$documents = [(string) file_get_contents("$root/schema/bench.dbs")];
 $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 @mkdir($work, 0o700, true);
-$tables = ['account_project', 'composite_membership', 'composite_account', 'author', 'service_member', 'service_region', 'soft_record', 'account', 'project', 'user', 'service', 'task'];
 
 $failures = 0;
+/** 각 구역은 case 하나다. 기한은 TESTCASE_DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를 실행한다. */
+function modelBegin(string $name): void
+{
+    $GLOBALS['caseFailures'] = $GLOBALS['failures'];
+    $GLOBALS['caseDatabases'] = [];
+    testcase_begin("model/$name", TESTCASE_DATABASE);
+}
+
+/** 열린 case의 case database다. modelEnd가 case가 실패했어도 지운다. */
+function caseDatabase(string $driver): CaseDatabase
+{
+    $database = case_database($driver, 'testcase_step');
+    $GLOBALS['caseDatabases'][] = $database;
+    return $database;
+}
+
+function caseDsn(string $driver): string
+{
+    return caseDatabase($driver)->dsn;
+}
+
+function modelEnd(): void
+{
+    foreach (array_reverse($GLOBALS['caseDatabases']) as $database) {
+        try {
+            $database->drop();
+        } catch (Throwable $e) {
+            check(false, $e->getMessage());
+        }
+    }
+    $GLOBALS['caseDatabases'] = [];
+    $failed = $GLOBALS['failures'] - $GLOBALS['caseFailures'];
+    testcase_end($failed > 0 ? "$failed check(s) failed; each FAIL line above names one" : null);
+}
+
 function check(bool $ok, string $message): void
 {
     global $failures, $current;
@@ -51,46 +92,26 @@ function code(callable $fn): string
 }
 
 register_shutdown_function(static function () use ($work): void {
-    foreach (glob("$work/*") ?: [] as $file) {
-        @unlink($file);
-    }
-    @rmdir($work);
+    exec('rm -rf ' . escapeshellarg($work));
 });
 
-function dropTables(string $driver, string $dsn): void
-{
-    global $tables;
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    if ($driver === 'mysql') {
-        $raw->exec('SET FOREIGN_KEY_CHECKS = 0');
-    }
-    foreach ($tables as $table) {
-        $raw->exec($driver === 'postgres' ? "DROP TABLE IF EXISTS \"$table\" CASCADE" : ($driver === 'mysql' ? "DROP TABLE IF EXISTS `$table`" : "DROP TABLE IF EXISTS \"$table\""));
-    }
-    if ($driver === 'mysql') {
-        $raw->exec('SET FOREIGN_KEY_CHECKS = 1');
-    }
-}
-
+/** $dsn의 database(case database)에 bench schema를 설치한 connection이다. */
 function database(string $driver, string $dsn): Db
 {
-    global $schema;
-    dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
-    $db->utils()->schema()->install((string) file_get_contents($schema));
+    global $documents;
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     return $db;
 }
 
 /**
- * Checks schema()->empty() on the test database without the test tables, with
- * an empty PostgreSQL schema other than public, and with the installed tables.
+ * Checks schema()->empty() on a new case database, with an empty PostgreSQL
+ * schema other than public, and with the installed tables.
  */
 function schemaEmpty(string $driver, string $dsn): void
 {
-    global $schema;
-    dropTables($driver, $dsn);
-    $db = Orm::connect($dsn, new Config(schemaPath: $schema));
+    global $documents;
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     check($db->utils()->schema()->empty() === true, 'a database without tables');
     if ($driver === 'postgres') {
         $db->pdo()->exec('CREATE SCHEMA unowned_empty');
@@ -101,12 +122,14 @@ function schemaEmpty(string $driver, string $dsn): void
         }
         check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
     }
-    $db->utils()->schema()->install((string) file_get_contents($schema));
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     check($db->utils()->schema()->empty() === false, 'installed tables');
     $db->close();
 }
 
-$targets = ['sqlite' => "sqlite://$work/model.sqlite?timezone=%2B00:00"];
+// 공유 test database다. schema를 설치하지 않고 연결만 하는 case가 쓰며, 그 database에는 아무것도
+// 만들지 않는다. schema를 설치하는 case는 caseDsn()으로 자기 case database를 받는다.
+$targets = ['sqlite' => "sqlite://$work/model.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
     if ($v === false || $v === '') {
@@ -189,7 +212,6 @@ $tests['conditions'] = function (Db $db, string $dsn): void {
 };
 
 $tests['joins and relations'] = function (Db $db, string $dsn): void {
-    global $schema;
     $f = seed($db);
     $author = (new User)->on(fn(User $u) => $u->neName('nobody'))->name('kim');
     $rows = (new Author)($db)->leftJoinUserSeqWithSeq($author)
@@ -211,7 +233,7 @@ $tests['joins and relations'] = function (Db $db, string $dsn): void {
     $limited = (new User)($db)->relations((new Author)->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))->orderBySeqAsc()->gets();
     $got = $limited->first()->getAuthorModels();
     check(count($got) === 1 && $got->first()->getName() === 'gamma', 'groupLimit');
-    $other = Orm::connect($dsn, $db->config());
+    $other = \Polyspec\Orm\Tests\Model\connect($dsn, $db->config());
     $external = (new Author)($db)->relation((new User)($other)->matchUserSeqWithSeq()->aliasOwner())->getByName('beta');
     check($external->getOwner()?->getName() === 'lee', 'relation on another connection');
     check(code(fn() => (new Author)($db)->joinUserSeqWithSeq((new User)($db))->gets()) === Code::CONFIG, 'join child with connection');
@@ -334,6 +356,22 @@ $tests['styled value states'] = function (Db $db, string $dsn): void {
     }
 };
 
+// ip, gz, base64 codec column은 저장한 값을 읽고, ip column은 같음으로 찾는다.
+$tests['codec columns'] = function (Db $db, string $dsn): void {
+    $f = seed($db);
+    $seq = $f['authors'][0]->getSeq();
+    (new Author)($db)->getBySeq($seq)->setIp('10.0.0.1')->setGzExtend(StyledValue::value('compressed text'))
+        ->setBase64Extra(StyledValue::value('plain'))->update();
+    $row = (new Author)($db)->addAllColumns()->getBySeq($seq);
+    check($row->getIp() === '10.0.0.1', 'ip ' . var_export($row->getIp(), true));
+    check($row->getGzExtend()->payload() === 'compressed text', 'gz styled value');
+    check($row->getBase64Extra()->payload() === 'plain', 'base64 styled value');
+    check((new Author)($db)->ip('10.0.0.1')->getCount() === 1, 'ip condition');
+    check((new Author)($db)->addAllColumns()->getBySeq($f['authors'][1]->getSeq())->getGzExtend()->kind === 'sql-null', 'gz SQL NULL');
+    $stored = $db->pdo()->query('SELECT base64_extra FROM author WHERE seq = ' . $seq)->fetchColumn();
+    check($stored === base64_encode('plain'), 'base64 storage');
+};
+
 $tests['transactions'] = function (Db $db, string $dsn): void {
     $boom = new RuntimeException('boom');
     try {
@@ -381,12 +419,14 @@ $tests['transactions'] = function (Db $db, string $dsn): void {
 };
 
 $tests['utilities'] = function (Db $db, string $dsn): void {
-    $manifest = (string) file_get_contents($GLOBALS['schema']);
     $schema = $db->utils()->schema();
-    check(code(fn() => $schema->install('{}')) === Code::CONFIG, 'install invalid manifest');
+    $broken = "dbspec 1 broken\n\ntable t {\n}\n";
+    check(code(fn() => $schema->install(new \Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))) === Code::SCHEMA_INVALID, 'install an invalid document');
     $user = (new User)($db)->setName('kept')->create();
-    $schema->install($manifest);
-    check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install keeps rows');
+    $schema->install(\Polyspec\Orm\Tests\Model\schema());
+    check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
+    $db->pdo()->exec($db->driver() === 'postgres' ? 'DROP TABLE "task" CASCADE' : ($db->driver() === 'mysql' ? 'DROP TABLE `task`' : 'DROP TABLE "task"'));
+    check(code(fn() => $schema->install(\Polyspec\Orm\Tests\Model\schema())) === Code::CONFIG, 'install over some tables of the set');
     check(code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
     $privileges = $db->utils()->privileges();
     switch ($db->driver()) {
@@ -409,7 +449,6 @@ $tests['utilities'] = function (Db $db, string $dsn): void {
 };
 
 $tests['deadlock retry'] =function (Db $db, string $dsn): void {
-    global $schema;
     $driver = $db->driver();
     if ($driver === 'sqlite') {
         return; // one writer: two transactions cannot hold row locks at the same time
@@ -418,7 +457,7 @@ $tests['deadlock retry'] =function (Db $db, string $dsn): void {
     [$a, $b] = [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()];
     $children = [];
     foreach ([[$a, $b, 'one'], [$b, $a, 'two']] as [$first, $second, $tag]) {
-        $p = proc_open([PHP_BINARY, __DIR__ . '/deadlock_child.php', $dsn, $schema, (string) $first, (string) $second, $tag],
+        $p = proc_open([PHP_BINARY, __DIR__ . '/deadlock_child.php', $dsn, (string) $first, (string) $second, $tag],
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         $children[] = [$p, $pipes];
     }
@@ -453,11 +492,11 @@ $tests['aes rotation'] =function (Db $db, string $dsn): void {
     check($db->utils()->aes()->status(new Author, $keyring)->pending === 0, 'after rotation');
     global $schema;
     // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-    $versioned = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
+    $versioned = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [1 => 'test-aes-key', 2 => 'next-aes-key']));
     (new Author)($versioned)->getBySeq($f['authors'][1]->getSeq())->setAesHexEmail('second@example.com')->update();
-    $current = Orm::connect($dsn, new Config(schemaPath: $schema, blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
+    $current = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: [2 => 'next-aes-key']));
     check((new Author)($current)->getBySeq($f['authors'][1]->getSeq())->getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(code(fn() => new Config(schemaPath: $schema, aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
+    check(code(fn() => new Config(aesKey: 'other-key', aesKeys: [1 => 'test-aes-key'])) === Code::CONFIG, 'aesKey differs from aesKeys[aesVersion]');
 };
 
 // Inserts and reads more values than SQLite binds in one statement: the inserts
@@ -485,13 +524,13 @@ $tests['bind limit splitting'] = function (Db $db, string $dsn): void {
 };
 
 /**
- * Writes a wall-clock value and reads it back in the connection time zone, and
- * checks that the clock default and an equality filter use the same zone.
+ * 다른 zone의 값을 UTC wall clock으로 쓰고 UTC로 읽으며, clock default와
+ * text 같음 filter가 같은 UTC 규칙을 쓰는지 확인한다.
  */
-function connectionTimeZone(Db $db, DateTimeZone $zone): void
+function connectionUtc(Db $db): void
 {
     $f = seed($db);
-    $midnight = new DateTimeImmutable('2026-01-02 00:00:00', $zone);
+    $midnight = new DateTimeImmutable('2026-01-02 09:00:00', new DateTimeZone('+09:00'));
     $before = new DateTimeImmutable('now');
     $created = (new Author)($db)
         ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
@@ -500,10 +539,10 @@ function connectionTimeZone(Db $db, DateTimeZone $zone): void
     $row = (new Author)($db)->getBySeq($created->getSeq());
     check($row !== null, 'row');
     $start = $row->getStartDt();
-    check($start == $midnight && $start->format('H:i') === '00:00', 'start_dt ' . $start->format(DATE_ATOM));
+    check($start == $midnight && $start->format('H:i P') === '00:00 +00:00', 'start_dt ' . $start->format(DATE_ATOM));
     $ts = $row->getCreatedTs();
     check(abs($ts->getTimestamp() - $before->getTimestamp()) < 60, 'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM));
-    check($ts->getOffset() === $zone->getOffset($before), 'created_ts zone ' . $ts->format(DATE_ATOM));
+    check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
     check((new Author)($db)->startDt($midnight)->getCount() === 1, 'equality filter');
     check((new Author)($db)->startDt('2026-01-02 00:00:00')->getCount() === 1, 'equality filter by text');
     check((new Author)($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1, 'equality filter by text with fraction');
@@ -519,108 +558,49 @@ function connectionTimeZone(Db $db, DateTimeZone $zone): void
     }
 }
 
-/**
- * Installs log tables and, from a second manifest, audited tables, and writes
- * inside a transaction that names its operation with setLocal; PostgreSQL and
- * SQLite use schema-qualified tables.
- */
-function auditTriggers(string $driver, string $dsn): void
-{
-    $db = database($driver, $dsn);
-    $prefix = $driver === 'mysql' ? '' : 'ormtest.';
-    $logSource = "erDiagram\n"
-        . "  audit_operation {\n    bigint seq PK \"auto\"\n    varchar(36) operation_uuid UK\n  }\n"
-        . "  audit_change {\n    bigint seq PK \"auto\"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref \"?\"\n"
-        . "    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n"
-        . ($prefix === '' ? '' : "  %% orm:table entity=audit_operation name=ormtest.audit_operation\n  %% orm:table entity=audit_change name=ormtest.audit_change\n");
-    // The audited manifest writes into log tables that only the first manifest declares.
-    $itemSource = "erDiagram\n"
-        . "  audit_item {\n    bigint seq PK \"auto\"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n"
-        . ($prefix === '' ? '' : "  %% orm:table entity=audit_item name=ormtest.audit_item\n")
-        . "  %% orm:audit_log operation={$prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change={$prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n"
-        . "  %% orm:audit entity=audit_item mode=changes service=service_ref\n";
-    $table = static fn(string $name): string => match ($driver) {
-        'sqlite' => "\"ormtest__$name\"",
-        'postgres' => "ormtest.$name",
-        default => $name,
-    };
-    $pdo = $db->pdo();
-    match ($driver) {
-        'postgres' => $pdo->exec('DROP SCHEMA IF EXISTS ormtest CASCADE'),
-        default => array_map(static fn(string $n) => $pdo->exec('DROP TABLE IF EXISTS ' . $table($n)), ['audit_item', 'audit_change', 'audit_operation']),
-    };
-    $logs = \Orm\SchemaBuilder::json(\Orm\SchemaBuilder::fromSources([$logSource]));
-    $items = \Orm\SchemaBuilder::json(\Orm\SchemaBuilder::fromSources([$itemSource]));
-    foreach ([$logs, $items, $items] as $manifest) {
-        $db->utils()->schema()->install($manifest);
-    }
-    $message = '';
-    try {
-        $db->transaction(fn() => $db->pdo()->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')"), retry: 0);
-    } catch (Throwable $e) {
-        $message = $e->getMessage();
-    }
-    check(str_contains($message, 'audit operation context is required'), "write without an operation: $message");
-    $db->transaction(function () use ($db, $table): void {
-        $pdo = $db->pdo();
-        $pdo->exec('INSERT INTO ' . $table('audit_operation') . " (operation_uuid) VALUES ('op-1')");
-        $db->utils()->setLocal('ormtest.operation_id', 'op-1');
-        $pdo->exec('INSERT INTO ' . $table('audit_item') . " (service_ref, title) VALUES ('s1', 'a')");
-        $pdo->exec('UPDATE ' . $table('audit_item') . " SET title = 'b'");
-    }, retry: 0);
-    $item = (int) $db->pdo()->query('SELECT seq FROM ' . $table('audit_item'))->fetchColumn();
-    $rows = $db->pdo()->query('SELECT operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value FROM ' . $table('audit_change') . ' ORDER BY seq')->fetchAll(PDO::FETCH_ASSOC);
-    check(array_column($rows, 'change_kind') === ['INSERT', 'UPDATE'], 'change kinds ' . json_encode(array_column($rows, 'change_kind')));
-    foreach ($rows as $row) {
-        check((int) $row['operation_seq'] === 1 && $row['service_ref'] === 's1' && $row['table_label'] === $prefix . 'audit_item', 'change row ' . json_encode($row));
-        check(json_decode($row['entity_ref'], true) === ['seq' => $item], 'entity key ' . $row['entity_ref']);
-    }
-    check(json_decode($rows[1]['before_value'] ?? 'null', true) === ['title' => 'a'] && json_decode($rows[1]['after_value'] ?? 'null', true) === ['title' => 'b'], 'update values');
-    match ($driver) {
-        'postgres' => $pdo->exec('DROP SCHEMA IF EXISTS ormtest CASCADE'),
-        default => array_map(static fn(string $n) => $pdo->exec('DROP TABLE IF EXISTS ' . $table($n)), ['audit_item', 'audit_change', 'audit_operation']),
-    };
-}
-
 foreach ($targets as $driver => $dsn) {
     $current = "schema empty/$driver";
+    modelBegin($current);
     try {
-        schemaEmpty($driver, $dsn);
+        schemaEmpty($driver, caseDsn($driver));
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $dsn) {
     $current = "pool size/$driver";
+    modelBegin($current);
     try {
-        $db = Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: 3));
+        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolSize: -1))) === Code::CONFIG, 'negative pool size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: -1))) === Code::CONFIG, 'negative pool size');
         // The PHP client has no pool, so the pool idle size and lifetime are rejected.
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $dsn) {
     $current = "statement timeout/$driver";
+    modelBegin($current);
     try {
-        check(code(fn() => Orm::connect($dsn, new Config(schemaPath: $schema, statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
         // bounds every statement, and SQLite has no session timeout.
         $slow = ['mysql' => 'SLEEP(5) = 0', 'postgres' => 'pg_sleep(5) IS NULL'][$driver] ?? null;
         if ($slow !== null) {
-            $db = database($driver, $dsn);
+            $caseDsn = caseDsn($driver);
+            $db = database($driver, $caseDsn);
             seed($db);
             $db->close();
-            $bounded = Orm::connect($dsn, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
+            $bounded = \Polyspec\Orm\Tests\Model\connect($caseDsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
             // The condition is evaluated per row, so the table holds rows.
             check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'a statement past the timeout');
             $bounded->close();
@@ -629,56 +609,76 @@ foreach ($targets as $driver => $dsn) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 // A pooler in transaction mode hands one server session to every client in
 // turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
 // connection, so the statement timeout of one connection must bound only the
 // statements of that connection.
+// PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case database에 닿지
+// 않는다. 그래서 이 case는 그 database에 자기 이름(case_name())의 table 하나만 만들고, 끝나면(실패해도)
+// 그 table만 지운다. table의 model은 실행 중에 만든 dbspec 문서에서 생성한다.
 $current = 'statement timeout through a pooler/postgres';
+modelBegin($current);
+$probeSetup = null;
+$probeTable = null;
 try {
     $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
     if ($single === false || $single === '') {
         throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
     }
-    $db = database('postgres', $targets['postgres']);
-    seed($db);
-    $db->close();
+    $table = case_name();
+    $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])), "$work/pooler", 'PoolerProbe\\Orm');
+    spl_autoload_register(static function (string $class) use ($work): void {
+        if (str_starts_with($class, 'PoolerProbe\\Orm\\')) {
+            require "$work/pooler/" . substr($class, strlen('PoolerProbe\\Orm\\')) . '.php';
+        }
+    });
+    require "$work/pooler/bootstrap.php";
+    $model = 'PoolerProbe\\Orm\\' . str_replace('_', '', ucwords($table, '_'));
+    $probeSetup = \PoolerProbe\Orm\connect($targets['postgres'], new Config());
+    $probeTable = $table;
+    $probeSetup->utils()->schema()->install(\PoolerProbe\Orm\schema());
+    testcase_step("table $table created");
+    for ($i = 0; $i < 4; $i++) {
+        (new $model)($probeSetup)->setLabel("probe-$i")->create();
+    }
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     $slow = 'pg_sleep(0.1) IS NOT NULL';
-    $bounded = Orm::connect($single, new Config(schemaPath: $schema, statementTimeoutMs: 200));
-    check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
-    $plain = Orm::connect($single, new Config(schemaPath: $schema));
-    check((new Author)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
-    check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
+    $bounded = \PoolerProbe\Orm\connect($single, new Config(statementTimeoutMs: 200));
+    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
+    $plain = \PoolerProbe\Orm\connect($single, new Config());
+    check((new $model)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
+    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
     $bounded->close();
     $plain->close();
 } catch (Throwable $e) {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
-}
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
-
-foreach ($targets as $driver => $dsn) {
-    $current = "audit triggers/$driver";
-    try {
-        auditTriggers($driver, $dsn);
-    } catch (Throwable $e) {
-        $failures++;
-        fwrite(STDERR, "FAIL $current: $e\n");
+} finally {
+    if ($probeTable !== null) {
+        try {
+            $probeSetup->pdo()->exec("DROP TABLE IF EXISTS \"$probeTable\"");
+            testcase_step("table $probeTable dropped");
+        } catch (Throwable $e) {
+            check(false, "drop table $probeTable: {$e->getMessage()}");
+        }
+        $probeSetup->close();
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
+modelEnd();
 
 if (isset($targets['mysql'])) {
     $current = 'install inside a transaction/mysql';
+    modelBegin($current);
     try {
-        $db = database('mysql', $targets['mysql']);
+        $db = database('mysql', caseDsn('mysql'));
         $inside = null;
-        $db->transaction(function () use ($db, $schema, &$inside): void {
+        $db->transaction(function () use ($db, $documents, &$inside): void {
             try {
-                $db->utils()->schema()->install((string) file_get_contents($schema));
+                $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
             } catch (OrmException $e) {
                 $inside = $e;
             }
@@ -688,35 +688,44 @@ if (isset($targets['mysql'])) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $base) {
-    foreach (['+00:00', '+09:00', '-05:30', 'Asia/Seoul'] as $zoneName) {
+    foreach (['', '+00:00', 'UTC', '+09:00', 'Asia/Seoul'] as $zoneName) {
         $current = "connection time zone $zoneName/$driver";
+        modelBegin($current);
         try {
-            $base = preg_replace('/[?&]timezone=[^&]*/', '', $base);
-            $dsn = $base . (str_contains($base, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
-            connectionTimeZone(database($driver, $dsn), new DateTimeZone($zoneName));
+            $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
+            // UTC 연결은 schema를 설치하므로 자기 case database를, 거부되는 연결은 공유 database를 쓴다.
+            $plain = preg_replace('/[?&]timezone=[^&]*/', '', $utc ? caseDsn($driver) : $base);
+            $dsn = $zoneName === '' ? $plain : $plain . (str_contains($plain, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
+            if ($utc) {
+                connectionUtc(database($driver, $dsn));
+            } else {
+                check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
+            }
         } catch (Throwable $e) {
             $failures++;
             fwrite(STDERR, "FAIL $current: $e\n");
         }
-        echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+        modelEnd();
     }
 }
 
-foreach ($targets as $driver => $dsn) {
+foreach (array_keys($targets) as $driver) {
     foreach ($tests as $name => $test) {
         $current = "$name/$driver";
+        modelBegin($current);
         try {
+            $dsn = caseDsn($driver);
             $db = database($driver, $dsn);
             $test($db, $dsn);
         } catch (Throwable $e) {
             $failures++;
             fwrite(STDERR, "FAIL $current: $e\n");
         }
-        echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+        modelEnd();
     }
 }
 /**
@@ -758,16 +767,20 @@ function awaitReplica(string $driver, string $primary, string $replica): void
 // without a connection inside a transaction uses the transaction.
 foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
     $current = "primary and replica/$driver";
+    modelBegin($current);
     try {
         $replica = getenv("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
             throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip");
         }
-        $master = database($driver, $targets[$driver]);
+        // replica는 primary의 case database를 같은 이름으로 복제한다. MySQL은 그 database가 replica에
+        // 생긴 뒤에야 연결할 수 있으므로 공유 replica database로 기다린 뒤 연결한다.
+        $primary = caseDatabase($driver);
+        $master = database($driver, $primary->dsn);
         $name = 'replica-' . hrtime(true);
         (new User)($master)->setName($name)->create();
-        awaitReplica($driver, $targets[$driver], $replica);
-        $slave1 = Orm::connect($replica, new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        awaitReplica($driver, $primary->dsn, $replica);
+        $slave1 = \Polyspec\Orm\Tests\Model\connect($primary->related($replica), new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
         check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
         check(code(fn() => (new User)($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
         check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
@@ -778,7 +791,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
             check((new User)($master)->name("$name-tx")->getCount() === 1, 'the primary connection inside its transaction');
             check((new User)($slave1)->name("$name-tx")->getCount() === 0, 'the replica connection reads no uncommitted row');
         });
-        awaitReplica($driver, $targets[$driver], $replica);
+        awaitReplica($driver, $primary->dsn, $replica);
         check((new User)($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2, 'the replica reads the committed rows');
         $slave1->close();
         $master->close();
@@ -786,19 +799,20 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 // A connection to a SQLite database file that the process may only read:
 // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
 $current = 'read-only/sqlite';
+modelBegin($current);
 try {
     $path = "$work/read-only.sqlite";
     $writable = database('sqlite', "sqlite://$path");
     (new User)($writable)->setName('read-only')->create();
     $writable->close();
     chmod($path, 0o444);
-    $readOnly = Orm::connect("sqlite://$path", new Config(schemaPath: $schema, aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+    $readOnly = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
     check((new User)($readOnly)->name('read-only')->getCount() === 1, 'the read-only database reads the row');
     check(code(fn() => (new User)($readOnly)->setName('rejected')->create()) === Code::READ_ONLY, 'a write to the read-only database');
     $readOnly->close();
@@ -806,10 +820,182 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
+
+// 실제 server 는 transaction 끝의 cleanup statement 와 rollback 을 거부하지 않으므로
+// PDO 가 rejects 가 고른 statement 와, rejectRollback 이면 rollback 을 실패시킨다.
+// rollback 은 실제로 끝낸 뒤 실패를 돌려준다.
+final class FailingPdo extends PDO
+{
+    /** @var ?Closure(string): bool */
+    public ?Closure $rejects = null;
+    public bool $rejectRollback = false;
+
+    private function check(string $statement): void
+    {
+        if ($this->rejects !== null && ($this->rejects)($statement)) {
+            throw new PDOException('statement rejected by the test driver');
+        }
+    }
+
+    public function exec(string $statement): int|false
+    {
+        $this->check($statement);
+        return parent::exec($statement);
+    }
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        $this->check($query);
+        return parent::prepare($query, $options);
+    }
+
+    public function rollBack(): bool
+    {
+        $ok = parent::rollBack();
+        if ($this->rejectRollback) {
+            throw new PDOException('rollback rejected by the test driver');
+        }
+        return $ok;
+    }
+}
+
+/** fn 이 던진 오류의 message 다. 오류가 없으면 'no error' 다. */
+function failureMessage(callable $fn): string
+{
+    try {
+        $fn();
+    } catch (Throwable $e) {
+        return $e->getMessage();
+    }
+    return 'no error';
+}
+
+/** message 가 callback 오류와 transaction 끝의 오류를 함께 담은 ROLLBACK 인지 확인한다. */
+function checkBoth(string $what, string $message, string $cause, string $end): void
+{
+    check(str_starts_with($message, "ROLLBACK: transaction failed ($cause) and rollback failed (") && str_contains($message, $end), "$what reports the cause and the failed transaction end: $message");
+}
+
+// transaction 끝의 MySQL local 값 reset 이 실패하면 commit 과 rollback 이 그 오류를
+// 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
+// (mysql.context.user_variable_session_scope).
+$current = 'failed local reset/mysql';
+modelBegin($current);
+try {
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
+    $pdo = new FailingPdo($pdoDsn, $user, $password);
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SET @`orm.') && str_ends_with($sql, '= NULL');
+    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $committed = failureMessage(fn() => $failing->transaction(function () use ($failing): void {
+        $failing->utils()->setLocal('ormtest.actor', 'tester');
+    }));
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed reset: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function () use ($failing): void {
+        $failing->utils()->setLocal('ormtest.actor', 'tester');
+        throw new RuntimeException('callback failed');
+    }));
+    checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+modelEnd();
+
+// transaction 끝의 MySQL RELEASE_LOCK 이 실패하거나 lock 을 풀지 못하면 commit 과
+// rollback 이 그 오류를 보고한다. 풀리지 않은 named lock 은 connection 에 남는다.
+$current = 'failed lock release/mysql';
+modelBegin($current);
+try {
+    [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
+    $pdo = new FailingPdo($pdoDsn, $user, $password);
+    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $key = static fn(string $name): string => "orm_test.$name." . getmypid();
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SELECT RELEASE_LOCK');
+    $committed = failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
+        $failing->utils()->lock($key('commit'));
+    }, retry: 0));
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed release: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
+        $failing->utils()->lock($key('rollback'));
+        throw new RuntimeException('callback failed');
+    }, retry: 0));
+    checkBoth('rollback', $rolledBack, 'callback failed', 'statement rejected by the test driver');
+    $pdo->rejects = null;
+    // lock 을 미리 풀면 transaction 끝의 RELEASE_LOCK 은 0 을 돌려준다.
+    $notHeld = failureMessage(fn() => $failing->transaction(function () use ($failing, $pdo, $key): void {
+        $failing->utils()->lock($key('released'));
+        $pdo->prepare('DO RELEASE_LOCK(?)')->execute([$key('released')]);
+    }, retry: 0));
+    check(str_contains($notHeld, 'lock ' . $key('released') . ' was not held at transaction end'), "a lock released early is reported: $notHeld");
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+modelEnd();
+
+// native rollback, SQLite mode 복원, begin 뒤의 rollback 이 실패하면 transaction 이
+// 그 오류를 원인과 함께 보고한다.
+$current = 'failed rollback/sqlite';
+modelBegin($current);
+try {
+    $pdo = new FailingPdo("sqlite:$work/transaction-end.sqlite");
+    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $pdo->rejectRollback = true;
+    $rolledBack = failureMessage(fn() => $failing->transaction(function (): void {
+        throw new RuntimeException('callback failed');
+    }, retry: 0));
+    checkBoth('rollback', $rolledBack, 'callback failed', 'rollback rejected by the test driver');
+    $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 1';
+    $began = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
+    // catalog에 없는 driver 오류는 DRIVER code의 원인이다.
+    checkBoth('begin', $began, 'DRIVER: statement rejected by the test driver', 'rollback rejected by the test driver');
+    $pdo->rejectRollback = false;
+    $pdo->rejects = static fn(string $sql): bool => $sql === 'PRAGMA query_only = 0';
+    $committed = failureMessage(fn() => $failing->transaction(fn() => null, readOnly: true, retry: 0));
+    check(str_contains($committed, 'statement rejected by the test driver'), "commit reports the failed mode reset: $committed");
+    $rolledBack = failureMessage(fn() => $failing->transaction(function (): void {
+        throw new RuntimeException('callback failed');
+    }, readOnly: true, retry: 0));
+    checkBoth('mode reset', $rolledBack, 'callback failed', 'statement rejected by the test driver');
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+modelEnd();
+
+// 중첩 transaction 의 savepoint 를 끝내는 ROLLBACK TO SAVEPOINT 나 RELEASE SAVEPOINT 가
+// 실패하면 callback 오류와 그 오류를 함께 보고하고, 성공한 callback 은 실패한
+// RELEASE SAVEPOINT 를 보고한다.
+$current = 'failed savepoint end/sqlite';
+modelBegin($current);
+try {
+    $pdo = new FailingPdo("sqlite:$work/savepoint-end.sqlite");
+    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $nested = static fn(Closure $fn): string => failureMessage(fn() => $failing->transaction(fn() => $failing->transaction($fn), retry: 0));
+    foreach (['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT'] as $statement) {
+        $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, $statement);
+        $failed = $nested(function (): void {
+            throw new RuntimeException('callback failed');
+        });
+        checkBoth($statement, $failed, 'callback failed', 'statement rejected by the test driver');
+    }
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'RELEASE SAVEPOINT');
+    $released = $nested(fn() => null);
+    check(str_contains($released, 'statement rejected by the test driver'), "a successful callback reports the failed release: $released");
+    $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT') || str_starts_with($sql, 'RELEASE SAVEPOINT');
+    $both = $nested(function (): void {
+        throw new RuntimeException('callback failed');
+    });
+    checkBoth('both statements', $both, 'callback failed', 'statement rejected by the test driver');
+    check(substr_count($both, 'statement rejected by the test driver') === 2, "both savepoint statements are reported: $both");
+    $pdo->rejects = null;
+} catch (Throwable $e) {
+    $failures++;
+    fwrite(STDERR, "FAIL $current: $e\n");
+}
+modelEnd();
 
 if ($failures > 0) {
-    fwrite(STDERR, "php model test: $failures failures\n");
     exit(1);
 }
-echo "php model test: " . count($tests) . ' tests × ' . count($targets) . " databases passed\n";

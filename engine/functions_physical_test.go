@@ -18,12 +18,14 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestPhysicalQueryForms executes the plans of the ORM functions, tuple
 // conditions, subqueries, and placed join conditions on every database and
 // requires equal results.
 func TestPhysicalQueryForms(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := []struct{ driver, dsn string }{
 		{"mysql", os.Getenv("ORM_MIGRATION_MYSQL_DSN")},
 		{"postgres", os.Getenv("ORM_MIGRATION_POSTGRES_DSN")},

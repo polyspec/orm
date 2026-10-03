@@ -8,6 +8,7 @@ pub mod codes;
 pub mod collection;
 pub mod core;
 pub mod db;
+pub mod dbspec;
 pub mod decimal;
 mod driver;
 pub mod engine;
@@ -24,8 +25,8 @@ pub mod utils;
 pub mod value;
 
 pub use args::{
-    date, day_of_week, days_ago, days_later, distance, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, point_x,
-    point_y, seconds_ago, seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
+    date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
+    seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
 };
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
@@ -37,9 +38,9 @@ pub use ordered_json;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;
-pub use tx::{transaction_conflict, Isolation, SendTransaction, Transaction, TransactionOnceError};
+pub use tx::{transaction_conflict, Isolation, OperationId, SendTransaction, Transaction, TransactionOnceError};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
-pub use value::{parse_point, point_text, Param, Point, StyledValue, Val};
+pub use value::{Param, StyledValue, Val};
 
 /// Every failure surfaces as one of these; engine codes pass through unchanged.
 #[derive(Debug)]
@@ -67,9 +68,14 @@ impl std::fmt::Display for Error {
             Error::NoRows => write!(f, "{}: query returned no rows", codes::NO_ROWS),
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
-            Error::Rollback { callback, rollback } => write!(f, "{}: callback failed ({callback}) and rollback failed ({rollback})", codes::ROLLBACK),
+            Error::Rollback { callback, rollback } => write!(f, "{}: {}", codes::ROLLBACK, rollback_message(callback, rollback)),
         }
     }
+}
+
+/// ROLLBACK 오류의 message: 실패한 callback의 오류와 실패한 rollback의 오류를 이 순서로 담는다.
+pub(crate) fn rollback_message(cause: &dyn std::fmt::Display, rollback: &dyn std::fmt::Display) -> String {
+    format!("transaction failed ({cause}) and rollback failed ({rollback})")
 }
 
 impl std::error::Error for Error {
@@ -86,7 +92,7 @@ impl std::error::Error for Error {
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
 /// (6, primary code of any extended form) → DEADLOCK, 2067 / 1555 (CONSTRAINT_UNIQUE / _PRIMARYKEY) →
-/// DUPLICATE_KEY, 787 → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
+/// DUPLICATE_KEY, 787 and the 1811 "FOREIGN KEY constraint failed" of a RESTRICT action → FOREIGN_KEY. A CHECK violation — MySQL 3819 / 4025, PostgreSQL 23514, SQLite 275 — maps
 /// to CONSTRAINT. A statement stopped before it finished — MySQL 1317 / 3024,
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
@@ -132,6 +138,8 @@ impl From<sqlx::Error> for Error {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
                     (_, 2067) | (_, 1555) => Some((codes::DUPLICATE_KEY, s.message().to_owned())),
                     (_, 787) => Some((codes::FOREIGN_KEY, s.message().to_owned())),
+                    // RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+                    (_, 1811) if s.message().contains("FOREIGN KEY constraint failed") => Some((codes::FOREIGN_KEY, s.message().to_owned())),
                     (_, 275) => Some((codes::CONSTRAINT, s.message().to_owned())),
                     (5, _) | (9, _) => Some((codes::CANCELED, s.message().to_owned())),
                     (8, _) => Some((codes::READ_ONLY, s.message().to_owned())),

@@ -4,12 +4,15 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
-// TestRollbackFaultEntry checks that FailNextRollback exists only in a build
-// with the tag ormtest: without the tag the package excludes its file, and
-// with the tag the package compiles it.
+// TestRollbackFaultEntry는 FailNextRollback이 build tag ormtest가 있는 build에만
+// 있는지 확인한다: tag가 없으면 package가 그 file을 제외하고, tag가 있으면
+// compile한다.
 func TestRollbackFaultEntry(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	list := func(args ...string) string {
 		t.Helper()
 		out, err := exec.Command("go", append([]string{"list"}, args...)...).CombinedOutput()

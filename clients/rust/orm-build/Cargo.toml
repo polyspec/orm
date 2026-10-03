@@ -1,9 +1,9 @@
 [package]
 name = "orm-build"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 publish = false
-description = "Build-time model generator for the Rust ORM: reads schema.json and generates the models that the crate's source calls"
+description = "Build-time model generator for the Rust ORM: reads a dbspec document set and generates the models that the crate source calls"
 license = "MIT"
 repository = "https://github.com/polyspec/orm"
 readme = "../README.md"
@@ -11,7 +11,7 @@ keywords = ["orm", "codegen", "build"]
 categories = ["database", "development-tools::build-utils"]
 
 [dependencies]
-orm-schema = { version = "=0.0.1", path = "../orm-schema" }
+orm-schema = { version = "=0.0.2", path = "../orm-schema" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -21,24 +21,19 @@ regex = "1"
 sqlx = { version = "0.9", optional = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "bigdecimal"] }
 bigdecimal = { version = "=0.4.11", optional = true }
 tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
-orm = { version = "=0.0.1", path = "../orm", optional = true }
+orm = { version = "=0.0.2", path = "../orm", optional = true }
 url = { version = "2", optional = true }
 futures-util = { version = "=0.3.34", optional = true }
 sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 
 [features]
-# The orm-gen command-line tool; its database commands need the drivers.
+# catalog과 tool_db의 database connection은 driver가 필요하다.
 live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
-cli = ["live-db"]
 
-[[bin]]
-name = "orm-gen"
-path = "src/bin/orm-gen/main.rs"
-required-features = ["cli"]
-
-[[test]]
-name = "cli"
-required-features = ["cli"]
+[dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
+orm-case-clock = { path = "../case-clock" }
 
 [[test]]
 name = "catalog"
@@ -78,6 +73,10 @@ required-features = ["live-db"]
 
 [[test]]
 name = "grid_decimals"
+required-features = ["live-db"]
+
+[[test]]
+name = "grid_temporal"
 required-features = ["live-db"]
 
 [[test]]

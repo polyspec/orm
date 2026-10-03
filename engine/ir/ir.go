@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/polyspec/orm/engine/dialect"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 const Version = 1
@@ -20,9 +20,10 @@ const Version = 1
 // Request is one statement: a query (select/count/sum/avg), a write
 // (insert/update/delete), or a paginate (select + count).
 type Request struct {
-	IRVersion  int    `json:"ir_version"`
-	SchemaHash string `json:"schema_hash"`
-	Kind       string `json:"kind"` // one all count group_count sum avg paginate insert update delete
+	IRVersion int `json:"ir_version"`
+	// ManifestHash는 request를 만든 generated code의 manifestHash다.
+	ManifestHash string `json:"manifest_hash"`
+	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete
 	Query
 	Set         []Assign `json:"set,omitempty"`
 	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
@@ -96,9 +97,8 @@ type Sub struct {
 	Agg    string `json:"agg,omitempty"`
 }
 
-// Join adds a child table to the statement. Rel is the join name. Schema
-// relations supply the keys unless Left and Right are set: Left is a column of
-// the parent and Right a child column.
+// Join은 statement에 child table을 더한다. Rel은 join 이름이고, Left는
+// parent column, Right는 child column이다.
 type Join struct {
 	Rel   string `json:"rel"`
 	Kind  string `json:"kind"` // inner | left
@@ -107,14 +107,20 @@ type Join struct {
 	Right string `json:"right,omitempty"`
 }
 
-// Relation loads rows in a separate statement. Rel is the result name. Schema
-// relations supply keys and kind unless Left, Right and Kind are set.
+// Relation은 별도 statement로 행을 읽는다. Rel은 결과 이름이고 Left, Right,
+// Kind가 key와 종류를 정한다.
 type Relation struct {
-	Rel   string `json:"rel"`
-	Query *Query `json:"query"`
-	Kind  string `json:"kind,omitempty"` // one | many
-	Left  string `json:"left,omitempty"`
-	Right string `json:"right,omitempty"`
+	Rel   string    `json:"rel"`
+	Query *Query    `json:"query"`
+	Kind  string    `json:"kind,omitempty"` // one | many
+	Keys  []KeyPair `json:"keys,omitempty"`
+}
+
+// KeyPair는 relation key의 한 성분이다: 부모 column Left와 자식 column Right가
+// 같다. composite key의 relation은 성분마다 한 쌍을 key 순서대로 담는다.
+type KeyPair struct {
+	Left  string `json:"left"`
+	Right string `json:"right"`
 }
 
 // Group is a parenthesised list. Conn joins the group to its previous
@@ -148,7 +154,6 @@ type Pred struct {
 	Ps     []int    `json:"ps,omitempty"`    // in, not_in, between, expr binds
 	Ref    *ColRef  `json:"ref,omitempty"`   // *_col operators
 	Expr   string   `json:"expr,omitempty"`  // schema-checked fragment
-	Match  []string `json:"match,omitempty"` // fulltext columns
 	Fn     *Func    `json:"fn,omitempty"`    // column function applied to Column
 	Value  *Func    `json:"value,omitempty"` // value function compared with Column
 	Cols   []string `json:"cols,omitempty"`  // tuple_in, tuple_not_in columns; Ps holds the rows in order
@@ -208,19 +213,23 @@ type Optimist struct {
 type Error struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`
-	// Cause is the driver error of a driver code; it is not part of the JSON form.
+	// Cause는 driver code의 driver 오류이거나 ROLLBACK의 callback 오류와 rollback
+	// 오류다. JSON 형태에는 들어가지 않는다.
 	Cause error `json:"-"`
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Msg }
 
-// Unwrap returns the driver error of a driver code.
+// Unwrap은 Cause를 돌려준다.
 func (e *Error) Unwrap() error { return e.Cause }
 
-func errf(code, format string, a ...any) *Error { return &Error{Code: code, Msg: fmt.Sprintf(format, a...)} }
+func errf(code, format string, a ...any) *Error {
+	return &Error{Code: code, Msg: fmt.Sprintf(format, a...)}
+}
 
-// Operators by canonical column type. Fulltext is handled separately (needs an index).
+// opsByType은 dbspec type kind마다 허용하는 operator다.
 var opsByType = map[string][]string{
+	"i16":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"i32":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"i64":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"f64":      {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
@@ -228,21 +237,26 @@ var opsByType = map[string][]string{
 	"date":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"time":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
 	"datetime": {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"},
-	"string":   {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"},
+	"varchar":  {"eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"},
+	"uuid":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"text":     {"eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"},
-	"enum":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"bool":     {"eq", "not_eq", "is_null", "is_not_null"},
-	"inet":     {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
 	"bytes":    {"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"},
-	"jsontext": {"is_null", "is_not_null"},
-	"point":    {"is_null", "is_not_null"},
+}
+
+// ipOps는 codec이 ip 하나인 field의 operator다. 값은 address text다.
+var ipOps = []string{"eq", "not_eq", "in", "not_in", "is_null", "is_not_null"}
+
+// numeric은 plus, minus, sum, avg를 받는 type kind다.
+func numeric(t string) bool {
+	return t == "i16" || t == "i32" || t == "i64" || t == "f64" || t == "decimal"
 }
 
 var colOps = map[string]bool{"eq_col": true, "not_eq_col": true, "gt_col": true, "gte_col": true, "lt_col": true, "lte_col": true}
 
 // assign validates one set[]/on_duplicate[] assignment.
-func (v *validator) assign(ent *schema.Entity, r *Request, a *Assign) error {
-	c := ent.Column(a.Column)
+func (v *validator) assign(ent *runtimemodel.Entity, r *Request, a *Assign) error {
+	c := ent.Field(a.Column)
 	if c == nil {
 		return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
 	}
@@ -255,10 +269,10 @@ func (v *validator) assign(ent *schema.Entity, r *Request, a *Assign) error {
 	if n != 1 {
 		return errf("IR_INVALID", "set %s: exactly one of p/null/expr/plus_p/minus_p", a.Column)
 	}
-	if a.Null && !c.Nullable {
+	if a.Null && !c.Null {
 		return errf("IR_INVALID", "set %s.%s to null but column is NOT NULL", r.Entity, a.Column)
 	}
-	if (a.PlusP != nil || a.MinusP != nil) && c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+	if (a.PlusP != nil || a.MinusP != nil) && (!numeric(c.Type) || len(c.Codec) > 0) {
 		return errf("OPERATOR_NOT_ALLOWED", "plus/minus on %s.%s (%s)", r.Entity, a.Column, c.Type)
 	}
 	for _, idx := range []*int{a.P, a.PlusP, a.MinusP} {
@@ -269,28 +283,26 @@ func (v *validator) assign(ent *schema.Entity, r *Request, a *Assign) error {
 	return v.params(a.Ps)
 }
 
-// OpAllowed reports whether op is valid for a column of the given type/styles.
-func OpAllowed(c *schema.Col, op string) bool {
-	if colOps[op] || op == "expr" || op == "match" || op == "match_boolean" {
+// OpAllowed는 op가 field의 type과 codec에 허용되는지 알린다.
+func OpAllowed(c *runtimemodel.Field, op string) bool {
+	if colOps[op] || op == "expr" {
 		return true
 	}
-	// Encoded columns: only equality (deterministic AES) or null checks.
-	if len(c.Styles) > 0 && c.Type != "inet" {
-		if c.Styles[0] == "aes" {
+	// codec field는 ip면 address 비교, aes로 시작하면 blind index equality, 그 밖에는 null 검사만 받는다.
+	if len(c.Codec) > 0 {
+		switch {
+		case len(c.Codec) == 1 && c.Codec[0] == "ip":
+			return slices.Contains(ipOps, op)
+		case c.Codec[0] == "aes":
 			return op == "eq" || op == "not_eq" || op == "in" || op == "not_in" || op == "is_null" || op == "is_not_null"
 		}
 		return op == "is_null" || op == "is_not_null"
 	}
-	for _, o := range opsByType[c.Type] {
-		if o == op {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(opsByType[c.Type], op)
 }
 
 // Decode parses and validates a request against the manifest.
-func Decode(m *schema.Manifest, b []byte) (*Request, error) {
+func Decode(m *runtimemodel.Model, b []byte) (*Request, error) {
 	var r Request
 	decoder := json.NewDecoder(bytes.NewReader(b))
 	decoder.DisallowUnknownFields()
@@ -307,12 +319,12 @@ func Decode(m *schema.Manifest, b []byte) (*Request, error) {
 }
 
 // Validate checks an already-built request (in-process Go clients skip JSON).
-func Validate(m *schema.Manifest, r *Request) error {
+func Validate(m *runtimemodel.Model, r *Request) error {
 	if r.IRVersion != Version {
 		return errf("VERSION_MISMATCH", "ir_version %d, engine %d", r.IRVersion, Version)
 	}
-	if r.SchemaHash != m.SchemaHash {
-		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.SchemaHash, m.SchemaHash)
+	if r.ManifestHash != m.ManifestHash {
+		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.ManifestHash, m.ManifestHash)
 	}
 	switch r.Kind {
 	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete":
@@ -329,11 +341,11 @@ func Validate(m *schema.Manifest, r *Request) error {
 	ent := m.Entities[r.Entity]
 	switch r.Kind {
 	case "sum", "avg":
-		c := ent.Column(r.Agg)
+		c := ent.Field(r.Agg)
 		if c == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Agg)
 		}
-		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+		if !numeric(c.Type) || len(c.Codec) > 0 {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", r.Kind, r.Entity, r.Agg, c.Type)
 		}
 	}
@@ -376,13 +388,13 @@ func Validate(m *schema.Manifest, r *Request) error {
 			if err := v.assign(ent, r, &a); err != nil {
 				return err
 			}
-			if c := ent.Column(a.Column); c.PK || c.Auto {
+			if c := ent.Field(a.Column); c.PrimaryKey || c.Identity {
 				return errf("IR_INVALID", "on_duplicate cannot assign %s.%s", r.Entity, a.Column)
 			}
 		}
 	}
 	if r.Optimistic != nil {
-		if ent.Column(r.Optimistic.Column) == nil {
+		if ent.Field(r.Optimistic.Column) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, r.Optimistic.Column)
 		}
 		if err := v.params([]int{r.Optimistic.P}); err != nil {
@@ -396,7 +408,7 @@ func Validate(m *schema.Manifest, r *Request) error {
 }
 
 type validator struct {
-	m        *schema.Manifest
+	m        *runtimemodel.Model
 	n        int // NParams
 	subDepth int // >0 while validating a subquery ("^" refs allowed)
 }
@@ -422,13 +434,13 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("IR_INVALID", "columns.mode %q", q.Columns.Mode)
 		}
 		for _, c := range append(append([]string{}, q.Columns.Add...), q.Columns.Remove...) {
-			if ent.Column(c) == nil {
+			if ent.Field(c) == nil {
 				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, c)
 			}
 		}
 		// an output name is the row's key: two projections cannot claim the same one
 		for out, e := range q.Columns.Expr {
-			if ent.Column(out) != nil {
+			if ent.Field(out) != nil {
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
 			}
 			if strings.Count(e.SQL, "?") != len(e.Ps) {
@@ -443,11 +455,11 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			outputs[out] = true
 		}
 		for out, cf := range q.Columns.Fn {
-			if ent.Column(out) != nil || outputs[out] {
+			if ent.Field(out) != nil || outputs[out] {
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
 			}
 			outputs[out] = true
-			col := ent.Column(cf.Column)
+			col := ent.Field(cf.Column)
 			if col == nil {
 				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, cf.Column)
 			}
@@ -456,7 +468,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			}
 		}
 		for out, sub := range q.Columns.Sub {
-			if ent.Column(out) != nil || outputs[out] {
+			if ent.Field(out) != nil || outputs[out] {
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
 			}
 			outputs[out] = true
@@ -473,28 +485,18 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		if _, dup := joined[j.Rel]; dup || j.Rel == "" {
 			return errf("IR_INVALID", "join name %q is empty or used twice", j.Rel)
 		}
-		if j.Left != "" || j.Right != "" {
-			if j.Left == "" || j.Right == "" || j.Query == nil {
-				return errf("IR_INVALID", "join %s: left, right and query are required", j.Rel)
-			}
-			target, ok := v.m.Entities[j.Query.Entity]
-			if !ok {
-				return errf("ENTITY_UNKNOWN", "%s", j.Query.Entity)
-			}
-			if ent.Column(j.Left) == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, j.Left)
-			}
-			if target.Column(j.Right) == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, j.Right)
-			}
-		} else {
-			rel := ent.Relations[j.Rel]
-			if rel == nil {
-				return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, j.Rel)
-			}
-			if j.Query == nil || j.Query.Entity != rel.Target {
-				return errf("IR_INVALID", "join %s: query entity must be %s", j.Rel, rel.Target)
-			}
+		if j.Left == "" || j.Right == "" || j.Query == nil {
+			return errf("IR_INVALID", "join %s: left, right and query are required", j.Rel)
+		}
+		target, ok := v.m.Entities[j.Query.Entity]
+		if !ok {
+			return errf("ENTITY_UNKNOWN", "%s", j.Query.Entity)
+		}
+		if ent.Field(j.Left) == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, j.Left)
+		}
+		if target.Field(j.Right) == nil {
+			return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, j.Right)
 		}
 		joined[j.Rel] = j
 		if err := v.query(j.Query, joinPath(path, j.Rel), true, false); err != nil {
@@ -524,39 +526,36 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("COLUMN_ALIAS_CONFLICT", "relation name %q is empty or used twice", r.Rel)
 		}
 		relationNames[r.Rel] = true
-		if ent.Column(r.Rel) != nil {
+		if ent.Field(r.Rel) != nil {
 			return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a column", q.Entity, r.Rel)
 		}
 		if r.Query == nil {
 			return errf("IR_INVALID", "relation %s needs a query", r.Rel)
 		}
 		kind := r.Kind
-		if r.Left != "" || r.Right != "" {
-			if r.Left == "" || r.Right == "" || (kind != "one" && kind != "many") {
-				return errf("IR_INVALID", "relation %s: left, right and kind one|many are required", r.Rel)
+		if len(r.Keys) == 0 || (kind != "one" && kind != "many") {
+			return errf("IR_INVALID", "relation %s: keys and kind one|many are required", r.Rel)
+		}
+		target, ok := v.m.Entities[r.Query.Entity]
+		if !ok {
+			return errf("ENTITY_UNKNOWN", "%s", r.Query.Entity)
+		}
+		lefts, rights := map[string]bool{}, map[string]bool{}
+		for _, k := range r.Keys {
+			if k.Left == "" || k.Right == "" {
+				return errf("IR_INVALID", "relation %s: every key needs left and right", r.Rel)
 			}
-			target, ok := v.m.Entities[r.Query.Entity]
-			if !ok {
-				return errf("ENTITY_UNKNOWN", "%s", r.Query.Entity)
+			if ent.Field(k.Left) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, k.Left)
 			}
-			if ent.Column(r.Left) == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, r.Left)
+			if target.Field(k.Right) == nil {
+				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, k.Right)
 			}
-			if target.Column(r.Right) == nil {
-				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, r.Right)
+			// 한 column이 두 성분에 나오면 key가 아니다.
+			if lefts[k.Left] || rights[k.Right] {
+				return errf("IR_INVALID", "relation %s: key column %s or %s is used twice", r.Rel, k.Left, k.Right)
 			}
-		} else {
-			rel := ent.Relations[r.Rel]
-			if rel == nil {
-				return errf("RELATION_UNKNOWN", "%s.%s", q.Entity, r.Rel)
-			}
-			if r.Query.Entity != rel.Target {
-				return errf("IR_INVALID", "relation %s: query entity must be %s", r.Rel, rel.Target)
-			}
-			if kind != "" {
-				return errf("IR_INVALID", "relation %s: kind needs left and right", r.Rel)
-			}
-			kind = rel.Kind
+			lefts[k.Left], rights[k.Right] = true, true
 		}
 		if r.Query.Limit != nil {
 			return errf("LIMIT_IN_RELATION", "%s: use limit_per_parent", r.Rel)
@@ -567,7 +566,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		if r.Query.KeyBy != "" && kind != "many" {
 			return errf("IR_INVALID", "relation %s: key_by needs a many relation", r.Rel)
 		}
-		if r.Query.IfParent != nil && ent.Column(r.Query.IfParent.Column) == nil {
+		if r.Query.IfParent != nil && ent.Field(r.Query.IfParent.Column) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s (if_parent)", q.Entity, r.Query.IfParent.Column)
 		}
 		if err := v.query(r.Query, joinPath(path, r.Rel), false, true); err != nil {
@@ -575,7 +574,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		}
 	}
 	if q.KeyBy != "" {
-		col := ent.Column(q.KeyBy)
+		col := ent.Field(q.KeyBy)
 		if col == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, q.KeyBy)
 		}
@@ -599,7 +598,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("IR_INVALID", "order needs exactly one of column, expr, random")
 		}
 		if o.Column != "" {
-			col := ent.Column(o.Column)
+			col := ent.Field(o.Column)
 			if col == nil {
 				return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, o.Column)
 			}
@@ -613,7 +612,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		}
 	}
 	for _, g := range q.GroupBy {
-		if ent.Column(g) == nil {
+		if ent.Field(g) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, g)
 		}
 	}
@@ -662,7 +661,7 @@ func joinPath(path, rel string) string {
 }
 
 // group validates connectors and operators.
-func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join, top bool) error {
+func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]*Join, top bool) error {
 	for i, it := range g.Items {
 		n := 0
 		conn := ""
@@ -712,7 +711,7 @@ func (v *validator) group(ent *schema.Entity, g *Group, joined map[string]*Join,
 	return nil
 }
 
-func (v *validator) pred(ent *schema.Entity, p *Pred) error {
+func (v *validator) pred(ent *runtimemodel.Entity, p *Pred) error {
 	if err := v.params(p.Ps); err != nil {
 		return err
 	}
@@ -732,11 +731,11 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 			return errf("IR_INVALID", "%s needs at least two columns", p.Op)
 		}
 		for _, name := range p.Cols {
-			c := ent.Column(name)
+			c := ent.Field(name)
 			if c == nil {
 				return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, name)
 			}
-			if len(c.Styles) > 0 || c.Type == "jsontext" || c.Type == "point" {
+			if len(c.Codec) > 0 {
 				return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s", p.Op, ent.Name, name)
 			}
 		}
@@ -752,7 +751,7 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 		return errf("IR_INVALID", "cols is only valid with tuple_in or tuple_not_in")
 	}
 	if p.Sub != nil {
-		c := ent.Column(p.Column)
+		c := ent.Field(p.Column)
 		if c == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, p.Column)
 		}
@@ -765,7 +764,7 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 		return v.sub(p.Sub, false)
 	}
 	if p.Fn != nil || p.Value != nil {
-		c := ent.Column(p.Column)
+		c := ent.Field(p.Column)
 		if c == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, p.Column)
 		}
@@ -817,19 +816,7 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 		}
 		return v.params(p.Value.Ps)
 	}
-	if p.Op == "match" || p.Op == "match_boolean" {
-		if len(p.Match) == 0 {
-			return errf("IR_INVALID", "match needs columns")
-		}
-		if !hasFulltext(ent, p.Match) {
-			return errf("INDEX_UNKNOWN", "no fulltext index on %s(%s)", ent.Name, strings.Join(p.Match, ","))
-		}
-		if p.P == nil {
-			return errf("IR_INVALID", "match needs a value (p)")
-		}
-		return nil
-	}
-	c := ent.Column(p.Column)
+	c := ent.Field(p.Column)
 	if c == nil {
 		return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, p.Column)
 	}
@@ -860,31 +847,13 @@ func (v *validator) pred(ent *schema.Entity, p *Pred) error {
 	return nil
 }
 
-func hasFulltext(ent *schema.Entity, cols []string) bool {
-	for _, ft := range ent.Fulltext {
-		if len(ft) != len(cols) {
-			continue
-		}
-		ok := true
-		for i := range ft {
-			if ft[i] != cols[i] {
-				ok = false
-			}
-		}
-		if ok {
-			return true
-		}
-	}
-	return false
-}
-
 // columnFunc validates a column function against the column type.
-func (v *validator) columnFunc(ent *schema.Entity, c *schema.Col, f *Func) error {
+func (v *validator) columnFunc(ent *runtimemodel.Entity, c *runtimemodel.Field, f *Func) error {
 	types, ok := dialect.ColumnFunctionTypes[f.Name]
 	if !ok {
 		return errf("FUNCTION_UNKNOWN", "%s", f.Name)
 	}
-	if !slices.Contains(types, c.Type) {
+	if !slices.Contains(types, c.Type) || len(c.Codec) > 0 {
 		return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", f.Name, ent.Name, c.Name, c.Type)
 	}
 	if len(f.Ps) != dialect.ColumnFunctionArity[f.Name] {
@@ -911,11 +880,11 @@ func (v *validator) sub(s *Sub, scalar bool) error {
 		if !scalar {
 			return errf("IR_INVALID", "%s subquery is only valid as a column", s.Agg)
 		}
-		c := ent.Column(s.Column)
+		c := ent.Field(s.Column)
 		if c == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, s.Column)
 		}
-		if c.Type != "i32" && c.Type != "i64" && c.Type != "f64" && c.Type != "decimal" {
+		if !numeric(c.Type) || len(c.Codec) > 0 {
 			return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s)", s.Agg, ent.Name, s.Column, c.Type)
 		}
 	case "count":
@@ -925,7 +894,7 @@ func (v *validator) sub(s *Sub, scalar bool) error {
 	default:
 		return errf("IR_INVALID", "subquery agg %q", s.Agg)
 	}
-	if s.Column != "" && ent.Column(s.Column) == nil {
+	if s.Column != "" && ent.Field(s.Column) == nil {
 		return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, s.Column)
 	}
 	if s.Query.Limit != nil || len(s.Query.Relations) > 0 || s.Query.Lock != "" || s.Query.Columns != nil {

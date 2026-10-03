@@ -1,0 +1,6 @@
+dbspec 1 shop
+
+table tÿ {
+  id i64 identity
+  primary key (id)
+}

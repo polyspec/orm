@@ -1,9 +1,9 @@
 [package]
 name = "orm-schema"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 publish = false
-description = "Schema definitions for the Rust ORM: Mermaid diagrams to schema.json, DDL, and migrations between manifests"
+description = "dbspec schema documents for the Rust ORM: parse, canonical emit, manifest, runtime model, dialect statements, plans and Mermaid export"
 license = "MIT"
 repository = "https://github.com/polyspec/orm"
 readme = "../README.md"
@@ -11,7 +11,11 @@ keywords = ["orm", "schema", "ddl", "migration"]
 categories = ["database"]
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 sha2 = "0.10"
 regex = "1"
+
+[dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
+orm-case-clock = { path = "../case-clock" }
+serde_json = "1"

@@ -1,23 +1,22 @@
 <?php
 // Hot-path gate: the model client against the same statement through PDO with the same cell
 // decoding and the same typed row conversion, measured in alternating pairs.
-// Usage: php clients/php/tests/perf_gate.php /abs/schema.json
+// Usage: php clients/php/tests/perf_gate.php
 // ORM_BENCH_MYSQL_DSN names the seeded bench database; the gate fails without it.
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Chain;
 use Orm\Codec;
 use Orm\Config;
 use Orm\Db;
-use Orm\Orm;
 use Orm\PendingTime;
 
-if ($argc < 2) {
-    fwrite(STDERR, "usage: perf_gate.php /abs/schema.json\n");
+if ($argc !== 1) {
+    fwrite(STDERR, "usage: perf_gate.php\n");
     exit(2);
 }
 
@@ -26,8 +25,7 @@ if ($benchDsn === false || $benchDsn === '') {
     fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips\n");
     exit(1);
 }
-$db = Orm::connect($benchDsn, new Config(
-    schemaPath: $argv[1],
+$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
 ));
@@ -107,7 +105,7 @@ function native(Db $db, Author $query): Closure
     $binds = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v), $q['binds']);
     $cells = [];
     $columns = null;
-    foreach ((new ReflectionProperty(\Orm\Engine::class, 'plans'))->getValue((new ReflectionProperty(Db::class, 'engine'))->getValue($db)) as $plan) {
+    foreach ((new ReflectionProperty(\Orm\Engine::class, 'plans'))->getValue(\Orm\Engine::for(Author::meta()['manifest_hash'], $db->driver(), $db->config()->planCacheSize)) as $plan) {
         if ($plan['steps'][0]['sql'] === $q['sql']) {
             $cells = $plan['steps'][0]['decode'];
             $columns = $plan['steps'][0]['assemble']['columns'];
@@ -118,20 +116,20 @@ function native(Db $db, Author $query): Closure
         exit(2);
     }
     $meta = Author::meta()['columns'];
-    $groups = ['int' => [], 'float' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => []];
+    $groups = ['int' => [], 'float' => [], 'bool' => [], 'date' => [], 'string' => [], 'codec' => []];
     foreach ($columns as $col) {
         $mc = $meta[$col['name']] ?? null;
         if ($mc === null || ($col['column'] ?? $col['name']) !== $col['name']) {
             fwrite(STDERR, "gate: selected {$col['name']} is not a plain author column\n");
             exit(2);
         }
-        $kind = Chain::clientStyled($mc) ? 'json' : $mc['type'];
+        $kind = $mc['codec'] !== [] ? 'codec' : $mc['type'];
         $groups[match ($kind) {
-            'i32', 'i64' => 'int',
+            'i16', 'i32', 'i64' => 'int',
             'f64', 'decimal' => 'float',
             'bool' => 'bool',
             'date', 'datetime' => 'date',
-            'point', 'json', 'jsontext' => 'other',
+            'codec' => 'codec',
             default => 'string',
         }][] = [$col['index'], $col['name'], $kind];
     }
@@ -164,12 +162,8 @@ function native(Db $db, Author $query): Closure
                 $v = $vals[$index];
                 $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
             }
-            foreach ($groups['other'] as [$index, $name, $kind]) {
-                $v = $vals[$index];
-                if (is_resource($v)) {
-                    $v = stream_get_contents($v);
-                }
-                $values[$name] = $v === null || $kind === 'json' ? $v : Codec::point($v);
+            foreach ($groups['codec'] as [$index, $name]) {
+                $values[$name] = $vals[$index];
             }
             $out[] = $values;
         }
@@ -181,16 +175,19 @@ $cases = [
     ['list100', static fn() => (new Author)($db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100), 1.25],
 ];
 $load = cpuLoad();
-$failed = false;
+// GATE_DEADLINE은 gate case 하나의 기한이다. case는 warm-up 100쌍과 측정 1000쌍의 client와
+// native 조회를 bench database에 보내고, 부하 process가 모든 CPU를 쓰는 동안에도 몇십 초
+// 안에 끝난다.
+const GATE_DEADLINE = 300.0;
+$gate = new TestCases();
 foreach ($cases as [$name, $query, $bound]) {
-    $native = native($db, $query());
-    [$clientNs, $nativeNs, $ratio] = pairedRatio(static fn() => $query()->gets(), $native);
-    printf("%-8s native %7.1fµs  client %7.1fµs  ratio %.2f (bound %.2f)%s\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound, $load === [] ? '' : ' under CPU load');
-    if ($ratio > $bound) {
-        $failed = true;
-    }
+    $gate->run('perf_gate/' . $name . ($load === [] ? '' : '/under-load'), GATE_DEADLINE, static function (callable $step) use ($db, $query, $bound, $name): void {
+        $native = native($db, $query());
+        [$clientNs, $nativeNs, $ratio] = pairedRatio(static fn() => $query()->gets(), $native);
+        $step(sprintf('native %.1fµs client %.1fµs ratio %.2f (bound %.2f)', $nativeNs / 1000, $clientNs / 1000, $ratio, $bound));
+        if ($ratio > $bound) {
+            throw new RuntimeException("PHP model client exceeds the $name performance regression limit");
+        }
+    });
 }
-if ($failed) {
-    fwrite(STDERR, "PHP model client exceeds a performance regression limit\n");
-    exit(1);
-}
+$gate->finish();

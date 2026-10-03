@@ -1,0 +1,156 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "mysql": [
+          {
+            "params": [
+              0,
+              1,
+              2
+            ],
+            "role": "main",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+          }
+        ],
+        "postgres": [
+          {
+            "params": [
+              0,
+              1,
+              2
+            ],
+            "role": "main",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"seq\" IN ($2, $3) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
+          }
+        ],
+        "sqlite": [
+          {
+            "params": [
+              0,
+              1,
+              2
+            ],
+            "role": "main",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"seq\" IN (?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
+          }
+        ]
+      },
+      "id": "planner_statement",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "limit": {
+          "count": 3,
+          "offset": 0
+        },
+        "n_params": 3,
+        "order": [
+          {
+            "column": "seq",
+            "desc": true
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "eq",
+                "p": 0
+              }
+            },
+            {
+              "pred": {
+                "column": "seq",
+                "conn": "and",
+                "op": "in",
+                "ps": [
+                  1,
+                  2
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE `a`.`name` = ?"
+          }
+        ],
+        "postgres": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1"
+          }
+        ],
+        "sqlite": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ?"
+          }
+        ]
+      },
+      "id": "planner_count",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "COLUMN_UNKNOWN"
+      },
+      "id": "planner_rejects_unknown_column",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "nope",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    }
+  ],
+  "feature": "planner"
+}

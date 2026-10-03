@@ -1,0 +1,10 @@
+{
+  "feature": "authenticated_encryption",
+  "cases": [
+    {"id": "aes_envelope_decrypt", "operation": "aes_decrypt", "input": {"key": "bench-salt", "envelope_hex": "4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24"}, "expected": {"plain": "user42@example.com"}},
+    {"id": "aes_round_trip", "operation": "aes_encrypt_decrypt", "input": {"key": "bench-salt", "plain": "user42@example.com"}, "expected": {"prefix_hex": "4F524D2D4145533200", "envelope_bytes": 55, "plain": "user42@example.com"}},
+    {"id": "aes_tamper_rejected", "operation": "aes_decrypt", "input": {"key": "bench-salt", "envelope_hex": "4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E25"}, "expected": {"error": "CODEC_DECODE"}},
+    {"id": "aes_wrong_key_rejected", "operation": "aes_decrypt", "input": {"key": "other-key", "envelope_hex": "4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24"}, "expected": {"error": "CODEC_DECODE"}},
+    {"id": "blind_index_vector", "operation": "blind_index", "input": {"key": "bench-blind-index", "plain": "user42@example.com"}, "expected": {"index": "d7ed2c8be5e5492b75c87b240990131dc334f7866fbb94429467e12e1ba25d91"}}
+  ]
+}

@@ -7,7 +7,9 @@
 package pg
 
 import (
+	"database/sql/driver"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -18,9 +20,14 @@ import (
 
 func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
 
-// mapErr names the conditions docs/errors.yaml maps; the executor reports
-// every other driver error as DRIVER.
+// mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
+// 나머지 driver 오류를 DRIVER로 보고한다.
 func mapErr(err error) error {
+	// pgx가 이미 닫은 connection이다. driver.ErrBadConn으로 표시해 transaction의
+	// rollback이 server가 끝낸 session을 실패로 보고하지 않게 한다.
+	if errors.Is(err, pgconn.ErrConnClosed) {
+		return fmt.Errorf("%w: %w", driver.ErrBadConn, err)
+	}
 	var pe *pgconn.PgError
 	if !errors.As(err, &pe) {
 		return err

@@ -20,7 +20,7 @@ trap cleanup EXIT HUP INT TERM
 
 if [ ! -f "$DB" ]; then
   TMP=$(mktemp "$RUNTIME/decimal-bench.XXXXXXXX")
-  sqlite3 "$TMP" < "$ROOT/bench/sql/author.sqlite.sql"
+  (cd "$ROOT" && go run ./bench/install -dsn "sqlite://$TMP")
   sqlite3 "$TMP" < "$ROOT/bench/sql/seed.sqlite.sql"
   (cd "$ROOT" && go run ./bench/seedaes -driver sqlite -dsn "file:$TMP")
   mv -n -- "$TMP" "$DB"

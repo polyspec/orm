@@ -8,17 +8,13 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestPhysicalCounterCleanup(t *testing.T) {
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	testcase.Group(t)
+	lockBench(t)
 	for _, test := range []struct {
 		driver, env string
 	}{
@@ -27,6 +23,8 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
+			// database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
 				t.Fatalf("%s is required", test.env)
@@ -129,14 +127,8 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 }
 
 func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	testcase.Group(t)
+	lockBench(t)
 	for _, test := range []struct {
 		driver, env string
 	}{
@@ -145,6 +137,8 @@ func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
+			// database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
 				t.Fatalf("%s is required", test.env)
@@ -206,4 +200,17 @@ func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+// lockBench는 TEST_ENV의 세 bench database의 conformance lock을 test가 끝날 때까지 잡는다.
+func lockBench(t *testing.T) {
+	t.Helper()
+	if err := lockDatabases(os.Getenv("BENCH_MYSQL_DSN"), os.Getenv("BENCH_POSTGRES_DSN"), os.Getenv("BENCH_SQLITE_DSN")); err != nil {
+		t.Fatalf("conformance database lock: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := releaseLocks(); err != nil {
+			t.Error(err)
+		}
+	})
 }

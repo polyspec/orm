@@ -9,10 +9,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// TestParseDSNMySQLTLS checks the MySQL TLS parameters of docs/config.md:
-// ssl-mode=VERIFY_IDENTITY with an absolute ssl-ca and a host name is the one
-// TLS mode, and any other ssl-mode, a missing or relative ssl-ca, a socket and
-// an address host return CONFIG.
+// TestParseDSNMySQLTLS는 docs/config.md의 MySQL TLS parameter를 검사한다:
+// 절대 경로 ssl-ca와 host 이름을 둔 ssl-mode=VERIFY_IDENTITY가 유일한 TLS
+// mode이고, 다른 ssl-mode, 없거나 상대 경로인 ssl-ca, socket, 주소 host는
+// CONFIG다.
 func TestParseDSNMySQLTLS(t *testing.T) {
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
 	if err != nil || parsed.sslCA != "/tmp/ca.pem" || parsed.sslHost != "db.local" || strings.Contains(parsed.native, "ssl") {
@@ -40,9 +40,9 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 	}
 }
 
-// TestMySQLTLSConnection connects with ssl-mode=VERIFY_IDENTITY to the TLS
-// server of make test-servers and requires TLS, and refuses a server whose
-// certificate another CA signed or that names another host.
+// TestMySQLTLSConnection은 make test-servers의 TLS server에
+// ssl-mode=VERIFY_IDENTITY로 연결해 TLS를 요구하고, 다른 CA가 서명했거나 다른
+// host를 이름으로 가진 인증서의 server를 거부한다.
 func TestMySQLTLSConnection(t *testing.T) {
 	version := func(dsn string) (string, error) {
 		parsed, err := parseDSN(dsn, 0)

@@ -1,25 +1,27 @@
 // Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN
-// and ORM_TEST_POSTGRES_DSN name test databases and must be set, e.g.
+// and ORM_TEST_POSTGRES_DSN must be set, e.g.
 //   ORM_TEST_MYSQL_DSN='mysql://root@localhost/orm_ts_test?socket=/tmp/mysql.sock'
 //   ORM_TEST_POSTGRES_DSN='postgres:///orm_ts_test?host=/tmp'
-// The test drops and recreates the schema tables in those databases.
+// Every case that installs the schema or checks an empty database runs on a
+// case database of its own (case-database.mjs), created on those servers and
+// dropped when the case ends; the databases the DSNs name are not changed.
 //
 // Usage: node clients/typescript/tests/model.mjs (after npm run typescript:build)
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  AesKeyring, Account, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, StyledValue,
-  Service, ServiceMember, ServiceRegion, User, loadManifest, registerSchema, renderDDL,
+  Account, AesKeyring, Author, CORE, CompositeAccount, CompositeMembership, Db, Model, OrmError, SCHEMA, Service,
+  ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench, dbspecManifest, parseDbspec,
+  registerModel,
 } from '../dist/index.js';
-import { buildManifest, encodeManifest } from '../dist/schema/build.js';
-import { parseDiagram } from '../dist/schema/mermaid.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { DATABASE, sections } from '../../../tests/testcase.mjs';
+import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
-const schemaPath = join(root, 'schema/schema.json');
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
   throw new Error('usage: model.mjs [--case styledStates --dialect sqlite|mysql|postgres]');
@@ -28,6 +30,12 @@ const selectedCase = args.length === 0 ? undefined : args[1];
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
+/** A document text's generated schema value: its manifest text and manifestHash. */
+function schemaOf(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
@@ -35,20 +43,17 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 let current = '';
-
-const manifestJson = await readFile(schemaPath, 'utf8');
-
-/** A mysql2 connection to the database, host, port, or socket of a DSN. */
-function mysqlConnection(dsn) {
-  const url = new URL(dsn);
-  return require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
+// 각 구역은 case 하나다. 기한은 DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를
+// 실행한다.
+const caseLog = sections();
+let caseFailures = 0;
+function begin(name) {
+  current = name;
+  caseFailures = failures;
+  caseLog.begin(`model/${name}`, DATABASE);
 }
-
-/** A pg client for the database, host, and port of a DSN. */
-function postgresClient(dsn) {
-  const url = new URL(dsn);
-  const { Client } = require('pg');
-  return new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
+function end() {
+  caseLog.end(failures > caseFailures ? `${failures - caseFailures} check(s) failed; each FAIL line above names one` : undefined);
 }
 
 /**
@@ -73,13 +78,19 @@ async function awaitReplica(dialect, primary, replica) {
     } finally { await client.end(); }
     return;
   }
-  const source = await mysqlConnection(primary);
-  const target = await mysqlConnection(replica);
+  // replica에 case database가 아직 없을 수 있으므로 두 연결 모두 database 없이 연다. 한 연결이
+  // 실패해도 열린 연결은 닫는다. 열린 연결은 test process가 끝나지 못하게 한다.
+  const source = await mysqlConnection(primary, null);
   try {
-    const [[status]] = await source.query('SHOW BINARY LOG STATUS');
-    const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
-    if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
-  } finally { await source.end(); await target.end(); }
+    const target = await mysqlConnection(replica, null);
+    try {
+      const [[{ current }]] = await target.query('SELECT DATABASE() AS current');
+      if (current !== null) throw new Error(`the replica wait connection opened database ${current}`);
+      const [[status]] = await source.query('SHOW BINARY LOG STATUS');
+      const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
+      if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    } finally { await target.end(); }
+  } finally { await source.end(); }
 }
 
 /**
@@ -88,7 +99,7 @@ async function awaitReplica(dialect, primary, replica) {
  * without a connection inside a transaction uses the transaction.
  */
 async function primaryAndReplica(dialect, primary, replica) {
-  await install(dialect, primary);
+  await install(primary);
   const master = await connect(primary);
   let slave1;
   try {
@@ -114,18 +125,6 @@ async function primaryAndReplica(dialect, primary, replica) {
   }
 }
 
-/** Drops the schema tables. */
-async function dropTables(dialect, dsn) {
-  const drops = renderDDL(loadManifest(manifestJson), dialect).split('\n').filter(line => line.startsWith('DROP TABLE IF EXISTS ')).map(line => line.replace(/;$/, ''));
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    for (const s of drops) await conn.query(s);
-    await conn.end();
-  } else if (dialect === 'postgres') {
-    await postgres(dsn, drops.map(s => `${s} CASCADE`));
-  }
-}
-
 /** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
 async function postgres(dsn, statements) {
   const client = postgresClient(dsn);
@@ -136,23 +135,21 @@ async function postgres(dsn, statements) {
   } finally { await client.end(); }
 }
 
-/** Drops the schema tables, then installs the schema through the connection. */
-async function install(dialect, dsn) {
-  await dropTables(dialect, dsn);
+/** Installs the schema twice through a connection to the new case database, which must be empty first. */
+async function install(dsn) {
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
-    await db.utils().schema().install(manifestJson);
-    await db.utils().schema().install(manifestJson);
+    await db.utils().schema().install(SCHEMA);
+    await db.utils().schema().install(SCHEMA);
   } finally { await db.close(); }
 }
 
 /**
- * Checks schema().empty() on the test database without the schema tables, with
- * an empty PostgreSQL schema other than public, and with the installed tables.
+ * Checks schema().empty() on a new case database, with an empty PostgreSQL
+ * schema other than public, and with the installed tables.
  */
 async function schemaEmpty(dialect, dsn) {
-  await dropTables(dialect, dsn);
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'a database without tables');
@@ -163,7 +160,7 @@ async function schemaEmpty(dialect, dsn) {
       } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
       check(await db.utils().schema().empty(), 'the empty schema dropped');
     }
-    await db.utils().schema().install(manifestJson);
+    await db.utils().schema().install(SCHEMA);
     check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
 }
@@ -467,12 +464,12 @@ async function aesRotation(db, dsn) {
   status = await db.utils().aes().status(new Author(), keyring);
   check(status.pending === 0, `after rotation: ${JSON.stringify(status)}`);
   // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-  const versioned = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
-  const current = await Db.connect(dsn, schemaPath, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
+  const versioned = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
+  const current = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
   try {
     check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
     check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(await code(Db.connect(dsn, schemaPath, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
+    check(await code(connectBench(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
   } finally {
     await versioned.close();
     await current.close();
@@ -480,30 +477,32 @@ async function aesRotation(db, dsn) {
 }
 
 function connect(dsn) {
-  return Db.connect(dsn, schemaPath, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
+  return connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
 }
 
 /**
- * Writes a wall-clock value and reads it back in the connection time zone, and
- * checks that the clock default and an equality filter use the same zone.
+ * 모든 connection은 server의 time zone과 상관없이 datetime을 UTC로 읽고 쓴다
+ * (docs/dialects.md "Date and time"). 시험 server의 MySQL은 SYSTEM(KST),
+ * PostgreSQL은 Asia/Seoul이다. offset이 있는 instant는 UTC wall clock으로 저장되고,
+ * clock default도 UTC다.
  */
-async function connectionTimeZone(db, offsetMinutes) {
+async function connectionsUseUtc(db) {
   const f = await seed(db);
-  const midnight = new Date(Date.UTC(2026, 0, 2) - offsetMinutes * 60_000);
+  const midnight = new Date('2026-01-02T00:00:00+09:00');
   const before = Date.now();
   const created = await new Author().connect(db)
     .setName('zone').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
     .setServiceRegionSeq(f.module.getSeq()).setServiceMemberSeq(f.member.getSeq())
     .setStartDt(midnight).setEndDt('2026-01-03 00:00:00').create();
   const row = await new Author().connect(db).getBySeq(created.getSeq());
-  check(row?.getStartDt() === '2026-01-02 00:00:00.000000', `start_dt ${row?.getStartDt()}`);
-  const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`) - offsetMinutes * 60_000;
+  check(row?.getStartDt() === '2026-01-01 15:00:00.000000', `start_dt ${row?.getStartDt()}`);
+  const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`);
   check(row !== null && Math.abs(wall(row.getCreatedTs()) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
   check(await new Author().connect(db).startDt(midnight).getCount() === 1, 'equality filter with an instant');
-  check(await new Author().connect(db).startDt('2026-01-02 00:00:00').getCount() === 1, 'equality filter by text');
-  check(await new Author().connect(db).startDt('2026-01-02T00:00:00.0').getCount() === 1, 'equality filter by text with fraction');
-  check(await new Author().connect(db).startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');
-  check(await new Author().connect(db).betweenStartDt(['2026-01-02 00:00:00', '2026-01-02 00:00:00.5']).getCount() === 1, 'between filter by text');
+  check(await new Author().connect(db).startDt('2026-01-01 15:00:00').getCount() === 1, 'equality filter by text');
+  check(await new Author().connect(db).startDt('2026-01-01T15:00:00.0').getCount() === 1, 'equality filter by text with fraction');
+  check(await new Author().connect(db).startDt(['2026-01-01 15:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');
+  check(await new Author().connect(db).betweenStartDt(['2026-01-01 15:00:00', '2026-01-01 15:00:00.5']).getCount() === 1, 'between filter by text');
   if (db.driver === 'sqlite') {
     check(await code(new Author().connect(db).startDt('2026-01-02').getCount()) === 'CODEC_ENCODE', 'date-only datetime text');
   }
@@ -537,97 +536,34 @@ async function bindLimitSplitting(db) {
 /** A MySQL install inside a transaction returns CONFIG: schema statements commit implicitly. */
 async function mysqlInstallInsideTransaction(db) {
   let inside = null;
-  await db.transaction(async () => { inside = await code(db.utils().schema().install(manifestJson)); });
+  await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
   check(inside === 'CONFIG', `install inside a transaction: ${inside}`);
 }
 
-/** A manifest built from Mermaid and a model class for each of its entities. */
-function auditSchema(source) {
-  const manifest = buildManifest([parseDiagram(source)]);
-  const entities = new Map(Object.values(manifest.entities).map(e => [e.name, {
-    name: e.name, table: e.table, pk: e.pk, auto: e.auto, fulltext: [], ...(e.aes_version ? { aesVersion: e.aes_version } : {}),
-    columns: Object.fromEntries(e.columns.map(c => [c.name, { type: c.type, nullable: c.nullable, styles: c.styles }])),
-  }]));
-  const set = { hash: manifest.schema_hash, entities };
-  registerSchema(set);
+/** Registers the model of one dbspec document and returns a model class per entity. */
+function documentModels(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
   const models = {};
-  for (const name of entities.keys()) {
-    const model = class extends Model {};
-    model.entity = { schema: entities.get(name), set, create: core => new model(core) };
-    models[name] = model;
+  for (const entity of model.entities.values()) {
+    const cls = class extends Model {};
+    cls.entity = { model, entity, create: core => new cls(core) };
+    models[entity.name] = cls;
   }
-  return { json: encodeManifest(manifest), models };
+  return models;
 }
 
 /**
- * Installs log tables and, from a second manifest, audited tables, and writes
- * inside a transaction that names its operation with setLocal; PostgreSQL and
- * SQLite use schema-qualified tables.
- */
-async function auditTriggers(dialect, dsn) {
-  const prefix = dialect === 'mysql' ? '' : 'ormtest.';
-  const logs = auditSchema('erDiagram\n'
-    + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
-    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    varchar(36) service_ref "?"\n'
-    + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
-    + (prefix === '' ? '' : '  %% orm:table entity=audit_operation name=ormtest.audit_operation\n  %% orm:table entity=audit_change name=ormtest.audit_change\n'));
-  // The audited manifest writes into log tables that only the first manifest declares.
-  const items = auditSchema('erDiagram\n'
-    + '  audit_item {\n    bigint seq PK "auto"\n    varchar(36) service_ref\n    varchar(191) title\n  }\n'
-    + (prefix === '' ? '' : '  %% orm:table entity=audit_item name=ormtest.audit_item\n')
-    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_ref, table_label, entity_ref, before_value, after_value)\n`
-    + '  %% orm:audit entity=audit_item mode=changes service=service_ref\n');
-  await dropAuditTables(dialect, dsn);
-  const db = await connect(dsn);
-  try {
-    for (const json of [logs.json, items.json, items.json]) await db.utils().schema().install(json);
-    const { audit_operation: AuditOperation, audit_change: AuditChange } = logs.models;
-    const { audit_item: AuditItem } = items.models;
-    const item = (site, title) => { const m = new AuditItem(); m[CORE].setValue('service_ref', site); m[CORE].setValue('title', title); return m; };
-    let message = '';
-    try { await db.transaction(async () => { await item('s1', 'a').create(); }, { retry: 0 }); } catch (error) { message = String(error.message); }
-    check(message.includes('audit operation context is required'), `write without an operation: ${message}`);
-    let seq;
-    await db.transaction(async () => {
-      const op = new AuditOperation();
-      op[CORE].setValue('operation_uuid', 'op-1');
-      await op.create();
-      await db.utils().setLocal('ormtest.operation_id', 'op-1');
-      const created = await item('s1', 'a').create();
-      seq = created[CORE].column('seq');
-      const changed = new AuditItem();
-      changed[CORE].setValue('seq', seq);
-      changed[CORE].setValue('title', 'b');
-      await changed.update();
-    }, { retry: 0 });
-    const query = new AuditChange().connect(db).addAllColumns();
-    query[CORE].orderBy('seq', false, []);
-    const rows = [...(await query.gets()).values()];
-    const value = (row, column) => row[CORE].column(column);
-    const plain = v => JSON.parse(stringifyJson(v.payload()));
-    check(rows.map(r => value(r, 'change_kind')).join(',') === 'INSERT,UPDATE', `change kinds ${rows.map(r => value(r, 'change_kind'))}`);
-    for (const row of rows) {
-      check(Number(value(row, 'operation_seq')) === 1 && value(row, 'service_ref') === 's1' && value(row, 'table_label') === `${prefix}audit_item`, 'change row');
-      check(JSON.stringify(plain(value(row, 'entity_ref'))) === JSON.stringify({ seq: Number(seq) }), `entity key ${JSON.stringify(plain(value(row, 'entity_ref')))}`);
-    }
-    check(JSON.stringify(plain(value(rows[1], 'before_value'))) === '{"title":"a"}' && JSON.stringify(plain(value(rows[1], 'after_value'))) === '{"title":"b"}', 'update values');
-  } finally { await db.close(); }
-  await dropAuditTables(dialect, dsn);
-}
-
-/**
- * Writes a JSON value to an encrypted `json aes` column, reads it back, rotates
- * the row to the next key version, and updates it with the first key version.
+ * Writes a JSON value to an encrypted `ordered_json aes` column, reads it
+ * back, rotates the row to the next key version, and updates it with the
+ * first key version.
  */
 async function aesJsonColumn(dialect, dsn, sqlitePath) {
-  const { json, models: { secret_config: SecretConfig } } = auditSchema('erDiagram\n'
-    + '  secret_config {\n    bigint seq PK "auto"\n    int aes_key_version\n    longblob config "json aes"\n  }\n');
-  await dropTable(dialect, dsn, 'secret_config');
+  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
+  const { secret_config: SecretConfig } = documentModels(secret);
   const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
   const updatedText = '{"token":"next-token","list":[1,"two",null]}';
-  const manifestPath = join(work, 'secret_config.json');
-  await writeFile(manifestPath, json);
-  const open = (keys, version) => Db.connect(dsn, manifestPath, { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
+  const open = (keys, version) => Db.connectSchema(dsn, schemaOf(secret), { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
   const read = async db => {
     const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
     check(rows.length === 1, `rows ${rows.length}`);
@@ -640,7 +576,7 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const first = await open(one, 1);
   let seq;
   try {
-    await first.utils().schema().install(json);
+    await first.utils().schema().install(schemaOf(secret));
     const created = new SecretConfig().connect(first);
     created[CORE].setValue('config', StyledValue.value(parseJson(text)));
     seq = (await created.create())[CORE].column('seq');
@@ -666,54 +602,6 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
     check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
     check(await read(again) === updatedText, `updated read ${await read(again)}`);
   } finally { await again.close(); }
-  await dropTable(dialect, dsn, 'secret_config');
-}
-
-/**
- * Installs an enum column with a default and audit triggers whose change table
- * has a bigint service column: an entity with service= records its bigint
- * value and an entity without it records NULL.
- */
-async function auditBigintService(dialect, dsn) {
-  const prefix = dialect === 'mysql' ? '' : 'ormtest.';
-  const table = name => (prefix === '' ? '' : `  %% orm:table entity=${name} name=ormtest.${name}\n`);
-  const { json, models } = auditSchema('erDiagram\n'
-    + '  audit_operation {\n    bigint seq PK "auto"\n    varchar(36) operation_uuid UK\n  }\n'
-    + '  audit_change {\n    bigint seq PK "auto"\n    bigint operation_seq\n    varchar(16) change_kind\n    bigint service_seq "?"\n'
-    + '    varchar(191) table_label\n    jsontext entity_ref\n    jsontext before_value\n    jsontext after_value\n  }\n'
-    + '  routed {\n    bigint seq PK "auto"\n    bigint service_seq\n    enum(csr_ssr) render "=ssr"\n  }\n'
-    + '  unowned {\n    bigint seq PK "auto"\n    varchar(32) label\n  }\n'
-    + table('audit_operation') + table('audit_change') + table('routed') + table('unowned')
-    + `  %% orm:audit_log operation=${prefix}audit_operation(seq, operation_uuid) context=ormtest.operation_id change=${prefix}audit_change(operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)\n`
-    + '  %% orm:audit entity=routed mode=changes service=service_seq\n'
-    + '  %% orm:audit entity=unowned mode=changes\n');
-  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
-  const db = await connect(dsn);
-  try {
-    await db.utils().schema().install(json);
-    const { audit_operation: AuditOperation, audit_change: AuditChange, routed: Routed, unowned: Unowned } = models;
-    await db.transaction(async () => {
-      const op = new AuditOperation();
-      op[CORE].setValue('operation_uuid', 'op-1');
-      await op.create();
-      await db.utils().setLocal('ormtest.operation_id', 'op-1');
-      const routed = new Routed();
-      routed[CORE].setValue('service_seq', 42);
-      await routed.create();
-      const unowned = new Unowned();
-      unowned[CORE].setValue('label', 'a');
-      await unowned.create();
-    }, { retry: 0 });
-    const query = new AuditChange().connect(db).addAllColumns();
-    query[CORE].orderBy('seq', false, []);
-    const rows = [...(await query.gets()).values()];
-    const value = (row, column) => row[CORE].column(column);
-    const got = rows.map(r => `${String(value(r, 'table_label')).replace(/^ormtest\./, '')}:${value(r, 'service_seq') === null ? 'null' : Number(value(r, 'service_seq'))}`);
-    check(got.join(',') === 'routed:42,unowned:null', `changes ${got}`);
-    const after = JSON.parse(stringifyJson(value(rows[0], 'after_value').payload()));
-    check(after.render === 'ssr', `render default ${JSON.stringify(after)}`);
-  } finally { await db.close(); }
-  await dropAuditTables(dialect, dsn, ['routed', 'unowned', 'audit_change', 'audit_operation']);
 }
 
 /** The stored config cell and key version of the single secret_config row. */
@@ -733,32 +621,10 @@ async function storedCell(dialect, dsn, sqlitePath) {
   try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
 }
 
-/** Drops one table on MySQL and PostgreSQL; each SQLite case starts from a new file. */
-async function dropTable(dialect, dsn, table) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try { await conn.query(`DROP TABLE IF EXISTS ${table}`); } finally { await conn.end(); }
-  } else if (dialect === 'postgres') {
-    await postgres(dsn, [`DROP TABLE IF EXISTS ${table}`]);
-  }
-}
+const zones = ['', 'UTC', '+00:00'];
 
-async function dropAuditTables(dialect, dsn, tables = ['audit_item', 'audit_change', 'audit_operation']) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    for (const table of tables) await conn.query(`DROP TABLE IF EXISTS ${table}`);
-    await conn.end();
-  } else if (dialect === 'postgres') {
-    const client = postgresClient(dsn);
-    await client.connect();
-    await client.query('SET client_min_messages = warning');
-    await client.query('DROP SCHEMA IF EXISTS ormtest CASCADE');
-    await client.end();
-  }
-}
-
-const zones = [['+00:00', 0], ['+09:00', 540], ['-05:30', -330], ['Asia/Seoul', 540]];
-
+// poolSize와 failedLocalReset, failedLockRelease는 schema를 설치하지 않고 table도 만들지 않으므로
+// DSN이 가리키는 database에 연결만 한다. 나머지 case는 저마다 case database를 받는다.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
@@ -766,37 +632,49 @@ targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
 if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
+const dialects = targets.map(([dialect]) => dialect);
+
+/**
+ * 열린 case에서 dialect의 새 case database로 body(dsn, database)를 실행하고 끝나면 지운다. SQLite DSN은
+ * busy_timeout을 가진다. body나 database 지우기의 실패는 열린 case의 FAIL이 된다.
+ */
+async function inCaseDatabase(dialect, body) {
+  try {
+    await withCaseDatabase(dialect, text => caseLog.step(text), database =>
+      body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+}
 
 try {
   if (selectedCase === undefined) {
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/schemaEmpty`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await schemaEmpty(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+  for (const dialect of dialects) {
+    begin(`${dialect}/schemaEmpty`);
+    await inCaseDatabase(dialect, dsn => schemaEmpty(dialect, dsn));
+    end();
   }
   }
-  for (const [dialect, dsn] of targets) {
+  for (const dialect of dialects) {
     for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined || name === selectedCase)) {
-      current = `${dialect}/${name}`;
-      if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-      await install(dialect, dsn);
-      const db = await connect(dsn);
-      try { await fn(db, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-      console.log(`${current} done`);
+      begin(`${dialect}/${name}`);
+      await inCaseDatabase(dialect, async dsn => {
+        await install(dsn);
+        const db = await connect(dsn);
+        try { await fn(db, dsn); } finally { await db.close(); }
+      });
+      end();
     }
   }
   if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/poolSize`;
-    const sized = await Db.connect(dsn, schemaPath, { poolSize: 3 });
+    begin(`${dialect}/poolSize`);
+    const sized = await connectBench(dsn, { poolSize: 3 });
     try {
       // The SQLite driver holds one connection, so the size applies to the pooled drivers.
       const want = dialect === 'sqlite' ? 1 : 3;
       check(sized.utils().stats().maxOpenConnections === want, `configured pool size ${sized.utils().stats().maxOpenConnections}`);
-      check(await code(Db.connect(dsn, schemaPath, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
+      check(await code(connectBench(dsn, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
       for (const options of [{}, { poolSize: 0 }]) {
-        const unset = await Db.connect(dsn, schemaPath, options);
+        const unset = await connectBench(dsn, options);
         try {
           const got = unset.utils().stats().maxOpenConnections;
           check(got === (dialect === 'sqlite' ? 1 : 10), `pool size ${JSON.stringify(options)}: ${got}`);
@@ -805,7 +683,7 @@ try {
       if (dialect !== 'sqlite') {
         // Each transaction holds a connection while it runs, so six
         // transactions on a pool of two run at most two at a time.
-        const bounded = await Db.connect(dsn, schemaPath, { poolSize: 2 });
+        const bounded = await connectBench(dsn, { poolSize: 2 });
         try {
           let active = 0;
           let peak = 0;
@@ -821,7 +699,7 @@ try {
         } finally { await bounded.close(); }
         // Three transactions hold three connections at once; after they end
         // the pool keeps one idle connection and closes the others.
-        const idle = await Db.connect(dsn, schemaPath, { poolSize: 3, poolIdleSize: 1 });
+        const idle = await connectBench(dsn, { poolSize: 3, poolIdleSize: 1 });
         try {
           let release;
           let arrived;
@@ -837,7 +715,7 @@ try {
           check(stats.idle === 1 && stats.openConnections === 1, `pool idle size 1 keeps ${stats.idle} idle of ${stats.openConnections} open connections`);
         } finally { await idle.close(); }
         // A connection is closed when its lifetime passes, idle or at its release.
-        const aged = await Db.connect(dsn, schemaPath, { poolLifetimeMs: 100 });
+        const aged = await connectBench(dsn, { poolLifetimeMs: 100 });
         try {
           check(aged.utils().stats().openConnections === 1, 'the connection opened by connect');
           await new Promise(resolve => setTimeout(resolve, 400));
@@ -845,145 +723,278 @@ try {
         } finally { await aged.close(); }
       }
       for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolLifetimeMs: -1 }]) {
-        check(await code(Db.connect(dsn, schemaPath, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
+        check(await code(connectBench(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
-    console.log(`${current} done`);
+    end();
   }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/statementTimeout`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    await install(dialect, dsn);
-    check(await code(Db.connect(dsn, schemaPath, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
-    // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
-    // SQLite has no session timeout.
-    const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
-    if (slow !== undefined) {
-      const bounded = await Db.connect(dsn, schemaPath, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
-      try {
-        await seed(bounded);
-        check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
-      } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); }
-    }
-    console.log(`${current} done`);
+  for (const dialect of dialects) {
+    begin(`${dialect}/statementTimeout`);
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
+      check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
+      // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
+      // SQLite has no session timeout.
+      const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
+      if (slow !== undefined) {
+        const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
+        try {
+          await seed(bounded);
+          check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
+        } finally { await bounded.close(); }
+      }
+    });
+    end();
   }
   {
     // A pooler in transaction mode hands one server session to every client
     // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
     // server connection, so the statement timeout of one connection must
     // bound only the statements of that connection.
-    current = 'postgres/statementTimeoutThroughAPooler';
-    const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-    if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
-    const postgres = targets.find(([dialect]) => dialect === 'postgres')[1];
-    await install('postgres', postgres);
-    const setup = await connect(postgres);
-    try { await seed(setup); } finally { await setup.close(); }
-    // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
-    const slow = 'pg_sleep(0.1) IS NOT NULL';
-    const bounded = await Db.connect(single, schemaPath, { statementTimeoutMs: 200 });
-    const plain = await Db.connect(single, schemaPath, {});
+    // PgBouncer의 orm_test_single은 정해진 database 하나에만 닿으므로 새 case database를 쓸 수
+    // 없다. case는 그 database에 자기 이름(orm_case_<pid>_<counter>)의 table 하나를 만들고, 끝날 때
+    // 실패한 뒤에도 그 table만 지운다.
+    begin('postgres/statementTimeoutThroughAPooler');
     try {
-      check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
-      check(await new Author().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
-      check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); await plain.close(); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/cancellation`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    await install(dialect, dsn);
-    const db = await connect(dsn);
-    try {
-      // The slow condition is evaluated per row, so the table holds rows.
-      await seed(db);
-      const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
-      const before = new AbortController();
-      before.abort();
-      check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
-      if (slow !== undefined) {
-        const running = new AbortController();
-        const timer = setTimeout(() => running.abort(), 300);
-        const started = Date.now();
-        check(await code(new Author().connect(db.withSignal(running.signal)).raw(slow).getCount()) === 'CANCELED', 'a statement cancelled while it runs');
-        check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
-        clearTimeout(timer);
+      const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+      const table = caseName();
+      const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
+      const { [table]: Probe } = documentModels(probeText);
+      const probe = schemaOf(probeText);
+      const setup = await Db.connect(single);
+      try {
+        await setup.utils().schema().install(probe);
+        caseLog.step(`table ${table} created`);
+        // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
+        for (let i = 0; i < 4; i++) {
+          const row = new Probe().connect(setup);
+          row[CORE].setValue('label', `row-${i}`);
+          await row.create();
+        }
+        const slow = 'pg_sleep(0.1) IS NOT NULL';
+        const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
+        const plain = await Db.connect(single, {});
+        try {
+          await bounded.utils().schema().install(probe);
+          await plain.utils().schema().install(probe);
+          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
+          check(await new Probe().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
+          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
+        } finally { await bounded.close(); await plain.close(); }
+      } finally {
+        await setup.close();
+        const client = postgresClient(single);
+        await client.connect();
+        try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
+          throw new Error(`drop table ${table}: ${error.message}`);
+        } finally { await client.end(); }
+        caseLog.step(`table ${table} dropped`);
       }
-      check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-    console.log(`${current} done`);
+    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    end();
   }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/auditTriggers`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await auditTriggers(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/auditBigintService`;
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await auditBigintService(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets) {
-    current = `${dialect}/aesJsonColumn`;
-    const sqlitePath = join(work, 'model.sqlite');
-    if (dialect === 'sqlite') await rm(sqlitePath, { force: true });
-    try { await aesJsonColumn(dialect, dialect === 'sqlite' ? `sqlite://${sqlitePath}` : dsn, sqlitePath); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, dsn] of targets.filter(t => t[0] === 'mysql')) {
-    current = `${dialect}/installInsideTransaction`;
-    await install(dialect, dsn);
-    const db = await connect(dsn);
-    try { await mysqlInstallInsideTransaction(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-    console.log(`${current} done`);
-  }
-  for (const [dialect, base] of targets) {
-    for (const [zone, offset] of zones) {
-      current = `${dialect}/connectionTimeZone/${zone}`;
-      if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-      const dsn = `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
-      await install(dialect, dsn);
+  for (const dialect of dialects) {
+    begin(`${dialect}/cancellation`);
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
       const db = await connect(dsn);
-      try { await connectionTimeZone(db, offset); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-      console.log(`${current} done`);
+      try {
+        // The slow condition is evaluated per row, so the table holds rows.
+        await seed(db);
+        const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
+        const before = new AbortController();
+        before.abort();
+        check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
+        if (slow !== undefined) {
+          const running = new AbortController();
+          const timer = setTimeout(() => running.abort(), 300);
+          const started = Date.now();
+          check(await code(new Author().connect(db.withSignal(running.signal)).raw(slow).getCount()) === 'CANCELED', 'a statement cancelled while it runs');
+          check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
+          clearTimeout(timer);
+        }
+        check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
+      } finally { await db.close(); }
+    });
+    end();
+  }
+  for (const dialect of dialects) {
+    begin(`${dialect}/aesJsonColumn`);
+    // SQLite case는 busy_timeout 없는 DSN으로 연결하고 저장된 cell을 file에서 직접 읽는다.
+    await inCaseDatabase(dialect, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path));
+    end();
+  }
+  for (const dialect of dialects.filter(dialect => dialect === 'mysql')) {
+    begin(`${dialect}/installInsideTransaction`);
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
+      const db = await connect(dsn);
+      try { await mysqlInstallInsideTransaction(db); } finally { await db.close(); }
+    });
+    end();
+  }
+  for (const dialect of dialects) {
+    for (const zone of zones) {
+      begin(`${dialect}/connectionsUseUtc/${zone}`);
+      await inCaseDatabase(dialect, async base => {
+        const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
+        await install(dsn);
+        const db = await connect(dsn);
+        try { await connectionsUseUtc(db); } finally { await db.close(); }
+      });
+      end();
     }
   }
-  {
+  if (dialects.includes('sqlite')) {
     // A connection to a SQLite database file that the process may only read:
     // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
-    current = 'sqlite/readOnly';
-    const path = join(work, 'read-only.sqlite');
-    const dsn = `sqlite://${path}`;
-    try {
-      await install('sqlite', dsn);
-      const writable = await connect(dsn);
+    begin('sqlite/readOnly');
+    await inCaseDatabase('sqlite', async (_, database) => {
+      await install(database.dsn);
+      const writable = await connect(database.dsn);
       try { await new User().connect(writable).setName('read-only').create(); } finally { await writable.close(); }
-      await chmod(path, 0o444);
-      const readOnly = await connect(dsn);
+      await chmod(database.path, 0o444);
+      const readOnly = await connect(database.dsn);
       try {
         check(await new User().connect(readOnly).name('read-only').getCount() === 1, 'the read-only database reads the row');
         check(await code(new User().connect(readOnly).setName('rejected').create()) === 'READ_ONLY', 'a write to the read-only database');
       } finally { await readOnly.close(); }
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    });
+    end();
   }
-  for (const [dialect, primary] of targets) {
+  for (const dialect of dialects) {
     if (dialect === 'sqlite') continue;
-    current = `${dialect}/primaryAndReplica`;
-    const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
-    if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
-    try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    begin(`${dialect}/primaryAndReplica`);
+    // replica DSN은 case database와 같은 이름을 가리킨다. replica는 primary의 CREATE DATABASE를
+    // 복제하고, primaryAndReplica는 replica에 연결하기 전에 replica가 따라오기를 기다린다.
+    await inCaseDatabase(dialect, async primary => {
+      const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
+      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
+      await primaryAndReplica(dialect, primary, relatedDsn(replica, new URL(primary).pathname.slice(1)));
+    });
+    end();
   }
+  // transaction 끝의 MySQL local 값 reset이 실패하면 commit과 rollback이 그 오류를 보고한다.
+  // MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
+  // 실제 server는 reset을 거부하지 않으므로 transaction connection의 control이 reset만 실패시킨다.
+  begin('mysql/failedLocalReset');
+  try {
+    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
+    try {
+      const failReset = () => {
+        const tx = db.utils().active('setLocal').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params);
+      };
+      const message = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+      const committed = await message(db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); }, { retry: 0 }));
+      check(committed.includes('reset rejected by the test driver'), `commit reports the failed reset: ${committed}`);
+      let rolledBack = null;
+      try {
+        await db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); throw new Error('callback failed'); }, { retry: 0 });
+      } catch (error) { rolledBack = error; }
+      check(rolledBack instanceof OrmError && rolledBack.code === 'ROLLBACK' && rolledBack.message.startsWith('ROLLBACK: transaction failed (callback failed) and rollback failed (') && rolledBack.message.includes('callback failed') && rolledBack.message.includes('reset rejected by the test driver'), `rollback reports the callback and the failed reset: ${rolledBack?.message}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  end();
+  const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
+  // message가 원인과 transaction 끝의 오류를 함께 담은 ROLLBACK인지 확인한다.
+  const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
+  // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
+  // 보고한다. 풀리지 않은 named lock은 connection에 남는다. 실제 server는 RELEASE_LOCK을 거부하지 않으므로
+  // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
+  begin('mysql/failedLockRelease');
+  try {
+    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
+    try {
+      const key = name => `orm_test.${name}.${process.pid}`;
+      const failRelease = () => {
+        const tx = db.utils().active('lock').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
+      };
+      const committed = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('commit')); }, { retry: 0 }));
+      check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
+      const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
+      checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
+      // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
+      const notHeld = await failureMessage(db.transaction(async () => {
+        await db.utils().lock(key('released'));
+        await db.utils().active('lock').tx.control('DO RELEASE_LOCK(?)', [key('released')]);
+      }, { retry: 0 }));
+      check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  end();
+  // native rollback, SQLite mode 복원, begin 뒤의 rollback이 실패하면 transaction이 그 오류를 원인과
+  // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 exec가 실패시킨다.
+  // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
+  begin('sqlite/failedRollback');
+  try {
+    const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
+    try {
+      const native = db.pool.state.db;
+      const exec = native.exec.bind(native);
+      let rejects = () => false;
+      let rejectRollback = false;
+      native.exec = sql => {
+        if (rejects(sql)) throw new Error('statement rejected by the test driver');
+        const result = exec(sql);
+        if (rejectRollback && sql === 'ROLLBACK') throw new Error('rollback rejected by the test driver');
+        return result;
+      };
+      rejectRollback = true;
+      const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
+      checkBoth('rollback', rolledBack, 'callback failed', 'rollback rejected by the test driver');
+      rejects = sql => sql === 'PRAGMA query_only = 1';
+      const began = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+      checkBoth('begin', began, 'statement rejected by the test driver', 'rollback rejected by the test driver');
+      rejectRollback = false;
+      rejects = sql => sql === 'PRAGMA query_only = 0';
+      const committed = await failureMessage(db.transaction(async () => {}, { readOnly: true, retry: 0 }));
+      check(committed.includes('statement rejected by the test driver'), `commit reports the failed mode reset: ${committed}`);
+      const modeRolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { readOnly: true, retry: 0 }));
+      checkBoth('mode reset', modeRolledBack, 'callback failed', 'statement rejected by the test driver');
+      check(!native.isTransaction, 'the failed mode reset still rolls the transaction back');
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  end();
+  // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
+  // 오류와 그 오류를 함께 보고하고, 성공한 callback은 실패한 RELEASE SAVEPOINT를 보고한다. 실제 SQLite는
+  // 이 statement를 거부하지 않으므로 transaction connection의 control이 실패시킨다.
+  begin('sqlite/failedSavepointEnd');
+  try {
+    const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
+    try {
+      const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
+        const tx = db.utils().active('transaction').tx;
+        const control = tx.control.bind(tx);
+        tx.control = (sql, params) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
+        try { return await db.transaction(callback); } finally { tx.control = control; }
+      }, { retry: 0 }));
+      for (const statement of ['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT']) {
+        const failed = await nested(sql => sql.startsWith(statement), async () => { throw new Error('callback failed'); });
+        checkBoth(statement, failed, 'callback failed', 'statement rejected by the test driver');
+      }
+      const released = await nested(sql => sql.startsWith('RELEASE SAVEPOINT'), async () => {});
+      check(released.includes('statement rejected by the test driver'), `a successful callback reports the failed release: ${released}`);
+      const both = await nested(sql => sql.startsWith('ROLLBACK TO SAVEPOINT') || sql.startsWith('RELEASE SAVEPOINT'), async () => { throw new Error('callback failed'); });
+      checkBoth('both statements', both, 'callback failed', 'statement rejected by the test driver');
+      check(both.split('statement rejected by the test driver').length === 3, `both savepoint statements are reported: ${both}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  end();
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript model test: ${failures} failure(s)`);
-  process.exit(1);
-}
-console.log(`typescript model test passed (${targets.map(t => t[0]).join(', ')})`);
+if (failures > 0) process.exitCode = 1;

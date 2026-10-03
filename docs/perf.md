@@ -29,12 +29,12 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 3. Regression check (`make perf-check`)
 
-The check measures the generated client and an equivalent native result in one process: 100 warm-up pairs, then 1,000 adjacent pairs whose order alternates, and it compares the median of the per-pair client/native ratios with the bound. Load that slows one pair slows both of its sides, so the median ratio does not follow the machine load. Each check also runs beside one busy process per CPU (`TestHotPathGateUnderLoad`, and `ORM_PERF_CPU_LOAD=1` for the PHP check) and must pass there as well. Both sides select the same non-lazy columns. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
+The check measures the generated client and an equivalent native result in one process: 100 warm-up pairs, then 1,000 adjacent pairs whose order alternates, and it compares the median of the per-pair client/native ratios with the bound. Load that slows one pair slows both of its sides, so the median ratio does not follow the machine load. Each check also runs beside one busy process per CPU (`TestHotPathGateUnderLoad`, and `ORM_PERF_CPU_LOAD=1` for the PHP check) and must pass there as well. Both sides run the same SQL text: before the gates, `make perf-check` runs `TestNativeStatementsEqualClient`, which compares the Go native statements with the statements the generated client runs, and `TestNativeWorkloadsRead`, which runs every native read workload against the bench database. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `bench/go` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
-| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php <schema.json>` |
+| Go | 1.35 | 1.25 | `clients/go/bench` `TestHotPathGate` with `ORM_RUN_PERF_GATE=1` |
+| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php` |
 
 Both checks read the seeded bench database from `ORM_BENCH_MYSQL_DSN`. The Go check runs when `ORM_RUN_PERF_GATE=1`; a check that runs without `ORM_BENCH_MYSQL_DSN` fails and prints the variable name, and no bench test connects to a local server instead.
 
@@ -51,7 +51,7 @@ One release process compared sqlx 0.9 with `mysql_async` 0.37.1 using one connec
 | Primary-key row | 58.840µs | 61.825µs | 1.051 |
 | 100-row list | 1.180ms | 1.113ms | 0.943 |
 
-Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. A driver replacement requires a measured 2x improvement. Neither workload meets it, so the Rust client keeps sqlx. `make rust-driver-check` compiles the program; latency is not a CI pass condition.
+Run `cargo run --release --locked --bin driver_compare -- 1000` in `bench/rust`. The iteration count is a required argument of `native`, `driver_compare` and `client_bench`; a missing argument or a value that is not an integer of at least the program's minimum (3, 10 and 1) ends the program with status 1 before it connects. A driver replacement requires a measured 2x improvement. Neither workload meets it, so the Rust client keeps sqlx. `make rust-driver-check` runs `driver_compare` and the sqlx baseline `native` with a few iterations against the seeded bench database named by `ORM_BENCH_MYSQL_DSN` and fails unless both read every workload's rows and exit with status 0; latency is not a CI pass condition.
 
 ## 5. Latest regression-check run
 

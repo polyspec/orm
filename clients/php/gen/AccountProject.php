@@ -11,21 +11,22 @@ final class AccountProject extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'account_project',
             'table' => 'account_project',
             'pk' => ['account_seq', 'project_seq'],
-            'auto' => '',
+            'identity' => '',
             'updated' => '',
+            'soft_delete' => '',
             'aes_version' => '',
-            'schema_hash' => '16198b563e2e3cae',
+            'audit' => '',
             'columns' => [
-                'account_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'project_seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
+                'account_seq' => ['name' => 'account_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
+                'project_seq' => ['name' => 'project_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
             ],
-            'fulltext' => [],
-            'indexes' => [],
+            'unique' => [],
+            'indexes' => ['ix_account_project_project' => ['project_seq']],
+            'manifest_hash' => 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa',
         ];
     }
 

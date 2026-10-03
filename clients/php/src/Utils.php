@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Orm;
 
+use Orm\Dbspec\Dbspec;
+
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
 {
@@ -59,7 +61,10 @@ final class Utils
         }
     }
 
-    /** Sets a transaction-local value. */
+    /**
+     * transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은 사용자
+     * 변수에도 쓰며, SQLite는 transaction 안에서만 값을 가진다.
+     */
     public function setLocal(string $key, string $value): void
     {
         $frame = $this->active('setLocal');
@@ -75,10 +80,6 @@ final class Utils
                 case 'mysql':
                     $pdo->prepare('SET @`orm.' . $key . '` = ?')->execute([$value]);
                     break;
-                default:
-                    $pdo->exec('CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)');
-                    $pdo->prepare('INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"')->execute([$key, $value]);
-                    $frame->contextRow = true;
             }
         } catch (\PDOException $e) {
             throw $this->driverError($e);
@@ -169,31 +170,44 @@ final class SchemaUtils
     public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
 
     /**
-     * Installs the canonical schema manifest on the connection's database:
-     * missing tables, keys, indexes, comments, and triggers are created, and
-     * the engine of the manifest is added to the connection. The manifest hash
-     * is verified against its content before any statement runs. The
-     * statements run in one transaction; MySQL commits each DDL statement
-     * itself, so they run outside a transaction there.
+     * generated schema의 document set을 connection의 database에 설치하고 그 set을
+     * 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지 않으면 어떤
+     * statement보다 먼저 CONFIG다. client의 renderer가 만든 statement
+     * (docs/dialects.md "Rendered statements")로 table, key, index, foreign key,
+     * check, trigger를 만든다. 집합에 diagnostic이 있으면 SCHEMA_INVALID로
+     * 실패한다. 집합의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면
+     * CONFIG로 실패하므로 같은 집합의 반복 설치는 같은 상태를 남긴다. 있는
+     * table의 정의는 비교하지 않는다. statement는 한 transaction에서 실행하며,
+     * MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행한다.
      */
-    public function install(string $manifestJson): void
+    public function install(Schema $schema): void
     {
+        $schema->verify();
         $driver = $this->db->driver();
-        $engine = $this->engine($manifestJson);
-        try {
-            $manifest = SchemaBuilder::load($manifestJson);
-        } catch (\InvalidArgumentException | OrmException $e) {
-            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
+        $parsed = RuntimeModel::parse(RuntimeModel::splitManifest($schema->manifestText));
+        $rendered = Dbspec::render($parsed, $driver);
+        if ($rendered->statements === null) {
+            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $rendered->diagnostics);
+            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
-        try {
-            $statements = SchemaDdl::createStatements($manifest, $driver);
-        } catch (\RuntimeException $e) {
-            throw new OrmException(Code::CONFIG, 'render schema: ' . $e->getMessage());
-        }
+        $statements = $rendered->statements;
         if ($statements === []) {
-            throw new OrmException(Code::CONFIG, 'schema manifest produced no statements');
+            throw new OrmException(Code::CONFIG, 'the document set has no tables');
         }
-        $apply = function () use ($statements, $driver): void {
+        $tables = [];
+        foreach ($parsed as $document) {
+            foreach ($document->tables as $table) {
+                $tables[] = $table->name;
+            }
+        }
+        $apply = function () use ($statements, $driver, $tables): void {
+            $present = array_values(array_filter($tables, $this->tableExists(...)));
+            if ($present === $tables) {
+                return;
+            }
+            if ($present !== []) {
+                throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
+            }
             try {
                 foreach ($statements as $statement) {
                     $this->db->pdo()->exec($statement);
@@ -204,73 +218,118 @@ final class SchemaUtils
         };
         if ($driver !== 'mysql') {
             $this->sql->run($apply);
-        } elseif (Db::activeFor($this->db) !== null) {
-            throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
         } else {
+            if (Db::activeFor($this->db) !== null) {
+                throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
+            }
             $apply();
         }
-        $this->db->registerEngine($engine);
+        $this->db->registerSet($schema);
     }
 
     /**
-     * Adds every missing column of the existing tables of a schema manifest
-     * that is nullable or has a default, and replaces the audit triggers of
-     * each changed table so that they record the new columns. A table that
-     * does not exist and the tables of other manifests are left unchanged.
-     * Any other difference between the existing tables and the manifest fails
-     * with SCHEMA_DIFFERS before any statement runs. The manifest hash is
-     * verified against its content first. PostgreSQL and SQLite apply the
-     * statements in the active transaction or in a new one; MySQL commits
-     * each DDL statement itself, so they run outside a transaction there.
-     * @return list<string> the added columns as table.column, in manifest order
+     * 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md
+     * "Adding tables and columns"). 연결의 database를 introspect해 database에 있는 set의
+     * table을 set과 비교하고, database에 없는 set의 table을 index, foreign key, check,
+     * trigger와 함께 만들며, 있는 table에 빠진 column 가운데 null이거나 default가 있는
+     * column을 더한다. Dbspec::addTablesAndColumnsSteps의 plan step을 실행하므로 바뀐 table의
+     * audit trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로 두며 set을
+     * 등록하지 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest
+     * text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 진행 중인
+     * transaction이나 새 transaction에서 적용한다. MySQL은 schema statement를 암묵적으로
+     * commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어 column을 더하는데
+     * foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다 transaction 밖에서
+     * 적용하고 안에서는 CONFIG다.
+     *
+     * @return list<string> 만든 table은 "table", 더한 column은 "table.column", table 이름과 column 순서
      */
-    public function addColumns(string $manifestJson): array
+    public function addTablesAndColumns(Schema $schema): array
     {
+        $schema->verify();
         $driver = $this->db->driver();
-        $this->engine($manifestJson);
-        try {
-            $manifest = SchemaBuilder::load($manifestJson);
-        } catch (\InvalidArgumentException | OrmException $e) {
-            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
+        $manifest = Dbspec::manifest(RuntimeModel::parse(RuntimeModel::splitManifest($schema->manifestText)));
+        $target = $manifest->manifest === null ? null : Dbspec::parse($manifest->manifest->schemaText, []);
+        $diagnostics = $manifest->manifest === null ? $manifest->diagnostics : $target->diagnostics;
+        if ($diagnostics !== []) {
+            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
+            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
         }
-        $apply = function () use ($manifest, $driver): array {
+        $document = $target->document;
+        $pdo = $this->db->pdo();
+        $apply = static function () use ($pdo, $driver, $document): array {
             try {
-                [$statements, $added] = SchemaColumns::plan($this->db->pdo(), $driver, $manifest);
-                foreach ($statements as $statement) {
-                    $this->db->pdo()->exec($statement);
+                $live = Dbspec::introspect($pdo, $driver, 'schema');
+                [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
+                if ($differences !== []) {
+                    throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ' . implode('; ', $differences));
                 }
+                foreach ($steps as $step) {
+                    $pdo->exec($step->statement);
+                }
+                return $added;
             } catch (\PDOException $e) {
                 throw OrmException::fromDriver($e, $driver);
             }
-            return $added;
         };
-        if ($driver !== 'mysql') {
+        if ($driver === 'postgres') {
             return $this->sql->run($apply);
         }
         if (Db::activeFor($this->db) !== null) {
-            throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; add columns outside a transaction');
+            throw new OrmException(Code::CONFIG, "$driver adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table");
         }
-        return $apply();
+        if ($driver === 'mysql') {
+            return $apply();
+        }
+        return $this->withoutForeignKeys($apply);
     }
 
     /**
-     * Adds the engine of an installed schema manifest to the connection, as
-     * install does after its statements, without running any statement. The
-     * manifest hash is verified against its content.
+     * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 `$fn`을 실행한
+     * 뒤 foreign key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시
+     * 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
+     *
+     * @param \Closure(): list<string> $fn
+     * @return list<string>
      */
-    public function register(string $manifestJson): void
+    private function withoutForeignKeys(\Closure $fn): array
     {
-        $this->db->registerEngine($this->engine($manifestJson));
+        $pdo = $this->db->pdo();
+        try {
+            $pdo->exec('PRAGMA foreign_keys = OFF');
+            try {
+                $pdo->exec('BEGIN IMMEDIATE');
+                try {
+                    $added = $fn();
+                    $broken = (int) $pdo->query('SELECT COUNT(*) FROM pragma_foreign_key_check')->fetchColumn();
+                    if ($broken > 0) {
+                        throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
+                    }
+                } catch (\Throwable $e) {
+                    try {
+                        $pdo->exec('ROLLBACK');
+                    } catch (\PDOException $rollback) {
+                        throw OrmException::rollback($e, OrmException::fromDriver($rollback, 'sqlite'));
+                    }
+                    throw $e;
+                }
+                $pdo->exec('COMMIT');
+                return $added;
+            } finally {
+                $pdo->exec('PRAGMA foreign_keys = ON');
+            }
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, 'sqlite');
+        }
     }
 
-    /** The engine of a manifest whose hash matches its content; CONFIG otherwise. */
-    private function engine(string $manifestJson): Engine
+    /** connection의 현재 database나 search_path에 table이 있는지 여부다. */
+    private function tableExists(string $table): bool
     {
-        try {
-            return new Engine(Manifest::load($manifestJson), $this->db->driver(), $this->db->config()->planCacheSize);
-        } catch (\InvalidArgumentException | OrmException $e) {
-            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
-        }
+        return match ($this->db->driver()) {
+            'postgres' => $this->bool('SELECT to_regclass(quote_ident(?)) IS NOT NULL', [$table]),
+            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [$table]),
+            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [$table]),
+        };
     }
 
     private function bool(string $sql, array $args): bool
@@ -395,8 +454,8 @@ final class AesUtils
         $meta = $model::meta();
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {
-            if (in_array('aes', $col['styles'], true)) {
-                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['styles'], static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
+            if (RuntimeModel::encrypted($col)) {
+                $columns[] = ['name' => $name, 'styles' => array_values(array_filter($col['codec'], static fn(string $s): bool => $s === 'aes' || $s === 'hex'))];
             }
         }
         if ($meta['aes_version'] === '' || $columns === []) {

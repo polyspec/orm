@@ -3,53 +3,40 @@ package model_test
 import (
 	"database/sql"
 	"errors"
-	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
-const schemaPath = "../../../schema/schema.json"
-
-var tables = []string{"account_project", "composite_membership", "composite_account", "author", "service_member", "service_region", "soft_record", "account", "project", "user", "service"}
-
-// databases returns a fresh SQLite, MySQL and PostgreSQL database;
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
-// the test fails when either is unset.
+// databases returns a case database of its own (internal/testdb) for SQLite,
+// MySQL and PostgreSQL with the schema installed: a new SQLite file and new
+// databases on the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN,
+// dropped when the test ends. The test fails when either DSN is unset.
 func databases(t *testing.T) map[string]*orm.DB {
 	t.Helper()
 	out := map[string]*orm.DB{}
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "model.sqlite") + "?_pragma=busy_timeout(5000)",
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for driver, dsn := range targets {
-		if dsn == "" {
-			t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
+	manifest := model.Schema
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+		dsn := testdb.New(t, driver)
+		if driver == "sqlite" {
+			dsn += "?_pragma=busy_timeout(5000)"
 		}
-		db, err := model.Connect(dsn, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
+		db, err := model.Connect(dsn, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 		if err != nil {
 			t.Fatalf("%s: %v", driver, err)
 		}
 		t.Cleanup(func() { db.Close() })
 		dsns.Store(db, dsn)
-		if driver != "sqlite" {
-			dropTables(t, driver, dsn)
-		}
 		if err := db.Utils().Schema().Install(manifest); err != nil {
 			t.Fatalf("%s install: %v", driver, err)
 		}
@@ -62,50 +49,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 // database/sql driver.
 func openNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
-	native := dsn
-	sqlDriver := "pgx"
-	if driver == "mysql" {
-		sqlDriver = "mysql"
-		u, err := url.Parse(dsn)
-		if err != nil {
-			t.Fatal(err)
-		}
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.DBName = strings.TrimPrefix(u.Path, "/")
-		cfg.Net, cfg.Addr = "tcp", u.Host
-		if socket := u.Query().Get("socket"); socket != "" {
-			cfg.Net, cfg.Addr = "unix", socket
-		}
-		native = cfg.FormatDSN()
-	}
-	raw, err := sql.Open(sqlDriver, native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
-func dropTables(t *testing.T, driver, dsn string) {
-	t.Helper()
-	raw := openNative(t, driver, dsn)
-	defer raw.Close()
-	raw.SetMaxOpenConns(1)
-	if driver == "mysql" {
-		raw.Exec("SET FOREIGN_KEY_CHECKS = 0")
-	}
-	for _, table := range tables {
-		stmt := "DROP TABLE IF EXISTS " + table
-		if driver == "postgres" {
-			stmt = `DROP TABLE IF EXISTS "` + table + `" CASCADE`
-		} else {
-			stmt = "DROP TABLE IF EXISTS `" + table + "`"
-		}
-		if _, err := raw.Exec(stmt); err != nil {
-			t.Fatalf("%s: %v", stmt, err)
-		}
-	}
+	return testdb.Open(t, driver, dsn)
 }
 
 func each(t *testing.T, fn func(t *testing.T, db *orm.DB)) {
@@ -151,7 +95,7 @@ func seed(t *testing.T, db *orm.DB) fixture {
 			SetServiceMemberSeq(f.member.GetSeq()).
 			SetStartDt(start.Add(time.Duration(i) * time.Hour)).
 			SetEndDt(start.Add(48 * time.Hour)).
-			SetReadCount(int64(i * 10)).
+			SetReadCount(int32(i * 10)).
 			SetIsClose(i%2 == 1)
 		if i < 2 {
 			b.SetPhotoUrl(&cover)
@@ -170,6 +114,7 @@ func names(c *orm.Collection[*model.AuthorModel]) string {
 }
 
 func TestConditions(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		svc := f.service.GetSeq()
@@ -246,16 +191,14 @@ func TestConditions(t *testing.T) {
 }
 
 func TestGetMissingReturnsNoRows(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	path := filepath.Join(t.TempDir(), "model.sqlite")
-	db, err := model.Connect("sqlite://"+path, schemaPath, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
+	db, err := model.Connect("sqlite://"+path, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	manifest := model.Schema
 	if err := db.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
@@ -269,6 +212,7 @@ func TestGetMissingReturnsNoRows(t *testing.T) {
 }
 
 func TestJoinsAndRelations(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		author := model.User().
@@ -283,7 +227,7 @@ func TestJoinsAndRelations(t *testing.T) {
 		if names(rows) != "alpha,gamma,delta" {
 			t.Fatalf("placed join conditions: %s", names(rows))
 		}
-		if u := rows.First().GetUserModel(); u == nil || u.GetName() != "kim" {
+		if u := must(rows.First().GetUserModel()); u == nil || u.GetName() != "kim" {
 			t.Fatalf("join result: %+v", u)
 		}
 		member := model.ServiceMember()
@@ -303,26 +247,26 @@ func TestJoinsAndRelations(t *testing.T) {
 			OrderBySeqAsc().
 			Gets())
 		b := loaded.First()
-		if b.GetWriter() == nil || b.GetWriter().GetName() != "kim" {
-			t.Fatalf("relation alias: %+v", b.GetWriter())
+		if w := must(b.GetWriter()); w == nil || w.GetName() != "kim" {
+			t.Fatalf("relation alias: %+v", w)
 		}
-		if b.GetMembers().Len() != 1 || b.GetServiceRegionModel().GetName() != "module" {
-			t.Fatalf("relations: %d %+v", b.GetMembers().Len(), b.GetServiceRegionModel())
+		if members, module := must(b.GetMembers()), must(b.GetServiceRegionModel()); members.Len() != 1 || module.GetName() != "module" {
+			t.Fatalf("relations: %d %+v", members.Len(), module)
 		}
 		limited := must(model.User().Connect(db).
 			Relations(model.Author().MatchSeqWithUserSeq().OrderBySeqDesc().GroupLimit(1)).
 			OrderBySeqAsc().
 			Gets())
-		if got := limited.First().GetAuthorModels(); got.Len() != 1 || got.First().GetName() != "gamma" {
+		if got := must(limited.First().GetAuthorModels()); got.Len() != 1 || got.First().GetName() != "gamma" {
 			t.Fatalf("groupLimit: %s", names(got))
 		}
-		other := must(model.Connect(dsnOf(t, db), schemaPath, orm.Config{}))
+		other := must(model.Connect(dsnOf(t, db), orm.Config{}))
 		defer other.Close()
 		external := must(model.Author().Connect(db).
 			Relation(model.User().Connect(other).MatchUserSeqWithSeq().AliasOwner()).
 			GetByName("beta"))
-		if external.GetOwner() == nil || external.GetOwner().GetName() != "lee" {
-			t.Fatalf("relation on another connection: %+v", external.GetOwner())
+		if owner := must(external.GetOwner()); owner == nil || owner.GetName() != "lee" {
+			t.Fatalf("relation on another connection: %+v", owner)
 		}
 		if _, err := model.Author().Connect(db).JoinUserSeqWithSeq(model.User().Connect(db)).Gets(); orm.ErrorCode(err) != orm.CodeConfig {
 			t.Fatalf("join child with connection: %v", err)
@@ -349,6 +293,7 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 }
 
 func TestColumnsAndSubqueries(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		users := must(model.User().Connect(db).
@@ -425,6 +370,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 }
 
 func TestWrites(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		b := must(model.Author().Connect(db).GetBySeq(f.authors[0].GetSeq()))
@@ -472,6 +418,7 @@ func TestWrites(t *testing.T) {
 }
 
 func TestTransactions(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		boom := errors.New("boom")
 		err := db.Transaction(func() error {
@@ -560,6 +507,7 @@ func TestTransactions(t *testing.T) {
 }
 
 func TestAESRotation(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		email := "person@example.com"

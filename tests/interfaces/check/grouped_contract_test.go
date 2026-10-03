@@ -5,9 +5,12 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGetsCountUsesDedicatedGroupedRowsInEveryClient(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate interface test")

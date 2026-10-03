@@ -60,7 +60,10 @@ export default defineConfig({
         { text: 'DSL', link: '/dsl' },
         { text: 'IR and Plan protocol', link: '/protocol' },
         { text: 'Codecs', link: '/codec' },
+        { text: 'dbspec schema language', link: '/dbspec' },
         { text: 'Database dialects', link: '/dialects' },
+        { text: 'Schema plans', link: '/plans' },
+        { text: 'Mermaid diagrams', link: '/mermaid' },
       ] },
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/interface-implementation' },

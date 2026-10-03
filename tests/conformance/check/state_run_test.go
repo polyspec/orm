@@ -6,9 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestFailedRunStillChecksRemainingDatabaseState(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "bench.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -29,6 +32,7 @@ func TestFailedRunStillChecksRemainingDatabaseState(t *testing.T) {
 }
 
 func TestFailedRunReportsOriginalErrorAfterRollback(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "bench.db"))
 	if err != nil {
 		t.Fatal(err)

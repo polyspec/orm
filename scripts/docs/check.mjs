@@ -3,6 +3,12 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { docs, dist, files, serve, siteBase } from './lib.mjs';
+import { PROCESS, sections } from '../../tests/testcase.mjs';
+
+// docs check는 build한 page를 browser로 읽는 case 하나다. 기한은 PROCESS다: browser 하나가 모든
+// page와 link를 연다.
+const log = sections();
+log.begin('docs-static', PROCESS);
 
 const base = siteBase();
 const prepared = JSON.parse(await readFile(path.join(docs, '.vitepress/generated/site.json'), 'utf8'));
@@ -90,7 +96,7 @@ try {
     }
   }
   await staticContext.close();
-  console.log(`docs: ${pages.length} HTML pages and ${links.size} internal targets passed without JavaScript`);
+  log.step(`${pages.length} HTML pages and ${links.size} internal targets passed without JavaScript`);
 
   const context = await browser.newContext();
   context.setDefaultTimeout(15000);
@@ -125,6 +131,7 @@ try {
   await context.close();
   assert.deepEqual(errors, [], 'Browser errors');
   console.log(`docs: ${pages.length} static pages, ${links.size} internal links/assets, ${diagramCount} SVG diagrams; no-JS reading, search, theme and mobile navigation passed at ${base}`);
+  log.end();
 } finally {
   if (browser) await browser.close();
   await server.close();

@@ -2,12 +2,11 @@
 
 package orm
 
-// FailNextRollback arms a test fault on the connection of db and on every
-// handle of that connection. The next rollback of a transaction whose
-// callback failed runs, and then reports a FAULT error as its rollback error,
-// so the transaction returns a ROLLBACK error that keeps the callback error
-// and the fault. The fault stays armed until such a rollback consumes it.
-// This function exists only in a build with the tag ormtest.
+// FailNextRollback는 db의 connection과 그 connection의 모든 handle에 test fault를
+// 설정한다. callback이 실패한 다음 transaction의 rollback은 실행된 뒤 rollback
+// 오류로 FAULT 오류를 보고하므로, transaction은 callback 오류와 fault를 가진
+// ROLLBACK 오류를 반환한다. fault는 그런 rollback이 소비할 때까지 남는다.
+// 이 함수는 build tag ormtest가 있는 build에만 있다.
 func FailNextRollback(db *DB) {
 	db.m.rollbackFault.Store(true)
 }
