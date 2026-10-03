@@ -4,9 +4,11 @@ package dialects
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -166,9 +168,10 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 // 계속, 그사이 쓴 row를 지키는 rollback과 다시 적용, null 검사, finalize.
 func TestApplyChain(t *testing.T) {
 	testcase.Group(t)
-	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
+	// scenario는 lock과 session 설정을 server에서 확인하므로 pooler가 아니라 server DSN을 쓴다.
+	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_SERVER_DSN"), os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
+		t.Fatal("ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV")
 	}
 	plans := applyChain(t)
 	target, _ := dbspec.ManifestOf([]*dbspec.Document{plans[1].Schema})
@@ -433,4 +436,109 @@ func TestApplyChain(t *testing.T) {
 		}
 	}
 	t.Logf("apply runs: %d", index)
+}
+
+// TestApplyThroughTransactionPooler는 docs/plans.md "Apply"의 server session 요구를 PgBouncer의
+// transaction pooling으로 확인한다. transaction pooler는 statement마다 server connection을 다시
+// 고르므로 lock이 command 전체를 덮지 못한다. apply는 lock을 잡을 때와 step마다 server session을
+// 확인하고, 바뀌었거나 다른 client와 나눠 쓰면 다음 statement 전에 session error로 멈춘다.
+// 각 scenario는 server에 자기 database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는
+// 쉬는 server connection을 LIFO로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+func TestApplyThroughTransactionPooler(t *testing.T) {
+	testcase.Group(t)
+	serverDSN, poolerDSN := os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN"), os.Getenv("ORM_TEST_PGBOUNCER_DSN")
+	if serverDSN == "" || poolerDSN == "" {
+		t.Fatal("ORM_TEST_POSTGRES_SERVER_DSN and ORM_TEST_PGBOUNCER_DSN are required; pass TEST_ENV")
+	}
+	plans := applyChain(t)
+	scenarios := []struct {
+		name string
+		run  func(ctx context.Context, apply, other *sql.Conn) error
+	}{
+		// 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+		{"lock_shared", func(ctx context.Context, apply, other *sql.Conn) error {
+			if _, err := other.ExecContext(ctx, "SELECT pg_advisory_lock("+postgresApplyLock+")"); err != nil {
+				return err
+			}
+			return dbspec.Apply(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, nil)
+		}},
+		// 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
+		// 다음 statement는 다른 server connection에서 실행된다.
+		{"session_changed", func(ctx context.Context, apply, other *sql.Conn) error {
+			var tx *sql.Tx
+			defer func() {
+				if tx != nil {
+					tx.Rollback()
+				}
+			}()
+			hold := func(ev dbspec.ApplyEvent) error {
+				if ev.Kind != "statement" || tx != nil {
+					return nil
+				}
+				var err error
+				if tx, err = other.BeginTx(ctx, nil); err != nil {
+					return err
+				}
+				_, err = tx.ExecContext(ctx, "SELECT 1")
+				return err
+			}
+			return dbspec.Apply(ctx, apply, dbspec.DialectPostgres, plans, fixedNow, hold)
+		}},
+	}
+	for _, s := range scenarios {
+		t.Run(s.name, func(t *testing.T) {
+			testcase.Start(t, testcase.Database)
+			ctx, cancel := context.WithTimeout(context.Background(), testcase.Database)
+			defer cancel()
+			name := fmt.Sprintf("orm_case_%d_pooler_%s", os.Getpid(), s.name)
+			admin, err := sql.Open("pgx", serverDSN)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer admin.Close()
+			if _, err := admin.ExecContext(ctx, `CREATE DATABASE "`+name+`"`); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if _, err := admin.ExecContext(context.Background(), `DROP DATABASE "`+name+`" WITH (FORCE)`); err != nil {
+					t.Error(err)
+				}
+			}()
+			pooler, err := sql.Open("pgx", retargetPostgres(t, poolerDSN, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer pooler.Close()
+			apply, err := pooler.Conn(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer apply.Close()
+			other, err := pooler.Conn(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer other.Close()
+			err = s.run(ctx, apply, other)
+			var applyErr *dbspec.ApplyError
+			if !errors.As(err, &applyErr) || applyErr.Code != "session" || !strings.Contains(applyErr.Message, "a direct or session-pooled connection") {
+				t.Fatalf("apply through a transaction pooler: %v, want a session error", err)
+			}
+		})
+	}
+}
+
+// retargetPostgres는 PostgreSQL DSN의 database를 name으로 바꾸고 simple protocol을 쓰게 한다.
+// pooler 뒤의 server connection은 statement마다 바뀔 수 있으므로 prepared statement를 쓰지 않는다.
+func retargetPostgres(t *testing.T, dsn, name string) string {
+	t.Helper()
+	u, err := url.Parse(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.Path = "/" + name
+	query := u.Query()
+	query.Set("default_query_exec_mode", "simple_protocol")
+	u.RawQuery = query.Encode()
+	return u.String()
 }

@@ -19,6 +19,17 @@ final class PlanApply
     private const MYSQL_LOCK = "CONCAT('dbspec\$plans\$', LEFT(SHA2(DATABASE(), 256), 51))";
     // 현재 database 의 현재 schema 하나의 advisory lock key.
     private const POSTGRES_LOCK = "hashtext('dbspec\$plans'), hashtext(current_schema())";
+    // session error 가 밝히는 요구. lock 은 server session 에 속하므로 명령은 처음부터 끝까지 다른
+    // client 와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler 는 statement 마다
+    // server connection 을 다시 고르므로 그 요구를 지키지 못한다.
+    private const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection';
+    // 현재 server session 의 id 와, 그 session 이 이 명령의 lock 을 이미 잡고 있는지를 읽는다. lock 을
+    // 잡기 전에 이미 잡혀 있으면 다른 client 가 같은 server session 을 쓰고 있다.
+    private const SESSION_QUERIES = [
+        'mysql' => 'SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(' . self::MYSQL_LOCK . ') = CONNECTION_ID(), 0)',
+        'postgres' => "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
+            . " AND classid = (hashtext('dbspec\$plans')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)",
+    ];
     // statement 가 다른 session 의 lock 을 기다리는 최대 시간(docs/plans.md "Apply"의 lock 대기).
     private const LOCK_WAIT_SECONDS = 5;
 
@@ -62,6 +73,8 @@ final class PlanApply
     private readonly array $chain;
     /** @var array<string, array{from: string, to: string, state: string, step: int}> plan 이름마다 history row */
     private array $history = [];
+    /** lock 을 잡은 server session 의 id(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid). */
+    private int $serverSession = 0;
 
     /**
      * @param list<Plan> $plans
@@ -245,8 +258,9 @@ final class PlanApply
         $wait = self::LOCK_WAIT_SECONDS;
         switch ($this->r->dialect) {
             case 'mysql':
+                $this->openSession(self::SESSION_QUERIES['mysql']);
                 // GET_LOCK 의 NULL 은 lock 을 기다리던 중의 error 다.
-                $got = $this->queryValue('SELECT GET_LOCK(' . self::MYSQL_LOCK . ', 0)');
+                [$got, $current] = $this->queryRow('SELECT GET_LOCK(' . self::MYSQL_LOCK . ', 0), CONNECTION_ID()');
                 if ($got === 0 || $got === '0') {
                     throw new ApplyError('locked', '', 0, "another session holds the $h lock of this database");
                 }
@@ -254,7 +268,8 @@ final class PlanApply
                     throw new \RuntimeException('GET_LOCK returned ' . var_export($got, true) . '; want 1 or 0');
                 }
                 $previous = null;
-                $this->finish(function () use ($f, $wait, &$previous): void {
+                $this->finish(function () use ($f, $wait, &$previous, $current): void {
+                    $this->sameSession(null, 0, $current);
                     $query = 'SELECT @@SESSION.lock_wait_timeout, @@SESSION.innodb_lock_wait_timeout';
                     $row = $this->queryRow($query);
                     $values = [CatalogRows::integer($row, 0, $query), CatalogRows::integer($row, 1, $query)];
@@ -269,7 +284,8 @@ final class PlanApply
                 return;
             case 'postgres':
                 // current_schema() 가 NULL 이면 결과도 NULL 이며 error 다.
-                $got = $this->queryValue('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK . ')');
+                $this->openSession(self::SESSION_QUERIES['postgres']);
+                [$got, $current] = $this->queryRow('SELECT pg_try_advisory_lock(' . self::POSTGRES_LOCK . '), pg_backend_pid()');
                 if ($got === false) {
                     throw new ApplyError('locked', '', 0, "another session holds the $h advisory lock of this schema");
                 }
@@ -277,7 +293,8 @@ final class PlanApply
                     throw new \RuntimeException('pg_try_advisory_lock returned ' . var_export($got, true) . '; want true or false');
                 }
                 $previous = null;
-                $this->finish(function () use ($f, $wait, &$previous): void {
+                $this->finish(function () use ($f, $wait, &$previous, $current): void {
+                    $this->sameSession(null, 0, $current);
                     $value = $this->queryValue("SELECT current_setting('lock_timeout')");
                     $this->queryValue("SELECT set_config('lock_timeout', '{$wait}s', false)");
                     $previous = (string) $value;
@@ -640,13 +657,46 @@ final class PlanApply
     }
 
     /**
-     * step i 의 statement 하나를 event 와 함께 실행한다.
+     * lock 을 잡기 전에 server session 의 id 를 기억한다. 그 session 이 lock 을 이미 잡고 있으면 다른
+     * client 가 같은 server session 을 쓰는 것이므로 session error 다.
+     */
+    private function openSession(string $query): void
+    {
+        $row = $this->queryRow($query);
+        $this->serverSession = CatalogRows::integer($row, 0, $query);
+        if ($row[1] === true || $row[1] === 1 || $row[1] === '1') {
+            throw new ApplyError('session', '', 0, 'this server session already holds the ' . self::HISTORY . ' lock, so another client shares it; ' . self::SESSION_REQUIREMENT);
+        }
+    }
+
+    /** current 가 lock 을 잡은 server session 인지 확인한다. 다르면 plan 의 step i 앞에서(plan 이 null 이면 lock 에서) session error 다. */
+    private function sameSession(?Plan $plan, int $i, mixed $current): void
+    {
+        $id = CatalogRows::integer([$current], 0, 'server session id');
+        if ($id === $this->serverSession) {
+            return;
+        }
+        throw new ApplyError('session', $plan?->name ?? '', $plan === null ? 0 : $i, "the connection moved from server session {$this->serverSession} to $id; " . self::SESSION_REQUIREMENT);
+    }
+
+    /**
+     * step i 의 statement 하나를 event 와 함께 실행한다. statement 앞에서 server session 을
+     * 확인한다(SQLite 는 file 하나의 connection 이다).
      *
      * @param list<PlanStep> $steps
      */
     private function run(Plan $plan, array $steps, int $i, string $statement): void
     {
         $this->emit(new ApplyEvent('statement', $plan->name, $i, count($steps), $statement));
+        if ($this->r->dialect !== 'sqlite') {
+            $query = $this->r->dialect === 'mysql' ? 'SELECT CONNECTION_ID()' : 'SELECT pg_backend_pid()';
+            try {
+                $current = $this->queryValue($query);
+            } catch (\PDOException $e) {
+                throw new ApplyError('failed', $plan->name, $i, $query, $e);
+            }
+            $this->sameSession($plan, $i, $current);
+        }
         try {
             $this->c->exec($statement);
         } catch (\PDOException $e) {

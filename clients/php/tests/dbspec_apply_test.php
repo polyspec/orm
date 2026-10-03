@@ -11,12 +11,14 @@ declare(strict_types=1);
 // a stopped rollback that continues; rows written between apply, rollback
 // and a second apply; the null check of a dropped required column; and
 // finalize. Every run gets a fresh database, schema or file.
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the servers; the test
-// fails when either is unset.
+// ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN name the servers and
+// ORM_TEST_PGBOUNCER_DSN the transaction pooler; the test
+// fails when one is unset.
 // Usage: php clients/php/tests/dbspec_apply_test.php
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
+use Orm\Dbspec\ApplyCleanupError;
 use Orm\Dbspec\ApplyError;
 use Orm\Dbspec\ApplyEvent;
 use Orm\Dbspec\Dbspec;
@@ -31,10 +33,11 @@ const RUN_DEADLINE_MS = 60000;
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
 $root = dirname(__DIR__, 3);
-$dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
+// scenario 는 lock 과 session 설정을 server 에서 확인하므로 pooler 가 아니라 server DSN 을 쓴다.
+$dsns = ['mysql' => getenv('ORM_TEST_MYSQL_SERVER_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_SERVER_DSN')];
 foreach ($dsns as $dsn) {
     if (!is_string($dsn) || $dsn === '') {
-        throw new RuntimeException('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');
+        throw new RuntimeException('ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV');
     }
 }
 $run = 'apply_php_' . getmypid();
@@ -480,3 +483,79 @@ if ($runs !== $want) {
 }
 testcase_step("runs=$runs");
 testcase_end();
+
+// apply 는 처음부터 끝까지 다른 client 와 나누지 않는 server session 하나가 필요하다(docs/plans.md
+// "Apply"). PgBouncer 의 transaction pooling 은 statement 마다 server connection 을 다시 고르므로
+// apply 는 lock 에서와 step 마다 server session 을 확인하고 session error 로 멈춘다. 각 scenario 는
+// server 에 자기 database 를 만들고 PgBouncer 로 그 database 에 연결한다. PgBouncer 는 쉬는 server
+// connection 을 LIFO 로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+$poolerScenarios = [
+    // 다른 client 가 session advisory lock 을 잡은 server connection 을 apply 가 이어받는다.
+    'lock_shared' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
+        $other->query('SELECT pg_advisory_lock(' . POSTGRES_APPLY_LOCK . ')')->closeCursor();
+        Dbspec::apply($apply, 'postgres', $plans, $now, null);
+    },
+    // 첫 step 앞에서 다른 client 가 transaction 으로 apply 의 server connection 을 잡으므로 apply 의
+    // 다음 statement 는 다른 server connection 에서 실행된다.
+    'session_changed' => static function (PDO $apply, PDO $other) use ($plans, $now): void {
+        $held = false;
+        try {
+            Dbspec::apply($apply, 'postgres', $plans, $now, static function (ApplyEvent $event) use (&$held, $other): void {
+                if ($event->kind !== 'statement' || $held) {
+                    return;
+                }
+                $held = true;
+                $other->beginTransaction();
+                $other->query('SELECT 1')->closeCursor();
+            });
+        } finally {
+            if ($held) {
+                $other->rollBack();
+            }
+        }
+    },
+];
+$poolerFailed = 0;
+foreach ($poolerScenarios as $name => $scenario) {
+    $poolerFailed += testcase_run("postgres.apply.pooler.$name", RUN_DEADLINE_MS / 1000, static function (callable $step) use ($name, $scenario): void {
+        $serverDsn = getenv('ORM_TEST_POSTGRES_SERVER_DSN');
+        $poolerDsn = getenv('ORM_TEST_PGBOUNCER_DSN');
+        if (!is_string($serverDsn) || $serverDsn === '' || !is_string($poolerDsn) || $poolerDsn === '') {
+            throw new RuntimeException('ORM_TEST_POSTGRES_SERVER_DSN and ORM_TEST_PGBOUNCER_DSN are required; pass TEST_ENV');
+        }
+        $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+        $database = 'orm_case_' . getmypid() . "_pooler_$name";
+        [, $adminDsn, $user, $password] = Orm::parseDsn($serverDsn);
+        $admin = new PDO($adminDsn, $user, $password, $options);
+        $admin->exec("CREATE DATABASE \"$database\"");
+        try {
+            $url = parse_url($poolerDsn);
+            $url['path'] = "/$database";
+            $retargeted = "{$url['scheme']}://" . (isset($url['user']) ? $url['user'] . (isset($url['pass']) ? ":{$url['pass']}" : '') . '@' : '')
+                . $url['host'] . (isset($url['port']) ? ":{$url['port']}" : '') . $url['path'] . (isset($url['query']) ? "?{$url['query']}" : '');
+            [, $poolerPdoDsn, $poolerUser, $poolerPassword] = Orm::parseDsn($retargeted);
+            $apply = new PDO($poolerPdoDsn, $poolerUser, $poolerPassword, $options);
+            $other = new PDO($poolerPdoDsn, $poolerUser, $poolerPassword, $options);
+            try {
+                $scenario($apply, $other);
+            } catch (Throwable $e) {
+                // 정리 단계의 error(다른 server connection 에서 실행된 unlock)가 있으면 그 이전 throwable 이 실패다.
+                $failure = $e instanceof ApplyCleanupError ? $e->getPrevious() : $e;
+                if (!$failure instanceof ApplyError || $failure->code_ !== 'session' || !str_contains($failure->detail, 'a direct or session-pooled connection')) {
+                    throw new RuntimeException("apply through a transaction pooler: {$e->getMessage()}, want a session error", 0, $e);
+                }
+                $step("session: {$failure->getMessage()}");
+                return;
+            } finally {
+                $apply = null;
+                $other = null;
+            }
+            throw new RuntimeException('apply through a transaction pooler succeeded; want a session error');
+        } finally {
+            $admin->exec("DROP DATABASE \"$database\" WITH (FORCE)");
+        }
+    }) ? 0 : 1;
+}
+if ($poolerFailed > 0) {
+    exit(1);
+}

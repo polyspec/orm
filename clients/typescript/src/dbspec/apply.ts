@@ -42,12 +42,12 @@ export interface DbspecApplyEvent {
 export type DbspecApplyHandler = (event: DbspecApplyEvent) => void | Promise<void>;
 
 /** The kind of a command failure. */
-export type DbspecApplyErrorCode = 'locked' | 'interrupted' | 'drift' | 'chain' | 'failed' | 'verify' | 'irreversible' | 'nulls';
+export type DbspecApplyErrorCode = 'locked' | 'session' | 'interrupted' | 'drift' | 'chain' | 'failed' | 'verify' | 'irreversible' | 'nulls';
 
 /**
  * A failure of apply, recover, rollback or finalize. `plan` is '' when no
  * plan is concerned, `step` is the step index of `failed`, `interrupted`,
- * `irreversible` and `nulls`, `detail` the explanation and `cause` the
+ * `irreversible`, `nulls` and a `session` error before a step, `detail` the explanation and `cause` the
  * database or verification error.
  */
 export class DbspecApplyError extends Error {
@@ -59,7 +59,7 @@ export class DbspecApplyError extends Error {
   constructor(code: DbspecApplyErrorCode, plan: string, step: number, detail: string, cause?: unknown) {
     let message: string = code;
     if (plan !== '') message += ` ${plan}`;
-    if (code === 'failed' || code === 'interrupted' || code === 'irreversible' || code === 'nulls') message += ` at step ${step}`;
+    if (code === 'failed' || code === 'interrupted' || code === 'irreversible' || code === 'nulls' || (code === 'session' && plan !== '')) message += ` at step ${step}`;
     if (detail !== '') message += `: ${detail}`;
     if (cause !== undefined) message += `: ${cause instanceof Error ? cause.message : String(cause)}`;
     super(message, cause === undefined ? undefined : { cause });
@@ -79,6 +79,17 @@ const HISTORY_TABLE = 'dbspec$plans';
 const MYSQL_LOCK = `CONCAT('${HISTORY_TABLE}$', LEFT(SHA2(DATABASE(), 256), 51))`;
 // 현재 database의 현재 schema 하나의 advisory lock key다.
 const POSTGRES_LOCK = `hashtext('${HISTORY_TABLE}'), hashtext(current_schema())`;
+// session error가 밝히는 요구다. lock은 server session에 속하므로 명령은 처음부터 끝까지 다른
+// client와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler는 statement마다
+// server connection을 다시 고르므로 그 요구를 지키지 못한다.
+const SESSION_REQUIREMENT = 'apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection';
+// 현재 server session의 id와, 그 session이 이 명령의 lock을 이미 잡고 있는지를 읽는다. lock을 잡기
+// 전에 이미 잡혀 있으면 다른 client가 같은 server session을 쓰고 있다.
+const SESSION_QUERIES: Readonly<Record<'mysql' | 'postgres', string>> = Object.freeze({
+  mysql: `SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(${MYSQL_LOCK}) = CONNECTION_ID(), 0)`,
+  postgres: "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2"
+    + ` AND classid = (hashtext('${HISTORY_TABLE}')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)`,
+});
 // statement가 다른 session의 lock을 기다리는 최대 시간이다(docs/plans.md "Apply"의 lock 대기).
 const LOCK_WAIT_SECONDS = 5;
 
@@ -247,6 +258,8 @@ class Applier {
   readonly s: Session;
   readonly r: Renderer;
   history = new Map<string, HistoryRow>();
+  // lock을 잡은 server session의 id다(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+  serverSession = 0;
 
   constructor(
     readonly connection: unknown,
@@ -277,8 +290,9 @@ class Applier {
   async session(f: () => Promise<void>): Promise<void> {
     switch (this.dialect) {
       case 'mysql': {
+        await this.openSession(SESSION_QUERIES.mysql);
         // GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
-        const got = await this.queryValue(`SELECT GET_LOCK(${MYSQL_LOCK}, 0)`);
+        const [got, current] = await this.queryRow(`SELECT GET_LOCK(${MYSQL_LOCK}, 0), CONNECTION_ID()`);
         if (got === null) throw new Error('GET_LOCK returned NULL; want 1 or 0');
         const acquired = integer(got, 'GET_LOCK');
         if (acquired === 0) throw new DbspecApplyError('locked', '', 0, `another session holds the ${HISTORY_TABLE} lock of this database`);
@@ -286,6 +300,7 @@ class Applier {
         let previous: [number, number] | null = null;
         await finish(
           async () => {
+            this.sameSession(null, 0, current);
             const row = await this.queryRow('SELECT @@SESSION.lock_wait_timeout, @@SESSION.innodb_lock_wait_timeout');
             const values: [number, number] = [integer(row[0], 'lock_wait_timeout'), integer(row[1], 'innodb_lock_wait_timeout')];
             await this.s.exec(`SET SESSION lock_wait_timeout = ${LOCK_WAIT_SECONDS}, innodb_lock_wait_timeout = ${LOCK_WAIT_SECONDS}`);
@@ -301,7 +316,8 @@ class Applier {
       }
       case 'postgres': {
         // current_schema()가 NULL이면 결과도 NULL이며 error다.
-        const got = await this.queryValue(`SELECT pg_try_advisory_lock(${POSTGRES_LOCK})`);
+        await this.openSession(SESSION_QUERIES.postgres);
+        const [got, current] = await this.queryRow(`SELECT pg_try_advisory_lock(${POSTGRES_LOCK}), pg_backend_pid()`);
         if (got !== true) {
           if (got !== false) throw new Error(`pg_try_advisory_lock returned ${String(got)}`);
           throw new DbspecApplyError('locked', '', 0, `another session holds the ${HISTORY_TABLE} advisory lock of this schema`);
@@ -309,6 +325,7 @@ class Applier {
         let previous: string | null = null;
         await finish(
           async () => {
+            this.sameSession(null, 0, current);
             const value = text(await this.queryValue("SELECT current_setting('lock_timeout')"), 'lock_timeout');
             await this.queryValue(`SELECT set_config('lock_timeout', '${LOCK_WAIT_SECONDS}s', false)`);
             previous = value;
@@ -543,9 +560,38 @@ class Applier {
     await this.emit('done', p.name, 0, steps.length, '');
   }
 
-  /** step i의 statement 하나를 event와 함께 실행한다. */
+  /**
+   * lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미 잡고 있으면 다른
+   * client가 같은 server session을 쓰는 것이므로 session error다.
+   */
+  async openSession(query: string): Promise<void> {
+    const [id, held] = await this.queryRow(query);
+    this.serverSession = integer(id, 'server session id');
+    if (held === true || held === 1 || held === '1' || held === 1n) {
+      throw new DbspecApplyError('session', '', 0, `this server session already holds the ${HISTORY_TABLE} lock, so another client shares it; ${SESSION_REQUIREMENT}`);
+    }
+  }
+
+  /** current가 lock을 잡은 server session인지 확인한다. 다르면 plan p의 step i 앞에서(p가 null이면 lock에서) session error다. */
+  sameSession(p: DbspecPlan | null, i: number, current: unknown): void {
+    const id = integer(current, 'server session id');
+    if (id === this.serverSession) return;
+    throw new DbspecApplyError('session', p?.name ?? '', p === null ? 0 : i, `the connection moved from server session ${this.serverSession} to ${id}; ${SESSION_REQUIREMENT}`);
+  }
+
+  /** step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을 확인한다(SQLite는 file 하나의 connection이다). */
   async run(p: DbspecPlan, steps: readonly DbspecPlanStep[], i: number, statement: string): Promise<void> {
     await this.emit('statement', p.name, i, steps.length, statement);
+    if (this.dialect !== 'sqlite') {
+      const query = this.dialect === 'mysql' ? 'SELECT CONNECTION_ID()' : 'SELECT pg_backend_pid()';
+      let current: unknown;
+      try {
+        current = await this.queryValue(query);
+      } catch (error) {
+        throw new DbspecApplyError('failed', p.name, i, query, error);
+      }
+      this.sameSession(p, i, current);
+    }
     try {
       await this.s.exec(statement);
     } catch (error) {

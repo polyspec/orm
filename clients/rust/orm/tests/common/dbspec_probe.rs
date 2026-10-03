@@ -30,7 +30,7 @@ pub fn repository() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
-fn require_dsn(var: &str) -> String {
+pub fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
         _ => panic!("{var} is required; pass TEST_ENV"),
@@ -158,12 +158,17 @@ pub struct Servers {
 }
 
 impl Servers {
+    /// probe는 schema 변경과 session 설정(search_path, lock)을 server에서 확인하므로 pooler가 아니라
+    /// ORM_TEST_MYSQL_SERVER_DSN과 ORM_TEST_POSTGRES_SERVER_DSN의 server에 연결한다. transaction
+    /// pooler는 statement마다 server connection을 다시 골라 session 설정을 지키지 않는다.
     pub async fn open(run: &str) -> Servers {
-        let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
-        let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
-        let ConnectOptions::MySql(mysql) = parse_dsn(&mysql_dsn).expect("ORM_TEST_MYSQL_DSN").options else { panic!("ORM_TEST_MYSQL_DSN is not mysql://") };
-        let ConnectOptions::Postgres(postgres) = parse_dsn(&postgres_dsn).expect("ORM_TEST_POSTGRES_DSN").options else {
-            panic!("ORM_TEST_POSTGRES_DSN is not postgres://")
+        let mysql_dsn = require_dsn("ORM_TEST_MYSQL_SERVER_DSN");
+        let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_SERVER_DSN");
+        let ConnectOptions::MySql(mysql) = parse_dsn(&mysql_dsn).expect("ORM_TEST_MYSQL_SERVER_DSN").options else {
+            panic!("ORM_TEST_MYSQL_SERVER_DSN is not mysql://")
+        };
+        let ConnectOptions::Postgres(postgres) = parse_dsn(&postgres_dsn).expect("ORM_TEST_POSTGRES_SERVER_DSN").options else {
+            panic!("ORM_TEST_POSTGRES_SERVER_DSN is not postgres://")
         };
         let mysql = MySqlConnection::connect_with(&mysql).await.expect("mysql admin connection");
         let postgres = PgConnection::connect_with(&postgres).await.expect("postgres admin connection");

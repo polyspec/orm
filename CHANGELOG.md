@@ -1,5 +1,7 @@
 # Changelog
 
+- T29.1: dbspec apply, recover, rollback and finalize check on MySQL and PostgreSQL that the connection keeps one server session of its own and stop with a `session` error before the next statement when the session that takes the lock already holds it or a later statement runs in another session, as through a transaction pooler; the requirement is a direct or session-pooled connection.
+
 - T29: the Rust `tx` tests that end or inspect server sessions connect through the server DSNs, so `make client-pooler-check` passes.
 
 - T27.5: every cargo test command shares one test build, client-db-check runs its four clients in parallel lanes and feature-check runs its verification commands in four lanes (a command marked `exclusive` runs alone first); the TypeScript replica case waits on connections without a database and closes them when one fails. client-db-check takes 86 s instead of 449 s and feature-check 251 s instead of 570 s.

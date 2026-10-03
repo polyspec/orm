@@ -55,8 +55,11 @@ async fn decimal_sqlite() {
     decimal_physical("DECIMAL_SQLITE_DSN").await;
 }
 
-/// Creates a new database on the server that ORM_TEST_<DRIVER>_DSN names and
-/// returns its DSN and name; SQLite uses a new file.
+/// Creates a new database on the server and returns its DSN through
+/// ORM_TEST_<DRIVER>_DSN (a pooler in client-pooler-check) and its name;
+/// SQLite uses a new file. The database is created and dropped through
+/// ORM_TEST_<DRIVER>_SERVER_DSN: administration is server work, and the raw
+/// sqlx connection sends startup parameters that a pooler rejects.
 #[cfg(test)]
 async fn schema_set_database(driver: &str) -> (String, String) {
     // 병렬 test가 같은 microsecond에 이름을 만들 수 있으므로 process id와 counter로 이름을 구분한다.
@@ -69,7 +72,7 @@ async fn schema_set_database(driver: &str) -> (String, String) {
     }
     let env = format!("ORM_TEST_{}_DSN", driver.to_uppercase());
     let base = std::env::var(&env).unwrap_or_else(|_| panic!("{env} is required; database tests never skip"));
-    schema_set_server(driver, &base, &format!("CREATE DATABASE {name}")).await;
+    schema_set_server(driver, &format!("CREATE DATABASE {name}")).await;
     let (head, query) = base.split_once('?').map_or((base.as_str(), ""), |(h, q)| (h, q));
     let (server, _) = head.rsplit_once('/').expect("DSN names a database");
     let dsn = if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") };
@@ -77,7 +80,10 @@ async fn schema_set_database(driver: &str) -> (String, String) {
 }
 
 #[cfg(test)]
-async fn schema_set_server(driver: &str, base: &str, statement: &str) {
+async fn schema_set_server(driver: &str, statement: &str) {
+    let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
+    let base = std::env::var(&env).unwrap_or_else(|_| panic!("{env} is required; database tests never skip"));
+    let base = base.as_str();
     let sql = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.to_owned()));
     if driver == "mysql" {
         let pool = sqlx::MySqlPool::connect(base).await.unwrap();
@@ -234,9 +240,8 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
     if driver == "sqlite" {
         std::fs::remove_file(dsn.trim_start_matches("sqlite://")).unwrap();
     } else {
-        let base = std::env::var(format!("ORM_TEST_{}_DSN", driver.to_uppercase())).unwrap();
         let drop = if driver == "postgres" { format!("DROP DATABASE {name} WITH (FORCE)") } else { format!("DROP DATABASE {name}") };
-        schema_set_server(driver, &base, &drop).await;
+        schema_set_server(driver, &drop).await;
     }
 }
 
