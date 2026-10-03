@@ -6,9 +6,11 @@ import (
 
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
 		name   string
 		values []groupValue
@@ -52,6 +54,7 @@ func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
 }
 
 func TestGroupColumnValueChecksDeclaredType(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	column := plan.OutCol{Name: "is_close", Column: "is_close", Type: "bool"}
 	declared := &runtimemodel.Field{Name: "is_close", Type: "bool"}
 	for raw, want := range map[any]bool{int64(0): false, int64(1): true} {
@@ -72,6 +75,7 @@ func TestGroupColumnValueChecksDeclaredType(t *testing.T) {
 }
 
 func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, columns := range [][]plan.OutCol{
 		{{Name: "is_close"}},
 		{{Name: "row_count"}, {Name: "row_count"}},

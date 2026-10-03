@@ -9,6 +9,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // replicaTargets returns the primary and replica DSN of MySQL and
@@ -79,6 +80,7 @@ func awaitReplica(t *testing.T, driver, primary, replica string) {
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
 func TestPrimaryAndReplica(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
@@ -140,6 +142,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 // that the process may only read: SQLite opens it read-only, reads succeed,
 // and a write returns READ_ONLY.
 func TestReadOnlySQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	manifest := model.Schema
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
 	dsn := "sqlite://" + path

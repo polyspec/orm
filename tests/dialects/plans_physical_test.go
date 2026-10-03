@@ -5,15 +5,16 @@ package dialects
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // hiddenLeft는 dialect에서 이름이 dbspec$로 시작하는 table과 column의 수를 읽는다.
@@ -40,6 +41,7 @@ type planStep struct {
 // 확인하고, 되돌릴 수 없는 step이 없으면 rollback statement로 source를 확인한 뒤 다시
 // 적용하고, after step과 finalize step을 실행한 뒤 target과 숨긴 이름이 없음을 확인한다.
 func TestPlanApply(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -210,15 +212,7 @@ func TestPlanApply(t *testing.T) {
 			}}
 			index++
 			t.Run(probe.ID, func(t *testing.T) {
-				begin := time.Now()
-				t.Logf("start %s: %d steps, reversible %v", probe.ID, len(planSteps), reversible)
-				_, err := runWithDeadline(servers, probe, index)
-				elapsed := time.Since(begin).Round(time.Millisecond)
-				if err != nil {
-					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-					return
-				}
-				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
+				runProbeCase(t, servers, probe, index, fmt.Sprintf("%d steps, reversible %v", len(planSteps), reversible))
 			})
 		}
 	}

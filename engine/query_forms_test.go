@@ -7,6 +7,7 @@ import (
 
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const formsSchema = `dbspec 1 forms
@@ -89,6 +90,7 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 }
 
 func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"left","left":"owner_seq","right":"seq","query":{"entity":"owner",
@@ -111,6 +113,7 @@ func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
 }
 
 func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner",
@@ -120,6 +123,7 @@ func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
 }
 
 func TestJoinedReferenceErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"joined":{"join":"owner"}}]}`, "ENTITY_NOT_JOINED")
 	formsError(t, e, `"kind":"all","entity":"place",
@@ -131,6 +135,7 @@ func TestJoinedReferenceErrors(t *testing.T) {
 }
 
 func TestExplicitKeyRelation(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "relations":[{"rel":"visits","kind":"many","keys":[{"left":"seq","right":"place_seq"}],
@@ -150,6 +155,7 @@ func TestExplicitKeyRelation(t *testing.T) {
 }
 
 func TestColumnComparisonWithJoinedModel(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner"}}],
@@ -158,6 +164,7 @@ func TestColumnComparisonWithJoinedModel(t *testing.T) {
 }
 
 func TestColumnFunctionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"place",
 	 "columns":{"fn":{"created_date":{"column":"created_ts","fn":{"name":"date"}}}},
 	 "where":{"items":[
@@ -201,6 +208,7 @@ func TestColumnFunctionsForEveryDialect(t *testing.T) {
 }
 
 func TestValueFunctionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"place","where":{"items":[
 	  {"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	  {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}},
@@ -230,6 +238,7 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 }
 
 func TestTupleConditionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"membership","where":{"items":[
 	  {"pred":{"column":"","op":"tuple_in","cols":["tenant_id","account_id"],"ps":[0,1,2,3]}},
 	  {"pred":{"conn":"and","op":"tuple_not_in","cols":["tenant_id","account_id"],"ps":[4,5]}}]}`
@@ -246,6 +255,7 @@ func TestTupleConditionsForEveryDialect(t *testing.T) {
 }
 
 func TestSubqueryConditionsAndColumns(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"owner",
 	 "columns":{"sub":{"visit_total":{"agg":"sum","column":"amount","query":{"entity":"visit",
@@ -263,6 +273,7 @@ func TestSubqueryConditionsAndColumns(t *testing.T) {
 }
 
 func TestRawColumnReferencesAndRandomOrder(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
 		"mysql":    {"(`a`.`price` * ? > ?)", "ORDER BY RAND()"},
 		"postgres": {`("a"."price" * $1 > $2)`, "ORDER BY random()"},
@@ -277,6 +288,7 @@ func TestRawColumnReferencesAndRandomOrder(t *testing.T) {
 }
 
 func TestBoundRawColumnAndBinaryContains(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
 		"mysql":    {"(`a`.`price` * ?) AS `a__doubled`", "`a`.`name` LIKE BINARY ?"},
 		"postgres": {`("a"."price" * $1) AS "a__doubled"`, `"a"."name" LIKE $2`},
@@ -298,6 +310,7 @@ func TestBoundRawColumnAndBinaryContains(t *testing.T) {
 }
 
 func TestMultiRowInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, want := range map[string]string{
 		"mysql":    "INSERT INTO `visit` (`place_seq`, `amount`) VALUES (?, ?), (?, ?), (?, ?)",
 		"postgres": `INSERT INTO "visit" ("place_seq", "amount") VALUES ($1, $2), ($3, $4), ($5, $6)`,
@@ -323,6 +336,7 @@ func TestMultiRowInsert(t *testing.T) {
 // 않으므로(postgres.identity.by_default_not_advanced) 이 거부가 없으면 다음
 // 생성 key가 충돌한다.
 func TestKeyColumnsAreNotWritten(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	cases := []struct{ body, message string }{
 		{`"kind":"insert","entity":"place","set":[{"column":"seq","p":0},{"column":"owner_seq","p":1},{"column":"name","p":2}]`, "cannot set identity column seq"},
 		{`"kind":"update","entity":"place","set":[{"column":"seq","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`, "cannot update seq"},

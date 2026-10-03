@@ -7,12 +7,14 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCoverageConstraintErrors는 seed 행에 대한 foreign key, check, unique
 // 위반이 각각 FOREIGN_KEY, CONSTRAINT, DUPLICATE_KEY이고 아무 행도 바뀌지
 // 않는지 확인한다.
 func TestCoverageConstraintErrors(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	user := must(model.User().Connect(db).Seq(1).Get())
 	if err := user.Delete(); orm.ErrorCode(err) != orm.CodeForeignKey {

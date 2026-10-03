@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // repositoryRoot는 이 file의 위치로 찾은 module root이므로 test는 working directory에
@@ -79,6 +81,7 @@ func failingCaseNames(t *testing.T) []string {
 // TestFailingCaseFixture는 각 case 검사를 기대값 하나만 틀린 vector로 실행한다.
 // 모든 case가 실패해야 하므로 failingCaseFixture가 없으면 건너뛴다.
 func TestFailingCaseFixture(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	if os.Getenv(failingCaseFixture) != "1" {
 		t.Skipf("runs only as the child process of TestCaseHarnessReportsOnlyFailure (%s=1)", failingCaseFixture)
 	}
@@ -117,6 +120,7 @@ func TestFailingCaseFixture(t *testing.T) {
 // TestCaseHarnessReportsOnlyFailure는 실패한 case가 FAIL 줄만 출력하고 PASS 줄은
 // 출력하지 않는지 TestFailingCaseFixture를 하위 process로 실행해 확인한다.
 func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	names := failingCaseNames(t)
 	runTimed(t, "harness/only-failure", 2*time.Minute, func() error {
 		command := exec.Command("go", "test", "-run", "^TestFailingCaseFixture$", "-count=1", "-v", ".")

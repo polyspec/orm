@@ -3,9 +3,12 @@ package main
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestManifestErrorLabelsMatchCatalog(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
@@ -23,6 +26,7 @@ func TestManifestErrorLabelsMatchCatalog(t *testing.T) {
 }
 
 func TestInterfaceErrorLabelsRejectContractMutations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	codes := map[string]bool{"CONFIG": true, "DEADLOCK": true}
 	rules := []Rule{{ID: "Db.transaction", Errors: []string{"CONFIG", "DEADLOCK"}}}
 	sequences := []Sequence{{ID: "errors", Expected: []any{"CONFIG"}}}

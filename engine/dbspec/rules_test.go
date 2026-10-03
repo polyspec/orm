@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // These cases cover rules and canonical forms that tests/dbspec/cases.json
@@ -183,6 +185,7 @@ func seventeenColumns() []string {
 }
 
 func TestRuleDiagnostics(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, c := range ruleCases {
 		t.Run(c.id, func(t *testing.T) {
 			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
@@ -197,6 +200,7 @@ func TestRuleDiagnostics(t *testing.T) {
 }
 
 func TestEncodingAndLimitDiagnostics(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	big := "dbspec 1 shop\n" + strings.Repeat("#", maxDocumentBytes)
 	var tables strings.Builder
 	tables.WriteString("dbspec 1 shop\n")
@@ -233,6 +237,7 @@ func TestEncodingAndLimitDiagnostics(t *testing.T) {
 
 // TestCanonicalForms checks literal, expression, comment and ordering forms.
 func TestCanonicalForms(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	cases := []struct {
 		id    string
 		input []string
@@ -331,6 +336,7 @@ func TestCanonicalForms(t *testing.T) {
 
 // TestParseReturnsModel checks the model fields of a parsed document.
 func TestParseReturnsModel(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	runTimed(t, "model", 5*time.Second, func() error {
 		text := joinLines(with(block("use core { accounts }", ""), block("table orders {", "  id i64 identity", "  account_id i64 null",
 			"  total decimal(13,2) default 1", "  primary key (id)", "  index ix_account (account_id desc)",

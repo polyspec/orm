@@ -13,6 +13,7 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,"first":1.50}}`
@@ -20,6 +21,7 @@ const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,
 // TestAESJSONColumnSchema는 key version setting 없는 AES codec과 text
 // column에 저장하는 AES codec을 SCHEMA_INVALID setting diagnostic으로 거부한다.
 func TestAESJSONColumnSchema(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	for _, c := range []struct{ document, message string }{
 		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  config bytes\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n  }\n}\n", "aes_version"},
 		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  aes_key_version i32\n  config text\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n    aes_version aes_key_version\n  }\n}\n", "bytes"},
@@ -35,6 +37,7 @@ func TestAESJSONColumnSchema(t *testing.T) {
 // it back unchanged, and rotates it to another key version on the three
 // databases.
 func TestAESJSONColumn(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "secret_config")
 	manifest := s
 	sqlitePath := filepath.Join(t.TempDir(), "aes-json.sqlite")

@@ -9,9 +9,11 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	row := model.Author()
 	for _, invalid := range []any{nil, orm.StyledValue{}} {
 		if _, err := row.Orm_().Entity().Assign(row, "json_setting", invalid); orm.ErrorCode(err) != orm.CodeCodecDecode {
@@ -66,6 +68,7 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 }
 
 func TestStyledStatesAcrossDatabases(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		id := f.authors[0].GetSeq()

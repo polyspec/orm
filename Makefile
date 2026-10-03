@@ -15,8 +15,20 @@ TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-check: checklist-check repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check php-without-mysql-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check dialect-facts-check conformance-check perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
-	$(WITH_TEST_ENV) go test ./...
+# GO_TEST는 Go test를 case마다 보고하게 실행한다. -v는 각 case가 internal/testcase로 내는
+# RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을 가지므로 -timeout 0이
+# test binary 전체의 기한(기본 10분)을 끈다.
+GO_TEST = go test -v -timeout 0
+
+check: checklist-check testcase-check repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check php-without-mysql-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check dialect-facts-check conformance-check perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
+	$(WITH_TEST_ENV) $(GO_TEST) ./...
+
+# testcase-check는 각 언어의 공유 case 보고 형식이 case마다 시작(RUN, 기한), 단계(STEP),
+# 결과(PASS, FAIL과 이유)와 경과 시간을 이 순서로 출력하고, 기한이 지난 case를 FAIL로
+# 보고하는지 하위 process의 출력으로 확인한다.
+.PHONY: testcase-check
+testcase-check:
+	$(GO_TEST) ./internal/testcase -count=1
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
@@ -40,14 +52,14 @@ DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbs
 # 렌더링한 statement를 적용한다.
 .PHONY: dbspec-ddl-check
 dbspec-ddl-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDDLVectors|TestSchemaDocumentsApply)$$' -count=1
 
 # dbspec-introspect-check는 tests/dbspec/ddl.json과 모든 schema 문서를 MySQL, PostgreSQL,
 # SQLite에 렌더링해 적용하고, 각 database를 introspect해 source schema text를 요구하며,
 # tests/dbspec/introspect.json을 실행한다.
 .PHONY: dbspec-introspect-check
 dbspec-introspect-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestIntrospectRoundTrip|TestIntrospectUnsupported)$$' -count=1
 
 # dbspec-introspect-ts-check는 TypeScript client를 build하고 dbspec-introspect-check의 round
 # trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
@@ -74,16 +86,16 @@ dbspec-introspect-rust-check:
 # 숨긴 이름 없음을 요구한다(docs/plans.md "Verification").
 .PHONY: dbspec-plan-check
 dbspec-plan-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestPlanApply$$' -count=1
 
 # dbspec-apply-check는 plan chain을 MySQL, PostgreSQL, SQLite에 history, 두 번째 apply, drift,
 # lock, 아무것도 풀지 않은 unlock, 검증, representative plan의 모든 step 뒤 중단에서 recover와
 # rollback, 그사이 쓴 row, null 검사, finalize와 함께 적용하고, 2000 table 문서를 첫 plan으로
 # 세 database에 적용한다(docs/plans.md "Apply", "Verification"). 2000 table plan은 MySQL에서
-# statement와 history step 22000개씩을 따로 commit하므로 기한이 길다.
+# statement와 history step 22000개씩을 따로 commit하므로 그 case의 기한이 길다.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyStressPlan)$$' -count=1 -timeout 70m -v
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyStressPlan)$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
 # tests/dbspec/apply의 Go, PHP, TypeScript, Rust runner의 모든 순서쌍마다 MySQL, PostgreSQL,
@@ -94,7 +106,7 @@ dbspec-apply-check:
 dbspec-apply-pairs-check:
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_apply
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply go test -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/release/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
@@ -144,7 +156,7 @@ dbspec-introspect-compare-check:
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm --example dbspec_introspect
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect go test -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1 -timeout 30m -v
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_STRESS_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/release/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 
 # dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
 # stress 문서, tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
@@ -228,8 +240,8 @@ package-check:
 	./scripts/package-check.sh
 
 fuzz-check:
-	go test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
-	go test ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
+	$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	$(GO_TEST) ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 client-unit-check:
 	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/orm_gen_test.php
@@ -244,22 +256,21 @@ client-db-check:
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
 # and records which SQLite openers keep a DSN query in the file name.
-# Each probe has its own deadline, so the go test binary timeout is off.
 dialect-facts-check:
-	go test ./tests/dialects -run '^TestProbeIDs$$' -count=1 -v
-	$(WITH_TEST_ENV) go test -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1 -timeout 0 -v
+	$(GO_TEST) ./tests/dialects -run '^TestProbeIDs$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
 
 conformance-counter-check:
-	$(WITH_TEST_ENV) go test -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck)$$' -count=1 -timeout 3m
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck)$$' -count=1
 
 conformance-result-check:
 	python3 tests/conformance/run_result_tests.py
 
 conformance-result-physical-check:
-	$(WITH_TEST_ENV) go test -v -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1 -timeout 40m
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
 conformance-rust-group-check:
-	$(WITH_TEST_ENV) go test -v -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1 -timeout 35m
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
 
 group-rows-physical-check:
 	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mjs
@@ -322,7 +333,7 @@ dbspec-ts-check:
 # 틀린 field를 위치와 함께 거부하는지 확인하며, parse와 emit 시간을 기록한다.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	go test ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1 -v
+	$(GO_TEST) ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestStressDocument|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1
 
 docs-dev:
 	npm run docs:dev
@@ -370,7 +381,7 @@ rust-driver-check:
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check:
 	cd clients/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo build --release --locked --offline -p orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/release/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/release/demo) go test -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1 -timeout 10m -v
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/release/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/release/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.

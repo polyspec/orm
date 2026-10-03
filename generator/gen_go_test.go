@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // namesManifest는 dbspec document 하나의 runtime model이다.
@@ -51,6 +52,7 @@ func thingDocument(columns ...string) string {
 }
 
 func TestParseChain(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, namesDiagram)
 	e := m.Entities["product"]
 	cases := map[string][]chainKey{
@@ -92,6 +94,7 @@ func TestParseChain(t *testing.T) {
 }
 
 func TestColumnNameRules(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	for column, message := range map[string]string{
 		"price_gt_limit": "segment",
 		"with_tax":       "segment",
@@ -116,6 +119,7 @@ func TestColumnNameRules(t *testing.T) {
 }
 
 func TestSplitPair(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, namesDiagram)
 	left, right, err := splitPair(m, m.Entities["product"], m.Entities["brand"], "BrandSeqWithSeq")
 	if err != nil || left != "brand_seq" || right != "seq" {
@@ -132,6 +136,7 @@ func TestSplitPair(t *testing.T) {
 // TestScanGeneratesUsedMethods generates models for a small scanned module
 // and builds it.
 func TestScanGeneratesUsedMethods(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -222,6 +227,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // TestGeneratedFieldTypes는 dbspec type과 codec마다 generated field의 Go
 // type이 docs/dbspec.md "Runtime model" 표를 따르는지 확인한다.
 func TestGeneratedFieldTypes(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, `dbspec 1 typed
 
 table typed {

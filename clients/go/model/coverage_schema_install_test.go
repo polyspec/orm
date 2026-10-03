@@ -8,12 +8,14 @@ import (
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCoverageSchemaInstallExisting는 generated model이 품은 bench manifest를
 // 이미 설치된 database에 다시 설치하면 성공하고 아무것도 바꾸지 않는지
 // 확인한다.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	before := must(model.Author().Connect(db).GetCount())
 	if err := db.Utils().Schema().Install(model.Schema); err != nil {
@@ -42,6 +44,7 @@ table coverage_install_missing {
 // TestCoverageSchemaInstallPartial는 table 일부만 있는 document set의 install이
 // CONFIG이고 없는 table을 만들지 않는지 확인한다.
 func TestCoverageSchemaInstallPartial(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
 	m, diagnostics := runtimemodel.LoadDocuments([]string{partialDocument})
 	if len(diagnostics) > 0 {

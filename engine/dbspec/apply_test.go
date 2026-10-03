@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // failing은 실제 SQLite connection을 감싸서 정한 statement에 error를 주입하고,
@@ -78,6 +80,7 @@ func logResult(t *testing.T, name string, start time.Time) {
 // TestApplyReportsCleanupErrors는 apply가 실패한 뒤 정리(lock 해제, foreign key
 // 복원)에서 난 error도 버리지 않고 함께 돌려주는지 확인한다.
 func TestApplyReportsCleanupErrors(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/cleanup-errors deadline=20s")
 	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
@@ -117,6 +120,7 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 // TestEffectRequiresRow는 효과 query가 row를 돌려주지 않으면 효과가 없다고 읽지
 // 않고 error로 보고하는지 확인한다.
 func TestEffectRequiresRow(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	start := time.Now()
 	t.Log("RUN apply/effect-row deadline=5s")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

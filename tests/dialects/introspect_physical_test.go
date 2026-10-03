@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // countingQuerier는 introspection이 보낸 query 수를 센다.
@@ -116,6 +117,7 @@ func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
 // schema text가 원본과 같은지, 미지원 객체가 없는지, dialect마다 query 수가
 // 집합의 table 수와 무관하게 같은지 확인한다.
 func TestIntrospectRoundTrip(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -173,17 +175,7 @@ func TestIntrospectRoundTrip(t *testing.T) {
 				}
 			}}
 			index++
-			t.Run(probe.ID, func(t *testing.T) {
-				begin := time.Now()
-				t.Logf("start %s", probe.ID)
-				_, err := runWithDeadline(servers, probe, index)
-				elapsed := time.Since(begin).Round(time.Millisecond)
-				if err != nil {
-					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-					return
-				}
-				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
-			})
+			t.Run(probe.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })
 		}
 	}
 	for db, counts := range queries {
@@ -200,6 +192,7 @@ func TestIntrospectRoundTrip(t *testing.T) {
 // TestIntrospectUnsupported는 tests/dbspec/introspect.json의 각 case를 그
 // dialect의 빈 database에 적용하고, introspect한 문서와 미지원 목록을 확인한다.
 func TestIntrospectUnsupported(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -268,16 +261,6 @@ func TestIntrospectUnsupported(t *testing.T) {
 				e.fail("unsupported differs\nwant %v\ngot  %+v", c.Unsupported, unsupported)
 			}
 		}}
-		t.Run(probe.ID, func(t *testing.T) {
-			begin := time.Now()
-			t.Logf("start %s", probe.ID)
-			_, err := runWithDeadline(servers, probe, index)
-			elapsed := time.Since(begin).Round(time.Millisecond)
-			if err != nil {
-				t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-				return
-			}
-			t.Logf("result %s: PASS after %s", probe.ID, elapsed)
-		})
+		t.Run(probe.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })
 	}
 }

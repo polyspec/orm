@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // hashCase는 tests/dbspec/cases.json의 `hashes` case 하나다. 나열한 각 문서를 나머지 문서에
@@ -61,6 +63,7 @@ func expectManifest(c hashCase, documents []*Document) error {
 }
 
 func TestManifestVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	if len(vectors.Hashes) == 0 {
 		t.Fatal("tests/dbspec/cases.json has no hashes cases")
@@ -84,6 +87,7 @@ func TestManifestVectors(t *testing.T) {
 }
 
 func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	runTimed(t, "manifest/repeated-name", 5*time.Second, func() error {
 		text := strings.Join([]string{"dbspec 1 shop", "", "table users {", "  id i64 identity", "  primary key (id)", "}", ""}, "\n")
 		first, diagnostics := Parse(text, nil)
@@ -125,6 +129,7 @@ func expectSetErrors(want []vectorError, got []Diagnostic) error {
 }
 
 func TestDocumentSets(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	if len(vectors.Sets) == 0 {
 		t.Fatal("tests/dbspec/cases.json has no sets cases")

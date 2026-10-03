@@ -11,6 +11,8 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func decimalPhysical(t *testing.T, env string) {
@@ -59,6 +61,15 @@ func decimalPhysical(t *testing.T, env string) {
 	}
 }
 
-func TestDecimalPhysicalMySQL(t *testing.T)    { decimalPhysical(t, "DECIMAL_MYSQL_DSN") }
-func TestDecimalPhysicalPostgres(t *testing.T) { decimalPhysical(t, "DECIMAL_POSTGRES_DSN") }
-func TestDecimalPhysicalSQLite(t *testing.T)   { decimalPhysical(t, "DECIMAL_SQLITE_DSN") }
+func TestDecimalPhysicalMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	decimalPhysical(t, "DECIMAL_MYSQL_DSN")
+}
+func TestDecimalPhysicalPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	decimalPhysical(t, "DECIMAL_POSTGRES_DSN")
+}
+func TestDecimalPhysicalSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	decimalPhysical(t, "DECIMAL_SQLITE_DSN")
+}

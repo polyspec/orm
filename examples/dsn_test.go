@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // withoutBenchDSN은 ORM_BENCH_MYSQL_DSN을 뺀 환경이다. empty면 빈 값으로 둔다.
@@ -28,6 +30,7 @@ func withoutBenchDSN(empty bool) []string {
 }
 
 func TestExamplesRequireBenchDSN(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	programs := map[string][]string{}
 	for _, name := range []string{"complex", "thin-slice"} {
 		bin := filepath.Join(t.TempDir(), name)

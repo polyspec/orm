@@ -5,9 +5,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestStyledColumnStateFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile("../../../contracts/fixtures/styled_column_states.json")
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +82,7 @@ func TestStyledColumnStateFixture(t *testing.T) {
 }
 
 func TestUnknownStyleRejectsSQLNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if _, err := Decode([]string{"unknown"}, nil); err == nil || !strings.Contains(err.Error(), CodeCodecUnsupported) {
 		t.Fatalf("decode unknown style with SQL NULL: %v", err)
 	}

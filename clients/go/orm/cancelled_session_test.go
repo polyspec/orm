@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCancelledTransactionClearsSessionState는 callback 중에 context가 취소된
@@ -18,6 +19,7 @@ import (
 // connection은 pool로 돌아간다. connection이 하나인 pool의 다음 transaction은
 // 같은 session을 다시 쓰면 그 상태를 읽는다.
 func TestCancelledTransactionClearsSessionState(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
 	if err != nil {
 		t.Fatal(err)

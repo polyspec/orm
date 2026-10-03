@@ -6,9 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestMultiStatementProhibitionIsMandatory(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, prohibited := range [][]string{
 		{"query_cancel"},
 		{"multi_statement", "multi_statement", "query_cancel"},
@@ -23,6 +26,7 @@ func TestMultiStatementProhibitionIsMandatory(t *testing.T) {
 }
 
 func TestProhibitedSymbolsUseLanguageNameForms(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, symbols := range []Symbols{
 		{"Query.MultiStatement": "func(bool) Query"},
 		{"Query::multi_statement": "public function multi_statement(bool): Query"},
@@ -38,6 +42,7 @@ func TestProhibitedSymbolsUseLanguageNameForms(t *testing.T) {
 }
 
 func TestAttemptedMultiStatementCallsFailInterfaceValidation(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	cases := []struct{ language, suffix, call, safe string }{
 		{"go", ".go", "query.MultiStatement(true)", "query.Gets()"},
 		{"php", ".php", "$query->multi_statement(true)", "$query->gets()"},
@@ -67,6 +72,7 @@ func TestAttemptedMultiStatementCallsFailInterfaceValidation(t *testing.T) {
 }
 
 func TestCIRequiresGeneratedChecks(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	workflow, err := os.ReadFile(filepath.Join("..", "..", "..", ".github", "workflows", "ci.yml"))
 	if err != nil {
 		t.Fatal(err)

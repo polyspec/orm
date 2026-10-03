@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestStressDocument parses and emits the shared 2000-table, 60000-column,
@@ -23,6 +25,7 @@ const (
 )
 
 func TestStressDocument(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	root := repositoryRoot(t)
 	runTimed(t, "stress", 120*time.Second, func() error {
 		generated := time.Now()

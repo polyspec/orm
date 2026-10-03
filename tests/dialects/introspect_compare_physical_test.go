@@ -21,16 +21,30 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // introspectBudget는 2000 table stress database를 introspect하는 데 client마다
 // 허용하는 시간이다(docs/dialects.md "Introspection").
 const introspectBudget = 5 * time.Second
 
+// compareRunnerDeadline은 introspection runner process 하나의 기한이다. runner는 `go run`이면
+// compile을 포함하고, budget을 넘긴 runner도 끝까지 기다려 그 시간을 보고한다.
+const compareRunnerDeadline = 5 * time.Minute
+
+// compareDeadline은 database 하나의 case 기한이다. 2000 table 문서를 statement마다 따로
+// 실행해 적용하는 일(MySQL에서 몇 분)과 네 runner를 차례로 실행하는 일을 담는다. 세
+// database의 check 전체가 5-11분 걸렸으므로 database 하나에 15분은 멈춘 case만 끝낸다.
+const compareDeadline = 15 * time.Minute
+
+// applyProgressEvery는 statement를 몇 개 적용할 때마다 단계 줄을 출력하는지다.
+const applyProgressEvery = 1000
+
 // TestIntrospectCompare는 stress 문서를 세 database에 적용하고 네 client의
 // introspection runner가 같은 출력을 내는지, 그 문서의 schema text가 원본과
 // 같은지, 미지원 객체가 없는지, 각 client가 budget 안에 끝나는지 확인한다.
 func TestIntrospectCompare(t *testing.T) {
+	testcase.Group(t)
 	stressPath, rustRunner := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if stressPath == "" || rustRunner == "" || mysqlDSN == "" || postgresDSN == "" {
@@ -64,19 +78,20 @@ func TestIntrospectCompare(t *testing.T) {
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {
-			begin := time.Now()
-			t.Logf("start %s", dialect)
+			c := testcase.Start(t, compareDeadline)
 			uri, cleanup := compareDatabase(t, dialect, name, mysqlDSN, postgresDSN)
 			defer cleanup()
 			statements, diagnostics := dbspec.Render([]*dbspec.Document{document}, dbspec.Dialect(dialect))
 			if len(diagnostics) > 0 {
 				t.Fatal(diagnostics)
 			}
-			applyStatements(t, dialect, uri, statements)
-			t.Logf("applied %d statements in %s", len(statements), time.Since(begin).Round(time.Millisecond))
+			c.Step("applying %d statements", len(statements))
+			applyStatements(t, c, dialect, uri, statements)
+			c.Step("applied %d statements", len(statements))
 			var reference string
 			for _, r := range runners {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				c.Step("running the %s runner", r.client)
+				ctx, cancel := context.WithTimeout(c.Context(), compareRunnerDeadline)
 				cmd := exec.CommandContext(ctx, r.args[0], append(r.args[1:], dialect, uri)...)
 				cmd.Dir = root
 				var stdout, stderr bytes.Buffer
@@ -90,7 +105,7 @@ func TestIntrospectCompare(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%s: %v", r.client, err)
 				}
-				t.Logf("%s %s: %d bytes, introspected in %s", dialect, r.client, stdout.Len(), elapsed)
+				c.Step("%s %s: %d bytes, introspected in %s", dialect, r.client, stdout.Len(), elapsed)
 				if elapsed > introspectBudget {
 					t.Errorf("%s %s: introspection took %s, over the %s budget", dialect, r.client, elapsed, introspectBudget)
 				}
@@ -103,7 +118,6 @@ func TestIntrospectCompare(t *testing.T) {
 					t.Errorf("%s %s: output differs from go at line %d", dialect, r.client, firstDifferentLine(reference, stdout.String()))
 				}
 			}
-			t.Logf("result %s: done after %s", dialect, time.Since(begin).Round(time.Millisecond))
 		})
 	}
 }
@@ -141,24 +155,29 @@ func compareDatabase(t *testing.T, dialect, name, mysqlDSN, postgresDSN string) 
 	}
 }
 
-// applyStatements는 statement를 한 connection에서 차례로 실행한다.
-func applyStatements(t *testing.T, dialect, uri string, statements []string) {
+// applyStatements는 statement를 한 connection에서 c의 기한 안에 차례로 실행하고,
+// applyProgressEvery개마다 단계 줄을 출력한다.
+func applyStatements(t *testing.T, c *testcase.Case, dialect, uri string, statements []string) {
 	t.Helper()
 	db := openURI(t, dialect, uri)
 	defer db.Close()
-	conn, err := db.Conn(context.Background())
+	ctx := c.Context()
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer conn.Close()
 	for _, rule := range connectionRules[dialect] {
-		if _, err := conn.ExecContext(context.Background(), rule); err != nil {
+		if _, err := conn.ExecContext(ctx, rule); err != nil {
 			t.Fatalf("%s: %v", rule, err)
 		}
 	}
-	for _, s := range statements {
-		if _, err := conn.ExecContext(context.Background(), s); err != nil {
+	for i, s := range statements {
+		if _, err := conn.ExecContext(ctx, s); err != nil {
 			t.Fatalf("%s: %v", s, err)
+		}
+		if (i+1)%applyProgressEvery == 0 {
+			c.Step("%d of %d statements applied", i+1, len(statements))
 		}
 	}
 }

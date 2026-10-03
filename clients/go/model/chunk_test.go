@@ -6,12 +6,14 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestBindLimitSplitting inserts and reads more values than SQLite binds in
 // one statement: the inserts and the root IN list are split, duplicate IN
 // values are read once, and a shape that a merge would change is rejected.
 func TestBindLimitSplitting(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		const n = 1200
 		rows := make([]*model.ServiceModel, n)

@@ -87,7 +87,7 @@
       "verification": [
         {
           "id": "dsn-go",
-          "command": "go test ./clients/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1"
         },
         {
           "id": "dsn-php",
@@ -500,11 +500,11 @@
       "verification": [
         {
           "id": "aggregate-go",
-          "command": "go test ./clients/go/orm -run '^TestAggregateNumericFixture$' -count=1 -timeout 45s"
+          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestAggregateNumericFixture$' -count=1"
         },
         {
           "id": "queries-go",
-          "command": "go test ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1"
         },
         {
           "id": "queries-php",
@@ -544,7 +544,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". .runtime/decimal-env && go test ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1 -timeout 90s"
+          "command": ". .runtime/decimal-env && go test -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1"
         },
         {
           "id": "decimal-php-unit",
@@ -864,7 +864,7 @@
       "verification": [
         {
           "id": "writes-go",
-          "command": "go test ./clients/go/model -run 'Writes' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/model -run 'Writes' -count=1"
         },
         {
           "id": "styled-write-typescript",
@@ -872,7 +872,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". .runtime/decimal-env && go test ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1 -timeout 90s"
+          "command": ". .runtime/decimal-env && go test -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1"
         },
         {
           "id": "decimal-php-unit",
@@ -1200,15 +1200,15 @@
       "verification": [
         {
           "id": "transactions-go",
-          "command": "go test ./clients/go/model -run 'Transactions' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/model -run 'Transactions' -count=1"
         },
         {
           "id": "transactions-sqlite-locking-go",
-          "command": "go test ./clients/go/model -run 'TestSQLite' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/model -run 'TestSQLite' -count=1"
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "go test ./clients/go/orm -tags ormtest -run '^TestRollbackFault' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/orm -tags ormtest -run '^TestRollbackFault' -count=1"
         }
       ],
       "public_constraints": [
@@ -1491,7 +1491,7 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
+          "command": "go test -v -timeout 0 ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
         },
         {
           "id": "generation-typescript",
@@ -1901,7 +1901,7 @@
       "verification": [
         {
           "id": "install-go",
-          "command": "go test ./clients/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1"
         },
         {
           "id": "install-php",
@@ -2190,7 +2190,7 @@
       "verification": [
         {
           "id": "planner-go",
-          "command": "go test ./engine/... -count=1"
+          "command": "go test -v -timeout 0 ./engine/... -count=1"
         },
         {
           "id": "planner-php",
@@ -2361,7 +2361,7 @@
       "verification": [
         {
           "id": "composite-go",
-          "command": "go test ./engine -run 'Composite' -count=1"
+          "command": "go test -v -timeout 0 ./engine -run 'Composite' -count=1"
         }
       ],
       "coverage": {
@@ -2622,7 +2622,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "go test ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && go test ./clients/go/model -run 'AESRotation' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && go test -v -timeout 0 ./clients/go/model -run 'AESRotation' -count=1"
         },
         {
           "id": "encryption-php",
@@ -2816,7 +2816,7 @@
       "verification": [
         {
           "id": "chunking-go",
-          "command": "go test ./clients/go/model -run 'BindLimitSplitting' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/model -run 'BindLimitSplitting' -count=1"
         },
         {
           "id": "chunking-rust",
@@ -3098,7 +3098,7 @@
       "verification": [
         {
           "id": "constraints-go",
-          "command": "go test ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
+          "command": "go test -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test -v -timeout 0 ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1"
         }
       ],
       "coverage": {
@@ -3345,7 +3345,7 @@
       "verification": [
         {
           "id": "audit-go",
-          "command": "go test ./clients/go/orm -run 'Audit' -count=1"
+          "command": "go test -v -timeout 0 ./clients/go/orm -run 'Audit' -count=1"
         }
       ],
       "coverage": {
@@ -3886,7 +3886,7 @@
         },
         {
           "id": "conformance-runner-go",
-          "command": "go test ./tests/conformance/runner_go -count=1 -timeout 45s"
+          "command": "go test -v -timeout 0 ./tests/conformance/runner_go -count=1"
         }
       ],
       "vector_contract": {

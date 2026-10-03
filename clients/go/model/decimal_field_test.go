@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGeneratedDecimalFieldUsesExactText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	stringPointer := reflect.TypeOf((*string)(nil))
 	getter := reflect.TypeOf((*model.AuthorModel).GetPrice)
 	setter := reflect.TypeOf((*model.AuthorModel).SetPrice)

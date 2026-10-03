@@ -19,6 +19,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // The ratio is comparable across machines. A Unix socket emphasizes fixed
@@ -30,6 +31,11 @@ const (
 	gateWarm  = 100
 	gatePairs = 1000
 )
+
+// gateDeadline은 hot-path gate case의 기한이다. 각 workload는 gateWarm+gatePairs 쌍의
+// native와 client 호출을 bench database에 보내고, 부하 process가 모든 CPU를 쓰는 동안에도
+// 몇십 초 안에 끝나므로 5분은 멈춘 case만 끝낸다.
+const gateDeadline = 5 * time.Minute
 
 // pairedRatio measures native and client in adjacent pairs, alternating which
 // side runs first, and returns the median native and client times and the
@@ -66,6 +72,7 @@ func pairedRatio(tb testing.TB, native, client func()) (time.Duration, time.Dura
 }
 
 func TestHotPathGate(t *testing.T) {
+	testcase.Start(t, gateDeadline)
 	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
 		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
 	}
@@ -76,6 +83,7 @@ func TestHotPathGate(t *testing.T) {
 // runs beside it. Load slows the native and the client side of each pair
 // alike, so the verdict equals the verdict without load.
 func TestHotPathGateUnderLoad(t *testing.T) {
+	testcase.Start(t, gateDeadline)
 	if os.Getenv("ORM_RUN_PERF_GATE") != "1" {
 		t.Skip("set ORM_RUN_PERF_GATE=1 to run the timing-sensitive regression check")
 	}
@@ -101,6 +109,9 @@ func TestHotPathGateUnderLoad(t *testing.T) {
 // when that test starts it with ORM_BENCH_CPU_LOAD=1 and ends when killed.
 func TestCPULoad(t *testing.T) {
 	if os.Getenv("ORM_BENCH_CPU_LOAD") != "1" {
+		// 부하를 만드는 일은 TestHotPathGateUnderLoad가 띄워 끝내는 하위 process에서만 하고,
+		// 그 process는 기한 없이 부모가 끝낼 때까지 돈다.
+		testcase.Start(t, testcase.Compute)
 		return
 	}
 	x := uint64(1)

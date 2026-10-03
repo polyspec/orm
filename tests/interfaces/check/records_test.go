@@ -3,9 +3,12 @@ package main
 import (
 	"reflect"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestCommonRecordRejectsRecapturedNativeDrift(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	records := []Record{
 		{ID: "Query", Native: map[string]string{"go": "ir.go::Query"}, Fields: map[string]string{"entity": "text", "group": "Group"}},
 		{ID: "Group", Native: map[string]string{"go": "ir.go::Group"}, Fields: map[string]string{"items": "list<text>"}},
@@ -23,6 +26,7 @@ func TestCommonRecordRejectsRecapturedNativeDrift(t *testing.T) {
 }
 
 func TestStateComparisonPreservesI64Keys(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	var first, second, text any
 	_ = decodeJSON([]byte(`[[9223372036854775806,"row"]]`), &first)
 	_ = decodeJSON([]byte(`[[9223372036854775807,"row"]]`), &second)

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 type vectorFile struct {
@@ -234,6 +236,7 @@ func expectDocument(document *Document, diagnostics []Diagnostic) error {
 }
 
 func TestSharedVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	for _, c := range vectors.Canonical {
 		t.Run("canonical/"+c.ID, func(t *testing.T) {
@@ -288,6 +291,7 @@ func TestSharedVectors(t *testing.T) {
 // case path를 이름으로 주어 읽는다. 두 reader는 같은 rule과 위치를 내고 message는 각자
 // 받은 이름을 쓴다.
 func TestFileVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	if len(vectors.Files) == 0 {
 		t.Fatal("files cases are missing")

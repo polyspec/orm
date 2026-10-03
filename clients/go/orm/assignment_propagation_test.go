@@ -6,6 +6,7 @@ import (
 
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 type rejectingModel struct{ core *Core }
@@ -13,6 +14,7 @@ type rejectingModel struct{ core *Core }
 func (m *rejectingModel) Orm_() *Core { return m.core }
 
 func TestAssemblerReturnsAssignmentError(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	want := errors.New("invalid column value")
 	ent := &Entity{
 		Name: "record",
@@ -37,6 +39,7 @@ func TestAssemblerReturnsAssignmentError(t *testing.T) {
 // generated model에 넣고, 넣기가 실패하거나 field가 없으면 error를 반환한다.
 // identity column의 type 규칙은 dbspec parser가 지킨다.
 func TestIdentityAssignmentValidationBeforeWrite(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	ent := &Entity{New: func(c *Core) Model { m := &rejectingModel{core: c}; c.Bind(m); return m }}
 	ent.Assign = func(Model, string, any) (bool, error) { return true, nil }
 	m := ent.New(NewCore(ent))

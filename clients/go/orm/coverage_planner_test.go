@@ -12,6 +12,7 @@ import (
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot param이다.
@@ -87,12 +88,19 @@ func compilePlannerCase(t *testing.T, id string) {
 }
 
 // TestCoveragePlannerStatement는 조건, 정렬, limit이 있는 row select를 compile한다.
-func TestCoveragePlannerStatement(t *testing.T) { compilePlannerCase(t, "planner_statement") }
+func TestCoveragePlannerStatement(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_statement")
+}
 
 // TestCoveragePlannerCount는 count를 compile한다.
-func TestCoveragePlannerCount(t *testing.T) { compilePlannerCase(t, "planner_count") }
+func TestCoveragePlannerCount(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_count")
+}
 
 // TestCoveragePlannerRejectsUnknownColumn는 없는 column 조건이 COLUMN_UNKNOWN인지 확인한다.
 func TestCoveragePlannerRejectsUnknownColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_unknown_column")
 }

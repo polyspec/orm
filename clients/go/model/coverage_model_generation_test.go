@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // generateCommand는 generate.go의 go:generate 줄에 선언된 생성 명령이다.
@@ -105,6 +107,7 @@ func copyFile(t *testing.T, src, dst string) {
 // 출력과 같다고 check가 알리고, 한 byte를 바꾼 복사본은 다르다고 알리는지
 // 확인한다.
 func TestCoverageModelGenerationCheck(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	command := generateCommand(t)
 	if stdout, stderr, code := runCheck(t, ".", command); code != 0 || stdout != "" || stderr != "" {
 		t.Fatalf("check of the committed models exited %d:\n%s%s", code, stdout, stderr)

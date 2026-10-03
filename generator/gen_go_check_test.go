@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"slices"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // requireCheck runs a Go generation check with the ./... scan and checks the
@@ -32,6 +34,7 @@ func requireCheck(t *testing.T, want ...string) {
 // for current models and reports a changed, a missing, and an extra generated
 // file without writing, while hand-written files are not compared.
 func TestGoGenerationCheckReportsDifferences(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, _ := generatedScannedModule(t)
 	requireCheck(t)
 	write("model/notes.go", "package model\n\nconst Notes = 1\n")
@@ -47,6 +50,7 @@ func TestGoGenerationCheckReportsDifferences(t *testing.T) {
 // TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName checks that a
 // file without the generated header whose name the generation writes differs.
 func TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, _ := generatedScannedModule(t)
 	write("model/brand.go", "package model\n")
 	requireCheck(t, "differs: model/brand.go")
@@ -55,6 +59,7 @@ func TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName(t *testing.T) 
 // TestGoGenerationCheckKeepsOutputOnGenerationError checks that a check whose
 // generation fails reports the failure and writes nothing.
 func TestGoGenerationCheckKeepsOutputOnGenerationError(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/bad.go", `package example
 
@@ -74,6 +79,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // TestGoGenerationCheckCommandReportsDifferences checks the output and exit
 // status of orm-gen gen --check.
 func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	bin := commandBinary(t)
 	write, _ := generatedScannedModule(t)
 	write("names.dbs", namesDiagram)

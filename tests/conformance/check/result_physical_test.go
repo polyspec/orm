@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var resultRunnerLanguages = []string{"go", "php", "rust", "typescript"}
 
 func TestPhysicalResultRunners(t *testing.T) {
+	testcase.Group(t)
 	if !slices.Equal(resultRunnerLanguages, requiredLanguages) {
 		t.Fatalf("physical result runners %v differ from required languages %v", resultRunnerLanguages, requiredLanguages)
 	}
@@ -27,8 +30,13 @@ func TestPhysicalResultRunners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := buildRunners(root); err != nil {
-		t.Fatal(err)
+	if !t.Run("build", func(t *testing.T) {
+		c := testcase.Start(t, rustBuildDeadline+typescriptBuildDeadline)
+		if err := buildRunners(c, root); err != nil {
+			t.Fatal(err)
+		}
+	}) {
+		return
 	}
 	for _, database := range []struct{ name, env string }{
 		{"mysql", "BENCH_MYSQL_DSN"},
@@ -36,6 +44,7 @@ func TestPhysicalResultRunners(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(database.name, func(t *testing.T) {
+			testcase.Group(t)
 			driver, dsn = database.name, os.Getenv(database.env)
 			if dsn == "" {
 				t.Fatalf("%s is required", database.env)
@@ -51,15 +60,10 @@ func TestPhysicalResultRunners(t *testing.T) {
 			}()
 			for _, language := range resultRunnerLanguages {
 				t.Run(language, func(t *testing.T) {
+					c := testcase.Start(t, languageDeadline)
 					first := filepath.Join(t.TempDir(), "first.json")
 					repeated := filepath.Join(t.TempDir(), "repeated.json")
-					if err := runAndCheckState(stateDB, driver, language, "first", func() error { return runOne(root, first, language) }); err != nil {
-						t.Fatal(err)
-					}
-					if err := runAndCheckState(stateDB, driver, language, "repeated", func() error { return runOne(root, repeated, language) }); err != nil {
-						t.Fatal(err)
-					}
-					if err := compareRepeatedEvidence(first, repeated); err != nil {
+					if err := runLanguage(c, stateDB, root, language, first, repeated); err != nil {
 						t.Fatal(err)
 					}
 				})

@@ -11,12 +11,15 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCoverageConformanceVector는 Go conformance runner가 고른 database에서
 // 읽기 전용 vector conditions_values와 relations만 실행하고, 각 출력이 그
 // database의 기록된 expect와 JSON 값으로 같은지 확인한다.
 func TestCoverageConformanceVector(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	driver, dsn := featureDatabase(t)
 	root := filepath.Join("..", "..", "..")
 	names := []string{"conditions_values", "relations"}

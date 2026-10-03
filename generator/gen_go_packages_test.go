@@ -3,6 +3,8 @@ package generator
 import (
 	"errors"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const secondModelDiagram = `dbspec 1 second
@@ -21,6 +23,7 @@ table note {
 // that method, and it still writes every method the scan finds: a second run
 // of both generations changes no file and reports no error.
 func TestGoGenerationOfTwoModelPackagesSettlesInOneRun(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	write := scannedModule(t)
 	write("a/model/doc.go", "// Package model holds the generated models.\npackage model\n")
 	write("b/model/doc.go", "// Package model holds the generated models.\npackage model\n")

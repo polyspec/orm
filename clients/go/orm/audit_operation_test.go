@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // historyRow는 audit history table의 한 행이다.
@@ -26,6 +27,7 @@ type historyRow struct {
 // history table에 남기는지 확인한다. operation id가 없거나 column type에
 // 맞지 않는 write는 CONFIG다.
 func TestAuditOperationID(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "audit")
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {

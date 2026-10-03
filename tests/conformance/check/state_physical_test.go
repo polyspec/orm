@@ -8,9 +8,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestPhysicalCounterCleanup(t *testing.T) {
+	testcase.Group(t)
 	if err := os.Mkdir(lockDir, 0o755); err != nil {
 		t.Fatalf("conformance database lock: %v", err)
 	}
@@ -27,6 +30,8 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
+			// database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
 				t.Fatalf("%s is required", test.env)
@@ -129,6 +134,7 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 }
 
 func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
+	testcase.Group(t)
 	if err := os.Mkdir(lockDir, 0o755); err != nil {
 		t.Fatalf("conformance database lock: %v", err)
 	}
@@ -145,6 +151,8 @@ func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
+			// database 하나에서 state digest를 앞뒤로 읽고 counter를 읽고 되돌린다.
+			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
 				t.Fatalf("%s is required", test.env)

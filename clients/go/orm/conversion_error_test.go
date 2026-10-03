@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestAggregateNumericFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "aggregate_numeric.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -93,6 +95,7 @@ func mustInt64(v any) int64 {
 }
 
 func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, v := range []any{nil, "bad", "1.5", uint64(math.MaxUint64), math.Inf(1)} {
 		if _, err := orm.AsInt64(v); err == nil {
 			t.Errorf("AsInt64(%#v) accepted an invalid integer", v)
@@ -138,6 +141,7 @@ func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 
 // time(p) 값은 소수 자릿수가 정확히 p인 text다.
 func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, c := range []struct {
 		value     any
 		precision int
@@ -153,6 +157,7 @@ func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
 }
 
 func TestDatabaseValueConversionPreservesValidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if got, err := orm.AsInt64("42"); err != nil || got != 42 {
 		t.Fatalf("integer: %d, %v", got, err)
 	}

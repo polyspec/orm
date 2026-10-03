@@ -3,11 +3,14 @@ package orm
 import (
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestRelatedAsReportsMismatch는 relation result를 T로 읽을 때 저장된 값,
 // related row가 없는 nil, 다른 type의 INTERNAL error를 구별하는지 확인한다.
 func TestRelatedAsReportsMismatch(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	c := &Core{row: &rowState{}}
 	owner := &GroupRows{}
 	c.row.setRelated("owner", owner, false, false)

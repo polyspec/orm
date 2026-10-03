@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestTransactionReportsFailedLocalReset는 transaction 끝의 MySQL local 값
@@ -16,6 +17,7 @@ import (
 // (mysql.context.user_variable_session_scope) 실패를 숨기면 pool connection에
 // 값이 남는다.
 func TestTransactionReportsFailedLocalReset(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; database tests never skip")

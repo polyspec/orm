@@ -1,8 +1,13 @@
 package dialect
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
+)
 
 func TestSQLitePreservesQualifiedPhysicalTableNames(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if got := (SQLite{}).Quote("core.account"); got != `"core__account"` {
 		t.Fatalf("qualified SQLite table = %q", got)
 	}

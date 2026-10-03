@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var zoneColumns = []string{"seq", "start_dt", "created_ts"}
@@ -47,6 +48,7 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 // server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다. offset이 있는 값은
 // UTC wall clock으로 저장되고 UTC location으로 읽히며, clock default도 UTC다.
 func TestConnectionsUseUTC(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	targets := map[string]string{
@@ -149,6 +151,7 @@ func TestConnectionsUseUTC(t *testing.T) {
 // PoolSize is zero, and never runs more concurrent transactions or opens more
 // connections than the maximum.
 func TestPoolSize(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -221,6 +224,7 @@ func TestPoolSize(t *testing.T) {
 // closes a connection PoolLifetimeMs after it was opened, and rejects a
 // negative value or an idle size above the pool size with CONFIG.
 func TestPoolIdleSizeAndLifetime(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-idle.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -314,6 +318,7 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 // SELECT statements, PostgreSQL bounds every statement, and SQLite has no
 // session timeout.
 func TestStatementTimeout(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	// MySQL interrupts a statement that does work; its timeout does not
 	// interrupt SLEEP. PostgreSQL interrupts any statement.
 	slow := map[string]string{
@@ -381,6 +386,7 @@ func TestStatementTimeout(t *testing.T) {
 // transaction mode hands one server session to every client in turn: through
 // ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
 	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
 	s := fixtureSchema(t, "zone")

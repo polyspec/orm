@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // mermaidVectors는 tests/dbspec/mermaid.json이다(docs/mermaid.md).
@@ -135,6 +137,7 @@ func mermaidDrops(us []Unsupported) [][3]string {
 // TestMermaidVectors는 tests/dbspec/mermaid.json의 export, import, invalid
 // case를 확인한다(docs/mermaid.md).
 func TestMermaidVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	v := loadMermaidVectors(t)
 	for _, c := range v.Export {
 		t.Run("export/"+c.ID, func(t *testing.T) { checkMermaidExport(t, c) })

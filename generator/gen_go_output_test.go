@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // generatedScannedModule creates a scanned module whose output package holds a
@@ -120,6 +121,7 @@ func requireUnchanged(t *testing.T, m *runtimemodel.Model, message string, patte
 // TestGoGenerationKeepsOutputOnManifestError checks that a manifest rejected
 // before the scan leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	generatedScannedModule(t)
 	collision := namesManifest(t, "dbspec 1 names\n\ntable product {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n")
 	requireUnchanged(t, collision, "fixed method")
@@ -128,6 +130,7 @@ func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {
 // TestGoGenerationKeepsOutputOnGenerationError checks that an invalid model
 // call leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnGenerationError(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	write("example/bad.go", `package example
@@ -143,6 +146,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 // does not converge within its round limit leaves the previous output
 // byte-identical.
 func TestGoGenerationKeepsOutputWhenScanDoesNotConverge(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	limit := scanRounds
@@ -154,6 +158,7 @@ func TestGoGenerationKeepsOutputWhenScanDoesNotConverge(t *testing.T) {
 // TestGoGenerationKeepsOutputWhenScanCannotLoad checks that a scan that cannot
 // load the scanned packages leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputWhenScanCannotLoad(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	gomod, err := os.ReadFile("go.mod")
@@ -168,6 +173,7 @@ func TestGoGenerationKeepsOutputWhenScanCannotLoad(t *testing.T) {
 // that names no directory is a scan failure that leaves the previous output
 // byte-identical.
 func TestGoGenerationKeepsOutputWhenAScanPatternFails(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	requireUnchanged(t, m, "directory not found", "./...", "./missing")
@@ -177,6 +183,7 @@ func TestGoGenerationKeepsOutputWhenAScanPatternFails(t *testing.T) {
 // replaces every generated file, removes generated files of an earlier schema,
 // keeps hand-written files, and leaves no temporary directory.
 func TestGoGenerationReplacesOutputAfterConvergence(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	doc := snapshotDir(t, "model")["doc.go"]
 	write("model/removed.go", generatedHeader+"\npackage model\n\nconst Removed = 1\n")
@@ -216,6 +223,7 @@ func TestGoGenerationReplacesOutputAfterConvergence(t *testing.T) {
 // scanned-source compile error unrelated to the models is a distinct outcome and that
 // the output directory holds the complete generated models.
 func TestGoGenerationReportsScannedSourceErrorsWithCompleteOutput(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write, m := generatedScannedModule(t)
 	write("example/more.go", moreCalls)
 	write("example/unrelated.go", "package example\n\nvar _ = missingName\n")
@@ -255,6 +263,7 @@ func commandBinary(t *testing.T) string {
 // TestGoGenerationCommandReportsOutcomes checks the orm-gen gen exit status and
 // messages of a scanned-source compile error and of a generation failure.
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	bin := commandBinary(t)
 	write, _ := generatedScannedModule(t)
 	write("names.dbs", namesDiagram)

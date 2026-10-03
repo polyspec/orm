@@ -10,12 +10,14 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestSQLiteFileNameIsThePath는 query가 붙은 SQLite DSN이 path만으로 file을
 // 만드는지 확인한다. query를 file 이름에 둔 opener는 `named.sqlite?_pragma=…`
 // 같은 file을 만든다(docs/dialects.md "Probe environment").
 func TestSQLiteFileNameIsThePath(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "named.sqlite")
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))

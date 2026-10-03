@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var rollbackColumns = []string{"seq", "label"}
@@ -150,9 +151,27 @@ func savepointRollbackFailed(t *testing.T, driver string) {
 	}
 }
 
-func TestRollbackFailedSQLite(t *testing.T)            { rollbackFailed(t, "sqlite") }
-func TestRollbackFailedMySQL(t *testing.T)             { rollbackFailed(t, "mysql") }
-func TestRollbackFailedPostgres(t *testing.T)          { rollbackFailed(t, "postgres") }
-func TestSavepointRollbackFailedSQLite(t *testing.T)   { savepointRollbackFailed(t, "sqlite") }
-func TestSavepointRollbackFailedMySQL(t *testing.T)    { savepointRollbackFailed(t, "mysql") }
-func TestSavepointRollbackFailedPostgres(t *testing.T) { savepointRollbackFailed(t, "postgres") }
+func TestRollbackFailedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFailed(t, "sqlite")
+}
+func TestRollbackFailedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFailed(t, "mysql")
+}
+func TestRollbackFailedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFailed(t, "postgres")
+}
+func TestSavepointRollbackFailedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	savepointRollbackFailed(t, "sqlite")
+}
+func TestSavepointRollbackFailedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	savepointRollbackFailed(t, "mysql")
+}
+func TestSavepointRollbackFailedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	savepointRollbackFailed(t, "postgres")
+}

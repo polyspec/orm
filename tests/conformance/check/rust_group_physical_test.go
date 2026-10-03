@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestPhysicalRustGroupBoolean(t *testing.T) {
+	testcase.Group(t)
 	if err := os.Mkdir(lockDir, 0o755); err != nil {
 		t.Fatalf("conformance database lock: %v", err)
 	}
@@ -23,8 +25,13 @@ func TestPhysicalRustGroupBoolean(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runCommand(root, "", 30*time.Minute, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
-		t.Fatal(err)
+	if !t.Run("build", func(t *testing.T) {
+		c := testcase.Start(t, rustBuildDeadline)
+		if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+			t.Fatal(err)
+		}
+	}) {
+		return
 	}
 	for _, database := range []struct{ name, env string }{
 		{"mysql", "BENCH_MYSQL_DSN"},
@@ -32,6 +39,7 @@ func TestPhysicalRustGroupBoolean(t *testing.T) {
 		{"sqlite", "BENCH_SQLITE_DSN"},
 	} {
 		t.Run(database.name, func(t *testing.T) {
+			c := testcase.Start(t, languageDeadline)
 			driver, dsn = database.name, os.Getenv(database.env)
 			if dsn == "" {
 				t.Fatalf("%s is required", database.env)
@@ -47,13 +55,7 @@ func TestPhysicalRustGroupBoolean(t *testing.T) {
 			}()
 			first := filepath.Join(t.TempDir(), "first.json")
 			repeated := filepath.Join(t.TempDir(), "repeated.json")
-			if err := runAndCheckState(stateDB, driver, "rust", "first", func() error { return runOne(root, first, "rust") }); err != nil {
-				t.Fatal(err)
-			}
-			if err := runAndCheckState(stateDB, driver, "rust", "repeated", func() error { return runOne(root, repeated, "rust") }); err != nil {
-				t.Fatal(err)
-			}
-			if err := compareRepeatedEvidence(first, repeated); err != nil {
+			if err := runLanguage(c, stateDB, root, "rust", first, repeated); err != nil {
 				t.Fatal(err)
 			}
 			output, err := os.ReadFile(first)

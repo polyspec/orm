@@ -8,9 +8,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestCoverageDSNConnection(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	driver, dsn := os.Getenv("ORM_FEATURE_DATABASE"), os.Getenv("ORM_FEATURE_DSN")
 	if dsn == "" || (driver != "mysql" && driver != "postgres" && driver != "sqlite") {
 		t.Fatal("selected database and DSN are required")

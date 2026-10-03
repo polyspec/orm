@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var refusalColumns = []string{"seq", "amount"}
@@ -94,9 +95,27 @@ func checkRefused(t *testing.T, driver string) {
 	}
 }
 
-func TestTriggerRefusedSQLite(t *testing.T)   { triggerRefused(t, "sqlite") }
-func TestTriggerRefusedMySQL(t *testing.T)    { triggerRefused(t, "mysql") }
-func TestTriggerRefusedPostgres(t *testing.T) { triggerRefused(t, "postgres") }
-func TestCheckRefusedSQLite(t *testing.T)     { checkRefused(t, "sqlite") }
-func TestCheckRefusedMySQL(t *testing.T)      { checkRefused(t, "mysql") }
-func TestCheckRefusedPostgres(t *testing.T)   { checkRefused(t, "postgres") }
+func TestTriggerRefusedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "sqlite")
+}
+func TestTriggerRefusedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "mysql")
+}
+func TestTriggerRefusedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	triggerRefused(t, "postgres")
+}
+func TestCheckRefusedSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "sqlite")
+}
+func TestCheckRefusedMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "mysql")
+}
+func TestCheckRefusedPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	checkRefused(t, "postgres")
+}
