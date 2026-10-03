@@ -1,21 +1,14 @@
 //! runtime model의 value type과 select set (docs/dbspec.md, "Runtime model"): `i16`,
 //! `uuid`, `time(p)`, `date` 값이 그대로 돌아오고, `select explicit` column은 default
 //! select set에서 빠지며, default가 있는 column을 빼면 database default를 쓰고 default가
-//! 없는 NOT NULL column을 빼면 실패한다. SQLite, MySQL, PostgreSQL에서 실행하며
-//! ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! 없는 NOT NULL column을 빼면 실패한다. SQLite, MySQL, PostgreSQL에서 database마다 자기만의
+//! case database(orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나
+//! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
-
-/// Returns the DSN in `var`; an unset or empty variable fails the test.
-fn require_dsn(var: &str) -> String {
-    match std::env::var(var) {
-        Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
-    }
-}
+use orm_case_database::CaseDatabase;
 
 const DOCUMENT: &str = "dbspec 1 value_types
 
@@ -93,16 +86,6 @@ fn connected(db: &Db) -> Record {
     Record::from_core(core)
 }
 
-async fn drop_table(db: &Db) {
-    let sql = sqlx::raw_sql("DROP TABLE IF EXISTS value_record");
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-    }
-    .unwrap();
-}
-
 fn code<T>(r: orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
@@ -113,18 +96,11 @@ fn code<T>(r: orm::Result<T>) -> String {
 #[tokio::test]
 async fn runtime_value_types() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-value-types-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let targets = vec![
-        ("sqlite", format!("sqlite://{}", tmp.join("values.sqlite").display())),
-        ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
-        ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
-    ];
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
     let day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
-    for (driver, dsn) in &targets {
-        let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_table(&db).await;
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(schema()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
 
         let mut row = connected(&db);
@@ -159,9 +135,8 @@ async fn runtime_value_types() {
         missing.core_mut().set("day", Param::Date(day));
         assert_eq!(code(orm::model::create(&mut missing).await), orm::codes::IR_INVALID, "{driver}: an omitted non-null column without a default");
 
-        drop_table(&db).await;
         db.close().await;
+        database.drop().await;
         orm_testcase::step(format_args!("runtime_value_types {driver}"));
     }
-    let _ = std::fs::remove_dir_all(&tmp);
 }

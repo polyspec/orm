@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T25.4: Rust database test와 `integration` program은 schema를 설치하거나 빈 database를 확인하는 모든 case에서 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(workspace crate `orm-case-database`)을 만들고, case가 끝날 때 panic한 뒤에도 지운다.
+
 - T25.3: schema를 설치하거나 빈 database를 확인하는 TypeScript database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(clients/typescript/tests/case-database.mjs)을 만들고, case가 끝날 때 실패한 뒤에도 지운다. 그래서 그곳에 남은 table이 더는 `schemaEmpty`, `conditions`, `joinsAndRelations`를 실패시키지 않는다.
 
 - T25.2: schema를 설치하거나 빈 database를 확인하는 PHP database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(clients/php/tests/case_database.php)을 만들고, case가 끝날 때 실패한 뒤에도 지운다.

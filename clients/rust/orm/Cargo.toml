@@ -47,3 +47,5 @@ orm-testcase = { path = "../testcase" }
 libsqlite3-sys = { version = "0.37", default-features = false }
 # coverage test가 자기 계산의 CPU 시간을 잰다.
 orm-case-clock = { path = "../case-clock" }
+# database case가 자기만의 database를 만들고 끝날 때 지운다.
+orm-case-database = { path = "../case-database" }

@@ -1,13 +1,15 @@
 //! Connection time zones: every connection reads and writes datetime values in
 //! UTC on SQLite, MySQL and PostgreSQL, whatever the server zone (docs/dialects.md
 //! "Date and time"); a wall-clock value round-trips and `default now` writes the
-//! UTC statement time. A test fails when ORM_TEST_MYSQL_DSN or
-//! ORM_TEST_POSTGRES_DSN is unset.
+//! UTC statement time. A test that installs zone_event does so in a case
+//! database of its own (orm-case-database). A test fails when
+//! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use orm::core::{Arg, ChainKey};
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use orm_case_database::{CaseDatabase, CaseTable};
 
 /// Returns the DSN in `var`; an unset or empty variable fails the test.
 fn require_dsn(var: &str) -> String {
@@ -19,10 +21,6 @@ fn require_dsn(var: &str) -> String {
 
 static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
-
-/// Both tests create and drop zone_event in the same database, so they run
-/// one at a time.
-static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 static ENTITY: Entity =
     Entity { name: "zone_event", schema: &SCHEMA, new: orm::model::new_boxed::<ZoneEvent>, collect: orm::model::collect_boxed::<ZoneEvent> };
@@ -76,39 +74,20 @@ fn event(db: &Db) -> ZoneEvent {
     ZoneEvent::from_core(core)
 }
 
-async fn drop_table(db: &Db) {
-    let statement = sqlx::raw_sql("DROP TABLE IF EXISTS zone_event");
-    match db.pool() {
-        Pool::MySql(p) => statement.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => statement.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => statement.execute(p).await.map(|_| ()),
-    }
-    .unwrap();
-}
-
 #[tokio::test]
 async fn connections_use_utc() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    let tmp = std::env::temp_dir().join(format!("orm-rust-zone-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
-    let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
-    let targets = vec![("sqlite".to_owned(), String::new()), ("mysql".to_owned(), mysql_dsn), ("postgres".to_owned(), postgres_dsn)];
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
-    for (driver, base) in &targets {
+    for driver in ["sqlite", "mysql", "postgres"] {
         // 시험 server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다.
         for zone in ["", "UTC", "+00:00"] {
-            let base = if driver == "sqlite" {
-                format!("sqlite://{}", tmp.join(format!("zone{}.sqlite", zone.replace([':', '/', '+'], "_"))).display())
-            } else {
-                base.clone()
-            };
+            // zone마다 schema를 새로 설치하므로 자기 case database를 쓴다.
+            let database = CaseDatabase::create(driver).await;
+            let base = database.dsn().to_owned();
             let sep = if base.contains('?') { '&' } else { '?' };
             let dsn = if zone.is_empty() { base.clone() } else { format!("{base}{sep}timezone={}", zone.replace('+', "%2B")) };
             let label = format!("{driver}/{zone}");
             let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{label}: {e}"));
-            drop_table(&db).await;
             db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
             let before = Utc::now().naive_utc();
             let mut row = event(&db);
@@ -141,11 +120,10 @@ async fn connections_use_utc() {
                 let err = orm::model::get_count(&filter).await.expect_err("date-only datetime text");
                 assert_eq!(err.code(), orm::codes::CODEC_ENCODE, "{label}: date-only datetime text: {err}");
             }
-            drop_table(&db).await;
             db.close().await;
+            database.drop().await;
         }
     }
-    let _ = std::fs::remove_dir_all(&tmp);
 }
 
 /// UTC가 아닌 timezone parameter는 CONFIG로 실패한다.
@@ -172,15 +150,13 @@ fn non_utc_time_zones_are_rejected() {
 #[tokio::test]
 async fn mysql_install_inside_transaction() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    let dsn = require_dsn("ORM_TEST_MYSQL_DSN");
-    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
-    drop_table(&db).await;
+    let database = CaseDatabase::create("mysql").await;
+    let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap();
     let inside: orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
     assert_eq!(inside.as_ref().map_err(|e| e.code().to_owned()), Err(orm::codes::CONFIG.to_owned()), "install inside a transaction: {inside:?}");
     db.utils().schema().install(&SCHEMA).await.unwrap();
-    drop_table(&db).await;
     db.close().await;
+    database.drop().await;
 }
 
 /// The pool size a connection is opened with is its maximum open connections.
@@ -312,12 +288,10 @@ fn slow_count(db: &Db, condition: &str) -> Core {
 #[tokio::test]
 async fn statement_timeout() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        let dsn = require_dsn(var);
+    for driver in ["mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
         let cfg = orm::Config { statement_timeout_ms: 200, ..orm::Config::default() };
-        let db = Db::connect(&dsn, 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_table(&db).await;
+        let db = Db::connect(database.dsn(), 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         // The condition is evaluated per row, so the table holds one row.
         let mut row = event(&db);
@@ -325,8 +299,8 @@ async fn statement_timeout() {
         orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
         let err = orm::model::get_count(&slow_count(&db, slow(driver).unwrap())).await.expect_err("a statement past the timeout");
         assert_eq!(err.code(), orm::codes::CANCELED, "{driver}: {err}");
-        drop_table(&db).await;
         db.close().await;
+        database.drop().await;
     }
 }
 
@@ -334,33 +308,56 @@ async fn statement_timeout() {
 /// turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
 /// connection, so the statement timeout of one connection bounds only the
 /// statements of that connection.
+///
+/// PgBouncer의 `orm_test_single`은 database가 고정되어 새 case database에 닿지 않는다. 그래서
+/// case는 그 database에 자기 이름(`orm_case_<pid>_<counter>`)의 zone table을 두고, 그 table만
+/// 끝에서(실패해도) 지운다.
 #[tokio::test]
 async fn statement_timeout_through_a_pooler() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    let setup = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
-    drop_table(&setup).await;
-    setup.utils().schema().install(&SCHEMA).await.unwrap();
+    let base = require_dsn("ORM_TEST_POSTGRES_DSN");
+    let table = CaseTable::reserve(&base);
+    // zone document의 table 이름만 바꾼 schema와 그 entity다. Schema와 Entity는 'static 값을 받는다.
+    let text = include_str!("../../../../contracts/fixtures/zone.dbs").replace("zone_event", table.name());
+    let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
+    let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
+    let schema: &'static Schema =
+        Box::leak(Box::new(Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()))));
+    let entity: &'static Entity = Box::leak(Box::new(Entity {
+        name: Box::leak(table.name().to_owned().into_boxed_str()),
+        schema,
+        new: orm::model::new_boxed::<ZoneEvent>,
+        collect: orm::model::collect_boxed::<ZoneEvent>,
+    }));
+    let setup = Db::connect(&base, 1, orm::Config::default()).await.unwrap();
+    setup.utils().schema().install(schema).await.unwrap();
     // Three rows sleep 0.1 s each, so the statement runs past 200 ms.
     for _ in 0..3 {
-        let mut row = event(&setup);
+        let mut core = Core::new(entity);
+        core.connect(&setup);
+        let mut row = ZoneEvent::from_core(core);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         orm::model::create(&mut row).await.unwrap();
     }
+    let slow_count = |db: &Db| {
+        let mut core = Core::new(entity);
+        core.connect(db);
+        core.raw("", "pg_sleep(0.1) IS NOT NULL", Vec::new());
+        core
+    };
     let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
-    let slow = "pg_sleep(0.1) IS NOT NULL";
-    let bounded = Db::connect_schema(&single, &SCHEMA, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
-    let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection through the pooler");
+    let bounded = Db::connect_schema(&single, schema, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
+    let err = orm::model::get_count(&slow_count(&bounded)).await.expect_err("the bounded connection through the pooler");
     assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
-    let plain = Db::connect_schema(&single, &SCHEMA, 1, orm::Config::default()).await.unwrap();
-    let count = orm::model::get_count(&slow_count(&plain, slow)).await;
+    let plain = Db::connect_schema(&single, schema, 1, orm::Config::default()).await.unwrap();
+    let count = orm::model::get_count(&slow_count(&plain)).await;
     assert_eq!(count.map_err(|e| e.to_string()), Ok(3), "a connection without a timeout after the bounded one");
-    let err = orm::model::get_count(&slow_count(&bounded, slow)).await.expect_err("the bounded connection after the plain one");
+    let err = orm::model::get_count(&slow_count(&bounded)).await.expect_err("the bounded connection after the plain one");
     assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
     bounded.close().await;
     plain.close().await;
-    drop_table(&setup).await;
     setup.close().await;
+    table.drop().await;
 }
 
 /// A PostgreSQL connection reads float8 values exactly in the text format
@@ -386,11 +383,9 @@ async fn postgres_float_round_trip() {
 #[tokio::test]
 async fn dropping_a_query_cancels_it() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-        let dsn = require_dsn(var);
-        let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_table(&db).await;
+    for driver in ["mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
@@ -408,8 +403,8 @@ async fn dropping_a_query_cancels_it() {
             .unwrap_or_else(|_| panic!("{driver}: the connection did not come back"))
             .unwrap_or_else(|e| panic!("{driver}: count after cancellation: {e}"));
         assert_eq!(count, 1, "{driver}: rows after cancellation");
-        drop_table(&db).await;
         db.close().await;
+        database.drop().await;
     }
 }
 
@@ -418,16 +413,9 @@ async fn dropping_a_query_cancels_it() {
 #[tokio::test]
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let _serial = SERIAL.lock().await;
-    let sqlite = std::env::temp_dir().join(format!("orm-drop-tx-{}.sqlite", std::process::id()));
-    let targets = [
-        ("sqlite", format!("sqlite://{}", sqlite.display())),
-        ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
-        ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
-    ];
-    for (driver, dsn) in targets {
-        let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_table(&db).await;
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let tx_db = db.clone();
         let dropped = tokio::time::timeout(
@@ -455,8 +443,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), orm::Error>(())).retry(0)).await;
         assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
         assert_eq!(orm::model::get_count(event(&db).core()).await.unwrap(), 0, "{driver}: dropped transaction committed");
-        drop_table(&db).await;
         db.close().await;
+        database.drop().await;
     }
-    std::fs::remove_file(sqlite).expect("remove SQLite test database");
 }
