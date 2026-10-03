@@ -2622,7 +2622,7 @@
   "clients/rust/orm/src/tx_send_tests.rs::postgres_send_savepoint": " async fn postgres_send_savepoint ()",
   "clients/rust/orm/src/tx_send_tests.rs::require_send": " fn require_send \u003c T : Send \u003e (value : T) -\u003e T",
   "clients/rust/orm/src/tx_send_tests.rs::sqlite_send_savepoint": " async fn sqlite_send_savepoint ()",
-  "clients/rust/orm/src/tx_send_tests.rs::state": " async fn state (db : \u0026 Db) -\u003e Vec \u003c i32 \u003e",
+  "clients/rust/orm/src/tx_send_tests.rs::state": " async fn state (db : \u0026 Db , table : \u0026 str) -\u003e Vec \u003c i32 \u003e",
   "clients/rust/orm/src/utils.rs::AesKeyring": "pub struct AesKeyring  { keys : BTreeMap \u003c i32 , String \u003e , current : i32 , }",
   "clients/rust/orm/src/utils.rs::AesKeyring#field.current": "i32",
   "clients/rust/orm/src/utils.rs::AesKeyring#field.keys": "BTreeMap \u003c i32 , String \u003e",
