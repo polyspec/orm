@@ -1,5 +1,7 @@
 # Changelog
 
+- T25: every client database case that checks an empty database or installs a schema creates its own database `orm_case_<pid>_<n>` (on MySQL and PostgreSQL) or SQLite file and drops it when it ends, also after a failure, so a table left in the shared test databases no longer fails it; `make case-database-check` leaves a table in both shared databases and requires the model cases of the four clients to pass and leave the shared databases as they were.
+
 - T25.4: the Rust database tests and the `integration` program create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (the workspace crate `orm-case-database`), for every case that installs a schema or checks an empty database, and drop it when the case ends, also after a panic, instead of dropping and installing tables in the shared test databases.
 
 - T25.3: the TypeScript database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/typescript/tests/case-database.mjs), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases, so a table left there no longer fails `schemaEmpty`, `conditions` or `joinsAndRelations`.
