@@ -4,7 +4,8 @@
 //
 // path가 없으면 HEAD에서 바뀐 file과 추적하지 않는 file이다. 기능은 contracts/features.json이
 // 선언한 fixture나 test가 바뀐 path이거나, 선언한 fixture text가 바뀐 path를 적으면 고른다
-// (contracts/fixtures/schema_definition.json이 렌더링하는 contracts/fixtures/audit.dbs처럼).
+// (contracts/fixtures/schema_definition.json이 렌더링하는 contracts/fixtures/audit.dbs처럼). 그렇게 적힌
+// JSON file이 적는 file도 같다(contracts/symbols/rust.json이 적는 Rust source).
 // 고른 기능마다 검증 명령(features/check.mjs --run --feature)과 coverage(features/coverage.mjs
 // --feature)를 저마다의 기한 아래에서 차례로 실행하고 RUN, STEP, PASS, FAIL과 경과 시간을 보고한다.
 import { spawn, execFileSync } from 'node:child_process';
@@ -30,9 +31,21 @@ export async function selectOwners(manifest, root, changed) {
   const out = [];
   for (const feature of manifest.features) {
     const direct = new Set([...feature.fixtures, ...feature.tests]);
+    // 선언한 fixture가 적는 file, 그리고 그렇게 적힌 JSON file이 다시 적는 file이다
+    // (contracts/interfaces.json → contracts/symbols/rust.json → Rust source).
     const named = new Map();
-    for (const fixture of feature.fixtures) {
-      for (const p of await namedPaths(root, fixture)) if (!direct.has(p) && !named.has(p)) named.set(p, fixture);
+    const pending = [...feature.fixtures];
+    const read = new Set(pending);
+    while (pending.length) {
+      const fixture = pending.shift();
+      for (const p of await namedPaths(root, fixture)) {
+        if (direct.has(p) || named.has(p)) continue;
+        named.set(p, fixture);
+        if (p.endsWith('.json') && !read.has(p)) {
+          read.add(p);
+          pending.push(p);
+        }
+      }
     }
     const reasons = [];
     for (const p of changed) {
