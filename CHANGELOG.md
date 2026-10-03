@@ -1,5 +1,9 @@
 # Changelog
 
+- T24.5: the build, format, lint and package commands of the checks run as cases through tests/run-case.mjs: `RUN` with a deadline, their output lines as `STEP` lines with the elapsed time, and `PASS` or `FAIL` with the exit status, and a command past its deadline is stopped. The codec cross-check and the feature manifest validation report their cases.
+
+- T24: every check reports each case while it runs, with its start and deadline, its steps, and its result and elapsed time, in one form in Go, JavaScript, PHP and Rust, and no check bounds a whole run in place of the per-case deadlines.
+
 - T24.4: every Rust test case prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its panic message or reason and the elapsed time on stderr while it runs, without `--nocapture` (clients/rust/testcase), and a case past its deadline ends the test binary with a FAIL line. The `integration` program and the `dbspec_stress` example report their cases the same way.
 
 - T24.3: every PHP test case prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its reason and the elapsed time (tests/testcase.php), runs under its own deadline (a SIGALRM interrupts a stuck case where pcntl exists) instead of a whole-script limit, and a failing case no longer hides the cases after it where the script runs them in a loop. `make conformance-result-check` runs its four commands directly without the Python runner.

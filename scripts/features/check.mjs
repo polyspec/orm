@@ -1,10 +1,13 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path, { resolve } from 'node:path';
-import { runGroup, stepLines } from '../../tests/testcase.mjs';
+import { COMPUTE, runGroup, sections, stepLines } from '../../tests/testcase.mjs';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
+// 검증 명령 앞의 manifest 검사는 file을 읽고 비교하는 case 하나다.
+const log = sections();
+log.begin('features/contracts', COMPUTE);
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 const errors = [];
 const ids = new Set();
@@ -161,6 +164,7 @@ for (const [language, files] of Object.entries(existing)) {
 }
 
 if (onlyFeature !== undefined && !(manifest.features ?? []).some(feature => feature.id === onlyFeature)) errors.push(`unknown feature ${onlyFeature}`);
+log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
   for (const feature of (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)) {
     for (const check of feature.verification ?? []) {

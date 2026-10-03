@@ -1,5 +1,9 @@
 # 변경 이력
 
+- T24.5: check의 build, format, lint, package 명령은 tests/run-case.mjs로 case가 되어 기한과 함께 `RUN`, 경과 시간을 담은 `STEP` 줄로 출력 줄, 종료 상태와 함께 `PASS`나 `FAIL`을 출력하고, 기한을 넘긴 명령은 멈춘다. codec 교차 검사와 feature manifest 검사도 자기 case를 보고한다.
+
+- T24: 모든 check는 실행 중에 case마다 시작과 기한, 단계, 결과와 경과 시간을 Go, JavaScript, PHP, Rust에서 한 형식으로 보고하고, 어느 check도 case별 기한 대신 실행 전체를 묶지 않는다.
+
 - T24.4: 모든 Rust test case는 실행 중에 `--nocapture` 없이 stderr에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 panic message 또는 이유를 담은 `FAIL`을 출력하고(clients/rust/testcase), 기한을 넘긴 case는 FAIL 줄과 함께 test binary를 끝낸다. `integration` program과 `dbspec_stress` example도 같은 방식으로 case를 보고한다.
 
 - T24.3: 모든 PHP test case는 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.php), script 전체의 한도 대신 자기 기한 아래에서 실행되며(pcntl이 있으면 SIGALRM이 멈춘 case를 끊는다), script가 loop로 실행하는 case는 앞의 실패가 뒤의 case를 가리지 않는다. `make conformance-result-check`는 Python runner 없이 네 명령을 직접 실행한다.
