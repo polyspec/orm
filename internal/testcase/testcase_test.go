@@ -25,6 +25,8 @@ func TestFixturePass(t *testing.T) {
 	fixture(t, "report")
 	c := Start(t, Compute)
 	c.Step("first step of %d", 2)
+	// Of는 case를 시작하지 않은 subtest에서 그 subtest를 감싼 case를 찾는다.
+	t.Run("inner", func(t *testing.T) { Of(t).Step("step of the enclosing case") })
 }
 
 func TestFixtureFail(t *testing.T) {
@@ -125,7 +127,8 @@ func TestReportForm(t *testing.T) {
 		t.Fatalf("report fixture: want a failing exit for TestFixtureFail, got %v\n%s", err, output)
 	}
 	checks := [][]string{
-		{`RUN TestFixturePass deadline=1m0s`, `STEP TestFixturePass ` + elapsed + `: first step of 2`, `PASS TestFixturePass ` + elapsed},
+		{`RUN TestFixturePass deadline=1m0s`, `STEP TestFixturePass ` + elapsed + `: first step of 2`,
+			`STEP TestFixturePass ` + elapsed + `: step of the enclosing case`, `PASS TestFixturePass ` + elapsed},
 		{`RUN TestFixtureFail deadline=1m0s`, `.*fixture failure reason`, `FAIL TestFixtureFail ` + elapsed + `: the errors reported above`},
 		{`RUN TestFixtureSkip deadline=1m0s`, `SKIP TestFixtureSkip ` + elapsed},
 		{`RUN TestFixtureGroup group`, `RUN TestFixtureGroup/one deadline=2m0s`, `PASS TestFixtureGroup/one ` + elapsed,

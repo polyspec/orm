@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -23,18 +22,11 @@ func TestWithContextCancels(t *testing.T) {
 		"postgres": "pg_sleep(5) IS NULL",
 		"sqlite":   "(SELECT count(*) FROM (WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 200000000) SELECT x FROM c)) >= 0",
 	}
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "cancel.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	for driver, dsn := range targets {
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "zone_event")
-			defer dropTable(t, driver, dsn, "zone_event")
+			dsn := newDatabase(t, driver)
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
@@ -85,18 +77,11 @@ func TestWithContextCancels(t *testing.T) {
 // handle: the transaction fails with CANCELED and its writes are rolled back.
 func TestWithContextCancelsTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "cancel-tx.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	for driver, dsn := range targets {
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "zone_event")
-			defer dropTable(t, driver, dsn, "zone_event")
+			dsn := newDatabase(t, driver)
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
@@ -139,17 +124,11 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 // 유지한 ROLLBACK을 보고한다.
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	targets := map[string]string{
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	for driver, dsn := range targets {
+	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "zone_event")
-			defer dropTable(t, driver, dsn, "zone_event")
+			dsn := newDatabase(t, driver)
 			holder, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)

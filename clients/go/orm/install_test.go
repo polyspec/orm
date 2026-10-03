@@ -17,7 +17,7 @@ import (
 // where the implicit commit of schema statements would end the transaction.
 func TestMySQLInstallInsideTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	dsn := requireDSN(t, "ORM_TEST_MYSQL_DSN")
+	dsn := newDatabase(t, "mysql")
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
@@ -25,8 +25,6 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	dropTable(t, "mysql", dsn, "zone_event")
-	defer dropTable(t, "mysql", dsn, "zone_event")
 	var inside error
 	if err := db.Transaction(func() error {
 		inside = db.Utils().Schema().Install(manifest)
@@ -47,10 +45,10 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 
 // TestSchemaEmpty checks Utils().Schema().Empty() on a new database of each
 // dialect: the new database is empty, a PostgreSQL schema other than public is
-// content even without objects, and an installed table is content. The MySQL
-// and PostgreSQL databases are created for the test, because the Go test
-// packages run in parallel against the databases that ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name.
+// content even without objects, and an installed table is content. Each
+// dialect gets a case database of its own (internal/testdb), because the
+// databases that ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name are shared
+// and may hold tables of other runs.
 func TestSchemaEmpty(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")

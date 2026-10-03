@@ -10,10 +10,12 @@ import (
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
 // replicaTargets returns the primary and replica DSN of MySQL and
-// PostgreSQL; the test fails when one is unset.
+// PostgreSQL; the test fails when one is unset. A case opens its own database
+// on the primary server and the same database on the replica.
 func replicaTargets(t *testing.T) map[string][2]string {
 	t.Helper()
 	out := map[string][2]string{}
@@ -84,13 +86,14 @@ func TestPrimaryAndReplica(t *testing.T) {
 	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
-			primary, replica := dsns[0], dsns[1]
+			// primary에 case database를 만들고 replica에서는 복제된 같은 이름의 database를 연다.
+			primary := testdb.New(t, driver)
+			replica := testdb.Retarget(t, dsns[1], testdb.DatabaseOf(t, primary))
 			master, err := model.Connect(primary, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer master.Close()
-			dropTables(t, driver, primary)
 			if err := master.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}

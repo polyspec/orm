@@ -3,8 +3,6 @@ package orm_test
 import (
 	"bytes"
 	"database/sql"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -40,17 +38,10 @@ func TestAESJSONColumn(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "secret_config")
 	manifest := s
-	sqlitePath := filepath.Join(t.TempDir(), "aes-json.sqlite")
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + sqlitePath,
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	for driver, dsn := range targets {
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "secret_config")
-			defer dropTable(t, driver, dsn, "secret_config")
+			dsn := newDatabase(t, driver)
+			sqlitePath := strings.TrimPrefix(dsn, "sqlite://")
 			open := func(keys map[int32]string, current int32) *orm.DB {
 				db, err := orm.ConnectSchema(dsn, s, orm.Config{AESKeys: keys, AESVersion: current, AESKey: keys[current]})
 				if err != nil {

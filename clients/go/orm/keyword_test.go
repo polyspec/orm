@@ -2,8 +2,6 @@ package orm_test
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -70,15 +68,9 @@ func TestSQLKeywordNames(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, keywordSchema)
 	manifest := s
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "keyword.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	for driver, dsn := range targets {
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "order")
+			dsn := newDatabase(t, driver)
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
@@ -87,7 +79,6 @@ func TestSQLKeywordNames(t *testing.T) {
 			if err := db.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
-			defer dropTable(t, driver, dsn, "order")
 			ent := keywordEntity(s)
 			model := func() *orm.Core {
 				c := orm.NewCore(ent)
