@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -17,6 +18,11 @@ type parsedDSN struct {
 	driver   string
 	native   string
 	location *time.Location
+	// sslCA is the ssl-ca path of ssl-mode=VERIFY_IDENTITY and sslHost the
+	// host name that the server certificate must name; both are empty
+	// without TLS.
+	sslCA   string
+	sslHost string
 }
 
 // parseDSN treats the URI scheme as the only database selector. The optional
@@ -43,6 +49,9 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	case "mysql":
 		if u.Host == "" || strings.Trim(u.Path, "/") == "" {
 			return parsedDSN{}, configErr("mysql DSN must include host and database")
+		}
+		if err := mysqlTLS(u, q, &out); err != nil {
+			return parsedDSN{}, err
 		}
 		network, address := "tcp", u.Host
 		if socket := q.Get("socket"); socket != "" {
@@ -119,6 +128,38 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
 	}
 	return out, nil
+}
+
+// mysqlTLS reads ssl-mode and ssl-ca of a MySQL DSN (docs/config.md):
+// ssl-mode=VERIFY_IDENTITY with the absolute path of the CA file in ssl-ca,
+// over TCP to a host name, or neither. It removes both parameters from the
+// query, which the driver would otherwise read as session variables.
+func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
+	mode, hasMode := q["ssl-mode"]
+	ca, hasCA := q["ssl-ca"]
+	q.Del("ssl-mode")
+	q.Del("ssl-ca")
+	if !hasMode && !hasCA {
+		return nil
+	}
+	if !hasMode || len(mode) != 1 || mode[0] != "VERIFY_IDENTITY" {
+		return configErr("mysql DSN ssl-mode %q is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca", strings.Join(mode, ","))
+	}
+	if !hasCA || len(ca) != 1 || ca[0] == "" {
+		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file")
+	}
+	if !strings.HasPrefix(ca[0], "/") {
+		return configErr("mysql DSN ssl-ca %s is not an absolute path", ca[0])
+	}
+	if q.Has("socket") {
+		return configErr("mysql DSN ssl-mode connects over TCP and does not accept socket")
+	}
+	// The identity check compares a host name with the certificate.
+	if net.ParseIP(u.Hostname()) != nil {
+		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address %s", u.Hostname())
+	}
+	out.sslCA, out.sslHost = ca[0], u.Hostname()
+	return nil
 }
 
 // loadZone accepts an IANA name or a fixed offset such as +09:00.

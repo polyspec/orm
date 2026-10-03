@@ -625,6 +625,8 @@
   "clients/php/src/Orm.php::Orm\\Orm::month": "public static function month(): Orm\\Func",
   "clients/php/src/Orm.php::Orm\\Orm::monthsAgo": "public static function monthsAgo(int $n): Orm\\Func",
   "clients/php/src/Orm.php::Orm\\Orm::monthsLater": "public static function monthsLater(int $n): Orm\\Func",
+  "clients/php/src/Orm.php::Orm\\Orm::mysqlTls": "private static function mysqlTls(array $query, string $host): ?string",
+  "clients/php/src/Orm.php::Orm\\Orm::mysqlTlsOptions": "public static function mysqlTlsOptions(?string $sslCa): array",
   "clients/php/src/Orm.php::Orm\\Orm::now": "public static function now(): Orm\\Func",
   "clients/php/src/Orm.php::Orm\\Orm::parseDsn": "public static function parseDsn(string $dsn): array",
   "clients/php/src/Orm.php::Orm\\Orm::pointX": "public static function pointX(): Orm\\Func",

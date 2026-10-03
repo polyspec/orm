@@ -8,6 +8,7 @@
 #
 #   test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> \
 #       <postgres-replica-port> <proxysql-port> <pgbouncer-port>
+#   test-servers.sh tls <mysql-port> <mysql-replica-port>
 #   test-servers.sh stop
 #
 # start initializes the primaries and replicas, creates the databases
@@ -37,7 +38,7 @@ PROXYSQL_PID="$DIR/proxysql.pid"
 PGBOUNCER_PID="$DIR/pgbouncer.pid"
 
 usage() {
-  echo "usage: test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> <postgres-replica-port> <proxysql-port> <pgbouncer-port> | stop" >&2
+  echo "usage: test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> <postgres-replica-port> <proxysql-port> <pgbouncer-port> | tls <mysql-port> <mysql-replica-port> | stop" >&2
   exit 2
 }
 
@@ -173,6 +174,63 @@ start_logged() {
   fi
 }
 
+# tls issues the TLS files of the MySQL servers once under $DIR/tls and loads
+# them into both servers with ALTER INSTANCE RELOAD TLS, which keeps the
+# running sessions: a test CA, a certificate of the primary that names
+# localhost, a certificate of the replica, signed by the same CA, that names
+# only orm-mismatch.invalid, so that a client that checks the host name refuses
+# it, and a second CA that signed neither. It then writes the TLS variables
+# into the environment file in place of earlier ones. The MySQL TLS cases of the clients
+# connect with ssl-mode=VERIFY_IDENTITY (docs/config.md).
+tls() {
+  command -v openssl >/dev/null || { echo "test-servers: openssl is not installed" >&2; exit 1; }
+  TLS="$DIR/tls"
+  if [ ! -f "$TLS/other-ca.pem" ]; then
+    rm -rf "$TLS.tmp"
+    mkdir -p "$TLS.tmp"
+    for ca in ca other-ca; do
+      openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=orm test $ca" \
+        -keyout "$TLS.tmp/$ca-key.pem" -out "$TLS.tmp/$ca.pem" 2>>"$TLS.tmp/openssl.log"
+    done
+    for server in mysql:DNS:localhost mysql-replica:DNS:orm-mismatch.invalid; do
+      name=${server%%:*}
+      san=${server#*:}
+      openssl req -newkey rsa:2048 -nodes -subj "/CN=orm test $name" \
+        -keyout "$TLS.tmp/$name-key.pem" -out "$TLS.tmp/$name.csr" 2>>"$TLS.tmp/openssl.log"
+      printf 'subjectAltName=%s\n' "$san" > "$TLS.tmp/$name.ext"
+      openssl x509 -req -in "$TLS.tmp/$name.csr" -CA "$TLS.tmp/ca.pem" -CAkey "$TLS.tmp/ca-key.pem" \
+        -CAcreateserial -days 3650 -extfile "$TLS.tmp/$name.ext" -out "$TLS.tmp/$name-cert.pem" 2>>"$TLS.tmp/openssl.log"
+    done
+    mv "$TLS.tmp" "$TLS"
+  fi
+  for server in mysql:$MYSQL_PORT mysql-replica:$MYSQL_REPLICA_PORT; do
+    name=${server%%:*}
+    mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P "${server#*:}" -u root -e "
+      SET GLOBAL ssl_ca = '$TLS/ca.pem';
+      SET GLOBAL ssl_cert = '$TLS/$name-cert.pem';
+      SET GLOBAL ssl_key = '$TLS/$name-key.pem';
+      ALTER INSTANCE RELOAD TLS;"
+  done
+  echo "test-servers: MySQL TLS from $TLS"
+  if [ -f "$ENV_FILE" ]; then
+    grep -v '^export ORM_TEST_MYSQL_TLS_' "$ENV_FILE" > "$ENV_FILE.tls" || true
+    tls_env >> "$ENV_FILE.tls"
+    mv "$ENV_FILE.tls" "$ENV_FILE"
+  fi
+}
+
+# tls_env writes the DSNs of the MySQL TLS cases: the primary with the test CA,
+# the primary with the second CA, and the replica, whose certificate names
+# another host. They name the host localhost., the fully qualified form of
+# localhost, which resolves to 127.0.0.1 over TCP, because ssl-mode=VERIFY_IDENTITY
+# checks a host name and the PHP driver connects to localhost through the Unix
+# socket.
+tls_env() {
+  printf "export ORM_TEST_MYSQL_TLS_DSN='mysql://root@localhost.:%s/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=%s/tls/ca.pem'\n" "$MYSQL_PORT" "$DIR"
+  printf "export ORM_TEST_MYSQL_TLS_OTHER_CA_DSN='mysql://root@localhost.:%s/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=%s/tls/other-ca.pem'\n" "$MYSQL_PORT" "$DIR"
+  printf "export ORM_TEST_MYSQL_TLS_MISMATCH_DSN='mysql://root@localhost.:%s/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=%s/tls/ca.pem'\n" "$MYSQL_REPLICA_PORT" "$DIR"
+}
+
 # start_proxysql pools the connections of the user orm to the MySQL primary
 # and multiplexes them over at most four server connections. The admin and
 # PostgreSQL interfaces listen on Unix sockets only.
@@ -268,6 +326,7 @@ start() {
   trap 'status=$?; if [ "$status" -ne 0 ]; then echo "test-servers: start failed; logs are in $DIR" >&2; stop_servers; fi' EXIT
 
   start_mysql
+  tls
   start_postgres
 
   mysql_tzinfo_to_sql /usr/share/zoneinfo 2>"$DIR/mysql-tzinfo.log" | mysql_cli mysql
@@ -304,6 +363,7 @@ export BENCH_MYSQL_DSN='$mysql/orm_bench?timezone=%2B00:00'
 export BENCH_POSTGRES_DSN='$postgres/orm_bench?sslmode=disable&timezone=%2B00:00'
 export BENCH_SQLITE_DSN='sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00'
 EOF
+  tls_env >> "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"
   trap - EXIT
   echo "test-servers: started; environment $ENV_FILE"
@@ -323,6 +383,15 @@ case "$1" in
     PROXYSQL_PORT=$6
     PGBOUNCER_PORT=$7
     start
+    ;;
+  tls)
+    # tls <mysql-port> <mysql-replica-port> loads the TLS files into running servers.
+    [ $# -eq 3 ] || usage
+    port "$2"
+    port "$3"
+    MYSQL_PORT=$2
+    MYSQL_REPLICA_PORT=$3
+    tls
     ;;
   stop)
     [ $# -eq 1 ] || usage

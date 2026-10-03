@@ -5,9 +5,12 @@ package orm
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -387,6 +390,21 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 		return nil, err
 	}
 	cfg.Loc = dsn.location
+	if dsn.sslCA != "" {
+		// ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate
+		// against the CA and the host name. The password then travels only
+		// inside TLS: the driver sends the caching_sha2_password secret over
+		// TLS and requests the RSA public key of the server only without it.
+		pem, err := os.ReadFile(dsn.sslCA)
+		if err != nil {
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
+		}
+		roots := x509.NewCertPool()
+		if !roots.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s holds no PEM certificate", dsn.sslCA)
+		}
+		cfg.TLS = &tls.Config{RootCAs: roots, ServerName: dsn.sslHost, MinVersion: tls.VersionTLS12}
+	}
 	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		return nil, err

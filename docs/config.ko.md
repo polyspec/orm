@@ -26,6 +26,20 @@ sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
 
 데이터베이스 자격 증명과 AES 키는 커밋하거나 런타임 파일에 기록하거나 로그에 남기지 않는다. 배포 비밀 저장소에서 값을 읽은 뒤 클라이언트 연결 옵션으로 전달한다.
 
+## DSN 매개변수와 MySQL TLS
+
+MySQL DSN은 모든 클라이언트가 구현하는 한 가지 모드로 TLS 연결한다.
+
+```text
+mysql://user:password@db.example:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/etc/orm/mysql-ca.pem
+```
+
+- `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 연결을 실패시킨다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
+- host는 server 인증서가 이름하는 host 이름이며 IP 주소가 아니다. TypeScript driver가 주소 host를 이름 `localhost`로 검사하기 때문이며, 모든 클라이언트는 `ssl-mode`와 함께 쓴 주소에 `CONFIG`를 반환한다. 이 모드는 TCP로 연결하며 `socket`을 받지 않는다.
+- `VERIFY_CA`나 `REQUIRED` 같은 `ssl-mode`의 다른 값, `ssl-ca` 없는 `ssl-mode`, `ssl-mode` 없는 `ssl-ca`, 상대 `ssl-ca` 경로, 읽을 수 없는 CA file은 Go, PHP, TypeScript 클라이언트에서 `CONFIG`를 반환한다.
+- PHP와 TypeScript 클라이언트는 다음 매개변수만 받고 다른 매개변수에는 `CONFIG`를 반환한다. MySQL은 `timezone`, `socket`, `ssl-mode`, `ssl-ca`, PostgreSQL은 `timezone`, `host`, `sslmode`, SQLite는 `timezone`, `_pragma`, 그리고 그 자체로 `CONFIG`를 반환하는 `_txlock`이다.
+- 클라이언트는 받는 다른 매개변수가 서로 다르다. Go 클라이언트는 다른 MySQL 매개변수를 go-sql-driver/mysql에 전달하며, 이 driver는 그 이름의 session 변수나 driver option을 설정한다. 다른 PostgreSQL 매개변수는 pgx에 전달한다. Rust 클라이언트는 `timezone`을 뺀 모든 매개변수를 sqlx에 전달하며, sqlx는 대소문자와 관계없이 `verify_ca` 같은 다른 `ssl-mode` 값도 받는다. 이 page의 매개변수만 이름한 DSN은 모든 클라이언트에서 같게 동작한다. Go와 Rust 클라이언트가 다른 매개변수를 거부하게 하면 현재 사용자의 MySQL DSN이 바뀌며, 그 사용자는 Rust 클라이언트로 `ssl-mode=verify_ca`를 쓰므로 이는 별도의 변경이다.
+
 ## Primary와 replica
 
 ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 때는 서버마다 연결을 하나씩 쓴다. primary에 하나, replica마다 하나를 열고, 문이 쓸 연결을 `connect`로 모델이나 행에 전달한다.

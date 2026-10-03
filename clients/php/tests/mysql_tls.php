@@ -1,0 +1,108 @@
+<?php
+// The DSN parameters of the PHP client and its MySQL TLS connection (docs/config.md): a DSN names
+// only the parameters of its scheme, `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` and a
+// host name is the one MySQL TLS mode, and every other parameter or mode returns CONFIG. The
+// connection cases need ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN and
+// ORM_TEST_MYSQL_TLS_MISMATCH_DSN of `make test-servers`; a missing one fails.
+// Usage: php clients/php/tests/mysql_tls.php
+declare(strict_types=1);
+
+require __DIR__ . '/autoload.php';
+
+use Orm\Code;
+use Orm\Config;
+use Orm\Orm;
+use Orm\OrmException;
+
+$started = hrtime(true);
+$elapsed = static fn (): string => sprintf('%.3fms', (hrtime(true) - $started) / 1e6);
+// The deadline of the test, far above its run of about a second.
+pcntl_async_signals(true);
+pcntl_signal(SIGALRM, static function () use ($elapsed): void {
+    echo 'TIMEOUT php mysql tls ' . $elapsed() . "\n";
+    exit(1);
+});
+pcntl_alarm(60);
+$failures = [];
+
+$refused = static function (string $dsn, string $wanted) use (&$failures): void {
+    try {
+        Orm::parseDsn($dsn);
+        $failures[] = "accepted $dsn";
+    } catch (OrmException $e) {
+        if ($e->code_ !== Code::CONFIG || !str_contains($e->getMessage(), $wanted)) {
+            $failures[] = "$dsn: {$e->code_} {$e->getMessage()}, expected CONFIG with $wanted";
+        }
+    }
+};
+
+echo "START php mysql tls: parameters\n";
+$refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
+$refused('mysql://root@db.local/orm_example?sslmode=disable', 'unknown parameter sslmode');
+$refused('postgres://root@db.local/orm_example?application_name=orm', 'unknown parameter application_name');
+$refused('postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
+$refused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
+foreach (['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', ''] as $mode) {
+    $refused("mysql://root@db.local/orm_example?ssl-mode=$mode&ssl-ca=/tmp/ca.pem", 'ssl-mode');
+}
+$refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
+$refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
+$refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
+foreach (['127.0.0.1', '[::1]'] as $host) {
+    $refused("mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 'host name');
+}
+$refused('mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem', 'socket');
+$parsed = Orm::parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
+if ($parsed[0] !== 'mysql' || ($parsed[6] ?? null) !== '/tmp/ca.pem') {
+    $failures[] = 'parsed ' . json_encode($parsed);
+}
+foreach (['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
+    'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC'] as $dsn) {
+    try {
+        Orm::parseDsn($dsn);
+    } catch (OrmException $e) {
+        $failures[] = "refused $dsn: {$e->getMessage()}";
+    }
+}
+
+echo "START php mysql tls: connections\n";
+$config = new Config(schemaPath: dirname(__DIR__, 3) . '/schema/schema.json', aesVersion: 1, aesKeys: [1 => str_repeat('k', 32)]);
+$sslVersion = static function (string $dsn) use ($config): string {
+    $db = Orm::connect($dsn, $config);
+    try {
+        return (string) ($db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? '');
+    } finally {
+        $db->close();
+    }
+};
+$dsns = [];
+foreach (['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'] as $name) {
+    $value = getenv($name);
+    if (!is_string($value) || $value === '') {
+        throw new RuntimeException("$name is not set; run make test-servers");
+    }
+    $dsns[] = $value;
+}
+$version = $sslVersion($dsns[0]);
+if (preg_match('/^TLSv1\.[23]$/', $version) !== 1) {
+    $failures[] = 'the VERIFY_IDENTITY connection has Ssl_version ' . json_encode($version);
+}
+foreach (['another CA' => $dsns[1], 'a certificate of another host' => $dsns[2]] as $name => $dsn) {
+    try {
+        $sslVersion($dsn);
+        $failures[] = "the connection with $name was accepted";
+    } catch (OrmException $e) {
+        if ($e->code_ !== Code::CONFIG || !str_contains($e->getMessage(), 'SSL')) {
+            $failures[] = "the connection with $name failed for another cause: {$e->code_} {$e->getMessage()}";
+        }
+    }
+}
+
+if ($failures !== []) {
+    echo 'FAIL php mysql tls ' . $elapsed() . "\n";
+    foreach ($failures as $failure) {
+        echo "  $failure\n";
+    }
+    exit(1);
+}
+echo 'PASS php mysql tls ' . $elapsed() . "\n";

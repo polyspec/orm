@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
 import { quoted } from '../schema/json.js';
+import { mysqlSsl, parseDsn } from '../driver.js';
 
 export type ToolDriver = 'mysql' | 'postgres' | 'sqlite';
 export type ToolValue = null | string | number | boolean;
@@ -82,8 +83,10 @@ function text(value: unknown): unknown {
 
 async function openMySql(url: URL): Promise<ToolDb> {
   const socket = url.searchParams.get('socket');
+  const ssl = mysqlSsl(parseDsn(url.toString()));
   const connection = await mysql.createConnection({
     ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
+    ...(ssl ? { ssl } : {}),
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     database: decodeURIComponent(url.pathname.slice(1)),

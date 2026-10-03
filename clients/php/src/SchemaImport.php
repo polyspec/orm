@@ -43,8 +43,9 @@ final class SchemaImport
             if ($dialect === 'sqlite') {
                 $pdo = new \PDO('sqlite:' . $u['path'], null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
             } else {
-                [, $pdoDsn, $user, $password] = Orm::parseDsn($raw);
-                $pdo = new \PDO($pdoDsn, $user, $password, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_EMULATE_PREPARES => false]);
+                [, $pdoDsn, $user, $password] = $parsed = Orm::parseDsn($raw);
+                $tls = $dialect === 'mysql' ? Orm::mysqlTlsOptions($parsed[6]) : [];
+                $pdo = new \PDO($pdoDsn, $user, $password, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_EMULATE_PREPARES => false] + $tls);
                 $zone = $u['query']['timezone'] ?? '';
                 if ($dialect === 'mysql' && $zone !== '') {
                     $pdo->exec("SET time_zone = '" . str_replace("'", "''", $zone) . "'");
