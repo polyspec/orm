@@ -42,8 +42,7 @@ fn fixture() -> TablePage {
 }
 #[tokio::test]
 async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
-    let began = std::time::Instant::now();
-    eprintln!("running row_update_verification");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let page = fixture();
         let original = RowSnapshot::from_page(&page, 0).unwrap();
@@ -70,12 +69,10 @@ async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
     })
     .await
     .expect("row update verification deadline");
-    eprintln!("passed row_update_verification {:?}", began.elapsed());
 }
 #[tokio::test]
 async fn row_baseline_preserves_immutable_values_and_key_order() {
-    let began = std::time::Instant::now();
-    eprintln!("running row_snapshot");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let mut page = fixture();
         let snapshot = RowSnapshot::from_page(&page, 0).unwrap();
@@ -90,12 +87,10 @@ async fn row_baseline_preserves_immutable_values_and_key_order() {
     })
     .await
     .expect("row snapshot deadline");
-    eprintln!("passed row_snapshot {:?}", began.elapsed());
 }
 #[tokio::test]
 async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
-    let began = std::time::Instant::now();
-    eprintln!("running row_snapshot_validation");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for change in 0..10 {
             let mut page = fixture();
@@ -133,12 +128,10 @@ async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
     })
     .await
     .expect("row snapshot validation deadline");
-    eprintln!("passed row_snapshot_validation {:?}", began.elapsed());
 }
 #[tokio::test]
 async fn row_baseline_compares_exact_bits_scale_and_binary() {
-    let began = std::time::Instant::now();
-    eprintln!("running row_snapshot_exact_cells");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for (original, changed) in [
             (GridCell::Float64(0), GridCell::Float64(1u64 << 63)),
@@ -159,5 +152,4 @@ async fn row_baseline_compares_exact_bits_scale_and_binary() {
     })
     .await
     .expect("row snapshot exact deadline");
-    eprintln!("passed row_snapshot_exact_cells {:?}", began.elapsed());
 }

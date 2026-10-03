@@ -142,30 +142,36 @@ async fn bounded<F: std::future::Future<Output = ()>>(driver: &str, case: F) {
 
 #[tokio::test]
 async fn trigger_refused_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite", trigger_refused("sqlite")).await;
 }
 
 #[tokio::test]
 async fn trigger_refused_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql", trigger_refused("mysql")).await;
 }
 
 #[tokio::test]
 async fn trigger_refused_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres", trigger_refused("postgres")).await;
 }
 
 #[tokio::test]
 async fn check_refused_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite", check_refused("sqlite")).await;
 }
 
 #[tokio::test]
 async fn check_refused_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql", check_refused("mysql")).await;
 }
 
 #[tokio::test]
 async fn check_refused_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres", check_refused("postgres")).await;
 }

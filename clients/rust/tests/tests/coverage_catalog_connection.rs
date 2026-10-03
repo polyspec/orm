@@ -32,11 +32,11 @@ fn quote(name: &str, driver: &str) -> String {
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
     let started = Instant::now();
-    println!("RUN {case}");
+    orm_testcase::step(format_args!("start {case}"));
     if tokio::time::timeout(DEADLINE, body).await.is_err() {
         panic!("{case}: not finished within {DEADLINE:?}");
     }
-    println!("PASS {case} {:?}", started.elapsed());
+    orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
 }
 
 /// `column`의 page 안 위치.
@@ -47,6 +47,7 @@ fn column(page: &orm_build::catalog::TablePage, column: &str) -> usize {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_read() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     within("catalog_read", async {
         let (driver, mut catalog) = connect().await;
         let namespace = catalog.current_namespace().await.expect("current namespace");
@@ -86,6 +87,7 @@ async fn coverage_catalog_read() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_row_mutation() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     within("catalog_row_mutation", async {
         let (driver, mut catalog) = connect().await;
         let account = quote("composite_account", &driver);

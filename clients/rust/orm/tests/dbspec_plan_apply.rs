@@ -152,7 +152,7 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
             }
             (None, Some(sql)) if step.fails => match conn.exec(sql).await {
                 Ok(()) => return Err(format!("{sql}: succeeded; want an error")),
-                Err(e) => println!("expected failure {e}"),
+                Err(e) => orm_testcase::step(format_args!("expected failure {e}")),
             },
             (None, Some(sql)) => conn.exec(sql).await?,
             (None, None) => return Err("a step has neither query nor sql".to_owned()),
@@ -163,8 +163,8 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 
 #[tokio::test]
 async fn plan_apply() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let started = Instant::now();
-    println!("RUN dbspec plan apply");
     let path = repository().join("tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
     let cases = vectors["cases"].as_array().expect("plan cases");
@@ -189,7 +189,7 @@ async fn plan_apply() {
             let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
             runs += 1;
             let (before, after) = (steps(&case["before"]), steps(&case["after"]));
-            println!("{id}: {} steps, reversible {reversible}", steps_of.len());
+            orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
             let result = run_probe(&mut servers, &id, db, runs, |conn| {
                 Box::pin(async move {
                     let forward: Vec<String> = steps_of.iter().take_while(|s| !s.finalize).map(|s| s.statement.clone()).collect();
@@ -255,5 +255,5 @@ async fn plan_apply() {
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     assert_eq!(runs, cases.len() * DIALECTS.len(), "plan runs");
     assert!(started.elapsed() < Duration::from_secs(600), "plan apply exceeded 600s");
-    println!("PASS dbspec plan apply: {runs} runs of {} cases on three databases in {:?}", cases.len(), started.elapsed());
+    orm_testcase::step(format_args!("dbspec plan apply: {runs} runs of {} cases on three databases in {:?}", cases.len(), started.elapsed()));
 }

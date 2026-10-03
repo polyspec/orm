@@ -6,6 +6,7 @@ use super::model::{Author, User};
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_model_query_rows() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("model_query_rows", async {
         let db = connect().await;
         assert_eq!(Author::new().connect(&db).user_seq(1).get_count().await.unwrap(), 20, "authors of user 1");

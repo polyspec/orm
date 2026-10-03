@@ -19,8 +19,7 @@ fn require_dsn(var: &str) -> String {
 
 #[tokio::test]
 async fn audit_operation_id() {
-    let started = std::time::Instant::now();
-    println!("RUN audit_operation_id");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-audit-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let targets = vec![
@@ -93,8 +92,7 @@ async fn audit_operation_id() {
         );
         drop_tables(&db, driver).await;
         db.close().await;
-        println!("PASS audit_operation_id {driver}");
+        orm_testcase::step(format_args!("audit_operation_id {driver}"));
     }
     let _ = std::fs::remove_dir_all(&tmp);
-    println!("PASS audit_operation_id {:?}", started.elapsed());
 }

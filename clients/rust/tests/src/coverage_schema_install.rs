@@ -21,6 +21,7 @@ table coverage_install_missing {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_existing() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("schema_install_existing", async {
         let db = connect().await;
         db.utils().schema().install(&super::model::SCHEMA).await.unwrap();
@@ -50,6 +51,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_partial() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("schema_install_partial", async {
         let document = orm::dbspec::parse(PARTIAL, &Default::default()).unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
         let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));

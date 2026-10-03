@@ -2,6 +2,7 @@ use orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
 async fn physical_tool_queries_reject_budgets_without_partial_success() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check_databases()).await.expect("tool query budget test deadline");
 }
 
@@ -9,8 +10,7 @@ async fn check_databases() {
     let path = std::env::temp_dir().join(format!("orm-tool-limits-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running physical_tool_queries:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("declared MySQL test DSN"),
@@ -41,7 +41,7 @@ async fn check_databases() {
         assert!(!error.to_string().contains("private-cell-value"));
         drop(connection);
         database.close().await;
-        eprintln!("passed physical_tool_queries:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} passed"));
     }
     std::fs::remove_file(path).expect("remove owner SQLite fixture");
 }
@@ -49,6 +49,7 @@ async fn check_databases() {
 // query가 붙은 SQLite DSN은 path만으로 file을 만든다(docs/dialects.md "Probe environment").
 #[tokio::test]
 async fn tool_sqlite_file_name_is_the_path() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let directory = std::env::temp_dir().join(format!("orm-tool-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");

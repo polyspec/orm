@@ -4,6 +4,7 @@ use orm::db::Pool;
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_dsn_connection() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));

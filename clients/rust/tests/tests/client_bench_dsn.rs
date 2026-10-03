@@ -19,10 +19,12 @@ fn assert_dsn_required(output: std::process::Output) {
 
 #[test]
 fn client_bench_fails_when_dsn_is_unset() {
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     assert_dsn_required(run_without_dsn(None));
 }
 
 #[test]
 fn client_bench_fails_when_dsn_is_empty() {
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     assert_dsn_required(run_without_dsn(Some("")));
 }

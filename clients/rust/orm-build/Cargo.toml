@@ -31,6 +31,8 @@ sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
 
 [dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
 orm-case-clock = { path = "../case-clock" }
 
 [[test]]

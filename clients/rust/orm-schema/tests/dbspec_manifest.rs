@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+// DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// (orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -41,8 +43,8 @@ fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {
 
 #[test]
 fn manifest_vectors() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec manifest vectors");
     let cases = cases();
     let hashes = cases["hashes"].as_array().expect("hashes cases");
     assert!(!hashes.is_empty(), "tests/dbspec/cases.json has no hashes cases");
@@ -61,17 +63,17 @@ fn manifest_vectors() {
         // The set is ordered by document name, not by the order given.
         refs.reverse();
         expect(case, &refs);
-        println!("PASS hashes/{id}");
+        orm_testcase::step(format_args!("hashes/{id}"));
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "dbspec manifest vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
-    println!("PASS dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len());
+    orm_testcase::step(format_args!("dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len()));
 }
 
 #[test]
 fn manifest_rejects_repeated_document_name() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec manifest repeated name");
     let source = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
     let first = parsed("first", source, &BTreeMap::new());
     let second = parsed("second", source, &BTreeMap::new());
@@ -80,13 +82,13 @@ fn manifest_rejects_repeated_document_name() {
     assert_eq!(got, vec![("name.duplicate", 1, 10)]);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})");
-    println!("PASS dbspec manifest repeated name cpu={cpu:?} wall={wall:?}");
+    orm_testcase::step(format_args!("dbspec manifest repeated name cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn set_vectors() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec set vectors");
     let cases = cases();
     let sets = cases["sets"].as_array().expect("sets cases");
     assert!(!sets.is_empty(), "tests/dbspec/cases.json has no sets cases");
@@ -132,9 +134,9 @@ fn set_vectors() {
                 }
             }
         }
-        println!("PASS sets/{id}");
+        orm_testcase::step(format_args!("sets/{id}"));
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "dbspec set vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
-    println!("PASS dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len());
+    orm_testcase::step(format_args!("dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len()));
 }

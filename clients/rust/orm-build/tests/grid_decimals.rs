@@ -5,6 +5,7 @@ use orm_build::{
 
 #[tokio::test]
 async fn finite_grid_decimals_preserve_precision_and_scale() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid decimal deadline");
 }
 async fn check() {
@@ -12,8 +13,7 @@ async fn check() {
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running grid_decimals:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -68,7 +68,7 @@ async fn check() {
         }
         catalog.close().await;
         database.close().await;
-        eprintln!("finished grid_decimals:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "decimal cases failed: {failures:?}");

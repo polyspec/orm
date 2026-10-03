@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T24.4: 모든 Rust test case는 실행 중에 `--nocapture` 없이 stderr에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 panic message 또는 이유를 담은 `FAIL`을 출력하고(clients/rust/testcase), 기한을 넘긴 case는 FAIL 줄과 함께 test binary를 끝낸다. `integration` program과 `dbspec_stress` example도 같은 방식으로 case를 보고한다.
+
 - T24.3: 모든 PHP test case는 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.php), script 전체의 한도 대신 자기 기한 아래에서 실행되며(pcntl이 있으면 SIGALRM이 멈춘 case를 끊는다), script가 loop로 실행하는 case는 앞의 실패가 뒤의 case를 가리지 않는다. `make conformance-result-check`는 Python runner 없이 네 명령을 직접 실행한다.
 
 - T24.2: 모든 JavaScript test case와 Node check runner는 실행 중에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.mjs), case마다 자기 기한을 가진다. `make feature-check`는 coverage 실행과 검증 명령을 실행하는 동안 하나씩 보고하고, `node scripts/features/check.mjs --run --feature <id>`는 한 기능의 명령만 실행한다. T19와 T20 기록은 message placeholder를 code로 써서 문서가 다시 build된다.

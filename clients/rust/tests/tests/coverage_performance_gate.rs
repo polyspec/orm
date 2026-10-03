@@ -4,7 +4,7 @@
 mod common;
 
 use std::process::Command;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const ITERATIONS: usize = 100;
 
@@ -14,8 +14,7 @@ const DEADLINE: Duration = Duration::from_secs(300);
 #[test]
 #[ignore = "run by feature-check with ORM_BENCH_MYSQL_DSN"]
 fn coverage_hot_path_gate() {
-    let started = Instant::now();
-    println!("RUN hot_path_gate");
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let dsn = common::required("ORM_BENCH_MYSQL_DSN");
     let mut command = Command::new(env!("CARGO_BIN_EXE_client_bench"));
     command.arg(ITERATIONS.to_string()).env("ORM_BENCH_MYSQL_DSN", &dsn);
@@ -44,5 +43,4 @@ fn coverage_hot_path_gate() {
             assert!(nanos > 0.0, "{name}: {label} must be positive: {line}");
         }
     }
-    println!("PASS hot_path_gate {:?}", started.elapsed());
 }

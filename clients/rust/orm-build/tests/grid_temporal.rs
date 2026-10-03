@@ -9,6 +9,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 #[tokio::test]
 async fn temporal_grid_cells_follow_the_declared_precision() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(60), check()).await.expect("grid temporal deadline");
 }
 
@@ -103,8 +104,7 @@ async fn check() {
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running grid_temporal:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -234,7 +234,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {table_sql}"), &[]).await.expect("remove owned temporal table");
         drop(seed);
         database.close().await;
-        eprintln!("finished grid_temporal:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "grid temporal cases failed: {failures:#?}");

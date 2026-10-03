@@ -23,11 +23,11 @@ pub async fn connect() -> Db {
 /// `body`를 기한 안에서 실행하고 시작, 성공, 걸린 시간을 출력한다.
 pub async fn run<F: Future<Output = ()>>(case: &str, body: F) {
     let started = Instant::now();
-    println!("RUN {case}");
+    orm_testcase::step(format_args!("start {case}"));
     if tokio::time::timeout(DEADLINE, body).await.is_err() {
         panic!("{case}: not finished within {DEADLINE:?}");
     }
-    println!("PASS {case} {:?}", started.elapsed());
+    orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
 }
 
 /// 결과의 error code. 성공은 "ok"다.

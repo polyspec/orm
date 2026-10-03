@@ -6,7 +6,7 @@ mod common;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const VECTORS: [&str; 2] = ["conditions_values", "relations"];
 
@@ -25,8 +25,7 @@ fn runner(dsn: &str, vectors: &[&str]) -> Command {
 #[test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 fn coverage_conformance_vector() {
-    let started = Instant::now();
-    println!("RUN conformance_vector");
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let driver = common::required("ORM_FEATURE_DATABASE");
     let dsn = common::required("ORM_FEATURE_DSN");
     let file = match driver.as_str() {
@@ -58,5 +57,4 @@ fn coverage_conformance_vector() {
     assert!(!unknown.status.success(), "an unknown vector name must fail");
     assert!(unknown.stdout.is_empty(), "an unknown vector name printed output: {}", redact(&unknown.stdout));
     assert!(redact(&unknown.stderr).contains("unknown vector coverage_unknown_vector"), "unknown vector error: {}", redact(&unknown.stderr));
-    println!("PASS conformance_vector {:?}", started.elapsed());
 }

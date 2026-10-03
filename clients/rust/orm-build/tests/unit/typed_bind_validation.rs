@@ -1,8 +1,7 @@
 use super::*;
 #[tokio::test]
 async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
-    let began = std::time::Instant::now();
-    eprintln!("running typed_bind_validation");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for dialect in ["mysql", "postgres", "sqlite"] {
             assert!(validate(&vec![P::Null(ParamType::Text); 65535], dialect).is_ok());
@@ -26,5 +25,4 @@ async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
     })
     .await
     .expect("typed bind validation deadline");
-    eprintln!("passed typed_bind_validation {:?}", began.elapsed());
 }

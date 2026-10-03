@@ -9,7 +9,7 @@ use orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, SqlSafeStr, SqliteConnection};
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
@@ -294,8 +294,8 @@ pub async fn run_probe<T>(
     index: usize,
     body: impl for<'c> FnOnce(&'c mut Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, String>> + 'c>>,
 ) -> Result<T, String> {
-    let begin = Instant::now();
-    println!("start {id}");
+    // probe case의 기한은 probe 자신의 기한과 그 database를 만들고 지우는 일의 같은 시간이다.
+    let mut probe = orm_testcase::start(id, PROBE_DEADLINE * 2);
     let session = servers.session(db, index);
     let name = session.name.clone();
     let (result, conn) = match servers.create(&session).await {
@@ -314,10 +314,10 @@ pub async fn run_probe<T>(
         (Err(e), Ok(())) => Err(e),
         (Err(e), Err(cleanup)) => Err(format!("{e}; cleanup: {cleanup}")),
     };
-    match &result {
-        Ok(_) => println!("result {id}: PASS after {:?}", begin.elapsed()),
-        Err(e) => println!("result {id}: FAIL after {:?}: {e}", begin.elapsed()),
+    if let Err(e) = &result {
+        probe.fail(e);
     }
+    drop(probe);
     result
 }
 

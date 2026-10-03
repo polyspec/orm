@@ -70,17 +70,17 @@ fn skeleton(document: &Document) -> Vec<String> {
 
 /// case 하나를 실행하고 시작, 결과, 경과 시간을 쓴다.
 fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), String>) {
+    let mut inner = orm_testcase::start(format!("mermaid/{id}"), orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN mermaid/{id} deadline={DEADLINE:?}");
     let mut result = body();
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if result.is_ok() && cpu > DEADLINE {
         result = Err(format!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
     match result {
-        Ok(()) => println!("PASS mermaid/{id} cpu={cpu:?} wall={wall:?}"),
+        Ok(()) => inner.step(format_args!("cpu={cpu:?} wall={wall:?}")),
         Err(e) => {
-            println!("FAIL mermaid/{id} cpu={cpu:?} wall={wall:?}: {e}");
+            inner.fail(format_args!("cpu={cpu:?} wall={wall:?}: {e}"));
             failures.push(format!("{id}: {e}"));
         }
     }
@@ -88,6 +88,7 @@ fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), S
 
 #[test]
 fn mermaid_vectors() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let vectors = vectors();
     let mut failures = Vec::new();
     let mut count = 0;
@@ -158,10 +159,10 @@ fn mermaid_vectors() {
             if got != want {
                 return Err(format!("tables, columns, primary keys and foreign keys\n--- want\n{}\n--- got\n{}", want.join("\n"), got.join("\n")));
             }
-            println!("round_trip exported={} imported={}", dropped.len(), reported.len());
+            orm_testcase::step(format_args!("round_trip exported={} imported={}", dropped.len(), reported.len()));
             Ok(())
         });
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    println!("PASS mermaid vectors: {count} cases");
+    orm_testcase::step(format_args!("mermaid vectors: {count} cases"));
 }

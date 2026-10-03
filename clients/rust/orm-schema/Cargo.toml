@@ -15,5 +15,7 @@ sha2 = "0.10"
 regex = "1"
 
 [dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
 orm-case-clock = { path = "../case-clock" }
 serde_json = "1"

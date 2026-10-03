@@ -50,6 +50,7 @@ impl Model for Secret {
 
 #[test]
 fn array_output_of_an_unrepresentable_number_is_an_error() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let value = orm::ordered_json::parse(r#"{"n":1e400}"#).unwrap();
     let mut row = Secret::from_core(Core::new(&SECRET));
     row.core_mut().set_ordered("config", value.clone());
@@ -66,6 +67,7 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
 
 #[test]
 fn json_output_keeps_the_ordered_json_text() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"n":1e400}"#] {
         let value = orm::ordered_json::parse(text).unwrap();
         let mut row = Secret::from_core(Core::new(&SECRET));

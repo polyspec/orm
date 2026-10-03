@@ -669,6 +669,7 @@ mod tests {
     /// to the same bytes. Rust's encodings go to tests/codec/out/rust.json for the PHP cross-check.
     #[test]
     fn vectors() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/codec");
         let src = std::fs::read(format!("{root}/vectors.json")).expect("vectors.json");
         let f: serde_json::Map<String, Value> = serde_json::from_slice(&src).unwrap();
@@ -748,6 +749,7 @@ mod tests {
     /// AES v2 uses an authenticated envelope and rejects tampering.
     #[test]
     fn aes_vectors() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let styles = vec!["aes".to_string(), "hex".to_string()];
         let encoded = host_encode(&Param::Str("member@example.test".into()), &styles, "key-v1").unwrap();
         let Param::Str(encoded) = encoded else { panic!("AES+hex must produce text") };
@@ -762,6 +764,7 @@ mod tests {
 
     #[test]
     fn blind_index_vector() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         assert_eq!(
             blind_index(&Param::Str("member@example.test".into()), "blind-key").unwrap(),
             "1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8"
@@ -770,6 +773,7 @@ mod tests {
 
     #[test]
     fn errors_and_keys() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         for (styles, raw, code) in [
             (vec!["ordered_json"], "{bad", "CODEC_DECODE"),
             (vec!["serialize"], "O:8:\"stdClass\":0:{}", "CODEC_UNSUPPORTED"),
@@ -811,6 +815,7 @@ mod tests {
     /// number text, and {} apart from []; the write keeps the same text.
     #[test]
     fn json_stage_keeps_ordered_json() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
         for styles in [vec!["ordered_json"], vec!["ordered_json", "gz"], vec!["ordered_json", "base64"]] {
             let value = strict_json::parse(text).unwrap();
@@ -838,6 +843,7 @@ mod tests {
     /// (docs/codec.md, `gz`와 `base64`), 그래서 값은 styled value다.
     #[test]
     fn leading_gz_and_base64_serialize_the_value() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let value = serde_json::json!({"a": [1, "x"], "b": null});
         for (stage, serialized) in [("gz", ["serialize", "gz"]), ("base64", ["serialize", "base64"])] {
             let stored = encode(&[stage], StyledValue::Value(&value)).unwrap();
@@ -854,6 +860,7 @@ mod tests {
 
     #[test]
     fn json_literal_null_is_distinct_from_sql_null() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let literal = strict_json::Value::null();
         let stored = encode_ordered(&["ordered_json"], StyledValue::Value(&literal)).unwrap();
         assert_eq!(stored, Param::Str("null".into()));
@@ -873,6 +880,7 @@ mod tests {
 
     #[test]
     fn styled_column_state_fixture_preserves_stored_values() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let fixture: Value =
             serde_json::from_str(include_str!("../../../../contracts/fixtures/styled_column_states.json")).expect("styled column state fixture");
         let cases = fixture["cases"].as_array().expect("cases array");

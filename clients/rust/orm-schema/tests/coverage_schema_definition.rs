@@ -49,16 +49,17 @@ fn parse(path: &str, text: &str) -> Document {
 /// `body`를 실행하고 시작, 성공, 걸린 시간을 출력하며 CPU 시간 한도를 확인한다.
 fn run(id: &str, body: impl FnOnce()) {
     let clock = CaseClock::start();
-    println!("RUN {id}");
+    orm_testcase::step(format_args!("start {id}"));
     body();
     let cpu = clock.cpu();
     assert!(cpu < CPU_LIMIT, "{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}");
-    println!("PASS {id} cpu={cpu:?} wall={:?}", clock.wall());
+    orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_dbspec_emit_round_trip() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("dbspec_emit_round_trip", || {
         let (input, expected) = case("dbspec_emit_round_trip", "parse_emit");
         let identical = expected["identical"].as_bool().expect("expected.identical");
@@ -71,6 +72,7 @@ fn coverage_dbspec_emit_round_trip() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_dbspec_manifest_hash() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("dbspec_manifest_hash", || {
         let (input, expected) = case("dbspec_manifest_hash", "manifest");
         let documents: Vec<Document> = sources(&input).iter().map(|(path, text)| parse(path, text)).collect();
@@ -83,6 +85,7 @@ fn coverage_dbspec_manifest_hash() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_dbspec_render_ddl() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("dbspec_render_ddl", || {
         let (input, expected) = case("dbspec_render_ddl", "render");
         let documents: Vec<Document> = sources(&input).iter().map(|(path, text)| parse(path, text)).collect();

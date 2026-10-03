@@ -112,8 +112,7 @@ fn code<T>(r: orm::Result<T>) -> String {
 
 #[tokio::test]
 async fn runtime_value_types() {
-    let started = std::time::Instant::now();
-    println!("RUN runtime_value_types");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-value-types-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let targets = vec![
@@ -162,8 +161,7 @@ async fn runtime_value_types() {
 
         drop_table(&db).await;
         db.close().await;
-        println!("PASS runtime_value_types {driver}");
+        orm_testcase::step(format_args!("runtime_value_types {driver}"));
     }
     let _ = std::fs::remove_dir_all(&tmp);
-    println!("PASS runtime_value_types {:?}", started.elapsed());
 }

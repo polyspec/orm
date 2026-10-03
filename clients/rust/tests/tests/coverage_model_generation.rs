@@ -1,7 +1,6 @@
 //! model_generation: orm-build가 schema/bench.dbs과 build.rs가 scan하는 source로 만든
 //! model과 manifest는 두 번 생성해도 같고, 이 crate가 build한 OUT_DIR의 것과 같다.
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 /// build.rs와 같은 document와 scan 경로로 `out`에 생성하고 model과 manifest text를 읽는다.
 fn generate(out: &Path) -> (String, String) {
@@ -20,8 +19,7 @@ fn generate(out: &Path) -> (String, String) {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_model_generation_check() {
-    let started = Instant::now();
-    println!("RUN model_generation_check");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let out = std::env::temp_dir().join(format!("orm-rust-model-generation-{}", std::process::id()));
     let fresh = |dir: &Path| {
         if dir.exists() {
@@ -44,5 +42,4 @@ fn coverage_model_generation_check() {
     assert_eq!(built_model.matches(&built_path).count(), 1, "the built model includes its manifest file once");
     assert!(built_model.replace(&built_path, &generated_path) == first.0, "the generated model differs from the model this crate builds with");
     assert!(built_manifest == first.1, "the generated manifest differs from the manifest this crate builds with");
-    println!("PASS model_generation_check {:?}", started.elapsed());
 }

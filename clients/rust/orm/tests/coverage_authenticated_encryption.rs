@@ -29,11 +29,11 @@ fn text<'a>(value: &'a Value, field: &str) -> &'a str {
 /// `body`를 실행하고 시작, 성공, 걸린 시간을 출력하며 CPU 시간 한도를 확인한다.
 fn run(id: &str, body: impl FnOnce()) {
     let clock = CaseClock::start();
-    println!("RUN {id}");
+    orm_testcase::step(format_args!("start {id}"));
     body();
     let cpu = clock.cpu();
     assert!(cpu < CPU_LIMIT, "{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}");
-    println!("PASS {id} cpu={cpu:?} wall={:?}", clock.wall());
+    orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
 fn decrypt(input: &Value) -> orm::Result<Vec<u8>> {
@@ -44,6 +44,7 @@ fn decrypt(input: &Value) -> orm::Result<Vec<u8>> {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_envelope_decrypt() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("aes_envelope_decrypt", || {
         let (input, expected) = case("aes_envelope_decrypt", "aes_decrypt");
         let plain = decrypt(&input).unwrap_or_else(|e| panic!("decrypt: {e}"));
@@ -54,6 +55,7 @@ fn coverage_aes_envelope_decrypt() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_round_trip() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("aes_round_trip", || {
         let (input, expected) = case("aes_round_trip", "aes_encrypt_decrypt");
         let key = text(&input, "key");
@@ -68,6 +70,7 @@ fn coverage_aes_round_trip() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_tamper_rejected() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("aes_tamper_rejected", || {
         let (input, expected) = case("aes_tamper_rejected", "aes_decrypt");
         let error = decrypt(&input).expect_err("a tampered envelope must not decrypt");
@@ -78,6 +81,7 @@ fn coverage_aes_tamper_rejected() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_wrong_key_rejected() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("aes_wrong_key_rejected", || {
         let (input, expected) = case("aes_wrong_key_rejected", "aes_decrypt");
         let error = decrypt(&input).expect_err("another key must not decrypt");
@@ -88,6 +92,7 @@ fn coverage_aes_wrong_key_rejected() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_blind_index_vector() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("blind_index_vector", || {
         let (input, expected) = case("blind_index_vector", "blind_index");
         let index = blind_index(&Param::Str(text(&input, "plain").to_owned()), text(&input, "key")).unwrap_or_else(|e| panic!("blind index: {e}"));

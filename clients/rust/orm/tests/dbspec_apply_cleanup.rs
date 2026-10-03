@@ -15,7 +15,7 @@ use sqlx::{Connection, SqliteConnection};
 use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -181,21 +181,22 @@ async fn effect_row() -> Result<String, String> {
 
 /// case 하나를 기한 안에서 실행하고 시작, 결과, 걸린 시간을 알린다.
 async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> Result<(), String> {
-    let started = Instant::now();
-    println!("RUN {id} deadline={CASE_DEADLINE:?}");
+    let mut inner = orm_testcase::start(id, CASE_DEADLINE);
     let result = match tokio::time::timeout(CASE_DEADLINE, body).await {
         Ok(result) => result,
         Err(_) => Err(format!("deadline of {CASE_DEADLINE:?} exceeded")),
     };
     match &result {
-        Ok(message) => println!("  {message}\nPASS {id} elapsed={:?}", started.elapsed()),
-        Err(e) => println!("FAIL {id} elapsed={:?}: {e}", started.elapsed()),
+        Ok(message) => inner.step(message),
+        Err(e) => inner.fail(e),
     }
+    drop(inner);
     result.map(drop).map_err(|e| format!("{id}: {e}"))
 }
 
 #[tokio::test]
 async fn apply_reports_cleanup_errors() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let plans = create_from_empty();
     let results = [
         case("apply/cleanup-errors/release", release(plans.clone())).await,

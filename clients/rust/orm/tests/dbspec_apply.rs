@@ -583,8 +583,8 @@ const SCENARIOS: [(&str, &[&str]); 9] = [
 
 #[tokio::test]
 async fn apply_chain_on_three_databases() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let started = Instant::now();
-    println!("RUN dbspec apply");
     let plans = apply_chain();
     let target = dbspec::manifest(&[plans[1].schema()]).expect("target manifest").schema_text;
     let plan_counts = counts(&plans);
@@ -643,6 +643,6 @@ async fn apply_chain_on_three_databases() {
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
     assert_eq!(runs, want, "apply runs");
-    println!("PASS dbspec apply: {runs} runs on three databases in {:?}", started.elapsed());
+    orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
     assert!(started.elapsed() < Duration::from_secs(600), "apply exceeded 600s");
 }

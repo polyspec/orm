@@ -12,8 +12,8 @@ const DEADLINE: Duration = Duration::from_secs(540);
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_interface_symbols() {
+    let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let started = Instant::now();
-    println!("RUN interface_symbols");
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let mut child = Command::new("go")
         .args(["run", "./tests/interfaces/check", "-language", "rust"])
@@ -50,5 +50,4 @@ fn coverage_interface_symbols() {
     }
     let status = child.wait().unwrap_or_else(|e| panic!("interface check: {e}"));
     assert!(status.success(), "interface check failed with {status}:\n{output}");
-    println!("PASS interface_symbols {:?}", started.elapsed());
 }

@@ -114,6 +114,7 @@ async fn drop_table(db: &Db) {
 
 #[tokio::test]
 async fn aes_json_column() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-json-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let targets = [

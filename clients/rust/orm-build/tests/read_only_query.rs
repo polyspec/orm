@@ -5,6 +5,7 @@ use orm_build::{
 
 #[tokio::test]
 async fn actual_catalog_queries_enforce_read_only_scopes_on_three_databases() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only query deadline");
 }
 async fn check() {
@@ -15,8 +16,7 @@ async fn check() {
     let path = std::env::temp_dir().join(format!("orm-query-readonly-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running read_only_query:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -32,7 +32,7 @@ async fn check() {
             if dialect == "mysql" {
                 seed.exec(&format!("DROP FUNCTION IF EXISTS orm_readonly_function_{id}"), &[]).await.unwrap();
             }
-            eprintln!("cleaned owned read-only fixture:{dialect}:{id}");
+            orm_testcase::step(format_args!("cleaned owned read-only fixture {dialect} {id}"));
         }
         let table = format!("orm_readonly_query_{}", std::process::id());
         seed.exec(&format!("CREATE TABLE {table}(n INTEGER NOT NULL)"), &[]).await.unwrap();
@@ -73,7 +73,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {table}"), &[]).await.unwrap();
         drop(seed);
         database.close().await;
-        eprintln!("passed read_only_query:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} passed"));
     }
     std::fs::remove_file(path).unwrap();
     for id in cleanup_ids {

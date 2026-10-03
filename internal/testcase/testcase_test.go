@@ -148,7 +148,7 @@ func TestReportForm(t *testing.T) {
 	if err := inOrder(output, `RUN TestFixtureDeadline deadline=200ms`, `FAIL TestFixtureDeadline `+elapsed+`: deadline 200ms exceeded`, `goroutine [0-9]+ \[.*\]:`); err != nil {
 		t.Errorf("%v\n%s", err, output)
 	}
-	if regexp.MustCompile(`STEP runner/pass `+elapsed+`: \n`).MatchString(output) {
+	if regexp.MustCompile(`STEP runner/pass ` + elapsed + `: \n`).MatchString(output) {
 		t.Errorf("empty STEP line from the StepWriter\n%s", output)
 	}
 	if strings.Contains(output, "PASS TestFixtureDeadline") {

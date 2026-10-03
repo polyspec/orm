@@ -8,6 +8,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+// DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
+// (orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -22,8 +24,8 @@ fn strings(value: &Value) -> Vec<String> {
 
 #[test]
 fn render_vectors() {
+    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    println!("RUN dbspec render vectors");
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/ddl.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let cases = vectors["cases"].as_array().expect("ddl cases");
@@ -46,10 +48,10 @@ fn render_vectors() {
             // The documents are rendered in use order, not in the order given.
             refs.reverse();
             assert_eq!(dbspec::render(&refs, dialect), Ok(want.clone()), "{id}: {dialect_name} reversed");
-            println!("PASS ddl/{id}/{dialect_name}");
+            orm_testcase::step(format_args!("ddl/{id}/{dialect_name}"));
         }
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     assert!(cpu < DEADLINE, "dbspec render vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})");
-    println!("PASS dbspec render vectors {} cases cpu={cpu:?} wall={wall:?}", cases.len());
+    orm_testcase::step(format_args!("dbspec render vectors {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
 }

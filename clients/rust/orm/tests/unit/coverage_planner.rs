@@ -143,7 +143,7 @@ fn request(input: &Value, manifest_hash: &str) -> ir::Request {
 
 fn run(id: &str) {
     let clock = CaseClock::start();
-    println!("RUN {id}");
+    orm_testcase::step(format_args!("start {id}"));
     let manifest = bench();
     let (input, expected) = case(id);
     let request = request(&input, &manifest.manifest_hash);
@@ -170,23 +170,26 @@ fn run(id: &str) {
     }
     let cpu = clock.cpu();
     assert!(cpu < CPU_LIMIT, "{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}");
-    println!("PASS {id} cpu={cpu:?} wall={:?}", clock.wall());
+    orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_statement() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_statement");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_count() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_count");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_rejects_unknown_column() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_rejects_unknown_column");
 }

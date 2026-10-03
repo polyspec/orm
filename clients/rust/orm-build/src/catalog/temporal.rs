@@ -86,6 +86,7 @@ mod tests {
 
     #[test]
     fn precision_follows_the_native_type_and_dialect_default() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         assert_eq!(precision("datetime(6)", "mysql"), Ok(6));
         assert_eq!(precision("datetime", "mysql"), Ok(0));
         assert_eq!(precision("time(3) without time zone", "postgres"), Ok(3));
@@ -96,6 +97,7 @@ mod tests {
 
     #[test]
     fn temporal_text_follows_the_dbspec_forms() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         use crate::tool_db::is_temporal;
         for (kind, text) in
             [("date", "0001-01-01"), ("date", "9999-12-31"), ("time", "23:59:59.999999"), ("time", "00:00:00"), ("datetime", "2026-01-02 03:04:05.1")]
@@ -118,6 +120,7 @@ mod tests {
 
     #[test]
     fn fraction_keeps_exactly_p_digits_and_rejects_dropped_digits() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         assert_eq!(fraction("2026-01-02 03:04:05.120000", 3, "c"), Ok("2026-01-02 03:04:05.120".into()));
         assert_eq!(fraction("03:04:05.000000", 0, "c"), Ok("03:04:05".into()));
         assert_eq!(fraction("03:04:05.123456", 6, "c"), Ok("03:04:05.123456".into()));

@@ -104,8 +104,8 @@ fn expected_schema_text(id: &str, documents: &[Document]) -> String {
 
 #[tokio::test]
 async fn introspect_round_trip() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let started = Instant::now();
-    println!("RUN dbspec introspect round trip");
     let mut servers = Servers::open("rt").await;
     let sets = round_trip_sets();
     assert!(!sets.is_empty(), "no round trip sets");
@@ -151,18 +151,18 @@ async fn introspect_round_trip() {
         if observed != BTreeSet::from([want]) {
             failures.push(format!("{db}: introspection query counts {counts:?}, want {want} for every set"));
         } else {
-            println!("{db}: {want} queries for every set");
+            orm_testcase::step(format_args!("{db}: {want} queries for every set"));
         }
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     assert!(started.elapsed() < Duration::from_secs(600), "round trip exceeded 600s");
-    println!("PASS dbspec introspect round trip: {} sets on three databases in {:?}", sets.len(), started.elapsed());
+    orm_testcase::step(format_args!("dbspec introspect round trip: {} sets on three databases in {:?}", sets.len(), started.elapsed()));
 }
 
 #[tokio::test]
 async fn introspect_unsupported() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let started = Instant::now();
-    println!("RUN dbspec introspect unsupported");
     let path = repository().join("tests/dbspec/introspect.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("introspect.json")).expect("introspect.json");
     let cases = vectors["cases"].as_array().expect("introspect cases");
@@ -208,5 +208,5 @@ async fn introspect_unsupported() {
     servers.close().await;
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     assert!(started.elapsed() < Duration::from_secs(300), "unsupported cases exceeded 300s");
-    println!("PASS dbspec introspect unsupported: {} cases in {:?}", cases.len(), started.elapsed());
+    orm_testcase::step(format_args!("dbspec introspect unsupported: {} cases in {:?}", cases.len(), started.elapsed()));
 }

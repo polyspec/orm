@@ -280,49 +280,58 @@ async fn bounded<F: std::future::Future<Output = ()>>(driver: &str, case: F) {
 
 #[tokio::test]
 async fn rollback_failed_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite", rollback_failed("sqlite")).await;
 }
 
 #[tokio::test]
 async fn rollback_failed_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql", rollback_failed("mysql")).await;
 }
 
 #[tokio::test]
 async fn rollback_failed_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres", rollback_failed("postgres")).await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite", savepoint_rollback_failed("sqlite")).await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql", savepoint_rollback_failed("mysql")).await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres", savepoint_rollback_failed("postgres")).await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_sqlite() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("sqlite", rollback_fault("sqlite")).await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_mysql() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("mysql", rollback_fault("mysql")).await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_postgres() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     bounded("postgres", rollback_fault("postgres")).await;
 }
 
@@ -330,6 +339,7 @@ async fn rollback_fault_postgres() {
 /// default feature도 그것을 켜지 않는다.
 #[test]
 fn rollback_fault_entry() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");

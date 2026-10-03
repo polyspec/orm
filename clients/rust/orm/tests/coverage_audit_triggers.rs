@@ -8,7 +8,7 @@ mod audit_rows;
 use audit_rows::{changed_item, code, drop_tables, history, new_item, Item, SCHEMA};
 use orm::db::Pool;
 use orm::{Db, Model, Param};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// case의 기한. database가 하는 일을 제한하므로 wall-clock 시간이다.
 const DEADLINE: Duration = Duration::from_secs(300);
@@ -101,10 +101,8 @@ async fn audit_history() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_audit_history() {
-    let started = Instant::now();
-    println!("RUN audit_history");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, audit_history()).await.is_err() {
         panic!("audit_history: not finished within {DEADLINE:?}");
     }
-    println!("PASS audit_history {:?}", started.elapsed());
 }
