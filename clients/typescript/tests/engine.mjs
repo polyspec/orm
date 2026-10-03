@@ -111,7 +111,7 @@ await run.run('engine', COMPUTE, async () => {
   );
 
   // Restore: primary key 나 unique key 하나의 eq 조건으로 soft delete column 을 NULL 로 되돌리는 update 하나다.
-  // 지워진 행만 고치고, audit table 이면 operation column 도 쓴다(engine/planner/restore_test.go 와 같은 case).
+  // 지워진 행만 고치고, audit table 이면 audit column 도 쓴다(engine/planner/restore_test.go 와 같은 case).
   {
     const restoreText = `dbspec 1 restore
 
@@ -119,24 +119,26 @@ table link {
   id i64 identity
   team_id i64
   member_id i64
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (id)
   unique uq_link_pair (team_id, member_id)
+  index ix_link_audit (audit_seq)
+  foreign key fk_link_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into link_history operation operation_id action change previous previous_operation_id
+    audit into link_history column audit_seq references audit action change previous previous_audit_seq
   }
 }
 
 table link_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   id i64
   team_id i64
   member_id i64
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (history_id)
 }
@@ -151,6 +153,12 @@ table tag {
   settings {
     soft_delete deleted_at
   }
+}
+
+table audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
 }
 
 table plain {
@@ -178,20 +186,20 @@ table plain {
     const slotsOf = step => step.bind_slots.map(s => (s.from === 'param' ? `param ${s.param}` : s.from));
     for (const [name, dialect, request, sql, slots] of [
       ['unique key with audit', 'sqlite', restoreRequest('link', { column: 'team_id', op: 'eq' }, { conn: 'and', column: 'member_id', op: 'eq' }),
-        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
-        ['operation', 'param 0', 'param 1']],
+        'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['audit', 'param 0', 'param 1']],
       ['unique key in another order', 'mysql', restoreRequest('link', { column: 'member_id', op: 'eq' }, { conn: 'and', column: 'team_id', op: 'eq' }),
-        'UPDATE `link` SET `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
-        ['operation', 'param 0', 'param 1']],
+        'UPDATE `link` SET `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
+        ['audit', 'param 0', 'param 1']],
       ['primary key', 'postgres', restoreRequest('link', { column: 'id', op: 'eq' }),
-        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL',
-        ['operation', 'param 0']],
+        'UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL',
+        ['audit', 'param 0']],
       ['without audit', 'mysql', restoreRequest('tag', { column: 'name', op: 'eq' }),
         'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
         ['param 0']],
       ['new values', 'sqlite', withSet(restoreRequest('link', { column: 'team_id', op: 'eq' }, { conn: 'and', column: 'member_id', op: 'eq' }), { column: 'team_id' }),
-        'UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
-        ['param 2', 'operation', 'param 0', 'param 1']],
+        'UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['param 2', 'audit', 'param 0', 'param 1']],
       ['new value and null', 'postgres', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'label' }),
         'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL',
         ['param 1', 'param 0']],
@@ -217,7 +225,7 @@ table plain {
       ['a group', group],
       ['an assignment of the soft delete column', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'deleted_at' })],
       ['an assignment of the primary key', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'id' })],
-      ['an assignment of the operation column', withSet(restoreRequest('link', { column: 'id', op: 'eq' }), { column: 'operation_id' })],
+      ['an assignment of the audit column', withSet(restoreRequest('link', { column: 'id', op: 'eq' }), { column: 'audit_seq' })],
       ['an optimistic check', { ...restoreRequest('tag', { column: 'name', op: 'eq' }), optimistic: { column: 'label', p: 0 } }],
       ['a table without soft_delete', restoreRequest('plain', { column: 'id', op: 'eq' })],
     ]) {

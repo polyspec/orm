@@ -134,17 +134,6 @@ $master = \Polyspec\Orm\Tests\Model\connect($masterDsn, new Config(aesKey: $aesK
 
 generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema 값 `schema()`, connect helper `connect()`를 정의한다. `connect()`는 `Orm::connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록하며, 모든 요청은 `manifestHash`를 포함한다. `Orm::connect`는 set 없이 연결을 연다. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())`는 set을 설치하고 연결에 등록한다.
 
-감사 대상 table(`audit` setting, [dbspec](dbspec.md#audit))은 operation id를 정한 transaction 안에서 쓴다. executor는 transaction이 insert하거나 update하는 모든 감사 대상 행의 operation column에 그 id를 쓰며, soft delete도 포함한다:
-
-```php
-$master->transaction(function (): void {
-    (new Service)->setName('renamed')->create();
-    (new Service)->getBySeq(42)->delete();
-}, operation: $operationId);
-```
-
-id는 `i64` operation column이면 `int`, `uuid` column이면 소문자 canonical UUID `string`이다. 그런 transaction 밖에서, 또는 다른 type의 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패하고, operation column을 setter로 지정하면 `IR_INVALID`로 실패한다. 중첩 transaction은 바깥 transaction의 id를 쓰며 `operation`을 받지 않는다.
-
 ### Rust
 
 ```rust
@@ -154,26 +143,6 @@ master.utils().schema().install(&model::SCHEMA).await?;
 
 `orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
 
-감사 대상 table(`audit` setting)은 unit of work의 operation id를 transaction에서 받는다. 가장 바깥 transaction에 `operation(id)`로 정하면, executor가 그 transaction이 insert하거나 update하는 모든 감사 대상 row의 operation column에 그 값을 쓴다. soft delete의 update도 같다:
-
-```rust
-db.transaction(async || {
-    service.set_name("renamed").update(false).await
-})
-.operation(operation_id) // i64 operation column에는 i64, uuid column에는 &str 또는 String
-.await?;
-```
-
-모든 transaction 진입점이 `operation(id)`를 받는다: `transaction`, `transaction_send`, 그리고 callback을 한 번 실행하고 callback 자신의 오류 type으로 `TransactionOnceError`를 돌려주는 `transaction_once`다. `transaction_once`의 builder는 전과 같이 await하며, callback과 그 future가 `Send`이면 그 future도 `Send`다:
-
-```rust
-db.transaction_once(async || service.set_name("renamed").update(false).await)
-    .operation(operation_id)
-    .await?;
-```
-
-operation id 없이, transaction 밖에서, 또는 operation column type에 맞지 않는 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패한다. 중첩 transaction은 `operation`을 받지 않고(중첩 `transaction_once`는 `CONFIG`를 담은 `TransactionOnceError::Orm`을 돌려준다), operation column을 직접 쓰는 요청은 `IR_INVALID`로 실패한다.
-
 ### TypeScript
 
 ```typescript
@@ -181,12 +150,9 @@ import { Item, SCHEMA, connect } from './models/models.js';
 
 const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
-await master.transaction(async () => {
-  await new Item().setTitle('first').create();
-}, { operation: 42 });
 ```
 
-`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. `transaction`의 `operation` 옵션은 작업 단위의 operation id다. 트랜잭션 안에서 `audit` setting이 있는 테이블의 모든 insert와 update는 soft delete를 포함해 이 값을 operation column에 쓴다. `i64` operation column에는 safe integer, `uuid` operation column에는 문자열을 쓴다. 이 값이 없거나 다른 타입이면 audit 테이블의 insert와 update는 `CONFIG`로 실패하고, operation column을 직접 지정하면 `IR_INVALID`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 operation을 그대로 쓴다.
+`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다.
 
 각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema.md](schema.md#_5-adding-tables-and-columns)).
 
@@ -328,62 +294,41 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
-### Go operation id
+### 감사 대상 쓰기 {#audited-writes}
 
-`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 `orm.Operation(id)`로 unit of work를 정한 트랜잭션 안에서만 쓴다. 그 트랜잭션에서 audit 테이블의 모든 insert, update, soft delete, duplicate update는 `id`를 테이블의 operation 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. `id`는 `i64` operation 컬럼이면 `int64`, `uuid` operation 컬럼이면 소문자 UUID string이다. 중첩 트랜잭션은 바깥 트랜잭션의 id를 쓰며 `orm.Retry`만 받는다.
+`audit` setting([audit](dbspec.ko.md#audit))이 있는 테이블은 작업 단위를 audit 기록 테이블에 기록하는 트랜잭션 안에서만 쓴다. 두 호출이 기록을 정한다:
 
-```go
-err := master.Transaction(func() error {
-    _, err := model.Item().SetTitle("draft").Create()
-    return err
-}, orm.Operation(int64(42)))
-```
-
-그런 트랜잭션 밖에서 audit 테이블을 쓰거나 operation 컬럼에 맞지 않는 id로 쓰면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다. `int64`나 `string`이 아닌 값을 준 `orm.Operation`은 트랜잭션을 시작하기 전에 `CONFIG`로 실패한다. operation 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
-
-### 트랜잭션 안에서 operation id 정하기 {#set-the-operation-id-inside-a-transaction}
-
-operation id를 트랜잭션이 시작한 뒤에야 알 때, 예를 들어 작업 단위가 먼저 삽입하는 행의 key일 때는 첫 감사 대상 write 전에 실행 중인 트랜잭션에 id를 정한다. 트랜잭션의 연결에서 utilities로 호출한다:
+- 연결의 `audit(defaults)`는 audit 기본값을 가진 같은 연결의 handle을 돌려준다. 기본값은 계정과 요청처럼 handle의 모든 작업 단위가 함께 쓰는 값을 가진 audit 기록 테이블의 모델이다. 연결 자신은 바꾸지 않으므로 요청마다 한 번 정하고 handle을 넘긴다. 모델은 연결에 연결하듯이 handle에 연결한다.
+- 그 handle에서 실행하는 트랜잭션의 `audit` 옵션은 이 작업 단위의 값이며, 컬럼 이름에서 값으로 가는 map이다(Go `orm.Audit(map[string]any)`, PHP `audit:` 배열, Rust `transaction`, `transaction_send`, `transaction_once`의 `.audit(pairs)`, TypeScript `{ audit: {...} }`). 빈 map은 기본값만 기록한다.
 
 ```go
-err := master.Transaction(func() error {
-    op, err := model.Operation().SetName("import").Create() // a table without audit
-    if err != nil {
-        return err
-    }
-    if err := master.Utils().SetOperation(op.GetSeq()); err != nil {
-        return err
-    }
-    _, err = model.Item().SetTitle("draft").Create()
+db := master.Audit(model.Audit().SetAccountSeq(accountSeq).SetRequestId(requestID)) // once per request
+err := db.Transaction(func() error {
+    _, err := model.Service().SetName("renamed").Create()
     return err
-})
+}, orm.Audit(map[string]any{"action": "service.rename", "reason": reason}))
 ```
 ```php
-$master->transaction(function () use ($master): void {
-    $op = (new Operation)->setName('import')->create();
-    $master->utils()->setOperation($op->getSeq());
-    (new Item)->setTitle('draft')->create();
-});
+$db = $master->audit((new Audit)->setAccountSeq($accountSeq)->setRequestId($requestId)); // once per request
+$db->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+}, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-master.transaction(async || {
-    let op = Operation::new().set_name("import").create().await?;
-    master.utils().set_operation(op.get_seq()?)?;
-    Item::new().set_title("draft").create().await.map(|_| ())
-}).await?;
+let db = master.audit(Audit::new().set_account_seq(account_seq).set_request_id(request_id)); // once per request
+db.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
+    .audit([("action", "service.rename"), ("reason", reason.as_str())])
+    .await?;
 ```
 ```typescript
-await master.transaction(async () => {
-    const op = await new Operation().setName('import').create();
-    master.utils().setOperation(op.getSeq());
-    await new Item().setTitle('draft').create();
-});
+const db = master.audit(new Audit().setAccountSeq(accountSeq).setRequestId(requestId)); // once per request
+await db.transaction(async () => {
+  await new Service().setName('renamed').create();
+}, { audit: { action: 'service.rename', reason } });
 ```
 
-- 연결의 활성 트랜잭션이 필요하며, 그 밖에서는 `CONFIG`로 실패한다. 이 호출 전의 감사 대상 write는 operation id가 없을 때처럼 `CONFIG`로 실패한다.
-- id는 트랜잭션 전체에 속한다. 중첩 트랜잭션은 그 id를 쓰며, 바깥 트랜잭션에 id가 없으면 정할 수 있다. 옵션이나 이전 호출로 트랜잭션이 이미 가진 id를 다시 정하면 아무것도 바뀌지 않고, 다른 id는 `CONFIG`로 실패한다.
-- savepoint가 rollback된 중첩 트랜잭션은 시작할 때의 id로 되돌린다. 그 아래에서 쓴 행도 함께 되돌아가기 때문이다.
-- id의 type은 트랜잭션 옵션처럼 operation 컬럼의 type이다.
+- 트랜잭션은 callback 전에, 재시도하는 트랜잭션이면 시도마다, 기본값에 트랜잭션의 값을 더한 행 하나를 audit 기록 테이블에 삽입한다. 같은 컬럼이면 트랜잭션의 값이 기본값을 이긴다. 트랜잭션 안의 감사 대상 테이블의 모든 insert, update, soft delete, restore는 그 행의 primary key를 테이블의 audit 컬럼에 쓰고, 데이터베이스 trigger가 각 버전을 history 테이블에 복사한다. callback이 실패하면 audit 행도 변경과 함께 되돌아간다.
+- handle에 기본값이 없거나 audit 기록 테이블에 없는 컬럼의 값이 있으면 트랜잭션은 시작하기 전에 `CONFIG`로 실패한다. audit 값을 가진 트랜잭션 밖에서 감사 대상 테이블을 쓰면 `CONFIG`로 실패하고, audit 기록 테이블이 기본값의 테이블과 다른 테이블을 쓸 때도 그렇다. 중첩 트랜잭션은 바깥 트랜잭션의 audit을 쓰며 `audit`을 받지 않는다. audit 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
 
 ### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
 
@@ -404,7 +349,7 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 
 - key는 모든 primary key 컬럼에 값을 지정했으면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 지정한 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. 나머지 지정 값은 새 값이며 `update`처럼 할당한다. key의 값이 없으면 `CONFIG`로 실패하고, primary key나 soft delete 컬럼의 할당, `soft_delete`가 없는 테이블은 `IR_INVALID`로 실패한다.
 - 지워지지 않은 행은 바뀌지 않은 채 반환되며 새 값을 포함해 아무것도 쓰지 않는다. 어떤 행도 갖지 않은 key는 `NO_ROWS`로 실패한다.
-- `audit` setting이 있는 테이블에서 restore는 다른 update와 같다. operation id를 가진 트랜잭션 안에서 실행하고, 그 id를 operation 컬럼에 쓰며, trigger가 그 버전을 history 테이블에 기록한다. operation id가 없으면 `CONFIG`로 실패한다.
+- `audit` setting이 있는 테이블에서 restore는 다른 update와 같다. audit 값을 가진 트랜잭션 안에서 실행하고, audit 기록의 key를 audit 컬럼에 쓰며, trigger가 그 버전을 history 테이블에 기록한다. audit이 없으면 `CONFIG`로 실패한다.
 - restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
 
 ---

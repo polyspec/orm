@@ -3,11 +3,11 @@ declare(strict_types=1);
 // Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
-// column rule, the audit operation id set by a transaction option or inside
-// the transaction, and the restore of soft-deleted rows. The
-// models of contracts/fixtures/audit.dbs, contracts/fixtures/restore.dbs and a
-// values document are generated into a
-// temporary directory, so the test runs in its own process.
+// column rule, the audit record of a transaction, and the restore of
+// soft-deleted rows. The models of contracts/fixtures/audit.dbs with a values
+// document and of contracts/fixtures/restore.dbs are generated into a temporary
+// directory as two document sets, because both fixtures declare the table audit,
+// so the test runs in its own process.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
@@ -18,7 +18,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 require_once __DIR__ . '/restore_case.php';
-require_once __DIR__ . '/set_operation_case.php';
+require_once __DIR__ . '/audit_case.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -27,8 +27,8 @@ use Orm\Generator;
 use Orm\Orm;
 use Orm\OrmException;
 use Orm\RuntimeModel;
+use RuntimeDb\Orm\Audit;
 use RuntimeDb\Orm\Item;
-use RuntimeDb\Orm\ItemHistory;
 use RuntimeDb\Orm\Sample;
 
 $root = dirname(__DIR__, 3);
@@ -40,14 +40,21 @@ register_shutdown_function(static function () use ($work): void {
 
 $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
     . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
-$documents = [(string) file_get_contents("$root/contracts/fixtures/audit.dbs"), (string) file_get_contents("$root/contracts/fixtures/restore.dbs"), $values];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $documents[0], 'restore.dbs' => $documents[1], 'values.dbs' => $values])), "$work/gen", 'RuntimeDb\\Orm');
-spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'RuntimeDb\\Orm\\')) {
-        require "$work/gen/" . substr($class, strlen('RuntimeDb\\Orm\\')) . '.php';
-    }
-});
-require "$work/gen/bootstrap.php";
+// audit.dbs와 restore.dbs는 둘 다 audit table을 선언하므로 따로 생성하고 case마다 하나만 설치한다.
+$sets = [
+    'RuntimeDb\\Orm' => ['audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"), 'values.dbs' => $values],
+    'RuntimeRestore\\Orm' => ['restore.dbs' => (string) file_get_contents("$root/contracts/fixtures/restore.dbs")],
+];
+foreach ($sets as $namespace => $texts) {
+    $dir = "$work/" . str_replace('\\', '_', $namespace);
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse($texts)), $dir, $namespace);
+    spl_autoload_register(static function (string $class) use ($dir, $namespace): void {
+        if (str_starts_with($class, "$namespace\\")) {
+            require "$dir/" . substr($class, strlen("$namespace\\")) . '.php';
+        }
+    });
+    require "$dir/bootstrap.php";
+}
 
 function want(bool $ok, string $message): void
 {
@@ -66,18 +73,17 @@ function errorCode(Closure $fn): string
     return 'no error';
 }
 
-function database(string $driver, string $dsn): Db
+/** dsn에 연결하고 $namespace의 document set을 설치한다. */
+function database(string $dsn, string $namespace): Db
 {
-    global $documents;
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
+    $db->utils()->schema()->install(("$namespace\\schema")());
     return $db;
 }
 
 $cases = [];
 
 $cases['install renders the document set'] = function (Db $db): void {
-    global $documents;
     $count = static fn(string $table): int => (int) $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
     want($count('item') === 0 && $count('item_history') === 0 && $count('sample') === 0, 'installed tables');
     $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
@@ -102,44 +108,27 @@ $cases['i16 values and defaults'] = function (Db $db): void {
     want((new Sample)($db)->getCount() === 2, 'the rejected insert stays out of the database');
 };
 
-$cases['audit operation id'] = function (Db $db): void {
-    want(errorCode(fn() => (new Item)($db)->setTitle('a')->create()) === Code::CONFIG, 'an audited insert without an operation id');
-    want(errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->create(), retry: 0)) === Code::CONFIG, 'a transaction without an operation id');
-    want(errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->create(), operation: 'x', retry: 0)) === Code::CONFIG, 'an operation id of another type');
-    want(errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->setOperationId(9)->create(), operation: 41, retry: 0)) === Code::IR_INVALID, 'an assigned operation column');
-    $item = $db->transaction(fn() => (new Item)->setTitle('first')->create(), operation: 41, retry: 0);
-    $db->transaction(fn() => (new Item)->getBySeq($item->getSeq())->setTitle('second')->update(), operation: 42, retry: 0);
-    $db->transaction(function () use ($item): void {
-        (new Item)->getBySeq($item->getSeq())->delete();
-    }, operation: 43, retry: 0);
+// audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
+$cases['audit record of a transaction'] = function (Db $db): void {
+    auditCase($db, 'RuntimeDb\\Orm');
+    $adb = $db->audit((new Audit)->setActor('assign'));
+    $assigned = errorCode(fn() => $adb->transaction(fn() => (new Item)->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0));
+    want($assigned === Code::IR_INVALID, "an assigned audit column = $assigned, want IR_INVALID");
     want((new Item)($db)->getCount() === 0, 'soft delete hides the row');
-    $history = [];
-    foreach ((new ItemHistory)($db)->orderByHistoryIdAsc()->gets() as $h) {
-        $history[] = [$h->getChange(), $h->getPreviousOperationId(), $h->getOperationId(), $h->getTitle(), $h->getDeletedAt() !== null];
-    }
-    $expected = [['insert', null, 41, 'first', false], ['update', 41, 42, 'second', false], ['update', 42, 43, 'second', true]];
-    want($history === $expected, 'history ' . json_encode($history));
-    $count = (int) $db->pdo()->query('SELECT COUNT(*) FROM item')->fetchColumn();
-    want($count === 1, "stored rows $count");
-};
-
-// utils()->setOperation은 실행 중인 transaction의 operation id를 정한다(set_operation_case.php).
-$cases['operation id set in a transaction'] = function (Db $db): void {
-    setOperationCase($db, 'RuntimeDb\\Orm');
 };
 
 // restore는 soft delete한 행을 primary key나 unique key로 되돌린다(restore_case.php).
 $cases['restore of soft-deleted rows'] = function (Db $db): void {
-    restoreCase($db, 'RuntimeDb\\Orm');
+    restoreCase($db, 'RuntimeRestore\\Orm');
 };
 
 $failures = 0;
 // 각 case는 자기 case database에 문서 집합을 설치하고 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
 foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
     foreach ($cases as $name => $case) {
-        $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function (callable $step) use ($driver, $case): void {
-            with_case_database($driver, $step, static function (string $dsn) use ($driver, $case): void {
-                $db = database($driver, $dsn);
+        $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function (callable $step) use ($driver, $name, $case): void {
+            with_case_database($driver, $step, static function (string $dsn) use ($name, $case): void {
+                $db = database($dsn, $name === 'restore of soft-deleted rows' ? 'RuntimeRestore\\Orm' : 'RuntimeDb\\Orm');
                 try {
                     $case($db);
                 } finally {

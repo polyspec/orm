@@ -37,7 +37,7 @@ func addTablesAndColumnsSchema(t *testing.T, name string) *orm.Schema {
 }
 
 // addTablesAndColumnsInstalled는 case database에 addcol_log와 version 1을 설치하고, log row
-// 하나, operation 1로 item 하나, 그 item의 tag와 그 tag의 자식 tag를 쓴 연결을
+// 하나, audit 기록 1로 item 하나, 그 item의 tag와 그 tag의 자식 tag를 쓴 연결을
 // 돌려준다. 연결의 pool은 연결 하나라 AddTablesAndColumns가 쓴 연결을 다음 요청이 다시 쓴다.
 func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string) {
 	t.Helper()
@@ -68,13 +68,13 @@ func addTablesAndColumnsInstalled(t *testing.T, driver string) (*orm.DB, string)
 		return row.(*keywordRow).vals["id"].(int64)
 	}
 	create(rowEntity("addcol_log_entry", logSet, "id", "message"), map[string]any{"message": "kept"})
-	err = db.Transaction(func() error {
-		item := create(rowEntity("addcol_item", v1, "id", "ref", "label", "operation_id"), map[string]any{"ref": "item-1", "label": "first"})
+	err = db.Audit(auditOf(v1, "setup")).Transaction(func() error {
+		item := create(rowEntity("addcol_item", v1, "id", "ref", "label", "audit_seq"), map[string]any{"ref": "item-1", "label": "first"})
 		tags := rowEntity("addcol_tag", v1, "id", "item_id", "parent_id", "name")
 		parent := create(tags, map[string]any{"item_id": item, "name": "red"})
 		create(tags, map[string]any{"item_id": item, "parent_id": parent, "name": "child"})
 		return nil
-	}, orm.Operation(int64(1)), orm.Retry(0))
+	}, orm.Audit(nil), orm.Retry(0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,38 +156,38 @@ func addTablesAndColumnsCase(t *testing.T, driver string) {
 		t.Fatal(err)
 	}
 	defer next.Close()
-	err = next.Transaction(func() error {
-		c := orm.NewCore(rowEntity("addcol_item", v2, "id", "note", "priority", "operation_id"))
+	err = next.Audit(auditOf(v2, "update")).Transaction(func() error {
+		c := orm.NewCore(rowEntity("addcol_item", v2, "id", "note", "priority", "audit_seq"))
 		c.Connect(next)
 		c.Set("id", int64(1))
 		c.Set("note", "later")
 		c.Set("priority", int32(4))
 		return c.Update(nil)
-	}, orm.Operation(int64(2)), orm.Retry(0))
+	}, orm.Audit(nil), orm.Retry(0))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := count("SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'"); n != 1 {
+	if n := count("SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"); n != 1 {
 		t.Fatalf("history rows of the update with the new columns = %d", n)
 	}
 	// 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
-	err = next.Transaction(func() error {
-		c := orm.NewCore(rowEntity("addcol_extra", v2, "id", "item_id", "label", "operation_id"))
+	err = next.Audit(auditOf(v2, "extra")).Transaction(func() error {
+		c := orm.NewCore(rowEntity("addcol_extra", v2, "id", "item_id", "label", "audit_seq"))
 		c.Connect(next)
 		c.Set("item_id", int64(1))
 		c.Set("label", "extra")
 		_, err := c.Create()
 		return err
-	}, orm.Operation(int64(3)), orm.Retry(0))
+	}, orm.Audit(nil), orm.Retry(0))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := count("SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'"); n != 1 {
+	if n := count("SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'"); n != 1 {
 		t.Fatalf("history rows of the insert into the created table = %d", n)
 	}
 	for statement, want := range map[string]string{
-		"INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)": "foreign key",
-		"INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)":         "check",
+		"INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)": "foreign key",
+		"INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)":         "check",
 		"DELETE FROM addcol_extra": "audit delete",
 	} {
 		if err := addTablesAndColumnsExec(t, driver, dsn, statement); err == nil {

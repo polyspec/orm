@@ -147,7 +147,7 @@ func compareTables(s, t *Table, add func(kind, name string)) {
 			return nil
 		}
 		a := x.Settings.Audit
-		def := []string{a.History + " " + a.Operation + " " + a.Action + " " + a.Previous}
+		def := []string{a.History + " " + a.Column + " " + a.References + " " + a.Action + " " + a.Previous}
 		for _, c := range t.Columns {
 			if columnOf(s, c.Name) != nil && !a.Records(c.Name) {
 				def = append(def, c.Name)

@@ -354,10 +354,10 @@ impl Renderer {
             out.extend(self.reject(t, "immutable_delete", "BEFORE DELETE", &message));
         }
         for line in &settings.lines {
-            if let Setting::Audit { into, operation, action, previous, .. } = &line.setting {
+            if let Setting::Audit { into, column, action, previous, .. } = &line.setting {
                 let audit = Audit { history: &into.text, action: &action.text, previous: &previous.text, setting: &line.setting };
                 out.extend(self.history(t, &audit, "audit_insert", "AFTER INSERT", "'insert'", "NULL"));
-                let old = format!("OLD.{}", self.q(&operation.text));
+                let old = format!("OLD.{}", self.q(&column.text));
                 out.extend(self.history(t, &audit, "audit_update", "AFTER UPDATE", "'update'", &old));
                 let message = format!("table {} deletes through its soft delete column", t.name.text);
                 out.extend(self.reject(t, "audit_delete", "BEFORE DELETE", &message));

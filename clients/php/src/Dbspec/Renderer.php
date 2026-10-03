@@ -589,9 +589,9 @@ final class Renderer
             array_push($out, ...$this->reject($t, 'immutable_delete', 'BEFORE DELETE', $message));
         }
         if ($audit !== null) {
-            $operation = $audit->arguments[1];
+            $column = $audit->arguments[1];
             array_push($out, ...$this->history($t, $audit, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
-            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'", 'OLD.' . $this->q($operation)));
+            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'", 'OLD.' . $this->q($column)));
             array_push($out, ...$this->reject($t, 'audit_delete', 'BEFORE DELETE', "table {$t->name} deletes through its soft delete column"));
         }
         return $out;
@@ -630,7 +630,7 @@ final class Renderer
     /** @return list<string> */
     private function history(Table $t, Setting $audit, string $event, string $timing, string $actionValue, string $previousValue): array
     {
-        [$history, , $action, $previous] = $audit->arguments;
+        [$history, , , $action, $previous] = $audit->arguments;
         $columns = [$this->q($action), $this->q($previous)];
         $values = [$actionValue, $previousValue];
         foreach ($t->columns as $column) {

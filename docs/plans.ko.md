@@ -73,7 +73,7 @@ plan의 diff는 source(앞 plan의 target이나 빈 schema)와 target을 비교�
 | `change_primary_key` | primary key의 column이나 column 순서가 다르다 |
 | `drop_unique`, `add_unique`, `drop_index`, `add_index`, `drop_foreign_key`, `add_foreign_key`, `drop_check`, `add_check` | source에만 또는 target에만 있는 객체. 정의가 다르면 둘 다 |
 | `drop_immutable`, `add_immutable` | source에만 또는 target에만 있는 `immutable` setting |
-| `drop_audit`, `add_audit` | source에만 또는 target에만 있는 `audit` setting. 이력 table, operation, action, previous column이 다르거나 두 table에 다 있는 column 가운데 기록하는 column이 다르면 둘 다(한쪽에만 있는 column은 `add_column`이나 `drop_column`) |
+| `drop_audit`, `add_audit` | source에만 또는 target에만 있는 `audit` setting. 이력 table, audit column, audit 기록 table, action, previous column이 다르거나 두 table에 다 있는 column 가운데 기록하는 column이 다르면 둘 다(한쪽에만 있는 column은 `add_column`이나 `drop_column`) |
 
 plan diff에도 있는 kind는 뜻이 같고, 넓히기는 "Diff"의 것이다. `change_column_type`, `change_column_identity`, `reorder_columns`, `change_primary_key`는 plan이 거부하는 변경이다. column 하나가 여러 kind를 가질 수 있다. 예를 들어 `null`과 type이 함께 바뀌면 `alter_column`과 `change_column_type`이다. 정의는 쓰인 그대로 비교하므로 정의가 그대로인 객체를 지우고 다시 더하지 않으며, setting은 렌더링한 trigger 대신 setting 자체를 비교한다. 만들거나 지우는 table은 그 밖의 차이를 나열하지 않는다. 차이는 table 이름 순으로, table 안에서는 위 표의 순서(행 순, 행 안에서 왼쪽부터)로, kind 안에서는 이름 순으로 온다. 비교는 두 schema text가, 따라서 `schemaHash`가 같을 때에만 비어 있다.
 

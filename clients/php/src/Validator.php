@@ -237,7 +237,7 @@ final class Validator
         $column = $a['column'] ?? '';
         $c = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
         if ($column === $ent['audit']) {
-            throw self::err(Code::IR_INVALID, "{$ent['entity']}.$column is the audit operation column, which the executor writes");
+            throw self::err(Code::IR_INVALID, "{$ent['entity']}.$column is written by the executor from the audit of the transaction");
         }
         $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) (($a['expr'] ?? '') !== '') + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
         if ($n !== 1) {

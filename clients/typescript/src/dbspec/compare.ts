@@ -151,5 +151,5 @@ function settingOf(x: DbspecTable, kind: 'immutable' | 'audit', s: DbspecTable, 
   if (setting === undefined) return null;
   if (setting.kind !== 'audit') return setting.kind;
   const excluded = t.columns.filter(c => columnOf(s, c.name) !== undefined && !auditRecords(setting, c.name)).map(c => c.name);
-  return [`${setting.into} ${setting.operation} ${setting.action} ${setting.previous}`, ...excluded].join(' ');
+  return [`${setting.into} ${setting.column} ${setting.references} ${setting.action} ${setting.previous}`, ...excluded].join(' ');
 }

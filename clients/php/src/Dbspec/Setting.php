@@ -6,9 +6,10 @@ namespace Orm\Dbspec;
 /**
  * One setting line. The kind is one of KINDS, in canonical order; the
  * arguments are the names the line lists: `audit` holds the history table,
- * operation, action and previous columns in that order.
+ * the audit column, the audit record table, and the action and previous
+ * columns in that order.
  *
- * audit의 exclude와 include는 기록하지 않는 column과 operation column 말고 기록하는
+ * audit의 exclude와 include는 기록하지 않는 column과 audit column 말고 기록하는
  * column의 목록이며, 목록이 없으면 null이다. parse한 setting은 둘 중 하나만 가진다
  * (docs/dbspec.md "Audit").
  */
@@ -33,7 +34,7 @@ final class Setting
     }
 
     /**
-     * audit trigger가 column을 복사하는지 알린다. operation column은 언제나, exclude 목록의
+     * audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의
      * column은 언제나 아니며, include 목록이 있으면 그 column만 복사한다.
      */
     public function records(string $column): bool
@@ -74,8 +75,8 @@ final class Setting
      */
     public function auditLine(string $list, ?array $columns): string
     {
-        [$history, $operation, $action, $previous] = $this->arguments;
-        $line = "audit into $history operation $operation action $action previous $previous";
+        [$history, $column, $references, $action, $previous] = $this->arguments;
+        $line = "audit into $history column $column references $references action $action previous $previous";
         return $columns === null || $columns === [] ? $line : $line . " $list (" . implode(', ', $columns) . ')';
     }
 }

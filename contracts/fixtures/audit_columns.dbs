@@ -4,22 +4,24 @@ table card {
   seq i64 identity
   title varchar(191)
   secret text null
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (seq)
+  index ix_card_audit (audit_seq)
+  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)
+    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)
   }
 }
 
 table card_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   seq i64
   title varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (history_id)
   index ix_card_history_row (seq)
@@ -29,18 +31,26 @@ table tag {
   id i64 identity
   label varchar(64)
   color varchar(16) null
-  operation_id i64
+  audit_seq i64
   primary key (id)
+  index ix_tag_audit (audit_seq)
+  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
-    audit into tag_history operation operation_id action change previous previous_operation_id include (label)
+    audit into tag_history column audit_seq references audit action change previous previous_audit_seq include (label)
   }
 }
 
 table tag_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   label varchar(64)
-  operation_id i64
+  audit_seq i64
   primary key (history_id)
+}
+
+table audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
 }

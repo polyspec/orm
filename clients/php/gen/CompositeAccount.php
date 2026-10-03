@@ -20,6 +20,7 @@ final class CompositeAccount extends Model
             'soft_delete' => '',
             'aes_version' => '',
             'audit' => '',
+            'audit_record' => '',
             'columns' => [
                 'tenant_id' => ['name' => 'tenant_id', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
                 'account_id' => ['name' => 'account_id', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],

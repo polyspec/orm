@@ -106,17 +106,17 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 원시 정렬 표현식은 방향을 직접 포함한다. `minus_p`는 음수 값을 저장하지 않는다.
 
-default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 operation 컬럼이다. AES 키 버전이나 operation 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
+default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
 
 ### 1.5 Restore
 
 `restore` 요청은 `soft_delete` setting이 있는 테이블([dbspec](dbspec.ko.md#settings))에서 soft delete한 행 하나를 지정한다. `where`에는 매개변수를 가진 `eq` predicate만 `and`로 이어지며, 이 predicate들은 primary key나 unique key 하나의 모든 컬럼을 순서와 상관없이 한 번씩 지정한다. `set`은 restore와 함께 쓰는 새 값이며 `update` 할당과 같은 규칙을 따른다. primary key, identity, soft delete 컬럼의 할당은 `IR_INVALID`로 실패한다. `optimistic`은 없다. plan은 `main` step 하나다:
 
 ```sql
-UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`team_id` = ? AND `link`.`member_id` = ? AND `link`.`deleted_at` IS NOT NULL
+UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`team_id` = ? AND `link`.`member_id` = ? AND `link`.`deleted_at` IS NOT NULL
 ```
 
-이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 operation 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청, 다른 형태의 predicate, key 밖의 컬럼, key의 일부만 지정한 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 이 step을 실행한 뒤 같은 key로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
+이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청, 다른 형태의 predicate, key 밖의 컬럼, key의 일부만 지정한 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 이 step을 실행한 뒤 같은 key로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
 
 ## 2. Plan
 
@@ -135,7 +135,7 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `operation_id` = ? WHERE `lin
 }
 ```
 
-- `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `operation`(unit of work의 operation id. operation 컬럼의 `col_type` `i64` 또는 `uuid`가 있다) 중 하나다. `operation` 슬롯이 있는 쓰기를 operation id 없이 실행하거나 id가 `col_type`에 맞지 않으면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
+- `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `audit`(트랜잭션 audit 기록의 primary key. `name`은 audit 기록 테이블의 entity다) 중 하나다. `audit` 슬롯이 있는 쓰기를 audit 값을 가진 트랜잭션 밖에서 실행하거나 audit 기록이 `name`과 다른 entity의 행이면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
 - **Clock.** 이것이 유일한 clock 규칙이며 [dialects](dialects.ko.md)와 [plans](plans.ko.md)는 이 규칙을 따른다. 모든 연결은 `datetime(p)`를 UTC로 읽고 쓴다. `now` slot은 마이크로초 해상도의 UTC 클라이언트 wall clock을 소수 여섯 자리로 자른 `datetime` 텍스트이며, statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같다. ORM이 쓰거나 비교하는 clock은 마이크로초를 유지한다. update 시각과 soft delete는 column이 선언한 소수 자릿수로 clock을 대입한다: MySQL은 `p > 0`이면 `CURRENT_TIMESTAMP(p)`, PostgreSQL은 `CURRENT_TIMESTAMP`, SQLite는 `now` slot이다. MySQL `now` value function과 그 상대 형식은 `NOW(6)`, PostgreSQL은 `now()`를 쓴다. SQLite에는 마이크로초 clock이 없으므로 SQLite dialect는 update 시각, soft delete, `now` 함수에 `now` slot을 bind하고, 상대 형식을 `now` slot에 간격을 적용한 `datetime` 뒤에 두 번째 `now` slot의 소수 여섯 자리를 붙인 형태로 render하며, insert가 빼먹은 `default now` 컬럼마다 `now` slot을 bind한다. MySQL과 PostgreSQL의 insert는 그런 컬럼을 database default에 맡긴다. plan history는 tool clock을 소수 여섯 자리로 유지한다([plans](plans.ko.md#apply)).
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.
 - `assemble.key`는 컬렉션 식별자다. 기본 키의 모든 구성 요소이거나 `group_count` 행의 그룹 컬럼이다.

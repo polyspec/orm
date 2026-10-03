@@ -129,9 +129,10 @@ impl Builder {
         self.slot(BindSlot { from: "now".into(), precision: precision.into(), ..Default::default() })
     }
 
-    /// executor가 주는 현재 unit of work의 operation id를 operation column `col`에 쓴다.
-    fn operation(&mut self, col: &Field) -> String {
-        let ph = self.slot(BindSlot { from: "operation".into(), column: col.name.clone(), col_type: col.ty.name().into(), ..Default::default() });
+    /// executor가 채우는 transaction의 audit 기록 key다. name은 audit 기록 entity이며, executor는
+    /// transaction의 audit이 그 entity의 행인지 확인한다.
+    fn audit(&mut self, col: &Field, record: &str) -> String {
+        let ph = self.slot(BindSlot { from: "audit".into(), name: record.to_owned(), ..Default::default() });
         self.d.write_expr(ph, col.ty, &[])
     }
 
@@ -176,9 +177,14 @@ fn aes_version_column(ent: &Entity) -> &str {
     ent.aes_version.as_deref().unwrap_or("")
 }
 
-/// executor가 operation id를 쓰는 audit operation column.
-fn operation_column(ent: &Entity) -> &str {
-    ent.audit.as_ref().map(|a| a.operation.as_str()).unwrap_or("")
+/// executor가 transaction의 audit 기록 key를 쓰는 audit column.
+fn audit_column(ent: &Entity) -> &str {
+    ent.audit.as_ref().map(|a| a.column.as_str()).unwrap_or("")
+}
+
+/// audit column이 가리키는 audit 기록 entity.
+fn audit_record(ent: &Entity) -> &str {
+    ent.audit.as_ref().map(|a| a.record.as_str()).unwrap_or("")
 }
 
 fn assigned(set: &[ir::Assign], col: &str) -> bool {
@@ -189,11 +195,11 @@ fn assigns_aes(ent: &Entity, set: &[ir::Assign]) -> bool {
     set.iter().any(|a| ent.field(&a.column).map(Field::aes).unwrap_or(false))
 }
 
-/// executor만 쓰는 audit operation column을 request가 직접 쓰면 거부한다.
-fn validate_operation_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
-    let operation = operation_column(ent);
-    if !operation.is_empty() && assigned(set, operation) {
-        return Err(err(codes::IR_INVALID, format!("{}.{operation} is written by the executor from the operation id", ent.name)));
+/// executor만 쓰는 audit column을 request가 직접 쓰면 거부한다.
+fn validate_audit_assignment(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
+    let audited = audit_column(ent);
+    if !audited.is_empty() && assigned(set, audited) {
+        return Err(err(codes::IR_INVALID, format!("{}.{audited} is written by the executor from the audit of the transaction", ent.name)));
     }
     Ok(())
 }
@@ -237,13 +243,13 @@ fn validate_aes_assignments(ent: &Entity, set: &[ir::Assign], require_complete: 
 }
 
 /// insert는 필요한 column을 모두 쓴다: default가 없는 NOT NULL column 중 identity,
-/// planner가 쓰는 AES key version, executor가 쓰는 audit operation column이 아닌 것.
+/// planner가 쓰는 AES key version, executor가 쓰는 audit column이 아닌 것.
 /// default가 있는 column을 빼면 database default를 쓴다.
 fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()> {
     let version = aes_version_column(ent);
-    let operation = operation_column(ent);
+    let audited = audit_column(ent);
     for col in &ent.fields {
-        if col.nullable || col.default.is_some() || col.identity || col.name == version || col.name == operation || assigned(set, &col.name) {
+        if col.nullable || col.default.is_some() || col.identity || col.name == version || col.name == audited || assigned(set, &col.name) {
             continue;
         }
         return Err(err(codes::IR_INVALID, format!("required column {}.{} is not set", ent.name, col.name)));
@@ -1063,10 +1069,10 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, false)?;
-        validate_operation_assignment(ent, &set)?;
+        validate_audit_assignment(ent, &set)?;
         validate_required_assignments(ent, &set)?;
         let version = aes_version_column(ent);
-        let operation = operation_column(ent);
+        let audited = audit_column(ent);
         let mut cols = Vec::new();
         let mut vals = Vec::new();
         for a in &set {
@@ -1077,7 +1083,7 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(&a.column));
             vals.push(self.render_assign(&mut b, ent, col, a)?);
         }
-        // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation,
+        // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column,
         // `default now` 순서로 쓴다.
         let managed = self.managed_insert_columns(ent, &set)?;
         for c in &managed {
@@ -1112,7 +1118,7 @@ impl<'m> Planner<'m> {
         if !r.on_duplicate.is_empty() {
             let duplicate = add_blind_index_assignments(ent, r.on_duplicate.clone());
             validate_aes_assignments(ent, &duplicate, true)?;
-            validate_operation_assignment(ent, &duplicate)?;
+            validate_audit_assignment(ent, &duplicate)?;
             let mut sets = Vec::new();
             for a in &duplicate {
                 let v = self.render_assign(&mut b, ent, self.column_of(ent, &a.column)?, a)?;
@@ -1121,8 +1127,8 @@ impl<'m> Planner<'m> {
             if !version.is_empty() && assigns_aes(ent, &duplicate) && !assigned(&duplicate, version) {
                 sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
             }
-            if !operation.is_empty() {
-                sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+            if !audited.is_empty() {
+                sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
             }
             if let Some(identity) = ent.identity.as_deref().filter(|_| !self.d.insert_returning_id()) {
                 // MySQL: last insert id가 이미 있는 row를 가리키게 한다
@@ -1137,7 +1143,7 @@ impl<'m> Planner<'m> {
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }
 
-    /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit operation column,
+    /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit column,
     /// sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
     fn managed_insert_columns<'e>(&self, ent: &'e Entity, set: &[ir::Assign]) -> Result<Vec<Managed<'e>>> {
         let mut out = Vec::new();
@@ -1145,9 +1151,9 @@ impl<'m> Planner<'m> {
         if !version.is_empty() && !assigned(set, version) {
             out.push(Managed::AesVersion(version));
         }
-        let operation = operation_column(ent);
-        if !operation.is_empty() {
-            out.push(Managed::Operation(self.column_of(ent, operation)?));
+        let audited = audit_column(ent);
+        if !audited.is_empty() {
+            out.push(Managed::Audit(self.column_of(ent, audited)?, audit_record(ent)));
         }
         // SQLite database clock은 millisecond까지만 가지므로 `default now` column에 executor의
         // microsecond clock을 쓴다. MySQL과 PostgreSQL은 database default에 맡긴다.
@@ -1177,7 +1183,7 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, true)?;
-        validate_operation_assignment(ent, &set)?;
+        validate_audit_assignment(ent, &set)?;
         let root = self.table_scope(ent, &r.query)?;
         let mut sets = Vec::new();
         for a in &set {
@@ -1197,9 +1203,9 @@ impl<'m> Planner<'m> {
             let now = self.statement_time(&mut b, self.column_of(ent, updated)?);
             sets.push(format!("{} = {now}", self.d.quote(updated)));
         }
-        let operation = operation_column(ent);
-        if !operation.is_empty() {
-            sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+        let audited = audit_column(ent);
+        if !audited.is_empty() {
+            sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
         }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "update without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
@@ -1215,7 +1221,7 @@ impl<'m> Planner<'m> {
     }
 
     /// soft delete column이 있으면 delete는 그 column을 statement 시각으로 쓰는 update다.
-    /// audit 대상 table의 soft delete도 operation column을 쓴다.
+    /// audit 대상 table의 soft delete도 audit column을 쓴다.
     fn delete_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
@@ -1224,9 +1230,9 @@ impl<'m> Planner<'m> {
         if let Some(soft_delete) = &ent.soft_delete {
             let now = self.statement_time(&mut b, self.column_of(ent, soft_delete)?);
             sets.push(format!("{} = {now}", self.d.quote(soft_delete)));
-            let operation = operation_column(ent);
-            if !operation.is_empty() {
-                sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+            let audited = audit_column(ent);
+            if !audited.is_empty() {
+                sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
             }
         }
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "delete without where"))?;
@@ -1244,7 +1250,7 @@ impl<'m> Planner<'m> {
     /// soft delete한 행 하나를 되돌리는 update다. where는 primary key나 unique key 하나의 모든 column을 eq
     /// 값으로 한 번씩 이름한다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다.
     /// set은 되돌리는 행에 함께 쓰는 새 값이며 update처럼 쓴다. 그 뒤에 AES key version, soft delete column의
-    /// NULL, audit table이면 operation column을 쓴다. updated column은 쓰지 않는다.
+    /// NULL, audit table이면 audit column을 쓴다. updated column은 쓰지 않는다.
     fn restore_step(&self, r: &ir::Request) -> Result<Step> {
         let ent = self.entity(&r.query.entity)?;
         let Some(soft_delete) = &ent.soft_delete else {
@@ -1254,7 +1260,7 @@ impl<'m> Planner<'m> {
         restore_key(ent, w)?;
         let set = add_blind_index_assignments(ent, r.set.clone());
         validate_aes_assignments(ent, &set, true)?;
-        validate_operation_assignment(ent, &set)?;
+        validate_audit_assignment(ent, &set)?;
         let mut b = Builder::new(self.d);
         let root = self.table_scope(ent, &r.query)?;
         let mut sets = Vec::new();
@@ -1271,9 +1277,9 @@ impl<'m> Planner<'m> {
             sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
         }
         sets.push(format!("{} = NULL", self.d.quote(soft_delete)));
-        let operation = operation_column(ent);
-        if !operation.is_empty() {
-            sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+        let audited = audit_column(ent);
+        if !audited.is_empty() {
+            sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
         }
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         where_.push_str(&format!(" AND {} IS NOT NULL", self.qcol(&root, soft_delete)));
@@ -1316,7 +1322,8 @@ fn restore_key(ent: &Entity, w: &ir::Group) -> Result<()> {
 /// insert마다 executor가 값을 주는 column과 그 bind slot.
 enum Managed<'e> {
     AesVersion(&'e str),
-    Operation(&'e Field),
+    /// audit column과 그 audit 기록 entity.
+    Audit(&'e Field, &'e str),
     Now(&'e Field),
 }
 
@@ -1324,14 +1331,14 @@ impl Managed<'_> {
     fn column(&self) -> &str {
         match self {
             Managed::AesVersion(name) => name,
-            Managed::Operation(f) | Managed::Now(f) => &f.name,
+            Managed::Audit(f, _) | Managed::Now(f) => &f.name,
         }
     }
 
     fn value(&self, b: &mut Builder) -> String {
         match self {
             Managed::AesVersion(_) => b.config("aes_version"),
-            Managed::Operation(f) => b.operation(f),
+            Managed::Audit(f, record) => b.audit(f, record),
             Managed::Now(f) => b.now(clock_precision(f)),
         }
     }

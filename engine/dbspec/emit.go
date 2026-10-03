@@ -99,7 +99,7 @@ func (s *settingsNode) model() *Settings {
 		case "immutable":
 			out.Immutable = &ImmutableSetting{Comments: line.comments}
 		case "audit":
-			out.Audit = &AuditSetting{Comments: line.comments, History: args[0], Operation: args[1], Action: args[2], Previous: args[3]}
+			out.Audit = &AuditSetting{Comments: line.comments, History: args[0], Column: args[1], References: args[2], Action: args[3], Previous: args[4]}
 			for _, list := range line.lists {
 				if list.keyword.text == "exclude" {
 					out.Audit.Exclude = tokenTexts(list.columns)

@@ -931,7 +931,8 @@ func (p *parser) settingsLine(c *cursor) {
 	case "immutable":
 	case "audit":
 		ok = c.keyword("into") && arg("the history table") &&
-			c.keyword("operation") && arg("the operation column") &&
+			c.keyword("column") && arg("the audit column") &&
+			c.keyword("references") && arg("the audit record table") &&
 			c.keyword("action") && arg("the action column") &&
 			c.keyword("previous") && arg("the previous column")
 		for ok && (c.peekIs(tokenWord, "exclude") || c.peekIs(tokenWord, "include")) {

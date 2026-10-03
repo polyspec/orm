@@ -184,19 +184,21 @@ func (v *validator) onlyIndexColumn(t *tableNode, column string) bool {
 	return false
 }
 
-// audit checks `audit into <history> operation <c> action <c> previous <c>
-// [exclude (<c>, ...) | include (<c>, ...)]` and the shape of the history
-// table, which holds exactly the recorded columns (docs/dbspec.md "Audit").
+// audit checks `audit into <history> column <c> references <table> action <c>
+// previous <c> [exclude (<c>, ...) | include (<c>, ...)]`, the audit record
+// table and its foreign key, and the shape of the history table, which holds
+// exactly the recorded columns (docs/dbspec.md "Audit").
 func (v *validator) audit(t *tableNode, s *settingNode) {
-	historyRef, operationRef, actionRef, previousRef := s.args[0], s.args[1], s.args[2], s.args[3]
+	historyRef, columnRef, referencesRef, actionRef, previousRef := s.args[0], s.args[1], s.args[2], s.args[3], s.args[4]
 	if v.propagatedChild(t) {
 		v.add(RuleSetting, s.keyword, "audit is rejected on a child of a cascade or set_null foreign key")
 	}
-	operation := v.columnRef(t, operationRef, RuleSetting)
-	if operation != nil && (operation.null != nil || (operation.typ.valid && operation.typ.typ.Kind != TypeI64 && operation.typ.typ.Kind != TypeUUID)) {
-		v.add(RuleSetting, operationRef, "the operation column is a non-null i64 or uuid column")
+	column := v.columnRef(t, columnRef, RuleSetting)
+	if column != nil && column.null != nil {
+		v.add(RuleSetting, columnRef, "the audit column is a non-null column")
 	}
-	recorded := v.auditLists(t, s, operationRef)
+	recorded := v.auditLists(t, s, columnRef)
+	v.auditRecord(t, column, columnRef, referencesRef, historyRef)
 	if !v.ref(historyRef) {
 		return
 	}
@@ -255,8 +257,8 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 			v.add(RuleSetting, previousRef, "the previous column is a separate column of the history table")
 		case previous.null == nil:
 			v.add(RuleSetting, previousRef, "the previous column is nullable")
-		case operation != nil && previous.typ.valid && operation.typ.valid && previous.typ.typ != operation.typ.typ:
-			v.add(RuleSetting, previousRef, "the previous column has the operation column type %s, not %s", operation.typ.typ, previous.typ.typ)
+		case column != nil && previous.typ.valid && column.typ.valid && previous.typ.typ != column.typ.typ:
+			v.add(RuleSetting, previousRef, "the previous column has the audit column type %s, not %s", column.typ.typ, previous.typ.typ)
 		}
 		reserved[previousRef.text] = true
 	}
@@ -291,12 +293,68 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 	}
 }
 
+// auditRecord는 audit 기록 table을 검사한다. 그 table은 이 문서나 사용한
+// 문서의 다른 table이며 history table이 아니고, 자신은 audit 대상이 아니며,
+// column 하나의 primary key를 가지고 그 type이 audit column의 type이다. audit
+// column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한
+// column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가 거부한다.
+func (v *validator) auditRecord(t *tableNode, column *columnNode, columnRef, referencesRef, historyRef token) {
+	if !v.ref(referencesRef) {
+		return
+	}
+	record := v.table(referencesRef.text)
+	switch {
+	case record == nil:
+		v.add(RuleSetting, referencesRef, "audit record table %q is not a table of this document or a used table", referencesRef.text)
+		return
+	case record.failed:
+		return
+	case record == t:
+		v.add(RuleSetting, referencesRef, "a table cannot record its audits in itself")
+		return
+	case referencesRef.text == historyRef.text:
+		v.add(RuleSetting, referencesRef, "the audit record table is another table than the history table")
+		return
+	}
+	if record.settings != nil {
+		for _, line := range record.settings.lines {
+			if line.keyword.text == "audit" {
+				v.add(RuleSetting, referencesRef, "audit record table %q is audited itself", referencesRef.text)
+			}
+		}
+	}
+	if len(record.primaryKeys) != 1 || len(record.primaryKeys[0].columns) != 1 {
+		if !record.failedPK {
+			v.add(RuleSetting, referencesRef, "audit record table %q needs a primary key of one column", referencesRef.text)
+		}
+		return
+	}
+	key := record.primaryKeys[0].columns[0].text
+	pk := record.column(key)
+	if column == nil || pk == nil {
+		return
+	}
+	if pk.typ.valid && column.typ.valid && pk.typ.typ != column.typ.typ {
+		v.add(RuleSetting, columnRef, "the audit column has type %s, not the type %s of the primary key of %q", column.typ.typ, pk.typ.typ, referencesRef.text)
+		return
+	}
+	for _, fk := range t.foreignKeys {
+		if len(fk.columns) == 1 && fk.columns[0].text == columnRef.text && fk.target.text == referencesRef.text &&
+			len(fk.references) == 1 && fk.references[0].text == key && actionOf(fk.onDelete) == ActionRestrict && actionOf(fk.onUpdate) == ActionRestrict {
+			return
+		}
+	}
+	if !t.failedKey && !t.failedPK {
+		v.add(RuleSetting, columnRef, "the audit column needs the foreign key (%s) references %s (%s) on delete restrict on update restrict", columnRef.text, referencesRef.text, key)
+	}
+}
+
 // auditLists는 audit의 exclude나 include 목록을 검사하고, column이 기록되는지
 // 알리는 함수를 돌려준다(docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째
 // 목록의 keyword에서 거부하고 nil을 돌려준다. 목록의 column은 table의
-// column이고, 한 번만 나오며, operation column이 아니다. operation column은
-// 언제나 기록하므로 어느 목록에도 쓰지 않는다.
-func (v *validator) auditLists(t *tableNode, s *settingNode, operationRef token) func(string) bool {
+// column이고, 한 번만 나오며, audit column이 아니다. audit column은 언제나
+// 기록하므로 어느 목록에도 쓰지 않는다.
+func (v *validator) auditLists(t *tableNode, s *settingNode, columnRef token) func(string) bool {
 	if len(s.lists) > 1 {
 		v.add(RuleSetting, s.lists[1].keyword, "audit names its recorded columns by exclude or by include, not both")
 		return nil
@@ -308,19 +366,19 @@ func (v *validator) auditLists(t *tableNode, s *settingNode, operationRef token)
 			case listed[ref.text]:
 				v.add(RuleSetting, ref, "column %q repeats in audit %s", ref.text, list.keyword.text)
 				continue
-			case ref.text == operationRef.text:
-				v.add(RuleSetting, ref, "the operation column %q is always recorded and is not listed in exclude or include", ref.text)
+			case ref.text == columnRef.text:
+				v.add(RuleSetting, ref, "the audit column %q is always recorded and is not listed in exclude or include", ref.text)
 			default:
 				v.columnRef(t, ref, RuleSetting)
 			}
 			listed[ref.text] = true
 		}
 	}
-	operation := operationRef.text
+	audited := columnRef.text
 	if len(s.lists) == 1 && s.lists[0].keyword.text == "include" {
-		return func(column string) bool { return column == operation || listed[column] }
+		return func(column string) bool { return column == audited || listed[column] }
 	}
-	return func(column string) bool { return column == operation || !listed[column] }
+	return func(column string) bool { return column == audited || !listed[column] }
 }
 
 // coordinate reads a diagram coordinate: an integer from -2147483648 to

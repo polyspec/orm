@@ -28,6 +28,13 @@ final class Db
     private bool $rollbackFault = false;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     private array $sets = [];
+    /**
+     * 연결의 상태(닫힘, statement cache, 등록된 set, test fault)를 가진 Db다. 연결은 자신이고,
+     * audit()이 만든 handle은 그 연결이다. transaction frame도 이 Db로 맞춘다.
+     */
+    private Db $root;
+    /** 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다. */
+    private ?Model $auditDefaults = null;
 
     /** @internal Orm::connect creates connections. */
     public function __construct(
@@ -40,6 +47,25 @@ final class Db
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
+        $this->root = $this;
+    }
+
+    /**
+     * A handle on the same connection whose transactions record their audit with
+     * $defaults: a model of the audit record table with the values that every
+     * audit of the handle shares, such as the account and the request. A
+     * transaction with audit values inserts one audit record with these defaults
+     * and its values, and the audited writes of the transaction refer to it. The
+     * handle shares the PDO connection, the registered sets and the active
+     * transactions with the connection; models connect to it as to the
+     * connection. The connection itself is not changed.
+     */
+    public function audit(Model $defaults): Db
+    {
+        $handle = clone $this;
+        $handle->root = $this->root;
+        $handle->auditDefaults = $defaults;
+        return $handle;
     }
 
     /**
@@ -59,7 +85,7 @@ final class Db
     public function registerSet(Schema $schema): void
     {
         $schema->verify();
-        $this->sets[$schema->manifestHash] = true;
+        $this->root->sets[$schema->manifestHash] = true;
     }
 
     /** The database of the connection: mysql, postgres, or sqlite. */
@@ -83,7 +109,7 @@ final class Db
     /** @internal */
     public function pdo(): \PDO
     {
-        if ($this->closed) {
+        if ($this->root->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         return $this->pdo;
@@ -98,19 +124,19 @@ final class Db
     /** Releases cached statements; the connection cannot be used afterwards. */
     public function close(): void
     {
-        if ($this->closed) {
+        if ($this->root->closed) {
             return;
         }
-        $this->closed = true;
+        $this->root->closed = true;
         try {
-            foreach ($this->stmts as $st) {
+            foreach ($this->root->stmts as $st) {
                 $st->closeCursor();
             }
         } catch (\PDOException $e) {
             throw OrmException::fromDriver($e, $this->driver);
         }
-        $this->stmts = [];
-        $this->stmtOrder = [];
+        $this->root->stmts = [];
+        $this->root->stmtOrder = [];
     }
 
     public static function bindLimit(string $driver): int
@@ -120,20 +146,20 @@ final class Db
 
     private function stmt(string $sql): \PDOStatement
     {
-        if ($this->closed) {
+        if ($this->root->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
-        if (isset($this->stmts[$sql])) {
-            return $this->stmts[$sql];
+        if (isset($this->root->stmts[$sql])) {
+            return $this->root->stmts[$sql];
         }
         // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
         $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
-        $this->stmts[$sql] = $st;
-        $this->stmtOrder[] = $sql;
-        while (count($this->stmtOrder) > $this->config->statementCacheSize) {
-            $oldest = array_shift($this->stmtOrder);
-            $this->stmts[$oldest]->closeCursor();
-            unset($this->stmts[$oldest]);
+        $this->root->stmts[$sql] = $st;
+        $this->root->stmtOrder[] = $sql;
+        while (count($this->root->stmtOrder) > $this->config->statementCacheSize) {
+            $oldest = array_shift($this->root->stmtOrder);
+            $this->root->stmts[$oldest]->closeCursor();
+            unset($this->root->stmts[$oldest]);
         }
         return $st;
     }
@@ -144,7 +170,7 @@ final class Db
     public static function activeFor(Db $db): ?TxFrame
     {
         for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
-            if (self::$frames[$i]->db === $db) {
+            if (self::$frames[$i]->db->root === $db->root) {
                 return self::$frames[$i];
             }
         }
@@ -159,7 +185,7 @@ final class Db
     public static function resolve(?Db $conn): array
     {
         if ($conn !== null) {
-            if ($conn->closed) {
+            if ($conn->root->closed) {
                 throw new OrmException(Code::CONFIG, 'database is closed');
             }
             return [$conn, self::activeFor($conn)];
@@ -190,12 +216,16 @@ final class Db
      * transaction of the same connection inside an active one creates a
      * savepoint and accepts only retry, which it ignores.
      *
-     * $operation은 이 작업 단위의 operation id다. executor는 transaction 안에서
-     * insert하거나 update하는 모든 감사 대상 행의 operation column에 그 값을 쓴다
-     * (docs/dbspec.md "Audit"). 감사 대상 table의 operation column이 i64면 int,
-     * uuid면 string이다. 중첩 transaction은 바깥 transaction의 operation id를 쓴다.
+     * $audit은 이 작업 단위의 audit 기록 값(column => 값)이다. 값이 있으면 transaction은
+     * 시도마다 callback 전에 이 handle의 audit 기본값(audit())에 값을 더한 audit 기록 하나를
+     * 삽입하고(같은 column이면 값이 이긴다), transaction 안의 모든 감사 대상 insert, update, soft
+     * delete, restore는 그 primary key를 audit column에 쓴다(docs/dbspec.md "Audit"). 기본값이
+     * 없거나 값의 key가 audit 기록 table의 column이 아니면 transaction을 시작하기 전에 CONFIG다.
+     * 중첩 transaction은 바깥 transaction의 audit을 쓰며 $audit을 받지 않는다.
+     *
+     * @param array<string, mixed>|null $audit
      */
-    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, int|string|null $operation = null): mixed
+    public function transaction(\Closure $fn, string $isolation = '', bool $readOnly = false, int $timeoutMs = 0, int $retry = 3, ?array $audit = null): mixed
     {
         if ($retry < 0) {
             throw new OrmException(Code::CONFIG, 'transaction retry must not be negative');
@@ -207,15 +237,23 @@ final class Db
             throw new OrmException(Code::CONFIG, "unsupported transaction isolation $isolation");
         }
         $outer = self::activeFor($this);
+        if ($audit !== null && $outer === null) {
+            $record = $this->auditRecord($audit);
+            $inner = $fn;
+            $fn = function () use ($record, $inner): mixed {
+                self::activeFor($this)->audit = $this->insertAudit($record);
+                return $inner();
+            };
+        }
         if ($outer !== null) {
-            if ($isolation !== '' || $readOnly || $timeoutMs !== 0 || $operation !== null) {
+            if ($isolation !== '' || $readOnly || $timeoutMs !== 0 || $audit !== null) {
                 throw new OrmException(Code::CONFIG, 'a nested transaction of the same connection accepts only the retry option');
             }
             return $this->savepoint($outer, $fn);
         }
         for ($attempt = 0; ; $attempt++) {
             try {
-                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs, $operation);
+                return $this->runTransaction($fn, $isolation, $readOnly, $timeoutMs);
             } catch (OrmException $e) {
                 if ($e->code_ !== Code::DEADLOCK || $attempt >= $retry) {
                     throw $e;
@@ -225,10 +263,54 @@ final class Db
         }
     }
 
-    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs, int|string|null $operation): mixed
+    /**
+     * handle의 audit 기본값 model에 transaction의 값을 더한 audit 기록 model이다. 같은 column이면
+     * transaction의 값이 기본값을 이긴다. 기본값이 없거나, 기본값 model이 다른 연결을 쓰거나,
+     * 값의 key가 audit 기록 table의 column이 아니거나, 그 table의 primary key가 column 하나가
+     * 아니면 CONFIG다.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function auditRecord(array $values): Model
+    {
+        $defaults = $this->auditDefaults ?? throw new OrmException(Code::CONFIG, 'the transaction has audit values but the connection has no audit defaults: set them with $db->audit($defaults)');
+        $meta = $defaults::meta();
+        $conn = $defaults->connection();
+        if ($conn !== null && $conn->root !== $this->root) {
+            throw new OrmException(Code::CONFIG, "the audit defaults {$meta['entity']} connect to another connection than the transaction");
+        }
+        if (count($meta['pk']) !== 1) {
+            throw new OrmException(Code::CONFIG, "the audit record table {$meta['entity']} needs a primary key of one column");
+        }
+        ksort($values, SORT_STRING);
+        foreach (array_keys($values) as $column) {
+            if (!isset($meta['columns'][$column])) {
+                throw new OrmException(Code::CONFIG, "audit value $column is not a column of {$meta['entity']}");
+            }
+        }
+        return $defaults->withValues($values);
+    }
+
+    /**
+     * transaction의 audit 기록을 삽입하고 그 entity와 primary key 값을 돌려준다. 시도마다 record의
+     * 복사본을 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
+     *
+     * @return array{entity: string, key: mixed}
+     */
+    private function insertAudit(Model $record): array
+    {
+        $meta = $record::meta();
+        $pk = $meta['pk'][0];
+        $key = (clone $record)->create()->toArray()[$pk] ?? null;
+        if ($key === null) {
+            throw new OrmException(Code::CONFIG, "the audit record {$meta['entity']} has no $pk after its insert");
+        }
+        return ['entity' => $meta['entity'], 'key' => $key];
+    }
+
+    private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
     {
         $frame = $this->begin($isolation, $readOnly, $timeoutMs);
-        $frame->operation = $operation;
         self::$frames[] = $frame;
         try {
             $v = $fn();
@@ -241,8 +323,8 @@ final class Db
                 // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
-            if ($this->rollbackFault) {
-                $this->rollbackFault = false;
+            if ($this->root->rollbackFault) {
+                $this->root->rollbackFault = false;
                 throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $failure;
@@ -254,7 +336,7 @@ final class Db
 
     private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
     {
-        if ($this->closed) {
+        if ($this->root->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
@@ -406,8 +488,6 @@ final class Db
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
-        // savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
-        $operationBefore = $frame->operation;
         try {
             try {
                 $this->pdo->exec("SAVEPOINT $name");
@@ -419,7 +499,6 @@ final class Db
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $frame->operation = $operationBefore;
                 $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
                 // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
                 $ended = self::joined(array_values(array_filter([
@@ -454,7 +533,7 @@ final class Db
 
     private function enter(?TxFrame $frame, array $ir): void
     {
-        if ($this->closed) {
+        if ($this->root->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($frame !== null && $frame->finished) {
@@ -470,7 +549,7 @@ final class Db
         // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
         // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
         $hash = $r->ir['manifest_hash'];
-        if (!isset($this->sets[$hash])) {
+        if (!isset($this->root->sets[$hash])) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
         }
         $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
@@ -714,15 +793,12 @@ final class Db
                     // 한 statement는 clock을 한 번 읽고 slot의 소수 자리로 자른다.
                     $out[] = self::timeText($clock, $b['precision']);
                     break;
-                case 'operation':
-                    $operation = $frame?->operation ?? throw new OrmException(Code::CONFIG, 'an insert or update of an audited table needs an operation id: run it in transaction(..., operation: $id) or set the id with utils()->setOperation($id)');
-                    $valid = $b['col_type'] === 'i64'
-                        ? is_int($operation)
-                        : is_string($operation) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $operation) === 1;
-                    if (!$valid) {
-                        throw new OrmException(Code::CONFIG, 'operation id ' . var_export($operation, true) . " is not a value of the {$b['col_type']} operation column");
+                case 'audit':
+                    $audit = $frame?->audit ?? throw new OrmException(Code::CONFIG, 'a write of an audited table needs an audit: run it in a transaction with audit values');
+                    if ($audit['entity'] !== ($b['name'] ?? '')) {
+                        throw new OrmException(Code::CONFIG, "the audited table records its audits in {$b['name']}, but the audit of the transaction is a {$audit['entity']}");
                     }
-                    $out[] = $operation;
+                    $out[] = $audit['key'];
                     break;
                 default:
                     throw new OrmException(Code::INTERNAL, "bind from {$b['from']}");
@@ -1123,8 +1199,13 @@ final class TxFrame
     public array $locals = [];
     /** @var list<string> */
     public array $locks = [];
-    /** 작업 단위의 operation id다. 감사 대상 행의 operation column에 쓴다. */
-    public int|string|null $operation = null;
+    /**
+     * transaction이 시작할 때 삽입한 audit 기록의 entity와 primary key 값이다. 감사 대상 행의
+     * audit column에 그 key를 쓴다. 없으면 null이다.
+     *
+     * @var array{entity: string, key: mixed}|null
+     */
+    public ?array $audit = null;
 
     public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation) {}
 }

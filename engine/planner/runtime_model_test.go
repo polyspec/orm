@@ -41,26 +41,33 @@ table note {
 table item {
   seq i64 identity
   title varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (seq)
-  index ix_item_operation (operation_id)
+  index ix_item_audit (audit_seq)
+  foreign key fk_item_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into item_history operation operation_id action change previous previous_operation_id
+    audit into item_history column audit_seq references audit action change previous previous_audit_seq
   }
 }
 
 table item_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   seq i64
   title varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (history_id)
   index ix_item_history_row (seq)
+}
+
+table audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
 }
 `
 
@@ -136,17 +143,17 @@ func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 	}
 }
 
-// audit table의 insert, update, soft delete는 operation column에 operation
-// slot을 쓰고, 사용자는 그 column을 쓰지 못한다.
-func TestAuditedWritesCarryTheOperationSlot(t *testing.T) {
+// audit table의 insert, update, soft delete는 audit column에 audit 기록
+// entity를 이름한 audit slot을 쓰고, 사용자는 그 column을 쓰지 못한다.
+func TestAuditedWritesCarryTheAuditSlot(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	where := &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: intp(0)}}}}
-	operation := func(p *plan.Plan) int {
+	audits := func(p *plan.Plan) int {
 		n := 0
 		for _, b := range p.Steps[0].BindSlots {
-			if b.From == "operation" {
-				if b.ColType != "i64" {
-					t.Fatalf("operation slot type = %q", b.ColType)
+			if b.From == "audit" {
+				if b.Name != "audit" {
+					t.Fatalf("audit slot record = %q", b.Name)
 				}
 				n++
 			}
@@ -157,25 +164,25 @@ func TestAuditedWritesCarryTheOperationSlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if insert.Steps[0].SQL != "INSERT INTO `item` (`title`, `operation_id`) VALUES (?, ?)" || operation(insert) != 1 {
+	if insert.Steps[0].SQL != "INSERT INTO `item` (`title`, `audit_seq`) VALUES (?, ?)" || audits(insert) != 1 {
 		t.Fatalf("audited insert: %s %+v", insert.Steps[0].SQL, insert.Steps[0].BindSlots)
 	}
 	update, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "update", Query: ir.Query{Entity: "item", Where: where}, Set: []ir.Assign{{Column: "title", P: intp(1)}}, NParams: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(update.Steps[0].SQL, "UPDATE `item` SET `title` = ?, `operation_id` = ? WHERE") || operation(update) != 1 {
+	if !strings.HasPrefix(update.Steps[0].SQL, "UPDATE `item` SET `title` = ?, `audit_seq` = ? WHERE") || audits(update) != 1 {
 		t.Fatalf("audited update: %s", update.Steps[0].SQL)
 	}
 	remove, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "delete", Query: ir.Query{Entity: "item", Where: where}, NParams: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(remove.Steps[0].SQL, "UPDATE `item` SET `deleted_at` = CURRENT_TIMESTAMP(6), `operation_id` = ? WHERE") || operation(remove) != 1 {
+	if !strings.HasPrefix(remove.Steps[0].SQL, "UPDATE `item` SET `deleted_at` = CURRENT_TIMESTAMP(6), `audit_seq` = ? WHERE") || audits(remove) != 1 {
 		t.Fatalf("audited soft delete: %s", remove.Steps[0].SQL)
 	}
-	_, err = compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "insert", Query: ir.Query{Entity: "item"}, Set: []ir.Assign{{Column: "title", P: intp(0)}, {Column: "operation_id", P: intp(1)}}, NParams: 2})
+	_, err = compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "insert", Query: ir.Query{Entity: "item"}, Set: []ir.Assign{{Column: "title", P: intp(0)}, {Column: "audit_seq", P: intp(1)}}, NParams: 2})
 	if err == nil || !strings.HasPrefix(err.Error(), "IR_INVALID") {
-		t.Fatalf("assigned operation column = %v, want IR_INVALID", err)
+		t.Fatalf("assigned audit column = %v, want IR_INVALID", err)
 	}
 }

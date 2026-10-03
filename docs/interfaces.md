@@ -160,6 +160,9 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 | `readOnly` | boolean |
 | `timeoutMs` | positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED` |
 | `retry` | deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry |
+| `audit` | column name to value of the unit of work's audit record; the transaction inserts the audit defaults of its connection handle with these values (a value wins) before the callback, in every attempt, and every audited write in the transaction writes the record's key ([usage](usage.md#audited-writes)) |
+
+`connection.audit(defaults)` returns a handle of the same connection that carries the audit defaults, a model of the audit record table; the connection itself is not changed. A transaction with `audit` on a handle without defaults, a value that is not a column of the audit record table, and an audited write without `audit` fail with `CONFIG`; a nested transaction keeps the outer audit and does not take `audit`.
 
 - Each execution flow keeps a stack of active transactions: the goroutine in Go, the request in PHP, the async context in TypeScript, and the task in Rust. A model without `connect` uses the innermost transaction.
 - A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it. After a callback error, a panic or a Go `runtime.Goexit`, the client runs both `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT`; when either fails, the error or the panic value is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`, and a failed `RELEASE SAVEPOINT` after a successful callback is returned. A savepoint of a transaction that a cancelled transaction context has already ended ended with it.
@@ -173,7 +176,6 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 |---|---|
 | `lock(key)` | transaction-scoped named lock: MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM lock row; requires an active transaction |
 | `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
-| `setOperation(id)` | sets the operation id of the active transaction before its first audited write; requires an active transaction; another id than the one the transaction has is `CONFIG`, and a savepoint that rolls back restores the id it began with |
 | `wasInserted(entity, sequence)` | reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback |
 | `backendWaitingForLock(ctx)` | reports PostgreSQL pool backends waiting for a lock; MySQL and SQLite return `false` without exposing a driver-specific caller API |
 | `schema().install(schema)` | takes the generated schema value, fails with `CONFIG` before any statement when its manifest text does not hash to its `manifestHash`, renders the dbspec document set for the dialect of the connection and creates every table when none exists, and registers the set on the connection; changes nothing when every table exists and returns `CONFIG` when only some exist; on MySQL a call inside a transaction returns `CONFIG` |

@@ -1164,33 +1164,47 @@
       "source": [
         "dbspec 1 schema",
         "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
+        "",
         "table service {",
         "  id i64 identity",
         "  name varchar(32)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  primary key (id)",
+        "  index ix_service_audit (audit_seq)",
+        "  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into service_history operation operation_id action change previous previous_operation_id",
+        "    audit into service_history column audit_seq references audit action change previous previous_audit_seq",
         "  }",
         "}",
         "",
         "table service_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
         "  name varchar(32)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  primary key (history_id)",
         "}"
       ],
       "plan": [
         "dbplan 1 triggers_follow_columns",
-        "from sha256:f0ee79f00b8050cc331fa507b79a10dc779e7646ad5391bab3ce53d475bd22ce",
+        "from sha256:84de7ea252a9712eec630d12230d28994e0cb6e7d3bf364bfd63e834ff7cc8a2",
         "",
         "dbspec 1 schema",
+        "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
         "",
         "table config {",
         "  id i64 identity",
@@ -1204,22 +1218,24 @@
         "table service {",
         "  id i64 identity",
         "  name varchar(32)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  note text null",
         "  primary key (id)",
+        "  index ix_service_audit (audit_seq)",
+        "  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into service_history operation operation_id action change previous previous_operation_id",
+        "    audit into service_history column audit_seq references audit action change previous previous_audit_seq",
         "  }",
         "}",
         "",
         "table service_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
         "  name varchar(32)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  note text null",
         "  primary key (history_id)",
@@ -1256,12 +1272,12 @@
         "mysql": [
           {
             "effect": "absent trigger service service$audit_insert",
-            "rollback": "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`)",
+            "rollback": "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`)",
             "statement": "DROP TRIGGER `service$audit_insert`"
           },
           {
             "effect": "absent trigger service service$audit_update",
-            "rollback": "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`) VALUES ('update', OLD.`operation_id`, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`)",
+            "rollback": "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`)",
             "statement": "DROP TRIGGER `service$audit_update`"
           },
           {
@@ -1276,16 +1292,16 @@
           },
           {
             "effect": "present column service note",
-            "restore": "ALTER TABLE `service` RENAME COLUMN `dbspec$hold$204d16ae07cd$1` TO `note`",
-            "restore_if": "present column service dbspec$hold$204d16ae07cd$1",
-            "rollback": "ALTER TABLE `service` RENAME COLUMN `note` TO `dbspec$hold$204d16ae07cd$1`",
+            "restore": "ALTER TABLE `service` RENAME COLUMN `dbspec$hold$9b823ab2cc58$1` TO `note`",
+            "restore_if": "present column service dbspec$hold$9b823ab2cc58$1",
+            "rollback": "ALTER TABLE `service` RENAME COLUMN `note` TO `dbspec$hold$9b823ab2cc58$1`",
             "statement": "ALTER TABLE `service` ADD COLUMN `note` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL"
           },
           {
             "effect": "present column service_history note",
-            "restore": "ALTER TABLE `service_history` RENAME COLUMN `dbspec$hold$204d16ae07cd$2` TO `note`",
-            "restore_if": "present column service_history dbspec$hold$204d16ae07cd$2",
-            "rollback": "ALTER TABLE `service_history` RENAME COLUMN `note` TO `dbspec$hold$204d16ae07cd$2`",
+            "restore": "ALTER TABLE `service_history` RENAME COLUMN `dbspec$hold$9b823ab2cc58$2` TO `note`",
+            "restore_if": "present column service_history dbspec$hold$9b823ab2cc58$2",
+            "rollback": "ALTER TABLE `service_history` RENAME COLUMN `note` TO `dbspec$hold$9b823ab2cc58$2`",
             "statement": "ALTER TABLE `service_history` ADD COLUMN `note` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL"
           },
           {
@@ -1301,12 +1317,12 @@
           {
             "effect": "present trigger service service$audit_insert",
             "rollback": "DROP TRIGGER `service$audit_insert`",
-            "statement": "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`, `note`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`, NEW.`note`)"
+            "statement": "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`, `note`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`, NEW.`note`)"
           },
           {
             "effect": "present trigger service service$audit_update",
             "rollback": "DROP TRIGGER `service$audit_update`",
-            "statement": "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`, `note`) VALUES ('update', OLD.`operation_id`, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`, NEW.`note`)"
+            "statement": "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`, `note`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`, NEW.`note`)"
           },
           {
             "effect": "present trigger service service$audit_delete",
@@ -1322,7 +1338,7 @@
           },
           {
             "effect": "absent function service$audit_insert",
-            "rollback": "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+            "rollback": "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
             "statement": "DROP FUNCTION \"service$audit_insert\"()"
           },
           {
@@ -1332,7 +1348,7 @@
           },
           {
             "effect": "absent function service$audit_update",
-            "rollback": "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+            "rollback": "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
             "statement": "DROP FUNCTION \"service$audit_update\"()"
           },
           {
@@ -1352,16 +1368,16 @@
           },
           {
             "effect": "present column service note",
-            "restore": "ALTER TABLE \"service\" RENAME COLUMN \"dbspec$hold$204d16ae07cd$1\" TO \"note\"",
-            "restore_if": "present column service dbspec$hold$204d16ae07cd$1",
-            "rollback": "ALTER TABLE \"service\" RENAME COLUMN \"note\" TO \"dbspec$hold$204d16ae07cd$1\"",
+            "restore": "ALTER TABLE \"service\" RENAME COLUMN \"dbspec$hold$9b823ab2cc58$1\" TO \"note\"",
+            "restore_if": "present column service dbspec$hold$9b823ab2cc58$1",
+            "rollback": "ALTER TABLE \"service\" RENAME COLUMN \"note\" TO \"dbspec$hold$9b823ab2cc58$1\"",
             "statement": "ALTER TABLE \"service\" ADD COLUMN \"note\" text COLLATE \"C\" NULL"
           },
           {
             "effect": "present column service_history note",
-            "restore": "ALTER TABLE \"service_history\" RENAME COLUMN \"dbspec$hold$204d16ae07cd$2\" TO \"note\"",
-            "restore_if": "present column service_history dbspec$hold$204d16ae07cd$2",
-            "rollback": "ALTER TABLE \"service_history\" RENAME COLUMN \"note\" TO \"dbspec$hold$204d16ae07cd$2\"",
+            "restore": "ALTER TABLE \"service_history\" RENAME COLUMN \"dbspec$hold$9b823ab2cc58$2\" TO \"note\"",
+            "restore_if": "present column service_history dbspec$hold$9b823ab2cc58$2",
+            "rollback": "ALTER TABLE \"service_history\" RENAME COLUMN \"note\" TO \"dbspec$hold$9b823ab2cc58$2\"",
             "statement": "ALTER TABLE \"service_history\" ADD COLUMN \"note\" text COLLATE \"C\" NULL"
           },
           {
@@ -1387,7 +1403,7 @@
           {
             "effect": "present function service$audit_insert",
             "rollback": "DROP FUNCTION \"service$audit_insert\"()",
-            "statement": "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\", NEW.\"note\"); RETURN NULL; END$$"
+            "statement": "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\", NEW.\"note\"); RETURN NULL; END$$"
           },
           {
             "effect": "present trigger service service$audit_insert",
@@ -1397,7 +1413,7 @@
           {
             "effect": "present function service$audit_update",
             "rollback": "DROP FUNCTION \"service$audit_update\"()",
-            "statement": "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\", NEW.\"note\"); RETURN NULL; END$$"
+            "statement": "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\", NEW.\"note\"); RETURN NULL; END$$"
           },
           {
             "effect": "present trigger service service$audit_update",
@@ -1418,12 +1434,12 @@
         "sqlite": [
           {
             "effect": "absent trigger service service$audit_insert",
-            "rollback": "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
+            "rollback": "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
             "statement": "DROP TRIGGER \"service$audit_insert\""
           },
           {
             "effect": "absent trigger service service$audit_update",
-            "rollback": "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
+            "rollback": "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
             "statement": "DROP TRIGGER \"service$audit_update\""
           },
           {
@@ -1439,7 +1455,7 @@
           {
             "effect": "present table dbspec$rebuild",
             "rollback": "DROP TABLE \"dbspec$rebuild\"",
-            "statement": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+            "statement": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
           },
           {
             "effect": "present sequence dbspec$rebuild",
@@ -1448,16 +1464,21 @@
           },
           {
             "effect": "present rows dbspec$rebuild",
-            "restore": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\", \"dbspec$hold$204d16ae07cd$1\" FROM \"service\"",
-            "restore_if": "present column service dbspec$hold$204d16ae07cd$1",
+            "restore": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"dbspec$hold$9b823ab2cc58$1\" FROM \"service\"",
+            "restore_if": "present column service dbspec$hold$9b823ab2cc58$1",
             "rollback": "DELETE FROM \"dbspec$rebuild\"",
-            "statement": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"service\""
+            "statement": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\" FROM \"service\""
+          },
+          {
+            "effect": "absent index service ix_service_audit",
+            "rollback": "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")",
+            "statement": "DROP INDEX \"ix_service_audit\""
           },
           {
             "effect": "absent rows service",
-            "restore_if": "present column service dbspec$hold$204d16ae07cd$1",
-            "rollback": "INSERT INTO \"service\" (\"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"dbspec$rebuild\"",
-            "rollback_restore": "INSERT INTO \"service\" (\"id\", \"name\", \"operation_id\", \"deleted_at\", \"dbspec$hold$204d16ae07cd$1\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\"",
+            "restore_if": "present column service dbspec$hold$9b823ab2cc58$1",
+            "rollback": "INSERT INTO \"service\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\" FROM \"dbspec$rebuild\"",
+            "rollback_restore": "INSERT INTO \"service\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\", \"dbspec$hold$9b823ab2cc58$1\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\"",
             "statement": "DELETE FROM \"service\""
           },
           {
@@ -1467,13 +1488,13 @@
           },
           {
             "effect": "absent table service",
-            "rollback": "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"dbspec$hold$204d16ae07cd$1\" TEXT NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+            "rollback": "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"dbspec$hold$9b823ab2cc58$1\" TEXT NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
             "statement": "DROP TABLE \"service\""
           },
           {
             "effect": "present table service",
             "rollback": "DROP TABLE \"service\"",
-            "statement": "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+            "statement": "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
           },
           {
             "effect": "present sequence service",
@@ -1483,11 +1504,11 @@
           {
             "effect": "present rows service",
             "rollback": "DELETE FROM \"service\"",
-            "statement": "INSERT INTO \"service\" (\"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\""
+            "statement": "INSERT INTO \"service\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\""
           },
           {
             "effect": "absent rows dbspec$rebuild",
-            "rollback": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"service\"",
+            "rollback": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"service\"",
             "statement": "DELETE FROM \"dbspec$rebuild\""
           },
           {
@@ -1497,13 +1518,18 @@
           },
           {
             "effect": "absent table dbspec$rebuild",
-            "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+            "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
             "statement": "DROP TABLE \"dbspec$rebuild\""
+          },
+          {
+            "effect": "present index service ix_service_audit",
+            "rollback": "DROP INDEX \"ix_service_audit\"",
+            "statement": "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")"
           },
           {
             "effect": "present table dbspec$rebuild",
             "rollback": "DROP TABLE \"dbspec$rebuild\"",
-            "statement": "CREATE TABLE \"dbspec$rebuild\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+            "statement": "CREATE TABLE \"dbspec$rebuild\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
           },
           {
             "effect": "present sequence dbspec$rebuild",
@@ -1512,16 +1538,16 @@
           },
           {
             "effect": "present rows dbspec$rebuild",
-            "restore": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"dbspec$hold$204d16ae07cd$2\" FROM \"service_history\"",
-            "restore_if": "present column service_history dbspec$hold$204d16ae07cd$2",
+            "restore": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"dbspec$hold$9b823ab2cc58$2\" FROM \"service_history\"",
+            "restore_if": "present column service_history dbspec$hold$9b823ab2cc58$2",
             "rollback": "DELETE FROM \"dbspec$rebuild\"",
-            "statement": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"service_history\""
+            "statement": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\" FROM \"service_history\""
           },
           {
             "effect": "absent rows service_history",
-            "restore_if": "present column service_history dbspec$hold$204d16ae07cd$2",
-            "rollback": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\" FROM \"dbspec$rebuild\"",
-            "rollback_restore": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"dbspec$hold$204d16ae07cd$2\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\"",
+            "restore_if": "present column service_history dbspec$hold$9b823ab2cc58$2",
+            "rollback": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\" FROM \"dbspec$rebuild\"",
+            "rollback_restore": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"dbspec$hold$9b823ab2cc58$2\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\"",
             "statement": "DELETE FROM \"service_history\""
           },
           {
@@ -1531,13 +1557,13 @@
           },
           {
             "effect": "absent table service_history",
-            "rollback": "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"dbspec$hold$204d16ae07cd$2\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+            "rollback": "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"dbspec$hold$9b823ab2cc58$2\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
             "statement": "DROP TABLE \"service_history\""
           },
           {
             "effect": "present table service_history",
             "rollback": "DROP TABLE \"service_history\"",
-            "statement": "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+            "statement": "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
           },
           {
             "effect": "present sequence service_history",
@@ -1547,11 +1573,11 @@
           {
             "effect": "present rows service_history",
             "rollback": "DELETE FROM \"service_history\"",
-            "statement": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\""
+            "statement": "INSERT INTO \"service_history\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"dbspec$rebuild\""
           },
           {
             "effect": "absent rows dbspec$rebuild",
-            "rollback": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\" FROM \"service_history\"",
+            "rollback": "INSERT INTO \"dbspec$rebuild\" (\"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") SELECT \"history_id\", \"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\" FROM \"service_history\"",
             "statement": "DELETE FROM \"dbspec$rebuild\""
           },
           {
@@ -1561,7 +1587,7 @@
           },
           {
             "effect": "absent table dbspec$rebuild",
-            "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+            "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, \"note\" TEXT NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
             "statement": "DROP TABLE \"dbspec$rebuild\""
           },
           {
@@ -1577,12 +1603,12 @@
           {
             "effect": "present trigger service service$audit_insert",
             "rollback": "DROP TRIGGER \"service$audit_insert\"",
-            "statement": "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\", NEW.\"note\"); END"
+            "statement": "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\", NEW.\"note\"); END"
           },
           {
             "effect": "present trigger service service$audit_update",
             "rollback": "DROP TRIGGER \"service$audit_update\"",
-            "statement": "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\", \"note\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\", NEW.\"note\"); END"
+            "statement": "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\", \"note\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\", NEW.\"note\"); END"
           },
           {
             "effect": "present trigger service service$audit_delete",
@@ -1593,12 +1619,18 @@
       },
       "before": [
         {
-          "sql": "INSERT INTO service (name, operation_id) VALUES ('s', 1)"
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
+        },
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('b')"
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('s', 1)"
         }
       ],
       "after": [
         {
-          "sql": "UPDATE service SET note = 'n', operation_id = 2"
+          "sql": "UPDATE service SET note = 'n', audit_seq = 2"
         },
         {
           "query": "SELECT COUNT(*) FROM service_history WHERE note = 'n'",
@@ -4584,6 +4616,12 @@
       "source": [
         "dbspec 1 schema",
         "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
+        "",
         "table frozen {",
         "  id i64 identity",
         "  primary key (id)",
@@ -4595,18 +4633,18 @@
         "table h1 {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (history_id)",
         "}",
         "",
         "table h2 {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (history_id)",
         "}",
         "",
@@ -4617,22 +4655,30 @@
         "",
         "table logged {",
         "  id i64 identity",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
         "}",
         "",
         "table moved {",
         "  id i64 identity",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
+        "  index ix_moved_audit (audit_seq)",
+        "  foreign key fk_moved_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into h1 operation operation_id action change previous previous_operation_id",
+        "    audit into h1 column audit_seq references audit action change previous previous_audit_seq",
         "  }",
         "}"
       ],
       "target": [
         "dbspec 1 schema",
         "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
+        "",
         "table frozen {",
         "  id i64 identity",
         "  primary key (id)",
@@ -4641,18 +4687,18 @@
         "table h1 {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (history_id)",
         "}",
         "",
         "table h2 {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  id i64",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (history_id)",
         "}",
         "",
@@ -4666,19 +4712,23 @@
         "",
         "table logged {",
         "  id i64 identity",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
+        "  index ix_logged_audit (audit_seq)",
+        "  foreign key fk_logged_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into h2 operation operation_id action change previous previous_operation_id",
+        "    audit into h2 column audit_seq references audit action change previous previous_audit_seq",
         "  }",
         "}",
         "",
         "table moved {",
         "  id i64 identity",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
+        "  index ix_moved_audit (audit_seq)",
+        "  foreign key fk_moved_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into h2 operation operation_id action change previous previous_operation_id",
+        "    audit into h2 column audit_seq references audit action change previous previous_audit_seq",
         "  }",
         "}"
       ],
@@ -4692,6 +4742,16 @@
           "add_immutable",
           "locked",
           ""
+        ],
+        [
+          "add_index",
+          "logged",
+          "ix_logged_audit"
+        ],
+        [
+          "add_foreign_key",
+          "logged",
+          "fk_logged_audit"
         ],
         [
           "add_audit",
@@ -4834,25 +4894,33 @@
       "source": [
         "dbspec 1 schema",
         "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
+        "",
         "table card {",
         "  seq i64 identity",
         "  title varchar(191)",
         "  secret text null",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  primary key (seq)",
+        "  index ix_card_audit (audit_seq)",
+        "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+        "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)",
         "  }",
         "}",
         "",
         "table card_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  seq i64",
         "  title varchar(191)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  primary key (history_id)",
         "  index ix_card_history_row (seq)",
@@ -4862,45 +4930,55 @@
         "  id i64 identity",
         "  label varchar(64)",
         "  color varchar(16) null",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
+        "  index ix_tag_audit (audit_seq)",
+        "  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into tag_history operation operation_id action change previous previous_operation_id exclude (id, color)",
+        "    audit into tag_history column audit_seq references audit action change previous previous_audit_seq exclude (id, color)",
         "  }",
         "}",
         "",
         "table tag_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  label varchar(64)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (history_id)",
         "}"
       ],
       "target": [
         "dbspec 1 schema",
         "",
+        "table audit {",
+        "  seq i64 identity",
+        "  actor varchar(64)",
+        "  primary key (seq)",
+        "}",
+        "",
         "table card {",
         "  seq i64 identity",
         "  title varchar(191)",
         "  secret text null",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  note text null",
         "  primary key (seq)",
+        "  index ix_card_audit (audit_seq)",
+        "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, note)",
+        "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret, note)",
         "  }",
         "}",
         "",
         "table card_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  seq i64",
         "  title varchar(191)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  deleted_at datetime(6) null",
         "  primary key (history_id)",
         "  index ix_card_history_row (seq)",
@@ -4910,19 +4988,21 @@
         "  id i64 identity",
         "  label varchar(64)",
         "  color varchar(16) null",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  primary key (id)",
+        "  index ix_tag_audit (audit_seq)",
+        "  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
         "  settings {",
-        "    audit into tag_history operation operation_id action change previous previous_operation_id exclude (id)",
+        "    audit into tag_history column audit_seq references audit action change previous previous_audit_seq exclude (id)",
         "  }",
         "}",
         "",
         "table tag_history {",
         "  history_id i64 identity",
         "  change varchar(8)",
-        "  previous_operation_id i64 null",
+        "  previous_audit_seq i64 null",
         "  label varchar(64)",
-        "  operation_id i64",
+        "  audit_seq i64",
         "  color varchar(16) null",
         "  primary key (history_id)",
         "}"

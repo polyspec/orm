@@ -3,14 +3,16 @@ declare(strict_types=1);
 // audit_triggers feature coverage: contracts/fixtures/audit_columns.dbs를 bench
 // database에 설치하고, client가 쓴 insert, update, soft delete를 audit trigger가
 // 고른 column만으로 기록하는지 확인한다. card는 exclude (secret)로 secret을 빼고,
-// tag는 include (label)로 label과 operation column만 기록하며, history table에는
-// 기록하는 column만 있다. 끝에 설치한 table과 PostgreSQL function을 지운다.
+// tag는 include (label)로 label과 audit column만 기록하며, history table에는
+// 기록하는 column만 있다. 두 table은 audit 기본값을 가진 handle의 audit transaction으로
+// 쓴다. 끝에 설치한 table과 PostgreSQL function을 지운다.
 // document의 model은 임시 directory에 생성한다: 한 process는 한 document set의
 // model만 가진다.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
+use CoverageAuditColumns\Orm\Audit;
 use CoverageAuditColumns\Orm\Card;
 use CoverageAuditColumns\Orm\Tag;
 use Orm\Config;
@@ -36,7 +38,7 @@ function auditColumnsTable(Db $db, string $table): bool
 function dropAuditColumns(Db $db): void
 {
     $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
-    foreach (['card_history', 'card', 'tag_history', 'tag'] as $table) {
+    foreach (['card_history', 'card', 'tag_history', 'tag', 'audit'] as $table) {
         $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
     }
     if ($db->driver() === 'postgres') {
@@ -78,35 +80,36 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
     try {
         coverageRestoring(function () use ($db): void {
             $db->utils()->schema()->install(\CoverageAuditColumns\Orm\schema());
-            [$seq, $id] = $db->transaction(function (): array {
+            $adb = $db->audit((new Audit)->setActor('default'));
+            [$seq, $id] = $adb->transaction(function (): array {
                 $seq = (new Card)->setTitle('first')->setSecret('s1')->create()->getSeq();
                 $id = (new Tag)->setLabel('x')->setColor('red')->create()->getId();
                 (new Card)->getBySeq($seq)->setTitle('second')->setSecret('s2')->update();
                 return [$seq, $id];
-            }, operation: 7, retry: 0);
-            $db->transaction(function () use ($seq, $id): void {
+            }, audit: ['actor' => 'first'], retry: 0);
+            $adb->transaction(function () use ($seq, $id): void {
                 (new Card)->getBySeq($seq)->delete();
                 (new Tag)->getById($id)->setColor('blue')->update();
-            }, operation: 8, retry: 0);
+            }, audit: ['actor' => 'second'], retry: 0);
             $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
             [$columns] = auditColumnsRows($db, 'SELECT * FROM card_history ORDER BY history_id');
-            $want = ['history_id', 'change', 'previous_operation_id', 'seq', 'title', 'operation_id', 'deleted_at'];
+            $want = ['history_id', 'change', 'previous_audit_seq', 'seq', 'title', 'audit_seq', 'deleted_at'];
             coverageWant($columns === $want, 'card_history columns ' . json_encode($columns) . ', want ' . json_encode($want));
-            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_operation_id, seq, title, operation_id, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id");
+            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id");
             $want = [
-                ['insert', 'NULL', "$seq", 'first', '7', 'live'],
-                ['update', '7', "$seq", 'second', '7', 'live'],
-                ['update', '7', "$seq", 'second', '8', 'deleted'],
+                ['insert', 'NULL', "$seq", 'first', '1', 'live'],
+                ['update', '1', "$seq", 'second', '1', 'live'],
+                ['update', '1', "$seq", 'second', '2', 'deleted'],
             ];
             coverageWant($rows === $want, 'card_history ' . json_encode($rows) . ', want ' . json_encode($want));
             [$columns] = auditColumnsRows($db, 'SELECT * FROM tag_history ORDER BY history_id');
-            $want = ['history_id', 'change', 'previous_operation_id', 'label', 'operation_id'];
+            $want = ['history_id', 'change', 'previous_audit_seq', 'label', 'audit_seq'];
             coverageWant($columns === $want, 'tag_history columns ' . json_encode($columns) . ', want ' . json_encode($want));
-            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_operation_id, label, operation_id FROM tag_history ORDER BY history_id");
-            $want = [['insert', 'NULL', 'x', '7'], ['update', '7', 'x', '8']];
+            [, $rows] = auditColumnsRows($db, "SELECT $change, previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id");
+            $want = [['insert', 'NULL', 'x', '1'], ['update', '1', 'x', '2']];
             coverageWant($rows === $want, 'tag_history ' . json_encode($rows) . ', want ' . json_encode($want));
         }, fn() => dropAuditColumns($db));
-        foreach (['card', 'card_history', 'tag', 'tag_history'] as $table) {
+        foreach (['audit', 'card', 'card_history', 'tag', 'tag_history'] as $table) {
             coverageWant(!auditColumnsTable($db, $table), "table $table remains after the case");
         }
     } finally {

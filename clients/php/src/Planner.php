@@ -729,7 +729,7 @@ final class Planner
 
     /**
      * insert는 필수 column을 모두 지정한다: default가 없는 NOT NULL column 중
-     * identity, planner가 쓰는 AES key version, executor가 쓰는 audit operation
+     * identity, planner가 쓰는 AES key version, executor가 쓰는 audit
      * column이 아닌 것이다. default가 있는 column은 database default를 받는다.
      */
     private static function checkRequiredAssignments(array $ent, array $set): void
@@ -848,7 +848,7 @@ final class Planner
         }
         if ($audited) {
             $cols[] = $this->d->quote($ent['audit']);
-            $vals[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
+            $vals[] = $b->audit($ent);
         }
         foreach ($clocked as $c) {
             $cols[] = $this->d->quote($c['name']);
@@ -872,7 +872,7 @@ final class Planner
                     $more[] = $b->config('aes_version');
                 }
                 if ($audited) {
-                    $more[] = $b->operation(RuntimeModel::column($ent, $ent['audit']));
+                    $more[] = $b->audit($ent);
                 }
                 foreach ($clocked as $c) {
                     $more[] = $b->now($c['precision']);
@@ -892,7 +892,7 @@ final class Planner
                 $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
             }
             if ($audited) {
-                $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+                $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
             }
             $identity = $ent['identity'];
             if ($identity !== '' && !$this->d->insertReturningId()) {
@@ -931,7 +931,7 @@ final class Planner
             $sets[] = $this->d->quote($updated) . ' = ' . $this->clock($b, RuntimeModel::column($ent, $updated));
         }
         if ($ent['audit'] !== '') {
-            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if (isset($r['optimistic'])) {
@@ -964,8 +964,8 @@ final class Planner
         if ($soft !== '') {
             $sets = $this->d->quote($soft) . ' = ' . $this->clock($b, RuntimeModel::column($ent, $soft));
             if ($ent['audit'] !== '') {
-                // soft delete는 감사 대상 행의 update이므로 지우는 operation을 기록한다.
-                $sets .= ', ' . $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+                // soft delete는 감사 대상 행의 update이므로 지우는 transaction의 audit을 기록한다.
+                $sets .= ', ' . $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
             }
         }
         $where = $this->renderGroup($b, $root, $r['where'], true);
@@ -1007,7 +1007,7 @@ final class Planner
         }
         $sets[] = $this->d->quote($soft) . ' = NULL';
         if ($ent['audit'] !== '') {
-            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
         }
         $where = $this->renderGroup($b, $root, $r['where'], true) . ' AND ' . $this->qcol($root, $soft) . ' IS NOT NULL';
         return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
@@ -1180,10 +1180,13 @@ final class PlanBinds
         return $this->add(['from' => 'now', 'param' => 0, 'precision' => $precision]);
     }
 
-    /** 실행 중인 작업 단위의 operation id다. executor가 transaction에서 채우고 column type으로 검사한다. */
-    public function operation(array $col): string
+    /**
+     * transaction의 audit 기록 key다. name은 audit 기록 entity이며, executor는 transaction의
+     * audit이 그 entity의 행인지 확인한다.
+     */
+    public function audit(array $ent): string
     {
-        return $this->add(['from' => 'operation', 'param' => 0, 'col_type' => $col['type']]);
+        return $this->add(['from' => 'audit', 'param' => 0, 'name' => $ent['audit_record']]);
     }
 
     /** The one placeholder the executor expands to the parent key values. */

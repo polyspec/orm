@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:e2129ff88629af8991535305d3b65b86cdd8162be77c841f72173fb58f79f5db",
-    "php": "sha256:f4156f0852a03c799ea42cc77f9b5bd97d4b58b540f341b88bc04880f3b7388e",
-    "rust": "sha256:62d25ba907f4b076c8f519e3e6216839928286d21f9ef359700d958e3c1d6cc3",
-    "typescript": "sha256:a570de7ece9f4a9edb1d2605c8a03beb8cc0c8f82bacf292b4c76d4ecd18b63d"
+    "go": "sha256:cae485e93701a2ab9a51fdf330a64dd26a7a44a94ee6b54172304ca4d22050b1",
+    "php": "sha256:f5af22b1b7f2872404aec5fc6d3a2d504ff078987c5097bd5bff78ec4861d3bc",
+    "rust": "sha256:c9760a6122977999985b7791805c0a5f84b290cc671066055ccc5cb892c0a9fc",
+    "typescript": "sha256:887962e20257f2c2c89cc35d94439a629635a2c0e44a8fcf4a35fdbc4f60c1aa"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -213,6 +213,7 @@
       "methods": [
         "connect",
         "connectSchema",
+        "audit",
         "transaction",
         "utils",
         "close",
@@ -275,7 +276,6 @@
         "lock",
         "setLocal",
         "local",
-        "setOperation",
         "schema",
         "privileges",
         "aes",
@@ -1151,7 +1151,7 @@
         },
         "php": {
           "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
-          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, string|int|null $operation=null): mixed"
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/tx.rs::Db::transaction",

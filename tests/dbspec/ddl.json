@@ -371,69 +371,81 @@
           "table service {",
           "  id i64 identity",
           "  name varchar(32)",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  deleted_at datetime(6) null",
           "  primary key (id)",
-          "  index ix_service_operation (operation_id)",
+          "  index ix_service_audit (audit_seq)",
+          "  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
           "  settings {",
           "    soft_delete deleted_at",
-          "    audit into service_history operation operation_id action change previous previous_operation_id",
+          "    audit into service_history column audit_seq references audit action change previous previous_audit_seq",
           "  }",
           "}",
           "",
           "table service_history {",
           "  history_id i64 identity",
           "  change varchar(8)",
-          "  previous_operation_id i64 null",
+          "  previous_audit_seq i64 null",
           "  id i64",
           "  name varchar(32)",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  deleted_at datetime(6) null",
           "  primary key (history_id)",
           "  index ix_service_history_row (id)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
           "}"
         ]
       },
       "statements": {
         "mysql": [
           "CREATE TABLE `ledger` (`id` BIGINT NOT NULL AUTO_INCREMENT, `amount` INT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-          "CREATE TABLE `service` (`id` BIGINT NOT NULL AUTO_INCREMENT, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `operation_id` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-          "CREATE INDEX `ix_service_operation` ON `service` (`operation_id`)",
-          "CREATE TABLE `service_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_operation_id` BIGINT NULL, `id` BIGINT NOT NULL, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `operation_id` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `service` (`id` BIGINT NOT NULL AUTO_INCREMENT, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_service_audit` ON `service` (`audit_seq`)",
+          "CREATE TABLE `service_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `id` BIGINT NOT NULL, `name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
           "CREATE INDEX `ix_service_history_row` ON `service_history` (`id`)",
+          "CREATE TABLE `audit` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `actor` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "ALTER TABLE `service` ADD CONSTRAINT `fk_service_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
           "CREATE TRIGGER `ledger$immutable_update` BEFORE UPDATE ON `ledger` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table ledger is immutable'",
           "CREATE TRIGGER `ledger$immutable_delete` BEFORE DELETE ON `ledger` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table ledger is immutable'",
-          "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`)",
-          "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_operation_id`, `id`, `name`, `operation_id`, `deleted_at`) VALUES ('update', OLD.`operation_id`, NEW.`id`, NEW.`name`, NEW.`operation_id`, NEW.`deleted_at`)",
+          "CREATE TRIGGER `service$audit_insert` AFTER INSERT ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`) VALUES ('insert', NULL, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`)",
+          "CREATE TRIGGER `service$audit_update` AFTER UPDATE ON `service` FOR EACH ROW INSERT INTO `service_history` (`change`, `previous_audit_seq`, `id`, `name`, `audit_seq`, `deleted_at`) VALUES ('update', OLD.`audit_seq`, NEW.`id`, NEW.`name`, NEW.`audit_seq`, NEW.`deleted_at`)",
           "CREATE TRIGGER `service$audit_delete` BEFORE DELETE ON `service` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table service deletes through its soft delete column'"
         ],
         "postgres": [
           "CREATE TABLE \"ledger\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"amount\" integer NOT NULL, PRIMARY KEY (\"id\"))",
-          "CREATE TABLE \"service\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"id\"))",
-          "CREATE INDEX \"ix_service_operation\" ON \"service\" (\"operation_id\")",
-          "CREATE TABLE \"service_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"service\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")",
+          "CREATE TABLE \"service_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"history_id\"))",
           "CREATE INDEX \"ix_service_history_row\" ON \"service_history\" (\"id\")",
+          "CREATE TABLE \"audit\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"actor\" varchar(64) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"seq\"))",
+          "ALTER TABLE \"service\" ADD CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
           "CREATE FUNCTION \"ledger$immutable_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table ledger is immutable'; END$$",
           "CREATE TRIGGER \"ledger$immutable_update\" BEFORE UPDATE ON \"ledger\" FOR EACH ROW EXECUTE FUNCTION \"ledger$immutable_update\"()",
           "CREATE FUNCTION \"ledger$immutable_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table ledger is immutable'; END$$",
           "CREATE TRIGGER \"ledger$immutable_delete\" BEFORE DELETE ON \"ledger\" FOR EACH ROW EXECUTE FUNCTION \"ledger$immutable_delete\"()",
-          "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+          "CREATE FUNCTION \"service$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_insert\"()",
-          "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+          "CREATE FUNCTION \"service$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_update\"()",
           "CREATE FUNCTION \"service$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table service deletes through its soft delete column'; END$$",
           "CREATE TRIGGER \"service$audit_delete\" BEFORE DELETE ON \"service\" FOR EACH ROW EXECUTE FUNCTION \"service$audit_delete\"()"
         ],
         "sqlite": [
           "CREATE TABLE \"ledger\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"amount\" integer NOT NULL, CONSTRAINT \"ledger$amount\" CHECK (typeof(\"amount\") IN ('integer', 'null') AND \"amount\" BETWEEN -2147483648 AND 2147483647))",
-          "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
-          "CREATE INDEX \"ix_service_operation\" ON \"service\" (\"operation_id\")",
-          "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "CREATE TABLE \"service\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"fk_service_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"service$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "CREATE INDEX \"ix_service_audit\" ON \"service\" (\"audit_seq\")",
+          "CREATE TABLE \"service_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"id\" bigint NOT NULL, \"name\" varchar(32) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"service_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"service_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$id\" CHECK (typeof(\"id\") IN ('integer', 'null')), CONSTRAINT \"service_history$name\" CHECK (length(\"name\") <= 32), CONSTRAINT \"service_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"service_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
           "CREATE INDEX \"ix_service_history_row\" ON \"service_history\" (\"id\")",
+          "CREATE TABLE \"audit\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"actor\" varchar(64) NOT NULL, CONSTRAINT \"audit$actor\" CHECK (length(\"actor\") <= 64))",
           "CREATE TRIGGER \"ledger$immutable_update\" BEFORE UPDATE ON \"ledger\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table ledger is immutable'); END",
           "CREATE TRIGGER \"ledger$immutable_delete\" BEFORE DELETE ON \"ledger\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table ledger is immutable'); END",
-          "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
-          "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_operation_id\", \"id\", \"name\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"id\", NEW.\"name\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
+          "CREATE TRIGGER \"service$audit_insert\" AFTER INSERT ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
+          "CREATE TRIGGER \"service$audit_update\" AFTER UPDATE ON \"service\" FOR EACH ROW BEGIN INSERT INTO \"service_history\" (\"change\", \"previous_audit_seq\", \"id\", \"name\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"id\", NEW.\"name\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
           "CREATE TRIGGER \"service$audit_delete\" BEFORE DELETE ON \"service\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table service deletes through its soft delete column'); END"
         ]
       },
@@ -460,10 +472,23 @@
           "want": "5"
         },
         {
-          "sql": "INSERT INTO service (name, operation_id) VALUES ('a', 1)"
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
         },
         {
-          "sql": "UPDATE service SET name = 'b', operation_id = 2"
+          "sql": "INSERT INTO audit (actor) VALUES ('b')"
+        },
+        {
+          "sql": "INSERT INTO audit (actor) VALUES ('c')"
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('z', 99)",
+          "fails": true
+        },
+        {
+          "sql": "INSERT INTO service (name, audit_seq) VALUES ('a', 1)"
+        },
+        {
+          "sql": "UPDATE service SET name = 'b', audit_seq = 2"
         },
         {
           "sql": "DELETE FROM service",
@@ -477,7 +502,7 @@
           "want": "2"
         },
         {
-          "query": "SELECT change || ' ' || name || ' ' || coalesce(previous_operation_id, 0) FROM service_history WHERE operation_id = 2",
+          "query": "SELECT change || ' ' || name || ' ' || coalesce(previous_audit_seq, 0) FROM service_history WHERE audit_seq = 2",
           "want": "update b 1",
           "dialects": [
             "postgres",
@@ -485,7 +510,7 @@
           ]
         },
         {
-          "query": "SELECT concat(`change`, ' ', name, ' ', coalesce(previous_operation_id, 0)) FROM service_history WHERE operation_id = 2",
+          "query": "SELECT concat(`change`, ' ', name, ' ', coalesce(previous_audit_seq, 0)) FROM service_history WHERE audit_seq = 2",
           "want": "update b 1",
           "dialects": [
             "mysql"
@@ -563,22 +588,24 @@
           "  seq i64 identity",
           "  title varchar(191)",
           "  secret text null",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  deleted_at datetime(6) null",
           "  primary key (seq)",
+          "  index ix_card_audit (audit_seq)",
+          "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
           "  settings {",
           "    soft_delete deleted_at",
-          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+          "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)",
           "  }",
           "}",
           "",
           "table card_history {",
           "  history_id i64 identity",
           "  change varchar(8)",
-          "  previous_operation_id i64 null",
+          "  previous_audit_seq i64 null",
           "  seq i64",
           "  title varchar(191)",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  deleted_at datetime(6) null",
           "  primary key (history_id)",
           "  index ix_card_history_row (seq)",
@@ -588,79 +615,113 @@
           "  id i64 identity",
           "  label varchar(64)",
           "  color varchar(16) null",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  primary key (id)",
+          "  index ix_tag_audit (audit_seq)",
+          "  foreign key fk_tag_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
           "  settings {",
-          "    audit into tag_history operation operation_id action change previous previous_operation_id include (label)",
+          "    audit into tag_history column audit_seq references audit action change previous previous_audit_seq include (label)",
           "  }",
           "}",
           "",
           "table tag_history {",
           "  history_id i64 identity",
           "  change varchar(8)",
-          "  previous_operation_id i64 null",
+          "  previous_audit_seq i64 null",
           "  label varchar(64)",
-          "  operation_id i64",
+          "  audit_seq i64",
           "  primary key (history_id)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
           "}"
         ]
       },
       "statements": {
         "mysql": [
-          "CREATE TABLE `card` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `title` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `secret` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL, `operation_id` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-          "CREATE TABLE `card_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_operation_id` BIGINT NULL, `seq` BIGINT NOT NULL, `title` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `operation_id` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `card` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `title` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `secret` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL, `audit_seq` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_card_audit` ON `card` (`audit_seq`)",
+          "CREATE TABLE `card_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `seq` BIGINT NOT NULL, `title` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, `deleted_at` DATETIME(6) NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
           "CREATE INDEX `ix_card_history_row` ON `card_history` (`seq`)",
-          "CREATE TABLE `tag` (`id` BIGINT NOT NULL AUTO_INCREMENT, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `color` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL, `operation_id` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-          "CREATE TABLE `tag_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_operation_id` BIGINT NULL, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `operation_id` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-          "CREATE TRIGGER `card$audit_insert` AFTER INSERT ON `card` FOR EACH ROW INSERT INTO `card_history` (`change`, `previous_operation_id`, `seq`, `title`, `operation_id`, `deleted_at`) VALUES ('insert', NULL, NEW.`seq`, NEW.`title`, NEW.`operation_id`, NEW.`deleted_at`)",
-          "CREATE TRIGGER `card$audit_update` AFTER UPDATE ON `card` FOR EACH ROW INSERT INTO `card_history` (`change`, `previous_operation_id`, `seq`, `title`, `operation_id`, `deleted_at`) VALUES ('update', OLD.`operation_id`, NEW.`seq`, NEW.`title`, NEW.`operation_id`, NEW.`deleted_at`)",
+          "CREATE TABLE `tag` (`id` BIGINT NOT NULL AUTO_INCREMENT, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `color` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE INDEX `ix_tag_audit` ON `tag` (`audit_seq`)",
+          "CREATE TABLE `tag_history` (`history_id` BIGINT NOT NULL AUTO_INCREMENT, `change` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `previous_audit_seq` BIGINT NULL, `label` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, `audit_seq` BIGINT NOT NULL, PRIMARY KEY (`history_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "CREATE TABLE `audit` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `actor` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`seq`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+          "ALTER TABLE `card` ADD CONSTRAINT `fk_card_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE `tag` ADD CONSTRAINT `fk_tag_audit` FOREIGN KEY (`audit_seq`) REFERENCES `audit` (`seq`) ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE TRIGGER `card$audit_insert` AFTER INSERT ON `card` FOR EACH ROW INSERT INTO `card_history` (`change`, `previous_audit_seq`, `seq`, `title`, `audit_seq`, `deleted_at`) VALUES ('insert', NULL, NEW.`seq`, NEW.`title`, NEW.`audit_seq`, NEW.`deleted_at`)",
+          "CREATE TRIGGER `card$audit_update` AFTER UPDATE ON `card` FOR EACH ROW INSERT INTO `card_history` (`change`, `previous_audit_seq`, `seq`, `title`, `audit_seq`, `deleted_at`) VALUES ('update', OLD.`audit_seq`, NEW.`seq`, NEW.`title`, NEW.`audit_seq`, NEW.`deleted_at`)",
           "CREATE TRIGGER `card$audit_delete` BEFORE DELETE ON `card` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table card deletes through its soft delete column'",
-          "CREATE TRIGGER `tag$audit_insert` AFTER INSERT ON `tag` FOR EACH ROW INSERT INTO `tag_history` (`change`, `previous_operation_id`, `label`, `operation_id`) VALUES ('insert', NULL, NEW.`label`, NEW.`operation_id`)",
-          "CREATE TRIGGER `tag$audit_update` AFTER UPDATE ON `tag` FOR EACH ROW INSERT INTO `tag_history` (`change`, `previous_operation_id`, `label`, `operation_id`) VALUES ('update', OLD.`operation_id`, NEW.`label`, NEW.`operation_id`)",
+          "CREATE TRIGGER `tag$audit_insert` AFTER INSERT ON `tag` FOR EACH ROW INSERT INTO `tag_history` (`change`, `previous_audit_seq`, `label`, `audit_seq`) VALUES ('insert', NULL, NEW.`label`, NEW.`audit_seq`)",
+          "CREATE TRIGGER `tag$audit_update` AFTER UPDATE ON `tag` FOR EACH ROW INSERT INTO `tag_history` (`change`, `previous_audit_seq`, `label`, `audit_seq`) VALUES ('update', OLD.`audit_seq`, NEW.`label`, NEW.`audit_seq`)",
           "CREATE TRIGGER `tag$audit_delete` BEFORE DELETE ON `tag` FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'table tag deletes through its soft delete column'"
         ],
         "postgres": [
-          "CREATE TABLE \"card\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"title\" varchar(191) COLLATE \"C\" NOT NULL, \"secret\" text COLLATE \"C\" NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"seq\"))",
-          "CREATE TABLE \"card_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_operation_id\" bigint NULL, \"seq\" bigint NOT NULL, \"title\" varchar(191) COLLATE \"C\" NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"card\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"title\" varchar(191) COLLATE \"C\" NOT NULL, \"secret\" text COLLATE \"C\" NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"seq\"))",
+          "CREATE INDEX \"ix_card_audit\" ON \"card\" (\"audit_seq\")",
+          "CREATE TABLE \"card_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"seq\" bigint NOT NULL, \"title\" varchar(191) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" timestamp(6) NULL, PRIMARY KEY (\"history_id\"))",
           "CREATE INDEX \"ix_card_history_row\" ON \"card_history\" (\"seq\")",
-          "CREATE TABLE \"tag\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"color\" varchar(16) COLLATE \"C\" NULL, \"operation_id\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
-          "CREATE TABLE \"tag_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_operation_id\" bigint NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"operation_id\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
-          "CREATE FUNCTION \"card$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_operation_id\", \"seq\", \"title\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"seq\", NEW.\"title\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+          "CREATE TABLE \"tag\" (\"id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"color\" varchar(16) COLLATE \"C\" NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"id\"))",
+          "CREATE INDEX \"ix_tag_audit\" ON \"tag\" (\"audit_seq\")",
+          "CREATE TABLE \"tag_history\" (\"history_id\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"change\" varchar(8) COLLATE \"C\" NOT NULL, \"previous_audit_seq\" bigint NULL, \"label\" varchar(64) COLLATE \"C\" NOT NULL, \"audit_seq\" bigint NOT NULL, PRIMARY KEY (\"history_id\"))",
+          "CREATE TABLE \"audit\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"actor\" varchar(64) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"seq\"))",
+          "ALTER TABLE \"card\" ADD CONSTRAINT \"fk_card_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "ALTER TABLE \"tag\" ADD CONSTRAINT \"fk_tag_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT",
+          "CREATE FUNCTION \"card$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_audit_seq\", \"seq\", \"title\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"seq\", NEW.\"title\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"card$audit_insert\" AFTER INSERT ON \"card\" FOR EACH ROW EXECUTE FUNCTION \"card$audit_insert\"()",
-          "CREATE FUNCTION \"card$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_operation_id\", \"seq\", \"title\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"seq\", NEW.\"title\", NEW.\"operation_id\", NEW.\"deleted_at\"); RETURN NULL; END$$",
+          "CREATE FUNCTION \"card$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_audit_seq\", \"seq\", \"title\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"seq\", NEW.\"title\", NEW.\"audit_seq\", NEW.\"deleted_at\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"card$audit_update\" AFTER UPDATE ON \"card\" FOR EACH ROW EXECUTE FUNCTION \"card$audit_update\"()",
           "CREATE FUNCTION \"card$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table card deletes through its soft delete column'; END$$",
           "CREATE TRIGGER \"card$audit_delete\" BEFORE DELETE ON \"card\" FOR EACH ROW EXECUTE FUNCTION \"card$audit_delete\"()",
-          "CREATE FUNCTION \"tag$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_operation_id\", \"label\", \"operation_id\") VALUES ('insert', NULL, NEW.\"label\", NEW.\"operation_id\"); RETURN NULL; END$$",
+          "CREATE FUNCTION \"tag$audit_insert\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_audit_seq\", \"label\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"label\", NEW.\"audit_seq\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"tag$audit_insert\" AFTER INSERT ON \"tag\" FOR EACH ROW EXECUTE FUNCTION \"tag$audit_insert\"()",
-          "CREATE FUNCTION \"tag$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_operation_id\", \"label\", \"operation_id\") VALUES ('update', OLD.\"operation_id\", NEW.\"label\", NEW.\"operation_id\"); RETURN NULL; END$$",
+          "CREATE FUNCTION \"tag$audit_update\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_audit_seq\", \"label\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"label\", NEW.\"audit_seq\"); RETURN NULL; END$$",
           "CREATE TRIGGER \"tag$audit_update\" AFTER UPDATE ON \"tag\" FOR EACH ROW EXECUTE FUNCTION \"tag$audit_update\"()",
           "CREATE FUNCTION \"tag$audit_delete\"() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'table tag deletes through its soft delete column'; END$$",
           "CREATE TRIGGER \"tag$audit_delete\" BEFORE DELETE ON \"tag\" FOR EACH ROW EXECUTE FUNCTION \"tag$audit_delete\"()"
         ],
         "sqlite": [
-          "CREATE TABLE \"card\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"title\" varchar(191) NOT NULL, \"secret\" TEXT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"card$title\" CHECK (length(\"title\") <= 191), CONSTRAINT \"card$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"card$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
-          "CREATE TABLE \"card_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"seq\" bigint NOT NULL, \"title\" varchar(191) NOT NULL, \"operation_id\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"card_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"card_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"card_history$seq\" CHECK (typeof(\"seq\") IN ('integer', 'null')), CONSTRAINT \"card_history$title\" CHECK (length(\"title\") <= 191), CONSTRAINT \"card_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')), CONSTRAINT \"card_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "CREATE TABLE \"card\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"title\" varchar(191) NOT NULL, \"secret\" TEXT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"fk_card_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"card$title\" CHECK (length(\"title\") <= 191), CONSTRAINT \"card$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"card$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
+          "CREATE INDEX \"ix_card_audit\" ON \"card\" (\"audit_seq\")",
+          "CREATE TABLE \"card_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"seq\" bigint NOT NULL, \"title\" varchar(191) NOT NULL, \"audit_seq\" bigint NOT NULL, \"deleted_at\" DATETIME NULL, CONSTRAINT \"card_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"card_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"card_history$seq\" CHECK (typeof(\"seq\") IN ('integer', 'null')), CONSTRAINT \"card_history$title\" CHECK (length(\"title\") <= 191), CONSTRAINT \"card_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')), CONSTRAINT \"card_history$deleted_at\" CHECK (length(\"deleted_at\") = 26 AND substr(\"deleted_at\", 1, 19) IS datetime(substr(\"deleted_at\", 1, 19)) AND substr(\"deleted_at\", 12, 2) < '24' AND substr(\"deleted_at\", 20, 1) = '.' AND substr(\"deleted_at\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))",
           "CREATE INDEX \"ix_card_history_row\" ON \"card_history\" (\"seq\")",
-          "CREATE TABLE \"tag\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" varchar(64) NOT NULL, \"color\" varchar(16) NULL, \"operation_id\" bigint NOT NULL, CONSTRAINT \"tag$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"tag$color\" CHECK (length(\"color\") <= 16), CONSTRAINT \"tag$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')))",
-          "CREATE TABLE \"tag_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_operation_id\" bigint NULL, \"label\" varchar(64) NOT NULL, \"operation_id\" bigint NOT NULL, CONSTRAINT \"tag_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"tag_history$previous_operation_id\" CHECK (typeof(\"previous_operation_id\") IN ('integer', 'null')), CONSTRAINT \"tag_history$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"tag_history$operation_id\" CHECK (typeof(\"operation_id\") IN ('integer', 'null')))",
-          "CREATE TRIGGER \"card$audit_insert\" AFTER INSERT ON \"card\" FOR EACH ROW BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_operation_id\", \"seq\", \"title\", \"operation_id\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"seq\", NEW.\"title\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
-          "CREATE TRIGGER \"card$audit_update\" AFTER UPDATE ON \"card\" FOR EACH ROW BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_operation_id\", \"seq\", \"title\", \"operation_id\", \"deleted_at\") VALUES ('update', OLD.\"operation_id\", NEW.\"seq\", NEW.\"title\", NEW.\"operation_id\", NEW.\"deleted_at\"); END",
+          "CREATE TABLE \"tag\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" varchar(64) NOT NULL, \"color\" varchar(16) NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"fk_tag_audit\" FOREIGN KEY (\"audit_seq\") REFERENCES \"audit\" (\"seq\") ON DELETE RESTRICT ON UPDATE RESTRICT, CONSTRAINT \"tag$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"tag$color\" CHECK (length(\"color\") <= 16), CONSTRAINT \"tag$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE INDEX \"ix_tag_audit\" ON \"tag\" (\"audit_seq\")",
+          "CREATE TABLE \"tag_history\" (\"history_id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"change\" varchar(8) NOT NULL, \"previous_audit_seq\" bigint NULL, \"label\" varchar(64) NOT NULL, \"audit_seq\" bigint NOT NULL, CONSTRAINT \"tag_history$change\" CHECK (length(\"change\") <= 8), CONSTRAINT \"tag_history$previous_audit_seq\" CHECK (typeof(\"previous_audit_seq\") IN ('integer', 'null')), CONSTRAINT \"tag_history$label\" CHECK (length(\"label\") <= 64), CONSTRAINT \"tag_history$audit_seq\" CHECK (typeof(\"audit_seq\") IN ('integer', 'null')))",
+          "CREATE TABLE \"audit\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"actor\" varchar(64) NOT NULL, CONSTRAINT \"audit$actor\" CHECK (length(\"actor\") <= 64))",
+          "CREATE TRIGGER \"card$audit_insert\" AFTER INSERT ON \"card\" FOR EACH ROW BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_audit_seq\", \"seq\", \"title\", \"audit_seq\", \"deleted_at\") VALUES ('insert', NULL, NEW.\"seq\", NEW.\"title\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
+          "CREATE TRIGGER \"card$audit_update\" AFTER UPDATE ON \"card\" FOR EACH ROW BEGIN INSERT INTO \"card_history\" (\"change\", \"previous_audit_seq\", \"seq\", \"title\", \"audit_seq\", \"deleted_at\") VALUES ('update', OLD.\"audit_seq\", NEW.\"seq\", NEW.\"title\", NEW.\"audit_seq\", NEW.\"deleted_at\"); END",
           "CREATE TRIGGER \"card$audit_delete\" BEFORE DELETE ON \"card\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table card deletes through its soft delete column'); END",
-          "CREATE TRIGGER \"tag$audit_insert\" AFTER INSERT ON \"tag\" FOR EACH ROW BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_operation_id\", \"label\", \"operation_id\") VALUES ('insert', NULL, NEW.\"label\", NEW.\"operation_id\"); END",
-          "CREATE TRIGGER \"tag$audit_update\" AFTER UPDATE ON \"tag\" FOR EACH ROW BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_operation_id\", \"label\", \"operation_id\") VALUES ('update', OLD.\"operation_id\", NEW.\"label\", NEW.\"operation_id\"); END",
+          "CREATE TRIGGER \"tag$audit_insert\" AFTER INSERT ON \"tag\" FOR EACH ROW BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_audit_seq\", \"label\", \"audit_seq\") VALUES ('insert', NULL, NEW.\"label\", NEW.\"audit_seq\"); END",
+          "CREATE TRIGGER \"tag$audit_update\" AFTER UPDATE ON \"tag\" FOR EACH ROW BEGIN INSERT INTO \"tag_history\" (\"change\", \"previous_audit_seq\", \"label\", \"audit_seq\") VALUES ('update', OLD.\"audit_seq\", NEW.\"label\", NEW.\"audit_seq\"); END",
           "CREATE TRIGGER \"tag$audit_delete\" BEFORE DELETE ON \"tag\" FOR EACH ROW BEGIN SELECT RAISE(ABORT, 'table tag deletes through its soft delete column'); END"
         ]
       },
       "behavior": [
         {
-          "sql": "INSERT INTO card (title, secret, operation_id) VALUES ('a', 's1', 1)"
+          "sql": "INSERT INTO audit (actor) VALUES ('a')"
         },
         {
-          "sql": "UPDATE card SET title = 'b', secret = 's2', operation_id = 2"
+          "sql": "INSERT INTO audit (actor) VALUES ('b')"
         },
         {
-          "sql": "UPDATE card SET deleted_at = '2026-01-02 03:04:05.000000', operation_id = 3"
+          "sql": "INSERT INTO audit (actor) VALUES ('c')"
+        },
+        {
+          "sql": "INSERT INTO card (title, audit_seq) VALUES ('z', 99)",
+          "fails": true
+        },
+        {
+          "sql": "INSERT INTO card (title, secret, audit_seq) VALUES ('a', 's1', 1)"
+        },
+        {
+          "sql": "UPDATE card SET title = 'b', secret = 's2', audit_seq = 2"
+        },
+        {
+          "sql": "UPDATE card SET deleted_at = '2026-01-02 03:04:05.000000', audit_seq = 3"
         },
         {
           "sql": "DELETE FROM card",
@@ -671,7 +732,7 @@
           "want": "3"
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'insert' AND previous_operation_id IS NULL AND title = 'a' AND operation_id = 1 AND deleted_at IS NULL",
+          "query": "SELECT count(*) FROM card_history WHERE change = 'insert' AND previous_audit_seq IS NULL AND title = 'a' AND audit_seq = 1 AND deleted_at IS NULL",
           "want": "1",
           "dialects": [
             "postgres",
@@ -679,14 +740,14 @@
           ]
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'insert' AND previous_operation_id IS NULL AND title = 'a' AND operation_id = 1 AND deleted_at IS NULL",
+          "query": "SELECT count(*) FROM card_history WHERE `change` = 'insert' AND previous_audit_seq IS NULL AND title = 'a' AND audit_seq = 1 AND deleted_at IS NULL",
           "want": "1",
           "dialects": [
             "mysql"
           ]
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_operation_id = 1 AND title = 'b' AND operation_id = 2 AND deleted_at IS NULL",
+          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_audit_seq = 1 AND title = 'b' AND audit_seq = 2 AND deleted_at IS NULL",
           "want": "1",
           "dialects": [
             "postgres",
@@ -694,14 +755,14 @@
           ]
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_operation_id = 1 AND title = 'b' AND operation_id = 2 AND deleted_at IS NULL",
+          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_audit_seq = 1 AND title = 'b' AND audit_seq = 2 AND deleted_at IS NULL",
           "want": "1",
           "dialects": [
             "mysql"
           ]
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_operation_id = 2 AND title = 'b' AND operation_id = 3 AND deleted_at IS NOT NULL",
+          "query": "SELECT count(*) FROM card_history WHERE change = 'update' AND previous_audit_seq = 2 AND title = 'b' AND audit_seq = 3 AND deleted_at IS NOT NULL",
           "want": "1",
           "dialects": [
             "postgres",
@@ -709,17 +770,17 @@
           ]
         },
         {
-          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_operation_id = 2 AND title = 'b' AND operation_id = 3 AND deleted_at IS NOT NULL",
+          "query": "SELECT count(*) FROM card_history WHERE `change` = 'update' AND previous_audit_seq = 2 AND title = 'b' AND audit_seq = 3 AND deleted_at IS NOT NULL",
           "want": "1",
           "dialects": [
             "mysql"
           ]
         },
         {
-          "sql": "INSERT INTO tag (label, color, operation_id) VALUES ('x', 'red', 1)"
+          "sql": "INSERT INTO tag (label, color, audit_seq) VALUES ('x', 'red', 1)"
         },
         {
-          "sql": "UPDATE tag SET color = 'blue', operation_id = 2"
+          "sql": "UPDATE tag SET color = 'blue', audit_seq = 2"
         },
         {
           "sql": "DELETE FROM tag",
@@ -730,7 +791,7 @@
           "want": "2"
         },
         {
-          "query": "SELECT count(*) FROM tag_history WHERE previous_operation_id = 1 AND operation_id = 2",
+          "query": "SELECT count(*) FROM tag_history WHERE previous_audit_seq = 1 AND audit_seq = 2",
           "want": "1"
         }
       ]

@@ -121,7 +121,8 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
   | {
       readonly kind: 'audit';
       readonly into: Tk;
-      readonly operation: Tk;
+      readonly column: Tk;
+      readonly references: Tk;
       readonly action: Tk;
       readonly previous: Tk;
       /** exclude와 include 목록이다. 둘 다 쓴 setting은 검사가 거부한다. */
@@ -1116,7 +1117,7 @@ class DocumentParser {
       case 'audit': {
         const parts: Tk[] = [];
         let i = 1;
-        for (const label of ['into', 'operation', 'action', 'previous']) {
+        for (const label of ['into', 'column', 'references', 'action', 'previous']) {
           if (!isWord(toks[i], label)) return this.syntax(toks, i, line, `expected ${label}`);
           const w = toks[i + 1];
           if (w === undefined || w.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a name');
@@ -1133,7 +1134,7 @@ class DocumentParser {
           i = listed[1];
         }
         if (i < toks.length) return this.syntax(toks, i, line, 'expected exclude, include or the end of the line');
-        entry = { kw, comments, kind: 'audit', into: parts[0]!, operation: parts[1]!, action: parts[2]!, previous: parts[3]!, lists };
+        entry = { kw, comments, kind: 'audit', into: parts[0]!, column: parts[1]!, references: parts[2]!, action: parts[3]!, previous: parts[4]!, lists };
         break;
       }
       default:
@@ -1751,11 +1752,10 @@ class DocumentParser {
     actionChild: boolean,
   ): void {
     if (actionChild) this.at('setting', s.kw, 'audit is rejected on a child of a cascade or set_null foreign key');
-    const operation = this.lookup(table, s.operation, 'setting');
-    if (operation && operation.type !== null && (!['i64', 'uuid'].includes(operation.type.kind) || operation.nullable)) {
-      this.at('setting', s.operation, 'the operation column is a non-null i64 or uuid column');
-    }
+    const column = this.lookup(table, s.column, 'setting');
+    if (column && column.nullable) this.at('setting', s.column, 'the audit column is a non-null column');
     const recorded = this.auditLists(table, s);
+    this.auditRecord(table, s, column ?? undefined, available);
     if (!wellFormed(s.into.t)) return;
     if (!available.has(s.into.t)) {
       this.at('setting', s.into, `history table ${s.into.t} is not defined or used`);
@@ -1784,9 +1784,9 @@ class DocumentParser {
       if (previous === undefined) this.at('setting', s.previous, `${s.previous.t} is not a column of history table ${s.into.t}`);
       else if (
         !previous.nullable ||
-        (previous.type !== null && operation && operation.type !== null && !sameType(previous.type, operation.type))
+        (previous.type !== null && column && column.type !== null && !sameType(previous.type, column.type))
       ) {
-        this.at('setting', s.previous, 'the previous column is nullable and has the type of the operation column');
+        this.at('setting', s.previous, 'the previous column is nullable and has the type of the audit column');
       }
     }
     // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의 column을 맞추어 보지 않는다.
@@ -1811,8 +1811,8 @@ class DocumentParser {
   /**
    * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
    * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을 돌려준다.
-   * 목록의 column은 table의 column이고, 한 번만 나오며, operation column이 아니다. operation
-   * column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+   * 목록의 column은 table의 column이고, 한 번만 나오며, audit column이 아니다. audit column은
+   * 언제나 기록하므로 어느 목록에도 쓰지 않는다.
    */
   private auditLists(table: ITable, s: Extract<ISetting, { kind: 'audit' }>): ((column: string) => boolean) | null {
     if (s.lists.length > 1) {
@@ -1826,14 +1826,56 @@ class DocumentParser {
           this.at('setting', tok, `column ${tok.t} repeats in audit ${list.kw.t}`);
           continue;
         }
-        if (tok.t === s.operation.t) this.at('setting', tok, `the operation column ${tok.t} is always recorded and is not listed in exclude or include`);
+        if (tok.t === s.column.t) this.at('setting', tok, `the audit column ${tok.t} is always recorded and is not listed in exclude or include`);
         else if (this.name(tok)) this.lookup(table, tok, 'setting');
         listed.add(tok.t);
       }
     }
-    const operation = s.operation.t;
-    if (s.lists.length === 1 && s.lists[0]!.kw.t === 'include') return column => column === operation || listed.has(column);
-    return column => column === operation || !listed.has(column);
+    const audited = s.column.t;
+    if (s.lists.length === 1 && s.lists[0]!.kw.t === 'include') return column => column === audited || listed.has(column);
+    return column => column === audited || !listed.has(column);
+  }
+
+  /**
+   * audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history table이 아니고,
+   * 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이 audit column의 type이다. audit
+   * column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한 column이다. 그래서 audit 기록
+   * 행이 없는 audit column 값은 database가 거부한다.
+   */
+  private auditRecord(table: ITable, s: Extract<ISetting, { kind: 'audit' }>, column: IColumn | undefined, available: Map<string, ITable | null>): void {
+    const ref = s.references;
+    if (!wellFormed(ref.t)) return;
+    if (!available.has(ref.t)) {
+      this.at('setting', ref, `audit record table ${ref.t} is not a table of this document or a used table`);
+      return;
+    }
+    const record = available.get(ref.t) ?? null;
+    if (record === null) return;
+    if (record === table) {
+      this.at('setting', ref, 'a table cannot record its audits in itself');
+      return;
+    }
+    if (ref.t === s.into.t) {
+      this.at('setting', ref, 'the audit record table is another table than the history table');
+      return;
+    }
+    if (record.settings?.entries.some(e => e.kind === 'audit')) this.at('setting', ref, `audit record table ${ref.t} is audited itself`);
+    if (record.pks.length !== 1 || record.pks[0]!.cols.length !== 1) {
+      if (!record.failedPrimary) this.at('setting', ref, `audit record table ${ref.t} needs a primary key of one column`);
+      return;
+    }
+    const key = record.pks[0]!.cols[0]!.tok.t;
+    const pk = record.colMap.get(key);
+    if (column === undefined || pk === undefined) return;
+    if (pk.type !== null && column.type !== null && !sameType(pk.type, column.type)) {
+      this.at('setting', s.column, `the audit column has type ${typeText(column.type)}, not the type ${typeText(pk.type)} of the primary key of ${ref.t}`);
+      return;
+    }
+    const declared = table.fks.some(fk => fk.cols.length === 1 && fk.cols[0]!.t === s.column.t && fk.table.t === ref.t
+      && fk.refs.length === 1 && fk.refs[0]!.t === key && fk.onDelete === 'restrict' && fk.onUpdate === 'restrict');
+    if (!declared && !table.failedKey) {
+      this.at('setting', s.column, `the audit column needs the foreign key (${s.column.t}) references ${ref.t} (${key}) on delete restrict on update restrict`);
+    }
   }
 
   build(): DbspecDocument {
@@ -1952,7 +1994,8 @@ function settingOf(s: ISetting): DbspecSetting {
         comments,
         kind: s.kind,
         into: s.into.t,
-        operation: s.operation.t,
+        column: s.column.t,
+        references: s.references.t,
         action: s.action.t,
         previous: s.previous.t,
         exclude: listOf(s, 'exclude'),

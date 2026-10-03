@@ -137,12 +137,12 @@ fn runtime_model_of_bench() {
 fn runtime_model_names_entities_and_reads_settings() {
     let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history operation operation_id action change previous previous_operation_id\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_operation_id i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n";
+    let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  index ix_service_member_audit (audit_seq)\n  foreign key fk_service_member_audit (audit_seq) references member_audit (seq) on delete restrict on update restrict\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history column audit_seq references member_audit action change previous previous_audit_seq\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n\ntable member_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n  settings {\n    entity member_record\n  }\n}\n";
     let shop = dbspec::parse(text, &BTreeMap::new()).unwrap_or_else(|errors| panic!("{errors:?}"));
     let audit = document("contracts/fixtures/audit.dbs");
     let model = dbspec::runtime_model(&[&shop, &audit]).unwrap();
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
-    assert_eq!(names, ["item", "item_history", "member", "member_history"], "documents in name order, tables in document order");
+    assert_eq!(names, ["item", "item_history", "audit", "member", "member_history", "member_record"], "documents in name order, tables in document order");
     let member = model.entity("member").unwrap();
     assert_eq!(member.table, "service_member");
     assert_eq!(member.field("rank").unwrap().ty, Type::I16);
@@ -150,12 +150,14 @@ fn runtime_model_names_entities_and_reads_settings() {
     assert_eq!(member.field("opens").unwrap().ty, Type::Time(3));
     let audit = member.audit.as_ref().unwrap();
     assert_eq!(
-        (audit.history.as_str(), audit.operation.as_str(), audit.action.as_str(), audit.previous.as_str()),
-        ("member_history", "operation_id", "change", "previous_operation_id")
+        (audit.history.as_str(), audit.column.as_str(), audit.record.as_str(), audit.action.as_str(), audit.previous.as_str()),
+        ("member_history", "audit_seq", "member_record", "change", "previous_audit_seq"),
+        "the audit record table is named by its entity"
     );
     assert!(!member.immutable);
     assert!(model.entity("member_history").unwrap().immutable);
-    assert_eq!(model.entity("item").unwrap().audit.as_ref().unwrap().operation, "operation_id");
+    let item = model.entity("item").unwrap().audit.as_ref().unwrap();
+    assert_eq!((item.column.as_str(), item.record.as_str()), ("audit_seq", "audit"));
     let repeated = dbspec::runtime_model(&[&shop, &shop]).expect_err("a repeated document name");
     assert_eq!(repeated[0].rule, "name.duplicate");
     let (cpu, wall) = (clock.cpu(), clock.wall());

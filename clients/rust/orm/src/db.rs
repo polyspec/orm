@@ -21,7 +21,7 @@ use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
 use crate::schema::Schema;
-use crate::tx::{OperationId, TxShared};
+use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
 use crate::{codes, Error, Result};
 
@@ -272,6 +272,8 @@ pub(crate) struct DbInner {
 #[derive(Clone)]
 pub struct Db {
     pub(crate) inner: Arc<DbInner>,
+    /// 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다(`Db::audit`).
+    pub(crate) audit_defaults: Option<Arc<crate::core::Core>>,
 }
 
 /// The connection pool state.
@@ -407,6 +409,7 @@ impl Db {
             }
         };
         let db = Db {
+            audit_defaults: None,
             inner: Arc::new(DbInner {
                 id: NEXT_DB.fetch_add(1, Ordering::Relaxed),
                 pool,
@@ -539,8 +542,8 @@ impl Db {
         }
     }
 
-    /// step의 bind slot 값을 정한다. `operation`은 step이 실행되는 transaction의 operation id다.
-    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], operation: Option<&OperationId>) -> Result<Vec<Param>> {
+    /// step의 bind slot 값을 정한다. `audit`은 step이 실행되는 transaction의 audit 기록이다.
+    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], audit: Option<&AuditKey>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
         let sqlite = matches!(self.inner.pool, Pool::Sqlite(_));
         let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
@@ -598,18 +601,17 @@ impl Db {
                     let text = clock.get_or_insert_with(|| self.now_text()).clone();
                     out.push(Param::Str(clock_digits(&text, b.precision)));
                 }
-                "operation" => out.push(match (operation, b.col_type.as_str()) {
-                    (Some(OperationId::I64(id)), "i64") => Param::I64(*id),
-                    (Some(OperationId::Uuid(id)), "uuid") => Param::Str(id.clone()),
-                    (Some(other), column_type) => {
-                        return Err(Error::Config(format!("operation id {other:?} does not fit the {column_type} operation column {}", b.column)));
-                    }
-                    (None, _) => {
+                // audit slot은 transaction이 삽입한 audit 기록의 primary key다. audit이 없거나 audit table이
+                // 다른 entity에 audit을 기록하면 CONFIG다.
+                "audit" => out.push(match audit {
+                    Some(a) if a.entity == b.name => a.key.clone(),
+                    Some(a) => {
                         return Err(Error::Config(format!(
-                            "a write of the audited column {} requires an operation id; run it in a transaction with operation(id) or set the id with utils().set_operation(id)",
-                            b.column
+                            "the audited table records its audits in {}, but the audit of the transaction is a {}",
+                            b.name, a.entity
                         )))
                     }
+                    None => return Err(Error::Config("a write of an audited table needs an audit: run it in a transaction with audit values".into())),
                 }),
                 other => return Err(Error::internal(format!("bind from {other}"))),
             }
@@ -668,11 +670,11 @@ impl Db {
         st: &Step,
         params: &[Param],
         parent_vals: Vec<Param>,
-        operation: Option<&OperationId>,
+        audit: Option<&AuditKey>,
     ) -> Result<Vec<DriverRow>> {
         acquire_sqlite_row_lock(&mut target, &st.lock).await?;
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
-        let args = self.args(st, params, &parent_vals, operation)?;
+        let args = self.args(st, params, &parent_vals, audit)?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
@@ -699,8 +701,8 @@ impl Db {
         r
     }
 
-    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param], operation: Option<&OperationId>) -> Result<(u64, u64)> {
-        let args = self.args(st, params, &[], operation)?;
+    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param], audit: Option<&AuditKey>) -> Result<(u64, u64)> {
+        let args = self.args(st, params, &[], audit)?;
         let sql = st.sql.as_str();
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
@@ -727,8 +729,8 @@ impl Db {
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
-        let operation = crate::tx::active_for(self).and_then(|t| t.operation());
-        let args = self.args(st, &req.params, &[], operation.as_ref())?;
+        let audit = crate::tx::active_for(self).and_then(|t| t.audit());
+        let args = self.args(st, &req.params, &[], audit.as_ref())?;
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
             binds.push(match b.from.as_str() {
@@ -777,8 +779,8 @@ impl Executor {
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                let operation = t.operation();
-                t.db.run_query(Target::Tx(inner), st, params, parent_vals, operation.as_ref()).await
+                let audit = t.audit();
+                t.db.run_query(Target::Tx(inner), st, params, parent_vals, audit.as_ref()).await
             }
         }
     }
@@ -794,8 +796,8 @@ impl Executor {
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                let operation = t.operation();
-                t.db.run_execute(Target::Tx(inner), st, params, operation.as_ref()).await
+                let audit = t.audit();
+                t.db.run_execute(Target::Tx(inner), st, params, audit.as_ref()).await
             }
         }
     }

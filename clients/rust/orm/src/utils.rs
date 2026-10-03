@@ -9,7 +9,7 @@ use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
 use crate::schema::Schema;
-use crate::tx::{active_for, transaction_conflict, OperationId, TxShared};
+use crate::tx::{active_for, transaction_conflict, TxShared};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
 use orm_schema::dbspec::{self, Document};
@@ -172,16 +172,6 @@ impl<'a> Utils<'a> {
         }
         t.locals.lock().unwrap().insert(key.to_owned(), value.to_owned());
         Ok(())
-    }
-
-    /// Sets the operation id of the active transaction of the connection: every
-    /// later insert and update of an audited table in the transaction writes it.
-    /// A transaction that already has another operation id returns CONFIG; the
-    /// same id changes nothing. A savepoint that rolls back restores the id it
-    /// began with.
-    pub fn set_operation(&self, id: impl Into<OperationId>) -> Result<()> {
-        let t = self.active("set_operation")?;
-        t.set_operation(id.into())
     }
 
     /// A value set with set_local; NO_ROWS when it is missing.

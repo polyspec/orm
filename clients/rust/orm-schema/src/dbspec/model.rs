@@ -298,9 +298,11 @@ pub enum Setting {
     Navigation(Name, Name, Name),
     Immutable,
     /// `lists`는 exclude와 include 목록이다. 유효한 문서는 많아야 하나를 가진다(docs/dbspec.md "Audit").
+    /// `column`은 audit 기록 table `references`의 primary key를 담는 column이다.
     Audit {
         into: Name,
-        operation: Name,
+        column: Name,
+        references: Name,
         action: Name,
         previous: Name,
         lists: Vec<AuditList>,
@@ -315,8 +317,8 @@ pub struct AuditList {
 }
 
 /// audit setting 줄. `list`의 column이 비면 목록 없이, 아니면 list keyword와 그 column을 쓴다.
-pub fn audit_line(into: &str, operation: &str, action: &str, previous: &str, list: &str, columns: &[&str]) -> String {
-    let line = format!("audit into {into} operation {operation} action {action} previous {previous}");
+pub fn audit_line(into: &str, column: &str, references: &str, action: &str, previous: &str, list: &str, columns: &[&str]) -> String {
+    let line = format!("audit into {into} column {column} references {references} action {action} previous {previous}");
     if columns.is_empty() {
         line
     } else {
@@ -341,12 +343,12 @@ impl Setting {
         }
     }
 
-    /// audit trigger가 column을 복사하는지 알린다. operation column은 언제나, exclude 목록의
+    /// audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의
     /// column은 언제나 아니며, include 목록이 있으면 그 column만 복사한다. audit이 아닌 setting은
     /// 참이다.
     pub fn records(&self, column: &str) -> bool {
-        let Setting::Audit { operation, lists, .. } = self else { return true };
-        if column == operation.text {
+        let Setting::Audit { column: audited, lists, .. } = self else { return true };
+        if column == audited.text {
             return true;
         }
         match lists.first() {

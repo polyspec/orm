@@ -21,7 +21,8 @@ final class Faults
     public static function failNextRollback(Db $db): void
     {
         (\Closure::bind(static function (Db $db): void {
-            $db->rollbackFault = true;
+            // handle(audit())의 fault도 연결의 상태에 둔다.
+            $db->root->rollbackFault = true;
         }, null, Db::class))($db);
     }
 }

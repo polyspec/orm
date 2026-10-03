@@ -91,10 +91,10 @@ func (b *builder) now(precision int) string {
 	return b.p.D.Placeholder(b.n)
 }
 
-// operation은 executor가 채우는 현재 unit of work의 operation id다. ColType은
-// audit operation column의 type(i64 또는 uuid)이다.
-func (b *builder) operation(ent *runtimemodel.Entity) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "operation", ColType: ent.Field(ent.Audit.Operation).Type})
+// audit은 executor가 채우는 transaction의 audit 기록 key다. Name은 audit 기록
+// entity이며, executor는 transaction의 audit이 그 entity의 행인지 확인한다.
+func (b *builder) audit(ent *runtimemodel.Entity) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "audit", Name: ent.Audit.Record})
 	b.n++
 	return b.p.D.Placeholder(b.n)
 }
@@ -1098,7 +1098,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
-	if err := validateOperationAssignments(ent, set); err != nil {
+	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	if err := validateRequiredAssignments(ent, set); err != nil {
@@ -1117,7 +1117,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		vals = append(vals, v)
 	}
-	// executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation 순서로 쓴다.
+	// executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column 순서로 쓴다.
 	managed := p.managedInsertColumns(ent, set)
 	for _, c := range managed {
 		cols = append(cols, p.D.Quote(c.column))
@@ -1158,7 +1158,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		if err := validateAESAssignments(ent, duplicate, true); err != nil {
 			return nil, err
 		}
-		if err := validateOperationAssignments(ent, duplicate); err != nil {
+		if err := validateAuditAssignments(ent, duplicate); err != nil {
 			return nil, err
 		}
 		r.OnDuplicate = duplicate
@@ -1175,7 +1175,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		}
 		// 기존 행을 바꾸는 duplicate update도 audit table의 update다.
 		if ent.Audit != nil {
-			sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
+			sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 		}
 		if ent.Identity != "" && !p.D.InsertReturningID() {
 			// MySQL idiom: make last insert id report the existing row on update
@@ -1196,14 +1196,14 @@ type managedColumn struct {
 }
 
 // managedInsertColumns는 insert가 사용자 assignment 외에 쓰는 column이다:
-// AES key version, audit operation column, sub-second clock이 없는 dialect의 `default now` column.
+// AES key version, audit column, sub-second clock이 없는 dialect의 `default now` column.
 func (p *Planner) managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
 	var out []managedColumn
 	if ent.AESVersion != "" && !assigned(set, ent.AESVersion) {
 		out = append(out, managedColumn{ent.AESVersion, func(b *builder) string { return b.config("aes_version") }})
 	}
 	if ent.Audit != nil {
-		out = append(out, managedColumn{ent.Audit.Operation, func(b *builder) string { return b.operation(ent) }})
+		out = append(out, managedColumn{ent.Audit.Column, func(b *builder) string { return b.audit(ent) }})
 	}
 	// sub-second clock이 없는 dialect의 `default now`는 millisecond만 가지므로
 	// 사용자가 assign하지 않은 그 column에 executor의 microsecond clock을 쓴다.
@@ -1248,20 +1248,20 @@ func validateAESAssignments(ent *runtimemodel.Entity, set []ir.Assign, requireCo
 	return nil
 }
 
-// validateOperationAssignments는 audit operation column을 executor만 쓰게 한다.
-func validateOperationAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
-	if ent.Audit != nil && assigned(set, ent.Audit.Operation) {
-		return &ir.Error{Code: "IR_INVALID", Msg: ent.Name + "." + ent.Audit.Operation + " is written by the executor from the operation id"}
+// validateAuditAssignments는 audit column을 executor만 쓰게 한다.
+func validateAuditAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
+	if ent.Audit != nil && assigned(set, ent.Audit.Column) {
+		return &ir.Error{Code: "IR_INVALID", Msg: ent.Name + "." + ent.Audit.Column + " is written by the executor from the audit of the transaction"}
 	}
 	return nil
 }
 
 // validateRequiredAssignments는 default가 없는 non-null column을 빼먹은
 // insert를 database에 닿기 전에 거부한다. identity, AES key version, audit
-// operation column은 executor나 database가 채운다.
+// audit column은 executor나 database가 채운다.
 func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign) error {
 	for _, col := range ent.Fields {
-		if col.Null || col.Default || col.Identity || col.Name == ent.AESVersion || ent.Audit != nil && col.Name == ent.Audit.Operation || assigned(set, col.Name) {
+		if col.Null || col.Default || col.Identity || col.Name == ent.AESVersion || ent.Audit != nil && col.Name == ent.Audit.Column || assigned(set, col.Name) {
 			continue
 		}
 		return &ir.Error{Code: "IR_INVALID", Msg: "required column " + ent.Name + "." + col.Name + " is not set"}
@@ -1359,7 +1359,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
-	if err := validateOperationAssignments(ent, set); err != nil {
+	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
@@ -1384,7 +1384,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		sets = append(sets, p.D.Quote(ent.Updated)+" = "+p.statementTime(b, ent.Field(ent.Updated)))
 	}
 	if ent.Audit != nil {
-		sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
+		sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {
@@ -1414,12 +1414,12 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
 	root := p.buildScopes(&r.Query, ent.Table, nil)
-	// soft delete는 UPDATE이므로 audit table이면 operation column도 쓴다.
+	// soft delete는 UPDATE이므로 audit table이면 audit column도 쓴다.
 	var sets []string
 	if ent.SoftDelete != "" {
 		sets = append(sets, p.D.Quote(ent.SoftDelete)+" = "+p.statementTime(b, ent.Field(ent.SoftDelete)))
 		if ent.Audit != nil {
-			sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
+			sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 		}
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
@@ -1438,7 +1438,7 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 // unique key 하나의 모든 column을 eq 값으로 한 번씩 이름한다. 지워진 행만
 // 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. set은 되돌리는
 // 행에 함께 쓰는 새 값이며 update의 assignment와 같은 규칙을 따른다. 그 뒤에
-// soft delete column을 비우고, audit table이면 operation column을 쓴다. updated
+// soft delete column을 비우고, audit table이면 audit column을 쓴다. updated
 // column은 soft delete처럼 쓰지 않는다.
 func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	ent := p.M.Entities[r.Entity]
@@ -1452,7 +1452,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
-	if err := validateOperationAssignments(ent, set); err != nil {
+	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	b := &builder{p: p}
@@ -1474,7 +1474,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	}
 	sets = append(sets, p.D.Quote(ent.SoftDelete)+" = NULL")
 	if ent.Audit != nil {
-		sets = append(sets, p.D.Quote(ent.Audit.Operation)+" = "+b.operation(ent))
+		sets = append(sets, p.D.Quote(ent.Audit.Column)+" = "+b.audit(ent))
 	}
 	where, err := p.renderGroup(b, root, r.Where, true)
 	if err != nil {

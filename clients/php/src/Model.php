@@ -1957,7 +1957,7 @@ abstract class Model implements \JsonSerializable
     /**
      * Restores the soft-deleted row that the set values name by its primary key
      * or one unique key and returns the restored row. It clears the soft delete
-     * column with an update that, on an audited table, writes the operation id
+     * column with an update that, on an audited table, writes the audit of the transaction
      * like any other update. A row that is not deleted is returned unchanged
      * and nothing is written; a missing row is NO_ROWS. Reads never return a
      * soft-deleted row: restore names it explicitly.
@@ -2016,6 +2016,24 @@ abstract class Model implements \JsonSerializable
         }
         $db->writeOf($frame, $r);
         return $q->get();
+    }
+
+    /**
+     * @internal a copy of the model with $values (column => value) set as its
+     * setters set them; Db::transaction builds the audit record with it.
+     *
+     * @param array<string, mixed> $values
+     */
+    public function withValues(array $values): static
+    {
+        $m = clone $this;
+        foreach ($values as $column => $value) {
+            $m->writeColumn($column, $value);
+        }
+        if ($m->error !== null) {
+            throw $m->error;
+        }
+        return $m;
     }
 
     /** @internal the connection of a loaded row */

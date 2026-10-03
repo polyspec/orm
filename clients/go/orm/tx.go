@@ -7,8 +7,10 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -62,9 +64,10 @@ type txConn struct {
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
-	// operation은 이 transaction(unit of work)의 operation id다. audit table의
-	// insert와 update가 operation column에 쓴다. 없으면 nil이다.
-	operation any
+	// audit은 이 transaction(unit of work)이 시작할 때 삽입한 audit 기록이다.
+	// audit table의 insert와 update가 그 key를 audit column에 쓴다. 없으면
+	// nil이다.
+	audit *auditRecord
 	// inserted records generated ORM inserts that succeeded in this
 	// transaction. It is an adapter-neutral transaction fact used by callers
 	// that must distinguish a row created in this transaction from a matching
@@ -242,8 +245,15 @@ type txOptions struct {
 	readOnly  bool
 	timeoutMs int
 	retry     int
-	operation any
+	audit     map[string]any
+	auditSet  bool
 	set       bool
+}
+
+// auditRecord는 transaction이 삽입한 audit 기록의 entity와 primary key 값이다.
+type auditRecord struct {
+	entity string
+	key    any
 }
 
 // TransactionOption configures a transaction.
@@ -264,12 +274,69 @@ func TimeoutMs(ms int) TransactionOption {
 	return func(o *txOptions) { o.timeoutMs, o.set = ms, true }
 }
 
-// Operation은 transaction을 operation id의 unit of work로 만든다. audit table에
-// 대한 transaction 안의 모든 insert와 update는 이 id를 table의 operation
-// column에 쓴다. id는 i64 operation column이면 int64, uuid column이면
-// 소문자 UUID string이다. nested transaction은 바깥 transaction의 id를 쓴다.
-func Operation(id any) TransactionOption {
-	return func(o *txOptions) { o.operation, o.set = id, true }
+// Audit makes the transaction one unit of work with an audit record. Before
+// the callback, in every attempt, the transaction inserts one row into the
+// audit record table: the defaults of the handle (DB.Audit) with values, a map
+// from column name to value, of which a value wins over the default of the same
+// column. Every insert, update, soft delete and restore of an audited table in
+// the transaction writes the record's primary key into the table's audit
+// column. The handle must have defaults, and every key must be a column of the
+// audit record table; otherwise the transaction fails with CodeConfig before
+// it begins. A nested transaction uses the audit of the outer one and accepts
+// only orm.Retry.
+func Audit(values map[string]any) TransactionOption {
+	return func(o *txOptions) { o.audit, o.auditSet, o.set = maps.Clone(values), true, true }
+}
+
+// auditRecord는 handle의 기본값 model에 transaction의 값을 더한 audit 기록
+// model이다. 같은 column이면 transaction의 값이 기본값을 이긴다. 기본값이
+// 없거나, 기본값 model이 다른 연결을 쓰거나, 값의 key가 audit 기록 table의
+// column이 아니거나, 그 table의 primary key가 column 하나가 아니면 CONFIG다.
+func (d *DB) auditRecord(values map[string]any) (*Core, error) {
+	if d.auditDefaults == nil || d.auditDefaults.Orm_() == nil {
+		return nil, configErr("the transaction has audit values but the connection has no audit defaults: set them with db.Audit(defaults)")
+	}
+	defaults := d.auditDefaults.Orm_()
+	if defaults.conn != nil && defaults.conn.Root() != d.Root() {
+		return nil, configErr("the audit defaults %s connect to another connection than the transaction", defaults.ent.Name)
+	}
+	ent, err := defaults.entityModel(d)
+	if err != nil {
+		return nil, err
+	}
+	if len(ent.PK) != 1 {
+		return nil, configErr("the audit record table %s needs a primary key of one column", ent.Name)
+	}
+	record := defaults.Clone()
+	for _, column := range slices.Sorted(maps.Keys(values)) {
+		if ent.Field(column) == nil {
+			return nil, configErr("audit value %s is not a column of %s", column, ent.Name)
+		}
+		record.Set(column, values[column])
+	}
+	if record.err != nil {
+		return nil, record.err
+	}
+	return record, nil
+}
+
+// insertAudit은 transaction의 audit 기록을 삽입하고 그 entity와 primary key
+// 값을 돌려준다. 시도마다 record의 복사본을 삽입하므로 deadlock 뒤에 다시
+// 실행해도 같은 값을 쓴다.
+func (d *DB) insertAudit(record *Core) (*auditRecord, error) {
+	ent, err := record.entityModel(d)
+	if err != nil {
+		return nil, err
+	}
+	m, err := record.Clone().Create()
+	if err != nil {
+		return nil, err
+	}
+	key := m.Orm_().value(ent.PK[0])
+	if key == nil {
+		return nil, configErr("the audit record %s has no %s after its insert", ent.Name, ent.PK[0])
+	}
+	return &auditRecord{entity: ent.Name, key: key}, nil
 }
 
 // Retry sets how many times a deadlocked callback runs again; 0 disables retry.
@@ -292,10 +359,20 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	if o.timeoutMs < 0 {
 		return configErr("transaction timeoutMs must not be negative")
 	}
-	switch o.operation.(type) {
-	case nil, int64, string:
-	default:
-		return configErr("operation id is %T; an operation id is an int64 or a UUID string", o.operation)
+	if o.auditSet && activeFor(d) == nil {
+		record, err := d.auditRecord(o.audit)
+		if err != nil {
+			return err
+		}
+		inner := fn
+		fn = func() error {
+			a, err := d.insertAudit(record)
+			if err != nil {
+				return err
+			}
+			activeFor(d).audit = a
+			return inner()
+		}
 	}
 	if outer := activeFor(d); outer != nil {
 		if o.set {
@@ -426,7 +503,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		}
 		return nil, mapDriverErr(err)
 	}
-	t := &txConn{db: d, conn: conn, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, operation: o.operation}
+	t := &txConn{db: d, conn: conn, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation}
 	if o.timeoutMs > 0 {
 		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)); err != nil {
 			return nil, t.rollbackAfter(mapDriverErr(err))
@@ -519,8 +596,6 @@ func (t *txConn) commit() error {
 // savepoint runs fn inside a savepoint of the active transaction.
 func (t *txConn) savepoint(fn func() error) (err error) {
 	insertedBefore := cloneInserted(t.inserted)
-	// savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
-	operationBefore := t.operation
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
@@ -534,14 +609,14 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		// callback이 반환하지 않고 떠나면 오류를 받을 호출자가 없으므로 실패한
 		// savepoint rollback은 panic으로 보고한다.
 		if r := recover(); r != nil {
-			t.inserted, t.operation = insertedBefore, operationBefore
+			t.inserted = insertedBefore
 			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 				panic(rollbackFailed(r, rollbackErr))
 			}
 			panic(r)
 		}
 		if !returned {
-			t.inserted, t.operation = insertedBefore, operationBefore
+			t.inserted = insertedBefore
 			if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 				panic(rollbackFailed("callback exited without returning", rollbackErr))
 			}
@@ -550,7 +625,7 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	err = fn()
 	returned = true
 	if err != nil {
-		t.inserted, t.operation = insertedBefore, operationBefore
+		t.inserted = insertedBefore
 		if rollbackErr := t.rollbackSavepoint(name); rollbackErr != nil {
 			return rollbackFailed(err, rollbackErr)
 		}

@@ -56,8 +56,10 @@ export interface Entity {
   readonly softDelete: string;
   /** The `aes_version` column, or ''. */
   readonly aesVersion: string;
-  /** The operation column of an `audit` setting, or ''. */
-  readonly auditOperation: string;
+  /** The audit column of an `audit` setting, or ''. Every insert and update writes the key of the transaction's audit record into it. */
+  readonly auditColumn: string;
+  /** The entity of the audit record table of an `audit` setting, or ''. */
+  readonly auditRecord: string;
 }
 
 /** The runtime model of a document set with its manifest text and hash. */
@@ -112,12 +114,13 @@ function typeSizes(t: DbspecType): { precision: number; scale: number; length: n
   }
 }
 
-function entityOfTable(t: DbspecTable): Entity {
+function entityOfTable(t: DbspecTable, entityNames: ReadonlyMap<string, string>): Entity {
   let name = t.name;
   let updated = '';
   let softDelete = '';
   let aesVersion = '';
-  let auditOperation = '';
+  let auditColumn = '';
+  let auditRecord = '';
   const explicit = new Set<string>();
   const stages = new Map<string, readonly DbspecCodecStage[]>();
   const blind = new Map<string, string>();
@@ -130,7 +133,7 @@ function entityOfTable(t: DbspecTable): Entity {
       case 'select_explicit': for (const c of s.columns) explicit.add(c); break;
       case 'codec': stages.set(s.column, s.stages); break;
       case 'blind_index': blind.set(s.column, s.indexColumn); break;
-      case 'audit': auditOperation = s.operation; break;
+      case 'audit': auditColumn = s.column; auditRecord = entityNames.get(s.references) ?? s.references; break;
       case 'navigation': case 'immutable': break;
     }
   }
@@ -161,7 +164,8 @@ function entityOfTable(t: DbspecTable): Entity {
     updated,
     softDelete,
     aesVersion,
-    auditOperation,
+    auditColumn,
+    auditRecord,
   });
 }
 
@@ -173,9 +177,17 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
     throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   }
   const entities = new Map<string, Entity>();
+  // audit 기록 table은 table 이름이고 runtime model은 그 entity 이름을 쓴다.
+  const entityNames = new Map<string, string>();
+  for (const document of documents) {
+    for (const table of document.tables) {
+      const entity = table.settings?.settings.find(s => s.kind === 'entity');
+      entityNames.set(table.name, entity?.kind === 'entity' ? entity.name : table.name);
+    }
+  }
   for (const document of [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
     for (const table of document.tables) {
-      const e = entityOfTable(table);
+      const e = entityOfTable(table, entityNames);
       if (entities.has(e.name)) throw new OrmError('SCHEMA_INVALID', `entity ${e.name} is declared twice in the document set`);
       entities.set(e.name, e);
     }
