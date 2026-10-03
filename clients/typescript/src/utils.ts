@@ -62,17 +62,6 @@ async function withoutForeignKeys<T>(control: DriverControl, fn: (control: Drive
   return result;
 }
 
-async function inTx<T>(db: Db, fn: (frame: TxFrame) => Promise<T>): Promise<T> {
-  const frame = activeFor(db);
-  if (frame) return fn(frame);
-  return db.transaction(() => fn(activeFor(db)!), { retry: 0 });
-}
-
-async function read(db: Db, sql: string, params: readonly DriverValue[]): Promise<unknown[][]> {
-  const frame = activeFor(db);
-  return frame ? (await frame.tx.control(sql, params)).rows : (await db.pool.execute(sql, params)).rows;
-}
-
 /** 외부 문서의 쓰는 table이 database와 다른 set의 CONFIG다. */
 function externalError(differences: readonly string[]): OrmError {
   return config(`the tables that the set uses from external documents differ from the database: ${differences.join('; ')}`);
@@ -96,17 +85,49 @@ export async function checkExternal(model: RuntimeModel, driver: DriverName, que
 
 /** Operations outside the query syntax. */
 export class Utils {
-  public constructor(private readonly db: Db) {}
+  /**
+   * The connection of the utilities; SchemaUtils, PrivilegeUtils and AesUtils reach it through their Utils.
+   *
+   * @internal
+   */
+  public readonly db: Db;
+
+  public constructor(db: Db) { this.db = db; }
 
   public stats(): PoolStats { return this.db.stats(); }
 
-  private active(name: string): TxFrame {
+  /**
+   * The active transaction of the connection; CONFIG names the operation that requires it.
+   *
+   * @internal
+   */
+  public active(name: string): TxFrame {
     const frame = activeFor(this.db);
     if (!frame) throw config(`${name} requires an active transaction of the connection`);
     return frame;
   }
 
-  /** Runs fn in the active transaction of the connection, or in a new one. */
+  /**
+   * Runs fn in the active transaction of the connection, or in a new one without retry.
+   *
+   * @internal
+   */
+  public async run<T>(fn: (frame: TxFrame) => Promise<T>): Promise<T> {
+    const frame = activeFor(this.db);
+    if (frame) return fn(frame);
+    return this.db.transaction(() => fn(activeFor(this.db)!), { retry: 0 });
+  }
+
+  /**
+   * Reads the rows of a statement through the active transaction of the connection, or through the pool.
+   *
+   * @internal
+   */
+  public async read(sql: string, params: readonly DriverValue[] = []): Promise<unknown[][]> {
+    const frame = activeFor(this.db);
+    return frame ? (await frame.tx.control(sql, params)).rows : (await this.db.pool.execute(sql, params)).rows;
+  }
+
   /** Takes a named lock that is released when the transaction ends. */
   public async lock(key: string): Promise<void> {
     const frame = this.active('lock');
@@ -153,17 +174,17 @@ export class Utils {
     return value;
   }
 
-  public schema(): SchemaUtils { return new SchemaUtils(this.db); }
-  public privileges(): PrivilegeUtils { return new PrivilegeUtils(this.db); }
-  public aes(): AesUtils { return new AesUtils(this.db); }
+  public schema(): SchemaUtils { return new SchemaUtils(this); }
+  public privileges(): PrivilegeUtils { return new PrivilegeUtils(this); }
+  public aes(): AesUtils { return new AesUtils(this); }
 }
 
 /** Schema installation and inspection. */
 export class SchemaUtils {
-  public constructor(private readonly db: Db) {}
+  public constructor(private readonly u: Utils) {}
 
   private async check(sql: string, params: readonly DriverValue[] = []): Promise<boolean> {
-    const value = (await read(this.db, sql, params))[0]?.[0];
+    const value = (await this.u.read(sql, params))[0]?.[0];
     return value === true || Number(value) === 1;
   }
 
@@ -181,33 +202,33 @@ export class SchemaUtils {
   public async install(schema: Schema): Promise<void> {
     const model = schemaModel(schema);
     const documents = model.documents;
-    const rendered = renderDbspec(documents, this.db.driver);
+    const rendered = renderDbspec(documents, this.u.db.driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const statements = rendered.statements;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
-    if (this.db.driver === 'mysql' && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-    await checkExternal(model, this.db.driver, sql => read(this.db, sql, []));
+    if (this.u.db.driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
+    await checkExternal(model, this.u.db.driver, sql => this.u.read(sql, []));
     const tables = documents.filter(d => d.external !== true).flatMap(d => d.tables.map(t => t.name));
     const present: string[] = [];
     for (const table of tables) if (await this.table(table)) present.push(table);
     if (present.length === tables.length) {
-      registerSet(this.db, model);
+      registerSet(this.u.db, model);
       return;
     }
     if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
-    if (this.db.driver === 'mysql') {
-      await this.db.pool.session!(async control => {
+    if (this.u.db.driver === 'mysql') {
+      await this.u.db.pool.session!(async control => {
         for (const statement of statements) await control(statement);
       });
     } else {
-      await inTx(this.db, async frame => {
+      await this.u.run(async frame => {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
-    registerSet(this.db, model);
+    registerSet(this.u.db, model);
   }
 
   /**
@@ -234,7 +255,7 @@ export class SchemaUtils {
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const target = parsed!.document!;
-    const driver = this.db.driver;
+    const driver = this.u.db.driver;
     const apply = async (control: DriverControl): Promise<string[]> => {
       const query = async (sql: string) => (await control(sql)).rows.map(values => new CatalogRow(sql, values));
       const live = await introspectCatalog(query, driver, 'schema');
@@ -245,15 +266,15 @@ export class SchemaUtils {
       for (const step of steps) await control(step.statement);
       return [...added];
     };
-    if (driver === 'postgres') return inTx(this.db, frame => apply((sql, params) => frame.tx.control(sql, params)));
-    if (activeFor(this.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
-    if (driver === 'mysql') return this.db.pool.session!(apply);
-    return this.db.pool.session!(control => withoutForeignKeys(control, apply));
+    if (driver === 'postgres') return this.u.run(frame => apply((sql, params) => frame.tx.control(sql, params)));
+    if (activeFor(this.u.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
+    if (driver === 'mysql') return this.u.db.pool.session!(apply);
+    return this.u.db.pool.session!(control => withoutForeignKeys(control, apply));
   }
 
   /** Reports whether a table of the connected database or schema exists. */
   private async table(name: string): Promise<boolean> {
-    switch (this.db.driver) {
+    switch (this.u.db.driver) {
       case 'postgres': return this.check('SELECT to_regclass(current_schema() || \'.\' || quote_ident($1)) IS NOT NULL', [name]);
       case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [name]);
       default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [name]);
@@ -262,7 +283,7 @@ export class SchemaUtils {
 
   public async exists(name: string): Promise<boolean> {
     if (!validKey(name)) throw config(`schema name ${name} is invalid`);
-    switch (this.db.driver) {
+    switch (this.u.db.driver) {
       case 'postgres': return this.check('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [name]);
       case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)', [name]);
       default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", [`${name.replaceAll('_', '\\_')}\\_\\_%`]);
@@ -271,7 +292,7 @@ export class SchemaUtils {
 
   public async installed(name: string, table: string): Promise<boolean> {
     if (!validKey(name) || !validKey(table)) throw config('schema and table names are required');
-    switch (this.db.driver) {
+    switch (this.u.db.driver) {
       case 'postgres': return this.check('SELECT to_regclass($1) IS NOT NULL', [`${name}.${table}`]);
       case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)', [name, table]);
       default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)", [`${name}__${table}`]);
@@ -287,7 +308,7 @@ export class SchemaUtils {
    * and orm__ tables is content.
    */
   public async empty(): Promise<boolean> {
-    switch (this.db.driver) {
+    switch (this.u.db.driver) {
       case 'postgres': return this.check("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN ('r', 'p', 'v', 'm', 'f'))))");
       case 'mysql': return this.check('SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE())');
       default: return this.check("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')");
@@ -297,10 +318,10 @@ export class SchemaUtils {
 
 /** Table privileges (PostgreSQL only). */
 export class PrivilegeUtils {
-  public constructor(private readonly db: Db) {}
+  public constructor(private readonly u: Utils) {}
 
   private table(table: string): string {
-    if (this.db.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'table privileges are supported only by postgres');
+    if (this.u.db.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'table privileges are supported only by postgres');
     const parts = table.split('.');
     if (parts.length !== 2 || !parts.every(validKey)) throw config('a qualified table name is required');
     return parts.map(part => quote('postgres', part)).join('.');
@@ -314,7 +335,7 @@ export class PrivilegeUtils {
   public async grantTable(table: string, role: string): Promise<void> {
     const qualified = this.table(table);
     const r = this.role(role);
-    await inTx(this.db, async frame => {
+    await this.u.run(async frame => {
       await frame.tx.control(`GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
       await frame.tx.control(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
     });
@@ -325,12 +346,12 @@ export class PrivilegeUtils {
     const r = this.role(role);
     const upper = privilege.trim().toUpperCase();
     if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${privilege}`);
-    await inTx(this.db, async frame => { await frame.tx.control(`REVOKE ${upper} ON ${qualified} FROM ${r}`); });
+    await this.u.run(async frame => { await frame.tx.control(`REVOKE ${upper} ON ${qualified} FROM ${r}`); });
   }
 
   public async inspectTable(table: string): Promise<TablePrivileges> {
     const qualified = this.table(table);
-    const row = (await read(this.db, `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
+    const row = (await this.u.read(`SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
  has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0]!;
     return { insert: row[0] === true, select: row[1] === true, update: row[2] === true, delete: row[3] === true, truncate: row[4] === true };
   }
@@ -340,7 +361,7 @@ interface AesSpec { table: string; keys: readonly string[]; version: string; col
 
 /** AES key version status and rotation. */
 export class AesUtils {
-  public constructor(private readonly db: Db) {}
+  public constructor(private readonly u: Utils) {}
 
   private spec(model: unknown): AesSpec {
     if (!isModel(model)) throw config('aes requires a model');
@@ -354,8 +375,8 @@ export class AesUtils {
 
   public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus> {
     const spec = this.spec(model);
-    const q = (name: string) => quote(this.db.driver, name);
-    const rows = await read(this.db, `SELECT ${q(spec.version)}, COUNT(*) FROM ${q(spec.table)} GROUP BY ${q(spec.version)} ORDER BY ${q(spec.version)}`, []);
+    const q = (name: string) => quote(this.u.db.driver, name);
+    const rows = await this.u.read(`SELECT ${q(spec.version)}, COUNT(*) FROM ${q(spec.table)} GROUP BY ${q(spec.version)} ORDER BY ${q(spec.version)}`, []);
     const versions = new Map<number, number>();
     let total = 0;
     let pending = 0;
@@ -372,7 +393,7 @@ export class AesUtils {
   /** Re-encrypts every AES column of rows not at the current version in one transaction. */
   public async rotate(model: unknown, keyring: AesKeyring): Promise<number> {
     const spec = this.spec(model);
-    const driver = this.db.driver;
+    const driver = this.u.db.driver;
     const q = (name: string) => quote(driver, name);
     const ph = (n: number) => driver === 'postgres' ? `$${n}` : '?';
     const columns = [...spec.keys.map(q), q(spec.version), ...spec.columns.map(c => q(c.name))];
@@ -384,7 +405,7 @@ export class AesUtils {
       decode: (value: unknown, styles: readonly string[], key: string) => hostDecode(value as string | Uint8Array | null, styles, key),
       encode: (value: unknown, styles: readonly string[], key: string) => hostEncode(value, styles, key),
     };
-    return inTx(this.db, async frame => {
+    return this.u.run(async frame => {
       let rotated = 0;
       for (;;) {
         const rows = (await frame.tx.control(select, [keyring.currentVersion])).rows;

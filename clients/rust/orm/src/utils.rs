@@ -91,7 +91,42 @@ impl<'a> Utils<'a> {
         }
     }
 
-    fn reader(&self) -> Executor {
+    /// set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). 외부 문서가
+    /// 없는 set은 database를 읽지 않는다. introspection은 `read`의 executor에서 한다: 활성 transaction이 있으면 그
+    /// 연결, 없으면 pool 연결 하나다. 차이는 CONFIG다.
+    pub(crate) async fn check_external(&self, documents: &[&Document]) -> Result<()> {
+        if !documents.iter().any(|d| d.external) {
+            return Ok(());
+        }
+        let failed = |e: crate::dbspec::IntrospectError| match e {
+            crate::dbspec::IntrospectError::Query(e) => Error::from(e),
+            crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
+        };
+        let live = match self.read() {
+            Executor::Tx(t) => {
+                let mut guard = t.enter()?;
+                match guard.as_mut() {
+                    Some(TxInner::MySql(inner)) => {
+                        let conn = inner.conn.as_mut().expect("active MySQL transaction connection");
+                        crate::dbspec::introspect(&mut **conn, dbspec::Dialect::MySql, "schema").await
+                    }
+                    Some(TxInner::Postgres(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Postgres, "schema").await,
+                    Some(TxInner::Sqlite(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Sqlite, "schema").await,
+                    None => return Err(Error::Config("transaction already finished".into())),
+                }
+            }
+            Executor::Db(db) => match db.pool() {
+                crate::db::Pool::MySql(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::MySql, "schema").await,
+                crate::db::Pool::Postgres(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Postgres, "schema").await,
+                crate::db::Pool::Sqlite(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Sqlite, "schema").await,
+            },
+        }
+        .map_err(failed)?;
+        external_error(dbspec::external_differences(&live.document, documents))
+    }
+
+    /// 읽기의 executor: 연결의 활성 transaction, 없으면 연결의 pool이다.
+    fn read(&self) -> Executor {
         match active_for(self.db) {
             Some(t) => Executor::Tx(t),
             None => Executor::Db(self.db.clone()),
@@ -122,7 +157,7 @@ impl<'a> Utils<'a> {
     }
 
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
-        let rows = self.query(&self.reader(), sql.to_owned(), params).await?;
+        let rows = self.query(&self.read(), sql.to_owned(), params).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
@@ -220,7 +255,7 @@ impl SchemaUtils<'_> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
-        check_external(self.u.db, &refs).await?;
+        self.u.check_external(&refs).await?;
         let dialect = match self.u.db.driver() {
             "mysql" => dbspec::Dialect::MySql,
             "postgres" => dbspec::Dialect::Postgres,
@@ -337,7 +372,7 @@ impl SchemaUtils<'_> {
             _ => format!("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({}) ORDER BY name", marks.join(", ")),
         };
         let params: Vec<Param> = tables.iter().map(|t| Param::Str(t.clone())).collect();
-        let rows = self.u.query(&self.u.reader(), sql, &params).await?;
+        let rows = self.u.query(&self.u.read(), sql, &params).await?;
         rows.into_iter().map(|mut row| row.swap_remove(0).take_string()).collect()
     }
 
@@ -467,7 +502,7 @@ impl PrivilegeUtils<'_> {
     pub async fn inspect_table(&self, table: &str) -> Result<TablePrivileges> {
         let (_, qualified) = self.table(table)?;
         let sql = "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')";
-        let rows = self.u.query(&self.u.reader(), sql.into(), &[Param::Str(qualified)]).await?;
+        let rows = self.u.query(&self.u.read(), sql.into(), &[Param::Str(qualified)]).await?;
         let r = rows.into_iter().next().ok_or_else(|| Error::internal("privilege query returned no row"))?;
         Ok(TablePrivileges { insert: truthy(&r[0]), select: truthy(&r[1]), update: truthy(&r[2]), delete: truthy(&r[3]), truncate: truthy(&r[4]) })
     }
@@ -548,7 +583,7 @@ impl AesUtils<'_> {
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
-        for row in self.u.query(&self.u.reader(), sql, &[]).await? {
+        for row in self.u.query(&self.u.read(), sql, &[]).await? {
             let stored = row_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {
@@ -689,38 +724,4 @@ fn external_error(differences: Vec<String>) -> Result<()> {
         return Ok(());
     }
     Err(Error::Config(format!("the tables that the set uses from external documents differ from the database: {}", differences.join("; "))))
-}
-
-/// set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). 외부 문서가 없는
-/// set은 database를 읽지 않는다. 연결에 활성 transaction이 있으면 그 연결에서, 아니면 pool 연결 하나에서
-/// introspect하며, 차이는 CONFIG다.
-pub(crate) async fn check_external(db: &crate::Db, documents: &[&Document]) -> Result<()> {
-    if !documents.iter().any(|d| d.external) {
-        return Ok(());
-    }
-    let failed = |e: crate::dbspec::IntrospectError| match e {
-        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
-        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
-    };
-    let live = match active_for(db) {
-        Some(t) => {
-            let mut guard = t.enter()?;
-            match guard.as_mut() {
-                Some(TxInner::MySql(inner)) => {
-                    let conn = inner.conn.as_mut().expect("active MySQL transaction connection");
-                    crate::dbspec::introspect(&mut **conn, dbspec::Dialect::MySql, "schema").await
-                }
-                Some(TxInner::Postgres(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Postgres, "schema").await,
-                Some(TxInner::Sqlite(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Sqlite, "schema").await,
-                None => return Err(Error::Config("transaction already finished".into())),
-            }
-        }
-        None => match db.pool() {
-            crate::db::Pool::MySql(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::MySql, "schema").await,
-            crate::db::Pool::Postgres(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Postgres, "schema").await,
-            crate::db::Pool::Sqlite(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Sqlite, "schema").await,
-        },
-    }
-    .map_err(failed)?;
-    external_error(dbspec::external_differences(&live.document, documents))
 }

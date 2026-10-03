@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T37: the internal helpers of the utilities have one name and one place in the four clients: `Utils` owns `active`, `run` and `read`, and the schema, privilege and AES utilities call them through it (PHP `UtilsSql` and TypeScript `inTx` are removed, Rust `reader` is `read`). No behavior changes.
+
 - T35.1: a document set can use tables of another set without owning them. External documents, given with Go and PHP `orm-gen gen --use`, TypeScript `orm-gen gen --use` and Rust `Builder::uses`, are validated with the set but never rendered, installed, altered, compared or generated; `manifestHash` covers the used external tables, install, addTablesAndColumns and the connect of a generated schema value fail with `CONFIG` when those tables differ from the database, and a plan whose target uses an external document is invalid.
 
 - T35.2: the audit values come from an audit source of the connection config instead of a handle: Go `Config.AuditSource(ctx)`, PHP `Config(auditSource:)`, TypeScript `connect({ auditSource })`, Rust `Config.audit_source`. A transaction with audit values calls it once, a call value wins over a source value, and the record table is the table that `references` names. `audit(defaults)` and its handle are removed.
