@@ -1,11 +1,10 @@
-//! Generated model integration test on SQLite, MySQL and PostgreSQL.
-//! ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases (the
-//! test drops its tables there and installs the schema); the test fails when
-//! either is unset.
+//! Generated model integration test on SQLite, MySQL and PostgreSQL. Each
+//! case runs in a case database of its own (orm-case-database), created on
+//! the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and dropped when
+//! the case ends; the test fails when either is unset.
 //!
 //! Usage: integration <bench.dbs> [--case <case>]
 use std::cell::Cell;
-use std::path::PathBuf;
 
 orm::models!();
 
@@ -61,6 +60,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
 use orm::db::Pool;
 use orm::{AesKeyring, Collection, Db, Isolation, Null};
+use orm_case_database::CaseDatabase;
 
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
@@ -75,29 +75,11 @@ async fn coverage_generated_model_connection() {
     db.close().await;
 }
 
-const TABLES: &[&str] = &[
-    "account_project",
-    "composite_membership",
-    "composite_account",
-    "author",
-    "service_member",
-    "service_region",
-    "soft_record",
-    "account",
-    "project",
-    "user",
-    "service",
-    "task",
-];
-
-struct Env {
-    tmp: PathBuf,
-}
-
 struct Target {
     driver: &'static str,
     dsn: String,
     db: Db,
+    database: CaseDatabase,
 }
 
 fn config() -> orm::Config {
@@ -120,52 +102,28 @@ fn generated_fields_require_selection_or_assignment() {
     assert_eq!(model.set_name("checked").get_name().unwrap(), "checked");
 }
 
-impl Env {
-    /// Fresh databases for each dialect with the schema installed.
-    async fn databases(&self, test: &str) -> Vec<Target> {
-        let targets = self.without_tables(test).await;
-        for t in &targets {
-            t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
-            t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
-        }
-        targets
+impl Target {
+    /// `driver`의 새 case database에 연결하고 schema를 두 번 설치한다(두 번째는 아무것도 바꾸지
+    /// 않는다).
+    async fn installed(driver: &str) -> Target {
+        let t = Target::empty(driver).await;
+        t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install: {e}", t.driver));
+        t.db.utils().schema().install(&model::SCHEMA).await.unwrap_or_else(|e| panic!("{}: schema().install again: {e}", t.driver));
+        t
     }
 
-    /// Databases for each dialect without the test tables: a new SQLite file
-    /// and the MySQL and PostgreSQL test databases with the tables dropped.
-    async fn without_tables(&self, test: &str) -> Vec<Target> {
-        let sqlite = self.tmp.join(format!("{test}.sqlite"));
-        let _ = std::fs::remove_file(&sqlite);
-        let mut targets = vec![("sqlite", format!("sqlite://{}?_pragma=busy_timeout(5000)", sqlite.display()))];
-        for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
-            match std::env::var(var) {
-                Ok(dsn) if !dsn.is_empty() => targets.push((driver, dsn)),
-                _ => panic!("{var} is required; database tests never skip"),
-            }
-        }
-        let mut out = Vec::new();
-        for (driver, dsn) in targets {
-            let db = model::connect(&dsn, 4, config()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-            let statement = |sql: String| sqlx::raw_sql(sqlx::AssertSqlSafe(sql));
-            match db.pool() {
-                Pool::MySql(p) => {
-                    let mut conn = p.acquire().await.unwrap();
-                    let mut drop = String::from("SET FOREIGN_KEY_CHECKS = 0;");
-                    for t in TABLES {
-                        drop.push_str(&format!("DROP TABLE IF EXISTS `{t}`;"));
-                    }
-                    drop.push_str("SET FOREIGN_KEY_CHECKS = 1;");
-                    statement(drop).execute(&mut *conn).await.unwrap();
-                }
-                Pool::Postgres(p) => {
-                    let drop: String = TABLES.iter().map(|t| format!("DROP TABLE IF EXISTS \"{t}\" CASCADE;")).collect();
-                    statement(drop).execute(p).await.unwrap();
-                }
-                Pool::Sqlite(_) => {}
-            }
-            out.push(Target { driver, dsn, db });
-        }
-        out
+    /// `driver`의 새 case database(MySQL, PostgreSQL)나 새 SQLite file에 연결한다.
+    async fn empty(driver: &str) -> Target {
+        let database = CaseDatabase::create(driver).await;
+        let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
+        let db = model::connect(&dsn, 4, config()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        Target { driver: database.driver(), dsn, db, database }
+    }
+
+    /// 연결을 닫고 case database를 지운다.
+    async fn finish(self) {
+        self.db.close().await;
+        self.database.drop().await;
     }
 }
 
@@ -516,9 +474,13 @@ async fn await_replica(primary: &Db, replica: &Db) {
 /// Opens a connection to the primary and one to its replica side by side. A
 /// model uses the connection it is connected to and no other, and a model
 /// without a connection inside a transaction uses the transaction.
-async fn primary_and_replica(t: &Target, replica_dsn: &str) {
+async fn primary_and_replica(t: &Target, replica_base: &str) {
     let master = &t.db;
-    let slave1 = model::connect(replica_dsn, 2, config()).await.unwrap();
+    // replica가 case database와 설치된 table을 받을 때까지 replica의 기존 database 연결로 기다린다.
+    let replica_admin = model::connect(replica_base, 1, config()).await.unwrap();
+    await_replica(master, &replica_admin).await;
+    replica_admin.close().await;
+    let slave1 = model::connect(&t.database.related_dsn(replica_base), 2, config()).await.unwrap();
     let name = format!("replica-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
     User::new().connect(master).set_name(&name).create().await.unwrap();
     await_replica(master, &slave1).await;
@@ -555,8 +517,9 @@ async fn primary_and_replica(t: &Target, replica_dsn: &str) {
 /// Writes through a connection to a SQLite database file the process may
 /// only read: SQLite opens it read-only, reads succeed, and a write returns
 /// READ_ONLY.
-async fn read_only_sqlite(t: &Target, path: &std::path::Path) {
+async fn read_only_sqlite(t: &Target) {
     use std::os::unix::fs::PermissionsExt;
+    let path = t.database.path().expect("a SQLite case database file");
     User::new().connect(&t.db).set_name("read-only").create().await.unwrap();
     t.db.close().await;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
@@ -566,8 +529,8 @@ async fn read_only_sqlite(t: &Target, path: &std::path::Path) {
     db.close().await;
 }
 
-/// Checks schema().empty() on a database without the test tables, with an
-/// empty PostgreSQL schema other than public, and with the installed tables.
+/// Checks schema().empty() on a new case database, with an empty PostgreSQL
+/// schema other than public, and with the installed tables.
 async fn schema_empty(t: &Target) {
     let db = &t.db;
     assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
@@ -722,18 +685,17 @@ async fn main() {
             std::process::exit(2);
         }
     };
-    let tmp = std::env::temp_dir().join(format!("orm-rust-integration-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
     let text = orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
     let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
-    let env = Env { tmp: tmp.clone() };
+    const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
     if selected.is_none_or(|case| case == "schema_empty") {
-        for t in env.without_tables("schema_empty").await {
-            let case = orm_testcase::start(format!("schema_empty/{}", t.driver), orm_testcase::DATABASE);
+        for driver in DRIVERS {
+            let case = orm_testcase::start(format!("schema_empty/{driver}"), orm_testcase::DATABASE);
+            let t = Target::empty(driver).await;
             schema_empty(&t).await;
-            t.db.close().await;
+            t.finish().await;
             drop(case);
         }
     }
@@ -742,9 +704,10 @@ async fn main() {
         if selected.is_some_and(|case| case != name) {
             continue;
         }
-        // 각 case는 database 하나에 schema를 설치하고 statement 수백 개 이하를 실행한다.
-        for t in env.databases(name).await {
-            let case = orm_testcase::start(format!("{name}/{}", t.driver), orm_testcase::DATABASE);
+        // 각 case는 자기 case database에 schema를 설치하고 statement 수백 개 이하를 실행한다.
+        for driver in DRIVERS {
+            let case = orm_testcase::start(format!("{name}/{driver}"), orm_testcase::DATABASE);
+            let t = Target::installed(driver).await;
             match name {
                 "conditions" => conditions(&t).await,
                 "joins_and_relations" => joins_and_relations(&t).await,
@@ -755,24 +718,24 @@ async fn main() {
                 "json_values" => json_values(&t).await,
                 _ => bind_limit_splitting(&t).await,
             }
-            t.db.close().await;
+            t.finish().await;
             drop(case);
         }
     }
     if selected.is_none_or(|case| case == "primary_and_replica") {
-        for t in env.databases("primary_and_replica").await {
-            let case = orm_testcase::start(format!("primary_and_replica/{}", t.driver), orm_testcase::DATABASE);
-            if t.driver == "sqlite" {
-                read_only_sqlite(&t, &tmp.join("primary_and_replica.sqlite")).await;
+        for driver in DRIVERS {
+            let case = orm_testcase::start(format!("primary_and_replica/{driver}"), orm_testcase::DATABASE);
+            let t = Target::installed(driver).await;
+            if driver == "sqlite" {
+                read_only_sqlite(&t).await;
                 case.step("read_only_sqlite");
-                continue;
+            } else {
+                let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
+                let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
+                primary_and_replica(&t, &replica).await;
             }
-            let var = format!("ORM_TEST_{}_REPLICA_DSN", t.driver.to_uppercase());
-            let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
-            primary_and_replica(&t, &replica).await;
-            t.db.close().await;
+            t.finish().await;
             drop(case);
         }
     }
-    let _ = std::fs::remove_dir_all(&tmp);
 }

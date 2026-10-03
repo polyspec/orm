@@ -1,35 +1,22 @@
 //! audit operation id (docs/dbspec.md, "Audit"): executor는 transaction의 operation id를
 //! insert하거나 update하는 모든 감사 대상 row의 operation column에 쓰고, render된 trigger는
-//! 각 version을 이력 table에 복사한다. SQLite, MySQL, PostgreSQL에서 실행하며
-//! ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+//! 각 version을 이력 table에 복사한다. SQLite, MySQL, PostgreSQL에서 database마다 자기만의
+//! case database(orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
+//! 없으면 실패한다.
 
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 
-use audit_rows::{changed_item, code, drop_tables, history, new_item, SCHEMA};
+use audit_rows::{changed_item, code, history, new_item, SCHEMA};
 use orm::{Db, Model, Param};
-
-/// Returns the DSN in `var`; an unset or empty variable fails the test.
-fn require_dsn(var: &str) -> String {
-    match std::env::var(var) {
-        Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
-    }
-}
+use orm_case_database::CaseDatabase;
 
 #[tokio::test]
 async fn audit_operation_id() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-audit-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let targets = vec![
-        ("sqlite", format!("sqlite://{}", tmp.join("audit.sqlite").display())),
-        ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
-        ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
-    ];
-    for (driver, dsn) in &targets {
-        let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_tables(&db, driver).await;
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install again: {e}"));
 
@@ -90,9 +77,8 @@ async fn audit_operation_id() {
             ],
             "{driver}: history rows"
         );
-        drop_tables(&db, driver).await;
         db.close().await;
+        database.drop().await;
         orm_testcase::step(format_args!("audit_operation_id {driver}"));
     }
-    let _ = std::fs::remove_dir_all(&tmp);
 }

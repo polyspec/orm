@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["case-clock", "orm", "orm-build", "orm-schema", "testcase", "tests"]
+members = ["case-clock", "case-database", "orm", "orm-build", "orm-schema", "testcase", "tests"]

@@ -64,6 +64,8 @@ pub fn connected<M: Model>(db: &Db) -> M {
     M::from_core(core)
 }
 
+// coverage_audit_triggers.rs만 쓴다. audit.rs는 자기 case database를 통째로 지운다.
+#[allow(dead_code)]
 pub async fn exec(db: &Db, statement: &str) {
     let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
     match db.pool() {
@@ -75,6 +77,8 @@ pub async fn exec(db: &Db, statement: &str) {
 }
 
 /// fixture의 table과, PostgreSQL에서는 table과 함께 지워지지 않는 trigger function을 지운다.
+/// coverage_audit_triggers.rs만 쓴다.
+#[allow(dead_code)]
 pub async fn drop_tables(db: &Db, driver: &str) {
     let q = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };
     for table in ["item", "item_history"] {

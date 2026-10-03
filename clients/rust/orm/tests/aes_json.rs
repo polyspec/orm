@@ -1,22 +1,15 @@
 //! Encrypted JSON value: a `json aes` column takes an ordered-json value, reads
 //! it back byte-for-byte, rotates to another key version, and takes an update, on SQLite,
-//! MySQL and PostgreSQL. The test fails when ORM_TEST_MYSQL_DSN or
-//! ORM_TEST_POSTGRES_DSN is unset.
+//! MySQL and PostgreSQL, each in a case database of its own (orm-case-database).
+//! The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use std::collections::BTreeMap;
 
 use orm::db::Pool;
 use orm::utils::AesKeyring;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use orm_case_database::CaseDatabase;
 use sqlx::Row;
-
-/// Returns the DSN in `var`; an unset or empty variable fails the test.
-fn require_dsn(var: &str) -> String {
-    match std::env::var(var) {
-        Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
-    }
-}
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
 static SCHEMA: Schema =
@@ -102,34 +95,18 @@ async fn stored(db: &Db) -> (Vec<u8>, i64) {
     }
 }
 
-async fn drop_table(db: &Db) {
-    let sql = sqlx::raw_sql("DROP TABLE IF EXISTS secret_config");
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-    }
-    .unwrap();
-}
-
 #[tokio::test]
 async fn aes_json_column() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-aes-json-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let targets = [
-        ("sqlite", format!("sqlite://{}", tmp.join("aes-json.sqlite").display())),
-        ("mysql", require_dsn("ORM_TEST_MYSQL_DSN")),
-        ("postgres", require_dsn("ORM_TEST_POSTGRES_DSN")),
-    ];
     // Member order, number text, and {} apart from [] survive the round trip.
     let text = r#"{"token":"s3cret-token","b":1,"a":[],"c":{},"n":1.50,"z":[true,null,"x"]}"#;
     let updated = r#"{"token":"next-token","list":[1,"two",null],"e":{}}"#;
     let one: &[(i32, &str)] = &[(1, "config-key-one")];
     let both: &[(i32, &str)] = &[(1, "config-key-one"), (2, "config-key-two")];
-    for (driver, dsn) in &targets {
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let dsn = database.dsn();
         let first = open(dsn, one, 1).await;
-        drop_table(&first).await;
         first.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = connected(&first);
         row.core_mut().set_ordered("config", orm::ordered_json::parse(text).unwrap());
@@ -143,7 +120,8 @@ async fn aes_json_column() {
         let keyring = AesKeyring::new(both.iter().map(|(v, k)| (*v, (*k).to_owned())).collect(), 2).unwrap();
         assert_eq!(second.utils().aes().rotate(&connected(&second), &keyring).await.unwrap(), 1, "{driver}: rotate");
         assert_eq!(stored(&second).await.1, 2, "{driver}: rotated version");
-        assert_eq!(read(&open(dsn, &[(2, "config-key-two")], 2).await).await, text, "{driver}: rotated read");
+        let rotated = open(dsn, &[(2, "config-key-two")], 2).await;
+        assert_eq!(read(&rotated).await, text, "{driver}: rotated read");
 
         let again = open(dsn, both, 1).await;
         let mut changed = connected(&again);
@@ -152,7 +130,9 @@ async fn aes_json_column() {
         orm::model::update(&mut changed, false).await.unwrap_or_else(|e| panic!("{driver}: update: {e}"));
         assert_eq!(stored(&again).await.1, 1, "{driver}: updated version");
         assert_eq!(read(&again).await, updated, "{driver}: updated read");
-        drop_table(&again).await;
+        for db in [first, second, rotated, again] {
+            db.close().await;
+        }
+        database.drop().await;
     }
-    std::fs::remove_dir_all(&tmp).unwrap();
 }
