@@ -1,5 +1,4 @@
 //! Native catalog connections selected by a DSN URI.
-mod reader;
 mod read_only;
 mod metadata;
 mod page;
@@ -17,10 +16,31 @@ pub use mutation::MutationPhase;
 pub use row_snapshot::RowSnapshot;
 pub use page::TablePage;
 pub use metadata::{TableRef, TableMetadata, TableColumnMetadata, TableKind};
-pub use reader::{read_tables, live_manifest, trigger_bodies, postgres_check_expr};
+pub use orm_schema::catalog::postgres_check_expr;
 use crate::{live::Table, schema::Manifest, tool_db::Conn};
 use orm::db::{ConnectOptions, Pool};
 use std::collections::HashSet;
+
+/// The tables of the connected database; `only` limits the tables.
+pub async fn read_tables(conn: &mut Conn, driver: &str, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
+    Ok(orm_schema::catalog::read_tables(conn, driver, only).await?)
+}
+
+/// The manifest of the connected database, as a migration reads its source.
+pub async fn live_manifest(conn: &mut Conn, driver: &str) -> Result<Manifest, String> {
+    Ok(orm_schema::catalog::live_manifest(conn, driver).await?)
+}
+
+/// The bodies of the current schema's triggers that carry ORM markers.
+pub async fn trigger_bodies(conn: &mut Conn, driver: &str) -> Result<Vec<String>, String> {
+    Ok(orm_schema::catalog::trigger_bodies(conn, driver).await?)
+}
+
+/// Replaces each live check expression that is equivalent to the declared
+/// check with the declared text, as [`orm_schema::catalog::align_live_checks`].
+pub async fn align_live_checks(conn: &mut Conn, driver: &str, live: &mut Manifest, want: &Manifest) -> Result<(), String> {
+    Ok(orm_schema::catalog::align_live_checks(conn, driver, live, want).await?)
+}
 
 #[cfg(test)]
 #[path="../../tests/unit/read_only_disposal.rs"]

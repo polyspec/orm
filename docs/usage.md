@@ -298,7 +298,7 @@ import { Db } from '@polyspec/orm-typescript';
 const master = await Db.connect(masterDsn, schemaPath, { aesKey });
 ```
 
-Each client caches plans by request shape. `connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of a manifest on every database; existing tables are kept.
+Each client caches plans by request shape. `connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of a manifest on every database; existing tables are kept. `connection.utils().schema().addColumns(manifestJson)` adds the missing nullable or defaulted columns of the existing tables of a manifest, replaces the audit triggers of each changed table, and returns `SCHEMA_DIFFERS` before any change for every other difference ([schema](schema.md) §8).
 
 ---
 
@@ -482,6 +482,7 @@ psql … -f schema.pg.sql
 | Error constants | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(manifestJson)` |
 | Register an installed schema | `connection.utils().schema().register(manifestJson)` |
+| Add the missing nullable or defaulted columns of the existing tables | `connection.utils().schema().addColumns(manifestJson)` |
 
 ---
 

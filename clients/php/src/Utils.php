@@ -213,6 +213,47 @@ final class SchemaUtils
     }
 
     /**
+     * Adds every missing column of the existing tables of a schema manifest
+     * that is nullable or has a default, and replaces the audit triggers of
+     * each changed table so that they record the new columns. A table that
+     * does not exist and the tables of other manifests are left unchanged.
+     * Any other difference between the existing tables and the manifest fails
+     * with SCHEMA_DIFFERS before any statement runs. The manifest hash is
+     * verified against its content first. PostgreSQL and SQLite apply the
+     * statements in the active transaction or in a new one; MySQL commits
+     * each DDL statement itself, so they run outside a transaction there.
+     * @return list<string> the added columns as table.column, in manifest order
+     */
+    public function addColumns(string $manifestJson): array
+    {
+        $driver = $this->db->driver();
+        $this->engine($manifestJson);
+        try {
+            $manifest = SchemaBuilder::load($manifestJson);
+        } catch (\InvalidArgumentException | OrmException $e) {
+            throw new OrmException(Code::CONFIG, 'invalid schema manifest: ' . $e->getMessage(), $e);
+        }
+        $apply = function () use ($manifest, $driver): array {
+            try {
+                [$statements, $added] = SchemaColumns::plan($this->db->pdo(), $driver, $manifest);
+                foreach ($statements as $statement) {
+                    $this->db->pdo()->exec($statement);
+                }
+            } catch (\PDOException $e) {
+                throw OrmException::fromDriver($e, $driver);
+            }
+            return $added;
+        };
+        if ($driver !== 'mysql') {
+            return $this->sql->run($apply);
+        }
+        if (Db::activeFor($this->db) !== null) {
+            throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; add columns outside a transaction');
+        }
+        return $apply();
+    }
+
+    /**
      * Adds the engine of an installed schema manifest to the connection, as
      * install does after its statements, without running any statement. The
      * manifest hash is verified against its content.

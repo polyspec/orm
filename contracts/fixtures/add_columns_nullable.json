@@ -1,0 +1,212 @@
+{
+  "schema_hash": "8d906c2e59228bf5",
+  "order": [
+    "addcol_item",
+    "addcol_tag"
+  ],
+  "entities": {
+    "addcol_item": {
+      "name": "addcol_item",
+      "table": "addcol_item",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "raw": "varchar(36)",
+          "len": 36,
+          "uk": true
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "raw": "varchar(64)",
+          "nullable": true,
+          "len": 64
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "raw": "tinyint",
+          "default": "0"
+        },
+        {
+          "name": "price",
+          "type": "decimal",
+          "raw": "decimal(10_2)",
+          "default": "0",
+          "precision": 10,
+          "scale": 2
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "raw": "datetime(6)",
+          "default": "now",
+          "precision": 6
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "raw": "varchar(64)",
+          "nullable": true,
+          "len": 64
+        }
+      ],
+      "relations": {
+        "addcol_tags": {
+          "name": "addcol_tags",
+          "kind": "many",
+          "target": "addcol_tag",
+          "keys": [
+            {
+              "local": "seq",
+              "target": "addcol_item_seq"
+            }
+          ]
+        }
+      },
+      "unique": [
+        [
+          "uuid"
+        ]
+      ]
+    },
+    "addcol_tag": {
+      "name": "addcol_tag",
+      "table": "addcol_tag",
+      "pk": [
+        "seq"
+      ],
+      "auto": "seq",
+      "columns": [
+        {
+          "name": "seq",
+          "type": "i64",
+          "raw": "bigint",
+          "auto": true,
+          "pk": true
+        },
+        {
+          "name": "addcol_item_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "ref": {
+            "entity": "addcol_item",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "parent_addcol_tag_seq",
+          "type": "i64",
+          "raw": "bigint",
+          "nullable": true,
+          "ref": {
+            "entity": "addcol_tag",
+            "column": "seq"
+          },
+          "fk": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "raw": "varchar(32)",
+          "len": 32
+        }
+      ],
+      "relations": {
+        "addcol_item": {
+          "name": "addcol_item",
+          "kind": "one",
+          "target": "addcol_item",
+          "keys": [
+            {
+              "local": "addcol_item_seq",
+              "target": "seq"
+            }
+          ]
+        },
+        "addcol_tags": {
+          "name": "addcol_tags",
+          "kind": "many",
+          "target": "addcol_tag",
+          "keys": [
+            {
+              "local": "seq",
+              "target": "parent_addcol_tag_seq"
+            }
+          ]
+        },
+        "parent_addcol_tag": {
+          "name": "parent_addcol_tag",
+          "kind": "one",
+          "target": "addcol_tag",
+          "keys": [
+            {
+              "local": "parent_addcol_tag_seq",
+              "target": "seq"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "orm": [
+    {
+      "kind": "audit_log",
+      "args": {
+        "change": "addcol_change(addcol_operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)",
+        "context": "addcol.operation",
+        "operation": "addcol_operation(seq, operation_uuid)"
+      },
+      "raw": "audit_log operation=addcol_operation(seq, operation_uuid) context=addcol.operation change=addcol_change(addcol_operation_seq, change_kind, service_seq, table_label, entity_ref, before_value, after_value)"
+    },
+    {
+      "kind": "audit",
+      "args": {
+        "entity": "addcol_item",
+        "mode": "changes"
+      },
+      "raw": "audit entity=addcol_item mode=changes"
+    }
+  ],
+  "audit_log": {
+    "operation": {
+      "table": "addcol_operation",
+      "columns": [
+        "seq",
+        "operation_uuid"
+      ]
+    },
+    "context": "addcol.operation",
+    "change": {
+      "table": "addcol_change",
+      "columns": [
+        "addcol_operation_seq",
+        "change_kind",
+        "service_seq",
+        "table_label",
+        "entity_ref",
+        "before_value",
+        "after_value"
+      ]
+    }
+  },
+  "audits": [
+    {
+      "entity": "addcol_item",
+      "mode": "changes"
+    }
+  ]
+}

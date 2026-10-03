@@ -5,14 +5,10 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use crate::live::{self, Check, Column, ForeignKey, Index, Table, NO_DEFAULT};
 use crate::schema::Manifest;
 
-use crate::tool_db::{Conn, Rows};
-
-fn err(e: sqlx::Error) -> String {
-    e.to_string()
-}
+use super::{Catalog, CatalogError, Rows};
 
 /// The tables of the connected database; `only` limits the tables.
-pub async fn read_tables(conn: &mut Conn, driver: &str, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
+pub async fn read_tables<C: Catalog>(conn: &mut C, driver: &str, only: Option<&HashSet<String>>) -> Result<Vec<Table>, CatalogError<C::Error>> {
     match driver {
         "postgres" => read_postgres(conn, only).await,
         "sqlite" => read_sqlite(conn, only).await,
@@ -21,15 +17,15 @@ pub async fn read_tables(conn: &mut Conn, driver: &str, only: Option<&HashSet<St
 }
 
 /// The manifest of the connected database, as a migration reads its source.
-pub async fn live_manifest(conn: &mut Conn, driver: &str) -> Result<Manifest, String> {
+pub async fn live_manifest<C: Catalog>(conn: &mut C, driver: &str) -> Result<Manifest, CatalogError<C::Error>> {
     let tables = read_tables(conn, driver, None).await?;
     let bodies = trigger_bodies(conn, driver).await?;
-    live::manifest(&tables, &bodies)
+    live::manifest(&tables, &bodies).map_err(CatalogError::Read)
 }
 
 /// The bodies of the current schema's triggers that carry ORM markers.
-pub async fn trigger_bodies(conn: &mut Conn, driver: &str) -> Result<Vec<String>, String> {
-    let rows = conn.query(crate::triggers::trigger_bodies_query(driver), &[]).await.map_err(err)?;
+pub async fn trigger_bodies<C: Catalog>(conn: &mut C, driver: &str) -> Result<Vec<String>, CatalogError<C::Error>> {
+    let rows = conn.query(crate::triggers::trigger_bodies_query(driver)).await.map_err(CatalogError::Query)?;
     Ok(rows.iter().map(|r| r[0].text()).filter(|b| b.contains(crate::triggers::TRIGGER_MARKER)).collect())
 }
 
@@ -94,15 +90,14 @@ fn add_foreign_key(t: &mut Table, name: &str, target: &str, action: String, colu
     fk.target_columns.push(target_column.to_owned());
 }
 
-async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
+async fn read_mysql<C: Catalog>(conn: &mut C, only: Option<&HashSet<String>>) -> Result<Vec<Table>, CatalogError<C::Error>> {
     let rows: Rows = conn
         .query(
             "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_KEY, COLUMN_COMMENT
 		FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     let mut by_name: HashMap<String, Table> = HashMap::new();
     let mut order = Vec::new();
     for r in rows {
@@ -127,7 +122,7 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
         }
         column(&mut by_name, &mut order, &table, c);
     }
-    for r in conn.query("SELECT TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()", &[]).await.map_err(err)? {
+    for r in conn.query("SELECT TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()").await.map_err(CatalogError::Query)? {
         if let Some(t) = by_name.get_mut(&r[0].text()) {
             t.comment = r[1].text();
         }
@@ -136,10 +131,9 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
         .query(
             "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, INDEX_TYPE, COLUMN_NAME FROM information_schema.STATISTICS
 		WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in indexes {
         let name = r[1].text();
         let Some(t) = by_name.get_mut(&r[0].text()) else { continue };
@@ -151,7 +145,7 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
             last.columns.push(col);
             continue;
         }
-        t.indexes.push(Index { name, unique: r[2].int().map_err(err)? == 0, fulltext: r[3].text() == "FULLTEXT", columns: vec![col] });
+        t.indexes.push(Index { name, unique: r[2].int().map_err(CatalogError::Read)? == 0, fulltext: r[3].text() == "FULLTEXT", columns: vec![col] });
     }
     let fks = conn
         .query(
@@ -162,10 +156,9 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
 		  ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME
 		WHERE k.TABLE_SCHEMA=DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL
 		ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in fks {
         let Some(t) = by_name.get_mut(&r[0].text()) else { continue };
         add_foreign_key(t, &r[1].text(), &r[3].text(), live::import_delete_action(&r[5].text()), &r[2].text(), &r[4].text());
@@ -177,10 +170,9 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
 		JOIN information_schema.CHECK_CONSTRAINTS cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME
 		WHERE tc.CONSTRAINT_SCHEMA=DATABASE() AND tc.CONSTRAINT_TYPE='CHECK'
 		ORDER BY tc.TABLE_NAME, tc.CONSTRAINT_NAME",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in checks {
         let table = r[0].text();
         // DDL writes the physical name ck_<table>_<name>; import returns the declared name.
@@ -193,7 +185,7 @@ async fn read_mysql(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<V
     Ok(finish(order, by_name))
 }
 
-async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
+async fn read_postgres<C: Catalog>(conn: &mut C, only: Option<&HashSet<String>>) -> Result<Vec<Table>, CatalogError<C::Error>> {
     let rows = conn
         .query(
             "SELECT c.table_name::text, c.column_name::text, c.data_type::text, c.character_maximum_length::int8,
@@ -205,10 +197,9 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		  LEFT JOIN pg_catalog.pg_description d ON d.objoid = cl.oid AND d.objsubid = c.ordinal_position
 		 WHERE c.table_schema = current_schema()
 		 ORDER BY c.table_name, c.ordinal_position",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     let mut by_name: HashMap<String, Table> = HashMap::new();
     let mut order = Vec::new();
     for r in rows {
@@ -218,7 +209,14 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
         }
         let mut c = Column {
             name: r[1].text(),
-            typ: live::pg_type_text(&r[2].text(), &r[7].text(), r[3].opt_int().map_err(err)?, r[4].opt_int().map_err(err)?, r[5].opt_int().map_err(err)?, r[6].opt_int().map_err(err)?),
+            typ: live::pg_type_text(
+                &r[2].text(),
+                &r[7].text(),
+                r[3].opt_int().map_err(CatalogError::Read)?,
+                r[4].opt_int().map_err(CatalogError::Read)?,
+                r[5].opt_int().map_err(CatalogError::Read)?,
+                r[6].opt_int().map_err(CatalogError::Read)?,
+            ),
             nullable: r[8].text() == "YES",
             comment: r[11].text(),
             default: NO_DEFAULT.into(),
@@ -238,10 +236,9 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace AND n.nspname=current_schema()
 		LEFT JOIN pg_catalog.pg_description d ON d.objoid=c.oid AND d.objsubid=0
 		WHERE c.relkind='r'",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in comments {
         if let Some(t) = by_name.get_mut(&r[0].text()) {
             t.comment = r[1].text();
@@ -259,21 +256,20 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		  JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true
 		  JOIN pg_attribute a ON a.attrelid = cl.oid AND a.attnum = k.attnum
 		 ORDER BY cl.relname, ic.relname, k.ord",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in indexes {
         let table = r[0].text();
         let Some(t) = by_name.get_mut(&table) else { continue };
         let col = r[5].text();
-        if r[3].bool().map_err(err)? {
+        if r[3].bool().map_err(CatalogError::Read)? {
             for c in t.columns.iter_mut().filter(|c| c.name == col) {
                 c.key = "PRI".into();
             }
             continue;
         }
-        let unique = r[2].bool().map_err(err)?;
+        let unique = r[2].bool().map_err(CatalogError::Read)?;
         let name = live::postgres_logical_index_name(&table, &r[1].text(), unique);
         if let Some(last) = t.indexes.last_mut().filter(|ix| ix.name == name) {
             last.columns.push(col);
@@ -294,10 +290,9 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		JOIN pg_attribute pa ON pa.attrelid=parent.oid AND pa.attnum=pk.attnum
 		WHERE con.contype='f'
 		ORDER BY child.relname, con.conname, ck.ord",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in fks {
         let Some(t) = by_name.get_mut(&r[0].text()) else { continue };
         add_foreign_key(t, &r[1].text(), &r[3].text(), live::postgres_delete_action(&r[5].text()), &r[2].text(), &r[4].text());
@@ -309,10 +304,9 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		JOIN pg_class child ON child.oid=con.conrelid
 		JOIN pg_namespace n ON n.oid=child.relnamespace AND n.nspname=current_schema()
 		WHERE con.contype='c' ORDER BY child.relname, con.conname",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in checks {
         let expr = postgres_check_expr(&r[2].text());
         if let Some(t) = by_name.get_mut(&r[0].text()) {
@@ -329,14 +323,13 @@ async fn read_postgres(conn: &mut Conn, only: Option<&HashSet<String>>) -> Resul
 		JOIN pg_am am ON am.oid=ic.relam
 		WHERE am.amname='gin'
 		ORDER BY cl.relname, ic.relname",
-            &[],
         )
         .await
-        .map_err(err)?;
+        .map_err(CatalogError::Query)?;
     for r in gins {
         let (table, name) = (r[0].text(), r[1].text());
         let Some(t) = by_name.get_mut(&table) else { continue };
-        let columns = live::postgres_fulltext_columns(&r[2].text()).map_err(|e| format!("table {table} index {name}: {e}"))?;
+        let columns = live::postgres_fulltext_columns(&r[2].text()).map_err(|e| CatalogError::Read(format!("table {table} index {name}: {e}")))?;
         t.indexes.push(Index { name, unique: false, fulltext: true, columns });
     }
     Ok(finish(order, by_name))
@@ -346,14 +339,10 @@ fn sqlite_quote(s: &str) -> String {
     s.replace('\'', "''")
 }
 
-async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<Vec<Table>, String> {
-    let tables = conn
-        .query(
-            "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' AND name <> 'orm__context' ORDER BY name",
-            &[],
-        )
-        .await
-        .map_err(err)?;
+async fn read_sqlite<C: Catalog>(conn: &mut C, only: Option<&HashSet<String>>) -> Result<Vec<Table>, CatalogError<C::Error>> {
+    let tables = conn.query(
+            "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' AND name <> 'orm__context' ORDER BY name")
+        .await.map_err(CatalogError::Query)?;
     let mut out = Vec::new();
     for r in tables {
         let name = r[0].text();
@@ -361,11 +350,11 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             continue;
         }
         let create_sql = r[1].text();
-        let mut t = Table { name: name.clone(), checks: live::sqlite_checks(&name, &create_sql)?, ..Default::default() };
+        let mut t = Table { name: name.clone(), checks: live::sqlite_checks(&name, &create_sql).map_err(CatalogError::Read)?, ..Default::default() };
         let qname = sqlite_quote(&name);
-        let cols = conn.query(&format!("PRAGMA table_info('{qname}')"), &[]).await.map_err(|e| format!("table {name} columns: {e}"))?;
+        let cols = conn.query(&format!("PRAGMA table_info('{qname}')")).await.map_err(CatalogError::Query)?;
         for c in cols {
-            let (column_name, pk) = (c[1].text(), c[5].int().map_err(err)?);
+            let (column_name, pk) = (c[1].text(), c[5].int().map_err(CatalogError::Read)?);
             let default = match c[4].opt_text() {
                 None => NO_DEFAULT.into(),
                 Some(d) if live::sqlite_clock_default(&d) => "CURRENT_TIMESTAMP".into(),
@@ -375,19 +364,19 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             t.columns.push(Column {
                 name: column_name,
                 typ: if auto { "bigint".into() } else { live::sqlite_logical_type(&c[2].text()) },
-                nullable: c[3].int().map_err(err)? == 0 && pk == 0,
+                nullable: c[3].int().map_err(CatalogError::Read)? == 0 && pk == 0,
                 default,
                 extra: if auto { "auto_increment".into() } else { String::new() },
                 key: if pk > 0 { "PRI".into() } else { String::new() },
                 ..Default::default()
             });
         }
-        for ix in conn.query(&format!("PRAGMA index_list('{qname}')"), &[]).await.map_err(err)? {
-            let (index_name, unique, origin) = (ix[1].text(), ix[2].int().map_err(err)? != 0, ix[3].text());
+        for ix in conn.query(&format!("PRAGMA index_list('{qname}')")).await.map_err(CatalogError::Query)? {
+            let (index_name, unique, origin) = (ix[1].text(), ix[2].int().map_err(CatalogError::Read)? != 0, ix[3].text());
             if origin == "pk" {
                 continue;
             }
-            let icols = conn.query(&format!("PRAGMA index_info('{}')", sqlite_quote(&index_name)), &[]).await.map_err(err)?;
+            let icols = conn.query(&format!("PRAGMA index_info('{}')", sqlite_quote(&index_name))).await.map_err(CatalogError::Query)?;
             let logical = if unique { index_name.clone() } else { index_name.strip_prefix(&format!("{name}_")).unwrap_or(&index_name).to_owned() };
             let columns: Vec<String> = icols.iter().map(|c| c[2].text()).collect();
             if !columns.is_empty() {
@@ -395,8 +384,8 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             }
         }
         let mut by_id: HashMap<i64, usize> = HashMap::new();
-        for fk in conn.query(&format!("PRAGMA foreign_key_list('{qname}')"), &[]).await.map_err(err)? {
-            let id = fk[0].int().map_err(err)?;
+        for fk in conn.query(&format!("PRAGMA foreign_key_list('{qname}')")).await.map_err(CatalogError::Query)? {
+            let id = fk[0].int().map_err(CatalogError::Read)?;
             let position = *by_id.entry(id).or_insert_with(|| {
                 t.foreign_keys.push(ForeignKey {
                     name: format!("fk_{name}_{id}"),
@@ -411,7 +400,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
         }
         out.push(t);
     }
-    match conn.query("SELECT table_name, column_name, comment FROM orm_schema_comments", &[]).await {
+    match conn.query("SELECT table_name, column_name, comment FROM orm_schema_comments").await {
         Ok(comments) => {
             for c in comments {
                 let (table, column, comment) = (c[0].text(), c[1].text(), c[2].text());
@@ -426,7 +415,7 @@ async fn read_sqlite(conn: &mut Conn, only: Option<&HashSet<String>>) -> Result<
             }
         }
         Err(e) if e.to_string().to_lowercase().contains("no such table") => {}
-        Err(e) => return Err(format!("sqlite schema comments: {e}")),
+        Err(e) => return Err(CatalogError::Query(e)),
     }
     Ok(out)
 }

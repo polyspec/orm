@@ -110,7 +110,13 @@ func fail(err error) {
 	os.Exit(1)
 }
 
-func readTables(db *sql.DB, driver string, only map[string]bool) ([]impTable, error) {
+// catalogQuerier runs the catalog reads of the import: a database, a
+// transaction or one connection of the client.
+type catalogQuerier interface {
+	Query(query string, args ...any) (*sql.Rows, error)
+}
+
+func readTables(db catalogQuerier, driver string, only map[string]bool) ([]impTable, error) {
 	switch driver {
 	case "postgres":
 		return readTablesPG(db, only)
@@ -375,7 +381,8 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			for i, column := range fk.Columns {
 				foreignByColumn[column] = foreignColumn{key: fk, index: i}
 			}
-			if fk.Target != t.Name && stringSlicesEqual(primary[fk.Target], fk.TargetColumns) {
+			// A foreign key to the table itself is a relation of the table to itself.
+			if stringSlicesEqual(primary[fk.Target], fk.TargetColumns) {
 				rels = append(rels, rel{parent: fk.Target, child: t.Name, fks: append([]string(nil), fk.Columns...), onDelete: fk.OnDelete})
 			}
 		}
@@ -389,12 +396,14 @@ func renderMermaid(ts []impTable, prev *schema.Diagram) string {
 			target := ""
 			targetColumn := ""
 			onDelete := ""
-			if item, ok := foreignByColumn[c.Name]; ok {
+			item, foreign := foreignByColumn[c.Name]
+			if foreign {
 				target, targetColumn, onDelete = item.key.Target, item.key.TargetColumns[item.index], item.key.OnDelete
 			} else {
 				target = fkTarget(c.Name, tables)
 			}
-			if target != "" && target != t.Name {
+			// A column whose name only resembles the name of its own table is not a key to that table.
+			if target != "" && (target != t.Name || foreign) {
 				keys = append(keys, "FK")
 				if targetColumn == "" {
 					targetColumn = "seq"
@@ -580,7 +589,7 @@ func mysqlUnescape(s string) string {
 	return b.String()
 }
 
-func readTablesPG(db *sql.DB, only map[string]bool) ([]impTable, error) {
+func readTablesPG(db catalogQuerier, only map[string]bool) ([]impTable, error) {
 	rows, err := db.Query(`SELECT c.table_name, c.column_name, c.data_type, c.character_maximum_length,
 		       c.numeric_precision, c.numeric_scale, c.datetime_precision, c.udt_name,
 		       c.is_nullable, c.column_default, c.is_identity, coalesce(d.description, '')

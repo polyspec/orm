@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:04bef447541411357cf5d9edd9055b03c6cfaf634363c4b6460dd487c3cd7857",
-    "php": "sha256:85eb4e5d925e7468ed879ca26b6acee784bd20c739b76af5e39d502bdc4fd9fc",
-    "rust": "sha256:c4b2d3bb269537ebb03904bd145e177b17ecd17dc87ea70fe2c45f5b9bb2b228",
-    "typescript": "sha256:93cb5b242aa78a8ae34ad2014f8a5d745587a7f3f39387067ab3b2c431c9f30c"
+    "go": "sha256:adf4fd00921fd6c53859b8b06fd2a14192cd6e222fa5779bec7d2b91ffc24290",
+    "php": "sha256:9cac1bcd3bf9d49a77b6bf85f26b976e02ce0a5d5552fe53de939455c2c4b0a5",
+    "rust": "sha256:4dfbd8095d177e6cedbf7126af555fadf2ad2575fef7a159102ab1d2df100c76",
+    "typescript": "sha256:e32dce3bc0150156508e629b08dfe58888715210b048b05af846e6aab21f42ba"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1219,6 +1219,39 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.register",
           "signature": "public async register(manifestJson: string): Promise<void>"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.addColumns",
+      "for": "once",
+      "inputs": [
+        "ManifestJson"
+      ],
+      "output": "AddedColumns",
+      "errors": [
+        "CONFIG",
+        "SCHEMA_DIFFERS",
+        "CAPABILITY_UNSUPPORTED",
+        "driver error"
+      ],
+      "state": "Adds the missing nullable or defaulted columns of the existing tables of the manifest and replaces the audit triggers of each changed table",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddColumns",
+          "signature": "receiver=*SchemaUtils func(manifestJSON []byte) ([]string, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addColumns",
+          "signature": "public function addColumns(string $manifestJson): array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_columns",
+          "signature": "pub async fn add_columns(&self, manifest_json: &[u8]) -> Result<Vec<String>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addColumns",
+          "signature": "public async addColumns(manifestJson: string): Promise<string[]>"
         }
       }
     },

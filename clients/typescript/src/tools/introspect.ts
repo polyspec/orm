@@ -422,7 +422,8 @@ export function renderMermaid(ts: readonly ImpTable[], prev?: Diagram): string {
     for (const fk of t.foreignKeys) {
       if (fk.columns.length !== fk.targetColumns.length) continue;
       fk.columns.forEach((column, i) => foreignByColumn.set(column, { key: fk, index: i }));
-      if (fk.target !== t.name && sameList(primary.get(fk.target), fk.targetColumns)) {
+      // A foreign key to the table itself is a relation of the table to itself.
+      if (sameList(primary.get(fk.target), fk.targetColumns)) {
         rels.push({ parent: fk.target, child: t.name, fks: [...fk.columns], onDelete: fk.onDelete });
       }
     }
@@ -433,7 +434,8 @@ export function renderMermaid(ts: readonly ImpTable[], prev?: Diagram): string {
       if (c.key === 'PRI') keys.push('PK');
       const item = foreignByColumn.get(c.name);
       const target = item ? item.key.target : fkTarget(c.name, tables);
-      if (target !== '' && target !== t.name) keys.push('FK');
+      // A column whose name only resembles the name of its own table is not a key to that table.
+      if (target !== '' && (target !== t.name || item !== undefined)) keys.push('FK');
       const ix = single.get(c.name);
       if (ix && ix.unique && c.key !== 'PRI') keys.push('UK');
       const attrs: string[] = [];

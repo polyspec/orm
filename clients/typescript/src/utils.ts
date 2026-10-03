@@ -1,10 +1,12 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
 import { activeFor, type Db, type TxFrame } from './database.js';
-import type { DriverValue, PoolStats } from './driver.js';
+import type { DriverControl, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
 import { OrmError } from './runtime_error.js';
+import { planAddColumns } from './schema_columns.js';
+import { loadSchemaManifest, type SchemaManifest } from './schema/build.js';
 
 export interface AesRotationStatus {
   current: number;
@@ -125,16 +127,49 @@ export class SchemaUtils {
     const engine = this.engine(manifestJson);
     const statements = engine.installStatements();
     if (statements.length === 0) throw config('schema manifest produced no statements');
-    if (this.db.pool.unprepared) {
+    if (this.db.pool.session) {
       // MySQL commits schema statements implicitly, so they run outside a transaction.
       if (activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-      await this.db.pool.unprepared(statements);
+      await this.db.pool.session(async control => {
+        for (const statement of statements) await control(statement);
+      });
     } else {
       await inTx(this.db, async frame => {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
     this.db.registerEngine(engine);
+  }
+
+  /**
+   * Adds every missing column of the existing tables of a schema manifest that
+   * is nullable or has a default, and replaces the audit triggers of each
+   * changed table so that they record the new columns. A table that does not
+   * exist and the tables of other manifests are left unchanged. Any other
+   * difference between the existing tables and the manifest fails with
+   * SCHEMA_DIFFERS before any statement runs. The manifest hash is verified
+   * against its content first. PostgreSQL and SQLite apply the statements in
+   * the active transaction or in a new one; MySQL commits schema statements
+   * implicitly, so it applies them outside a transaction and rejects a call
+   * inside one with CONFIG. Returns the added columns as table.column, in
+   * manifest order.
+   */
+  public async addColumns(manifestJson: string): Promise<string[]> {
+    this.engine(manifestJson);
+    let manifest: SchemaManifest;
+    try { manifest = loadSchemaManifest(manifestJson); } catch (error) {
+      throw config(`invalid schema manifest: ${(error as Error).message}`);
+    }
+    const apply = async (control: DriverControl): Promise<string[]> => {
+      const { statements, added } = await planAddColumns(this.db.driver, control, manifest);
+      for (const statement of statements) await control(statement);
+      return added;
+    };
+    if (this.db.pool.session) {
+      if (activeFor(this.db)) throw config('MySQL commits schema statements implicitly; add columns outside a transaction');
+      return this.db.pool.session(apply);
+    }
+    return inTx(this.db, frame => apply((sql, params) => frame.tx.control(sql, params)));
   }
 
   /**

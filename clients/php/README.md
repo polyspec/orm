@@ -25,7 +25,7 @@ the client on SQLite in the official PHP image, which has no `pdo_mysql`.
   the schema it opened with or a schema added through `utils()->schema()->install()` or
   `utils()->schema()->register()`.
 - `tests/` — `model_test.php` (the model integration test), `engine_test.php`, `hostcodec.php`, `dsn.php`,
-  `relation_keys.php`, `perf_gate.php`, `schema_set_test.php` (several schemas on one connection), and the schema tool tests `schema_test.php` (the shared Go results in
+  `relation_keys.php`, `perf_gate.php`, `schema_set_test.php` (several schemas on one connection), `add_columns_test.php` (columns added to existing tables), and the schema tool tests `schema_test.php` (the shared Go results in
   `tests/schema/cases.json`), `schema_tool_test.php`, and `schema_db_test.php` (parity with the Go
   tool and an incremental migration on live databases). The conformance runner is
   `tests/conformance/runner.php`.
@@ -119,6 +119,10 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
   inside one is a `CONFIG` error.
 - `utils()->schema()->register($manifestJson)` adds an installed manifest to the connection without
   running a statement; a manifest whose hash differs from its content is a `CONFIG` error.
+- `utils()->schema()->addColumns($manifestJson)` adds the missing nullable or defaulted columns of
+  the existing tables of a manifest, replaces the audit triggers of each changed table, and returns
+  the added columns as `table.column`; every other difference is a `SCHEMA_DIFFERS` error before
+  any change (`docs/schema.md` §8).
 
 ## Errors
 `Orm\OrmException::$code_` is one of `Orm\Code::*`. Driver errors map per driver to `DEADLOCK`

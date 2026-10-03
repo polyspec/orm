@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::time::SystemTime;
 
-use orm_build::ddl::{ddl_column, ddl_table, manifest_from_ddl, render_create_ddl, render_diff, rendered_check_expression, SCHEMA_METADATA_PREFIX};
+use orm_build::ddl::{manifest_from_ddl, render_create_ddl, render_diff, SCHEMA_METADATA_PREFIX};
 use orm_build::migration::{
     checksum_text, plan_id, plan_sql, rfc3339_nano, safe_migration_id, schema_matches, split_sql, sqlite_rebuild_markers, validate_plan_operations, Log,
     PlanFile, Record,
@@ -13,7 +13,7 @@ use orm_build::schema::{self, Manifest};
 
 use crate::args::{glob, Args};
 use crate::db::{self, placeholder, s, Conn, ToolDsn, P};
-use crate::introspect::live_manifest;
+use crate::introspect::{align_live_checks, live_manifest};
 
 /// Resolves a schema source: Mermaid, manifest JSON, generated SQL, or
 /// `db:<dsn>`.
@@ -56,110 +56,6 @@ async fn load_database_schema(raw: &str, dialect: &str) -> Result<Manifest, Stri
     }
     let (_database, mut conn, dsn) = db::open(raw).await?;
     live_manifest(&mut conn, &dsn.dialect).await.map_err(|e| format!("MIGRATION_INTROSPECT: driver={} dsn={}: {e}", dsn.dialect, dsn.redacted()))
-}
-
-// MySQL and PostgreSQL store a CHECK expression in their own normalized form,
-// so the text read from the catalog differs from the declared expression. To
-// compare them, the declared expression is created on a temporary table of
-// the same database and read back through the same catalog path; SQLite
-// keeps the text it was given, so its form is the rendered DDL text.
-
-/// Replaces the expression of every live check that is equivalent to the
-/// declared check of the same name with the declared text, so a diff reports
-/// only real changes. A changed live manifest gets the hash of its new
-/// content, so a plan that stores it stays self-consistent.
-pub async fn align_live_checks(conn: &mut Conn, driver: &str, live: &mut Manifest, want: &Manifest) -> Result<(), String> {
-    let mut changed = false;
-    for (name, declared) in &want.entities {
-        if declared.checks.is_empty() {
-            continue;
-        }
-        let key = if live.entities.contains_key(name) {
-            Some(name.clone())
-        } else {
-            let table = ddl_table(&declared.table, driver);
-            live.entities.iter().filter(|(_, candidate)| candidate.table == table).map(|(k, _)| k.clone()).next_back()
-        };
-        let Some(key) = key else { continue };
-        if live.entities[&key].checks.is_empty() {
-            continue;
-        }
-        let canonical = canonical_checks(conn, driver, declared).await.map_err(|e| format!("table {}: normalize CHECK expressions: {e}", declared.table))?;
-        let current = live.entities.get_mut(&key).expect("live entity");
-        for check in current.checks.iter_mut() {
-            for (j, wanted) in declared.checks.iter().enumerate() {
-                if wanted.name == check.name && canonical[j] == check.expr && check.expr != wanted.expr {
-                    check.expr = wanted.expr.clone();
-                    changed = true;
-                }
-            }
-        }
-    }
-    if changed {
-        live.schema_hash = live.hash();
-    }
-    Ok(())
-}
-
-fn probe_check_name(i: usize) -> String {
-    format!("__orm_check_probe_{}", i + 1)
-}
-
-/// The catalog form of each declared check of an entity, in declaration order.
-async fn canonical_checks(conn: &mut Conn, driver: &str, e: &orm_build::schema::Entity) -> Result<Vec<String>, String> {
-    let mysql_q = |s: &str| format!("`{s}`");
-    let other_q = |s: &str| format!("\"{s}\"");
-    let quote: &dyn Fn(&str) -> String = if driver == "mysql" { &mysql_q } else { &other_q };
-    let exprs = e.checks.iter().map(|c| rendered_check_expression(&c.expr, driver, quote)).collect::<Result<Vec<_>, _>>()?;
-    if driver == "sqlite" {
-        return Ok(exprs);
-    }
-    const PROBE: &str = "__orm_check_probe";
-    let mut lines = Vec::with_capacity(e.columns.len() + exprs.len());
-    for c in &e.columns {
-        let mut plain = c.clone();
-        plain.auto = false;
-        lines.push(ddl_column(&plain, driver, quote)?);
-    }
-    for (i, expr) in exprs.iter().enumerate() {
-        lines.push(format!("CONSTRAINT {} CHECK ({expr})", quote(&probe_check_name(i))));
-    }
-    conn.exec(&format!("CREATE TEMPORARY TABLE {} ({})", quote(PROBE), lines.join(", ")), &[]).await.map_err(|e| e.to_string())?;
-    let read = read_probe_checks(conn, driver, e, exprs.len(), quote).await;
-    let _ = conn.exec(&format!("DROP TABLE IF EXISTS {}", quote(PROBE)), &[]).await;
-    read
-}
-
-async fn read_probe_checks(
-    conn: &mut Conn,
-    driver: &str,
-    e: &orm_build::schema::Entity,
-    n: usize,
-    quote: &dyn Fn(&str) -> String,
-) -> Result<Vec<String>, String> {
-    let mut by_name = std::collections::HashMap::new();
-    if driver == "mysql" {
-        let rows = conn.query("SHOW CREATE TABLE `__orm_check_probe`", &[]).await.map_err(|e| e.to_string())?;
-        let text = rows.first().and_then(|r| r.get(1)).map(|v| v.text()).unwrap_or_default();
-        for i in 0..n {
-            let marker = format!("CONSTRAINT {} CHECK ", quote(&probe_check_name(i)));
-            let Some(at) = text.find(&marker) else {
-                return Err(format!("check {} is missing from the probe table", e.checks[i].name));
-            };
-            let open = at + marker.len();
-            let end = orm_build::live::sqlite_balanced_paren(text.as_bytes(), open)?;
-            by_name.insert(probe_check_name(i), text[open + 1..end].to_owned());
-        }
-    } else {
-        let rows = conn
-            .query("SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'pg_temp.__orm_check_probe'::regclass AND contype = 'c'", &[])
-            .await
-            .map_err(|e| e.to_string())?;
-        for r in rows {
-            by_name.insert(r[0].text(), crate::introspect::postgres_check_expr(&r[1].text()));
-        }
-    }
-    (0..n).map(|i| by_name.remove(&probe_check_name(i)).ok_or_else(|| format!("check {} is missing from the probe table", e.checks[i].name))).collect()
 }
 
 /// Aligns the checks of a `db:` source with the other side of a diff, which

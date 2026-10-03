@@ -40,11 +40,18 @@ export interface DriverConnection {
 
 export interface DriverPool extends DriverConnection {
   begin(options: DriverTransactionOptions): Promise<DriverTransaction>;
-  /** Runs statements that are not prepared on one connection outside a transaction (MySQL schema statements). */
-  unprepared?(statements: readonly string[]): Promise<void>;
+  /**
+   * Runs run with statements that are not prepared on one reserved connection
+   * outside a transaction (MySQL schema statements and the catalog reads they
+   * depend on).
+   */
+  session?<T>(run: (control: DriverControl) => Promise<T>): Promise<T>;
   stats(): PoolStats;
   close(): Promise<void>;
 }
+
+/** Runs a statement that is not prepared and returns its rows in column order. */
+export type DriverControl = (sql: string, params?: readonly DriverValue[]) => Promise<DriverResult>;
 
 export interface DriverTransaction extends DriverConnection {
   /** Runs a statement that is not prepared (savepoints, locks, session values). */
@@ -126,6 +133,14 @@ async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string
   } catch (error) { throw driverError('mysql', error); }
 }
 
+async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
+  try {
+    const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
+    if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+    return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
+  } catch (error) { throw driverError('mysql', error); }
+}
+
 /** Stops the statement running on connection from another connection of the pool. */
 async function mysqlKill(pool: MySqlPool, connection: MySqlConnection): Promise<void> {
   const id = (connection as unknown as { threadId: number }).threadId;
@@ -165,13 +180,11 @@ class MySqlPoolDriver implements DriverPool {
       connection.release();
     }
   }
-  public async unprepared(statements: readonly string[]): Promise<void> {
+  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
     let connection: MySqlConnection;
     try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
     try {
-      for (const sql of statements) await connection.query(sql);
-    } catch (error) {
-      throw driverError(this.name, error);
+      return await run((sql, params = []) => mysqlControl(connection, sql, params));
     } finally {
       connection.release();
     }
@@ -206,13 +219,7 @@ class MySqlTx implements DriverTransaction {
     const work = mysqlExecute(this.connection, sql, params);
     return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection), work);
   }
-  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
-    try {
-      const [value] = await this.connection.query({ sql, rowsAsArray: true }, [...params]);
-      if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
-      return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
-    } catch (error) { throw driverError(this.name, error); }
-  }
+  public control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return mysqlControl(this.connection, sql, params); }
   public async commit(): Promise<void> {
     try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }

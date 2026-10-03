@@ -18,7 +18,6 @@
 //! argument count fails the build.
 
 mod generate;
-pub mod live;
 #[cfg(feature = "live-db")]
 pub mod tool_db;
 #[cfg(feature = "live-db")]
@@ -27,7 +26,7 @@ mod manifest;
 pub mod migration;
 mod names;
 mod scan;
-pub use orm_schema::{ddl, schema, triggers};
+pub use orm_schema::{ddl, live, schema, triggers};
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

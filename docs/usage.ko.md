@@ -298,7 +298,7 @@ import { Db } from '@polyspec/orm-typescript';
 const master = await Db.connect(masterDsn, schemaPath, { aesKey });
 ```
 
-각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(manifestJson)`은 모든 데이터베이스에서 manifest의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지한다.
+각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(manifestJson)`은 모든 데이터베이스에서 manifest의 없는 테이블, 키, 인덱스, 주석, 트리거를 만들고 기존 테이블은 유지한다. `connection.utils().schema().addColumns(manifestJson)`은 manifest의 기존 테이블에 없는, NULL을 허용하거나 기본값이 있는 컬럼을 추가하고, 바뀐 각 테이블의 audit 트리거를 교체하며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema](schema.ko.md) §8).
 
 ---
 
@@ -482,6 +482,7 @@ psql … -f schema.pg.sql
 | 에러 코드 상수 | `ormgen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(manifestJson)` |
 | 설치된 스키마 등록 | `connection.utils().schema().register(manifestJson)` |
+| 기존 테이블에 없는, NULL 허용 또는 기본값이 있는 컬럼 추가 | `connection.utils().schema().addColumns(manifestJson)` |
 
 ---
 

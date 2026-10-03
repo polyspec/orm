@@ -1,5 +1,18 @@
 # Changelog
 
+Add the missing columns of the existing tables of a manifest through the
+connection in the four clients (N19). `utils().schema().addColumns(manifestJson)`
+(Go `AddColumns`, Rust `add_columns`) reads only the tables of the manifest,
+adds every missing column that is nullable or has a default, replaces the
+audit triggers of each changed table so that they record the new columns, and
+returns the added columns as `table.column`. A missing table and the tables of
+other manifests are left unchanged, a repeated call adds nothing, and every
+other difference returns the new catalog code `SCHEMA_DIFFERS` before any
+statement runs. The import now reads a foreign key of a table to its own key as
+a relation of the table to itself. The Rust catalog reads and the live import
+moved from `orm-build` to `orm_schema::catalog` and `orm_schema::live`, so the
+runtime and the tool read the catalog in the same way.
+
 Connect to MySQL with TLS through `ssl-mode=VERIFY_IDENTITY` and an absolute
 `ssl-ca` in the four clients (N18). The connection checks the server
 certificate against the CA and the host name of the DSN, and the password

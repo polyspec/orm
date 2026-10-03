@@ -203,7 +203,7 @@ func filterManagedTables(tables []impTable) []impTable {
 	return out
 }
 
-func readTablesSQLite(db *sql.DB) ([]impTable, error) {
+func readTablesSQLite(db catalogQuerier) ([]impTable, error) {
 	rows, err := db.Query(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> 'orm_schema_migrations' AND name <> 'orm_schema_comments' AND name <> 'orm__context' ORDER BY name`)
 	if err != nil {
 		return nil, err
