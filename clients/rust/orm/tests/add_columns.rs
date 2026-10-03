@@ -16,8 +16,8 @@ use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static LOG: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/add_columns_log.json"), "106a65e9f57ac6d9");
-static V1: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/add_columns_v1.json"), "88d76d8071863a19");
-static V2: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/add_columns_v2.json"), "d58d0cc0157386cd");
+static V1: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/add_columns_v1.json"), "0695409ab12b1422");
+static V2: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/add_columns_v2.json"), "b5096875c252e6ae");
 const DIFFERS: [(&str, &[u8]); 7] = [
     ("required", include_bytes!("../../../../contracts/fixtures/add_columns_required.json")),
     ("removed", include_bytes!("../../../../contracts/fixtures/add_columns_removed.json")),
@@ -28,8 +28,8 @@ const DIFFERS: [(&str, &[u8]); 7] = [
     ("unique", include_bytes!("../../../../contracts/fixtures/add_columns_unique.json")),
 ];
 const ADDED: [&str; 5] = ["addcol_item.note", "addcol_item.rank", "addcol_item.archived", "addcol_item.status", "addcol_tag.color"];
-const ITEM_V1: &[&str] = &["seq", "uuid", "label", "enabled", "price", "created_at"];
-const ITEM_V2: &[&str] = &["seq", "uuid", "label", "enabled", "price", "created_at", "note", "rank", "archived", "status"];
+const ITEM_V1: &[&str] = &["seq", "uuid", "label", "enabled", "price", "created_at", "payload", "code"];
+const ITEM_V2: &[&str] = &["seq", "uuid", "label", "enabled", "price", "created_at", "payload", "code", "note", "rank", "archived", "status"];
 const CHANGE: &[&str] = &["seq", "addcol_operation_seq", "change_kind", "service_seq", "table_label", "entity_ref", "before_value", "after_value"];
 
 /// A model whose values are read and written by column name.

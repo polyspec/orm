@@ -42,7 +42,7 @@ pub(crate) fn ddl_base(table: &str) -> &str {
     table.rsplit('.').next().unwrap_or(table)
 }
 
-fn ddl_index_name(table: &str, index: &str, dialect: &str) -> String {
+pub(crate) fn ddl_index_name(table: &str, index: &str, dialect: &str) -> String {
     if dialect == "sqlite" {
         format!("{}_{index}", ddl_table(table, dialect))
     } else {

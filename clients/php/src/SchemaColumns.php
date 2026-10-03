@@ -68,6 +68,8 @@ final class SchemaColumns
             throw new OrmException(Code::SCHEMA_DIFFERS, 'compare the checks of the existing tables: ' . $e->getMessage(), $e);
         }
         self::alignDefaults($current, $declared);
+        self::alignTypes($current, $declared, $driver);
+        self::alignIndexes($current, $declared, $driver);
         $expanded = $current;
         $added = [];
         $required = [];
@@ -136,6 +138,64 @@ final class SchemaColumns
                     $current['entities'][$name]['columns'][$i]['default'] = $d['default'];
                 }
             }
+        }
+    }
+
+    /**
+     * Gives every live column whose type the dialect stores as the declared
+     * type the declared type: PostgreSQL stores char(n) as varchar(n) and
+     * every blob type as bytea, so the import cannot read the declared raw
+     * type back. SQLite compares storage classes in the diff itself.
+     */
+    private static function alignTypes(array &$current, array $declared, string $driver): void
+    {
+        if ($driver === 'sqlite') {
+            return;
+        }
+        foreach ($declared['order'] as $name) {
+            $declaredColumns = array_column($declared['entities'][$name]['columns'], null, 'name');
+            foreach ($current['entities'][$name]['columns'] as $i => $c) {
+                $d = $declaredColumns[$c['name']] ?? null;
+                if ($d === null || SchemaDiff::columnStorage($c, $driver) === SchemaDiff::columnStorage($d, $driver)) {
+                    continue;
+                }
+                try {
+                    $same = SchemaDdl::type($c, $driver) === SchemaDdl::type($d, $driver);
+                } catch (\RuntimeException) {
+                    continue;
+                }
+                if ($same) {
+                    foreach (['type', 'raw', 'len', 'precision', 'scale', 'unsigned', 'enum'] as $k) {
+                        $current['entities'][$name]['columns'][$i][$k] = $d[$k];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Gives every live index whose physical name is the physical name of a
+     * declared index the declared name: a name longer than the identifier
+     * limit of the dialect is stored cut with a digest, which the import
+     * cannot read back.
+     */
+    private static function alignIndexes(array &$current, array $declared, string $driver): void
+    {
+        foreach ($declared['order'] as $name) {
+            $live = $current['entities'][$name]['indexes'] ?? null;
+            if ($live === null) {
+                continue;
+            }
+            $table = $declared['entities'][$name]['table'];
+            $byPhysical = [];
+            foreach ($declared['entities'][$name]['indexes'] ?? [] as $index => $_) {
+                $byPhysical[SchemaDdl::indexName($table, $index, $driver)] = $index;
+            }
+            $named = [];
+            foreach ($live as $index => $columns) {
+                $named[$byPhysical[SchemaDdl::indexName($table, $index, $driver)] ?? $index] = $columns;
+            }
+            $current['entities'][$name]['indexes'] = $named;
         }
     }
 
