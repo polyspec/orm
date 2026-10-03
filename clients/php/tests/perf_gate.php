@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Codec;
@@ -174,16 +175,19 @@ $cases = [
     ['list100', static fn() => (new Author)($db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100), 1.25],
 ];
 $load = cpuLoad();
-$failed = false;
+// GATE_DEADLINE은 gate case 하나의 기한이다. case는 warm-up 100쌍과 측정 1000쌍의 client와
+// native 조회를 bench database에 보내고, 부하 process가 모든 CPU를 쓰는 동안에도 몇십 초
+// 안에 끝난다.
+const GATE_DEADLINE = 300.0;
+$gate = new TestCases();
 foreach ($cases as [$name, $query, $bound]) {
-    $native = native($db, $query());
-    [$clientNs, $nativeNs, $ratio] = pairedRatio(static fn() => $query()->gets(), $native);
-    printf("%-8s native %7.1fµs  client %7.1fµs  ratio %.2f (bound %.2f)%s\n", $name, $nativeNs / 1000, $clientNs / 1000, $ratio, $bound, $load === [] ? '' : ' under CPU load');
-    if ($ratio > $bound) {
-        $failed = true;
-    }
+    $gate->run('perf_gate/' . $name . ($load === [] ? '' : '/under-load'), GATE_DEADLINE, static function (callable $step) use ($db, $query, $bound, $name): void {
+        $native = native($db, $query());
+        [$clientNs, $nativeNs, $ratio] = pairedRatio(static fn() => $query()->gets(), $native);
+        $step(sprintf('native %.1fµs client %.1fµs ratio %.2f (bound %.2f)', $nativeNs / 1000, $clientNs / 1000, $ratio, $bound));
+        if ($ratio > $bound) {
+            throw new RuntimeException("PHP model client exceeds the $name performance regression limit");
+        }
+    });
 }
-if ($failed) {
-    fwrite(STDERR, "PHP model client exceeds a performance regression limit\n");
-    exit(1);
-}
+$gate->finish();

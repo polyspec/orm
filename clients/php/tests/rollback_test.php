@@ -14,6 +14,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 // package autoloader는 test entry point를 load하지 않으므로 이 test는 그 path로
 // require한다.
@@ -30,6 +31,7 @@ use Orm\RuntimeModel;
 use Orm\Testing\Faults;
 use RollbackCase\Orm\RollbackProbe;
 
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 table을 지우고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 지운다.
 const CASE_DEADLINE_SECONDS = 30;
 
 $work = sys_get_temp_dir() . '/orm-php-rollback-' . getmypid();
@@ -217,35 +219,25 @@ foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    $caseBefore = $failures;
     foreach ($targets as $driver => $dsn) {
         $before = $failures;
         $current = "$case/$driver";
-        $start = microtime(true);
-        echo "RUN  $current\n";
-        pcntl_async_signals(true);
-        pcntl_signal(SIGALRM, static function (): never {
-            throw new RuntimeException('timeout after ' . CASE_DEADLINE_SECONDS . ' s');
+        $passed = testcase_run("rollback/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $dsn, $before): void {
+            try {
+                dropTable($dsn);
+                $cases[$case]($dsn);
+            } finally {
+                dropTable($dsn);
+            }
+            if ($GLOBALS['failures'] > $before) {
+                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+            }
         });
-        pcntl_alarm(CASE_DEADLINE_SECONDS);
-        try {
-            dropTable($dsn);
-            $cases[$case]($dsn);
-        } catch (Throwable $e) {
+        if (!$passed && $failures === $before) {
             $failures++;
-            fwrite(STDERR, "FAIL $current: $e\n");
-        } finally {
-            pcntl_alarm(0);
-            dropTable($dsn);
         }
-        printf("%s %s %.3fs\n", $failures === $before ? 'ok  ' : 'FAIL', $current, microtime(true) - $start);
-    }
-    if ($failures === $caseBefore) {
-        echo "CASE $case PASS\n";
     }
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php rollback test: $failures failures\n");
     exit(1);
 }
-echo 'php rollback test: ' . count($selected) . ' cases on ' . count($targets) . " databases passed\n";

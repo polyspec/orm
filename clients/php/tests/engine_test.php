@@ -5,6 +5,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\Engine;
@@ -34,6 +35,8 @@ function code(callable $fn): string
     return 'no error';
 }
 
+// engine check는 memory 안의 manifest 검사, request 검증, statement 형식을 한 case로 실행한다.
+testcase_begin('engine', TESTCASE_COMPUTE);
 $engines = [];
 foreach (['mysql', 'postgres', 'sqlite'] as $d) {
     $engines[$d] = new Engine($model, $d, 8);
@@ -123,7 +126,6 @@ foreach ($engines as $d => $engine) {
 }
 
 if ($failures > 0) {
-    fwrite(STDERR, "php engine test: $failures failures\n");
-    exit(1);
+    throw new RuntimeException("$failures check(s) failed; each FAIL line above names one");
 }
-echo "php engine test: passed\n";
+testcase_end();

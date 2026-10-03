@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -17,6 +18,7 @@ function expect(bool $ok, string $message): void
     }
 }
 
+testcase_begin('dsn/parse', TESTCASE_COMPUTE);
 [$driver, $pdo, $user, $password] = Orm::parseDsn('mysql://orm:p%40ss@db.local:3307/orm_example?timezone=UTC');
 expect($driver === 'mysql' && $pdo === 'mysql:host=db.local;port=3307;dbname=orm_example;charset=utf8mb4', "mysql pdo dsn: $pdo");
 expect($user === 'orm' && $password === 'p@ss', 'mysql credentials');
@@ -37,8 +39,10 @@ foreach (['mysqlx://localhost/orm_example', 'relative/path', '', 'sqlite://relat
         expect($e->code_ === Code::CONFIG, "wrong error for $dsn");
     }
 }
+testcase_end();
 // query 가 붙은 SQLite DSN 은 path 만으로 file 을 만든다. query 를 file 이름에 둔
 // opener 는 `named.sqlite?_pragma=…` 같은 file 을 만든다(docs/dialects.md "Probe environment").
+testcase_begin('dsn/sqlite-file-name', TESTCASE_COMPUTE);
 $directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
 expect(!file_exists($directory) && mkdir($directory), "temporary directory $directory");
 $db = Orm::connect("sqlite://$directory/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00", new Config());
@@ -50,14 +54,14 @@ foreach ($names as $name) {
 }
 expect(rmdir($directory), "remove $directory");
 expect(in_array('named.sqlite', $names, true), 'files ' . json_encode($names) . ': named.sqlite is missing');
+testcase_end();
 
 // tests/dsn/sqlite-paths.json: DSN path 는 percent-decode 한 file 을 열고, 잘못된 path 는
 // CONFIG 다(docs/config.md "Runtime connection").
 $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dsn/sqlite-paths.json'), true, 512, JSON_THROW_ON_ERROR);
 expect($vectors['version'] === 1 && $vectors['cases'] !== [], 'tests/dsn/sqlite-paths.json has no cases');
 foreach ($vectors['cases'] as $case) {
-    $started = hrtime(true);
-    echo "RUN dsn/sqlite-path/{$case['id']}\n";
+    testcase_begin("dsn/sqlite-path/{$case['id']}", TESTCASE_COMPUTE);
     $directory = sys_get_temp_dir() . "/orm-php-sqlite-path-" . getmypid() . "-{$case['id']}";
     expect(!file_exists($directory) && mkdir($directory), "temporary directory $directory");
     $code = null;
@@ -81,7 +85,5 @@ foreach ($vectors['cases'] as $case) {
         }
         expect(in_array($case['file'], $names, true), "dsn/sqlite-path/{$case['id']}: files " . json_encode($names, JSON_UNESCAPED_UNICODE) . ": {$case['file']} is missing");
     }
-    echo "PASS dsn/sqlite-path/{$case['id']} elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";
+    testcase_end();
 }
-
-echo "php DSN parsing passed\n";

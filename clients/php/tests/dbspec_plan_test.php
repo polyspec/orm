@@ -52,8 +52,6 @@ function step_fields(PlanStep $s): array
     return $out;
 }
 
-$started = hrtime(true);
-echo "RUN dbspec_plan\n";
 $root = dirname(__DIR__, 3);
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/plans.json"), true, 512, JSON_THROW_ON_ERROR);
 if ($vectors['version'] !== 1 || ($vectors['cases'] ?? []) === [] || ($vectors['invalid'] ?? []) === [] || ($vectors['chains'] ?? []) === [] || ($vectors['parse'] ?? []) === [] || ($vectors['comparisons'] ?? []) === []) {
@@ -103,17 +101,12 @@ function plan_messages(string $id, string $rule, array $diagnostics): array
 
 function finish_plan_case(string $id, array $caseStarted): void
 {
-    [$cpuMs, $wallMs] = caseClockElapsed($caseStarted);
-    if ($cpuMs > CASE_DEADLINE_MS) {
-        throw new RuntimeException("$id: CPU deadline of " . CASE_DEADLINE_MS . " ms exceeded ($cpuMs ms CPU, $wallMs ms wall)");
-    }
-    echo "PASS $id cpuMs=$cpuMs wallMs=$wallMs\n";
+    cpuCaseEnd($id, $caseStarted);
 }
 
 foreach ($vectors['cases'] as $case) {
     $id = "plan/{$case['id']}";
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = caseClockStart();
+    $caseStarted = cpuCaseBegin($id, CASE_DEADLINE_MS / 1000);
     $source = plan_source($id, $case['source'] ?? null);
     $plan = plan_of($id, $case['plan']);
     $emitted = Dbspec::emitPlan($plan);
@@ -146,8 +139,7 @@ foreach ($vectors['cases'] as $case) {
 
 foreach ($vectors['invalid'] as $case) {
     $id = "plan/invalid/{$case['id']}";
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = caseClockStart();
+    $caseStarted = cpuCaseBegin($id, CASE_DEADLINE_MS / 1000);
     $source = plan_source($id, $case['source'] ?? null);
     $parsed = Dbspec::parsePlan(plan_text($case['plan']));
     $diagnostics = $parsed->plan === null ? $parsed->diagnostics : Dbspec::diff($source, $parsed->plan)->diagnostics;
@@ -167,8 +159,7 @@ foreach ($vectors['invalid'] as $case) {
 
 foreach ($vectors['chains'] as $case) {
     $id = "plan/chain/{$case['id']}";
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = caseClockStart();
+    $caseStarted = cpuCaseBegin($id, CASE_DEADLINE_MS / 1000);
     $plans = array_map(static fn(array $lines): Plan => plan_of($id, $lines), $case['plans']);
     $chain = Dbspec::chain($plans);
     $errors = plan_messages($id, 'chain', $chain->diagnostics);
@@ -184,8 +175,7 @@ foreach ($vectors['chains'] as $case) {
 
 foreach ($vectors['parse'] as $case) {
     $id = "plan/parse/{$case['id']}";
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = caseClockStart();
+    $caseStarted = cpuCaseBegin($id, CASE_DEADLINE_MS / 1000);
     $parsed = Dbspec::parsePlan(plan_text($case['plan']));
     // plan diagnostic 은 message 까지, target diagnostic 은 rule, 줄, 칸까지 비교한다.
     $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->rule === 'plan' ? $d->message : null], $parsed->diagnostics);
@@ -197,8 +187,7 @@ foreach ($vectors['parse'] as $case) {
 
 foreach ($vectors['comparisons'] as $case) {
     $id = "plan/comparison/{$case['id']}";
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    $caseStarted = caseClockStart();
+    $caseStarted = cpuCaseBegin($id, CASE_DEADLINE_MS / 1000);
     $source = plan_source("$id/source", $case['source']);
     $target = plan_source("$id/target", $case['target']);
     $result = Dbspec::compareSchemas($source, $target);
@@ -213,7 +202,7 @@ foreach ($vectors['comparisons'] as $case) {
     finish_plan_case($id, $caseStarted);
 }
 
-echo "RUN plan/unknown-dialect\n";
+testcase_begin('plan/unknown-dialect', TESTCASE_COMPUTE);
 try {
     Dbspec::planSteps(null, plan_of('plan/unknown-dialect', $vectors['cases'][0]['plan']), 'oracle');
     throw new RuntimeException('unknown dialect oracle was accepted');
@@ -222,6 +211,5 @@ try {
         throw new RuntimeException('unknown dialect message does not name it: ' . $e->getMessage());
     }
 }
-echo "PASS plan/unknown-dialect\n";
+testcase_end();
 
-echo 'PASS dbspec_plan cases=' . count($vectors['cases']) . ' invalid=' . count($vectors['invalid']) . ' chains=' . count($vectors['chains']) . ' parse=' . count($vectors['parse']) . ' comparisons=' . count($vectors['comparisons']) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";

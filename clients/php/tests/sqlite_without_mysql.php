@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Service;
 use Orm\Config;
@@ -16,11 +17,11 @@ use Orm\Orm;
 
 function fail(string $message): never
 {
-    fwrite(STDERR, "FAIL sqlite_without_mysql: $message\n");
-    exit(1);
+    throw new RuntimeException($message);
 }
 
-$started = hrtime(true);
+// case는 SQLite file 하나에 schema를 설치하고 row 하나를 쓰고 읽는다.
+testcase_begin('sqlite_without_mysql', TESTCASE_DATABASE);
 if (extension_loaded('pdo_mysql')) {
     fail('this PHP loads pdo_mysql; run scripts/php-without-mysql.sh');
 }
@@ -50,4 +51,5 @@ rmdir($work);
 if ($read->getName() !== 'without-mysql') {
     fail("read the name {$read->getName()}");
 }
-printf("PASS sqlite_without_mysql: the client runs on SQLite without pdo_mysql %.1fms\n", (hrtime(true) - $started) / 1e6);
+testcase_step('the client runs on SQLite without pdo_mysql');
+testcase_end();

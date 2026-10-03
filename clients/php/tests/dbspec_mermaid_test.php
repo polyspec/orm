@@ -18,8 +18,6 @@ use Orm\Dbspec\Unsupported;
 
 const CASE_DEADLINE_MS = 5000;
 
-$started = hrtime(true);
-echo "RUN dbspec_mermaid\n";
 $vectors = json_decode(file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/mermaid.json'), true, 512, JSON_THROW_ON_ERROR);
 if ($vectors['version'] !== 1 || $vectors['export'] === [] || $vectors['import'] === [] || $vectors['invalid'] === [] || $vectors['round_trip'] === []) {
     throw new RuntimeException('tests/dbspec/mermaid.json has no export, import, invalid or round trip cases of version 1');
@@ -30,14 +28,9 @@ $drops = static fn(array $dropped): array => array_map(static fn(Unsupported $u)
 /** @param Closure(): void $check */
 function mermaid_case(string $id, Closure $check): void
 {
-    $caseStarted = caseClockStart();
-    echo "RUN mermaid/$id deadlineMs=" . CASE_DEADLINE_MS . "\n";
+    $clock = cpuCaseBegin("mermaid/$id", CASE_DEADLINE_MS / 1000);
     $check();
-    [$cpuMs, $wallMs] = caseClockElapsed($caseStarted);
-    if ($cpuMs > CASE_DEADLINE_MS) {
-        throw new RuntimeException("mermaid/$id: CPU deadline of " . CASE_DEADLINE_MS . " ms exceeded ($cpuMs ms CPU, $wallMs ms wall)");
-    }
-    echo "PASS mermaid/$id cpuMs=$cpuMs wallMs=$wallMs\n";
+    cpuCaseEnd("mermaid/$id", $clock);
 }
 
 function mermaid_equal(string $what, mixed $want, mixed $got): void
@@ -126,8 +119,7 @@ foreach ($vectors['round_trip'] as $case) {
         }
         mermaid_equal("round_trip/{$case['id']} import dropped", $case['imported'], $drops($imported->dropped));
         mermaid_equal("round_trip/{$case['id']} tables", implode("\n", mermaid_skeleton($parsed->document)), implode("\n", mermaid_skeleton($imported->document)));
-        echo "round_trip/{$case['id']} exported=" . count($exported->dropped) . ' imported=' . count($imported->dropped) . "\n";
+        testcase_step('exported=' . count($exported->dropped) . ' imported=' . count($imported->dropped));
     });
     $cases++;
 }
-echo "PASS dbspec_mermaid cases=$cases elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";

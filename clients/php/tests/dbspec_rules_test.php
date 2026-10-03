@@ -8,7 +8,6 @@ require_once __DIR__ . '/case_clock.php';
 require __DIR__ . '/dbspec_cases.php';
 
 $started = caseClockStart();
-echo "RUN dbspec_rules\n";
 
 /** @param list<array{0:string,1:int,2:string|int}> $errors */
 function rules_case(string $id, array $lines, array $errors, array $others = []): array
@@ -360,18 +359,14 @@ $counts = [
 
 // Limits: generated documents, each with its own deadline.
 $limit = static function (string $id, string $text, array $want): void {
-    echo "RUN limit/$id\n";
-    $started = caseClockStart();
+    $clock = cpuCaseBegin("limit/$id", 20.0);
     $result = Orm\Dbspec\Dbspec::parse($text, []);
     $got = array_map(static fn(Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column], $result->diagnostics);
     if ($result->document !== null || $got !== [$want]) {
         throw new RuntimeException("limit/$id: want " . json_encode([$want]) . ' got ' . json_encode($got));
     }
-    [$cpuMs, $wallMs] = caseClockElapsed($started);
-    if ($cpuMs > 20000) {
-        throw new RuntimeException("limit/$id: CPU deadline of 20 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
-    }
-    echo "PASS limit/$id cpuMs=$cpuMs wallMs=$wallMs peakBytes=" . memory_get_peak_usage(true) . "\n";
+    testcase_step('peakBytes=' . memory_get_peak_usage(true));
+    cpuCaseEnd("limit/$id", $clock);
 };
 $size = 32 * 1024 * 1024 + 1;
 $text = str_pad("dbspec 1 shop\n", $size, "\n");
@@ -419,8 +414,11 @@ for ($t = 0; $t < 21; $t++) {
 $limit('foreign-keys', $fks, ['limit', $fkLine, 3]);
 unset($fks);
 
+// 모든 rule case를 합친 CPU 시간도 60 s 한도를 가진다.
+testcase_begin('dbspec_rules/cpu-total', TESTCASE_COMPUTE);
 [$cpuMs, $wallMs] = caseClockElapsed($started);
 if ($cpuMs > 60000) {
     throw new RuntimeException("dbspec_rules CPU deadline of 60 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
 }
-echo "PASS dbspec_rules canonical={$counts['canonical']} normalize={$counts['normalize']} invalid={$counts['invalid']} limits=5 cpuMs=$cpuMs wallMs=$wallMs\n";
+testcase_step("canonical={$counts['canonical']} normalize={$counts['normalize']} invalid={$counts['invalid']} limits=5 cpuMs=$cpuMs wallMs=$wallMs");
+testcase_end();

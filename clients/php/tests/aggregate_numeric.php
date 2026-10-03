@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Model;
 use Orm\OrmException;
@@ -11,6 +12,7 @@ $fixture = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_
 $convert = new ReflectionMethod(Model::class, 'aggregateNumber');
 
 foreach ($fixture['cases'] as $case) {
+    testcase_begin("aggregate_numeric/{$case['id']}", TESTCASE_COMPUTE);
     $input = match ($case['input_type']) {
         'integer_text' => (int) $case['input'],
         'decimal_text' => $case['input'],
@@ -31,5 +33,5 @@ foreach ($fixture['cases'] as $case) {
             throw new RuntimeException("{$case['id']}: unexpected {$error->code_}", 0, $error);
         }
     }
-    echo "CASE {$case['id']} PASS\n";
+    testcase_end();
 }

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -24,8 +25,6 @@ use RuntimeDb\Orm\Item;
 use RuntimeDb\Orm\ItemHistory;
 use RuntimeDb\Orm\Sample;
 
-$started = hrtime(true);
-echo "RUN runtime_db\n";
 $root = dirname(__DIR__, 3);
 $work = sys_get_temp_dir() . '/orm-php-runtime-db-' . getmypid();
 @mkdir($work, 0o700, true);
@@ -144,30 +143,20 @@ foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'
     $targets[$driver] = $v;
 }
 $failures = 0;
+// 각 case는 database 하나에 문서 집합을 설치하고 row 몇 개를 쓰고 읽은 뒤 table을 지운다.
 foreach ($targets as $driver => $dsn) {
     foreach ($cases as $name => $case) {
-        $t = hrtime(true);
-        echo "RUN $name/$driver\n";
-        try {
+        $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function () use ($driver, $dsn, $case): void {
             $db = database($driver, $dsn);
             $case($db);
             $db->close();
             dropAll($driver, $dsn);
-            echo "PASS $name/$driver elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
-        } catch (Throwable $e) {
+        });
+        if (!$passed) {
             $failures++;
-            echo "FAIL $name/$driver elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
-            fwrite(STDERR, "FAIL $name/$driver: " . get_class($e) . ': ' . $e->getMessage() . "\n");
         }
     }
 }
-$elapsed = (hrtime(true) - $started) / 1e6;
-if ($elapsed > 120000) {
-    fwrite(STDERR, "runtime_db deadline of 120 s exceeded ($elapsed ms)\n");
-    exit(1);
-}
 if ($failures > 0) {
-    echo "FAIL runtime_db failures=$failures elapsedMs=$elapsed\n";
     exit(1);
 }
-echo "PASS runtime_db databases=" . count($targets) . " elapsedMs=$elapsed\n";

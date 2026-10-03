@@ -8,7 +8,6 @@ require_once __DIR__ . '/case_clock.php';
 use Orm\Dbspec\Dbspec;
 
 $started = caseClockStart();
-echo "RUN dbspec_render\n";
 $root = dirname(__DIR__, 3);
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/ddl.json"), true, 512, JSON_THROW_ON_ERROR);
 if (($vectors['cases'] ?? []) === []) {
@@ -23,8 +22,8 @@ function render_text(array $lines): string
 
 $dialects = ['mysql', 'postgres', 'sqlite'];
 foreach ($vectors['cases'] as $case) {
-    $caseStarted = hrtime(true);
-    echo "RUN ddl/{$case['id']}\n";
+    // 각 vector는 memory 안에서 문서 하나를 세 dialect로 렌더링한다.
+    testcase_begin("ddl/{$case['id']}", TESTCASE_COMPUTE);
     $documents = [];
     foreach ($case['documents'] as $name => $lines) {
         $set = [];
@@ -52,10 +51,10 @@ foreach ($vectors['cases'] as $case) {
             }
         }
     }
-    echo "PASS ddl/{$case['id']} elapsedMs=" . ((hrtime(true) - $caseStarted) / 1e6) . "\n";
+    testcase_end();
 }
 
-echo "RUN render/unknown-dialect\n";
+testcase_begin('render/unknown-dialect', TESTCASE_COMPUTE);
 try {
     Dbspec::render([], 'oracle');
     throw new RuntimeException('unknown dialect oracle was accepted');
@@ -64,10 +63,13 @@ try {
         throw new RuntimeException('unknown dialect message does not name it: ' . $e->getMessage());
     }
 }
-echo "PASS render/unknown-dialect\n";
+testcase_end();
 
+// 모든 vector를 합친 CPU 시간도 10 s 한도를 가진다.
+testcase_begin('dbspec_render/cpu-total', TESTCASE_COMPUTE);
 [$cpuMs, $wallMs] = caseClockElapsed($started);
 if ($cpuMs > 10000) {
     throw new RuntimeException("dbspec_render CPU deadline of 10 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
 }
-echo 'PASS dbspec_render cases=' . count($vectors['cases']) . " cpuMs=$cpuMs wallMs=$wallMs\n";
+testcase_step('cases=' . count($vectors['cases']) . " cpuMs=$cpuMs wallMs=$wallMs");
+testcase_end();

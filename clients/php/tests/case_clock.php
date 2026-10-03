@@ -8,6 +8,32 @@ declare(strict_types=1);
  * wall-clock 시간은 함께 출력만 한다.
  */
 
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+
+/**
+ * CPU 시간 한도 $cpuSeconds를 가진 case $id를 시작한다(tests/testcase.php의 구역 case).
+ * 멈춘 case를 끝내는 wall-clock 기한은 CPU 한도의 열 배다. timing-check가 process group에
+ * CPU의 10분의 1만 주므로 그 아래에서도 CPU 한도만 판정한다.
+ *
+ * @return array{0: array, 1: float} cpuCaseEnd에 줄 [시작, 한도]
+ */
+function cpuCaseBegin(string $id, float $cpuSeconds): array
+{
+    testcase_begin($id, 10 * $cpuSeconds);
+    return [caseClockStart(), $cpuSeconds];
+}
+
+/** cpuCaseBegin으로 시작한 case가 CPU 한도 안에 끝났는지 확인하고 PASS로 끝낸다. */
+function cpuCaseEnd(string $id, array $clock): void
+{
+    [$cpuMs, $wallMs] = caseClockElapsed($clock[0]);
+    if ($cpuMs > $clock[1] * 1000) {
+        throw new RuntimeException("$id: CPU deadline of {$clock[1]} s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
+    }
+    testcase_step(sprintf('cpu %.3f ms', $cpuMs));
+    testcase_end();
+}
+
 /** 한 case의 시작: [hrtime ns, process CPU ns]. */
 function caseClockStart(): array
 {

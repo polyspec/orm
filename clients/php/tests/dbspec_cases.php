@@ -37,8 +37,7 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
     $passed = 0;
     foreach ($cases as $case) {
         $id = $kind . '/' . $case['id'];
-        echo "RUN $id\n";
-        $started = caseClockStart();
+        $clock = cpuCaseBegin($id, $deadlineSeconds);
         $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
         $text = $texts[$case['main']];
         $result = Orm\Dbspec\Dbspec::parse($text, $texts);
@@ -70,11 +69,7 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
                 throw new RuntimeException("$id: emission is not idempotent");
             }
         }
-        [$cpuMs, $wallMs] = caseClockElapsed($started);
-        if ($cpuMs > $deadlineSeconds * 1000) {
-            throw new RuntimeException("$id: CPU deadline of {$deadlineSeconds} s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
-        }
-        echo "PASS $id cpuMs=$cpuMs wallMs=$wallMs\n";
+        cpuCaseEnd($id, $clock);
         $passed++;
     }
     return $passed;

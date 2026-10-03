@@ -13,18 +13,19 @@ declare(strict_types=1);
 // servers; the test fails when either is unset.
 // Usage: php clients/php/tests/dbspec_plan_apply_test.php
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Diagnostic;
 use Orm\Dbspec\Unsupported;
 use Orm\Orm;
 
+// RUN_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 plan step을 적용,
+// 되돌리기, 다시 적용, finalize하며 매번 introspect한 뒤 지운다.
 const RUN_DEADLINE_MS = 60000;
 // 모든 client 가 새 connection 에서 실행하는 statement.
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
-$started = hrtime(true);
-echo "RUN dbspec_plan_apply\n";
 $root = dirname(__DIR__, 3);
 $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
 foreach ($dsns as $dsn) {
@@ -125,7 +126,7 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
             try {
                 $pdo->exec($step['sql']);
             } catch (PDOException $e) {
-                echo "  {$step['sql']}: fails with {$e->getCode()}\n";
+                testcase_step("{$step['sql']}: fails with {$e->getCode()}");
                 continue;
             }
             throw new RuntimeException("{$step['sql']}: succeeded; want an error");
@@ -152,7 +153,6 @@ foreach ($vectors['cases'] as $case) {
     }
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         $id = "plan/$dialect/{$case['id']}";
-        $runStarted = hrtime(true);
         $setup = [];
         if ($source !== null) {
             $rendered = Dbspec::render([$source], $dialect);
@@ -171,7 +171,8 @@ foreach ($vectors['cases'] as $case) {
             $sourceManifest = Dbspec::manifest([$source]);
             $sourceText = $sourceManifest->manifest?->schemaText ?? plan_failure($id, $sourceManifest->diagnostics);
         }
-        echo "RUN $id steps=" . count($steps) . ' reversible=' . ($reversible ? 'true' : 'false') . ' deadlineMs=' . RUN_DEADLINE_MS . "\n";
+        testcase_begin($id, RUN_DEADLINE_MS / 1000);
+        testcase_step('steps=' . count($steps) . ' reversible=' . ($reversible ? 'true' : 'false'));
         [$pdo, $drop] = open_plan_database($dialect);
         $schemaIs = static function (string $what, string $wantText) use (&$pdo, $dialect, $id): void {
             $introspected = Dbspec::introspect($pdo, $dialect, 'introspected');
@@ -261,12 +262,7 @@ foreach ($vectors['cases'] as $case) {
             $pdo = null;
             $drop();
         }
-        $elapsed = (hrtime(true) - $runStarted) / 1e6;
-        if ($elapsed > RUN_DEADLINE_MS) {
-            throw new RuntimeException("$id: deadline of " . RUN_DEADLINE_MS . " ms exceeded ($elapsed ms)");
-        }
         $runs++;
-        echo "PASS $id elapsedMs=$elapsed\n";
+        testcase_end();
     }
 }
-echo "PASS dbspec_plan_apply runs=$runs cases=" . count($vectors['cases']) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";

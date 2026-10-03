@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Bytes;
 use Orm\Code;
@@ -13,6 +14,7 @@ use Orm\OrmException;
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }
 
+testcase_begin('hostcodec', TESTCASE_COMPUTE);
 $n = 0;
 $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24';
 check(Codec::hostDecode($fixed, ['aes', 'hex'], 'bench-salt') === 'user42@example.com', 'shared fixed AES v2 vector');
@@ -75,8 +77,8 @@ try {
     check($e->code_ === Code::CODEC_UNSUPPORTED, 'codec style as host stage → CODEC_UNSUPPORTED');
 }
 
-if ($fail === 0) {
-    echo "ok — $n authenticated AES vectors and IP packing checked\n";
-    exit(0);
+if ($fail > 0) {
+    throw new RuntimeException("$fail check(s) failed; each FAIL line above names one");
 }
-exit(1);
+testcase_step("$n authenticated AES vectors and IP packing checked");
+testcase_end();

@@ -15,6 +15,7 @@ declare(strict_types=1);
 // fails when either is unset.
 // Usage: php clients/php/tests/dbspec_apply_test.php
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Dbspec\ApplyError;
 use Orm\Dbspec\ApplyEvent;
@@ -23,12 +24,12 @@ use Orm\Dbspec\Diagnostic;
 use Orm\Dbspec\Plan;
 use Orm\Orm;
 
+// RUN_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 plan chain scenario
+// 하나(apply, 중단, recover, rollback, finalize)를 실행한 뒤 지운다.
 const RUN_DEADLINE_MS = 60000;
 // 모든 client 가 새 connection 에서 실행하는 statement.
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
-$started = hrtime(true);
-echo "RUN dbspec_apply\n";
 $root = dirname(__DIR__, 3);
 $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
 foreach ($dsns as $dsn) {
@@ -141,7 +142,7 @@ function apply_code(string $want, Closure $operation): void
         if ($e->code_ !== $want) {
             throw new RuntimeException("code {$e->code_}, want $want: {$e->getMessage()}", 0, $e);
         }
-        echo "  $want: {$e->getMessage()}\n";
+        testcase_step("$want: {$e->getMessage()}");
         return;
     }
     throw new RuntimeException("succeeded; want the $want error");
@@ -279,7 +280,7 @@ $scenarios = [
         if (($counts['plan'] ?? 0) !== 2 || ($counts['verified'] ?? 0) !== 2 || ($counts['done'] ?? 0) !== 2 || ($counts['statement'] ?? 0) !== ($counts['applied'] ?? 0) || ($counts['statement'] ?? 0) !== $c[0][1] + $c[1][1]) {
             throw new RuntimeException('events ' . json_encode($counts));
         }
-        echo '  events ' . json_encode($counts) . "\n";
+        testcase_step('events ' . json_encode($counts));
         $events = [];
         Dbspec::apply($pdo, $db, $plans, $now, $record);
         if ($events !== []) {
@@ -359,7 +360,7 @@ $scenarios = [
             if ($e->getMessage() !== $want) {
                 throw new RuntimeException("{$e->getMessage()}; want \"$want\"", 0, $e);
             }
-            echo "  {$e->getMessage()}\n";
+            testcase_step("{$e->getMessage()}");
             return;
         }
         throw new RuntimeException("succeeded; want \"$want\"");
@@ -413,7 +414,7 @@ $scenarios = [
             if ($e->code_ !== 'nulls' || !str_contains($e->getMessage(), 'has 1 NULL rows')) {
                 throw new RuntimeException("rollback with a NULL row: {$e->getMessage()}, want nulls with the count", 0, $e);
             }
-            echo "  {$e->getMessage()}\n";
+            testcase_step("{$e->getMessage()}");
         }
         apply_schema_is($pdo, $db, $requiredTarget);
         $historyIs($pdo, $db, "base|applied|{$c[0][1]},drop_required_column|applied|{$c[1][1]}");
@@ -453,8 +454,7 @@ $runs = 0;
 foreach ($scenarios as [$name, $dbs, $scenario]) {
     foreach ($dbs as $db) {
         $id = "$db.apply.$name";
-        $runStarted = hrtime(true);
-        echo "RUN $id deadlineMs=" . RUN_DEADLINE_MS . "\n";
+        testcase_begin($id, RUN_DEADLINE_MS / 1000);
         [$session, $drop] = open_apply_database($db);
         try {
             $pdo = $session();
@@ -469,16 +469,14 @@ foreach ($scenarios as [$name, $dbs, $scenario]) {
             gc_collect_cycles();
             $drop();
         }
-        $elapsed = (hrtime(true) - $runStarted) / 1e6;
-        if ($elapsed > RUN_DEADLINE_MS) {
-            throw new RuntimeException("$id: deadline of " . RUN_DEADLINE_MS . " ms exceeded ($elapsed ms)");
-        }
         $runs++;
-        echo "PASS $id elapsedMs=$elapsed\n";
+        testcase_end();
     }
 }
 $want = 25 + array_sum(array_map(static fn(string $db): int => $repCounts[$db][1][1], $all));
+testcase_begin('dbspec_apply/runs', TESTCASE_COMPUTE);
 if ($runs !== $want) {
     throw new RuntimeException("runs=$runs, want $want");
 }
-echo "PASS dbspec_apply runs=$runs elapsedMs=" . ((hrtime(true) - $started) / 1e6) . "\n";
+testcase_step("runs=$runs");
+testcase_end();

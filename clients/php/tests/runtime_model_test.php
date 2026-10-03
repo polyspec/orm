@@ -6,6 +6,7 @@ declare(strict_types=1);
 // a schema path. Database behavior is in runtime_db_test.php.
 // Usage: php clients/php/tests/runtime_model_test.php
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Code;
@@ -17,24 +18,15 @@ use Orm\OrmException;
 use Orm\Registry;
 use Orm\RuntimeModel;
 
-$started = hrtime(true);
-echo "RUN runtime_model\n";
 $root = dirname(__DIR__, 3);
 $failures = 0;
 
-/** 한 case를 실행하고 시작, 결과, 경과 시간을 보고한다. */
+/** 한 case를 memory 안의 계산 기한(TESTCASE_COMPUTE) 아래에서 실행하고 보고한다. */
 function runCase(string $name, Closure $fn): void
 {
     global $failures;
-    $t = hrtime(true);
-    echo "RUN $name\n";
-    try {
-        $fn();
-        echo "PASS $name elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
-    } catch (Throwable $e) {
+    if (!testcase_run("runtime_model/$name", TESTCASE_COMPUTE, static fn() => $fn())) {
         $failures++;
-        echo "FAIL $name elapsedMs=" . ((hrtime(true) - $t) / 1e6) . "\n";
-        fwrite(STDERR, "FAIL $name: $e\n");
     }
 }
 
@@ -164,13 +156,6 @@ runCase('requests carry the manifest hash', function () use ($bench): void {
     want($engine->compile($ir)['manifest_hash'] === $bench->manifestHash, 'plan manifest hash');
 });
 
-$elapsed = (hrtime(true) - $started) / 1e6;
-if ($elapsed > 30000) {
-    fwrite(STDERR, "runtime_model deadline of 30 s exceeded ($elapsed ms)\n");
-    exit(1);
-}
 if ($failures > 0) {
-    echo "FAIL runtime_model failures=$failures elapsedMs=$elapsed\n";
     exit(1);
 }
-echo "PASS runtime_model elapsedMs=$elapsed\n";

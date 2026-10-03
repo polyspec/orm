@@ -30,6 +30,7 @@ check: checklist-check testcase-check repo-check feature-check git-check docs-ru
 testcase-check:
 	$(GO_TEST) ./internal/testcase -count=1
 	node --test tests/testcase.test.mjs
+	php tests/testcase_test.php
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
@@ -264,8 +265,13 @@ dialect-facts-check:
 conformance-counter-check:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysical(CounterCleanup|FailedRunnerStateCheck)$$' -count=1
 
+# conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
+# test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
 conformance-result-check:
-	python3 tests/conformance/run_result_tests.py
+	npm --prefix clients/typescript run build
+	php tests/conformance/result_php.php
+	node --test tests/conformance/result_typescript.test.mjs
+	$(GO_TEST) ./tests/conformance/runner_go -count=1
 
 conformance-result-physical-check:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1

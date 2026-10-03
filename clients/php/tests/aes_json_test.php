@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use AesJson\Orm\SecretConfig;
 use Orm\AesKeyring;
@@ -156,18 +157,20 @@ foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'
     }
     $targets[$driver] = $v;
 }
+// 각 case는 database 하나에 AES JSON column table을 만들고 row 몇 개를 쓰고 읽는다.
 foreach ($targets as $driver => $dsn) {
     $current = "aes json column/$driver";
-    try {
+    $before = $failures;
+    $passed = testcase_run("aes_json/$driver", TESTCASE_DATABASE, static function () use ($dsn, $before): void {
         aesJsonColumn($dsn);
-    } catch (Throwable $e) {
+        if ($GLOBALS['failures'] > $before) {
+            throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+        }
+    });
+    if (!$passed && $failures === $before) {
         $failures++;
-        fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php aes json test: $failures failures\n");
     exit(1);
 }
-echo 'php aes json test: ' . count($targets) . " databases passed\n";
