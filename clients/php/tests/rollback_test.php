@@ -7,9 +7,12 @@
 // ROLLBACK when a row labeled `end` is inserted, which ends the transaction,
 // so the client's ROLLBACK finds no transaction. On MySQL and PostgreSQL a
 // test connection ends the server session that holds the transaction, so the
-// next statement and the rollback fail. Each case runs in a case database
-// of its own (case_database.php) created through ORM_TEST_MYSQL_DSN or
-// ORM_TEST_POSTGRES_DSN; the test fails when either is unset.
+// next statement and the rollback fail; that connection reaches the server
+// through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the make
+// targets set them to the server DSNs of TEST_ENV), not through a pooler.
+// Each case runs in a case database of its own (case_database.php) created
+// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
+// one of the four is unset.
 // Usage: php clients/php/tests/rollback_test.php [case ...]
 declare(strict_types=1);
 
@@ -94,17 +97,34 @@ function connect(string $dsn): Db
 }
 
 /**
- * Ends the server session that holds a lock on rollback_probe. SQLite needs
- * no session end: its trigger ends the transaction.
+ * Ends the server session that holds a lock on rollback_probe in the case
+ * database of $dsn. The test connects to that database through
+ * ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN, the server
+ * itself, because a pooler in front of it may handle the statement on its
+ * own: ProxySQL takes a text-protocol KILL as a command for its own client
+ * sessions. The lock on the table of the case database marks the session that
+ * holds the transaction behind the pooler. SQLite needs no session end: its
+ * trigger ends the transaction.
  */
 function endSession(string $dsn): void
 {
-    [$driver, $pdo] = native($dsn);
+    [$driver] = Orm::parseDsn($dsn);
+    if ($driver === 'sqlite') {
+        return;
+    }
+    $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
+    $server = getenv($env);
+    if ($server === false || $server === '') {
+        throw new RuntimeException("$env is required; database tests never skip");
+    }
+    // case database 이름은 case DSN의 path다. server 연결도 그 database를 연다.
+    $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
+    [, $pdo] = native(case_dsn_with_database($server, $database));
     if ($driver === 'postgres') {
-        $pid = $pdo->query("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1")->fetchColumn();
+        $pid = $pdo->query("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1")->fetchColumn();
         check($pid !== false, 'the transaction session holds a lock on rollback_probe');
         $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([(int) $pid]);
-    } elseif ($driver === 'mysql') {
+    } else {
         $id = $pdo->query("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1")->fetchColumn();
         check($id !== false, 'the transaction session holds a lock on rollback_probe');
         $pdo->exec('KILL ' . (int) $id);

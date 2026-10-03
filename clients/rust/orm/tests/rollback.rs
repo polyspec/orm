@@ -5,9 +5,11 @@
 //! fixture raises ROLLBACK when a row labeled `end` is inserted, which ends
 //! the transaction, so the client's ROLLBACK finds no transaction. On MySQL
 //! and PostgreSQL a test connection ends the server session that holds the
-//! transaction, so the next statement and the rollback fail. Each case runs in
-//! a case database of its own (orm-case-database). The test fails when
-//! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
+//! transaction, so the next statement and the rollback fail; that connection
+//! reaches the server through ORM_TEST_MYSQL_SERVER_DSN or
+//! ORM_TEST_POSTGRES_SERVER_DSN (the make targets set them to the server DSNs
+//! of TEST_ENV), not through a pooler. Each case runs in a case database of its
+//! own (orm-case-database). The test fails when one of the four DSNs is unset.
 //!
 //! `rollback_fault_*` case는 test entry point `orm::testing`의 rollback fault를
 //! 설정하며 feature `test-faults`로 실행한다:
@@ -71,7 +73,7 @@ fn connected(db: &Db) -> RollbackProbe {
 }
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
-async fn installed(driver: &str, dsn: &str) -> (Db, String) {
+async fn installed(driver: &str, dsn: &str) -> Db {
     let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&ROLLBACK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     if let Pool::Sqlite(p) = db.pool() {
@@ -80,34 +82,56 @@ async fn installed(driver: &str, dsn: &str) -> (Db, String) {
             .await
             .unwrap_or_else(|e| panic!("trigger: {e}"));
     }
-    (db, dsn.to_owned())
+    db
 }
 
-/// Ends, from a test connection, the server session that holds a lock on
-/// rollback_probe; SQLite needs none, its trigger ends the transaction.
-async fn end_session(driver: &str, dsn: &str) {
-    match driver {
-        "postgres" => {
-            let pool = sqlx::PgPool::connect(dsn).await.unwrap();
+/// Ends the server session that holds a lock on rollback_probe in the case
+/// database; SQLite needs none, its trigger ends the transaction. `session`
+/// is the case database on the server of ORM_TEST_MYSQL_SERVER_DSN or
+/// ORM_TEST_POSTGRES_SERVER_DSN, not on a pooler, because a pooler may handle
+/// the statement on its own: ProxySQL takes a text-protocol KILL as a command
+/// for its own client sessions. The lock on the table of the case database
+/// marks the session that holds the transaction behind the pooler. The test
+/// connection is a client connection (`Db::connect`), so it sends the startup
+/// parameters of the client and no parameter a pooler rejects.
+async fn end_session(driver: &str, session: &str) {
+    if driver == "sqlite" {
+        return;
+    }
+    let admin = Db::connect(session, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: session connection: {e}"));
+    match admin.pool() {
+        Pool::Postgres(pool) => {
             let pid: i32 = sqlx::query_scalar(
                 "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1",
             )
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.unwrap();
-            pool.close().await;
+            sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.unwrap();
         }
-        "mysql" => {
-            let pool = sqlx::MySqlPool::connect(dsn).await.unwrap();
+        Pool::MySql(pool) => {
             let id: u64 = sqlx::query_scalar("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1")
-                .fetch_one(&pool)
+                .fetch_one(pool)
                 .await
                 .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(&pool).await.unwrap();
-            pool.close().await;
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.unwrap();
         }
-        _ => {}
+        Pool::Sqlite(_) => unreachable!("sqlite needs no session end"),
+    }
+    admin.close().await;
+}
+
+/// The DSN of the case database on the server itself: ORM_TEST_MYSQL_SERVER_DSN
+/// or ORM_TEST_POSTGRES_SERVER_DSN with the path of the case database. SQLite
+/// has no server; its DSN is the case file.
+fn session_dsn(driver: &str, database: &CaseDatabase) -> String {
+    if driver == "sqlite" {
+        return database.dsn().to_owned();
+    }
+    let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
+    match std::env::var(&env) {
+        Ok(server) if !server.is_empty() => database.related_dsn(&server),
+        _ => panic!("{env} is required; database tests never skip"),
     }
 }
 
@@ -128,12 +152,12 @@ fn check_rollback<'e>(driver: &str, error: &'e orm::Error, subject: &str) -> &'e
 }
 
 /// The callback of a transaction fails and the rollback fails.
-async fn rollback_failed(driver: &str, dsn: &str) {
-    let (db, dsn) = installed(driver, dsn).await;
+async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
+    let db = installed(driver, dsn).await;
     let error = db
         .transaction(async || {
             create("kept").await?;
-            end_session(driver, &dsn).await;
+            end_session(driver, session).await;
             create("end").await
         })
         .await
@@ -148,14 +172,14 @@ async fn rollback_failed(driver: &str, dsn: &str) {
 
 /// The callback of a savepoint fails and the savepoint rollback fails, and
 /// then the transaction rollback fails.
-async fn savepoint_rollback_failed(driver: &str, dsn: &str) {
-    let (db, dsn) = installed(driver, dsn).await;
+async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
+    let db = installed(driver, dsn).await;
     let error = db
         .transaction(async || {
             create("kept").await?;
             db.transaction(async || {
                 create("nested").await?;
-                end_session(driver, &dsn).await;
+                end_session(driver, session).await;
                 create("end").await
             })
             .await
@@ -194,7 +218,7 @@ fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
 /// 소비하고, connection은 이후 요청을 처리한다.
 #[cfg(feature = "test-faults")]
 async fn rollback_fault(driver: &str, dsn: &str) {
-    let (db, _) = installed(driver, dsn).await;
+    let db = installed(driver, dsn).await;
     orm::testing::fail_next_rollback(&db);
     db.transaction(async || create("committed").await).retry(0).await.unwrap_or_else(|e| panic!("{driver}: a committed transaction with an armed fault: {e}"));
     let failing = async || -> orm::Result<()> {
@@ -246,10 +270,11 @@ async fn rollback_fault(driver: &str, dsn: &str) {
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
     let dsn = database.dsn();
+    let session = session_dsn(driver, &database);
     let run = async {
         match case {
-            "rollback_failed" => rollback_failed(driver, dsn).await,
-            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, dsn).await,
+            "rollback_failed" => rollback_failed(driver, dsn, &session).await,
+            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, dsn, &session).await,
             #[cfg(feature = "test-faults")]
             "rollback_fault" => rollback_fault(driver, dsn).await,
             other => unreachable!("unknown case {other}"),

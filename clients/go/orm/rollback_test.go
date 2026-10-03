@@ -8,6 +8,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
 var rollbackColumns = []string{"seq", "label"}
@@ -17,7 +18,12 @@ var rollbackColumns = []string{"seq", "label"}
 // test가 만든 trigger가 `end` label의 row insert에서 ROLLBACK을 raise하므로
 // transaction이 callback 중에 끝나고 끝내는 함수는 아무것도 하지 않는다.
 // MySQL과 PostgreSQL에서는 끝내는 함수가 test connection에서 rollback_probe의
-// lock을 가진 server session을 끝낸다.
+// lock을 가진 server session을 끝낸다. 그 connection은 pooler가 아니라
+// ORM_TEST_MYSQL_SERVER_DSN이나 ORM_TEST_POSTGRES_SERVER_DSN(make target이 TEST_ENV의
+// server DSN으로 둔다)의 server에서 case database를 연다. pooler가 statement를 스스로
+// 처리할 수 있기 때문이다: ProxySQL은 text protocol의 KILL을 자기 client session의
+// 명령으로 받는다. case database table의 lock이 pooler 뒤에서 transaction을 가진
+// session을 가리키는 표지다.
 func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, func()) {
 	t.Helper()
 	s := fixtureSchema(t, "rollback")
@@ -43,11 +49,12 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 			t.Fatal(err)
 		}
 	case "postgres":
+		session := serverSession(t, driver, dsn)
 		end = func() {
-			raw := openNative(t, driver, dsn)
+			raw := openNative(t, driver, session)
 			defer raw.Close()
 			var pid int64
-			if err := raw.QueryRow(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1`).Scan(&pid); err != nil {
+			if err := raw.QueryRow(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1`).Scan(&pid); err != nil {
 				t.Errorf("the transaction session holds a lock on rollback_probe: %v", err)
 				return
 			}
@@ -56,8 +63,9 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 			}
 		}
 	case "mysql":
+		session := serverSession(t, driver, dsn)
 		end = func() {
-			raw := openNative(t, driver, dsn)
+			raw := openNative(t, driver, session)
 			defer raw.Close()
 			var id int64
 			if err := raw.QueryRow("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1").Scan(&id); err != nil {
@@ -77,6 +85,14 @@ func rollbackFixture(t *testing.T, driver string) (*orm.DB, func() *orm.Core, fu
 		return c
 	}
 	return db, model, end
+}
+
+// serverSession은 case database dsn을 pooler가 아닌 server에서 여는 DSN이다:
+// ORM_TEST_<DRIVER>_SERVER_DSN의 path를 case database 이름으로 바꾼다.
+func serverSession(t *testing.T, driver, dsn string) string {
+	t.Helper()
+	server := requireDSN(t, "ORM_TEST_"+strings.ToUpper(driver)+"_SERVER_DSN")
+	return testdb.Retarget(t, server, testdb.DatabaseOf(t, dsn))
 }
 
 func probeCreate(model func() *orm.Core, label string) error {

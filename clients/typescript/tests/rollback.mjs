@@ -8,9 +8,12 @@
 // `end` is inserted, which ends the transaction, so the client's ROLLBACK
 // finds no transaction. On MySQL and PostgreSQL a test connection ends the
 // server session that holds the transaction, so the next statement and the
-// rollback fail. Each case runs on a case database of its own on the servers
-// of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, or a new SQLite file
-// (case-database.mjs); the test fails when either DSN is unset.
+// rollback fail; that connection reaches the server through
+// ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the make targets
+// set them to the server DSNs of TEST_ENV), not through a pooler. Each case
+// runs on a case database of its own on the servers of ORM_TEST_MYSQL_DSN and
+// ORM_TEST_POSTGRES_DSN, or a new SQLite file (case-database.mjs); the test
+// fails when one of the four DSNs is unset.
 //
 // rollback_fault case는 condition `orm-test`에서만 resolve되는 test entry point
 // `@polyspec/orm-typescript/testing`의 rollback fault를 설정한다.
@@ -21,7 +24,7 @@ import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
 import { runCase } from '../../../tests/testcase.mjs';
-import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm-typescript/testing';
 
@@ -86,16 +89,31 @@ async function connect(driver, dsn) {
   return db;
 }
 
-/** Ends the server session that holds a lock on rollback_probe; SQLite needs none, its trigger ends the transaction. */
+/**
+ * Ends the server session that holds a lock on rollback_probe in the case
+ * database of dsn; SQLite needs none, its trigger ends the transaction. The
+ * test connects to that database through ORM_TEST_MYSQL_SERVER_DSN or
+ * ORM_TEST_POSTGRES_SERVER_DSN, the server itself, because a pooler in front
+ * of it may handle the statement on its own: ProxySQL takes a text-protocol
+ * KILL as a command for its own client sessions. The lock on the table of the
+ * case database marks the session that holds the transaction behind the
+ * pooler.
+ */
 async function endSession(driver, dsn) {
+  if (driver === 'sqlite') return;
+  const env = `ORM_TEST_${driver.toUpperCase()}_SERVER_DSN`;
+  const server = process.env[env];
+  if (!server) throw new Error(`${env} is required; database tests never skip`);
+  // case database 이름은 case DSN의 path다. server 연결도 그 database를 연다.
+  const session = relatedDsn(server, new URL(dsn).pathname.slice(1));
   if (driver === 'postgres') {
-    const rows = await native(driver, dsn, ["SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1"]);
+    const rows = await native(driver, session, ["SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1"]);
     check(rows.length === 1, 'the transaction session holds a lock on rollback_probe');
-    await native(driver, dsn, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
-  } else if (driver === 'mysql') {
-    const rows = await native(driver, dsn, ["SELECT t.PROCESSLIST_ID AS id FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1"]);
+    await native(driver, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
+  } else {
+    const rows = await native(driver, session, ["SELECT t.PROCESSLIST_ID AS id FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1"]);
     check(rows.length === 1, 'the transaction session holds a lock on rollback_probe');
-    await native(driver, dsn, [`KILL ${Number(rows[0].id)}`]);
+    await native(driver, session, [`KILL ${Number(rows[0].id)}`]);
   }
 }
 
