@@ -164,7 +164,15 @@ db.transaction(async || {
 .await?;
 ```
 
-operation id 없이, transaction 밖에서, 또는 operation column type에 맞지 않는 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패한다. 중첩 transaction은 `operation`을 받지 않고, operation column을 직접 쓰는 요청은 `IR_INVALID`로 실패한다.
+모든 transaction 진입점이 `operation(id)`를 받는다: `transaction`, `transaction_send`, 그리고 callback을 한 번 실행하고 callback 자신의 오류 type으로 `TransactionOnceError`를 돌려주는 `transaction_once`다. `transaction_once`의 builder는 전과 같이 await하며, callback과 그 future가 `Send`이면 그 future도 `Send`다:
+
+```rust
+db.transaction_once(async || service.set_name("renamed").update(false).await)
+    .operation(operation_id)
+    .await?;
+```
+
+operation id 없이, transaction 밖에서, 또는 operation column type에 맞지 않는 id로 감사 대상 table을 insert하거나 update하면 `CONFIG`로 실패한다. 중첩 transaction은 `operation`을 받지 않고(중첩 `transaction_once`는 `CONFIG`를 담은 `TransactionOnceError::Orm`을 돌려준다), operation column을 직접 쓰는 요청은 `IR_INVALID`로 실패한다.
 
 ### TypeScript
 

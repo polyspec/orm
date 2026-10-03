@@ -8,7 +8,7 @@
 mod audit_rows;
 
 use audit_rows::{changed_item, code, history, new_item, SCHEMA};
-use orm::{Db, Model, Param};
+use orm::{Db, Model, Param, TransactionOnceError};
 use orm_case_database::CaseDatabase;
 
 #[tokio::test]
@@ -54,8 +54,31 @@ async fn audit_operation_id() {
             .operation(8)
             .await
             .unwrap_or_else(|e| panic!("{driver}: update: {e}"));
-        db.transaction(async || orm::model::delete(&changed_item(seq, "b"), false).await)
+        // 모든 transaction 진입점이 operation id를 받는다: transaction_send와, callback을 한 번만 실행하고
+        // 그 오류 type을 지키는 transaction_once도 operation(id)를 받는다.
+        db.transaction_send(|| async { orm::model::update(&mut changed_item(seq, "c"), false).await })
             .operation(9)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: transaction_send update: {e}"));
+        db.transaction_once(async || orm::model::update(&mut changed_item(seq, "d"), false).await)
+            .operation(10)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: transaction_once update: {e}"));
+        let once_without = db.transaction_once(async || orm::model::update(&mut changed_item(seq, "e"), false).await).await;
+        assert!(
+            matches!(&once_without, Err(TransactionOnceError::Callback(e)) if e.code() == orm::codes::CONFIG),
+            "{driver}: transaction_once without an operation id: {once_without:?}"
+        );
+        let nested_once = db
+            .transaction(async || match db.transaction_once(async || Ok::<(), orm::Error>(())).operation(12).await {
+                Err(TransactionOnceError::Orm(e)) => Err::<(), orm::Error>(e),
+                other => panic!("{driver}: nested transaction_once with an operation id: {other:?}"),
+            })
+            .operation(11)
+            .await;
+        assert_eq!(code(nested_once), orm::codes::CONFIG, "{driver}: a nested transaction_once operation id");
+        db.transaction(async || orm::model::delete(&changed_item(seq, "d"), false).await)
+            .operation(13)
             .await
             .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
 
@@ -73,7 +96,9 @@ async fn audit_operation_id() {
             [
                 ("insert".to_owned(), None, 7, seq, "a".to_owned(), true),
                 ("update".to_owned(), Some(7), 8, seq, "b".to_owned(), true),
-                ("update".to_owned(), Some(8), 9, seq, "b".to_owned(), false),
+                ("update".to_owned(), Some(8), 9, seq, "c".to_owned(), true),
+                ("update".to_owned(), Some(9), 10, seq, "d".to_owned(), true),
+                ("update".to_owned(), Some(10), 13, seq, "d".to_owned(), false),
             ],
             "{driver}: history rows"
         );

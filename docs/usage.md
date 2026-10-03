@@ -164,7 +164,15 @@ db.transaction(async || {
 .await?;
 ```
 
-An insert or update of an audited table without an operation id, outside a transaction or with an id that does not fit the operation column type, fails with `CONFIG`. A nested transaction accepts no `operation`, and a request that assigns the operation column itself fails with `IR_INVALID`.
+Every transaction entry point takes `operation(id)`: `transaction`, `transaction_send` and `transaction_once`, which runs its callback once and returns `TransactionOnceError` with the callback's own error type. Its builder is awaited as before, and its future is `Send` when the callback and its future are:
+
+```rust
+db.transaction_once(async || service.set_name("renamed").update(false).await)
+    .operation(operation_id)
+    .await?;
+```
+
+An insert or update of an audited table without an operation id, outside a transaction or with an id that does not fit the operation column type, fails with `CONFIG`. A nested transaction accepts no `operation` (a nested `transaction_once` returns `TransactionOnceError::Orm` with `CONFIG`), and a request that assigns the operation column itself fails with `IR_INVALID`.
 
 ### TypeScript
 
