@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.1: CI workflow는 로컬 검사처럼 `make test-servers`로 database 검사의 서버를 시작한다: MySQL과 PostgreSQL primary와 replica, ProxySQL, PgBouncer이며, `.runtime/servers/env`의 모든 DSN을 이후 단계의 환경에 둔다. `make repo-check`는 workflow가 `scripts/test-servers.sh`가 쓰는 변수를 빠뜨리거나, 직접 정의하거나, 환경 파일을 직접 쓰거나, 서버 시작 전에 make target을 실행하면 실패한다.
+
 - T35.4: PHP는 생성 class 없이 schema 값으로 등록한 set의 audit 기록을 plan한다: 그런 set은 Go, Rust, TypeScript처럼 manifest text와 external text에서 runtime model을 얻는다.
 
 - T36: `make owner-check`는 바뀐 file을 소유한 검사를 골라 실행한다: 선언한 fixture나 test에 바뀐 file이 있거나 fixture file이나 그것이 적는 JSON file이 그 file을 적는 모든 기능의 검증 명령과 coverage를 저마다 기한을 가진 단계로 실행한다(`scripts/features/owners.mjs`).

@@ -1,5 +1,6 @@
 # CI: the planner, the four clients, conformance and codec vectors against
-# MySQL, PostgreSQL, and SQLite, and the hot-path gate.
+# MySQL, PostgreSQL, and SQLite, and the hot-path gate. make test-servers starts
+# the database servers and writes their DSNs, as it does for the local checks.
 name: ci
 on:
   push:
@@ -9,39 +10,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: orm
-          POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: orm_bench
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U orm"
-          --health-interval 5s --health-timeout 3s --health-retries 20
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-          MYSQL_DATABASE: orm_bench
-        ports: ["3306:3306"]
-        options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot"
-          --health-interval 5s --health-timeout 3s --health-retries 20
-    env:
-      # bench databases for conformance and the hot-path gate
-      BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench?timezone=%2B00:00"
-      BENCH_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable&timezone=%2B00:00"
-      BENCH_SQLITE_DSN: "sqlite:///tmp/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00"
-      # empty databases for client tests that create and drop tables
-      ORM_TEST_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_test"
-      ORM_TEST_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_test?sslmode=disable"
-      # empty databases for the schema tool tests of every language, which drop every table
-      ORM_TOOLS_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_tools"
-      ORM_TOOLS_POSTGRES_DSN: "postgres://orm@127.0.0.1:5432/orm_tools?sslmode=disable"
-      # the bench database the hot-path gates of every check select
-      ORM_BENCH_MYSQL_DSN: "mysql://root@127.0.0.1:3306/orm_bench"
     steps:
       # git-check reads history from the recorded subject-format baseline, so
       # the checkout must carry the full commit graph.
@@ -83,23 +51,32 @@ jobs:
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
-      - name: prepare databases
+      - name: programs of the database servers
+        # make test-servers starts the servers of the database checks from these
+        # programs, as it does locally: MySQL 8.4 from its release archive,
+        # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
+        # ProxySQL 3.0 from its package. The mysqld of the archive links
+        # libaio.so.1, which Ubuntu 24.04 names libaio.so.1t64.
         run: |
-          sudo apt-get install -y -q postgresql-client sqlite3 >/dev/null
-          docker exec ${{ job.services.mysql.id }} sh -c 'mysql_tzinfo_to_sql /usr/share/zoneinfo 2>/dev/null | mysql -uroot mysql'
-          mysql -h 127.0.0.1 -uroot -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'
-          psql -h 127.0.0.1 -U orm orm_bench -q -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools'
-          BENCH_MYSQL_DSN='mysql://root@127.0.0.1:3306/orm_bench?timezone=%2B00:00' \
-            BENCH_POSTGRES_DSN='postgres://orm@127.0.0.1:5432/orm_bench?sslmode=disable&timezone=%2B00:00' \
-            BENCH_SQLITE_DSN='sqlite:///tmp/orm_bench.sqlite?timezone=%2B00:00' \
-            ./scripts/bench-db.sh
-      - name: write the environment file of the database checks
-        # The make targets of the database checks read .runtime/servers/env.
-        run: |
-          mkdir -p .runtime/servers
-          for name in ORM_TEST_MYSQL_DSN ORM_TEST_POSTGRES_DSN ORM_TOOLS_MYSQL_DSN ORM_TOOLS_POSTGRES_DSN ORM_BENCH_MYSQL_DSN BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do
-            printf "export %s='%s'\n" "$name" "$(printenv "$name")"
-          done > .runtime/servers/env
+          sudo apt-get update -q >/dev/null
+          sudo apt-get install -y -q postgresql-common sqlite3 libaio1t64 libnuma1 >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -q postgresql-17 pgbouncer >/dev/null
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1
+          curl -fsSL -o /tmp/proxysql.deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_amd64.deb
+          sudo apt-get install -y -q /tmp/proxysql.deb >/dev/null
+          curl -fsSL https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-8.4.11-linux-glibc2.28-x86_64.tar.xz | sudo tar -xJ -C /opt
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          echo /opt/mysql-8.4.11-linux-glibc2.28-x86_64/bin >> "$GITHUB_PATH"
+      - name: database servers
+        # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
+        # the databases orm_test, orm_tools and orm_bench, and the environment
+        # file .runtime/servers/env that the database checks read.
+        run: make test-servers
+      - name: environment of the database servers
+        # Steps that run go test, cargo test or php without make read the same
+        # variables from the process environment.
+        run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
       - name: feature, documentation, and package contracts
         run: make repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent package-check
       - name: decoder fuzz smoke checks

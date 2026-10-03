@@ -321,7 +321,8 @@ dbspec-php-check:
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
-# directory인지 확인한다.
+# directory인지, CI workflow가 make test-servers로 서버를 시작하고 그 환경 파일의 모든 변수를
+# 검사 단계에 주는지(scripts/repo/ci.mjs) 확인한다.
 # version-check는 VERSION 파일과 orm의 모든 version 선언(Rust manifest와 lockfile, PHP composer,
 # TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
 version-check:
