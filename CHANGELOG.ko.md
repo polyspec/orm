@@ -1,31 +1,405 @@
 # 변경 이력
 
-addColumns에서 기존 테이블의 PostgreSQL 컬럼 타입과 잘린 인덱스 이름을 저장된
-형식으로 비교한다(N19.1). PostgreSQL은 `char(n)`을 `varchar(n)`으로, 모든 blob
-타입을 `bytea`로 저장하고, 63 byte보다 긴 인덱스 이름은 잘린 뒤 digest를 붙여
-저장하므로, addColumns는 매니페스트와 일치하는 테이블에 `SCHEMA_DIFFERS`를
-반환했다. 이제 dialect가 선언한 타입으로 저장하는 컬럼은 선언한 타입을 가지고,
-물리 이름이 선언한 인덱스의 물리 이름과 같은 인덱스는 선언한 이름을 가진다.
+## 0.0.2
 
-네 클라이언트에서 연결을 통해 매니페스트의 기존 테이블에 없는 컬럼을 추가한다(N19).
-`utils().schema().addColumns(manifestJson)`(Go `AddColumns`, Rust `add_columns`)은
-매니페스트의 테이블만 읽고, NULL을 허용하거나 기본값이 있는 없는 컬럼을 모두
-추가하며, 바뀐 각 테이블의 audit 트리거를 새 컬럼을 기록하도록 교체하고, 추가한
-컬럼을 `table.column`으로 반환한다. 없는 테이블과 다른 매니페스트의 테이블은 바꾸지
-않고, 반복 호출은 아무것도 추가하지 않으며, 다른 모든 차이는 어떤 문장도 실행하기
-전에 새 catalog code `SCHEMA_DIFFERS`를 반환한다. 이제 가져오기는 테이블이 자기 키를
-참조하는 외래 키를 그 테이블 자신에 대한 관계로 읽는다. Rust catalog 읽기와 실제
-스키마 가져오기는 `orm-build`에서 `orm_schema::catalog`와 `orm_schema::live`로 옮겨,
-runtime과 tool이 같은 방식으로 catalog를 읽는다.
+- T30: `audit` setting은 기록할 column을 `exclude (col, ...)`나 `include (col, ...)` 목록 하나로 고를 수 있다. operation column은 언제나 기록한다. 이력 table은 identity key, action, previous column 말고는 기록하는 column만 갖고, trigger는 MySQL, PostgreSQL, SQLite에서 그 column만 복사하며, schema text는 setting을 기록하지 않는 column의 `exclude` 목록으로 쓰고, introspection은 trigger에서 그것을 되살린다. 없거나 두 번 적은 목록 column, 두 목록, 목록에 적은 operation column은 `setting` error이고, PHP와 Rust의 이력 table 검사는 Go와 TypeScript처럼 어긋난 곳마다 error 하나를 낸다. 암호화가 필요한 값은 쓰기 전에 codec이 암호화하므로 trigger는 그 ciphertext를 복사한다.
 
-네 클라이언트에서 `ssl-mode=VERIFY_IDENTITY`와 절대 `ssl-ca`로 MySQL에 TLS
-연결한다(N18). 연결은 server 인증서를 CA와 DSN의 host 이름으로 검사하며,
-password는 RSA 교환 없이 TLS 안에서만 전달된다. Go, PHP, TypeScript
-클라이언트는 다른 `ssl-mode`, 없거나 상대인 `ssl-ca`, `ssl-mode`와 함께 쓴
-`socket`, IP 주소 host에 CONFIG를 반환한다. PHP와 TypeScript 클라이언트는 scheme의
-밝힌 집합 밖의 DSN 매개변수에도 CONFIG를 반환한다. Rust 클라이언트는 이전처럼
-`ssl-mode`를 sqlx에 전달한다. `make test-servers`는 MySQL TLS case를 위한 test CA와
-server 인증서를 발급한다.
+- T8.8.5: 네 client에서 `utils().schema().addColumns`는 이제 `addTablesAndColumns`(Go `AddTablesAndColumns`, Rust `add_tables_and_columns`)다. 설치한 document set을 더해서만 올리는 이 호출은 database에 없는 set의 table도 같은 plan step으로 index, foreign key, check, audit과 immutable trigger와 함께 모두 만들고, 만든 table은 `table`, 더한 column은 `table.column`으로 돌려준다. 다른 모든 차이는 여전히 어떤 statement보다 먼저 `SCHEMA_DIFFERS`다. step 함수는 `AddTablesAndColumnsSteps`, `Dbspec::addTablesAndColumnsSteps`, `addTablesAndColumnsSteps`, `add_tables_and_columns_steps`로 바뀌었고, fixture는 contracts/fixtures/add_tables_and_columns로 옮겼다.
+
+- T8.8.4: N18, N19, N19.1과 함께 main을 dbspec branch에 다시 merge했다. 네 client에서 MySQL DSN은 `ssl-mode=VERIFY_IDENTITY`와 절대 경로 `ssl-ca`로 TLS 연결하고, PHP와 TypeScript client는 scheme마다 정한 집합 밖의 DSN parameter를 거부한다. `utils().schema().addColumns(schema)`(Go `AddColumns`, Rust `add_columns`)는 generated schema 값을 받아 database를 introspect하고 document set의 기존 table만 비교하며, 모든 차이가 null이거나 default가 있는 빠진 column이면 그 table들에서 set까지의 plan step(각 client dbspec module의 `AddColumnSteps`)을 실행한다. 이 step은 바뀐 table의 audit trigger도 바꾼다. 다른 차이는 어떤 statement보다 먼저 새 code `SCHEMA_DIFFERS`를 반환한다. MySQL과 SQLite는 transaction 밖에서, SQLite는 foreign key를 끈 `BEGIN IMMEDIATE` transaction 하나에서 column을 더한다.
+
+- T28: version은 0.0.2다. 새 VERSION 파일이 이를 적고, `make version-check`(`make check`의 일부)는 orm crate의 Rust manifest나 lockfile 항목, PHP composer 파일, TypeScript package나 lockfile, contracts/features.json, 문서의 version이 이와 다르면 실패한다.
+
+- T27: 모든 check가 몇 분 안에 끝나고 `make check`가 step마다 보고한다. 전체 실행 한 번이 step 43개를 15분에 통과한다(이전 약 100분).
+
+- T29.1: dbspec apply, recover, rollback, finalize는 MySQL과 PostgreSQL에서 connection이 다른 client와 나누지 않는 server session 하나를 지키는지 확인하고, lock을 잡는 session이 이미 lock을 잡고 있거나 뒤의 statement가 다른 session에서 실행되면(transaction pooler처럼) 다음 statement 전에 `session` error로 멈춘다. 요구는 직접 연결이나 session pooling 연결이다.
+
+- T29: server session을 끊거나 보는 Rust `tx` test는 server DSN으로 연결하므로 `make client-pooler-check`가 통과한다.
+
+- T27.5: 모든 cargo test 명령이 test build 하나를 함께 쓰고, client-db-check는 네 client를 병렬 줄로, feature-check는 검증 명령을 네 줄로 실행한다(`exclusive`인 명령은 먼저 혼자 실행한다). TypeScript replica case는 database 없는 연결로 기다리고 한 연결이 실패하면 열린 연결을 닫는다. client-db-check는 449 s 대신 86 s, feature-check는 570 s 대신 251 s 걸린다.
+
+- T27.6: 기한에 GRACE를 더한 시간까지 끝나지 않은 JavaScript case는 FAIL 줄과 함께 process를 끝내고, pcntl이 없는 PHP case는 같은 일을 하는 watchdog process를 가진다.
+
+- T27.4: `make bench`는 2000 table stress case와 시간 budget case(네 stress parse budget, 2000 table plan 적용, release Rust runner로 하는 2000 table introspection 비교, 2000 table runner 비교, `make timing-check`)를 그 assertion 그대로 실행한다. `make check`는 runner 비교와 introspection 비교를 같은 모양의 20 table 문서(`node tests/dbspec/stress.mjs 20`)로 실행하고, dbspec, integration, conformance, example runner는 debug build다.
+
+- T27.3: `make check`는 scripts/check/run.mjs로 target마다 남은 disk와 함께 보고하는 묶음으로 실행하고, 실패한 뒤에도 계속해 모든 결과를 출력한다. 실행마다 자기 bench database와 decimal database를 만들어 seed하고 끝에 지운다(`make decimal-db-setup`은 `DECIMAL_ENV`와 `DECIMAL_DATABASE`를 받는다). 모든 cargo 명령은 toolchain 하나와 target directory 하나를 incremental 결과 없이, 줄 번호 debug 정보로 쓰고, build 한도는 8분이다. Rust `tx` probe table은 case database에 있고, case-database-check는 끝난 process가 남긴 것만 남은 것으로 본다. target 합계는 약 100분 대신 약 36분이다.
+
+- T27.2: `go run ./tests/conformance/check run`은 `-driver`/`-dsn` 쌍 여러 개를 받아 Rust, TypeScript, Go runner를 한 번 build하고, build된 runner를 각각 1분 한도로 실행한다. `make conformance-check`는 세 database를 한 실행에서 확인하고, 실행 lock은 bench database마다 잡는다.
+
+- T27.1: `make feature-check`는 case 앞에서 state reader, package마다 Go test binary 하나, Rust crate마다 test binary를 한 번 build하고, 모든 coverage 실행은 그 binary를 process마다 10분 대신 2분 한도로 실행한다(Rust entry는 선언된 file을 compile한 test binary마다 process 하나에서 모든 symbol을 실행한다). 세 database는 함께 진행하고, state digest는 JSON 대신 type을 붙인 값을 hash하며, 같은 검증 명령은 한 번 실행하고, 검증 명령은 target이 한 번 build한 TypeScript client를 쓴다. check는 다시 통과하고(T25 case database helper는 `schema_install`에 속한다), 빈 Rust target에서 34분 대신 17분 걸린다.
+
+- T26: 모든 client의 rollback 실패 case는 ProxySQL이 자기 명령으로 받는 `KILL` 대신, make target이 export하고 pooler check가 그대로 두는 server DSN `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 server session을 종료한다. Rust session 연결은 `extra_float_digits`를 보내지 않는 client 연결이다. 그래서 이 case들은 ProxySQL과 PgBouncer를 거쳐도 통과한다.
+
+- T25: 빈 database를 확인하거나 schema를 설치하는 모든 client database case는 자기 database `orm_case_<pid>_<n>`(MySQL과 PostgreSQL)이나 SQLite file을 만들고 끝날 때 실패한 뒤에도 지우므로, 공유 test database에 남은 table이 더는 그 case를 실패시키지 않는다. `make case-database-check`는 두 공유 database에 table 하나를 남겨 둔 채 네 client의 model case가 통과하고 공유 database를 그대로 두는지 확인한다.
+
+- T25.4: Rust database test와 `integration` program은 schema를 설치하거나 빈 database를 확인하는 모든 case에서 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(workspace crate `orm-case-database`)을 만들고, case가 끝날 때 panic한 뒤에도 지운다.
+
+- T25.3: schema를 설치하거나 빈 database를 확인하는 TypeScript database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(clients/typescript/tests/case-database.mjs)을 만들고, case가 끝날 때 실패한 뒤에도 지운다. 그래서 그곳에 남은 table이 더는 `schemaEmpty`, `conditions`, `joinsAndRelations`를 실패시키지 않는다.
+
+- T25.2: schema를 설치하거나 빈 database를 확인하는 PHP database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(clients/php/tests/case_database.php)을 만들고, case가 끝날 때 실패한 뒤에도 지운다.
+
+- T25.1: schema를 설치하거나 빈 database를 확인하는 Go database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(internal/testdb)을 만들고, test가 끝날 때 실패한 뒤에도 지운다.
+
+- T24.6: JavaScript, PHP, Rust case 보고는 다음 단위로 반올림되는 시간을 Go처럼 그 단위로 쓴다(`1000ms`가 아니라 `1s`).
+
+- T24.5: check의 build, format, lint, package 명령은 tests/run-case.mjs로 case가 되어 기한과 함께 `RUN`, 경과 시간을 담은 `STEP` 줄로 출력 줄, 종료 상태와 함께 `PASS`나 `FAIL`을 출력하고, 기한을 넘긴 명령은 멈춘다. codec 교차 검사와 feature manifest 검사도 자기 case를 보고한다.
+
+- T24: 모든 check는 실행 중에 case마다 시작과 기한, 단계, 결과와 경과 시간을 Go, JavaScript, PHP, Rust에서 한 형식으로 보고하고, 어느 check도 case별 기한 대신 실행 전체를 묶지 않는다.
+
+- T24.4: 모든 Rust test case는 실행 중에 `--nocapture` 없이 stderr에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 panic message 또는 이유를 담은 `FAIL`을 출력하고(clients/rust/testcase), 기한을 넘긴 case는 FAIL 줄과 함께 test binary를 끝낸다. `integration` program과 `dbspec_stress` example도 같은 방식으로 case를 보고한다.
+
+- T24.3: 모든 PHP test case는 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.php), script 전체의 한도 대신 자기 기한 아래에서 실행되며(pcntl이 있으면 SIGALRM이 멈춘 case를 끊는다), script가 loop로 실행하는 case는 앞의 실패가 뒤의 case를 가리지 않는다. `make conformance-result-check`는 Python runner 없이 네 명령을 직접 실행한다.
+
+- T24.2: 모든 JavaScript test case와 Node check runner는 실행 중에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.mjs), case마다 자기 기한을 가진다. `make feature-check`는 coverage 실행과 검증 명령을 실행하는 동안 하나씩 보고하고, `node scripts/features/check.mjs --run --feature <id>`는 한 기능의 명령만 실행한다. T19와 T20 기록은 message placeholder를 code로 써서 문서가 다시 build된다.
+
+- T24.1: 모든 Go test case는 시작할 때 `RUN <case> deadline=<d>`, 긴 case가 도는 동안 경과 시간을 담은 `STEP` 줄, 끝날 때 경과 시간과 함께 `PASS`, 이유를 담은 `FAIL`, 또는 `SKIP`을 출력한다(internal/testcase). case마다 자기 기한이 있고, 기한을 넘긴 case는 모든 goroutine stack과 함께 실패한다. Makefile의 Go check, client와 performance script, feature 명령은 binary 전체의 한도 대신 `go test -v -timeout 0`으로 실행하며, conformance check와 interface check도 build, 언어, 비교 case를 같은 방식으로 보고한다.
+
+- N3.2: 모든 클라이언트에서 연결은 자기에게 등록된 schema set만 계획한다. generated code의 connect helper(Go `model.Connect`, PHP `Polyspec\Orm\Tests\Model\connect`, Rust `model::connect`, TypeScript `connect`)는 연결을 열고 `connectSchema`로 그 set을 등록하며, `install(schema)`는 generated schema 값을 받아 자기가 설치한 set을 등록한다. raw 연결은 아무것도 등록하지 않는다. 연결에 등록되지 않은 set의 요청은 cache된 plan이 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, 선언한 hash로 hash되지 않는 manifest text는 connect나 install에서 `CONFIG`로 실패한다. Go는 plan cache보다 먼저 schema를 확인하므로 편집한 generated code가 더는 cache된 plan으로 실행되지 않는다.
+
+- N3.3.1: 이 branch는 `utils().schema().register(manifestJson)`를 제공하지 않는다. set은 generated code의 connect helper나 `install()`로 연결에 들어가며, 기록이 그렇게 적는다.
+
+- T18: relation request는 key의 모든 성분을 담는다. 성분마다 `{left, right}` 한 쌍을 key 순서대로 담고(`left`와 `right` 대신 `keys`), `match<L>With<R>()`는 호출마다 쌍 하나를 더하므로 Go, PHP, Rust, TypeScript에서 `composite_account`의 `composite_membership`을 `tenant_id`와 `account_id`로 함께 읽는다. 자기 연결을 가진 자식으로 읽어도 같다. 빈 key 목록, column이 없는 쌍, 한쪽에 두 번 나오는 column은 `IR_INVALID`다. Rust `Core::add_match`가 `set_match`를 대신한다.
+
+- T8.9.1: 각 client가 호출자가 읽은 bytes에서 message에 쓸 이름과 함께 dbspec signature를 확인한다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`이며 path reader가 이것을 쓴다. signature 뒤의 UTF-8이 아닌 bytes는 모든 client에서 첫 잘못된 byte의 `encoding` error 하나(`<name> is not valid UTF-8`)다. TypeScript는 더 이상 U+FFFD로 바꾸지 않고 Rust는 더 이상 I/O error를 돌려주지 않는다.
+
+- T21.2: Rust catalog는 dbspec text 형식의 `Date`, `Time`, `DateTime` bind로 temporal row identity를 포함한 `date`, `time`, `datetime` column에 쓰고, MySQL, PostgreSQL, SQLite에서 `ROW_WRITE_MISMATCH`로 실패하지 않고 쓴 cell을 다시 읽는다.
+
+- T21.1: SQLite에서 기술된 `DATE`, `TIME`, `DATETIME` column은 MySQL, PostgreSQL과 같은 `Date`, `Time`, `DateTime` grid cell로 읽히고, dbspec 형식 밖의 값은 `GRID_TEMPORAL_VALUE`로 실패하며, read-only grid query는 저장된 text를 유지한다.
+
+- T22: root package.json에 script file이 제거된 `schema:check` script가 더 이상 없고, root npm script가 tracked file이나 directory가 아닌 path를 쓰면 `make repo-check`가 실패한다.
+
+- T21: Rust catalog grid는 MySQL `DATE`, `TIME`, `DATETIME`과 PostgreSQL `date`, `time`, `timestamp` cell을 dbspec text 형식의 `Date`, `Time`, `DateTime`으로 decode한다. table page는 선언된 소수 자릿수를, read-only grid query는 여섯 자리를 쓰므로 datetime column이 있는 table의 page를 모든 database에서 읽는다.
+
+- T20: Rust `client_bench`와 bench/rust의 `native`, `driver_compare`는 iterations 인자를 요구한다. 인자가 없거나 program의 최소값 이상의 정수가 아니면 3000번이나 1000번을 반복하는 대신 인자 이름과 값을 담은 error와 함께 status 1로 끝난다.
+
+- T19: 생성된 Go relation getter는 `(<result>, error)`를, Rust relation getter는 `orm::Result<Option<..>>`를 돌려준다. related row가 없는 row는 결과 없음으로 읽히고, 다른 type으로 저장된 relation 값은 버려지는 type assertion이나 `None` 대신 `INTERNAL`이다.
+
+- T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.
+
+- T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.
+
+- T17.7: hot-path check의 Go 네이티브 기준 코드가 생성 클라이언트와 같은 statement를 실행하고, relation과 list workload는 key만 bind하며, Rust 네이티브 insert는 AES column에 AES ciphertext를 쓴다.
+
+- T15: contracts/features.json의 모든 feature가 coverage를 선언하고 `make feature-check`가 각 client의 owner case를 MySQL, PostgreSQL, SQLite에서 두 번씩, 또는 database 없이 실행한다. 모든 client에서 SQLite RESTRICT foreign key 위반은 FOREIGN_KEY이고 CHECK 위반은 CONSTRAINT다.
+
+- T8.8.2: N16과 함께 main을 dbspec branch에 다시 merge했다. 각 client의 test entry point가 rollback fault를 설정하고, 그다음 실패한 rollback은 MySQL, PostgreSQL, SQLite에서 하나뿐인 transaction 종료 형태 `transaction failed (<cause>) and rollback failed (<error>)` 안의 `FAULT`로 보고된다. idle machine에서 client 하나와 database 하나씩 잰 2000 table introspection은 모든 client에서 0.73-2.56 s로 5 s budget 안이다.
+
+- T8.6.8: 모든 client가 MySQL, PostgreSQL, SQLite에서 plan을 step 하나씩 적용한다: statement마다 따로 commit하고 history step을 기록하며, recover는 다음 step의 catalog 효과로 중단된 plan을 이어 가고, rollback은 모든 step의 rollback statement로 마지막 plan을 되돌린다. 지우는 table과 column은 finalize가 지울 때까지 `dbspec$hold$` 이름을 받아 숨고, 더한 column은 rollback에서 숨었다가 다시 적용하면 돌아오며, 적용한 plan의 rollback은 non-null로 되돌릴 column의 NULL row를 채우거나 거부하고, lock 대기는 5초에 끝나며, `PlanSteps`가 각 step의 rollback statement, 효과, finalize 표시와 함께 `PlanStatements`를 대신한다.
+
+- T8.8.1: main을 dbspec branch에 merge했고, Mermaid source path는 제거된 채로 main의 기능이 dbspec path에서 동작한다. 한 process가 여러 document set의 generated code를 읽고 연결은 모든 요청을 그 manifest hash의 model로 계획한다. 읽힌 code가 등록하지 않은 manifest의 요청과 text의 hash가 선언한 hash와 다른 code는 `SCHEMA_HASH_MISMATCH`로 실패하며, generated code가 자기 set을 등록하므로 `utils().schema().register()`는 없다. rollback도 실패한 transaction이나 savepoint는 server가 닫은 connection에서도 모든 client에서 `ROLLBACK` 오류 `transaction failed (<cause>) and rollback failed (<error>)` 하나를 보고하고, 두 오류를 유지하며, 재시도하지 않는다. `docs/protocol.md`가 clock 규칙을 한 번 쓴다: client clock은 마이크로초의 UTC이고, MySQL은 `CURRENT_TIMESTAMP(p)`와 `NOW(6)`을 쓰며, SQLite 상대 형식은 소수 여섯 자리를 유지하고, SQLite는 생략한 `default now` column에 client clock을 bind하며, 모든 `now` slot은 그 column의 소수 자리를 가진다. plan history는 `applied_at`을 `YYYY-MM-DDTHH:MM:SS.ffffffZ`로 쓰고, TypeScript apply clock은 epoch 이후 마이크로초다.
+
+- T10: 네 client가 package의 Cargo manifest를 하나만 둔 ordered-json을 쓰므로, cargo가 중복 `ordered-json` package를 경고하지 않는다.
+
+- T17.6: test가 자기 계산에 두는 모든 시간 한도가 CPU 시간(Rust, Go, TypeScript의 case thread, PHP process)을 제한하고 CPU와 wall-clock 시간을 출력한다. `make timing-check`는 stress, Rust vector, PHP dbspec test를 그 process group이 wall-clock 시간의 10분의 1만 받는 상태로 실행한다.
+
+- T17.5: Rust native benchmark `native`와 `driver_compare`가 bench schema 형을 decode해 모든 workload의 row를 읽고, `make rust-driver-check`가 시드된 bench database에서 이들을 실행한다.
+
+- T17.4: examples/complex의 Go, PHP, Rust 프로그램이 같은 compact JSON byte를 출력하고, `make example-check`가 시드된 bench database에서 examples/complex와 examples/thin-slice의 출력을 byte 단위로 비교한다.
+
+- T8.0.14.4: context가 취소된 Go transaction은 connection을 pool에 돌려주지 않고 닫으므로 named lock, user variable, SQLite mode가 남지 않으며 `CANCELED`만 보고한다.
+
+- T8.0.14.3: 모든 client는 실패하거나 panic한 중첩 transaction 뒤에 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 실행하고 둘 중 하나의 실패를 원인과 함께 보고하며, transaction이 취소되었거나 connection을 잃은 Go savepoint는 원인만 돌려준다.
+
+- T8.0.14.2: 트랜잭션이 끝나기 전에 drop된 Rust 트랜잭션 future는 connection을 바로 닫으므로, TLS에서도 server에서 session과 함께 트랜잭션과 named lock이 끝난다.
+
+- T8.2.6.4.1: Rust lock file이 지운 `orm-schema`의 `libc` 의존성을 더 이상 나열하지 않아 `cargo check --locked`가 통과한다.
+
+- T8.2, T8.2.6, T8.3, T8.5: 끝난 하위 항목과 함께 닫는다. T7.17.2.10.3과 T7.17.2.10.3.1은 dbspec으로 대체되어 닫는다.
+
+- T8.2.6.4: dbspec 문서 집합이 유일한 schema source다. Mermaid schema source, 그 manifest와 `orm-schema-v1` SQL, 그것을 읽던 모든 schema CLI 명령과 PhysicalGraph record를 모든 client에서 제거했고, CLI는 Go, PHP, TypeScript에서 `orm-gen`이다.
+
+- T8.2.6.3: 모든 generator, runtime, schema tool, schema 설치가 dbspec 문서 집합을 읽는다.
+
+- T8.0.9.2: 모든 client는 SQLite DSN의 percent-decode한 path를 열고, 잘못된 escape, NUL byte, UTF-8이 아닌 path를 `CONFIG`로 거부하며, tests/dsn/sqlite-paths.json의 공유 case가 이를 확인한다.
+
+- T8.5.1.1: 모든 client에서 SQLite table rebuild는 identity table의 `sqlite_sequence` counter를 옮겨, rebuild 전에 지운 key를 다시 주지 않는다.
+
+- T8.6.7: apply lock은 MySQL database 하나나 PostgreSQL schema 하나만 덮어 다른 database나 schema의 apply가 동시에 실행되고, 예상 밖의 lock 결과는 `locked`가 아닌 error이며, 모든 client에서 빈 plan chain은 table 없는 database의 올바른 chain이다.
+
+- T8.7.6.2: Go engine test가 빠지거나 type이 틀린 dbspec vector field를 file, 위치와 함께 거부하고, dbspec compare harness와 Makefile block의 주석이 한국어다.
+
+- T8.5.7: 모든 client가 plan 없이 두 schema text의 모든 차이를, plan이 거부하는 type, identity, primary key, column 순서 변경까지 `[kind, table, name]`으로 나열한다.
+
+- T17.1: graph test 15초 제한은 Rust(case의 thread), Go와 PHP(test process)에서 wall-clock 대신 CPU 시간을 제한하므로 부하가 걸린 공유 machine에서 더 실패하지 않고, 모든 case가 두 시간을 보고한다.
+
+- T17.3: Rust native benchmark는 고정 socket과 database 대신 `ORM_BENCH_MYSQL_DSN`에서 database를 읽고, 없거나 비어 있으면 연결하지 않고 status 1로 끝나며, `make rust-driver-check`가 그 test를 실행한다.
+
+- T17.2: Go, PHP, Rust 예제 program은 `ORM_BENCH_MYSQL_DSN`을 요구하고, 없거나 비어 있으면 연결하지 않고 status 1로 끝나며, PHP 예제는 없어진 `schemaPath`를 더 넘기지 않는다.
+
+- T8.0.14.1: 모든 client가 transaction 끝의 모든 실패를 보고한다. 모든 정리 단계를 실행하고, 아무것도 풀지 않은 `RELEASE_LOCK`은 오류이며, callback, begin, commit 실패 뒤의 실패한 rollback은 원인과 함께 보고하고, panic한 Go나 Rust callback은 panic을 이어 가기 전에 rollback하며, Go client는 driver가 닫은 connection의 rollback을 완료로 본다.
+
+- T8.7.6.1: 실패한 Go Mermaid나 plan vector case는 지켜지는 deadline 아래에서 실패만 기록하고, 모든 dbspec runner는 없는 input이나 directory input을 `<path>: <reason>`과 0이 아닌 exit로 거부한다.
+
+- T8.5.6.1: dbspec compare runner는 빠지거나 type이 틀린 vector section, id, document, 줄을 빈 값으로 읽지 않고 `<file>: <location> <problem>`과 0이 아닌 exit로 거부한다.
+
+- T8.2.6.1.1.1: 같은 link를 고친 T8.2.6.1.3으로 닫는다.
+
+- T8.6: 모든 client가 lock, history, 검증, event와 함께 plan chain을 적용하고 recover하며, 어느 client든 다른 client가 적용한 chain을 이어 간다.
+
+- T8.7.5.1: `make dbspec-rust-check`가 모든 Rust dbspec test를 두 번 실행한다.
+
+- T8.6.6: `make dbspec-apply-pairs-check`는 Go, PHP, TypeScript, Rust client의 모든 순서쌍에 대해 MySQL, PostgreSQL, SQLite에서 한 client로 chain의 첫 plan을, 다른 client로 나머지를 적용하고, MySQL에서 한 client가 멈춘 plan을 다른 client가 끝낸다.
+
+- T8.6.2.2: Go, TypeScript, Rust는 PHP처럼 apply의 정리 error를 확인한다. TypeScript와 Rust는 아무것도 풀지 않은 PostgreSQL unlock을 거부하고, Go는 정리 error가 없는 실패를 그대로 돌려주며, docs/plans.md는 각 client가 정리 error가 있는 실패를 보고하는 형식을 적는다.
+
+- T8.7: 모든 client가 표준 Mermaid erDiagram을 export하고 import하며 각각 빼는 것을 나열하고, 네 client가 byte 단위로 일치한다.
+
+- T8.7.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 Mermaid export, import, round trip 결과를 비교한다.
+
+- T8.7.2.1: 모든 client의 Mermaid import는 column 수가 다른 label을 보고하고, key보다 먼저 dbspec type 범위를 판정하고, comment 부분 사이에 공백 하나를 요구하고, 함께 쓰는 foreign key index를 한 번 더한다. export는 빼는 모든 comment를 보고한다.
+
+- T8.6.3.1: 실패한 PHP apply는 정리 error를 실패와 함께 `Orm\Dbspec\ApplyCleanupError`로 보고하고, 아무것도 풀지 않은 advisory unlock은 error이며, row 없는 MySQL 효과 query와 닫을 수 없는 result는 error다.
+
+- T8.0.9: `datetime(p)`는 세 데이터베이스에서 local date-time으로 생성되고, 모든 client 연결이 이를 UTC로 읽고 쓰며, introspection은 time zone 컬럼을 미지원으로 보고한다.
+
+- T8.0.9.1: Go, TypeScript, Rust connection은 PHP처럼 datetime 값을 UTC로 읽고 쓰며, `timezone`은 `UTC`나 `+00:00`만 받는다.
+
+- T8.0.14: transaction 끝에서 실패한 MySQL `setLocal` reset은 모든 client에서 보고되고, callback 실패와 정리 실패가 겹치면 두 오류를 `CONFIG`로 함께 보고한다.
+
+- T8.0.13: 모든 client와 schema tool은 query가 붙은 SQLite DSN이 path로 정한 file만 만드는지 검사한다.
+
+- T8.0.11: Introspection case는 모든 client에서 PostgreSQL time zone, padding, 단정밀도, JSON type과 MySQL `TIMESTAMP`, `char`, `float`, 그리고 `NO ACTION`과 `SET DEFAULT` key가 미지원으로 보고되는지 검사한다.
+
+- T8.0.10: Introspection case는 모든 client에서 SQLite primary key column이 선언한 nullability를 유지하는지 검사한다.
+
+- T8.0.8: 공유 DDL step은 렌더링한 binary collation이 MySQL, PostgreSQL, SQLite의 unique key에서 `a`, `A`, `á`, `a `를 서로 다르게 두는지 검사한다.
+
+- T8.0.7: 모든 client는 세 dialect에서 insert가 identity column을, update와 duplicate update가 primary key나 identity column을 쓰지 못하는지 검사한다.
+
+- T8.0.6: 렌더링한 `immutable`과 `audit` guard는 row trigger이며, 공유 DDL step은 어떤 행과도 맞지 않는 `UPDATE`나 `DELETE`가 MySQL, PostgreSQL, SQLite에서 성공하는지 검사한다.
+
+- T8.0.5: 공유 case는 모든 client가 `cascade` 또는 `set_null` foreign key의 child에서 `immutable`과 `audit`을 거부하는지 검사한다.
+
+- T8.0.4: 63 byte를 넘는 선언 이름과 생성 이름은 모든 client에서 렌더링 전에 거부되며, 정확히 64 byte인 이름을 써서 검사한다.
+
+- T8.0.3: Introspection case는 stored와 virtual generated column이 모든 client에서 MySQL, PostgreSQL, SQLite 모두 미지원으로 보고되는지 검사한다.
+
+- T8.0.2: Introspection은 모든 client에서 prefix, partial, expression index를 table과 이름과 함께 미지원으로 보고한다.
+
+- T8.0.1: PostgreSQL introspection은 참조 table이 다른 schema에 있는 foreign key를 같은 이름의 table을 가리키는 key로 읽지 않고 미지원으로 보고한다.
+
+- T8.6.2.1: 실패한 Go apply는 정리 error를 실패와 함께 보고하고, row 없는 MySQL 효과 query는 error다.
+
+- T8.7.4: TypeScript client가 dbspec 문서를 표준 Mermaid erDiagram으로 export하고, 각각이 빼는 것의 목록과 함께 import한다.
+
+- T8.6.4: TypeScript client가 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용하며, introspection은 `dbspec$plans`를 뺀다.
+
+- T8.7.5: Rust client는 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
+
+- T8.6.5: Rust client는 `orm::dbspec::apply`로 lock, history, drift 확인, transaction, 검증, event와 함께 plan chain을 적용하고, `orm::dbspec::recover`로 중단된 MySQL plan을 끝낸다. Rust introspection은 `dbspec$plans`를 뺀다.
+
+- T8.5.6: `make dbspec-compare-check`가 Go, PHP, TypeScript, Rust client의 plan을 비교하고, PHP, TypeScript, Rust가 63 byte를 넘는 plan 이름을 거절하며 공유 plan parse case를 실행한다.
+
+- T8.7.3: PHP client는 `Orm\Dbspec\Dbspec::exportMermaid`로 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 `Dbspec::importMermaid`로 import하며, 각각이 빼는 것을 알린다.
+
+- T8.6.3: PHP client는 `Orm\Dbspec\Dbspec::apply`로 lock, history, drift 검사, transaction, 검증, event와 함께 plan chain을 적용하고, `Dbspec::recover`로 중단된 MySQL plan을 복구한다. introspection은 `dbspec$plans`를 뺀다.
+
+- T8.2.2.1: Go가 다른 client처럼 primary key 줄 없는 table에도 identity 규칙을 보고한다.
+
+- T8.2.1.1: Rust client가 Go, PHP, TypeScript처럼 parse한 dbspec model을 `orm_schema::dbspec::model`로 공개한다.
+
+- T8.5.3: PHP client는 `Orm\Dbspec\Dbspec`으로 schema plan을 parse, chain, diff하고 쓴다. `make dbspec-plan-php-check`가 이를 MySQL, PostgreSQL, SQLite에 적용한다.
+
+- T8.2.6.1.3: Korean protocol 문서가 manifest 절을 ASCII anchor로 가리킨다.
+
+- T8.7.2: Go engine은 dbspec 문서를 표준 Mermaid erDiagram으로 export하고 import하며, 각각 빼는 것을 나열한다.
+
+- T8.7.1: docs/mermaid.md가 표준 Mermaid export와 import, 그리고 각각 빼는 것의 목록을 정한다.
+
+- T17: Rust client benchmark `client_bench`는 `ORM_BENCH_MYSQL_DSN`이 없거나 비어 있으면 내장 local socket에 연결하지 않고 그 변수 이름을 출력하며 실패한다.
+
+- T12: `make ts-model-check`는 TypeScript models script가 model을 호출하지 않는 source를 scan하거나 호출하는 source를 빠뜨릴 때, 또는 commit된 models.ts가 그 출력과 다를 때 실패한다. script는 model을 호출하는 8개 source만 scan한다.
+
+- T8.5.2.2: 63 bytes를 넘는 plan 이름을 거부하고, 공유 case가 plan parse error를 덮는다.
+
+- T8.5.5: Rust client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-rust-check`가 이를 적용한다.
+
+- T8.5.4: TypeScript client는 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-ts-check`가 이를 적용한다.
+
+- T8.6.2: Go engine은 lock, history, drift 검사, transaction, 검증, event, MySQL recovery와 함께 plan chain을 적용한다.
+
+- T8.6.1: docs/plans.md가 plan 적용을 정한다: lock, history, drift, 검증, event, MySQL recovery.
+
+- T8.5.2.1: Go plan writer는 버리는 결과와 쓰지 않는 renderer 상태를 두지 않는다.
+
+- T8.5.2: Go engine은 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-check`가 이를 적용한다.
+
+- T8.5.1: docs/plans.md가 schema plan을 정한다: plan 문서, 빈 database에서의 chain, diff, dialect별 statement와 공유 case.
+
+- T8.4.2.4: MySQL introspection은 `ALTER TABLE`이 literal을 0인 소수와 함께 쓴 뒤에도 `time(p)` column의 time CHECK을 알아본다.
+
+- T8.2.6.1.2: `schemaHash`는 집합의 table을 이름 순으로 담은 문서 `schema` 하나로 계산하므로 table이 바뀔 때만 바뀐다.
+
+- T8.4: 모든 client에서 MySQL, PostgreSQL, SQLite를 dbspec으로 introspect한다.
+
+- T8.4.6: 네 client는 MySQL, PostgreSQL, SQLite에서 2000 table stress database를 각각 5초 안에 같은 문서로 introspect한다.
+
+- T8.4.3.1: PHP는 기본 128 MB memory limit 안에서 2000 table stress database를 introspect한다.
+
+- T8.4.2.3: MySQL introspection은 2000 table에서 1분이 넘던 join 대신 catalog query 두 개로 check를 읽는다.
+
+- T8.4.2.2: MySQL introspection은 네 client에서 `ALTER TABLE`이 character set introducer를 다시 쓴 뒤의 renderer CHECK도 알아본다.
+
+- T8.4.2.1: introspection은 Go, PHP, TypeScript, Rust에서 각 미지원 객체를 한 번만 보고하고, 거부된 table의 객체를 table과 함께 빼며, renderer 형식의 SQLite table 항목만 읽는다.
+
+- T8.4.5: Rust client는 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect한다. `orm::dbspec::introspect`가 sqlx connection에서 `orm_schema::dbspec`의 catalog query를 실행하고 문서와 미지원 객체를 돌려준다. `make dbspec-introspect-rust-check`가 round trip과 미지원 case를 실행한다.
+
+- T8.4.3: PHP client는 `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)`로 Go engine과 같은 catalog query를 써서 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-php-check`가 round trip과 미지원 case를 실행한다.
+
+- T8.4.4: TypeScript client는 Go engine과 같은 catalog query로 `introspectDbspec`을 통해 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-ts-check`가 round trip과 미지원 case를 실행한다.
+
+- T8.2.6.3.7: bench database는 schema/bench.dbspec에서 설치되고 conformance runner는 DSN만 받으며, conformance vector는 MySQL, PostgreSQL, SQLite에서 네 dbspec client로 기록된다.
+
+- T8.2.6.3.6: Rust client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.5: TypeScript client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.4: PHP client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T8.2.6.3.3: Go client는 dbspec document set에서 runtime model과 생성 코드를 만든다.
+
+- T14.2: Rust decimal과 generated-model coverage test는 workspace 실행에서 ignored이고 소유 target이 `--include-ignored`로 실행한다.
+
+- T14.1: Rust DSN coverage test는 workspace 실행에서 ignored이고 feature-check가 `--include-ignored`로 실행한다.
+
+- T16: send-savepoint SQLite file은 TEST_ENV 옆에 있어서 Rust send-savepoint test가 어느 worktree에서나 실행된다.
+
+- T14: decimal과 feature-coverage Go test는 build tag 뒤에서 `decimal-physical-check`와 `feature-check`에서만 실행된다. 그래서 `client-db-check`는 DSN을 주지 않는 test를 더 이상 실행하지 않는다.
+
+- T8.4.2: Go engine은 일정한 수의 catalog query로 MySQL, PostgreSQL, SQLite를 dbspec 문서로 introspect하고 미지원 객체를 보고한다. `make dbspec-introspect-check`가 round trip과 미지원 case를 실행한다.
+
+- T8.4.1: docs/dialects.md는 MySQL, PostgreSQL, SQLite를 dbspec 문서 하나로 introspect하는 방법과 미지원으로 보고하는 객체를 정한다. tests/dbspec/introspect.json이 미지원 case를 가진다.
+
+- T13: `make git-check`는 commit 제목을 AGENTS.md로 검사한다. `type(scope): Subject (#id)`, type feat, fix, docs, style, refactor, test, chore, 대문자로 시작하고 끝 마침표가 없는 50자 이내 제목이다. merge commit은 git이 쓰는 제목을 둔다.
+
+- T8.2.6.1.1: Korean manifest heading은 anchor `manifest-and-hashes`를 가지며 link가 이를 쓴다. 분해된 Hangul id에는 어느 link도 닿지 않았다.
+
+- T8.1.8: `audit`은 더 이상 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, 이 요구는 introspect한 모든 audit table을 잘못된 문서로 만들었다. physical delete는 여전히 `BEFORE DELETE` trigger가 실패시킨다.
+
+MySQL과 PostgreSQL catalog가 돌려주는 dbspec check predicate 형식만
+남긴다. 모든 client에서 `not`, `between`, column 하나를 없애고 `and`
+안의 `or`에 필요한 괄호만 쓴다(T8.1.7).
+
+bench schema와 공유 schema fixture를 이름 관례를 모두 setting으로
+선언한 dbspec 문서로 다시 쓰고, `make dbspec-ddl-check`에서 렌더링한
+각 문서를 MySQL, PostgreSQL, SQLite에 적용한다(T8.2.6.3.2).
+
+client가 dbspec 문서 집합으로 만드는 runtime model과 생성 코드를 정하고,
+Mermaid manifest의 모든 field를 그에 대응시킨다(T8.2.6.3.1).
+
+모든 client에서 `and`, `or`, `not`, `in`, `between`, `is`를 dbspec
+예약어로 해 check predicate가 keyword 이름의 column을 읽지 않게
+한다(T8.1.6).
+
+contracts/interfaces.json에 `Dbspec.render`를 선언하고, `make
+dbspec-compare-check`에서 네 client의 렌더링 statement를 비교한다(T8.3.6).
+
+모든 client의 manifest와 renderer에서 반복된 문서 이름이나 없는 쓰이는
+문서가 있는 dbspec 문서 집합을 거부하며, renderer는 이제 statement나
+diagnostic을 돌려준다(T8.2.6.2.1).
+
+Rust client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
+렌더링하고(`dbspec::render`), tests/dbspec/ddl.json과 비교한다(T8.3.5).
+
+TypeScript client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite
+statement로 렌더링하고(`renderDbspec`) tests/dbspec/ddl.json과 비교하며,
+package root에서 `renderDbspec`과 `dbspecManifest`를 export한다(T8.3.4).
+
+PHP client에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
+렌더링하고(`Dbspec::render`), tests/dbspec/ddl.json과 비교한다(T8.3.3).
+
+renderer가 생성하는 CHECK나 trigger 이름이 63 bytes를 넘을 dbspec
+table이나 column을 모든 client에서 거부한다(T8.1.5).
+
+Go engine에서 dbspec 문서 집합을 MySQL, PostgreSQL, SQLite statement로
+렌더링하고(`dbspec.Render`), tests/dbspec/ddl.json과 비교한다(T8.3.2).
+
+dbspec이 MySQL, PostgreSQL, SQLite에 렌더링하는 statement를
+docs/dialects.md에 정하고, 모든 vector를 세 database에 적용해 behavior
+step을 실행하는 `make dbspec-ddl-check`와 tests/dbspec/ddl.json을
+더한다(T8.3.1).
+
+모든 client에서 dbspec check predicate에 type 규칙을 둔다. 산술, 함수,
+`null` literal, `bytes` column을 거부하고, literal은 만나는 column의
+default여야 하며 그 default 형식으로 쓰고, 두 column은 type이 만날 때에만
+비교한다(T8.1.4).
+
+`make go-fmt-check`를 `make check`에 더하고, gofmt가 바꿀 Go 파일
+6개를 정리하며, Rust workspace를 정리해 `make rust-fmt-check`가 다시
+통과하게 한다(T11).
+
+Go, PHP, TypeScript, Rust client에서 dbspec 문서 집합의 manifest text,
+schema text, `manifestHash`, `schemaHash`를 계산하고(`ManifestOf`,
+`Dbspec::manifest`, `dbspecManifest`, `manifest`), `make
+dbspec-compare-check`에서 비교한다(T8.2.6.2).
+
+dbspec manifest text, schema text, `manifestHash`, `schemaHash`를
+정하고, 별도 manifest 파일 없이 문서 집합을 유일한 schema 원천으로
+한다. 공유 case 3개가 text와 hash를 고정한다(T8.2.6.1).
+
+Go, PHP, TypeScript, Rust dbspec client를 공유 case와 부하 문서에
+각각 두 번 실행하고 emission이나 diagnostic이 하나라도 다르면 실패하는
+`make dbspec-compare-check`를 더한다(T8.2.5). 이제 `make check`가 모든
+dbspec target을 실행한다.
+
+모든 client에서 dbspec `header` error의 위치를 `dbspec 1 <name>`에서
+처음 벗어나는 문자로 정하고, TypeScript header의 이중 공백을 거부한다
+(T8.1.3). 공유 case 7개가 이 위치를 고정한다.
+
+Rust client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.1).
+parse와 emit이 공유 case 50개를 통과하고, 2000-table 부하 문서를 release
+mode에서 median 29-31 ms에 parse한다. Rust symbol snapshot이 이제 code와
+같으므로 interface-check가 네 언어 모두에서 통과한다.
+
+각 client의 dbspec parse budget을 부하 문서 parse 다섯 번의 median으로
+판정한다. machine의 다른 부하로 느려진 parse는 더 이상 check를 실패시키지
+않고, 느린 parser는 여전히 실패한다(T8.2.4.2).
+
+반복된 `blind_index` setting을 AES column 순으로 정렬하고, 실패한
+key, index, tab이 든 줄도 종류를 유지해 그 column에 기대는 규칙을
+가리게 한다(T8.1.2). 공유 case 6개가 이 규칙을 고정하고, PHP와
+TypeScript parser가 이를 따른다.
+
+Go engine에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.2).
+Parse와 Emit이 공유 case 44개를 통과하고, 2000-table 부하 문서를
+48-53 ms에 parse한다.
+
+PHP client에 dbspec parse, 검증, canonical emit을 구현한다(T8.2.3).
+Orm\Dbspec\Dbspec::parse와 ::emit이 공유 case 44개를 통과하고,
+2000-table 부하 문서를 128 MiB 안에서 218-308 ms에 parse한다.
+
+모든 client의 dbspec parse budget을 docs/dbspec.md에 정하고, Go,
+TypeScript, PHP stress test가 이를 넘으면 실패하게 한다(T8.2.4.1).
+Go, PHP, TypeScript의 모든 native symbol을 contracts/symbols에 기록해
+그 언어들의 interface-check를 통과시킨다.
+
+TypeScript client에 선언된 interface(parseDbspec, emitDbspec,
+DbspecDiagnostic)로 dbspec parse, 검증, canonical emit을 구현한다
+(T8.2.4). 공유 case 44개와 집중 case 45개가 통과하고, 2000-table 부하
+문서를 105-156 ms에 parse하며 그대로 emit한다. symbol 279개를
+contracts/symbols/typescript.json에 기록한다.
+
+Mermaid schema source를 대신할 neutral schema 언어 dbspec을 명세한다
+(T8.1). docs/dbspec.md와 한국어 짝 문서는 선언된 문서 집합에서 이름으로
+이어지는 문서, 열세 가지 neutral type, key, index, foreign key, neutral
+check 식, schemaHash 또는 manifestHash 소속이 있는 settings, operation
+column과 row trigger가 복사하는 이력 table로 하는 audit, diagram,
+canonical form, 한도, 위치가 있는 diagnostic 규칙 열여섯 가지를 정의하고,
+모든 Mermaid 기능의 처리를 판정한다. docs/dialects.md가 audit 판정을
+기록한다. tests/dbspec/cases.json의 공유 vector는 canonical 4개, 정규화
+2개, 잘못된 문서 17개다. 아직 dbspec을 구현한 client는 없다.
+
+MySQL, PostgreSQL, SQLite의 스키마 사실을 기록하고 기능별 중립 지원을
+결정한다(T8.0, T8.0.12). tests/dialects에 공통 probe 239개와
+dialect-facts-check target을 추가한다. 각 probe는 자기 일회용 database,
+schema, file에서 자기 deadline으로 실행하며, SQLite 파일 이름 case는 PDO,
+node:sqlite, sqlite3 shell이 DSN query를 파일 이름에 남긴다는 것을 보여
+준다. MySQL 8.4.11, PostgreSQL 17.11, SQLite 3.53.4에서 두 번 실패 없이
+통과했다. docs/dialects.md는 기능별 문법, 의미, probe, 중립 rendering 또는
+미지원 사유, catalog 출처와 UTC 연결 규칙의 local datetime,
+실행기 수정 시각 기록을 기록하고 audit context 정의는 T8.1 review로
+남긴다. 현재 스키마 도구와 client의 결함 13개를 T8.0.1-T8.0.11, T8.0.13,
+T8.0.14로 기록한다.
 
 PHP 클라이언트에서 PDO driver 확장을 요구하지 않는다(N17). `composer.json`이
 `ext-pdo_mysql`을 요구했으므로, 클라이언트가 MySQL driver를 `mysql://` DSN에서만
@@ -524,7 +898,7 @@ Rust `Db::transaction_once`를 추가해 한 번 실행하는 콜백의 자체 �
 트랜잭션 안에서는 savepoint를 사용하고 콜백과 롤백이 함께 실패하면 두 실패를 모두 보고한다.
 데이터베이스 오류와 콜백 오류를 구별한다.
 
-## 미발행 — MySQL CHECK constraint namespace
+### MySQL CHECK constraint namespace
 
 지속 적용할 개발 규칙은 `AGENTS.md`에 두고 구체 작업은 프로젝트 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부하므로 날짜가 고정된 진행 주장으로 항목 상태와 실행 증거를 대신할 수 없다. 대기 중인 생성 인터페이스 검사는 각 공개 클라이언트 API에서 `multi_statement`가 제외됐는지 검증해야 한다.
 
@@ -669,7 +1043,6 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 
 - 직렬화·`NoWait`·transaction release 검증과 함께 제한된 SQLite ORM lock-cancellation regression을 추가한다. 대기 중인 lock 요청이 무제한 대기 없이 caller context cancellation을 반환한다는 근거를 추적한다.
 
-## Unreleased
 
 - SQLite `forUpdate`·`forShare`와 두 `NoWait` mode를 ORM 소유 transaction 범위 lock 행으로 구현한다. SQLite lock suffix는 생성하지 않고 `NoWait`은 busy timeout을 일시적으로 0으로 설정한다. Go·PHP·Rust·TypeScript가 같은 lock mode를 plan 계약으로 전달한다.
 - SQLite 물리 테이블 이름에서 논리 schema namespace를 보존하도록 `schema.table`을 `schema__table`로 매핑하여 하나의 database에서 같은 이름의 table이 충돌하지 않게 한다.

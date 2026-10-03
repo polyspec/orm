@@ -10,20 +10,21 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/orm-rust-150.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT HUP INT TERM
 
 awk 'BEGIN {
-  print "erDiagram"
+  print "dbspec 1 rust_150"
   for (i = 1; i <= 150; i++) {
     name = sprintf("entity_%03d", i)
-    print "  " name " {"
-    print "    bigint seq PK \"auto\""
-    print "    varchar(64) name"
-    print "    int revision \"=0\""
-    print "    datetime(6) created_ts \"=now\""
-    print "  }"
+    print ""
+    print "table " name " {"
+    print "  seq i64 identity"
+    print "  name varchar(64)"
+    print "  revision i32 default 0"
+    print "  created_ts datetime(6) default now"
+    print "  primary key (seq)"
+    print "}"
   }
-}' > "$WORK/rust-150.mmd"
+}' > "$WORK/rust-150.dbs"
 
 cd "$ROOT"
-go run ./cmd/ormgen build "$WORK/rust-150.mmd" --out "$WORK/schema.json"
 mkdir -p "$WORK/crate/src"
 cat > "$WORK/crate/Cargo.toml" <<TOML
 [package]
@@ -42,7 +43,7 @@ orm-build = { path = "$ROOT/clients/rust/orm-build" }
 TOML
 cat > "$WORK/crate/build.rs" <<'RS'
 fn main() {
-    orm_build::Builder::new("../schema.json").scan("src").generate();
+    orm_build::Builder::new(["../rust-150.dbs"]).scan("src").generate();
 }
 RS
 {
@@ -58,5 +59,6 @@ RS
   echo '}'
 } > "$WORK/crate/src/lib.rs"
 cp clients/rust/Cargo.lock "$WORK/crate/Cargo.lock"
-CARGO_TARGET_DIR="$ROOT/clients/rust/target/rust-150" cargo check --manifest-path "$WORK/crate/Cargo.toml"
+# 생성한 crate는 workspace의 target을 함께 써서 orm과 의존성을 다시 compile하지 않는다.
+CARGO_TARGET_DIR="$ROOT/clients/rust/target" cargo check --manifest-path "$WORK/crate/Cargo.toml"
 printf '%s\n' "rust-150: 150 generated entities compiled"

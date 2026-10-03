@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 type rejectingModel struct{ core *Core }
@@ -13,6 +14,7 @@ type rejectingModel struct{ core *Core }
 func (m *rejectingModel) Orm_() *Core { return m.core }
 
 func TestAssemblerReturnsAssignmentError(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	want := errors.New("invalid column value")
 	ent := &Entity{
 		Name: "record",
@@ -23,7 +25,7 @@ func TestAssemblerReturnsAssignmentError(t *testing.T) {
 		},
 		Assign: func(Model, string, any) (bool, error) { return true, want },
 	}
-	asm := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "name", Column: "name", Type: "string"}}}
+	asm := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "name", Column: "name", Type: "varchar"}}}
 	cache := &cached{}
 	cache.shapes.Store(asm, &rowShape{names: []string{"name"}, time: []bool{false}})
 	a := &assembler{res: &result{cache: cache}}
@@ -33,39 +35,25 @@ func TestAssemblerReturnsAssignmentError(t *testing.T) {
 	}
 }
 
-func TestAutoAssignmentValidationBeforeWrite(t *testing.T) {
+// TestIdentityAssignmentValidationBeforeWrite는 identity field를 쓰기 전에
+// generated model에 넣고, 넣기가 실패하거나 field가 없으면 error를 반환한다.
+// identity column의 type 규칙은 dbspec parser가 지킨다.
+func TestIdentityAssignmentValidationBeforeWrite(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	ent := &Entity{New: func(c *Core) Model { m := &rejectingModel{core: c}; c.Bind(m); return m }}
 	ent.Assign = func(Model, string, any) (bool, error) { return true, nil }
 	m := ent.New(NewCore(ent))
-	col := &schema.Col{Name: "seq", Type: "i64", PK: true}
-	manifest := &schema.Entity{Auto: "seq", Columns: []*schema.Col{col}}
-	if err := validateAutoAssignment(manifest, ent, m); err != nil {
+	identity := &runtimemodel.Entity{Identity: "seq"}
+	if err := validateIdentityAssignment(identity, ent, m); err != nil {
 		t.Fatal(err)
-	}
-	for _, tc := range []struct {
-		name   string
-		change func()
-		reset  func()
-	}{
-		{"type", func() { col.Type = "i32" }, func() { col.Type = "i64" }},
-		{"nullable", func() { col.Nullable = true }, func() { col.Nullable = false }},
-		{"unsigned", func() { col.Unsigned = true }, func() { col.Unsigned = false }},
-		{"primary key", func() { col.PK = false }, func() { col.PK = true }},
-	} {
-		tc.change()
-		err := validateAutoAssignment(manifest, ent, m)
-		tc.reset()
-		if code := ErrorCode(err); code != CodeSchemaInvalid {
-			t.Errorf("%s auto key code %q: %v", tc.name, code, err)
-		}
 	}
 	want := errors.New("generated assignment failed")
 	ent.Assign = func(Model, string, any) (bool, error) { return true, want }
-	if err := validateAutoAssignment(manifest, ent, m); !errors.Is(err, want) {
+	if err := validateIdentityAssignment(identity, ent, m); !errors.Is(err, want) {
 		t.Fatalf("assignment error: %v", err)
 	}
 	ent.Assign = func(Model, string, any) (bool, error) { return false, nil }
-	if code := ErrorCode(validateAutoAssignment(manifest, ent, m)); code != CodeInternal {
+	if code := ErrorCode(validateIdentityAssignment(identity, ent, m)); code != CodeInternal {
 		t.Fatalf("missing generated column code %q", code)
 	}
 }

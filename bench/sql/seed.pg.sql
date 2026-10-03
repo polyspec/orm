@@ -1,5 +1,5 @@
--- Seed for PostgreSQL: the same 100k author rows as bench/sql/author.sql (same formulas), plus the related tables.
--- Run after bench/sql/author.pg.sql. Sessions must use UTC.
+-- Seed for PostgreSQL: the same 100k author rows as the MySQL seed (same formulas), plus the related tables.
+-- Run after scripts/bench-db.sh installs schema/bench.dbs. Sessions must use UTC.
 INSERT INTO "user" ("seq", "name") SELECT i, 'user-' || i FROM generate_series(1, 5000) AS s(i);
 INSERT INTO "service" ("seq", "name") SELECT i, 'service-' || i FROM generate_series(1, 100) AS s(i) UNION ALL SELECT 999, 'service-999';
 INSERT INTO "service_region" ("seq", "service_seq", "name") SELECT i, (i - 1) % 100 + 1, 'module-' || i FROM generate_series(1, 10) AS s(i);

@@ -1,12 +1,23 @@
 <?php
 declare(strict_types=1);
 
+// DECIMAL_ENV는 이 script가 DSN을 쓰는 file이고, 그 directory에 SQLite file과 소유 표시를 둔다.
+// ORM_DECIMAL_DATABASE는 MySQL과 PostgreSQL에 만드는 database 이름이다. make decimal-db-setup은
+// .runtime/decimal-env와 orm_decimal_case를, make check는 실행마다 자기 file과 이름을 준다.
 $root = dirname(__DIR__);
-$runtime = "$root/.runtime";
+require "$root/clients/php/tests/autoload.php";
+$envFile = getenv('DECIMAL_ENV');
+$name = getenv('ORM_DECIMAL_DATABASE');
+if (!is_string($envFile) || !str_starts_with($envFile, '/')) {
+    throw new RuntimeException('DECIMAL_ENV must be an absolute file path');
+}
+if (!is_string($name) || preg_match('/^[a-z][a-z0-9_]*$/', $name) !== 1) {
+    throw new RuntimeException('ORM_DECIMAL_DATABASE must be a lowercase database name');
+}
+$runtime = dirname($envFile);
 if (!is_dir($runtime) && !mkdir($runtime, 0700, true) && !is_dir($runtime)) {
     throw new RuntimeException('cannot create decimal test runtime directory');
 }
-$name = 'orm_decimal_case';
 $marker = "$runtime/decimal-owned";
 $owned = is_file($marker) && trim((string) file_get_contents($marker)) === $name;
 if (is_file($marker) && !$owned) {
@@ -37,13 +48,25 @@ function databaseUri(string $uri, string $database): string
     return substr_replace($uri, '/' . $database, (int) strpos($uri, $u['path']), strlen($u['path']));
 }
 
-function install(PDO $pdo, string $file): void
+// decimal fixture document를 dialect의 문장으로 렌더링해 설치한다.
+function install(PDO $pdo, string $dialect): void
 {
-    $sql = preg_replace('/^--.*$/m', '', (string) file_get_contents($file));
-    foreach (explode(';', $sql) as $statement) {
-        if (trim($statement) !== '') {
-            $pdo->exec($statement);
-        }
+    $file = dirname(__DIR__) . '/contracts/fixtures/decimal_schema.dbs';
+    $read = Orm\Dbspec\Dbspec::readFile($file);
+    if ($read->text === null) {
+        throw new RuntimeException("$file: " . json_encode($read->diagnostics));
+    }
+    $text = $read->text;
+    $parsed = Orm\Dbspec\Dbspec::parse($text, ['decimal_schema' => $text]);
+    if ($parsed->document === null) {
+        throw new RuntimeException("$file: " . json_encode($parsed->diagnostics));
+    }
+    $rendered = Orm\Dbspec\Dbspec::render([$parsed->document], $dialect);
+    if ($rendered->statements === null) {
+        throw new RuntimeException("$file ($dialect): " . json_encode($rendered->diagnostics));
+    }
+    foreach ($rendered->statements as $statement) {
+        $pdo->exec($statement);
     }
 }
 
@@ -84,7 +107,7 @@ foreach ($sources as $dialect => $source) {
         ? $target->query("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'decimal_case'")->fetchColumn()
         : $target->query("SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'decimal_case'")->fetchColumn();
     if ($table === false) {
-        install($target, "$root/contracts/fixtures/decimal_schema.$dialect.sql");
+        install($target, $dialect);
     }
     $type = $dialect === 'mysql'
         ? $target->query("SELECT column_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'decimal_case' AND column_name = 'amount'")->fetchColumn()
@@ -99,7 +122,7 @@ foreach ($sources as $dialect => $source) {
 $sqlite = "$runtime/decimal-case.sqlite";
 if (!is_file($sqlite)) {
     $pdo = new PDO("sqlite:$sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    install($pdo, "$root/contracts/fixtures/decimal_schema.sqlite.sql");
+    install($pdo, 'sqlite');
 }
 $pdo = new PDO("sqlite:$sqlite", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $type = $pdo->query("SELECT type FROM pragma_table_info('decimal_case') WHERE name = 'amount'")->fetchColumn();
@@ -121,6 +144,6 @@ foreach ($uris as $key => $value) {
     $lines[] = 'export ' . $key . "='" . str_replace("'", "'\\''", $value) . "'";
 }
 umask(0077);
-if (file_put_contents("$runtime/decimal-env", implode("\n", $lines) . "\n", LOCK_EX) === false) {
+if (file_put_contents($envFile, implode("\n", $lines) . "\n", LOCK_EX) === false) {
     throw new RuntimeException('cannot write decimal test environment');
 }

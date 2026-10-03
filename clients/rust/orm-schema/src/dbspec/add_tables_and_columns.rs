@@ -1,0 +1,109 @@
+//! 연결의 addTablesAndColumns가 실행할 step을 쓴다(docs/schema.md, "Adding tables and columns").
+
+use super::model::{Name, Pos, Table};
+use super::{compare_schemas, emit, manifest, parse_plan, plan_steps, Dialect, Document, PlanStep, Unsupported};
+use std::collections::{BTreeMap, BTreeSet};
+
+/// [`add_tables_and_columns_steps`]의 결과: 만드는 table과 더하는 column, step, 또는 차이다.
+#[derive(Clone, Debug)]
+pub struct AddTablesAndColumnsSteps {
+    /// table 이름 순으로 만드는 table은 "table", 더하는 column은 column 순서로 "table.column".
+    pub added: Vec<String>,
+    pub steps: Vec<PlanStep>,
+    /// create_table이나 add_column이 아닌 차이, "<kind> <table>[.<name>]".
+    pub differences: Vec<String>,
+}
+
+fn qualified(table: &str, name: &str) -> String {
+    if name.is_empty() {
+        table.to_owned()
+    } else {
+        format!("{table}.{name}")
+    }
+}
+
+fn schema_document(tables: Vec<Table>) -> Document {
+    Document {
+        name: Name { text: "schema".to_owned(), pos: Pos { line: 1, column: 10 } },
+        uses: Vec::new(),
+        tables,
+        diagrams: Vec::new(),
+        trailing: Vec::new(),
+    }
+}
+
+/// `live`는 연결의 database를 introspect한 문서, `unsupported`는 introspection이 읽지
+/// 못한 객체, `target`은 document set의 schema text 문서다. set에 없는 database의 table은
+/// 비교하지도 바꾸지도 않는다. database에 있는 set의 table과 set의 차이가 database에 없는
+/// table의 create_table과 null이거나 default가 있는 column의 add_column뿐이면, database에
+/// 있는 set의 table에서 set까지의 plan step(docs/plans.md, "Steps")과, table 이름 순으로
+/// 만드는 table은 "table", 더하는 column은 column 순서로 "table.column"인 목록을 돌려준다.
+/// 다른 차이는 step 없이 "<kind> <table>[.<name>]"로 돌려준다.
+pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported], target: &Document, dialect: Dialect) -> AddTablesAndColumnsSteps {
+    let declared: BTreeMap<&str, &Table> = target.tables.iter().map(|t| (t.name.text.as_str(), t)).collect();
+    let mut differences = Vec::new();
+    let none = |differences| AddTablesAndColumnsSteps { added: Vec::new(), steps: Vec::new(), differences };
+    // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+    for u in unsupported {
+        if declared.contains_key(u.table.as_str()) {
+            differences.push(format!("unsupported_{} {}: {}", u.kind, qualified(&u.table, &u.name), u.reason));
+        }
+    }
+    if !differences.is_empty() {
+        return none(differences);
+    }
+    let source = schema_document(live.tables.iter().filter(|t| declared.contains_key(t.name.text.as_str())).cloned().collect());
+    let mut adding = BTreeSet::new();
+    match compare_schemas(&source, target) {
+        Err(diagnostics) => differences.extend(diagnostics.iter().map(|d| format!("{}: {}", d.rule, d.message))),
+        Ok(found) => {
+            for d in found {
+                match d.kind.as_str() {
+                    "create_table" => {
+                        adding.insert(d.table.clone());
+                    }
+                    "add_column" => {
+                        let column = declared[d.table.as_str()].columns.iter().find(|c| c.name.text == d.name);
+                        match column {
+                            Some(c) if c.identity.is_none() && (c.nullable || c.default.is_some()) => {
+                                adding.insert(qualified(&d.table, &d.name));
+                            }
+                            _ => differences.push(format!("add_column {} without null or default", qualified(&d.table, &d.name))),
+                        }
+                    }
+                    _ => differences.push(format!("{} {}", d.kind, qualified(&d.table, &d.name))),
+                }
+            }
+        }
+    }
+    if !differences.is_empty() || adding.is_empty() {
+        return none(differences);
+    }
+    // 만드는 table과 더하는 column은 table 이름 순, table 안에서는 column 순서다.
+    let added: Vec<String> = target
+        .tables
+        .iter()
+        .flat_map(|t| {
+            if adding.contains(&t.name.text) {
+                vec![t.name.text.clone()]
+            } else {
+                t.columns.iter().map(|c| qualified(&t.name.text, &c.name.text)).filter(|name| adding.contains(name)).collect()
+            }
+        })
+        .collect();
+    // 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
+    // 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을 그대로
+    // 갖는다.
+    let start = (!source.tables.is_empty()).then_some(&source);
+    let from = match start {
+        Some(source) => manifest(&[source]).map(|m| m.schema_hash),
+        None => Ok("empty".to_owned()),
+    };
+    let steps = from
+        .and_then(|from| parse_plan(&format!("dbplan 1 add_tables_and_columns\nfrom {from}\n\n{}", emit(target))))
+        .and_then(|plan| plan_steps(start, &plan, dialect));
+    match steps {
+        Ok(steps) => AddTablesAndColumnsSteps { added, steps, differences: Vec::new() },
+        Err(diagnostics) => none(diagnostics.iter().map(|d| format!("{}: {}", d.rule, d.message)).collect()),
+    }
+}

@@ -1,6 +1,7 @@
 <?php
 // Conformance runner (PHP). Runs the chains of runner_go/main.go and prints the same document.
-// Usage: php tests/conformance/runner.php <schema.json> --dsn URI
+// Usage: php tests/conformance/runner.php --dsn URI [--vector NAME]...
+// --vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행한다. 모르는 이름은 오류다.
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
@@ -21,12 +22,17 @@ use Orm\Orm;
 use Orm\OrmException;
 use Orm\StyledValue;
 
-$schema = $argv[1] ?? throw new RuntimeException('schema.json required');
 $dsn = null;
-for ($i = 2; $i < $argc; $i++) {
-    match ($argv[$i]) {
+$selected = [];
+for ($i = 1; $i < $argc; $i++) {
+    $flag = $argv[$i];
+    if (($flag === '--dsn' || $flag === '--vector') && $i + 1 >= $argc) {
+        throw new RuntimeException("$flag needs a value");
+    }
+    match ($flag) {
         '--dsn' => $dsn = $argv[++$i],
-        default => throw new RuntimeException("unknown argument {$argv[$i]}"),
+        '--vector' => isset($selected[$argv[++$i]]) ? throw new RuntimeException("duplicate --vector {$argv[$i]}") : $selected[$argv[$i]] = true,
+        default => throw new RuntimeException("unknown argument $flag"),
     };
 }
 $dsn ?? throw new RuntimeException('--dsn required');
@@ -116,8 +122,7 @@ function picks(Collection $c, string ...$names): array
     return array_map(static fn(Model $m): ?array => pick($m, ...$names), $c->all());
 }
 
-$db = Orm::connect($dsn, new Config(
-    schemaPath: $schema,
+$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
     onQuery: static function (string $sql, array $binds) use (&$log): void {
@@ -126,7 +131,19 @@ $db = Orm::connect($dsn, new Config(
 ));
 
 $out = [];
+/** @var array<string, callable> vector 이름별 chain, 선언 순서 */
+$vectors = [];
 $writeVectors = array_fill_keys(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive'], true);
+
+/** vector를 선언한다. 선택된 vector는 모든 선언이 끝난 뒤 선언 순서대로 실행한다. */
+function vector(string $name, callable $fn): void
+{
+    global $vectors;
+    if (isset($vectors[$name])) {
+        throw new RuntimeException("duplicate vector $name");
+    }
+    $vectors[$name] = $fn;
+}
 
 function run(string $name, callable $fn): void
 {
@@ -141,21 +158,21 @@ function run(string $name, callable $fn): void
 $author = static fn(): Author => (new Author)->connect($db);
 $cols = ['seq', 'name', 'is_close', 'is_display', 'read_count'];
 
-run('conditions_connectors', fn() => picks($author()->serviceSeq(7)->andIsClose(false)->or()->readCount(6)->orderBySeqAsc()->limit(0, 3)->gets(), ...$cols));
+vector('conditions_connectors', fn() => picks($author()->serviceSeq(7)->andIsClose(false)->or()->readCount(6)->orderBySeqAsc()->limit(0, 3)->gets(), ...$cols));
 
-run('conditions_group', fn() => picks($author()->serviceSeq(7)
+vector('conditions_group', fn() => picks($author()->serviceSeq(7)
     ->and(fn(Author $q) => $q->isDisplay(false)->or(fn(Author $q) => $q->isClose(true)->andGtReadCount(500)))
     ->orderBySeqDesc()->limit(0, 3)->gets(), ...$cols));
 
-run('conditions_leading_group', fn() => picks($author()
+vector('conditions_leading_group', fn() => picks($author()
     ->and(fn(Author $q) => $q->isDisplay(false)->orIsClose(true))
     ->andServiceSeq(7)
     ->orderBySeqDesc()->limit(0, 3)->gets(), ...$cols));
 
-run('conditions_leading_prefix', fn() => picks($author()->andServiceSeq(7)->andGtReadCount(990)
+vector('conditions_leading_prefix', fn() => picks($author()->andServiceSeq(7)->andGtReadCount(990)
     ->orderBySeqDesc()->limit(0, 3)->gets(), ...$cols));
 
-run('conditions_values', fn() => array_map(static fn(Author $q): int => $q->getCount(), [
+vector('conditions_values', fn() => array_map(static fn(Author $q): int => $q->getCount(), [
     $author()->serviceSeq([7, 8])->andNeIsClose(true),
     $author()->serviceSeq(7)->andUuid(null),
     $author()->serviceSeq(7)->andNePhotoUrl(null),
@@ -168,7 +185,7 @@ run('conditions_values', fn() => array_map(static fn(Author $q): int => $q->getC
     $author()->serviceSeq(7)->andLtSeq(1000),
 ]));
 
-run('terminal_by', function () use ($author, $cols): array {
+vector('terminal_by', function () use ($author, $cols): array {
     $one = $author()->getBySeq(42);
     $missing = caught(fn() => $author()->getBySeq(-1));
     $rows = $author()->orderBySeqAsc()->limit(0, 2)->getsByServiceSeqAndIsClose(7, false);
@@ -176,14 +193,14 @@ run('terminal_by', function () use ($author, $cols): array {
     return ['one' => pick($one, ...$cols), 'missing' => $missing, 'rows' => picks($rows, ...$cols), 'count' => $count];
 });
 
-run('terminal_reuse', function () use ($author): array {
+vector('terminal_reuse', function () use ($author): array {
     $q = $author()->serviceSeq(7)->orderBySeqAsc()->limit(0, 2);
     $first = $q->getCountByIsClose(true);
     $rows = $q->gets();
     return [$first, count($rows), $q->getCount()];
 });
 
-run('raw_forms', function () use ($author): array {
+vector('raw_forms', function () use ($author): array {
     $count = $author()->serviceSeq(7)->andRaw('{read_count} > ?', [990])->getCount();
     $rows = $author()->raw('{seq} IN (?, ?)', [42, 43])
         ->removeAllColumns()->addRawColumnDoubled('({read_count} * ?)', [2])
@@ -191,14 +208,14 @@ run('raw_forms', function () use ($author): array {
     return ['count' => $count, 'rows' => array_map(static fn(Author $r): array => [$r->getSeq(), derivedInteger($r->getDoubled())], $rows->all())];
 });
 
-run('columns', function () use ($db, $author): array {
+vector('columns', function () use ($db, $author): array {
     $none = (new Service)($db)->removeAllColumns()->getBySeq(7);
     $added = $author()->removeAllColumns()->addColumnName()->addColumnReadCountAliasReadText("CONCAT('r', %s)")->getBySeq(42);
     $removed = (new Service)($db)->removeColumnName()->getBySeq(7);
     return [$none->toArray(), pick($added, 'seq', 'name', 'read_text'), $removed->toArray()];
 });
 
-run('joins', function () use ($author): array {
+vector('joins', function () use ($author): array {
     $service = (new Service)->on(fn(Service $s) => $s->gtSeq(0))->name('service-7');
     $rows = $author()
         ->removeAllColumns()->addColumnName()
@@ -212,7 +229,7 @@ run('joins', function () use ($author): array {
     return ['rows' => $rows->toArray(), 'compared' => $compared, 'module' => pick($left->first()->getModule(), 'seq', 'name')];
 });
 
-run('relations', fn() => $author()
+vector('relations', fn() => $author()
     ->removeAllColumns()->addColumnName()->addColumnIsClose()
     ->relation((new User)->matchUserSeqWithSeq()->aliasWriter()
         ->relations((new Author)->matchSeqWithUserSeq()->removeAllColumns()->orderBySeqDesc()->groupLimit(2)))
@@ -221,9 +238,9 @@ run('relations', fn() => $author()
     ->relation((new ServiceRegion)->matchServiceRegionSeqWithSeq()->possibleIsClose(true)->parentNode())
     ->serviceSeq(7)->orderBySeqAsc()->limit(0, 3)->gets()->toArray());
 
-run('relation_empty', fn() => count($author()->relations((new ServiceMember)->matchUserSeqWithUserSeq())->getsBySeq(-1)));
+vector('relation_empty', fn() => count($author()->relations((new ServiceMember)->matchUserSeqWithUserSeq())->getsBySeq(-1)));
 
-run('subqueries', fn() => array_map(
+vector('subqueries', fn() => array_map(
     static fn(User $u): array => [$u->getSeq(), derivedInteger($u->getReadTotal())],
     (new User)($db)
         ->addColumnReadTotal(fn(User $u) => (new Author)->sumReadCount()->userSeqEqSeq($u)->andServiceSeq(7))
@@ -231,7 +248,7 @@ run('subqueries', fn() => array_map(
         ->orderBySeqAsc()->gets()->all(),
 ));
 
-run('aggregates', function () use ($author): array {
+vector('aggregates', function () use ($author): array {
     $sum = $author()->serviceSeq(7)->sumReadCount()->getSum();
     $avg = $author()->serviceSeq(7)->avgLikeCount()->getAvg();
     if (bin2hex(pack('E', $avg)) !== '404805c28f5c28f6') {
@@ -247,7 +264,7 @@ run('aggregates', function () use ($author): array {
     ];
 });
 
-run('functions', function () use ($author): array {
+vector('functions', function () use ($author): array {
     $counts = array_map(static fn(Author $q): int => $q->getCount(), [
         $author()->serviceSeq(7)->andEqStartDt(Orm::dayOfWeek(), 2),
         $author()->serviceSeq(7)->andStartDt(Orm::year(), 2026),
@@ -259,7 +276,7 @@ run('functions', function () use ($author): array {
     return ['counts' => $counts, 'months' => array_map(static fn(Author $r): int => derivedInteger($r->getStartMonth()), $rows->all())];
 });
 
-run('errors', fn() => [
+vector('errors', fn() => [
     caught(fn() => $author()->name('a')->isClose(true)->gets()),
     caught(fn() => $author()->name('a')->and()->gets()),
     caught(fn() => $author()->seq([])->gets()),
@@ -271,17 +288,17 @@ run('errors', fn() => [
     caught(fn() => $author()->name('a')->or(new User)->gets()),
 ]);
 
-run('get_query', function () use ($author): array {
+vector('get_query', function () use ($author): array {
     $st = $author()->serviceSeq(7)->andLkName('x')->andAesHexEmail('user7@example.com')->orderBySeqDesc()->limit(0, 5)->getQuery();
     return ['sql' => $st['sql'], 'binds' => array_map('norm', $st['binds'])];
 });
 
-run('aes_values', function () use ($author): array {
+vector('aes_values', function () use ($author): array {
     $row = $author()->removeAllColumns()->addColumnAesHexEmail()->addColumnAesHexPhone()->getBySeq(42);
     return ['row' => $row->toArray(), 'found' => $author()->aesHexEmail('user42@example.com')->getCount()];
 });
 
-run('write_cycle', function () use ($author): array {
+vector('write_cycle', function () use ($author): array {
     $start = new DateTimeImmutable('2026-06-01 00:00:00', new DateTimeZone('UTC'));
     $created = $author()
         ->setName('cycle')->setUserSeq(1)->setServiceSeq(999)->setServiceRegionSeq(1)->setServiceMemberSeq(1)
@@ -304,7 +321,7 @@ run('write_cycle', function () use ($author): array {
     return ['created' => $createdArray, 'updated' => $updated, 'stale' => $stale, 'deleted' => $gone];
 });
 
-run('now_defaults', function () use ($author): array {
+vector('now_defaults', function () use ($author): array {
     $start = new DateTimeImmutable('2026-06-01 00:00:00', new DateTimeZone('UTC'));
     $before = microtime(true);
     $created = $author()
@@ -321,7 +338,7 @@ run('now_defaults', function () use ($author): array {
     return ['created_near_clock' => $near, 'created_equals_updated' => $createdTs == $updatedTs];
 });
 
-run('required_columns', function () use ($db): array {
+vector('required_columns', function () use ($db): array {
     $failure = static function (callable $fn): ?array {
         try {
             $fn();
@@ -338,7 +355,7 @@ run('required_columns', function () use ($db): array {
     return ['missing_state' => $missingState, 'missing_title' => $missingTitle];
 });
 
-run('creates_and_save', function () use ($db): array {
+vector('creates_and_save', function () use ($db): array {
     $inserted = (new CompositeAccount)($db)->creates([
         (new CompositeAccount)->setTenantId(900)->setAccountId(1)->setName('a'),
         (new CompositeAccount)->setTenantId(900)->setAccountId(2)->setName('b'),
@@ -353,7 +370,7 @@ run('creates_and_save', function () use ($db): array {
     return ['inserted' => $inserted, 'pairs' => $pairs->toArray(), 'left' => $left];
 });
 
-run('delete_recursive', function () use ($db): array {
+vector('delete_recursive', function () use ($db): array {
     $service = (new Service)($db)->setName('recursive')->create();
     $seq = $service->getSeq();
     $seqs = [$seq];
@@ -368,7 +385,7 @@ run('delete_recursive', function () use ($db): array {
     return ['members' => $members, 'members_left' => $left, 'service_left' => caught(fn() => (new Service)($db)->getBySeq($seq))];
 });
 
-run('transactions', function () use ($db): array {
+vector('transactions', function () use ($db): array {
     $boom = new RuntimeException('boom');
     $events = [];
     try {
@@ -398,7 +415,7 @@ run('transactions', function () use ($db): array {
     return $events;
 });
 
-run('aes_status', function () use ($db): array {
+vector('aes_status', function () use ($db): array {
     $status = $db->utils()->aes()->status(new Author, new AesKeyring([1 => 'bench-salt'], 1));
     $versions = [];
     foreach ($status->versions as $v => $n) {
@@ -407,5 +424,16 @@ run('aes_status', function () use ($db): array {
     sort($versions);
     return ['current' => $status->current, 'pending' => $status->pending, 'versions' => implode(',', $versions)];
 });
+
+foreach (array_keys($selected) as $name) {
+    if (!isset($vectors[$name])) {
+        throw new RuntimeException("unknown vector $name");
+    }
+}
+foreach ($vectors as $name => $fn) {
+    if ($selected === [] || isset($selected[$name])) {
+        run($name, $fn);
+    }
+}
 
 echo Model::jsonText($out), "\n";

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -8,7 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,7 +64,7 @@ func openStateDatabase(driver, raw string) (*sql.DB, error) {
 }
 
 func snapshotDatabase(db *sql.DB, driver string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), stateDeadline)
 	defer cancel()
 	var namesQuery string
 	switch driver {
@@ -110,37 +113,42 @@ func snapshotDatabase(db *sql.DB, driver string) (string, error) {
 			rows.Close()
 			return "", err
 		}
-		rowDigests := []string{}
+		// row마다 값을 type과 함께 encode한 byte의 hash를 모으고 정렬해 row 순서와 상관없는 digest를
+		// 만든다. 값 encoding은 같은 값에 같은 byte를, 다른 type이나 값에 다른 byte를 낸다.
+		values := make([]any, len(columns))
+		refs := make([]any, len(columns))
+		for i := range values {
+			refs[i] = &values[i]
+		}
+		var encoded []byte
+		var rowDigests [][sha256.Size]byte
 		for rows.Next() {
-			values := make([]any, len(columns))
-			refs := make([]any, len(columns))
-			for i := range values {
-				refs[i] = &values[i]
-			}
 			if err := rows.Scan(refs...); err != nil {
 				rows.Close()
 				return "", err
 			}
-			encoded, err := json.Marshal(values)
-			if err != nil {
-				rows.Close()
-				return "", err
+			encoded = encoded[:0]
+			for _, value := range values {
+				if encoded, err = appendStateValue(encoded, value); err != nil {
+					rows.Close()
+					return "", fmt.Errorf("read state table %s: %w", table, err)
+				}
 			}
-			digest := sha256.Sum256(encoded)
-			rowDigests = append(rowDigests, hex.EncodeToString(digest[:]))
+			rowDigests = append(rowDigests, sha256.Sum256(encoded))
 		}
 		err = rows.Err()
 		rows.Close()
 		if err != nil {
 			return "", err
 		}
-		sort.Strings(rowDigests)
-		encoded, err := json.Marshal([]any{table, columns, rowDigests})
+		slices.SortFunc(rowDigests, func(a, b [sha256.Size]byte) int { return bytes.Compare(a[:], b[:]) })
+		header, err := json.Marshal([]any{table, columns, len(rowDigests)})
 		if err != nil {
 			return "", err
 		}
-		if _, err := hash.Write(encoded); err != nil {
-			return "", err
+		hash.Write(header)
+		for _, digest := range rowDigests {
+			hash.Write(digest[:])
 		}
 	}
 	counters, err := readCounters(db, driver)
@@ -157,4 +165,42 @@ func snapshotDatabase(db *sql.DB, driver string) (string, error) {
 		fmt.Fprintf(hash, "counter:%s:%d:%t\n", key, value.value, value.called)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// appendStateValue는 state digest의 값 하나를 type 표시, 길이와 내용으로 encode한다. driver가
+// 돌려주는 type(nil, 정수, 실수, bool, byte, 문자열, 시각)만 받고, 다른 type은 error다.
+func appendStateValue(b []byte, value any) ([]byte, error) {
+	switch v := value.(type) {
+	case nil:
+		return append(b, 'n'), nil
+	case int64:
+		b = append(b, 'i')
+		b = strconv.AppendInt(b, v, 10)
+		return append(b, ';'), nil
+	case float64:
+		b = append(b, 'f')
+		b = strconv.AppendFloat(b, v, 'g', -1, 64)
+		return append(b, ';'), nil
+	case bool:
+		if v {
+			return append(b, 't'), nil
+		}
+		return append(b, 'F'), nil
+	case []byte:
+		b = append(b, 'b')
+		b = strconv.AppendInt(b, int64(len(v)), 10)
+		b = append(b, ':')
+		return append(b, v...), nil
+	case string:
+		b = append(b, 's')
+		b = strconv.AppendInt(b, int64(len(v)), 10)
+		b = append(b, ':')
+		return append(b, v...), nil
+	case time.Time:
+		b = append(b, 'T')
+		b = v.AppendFormat(b, time.RFC3339Nano)
+		return append(b, ';'), nil
+	default:
+		return nil, fmt.Errorf("unsupported state value type %T", value)
+	}
 }

@@ -1,12 +1,13 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
-import { activeFor, type Db, type TxFrame } from './database.js';
+import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
 import type { DriverControl, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
-import { Engine } from './engine/index.js';
-import { OrmError } from './runtime_error.js';
-import { planAddColumns } from './schema_columns.js';
-import { loadSchemaManifest, type SchemaManifest } from './schema/build.js';
+import { addTablesAndColumnsSteps, dbspecManifest, parseDbspec, renderDbspec } from './dbspec/index.js';
+import { introspectCatalog } from './dbspec/introspect.js';
+import { CatalogRow } from './dbspec/introspect_catalog.js';
+import { parseDocumentSet, splitDocuments } from './engine/model.js';
+import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 export interface AesRotationStatus {
   current: number;
@@ -33,6 +34,34 @@ function versionOf(value: unknown): number {
 }
 
 /** Runs fn in the active transaction of db, or in a new one. */
+/**
+ * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 fn을 실행한 뒤 foreign key 검사가
+ * row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시
+ * 만들기).
+ */
+async function withoutForeignKeys<T>(control: DriverControl, fn: (control: DriverControl) => Promise<T>): Promise<T> {
+  await control('PRAGMA foreign_keys = OFF');
+  let result: T;
+  try {
+    await control('BEGIN IMMEDIATE');
+    try {
+      result = await fn(control);
+      const broken = Number((await control('SELECT COUNT(*) FROM pragma_foreign_key_check')).rows[0]?.[0]);
+      if (broken !== 0) throw new OrmError('INTERNAL', `the rebuilt tables break ${broken} foreign keys`);
+    } catch (error) {
+      try { await control('ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+      throw error;
+    }
+    await control('COMMIT');
+  } catch (error) {
+    // foreign key를 다시 켜지 못하면 두 오류를 함께 돌려준다.
+    try { await control('PRAGMA foreign_keys = ON'); } catch (restore) { throw joinedErrors([error, restore]); }
+    throw error;
+  }
+  await control('PRAGMA foreign_keys = ON');
+  return result;
+}
+
 async function inTx<T>(db: Db, fn: (frame: TxFrame) => Promise<T>): Promise<T> {
   const frame = activeFor(db);
   if (frame) return fn(frame);
@@ -76,7 +105,11 @@ export class Utils {
     }
   }
 
-  /** Sets a transaction-local value. */
+  /**
+   * Sets a transaction-local value: a PostgreSQL transaction setting, a MySQL
+   * user variable that the transaction end clears, and on SQLite, which has no
+   * session setting, a value of the transaction that only local() reads.
+   */
   public async setLocal(key: string, value: string): Promise<void> {
     const frame = this.active('setLocal');
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
@@ -87,10 +120,6 @@ export class Utils {
       case 'mysql':
         await frame.tx.control(`SET @\`orm.${key}\` = ?`, [value]);
         break;
-      default:
-        await frame.tx.control('CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)');
-        await frame.tx.control('INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value"', [key, value]);
-        frame.contextRow = true;
     }
     frame.locals.set(key, value);
   }
@@ -118,19 +147,37 @@ export class SchemaUtils {
   }
 
   /**
-   * Installs a schema manifest and adds it to the connection. PostgreSQL and
-   * SQLite apply it in the active transaction or in a new one; MySQL commits
-   * schema statements implicitly, so it applies them outside a transaction
-   * and rejects a call inside one with CONFIG.
+   * Installs the tables of the document set of a generated schema and
+   * registers the set on this connection. A manifest text that does not hash
+   * to its declared manifestHash fails with CONFIG before any statement. The
+   * rendered statements (docs/dialects.md "Rendered statements") create the
+   * tables when none of them exists; when every table exists the call creates
+   * nothing; when only some exist it fails with CONFIG.
+   * PostgreSQL and SQLite apply the statements in the active transaction or in
+   * a new one; MySQL commits schema statements implicitly, so it applies them
+   * outside a transaction and rejects a call inside one with CONFIG.
    */
-  public async install(manifestJson: string): Promise<void> {
-    const engine = this.engine(manifestJson);
-    const statements = engine.installStatements();
-    if (statements.length === 0) throw config('schema manifest produced no statements');
-    if (this.db.pool.session) {
-      // MySQL commits schema statements implicitly, so they run outside a transaction.
-      if (activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-      await this.db.pool.session(async control => {
+  public async install(schema: Schema): Promise<void> {
+    const model = schemaModel(schema);
+    const documents = parseDocumentSet(splitDocuments(schema.manifestText));
+    const rendered = renderDbspec(documents, this.db.driver);
+    if (rendered.statements === null) {
+      const d = rendered.diagnostics[0]!;
+      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+    }
+    const statements = rendered.statements;
+    // MySQL commits schema statements implicitly, so they run outside a transaction.
+    if (this.db.driver === 'mysql' && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
+    const tables = documents.flatMap(d => d.tables.map(t => t.name));
+    const present: string[] = [];
+    for (const table of tables) if (await this.table(table)) present.push(table);
+    if (present.length === tables.length) {
+      registerSet(this.db, model);
+      return;
+    }
+    if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
+    if (this.db.driver === 'mysql') {
+      await this.db.pool.session!(async control => {
         for (const statement of statements) await control(statement);
       });
     } else {
@@ -138,53 +185,53 @@ export class SchemaUtils {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
-    this.db.registerEngine(engine);
+    registerSet(this.db, model);
   }
 
   /**
-   * Adds every missing column of the existing tables of a schema manifest that
-   * is nullable or has a default, and replaces the audit triggers of each
-   * changed table so that they record the new columns. A table that does not
-   * exist and the tables of other manifests are left unchanged. Any other
-   * difference between the existing tables and the manifest fails with
-   * SCHEMA_DIFFERS before any statement runs. The manifest hash is verified
-   * against its content first. PostgreSQL and SQLite apply the statements in
-   * the active transaction or in a new one; MySQL commits schema statements
-   * implicitly, so it applies them outside a transaction and rejects a call
-   * inside one with CONFIG. Returns the added columns as table.column, in
-   * manifest order.
+   * 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md "Adding
+   * tables and columns"). 연결의 database를 introspect해 database에 있는 set의 table을 set과 비교하고,
+   * database에 없는 set의 table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진
+   * column 가운데 null이거나 default가 있는 column을 더한다. addTablesAndColumnsSteps의 plan step을
+   * 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로
+   * 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가
+   * 선언한 hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 진행 중인 transaction이나 새
+   * transaction에서 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를
+   * 끈 채 table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로,
+   * 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한 column은
+   * "table.column"으로 table 이름, column 순서로 돌려준다.
    */
-  public async addColumns(manifestJson: string): Promise<string[]> {
-    this.engine(manifestJson);
-    let manifest: SchemaManifest;
-    try { manifest = loadSchemaManifest(manifestJson); } catch (error) {
-      throw config(`invalid schema manifest: ${(error as Error).message}`);
+  public async addTablesAndColumns(schema: Schema): Promise<string[]> {
+    schemaModel(schema);
+    const manifest = dbspecManifest(parseDocumentSet(splitDocuments(schema.manifestText)));
+    const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, {});
+    const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
+    if (failed.length > 0) {
+      const d = failed[0]!;
+      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
+    const target = parsed!.document!;
+    const driver = this.db.driver;
     const apply = async (control: DriverControl): Promise<string[]> => {
-      const { statements, added } = await planAddColumns(this.db.driver, control, manifest);
-      for (const statement of statements) await control(statement);
-      return added;
+      const query = async (sql: string) => (await control(sql)).rows.map(values => new CatalogRow(sql, values));
+      const live = await introspectCatalog(query, driver, 'schema');
+      const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
+      if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ${differences.join('; ')}`);
+      for (const step of steps) await control(step.statement);
+      return [...added];
     };
-    if (this.db.pool.session) {
-      if (activeFor(this.db)) throw config('MySQL commits schema statements implicitly; add columns outside a transaction');
-      return this.db.pool.session(apply);
-    }
-    return inTx(this.db, frame => apply((sql, params) => frame.tx.control(sql, params)));
+    if (driver === 'postgres') return inTx(this.db, frame => apply((sql, params) => frame.tx.control(sql, params)));
+    if (activeFor(this.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
+    if (driver === 'mysql') return this.db.pool.session!(apply);
+    return this.db.pool.session!(control => withoutForeignKeys(control, apply));
   }
 
-  /**
-   * Adds the engine of an installed schema manifest to the connection, as
-   * install does after its statements, without running any statement. The
-   * manifest hash is verified against its content.
-   */
-  public async register(manifestJson: string): Promise<void> {
-    this.db.registerEngine(this.engine(manifestJson));
-  }
-
-  /** The engine of a manifest whose hash matches its content; CONFIG otherwise. */
-  private engine(manifestJson: string): Engine {
-    try { return Engine.load(manifestJson, this.db.driver); } catch (error) {
-      throw config(`invalid schema manifest: ${(error as Error).message}`);
+  /** Reports whether a table of the connected database or schema exists. */
+  private async table(name: string): Promise<boolean> {
+    switch (this.db.driver) {
+      case 'postgres': return this.check('SELECT to_regclass(current_schema() || \'.\' || quote_ident($1)) IS NOT NULL', [name]);
+      case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [name]);
+      default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [name]);
     }
   }
 
@@ -272,12 +319,12 @@ export class AesUtils {
 
   private spec(model: unknown): AesSpec {
     if (!isModel(model)) throw config('aes requires a model');
-    const schema = model[CORE].ent.schema;
-    const columns = Object.entries(schema.columns)
-      .filter(([, col]) => (col.styles ?? []).includes('aes'))
-      .map(([name, col]) => ({ name, styles: (col.styles ?? []).filter(s => s === 'aes' || s === 'hex') }));
-    if (!schema.aesVersion || columns.length === 0) throw config(`entity ${schema.name} has no AES columns with a key version`);
-    return { table: schema.table, keys: schema.pk, version: schema.aesVersion, columns };
+    const schema = model[CORE].ent.entity;
+    const columns = schema.fields
+      .filter(col => col.stages.includes('aes'))
+      .map(col => ({ name: col.name, styles: col.stages.filter(s => s === 'aes' || s === 'hex') }));
+    if (schema.aesVersion === '' || columns.length === 0) throw config(`entity ${schema.name} has no AES columns with a key version`);
+    return { table: schema.table, keys: schema.primaryKey, version: schema.aesVersion, columns };
   }
 
   public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus> {

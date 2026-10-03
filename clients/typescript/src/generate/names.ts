@@ -1,14 +1,14 @@
 // Method names of generated models are parsed with the grammar of
 // docs/dsl.md. Generation rejects names whose operator does not fit the
 // column type.
-import { columnOf, type Column, type Entity, type Manifest } from '../engine/manifest.js';
+import { fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
 import { opAllowed } from '../engine/validate.js';
 import { pascal, words } from '../names.js';
 
 /** An underscore-separated segment no column name may contain. */
-export const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext', 'tuple'];
+export const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
 /** A prefix no column name may start with. */
-export const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext'];
+export const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
 /** Names no column may have. */
 export const reservedColumns = ['and', 'or', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'save', 'raw', 'on', 'random'];
 
@@ -23,38 +23,43 @@ export function checkColumnName(n: string): string | undefined {
 }
 
 export function checkColumnNames(m: Manifest): void {
-  for (const name of m.order) {
-    for (const c of m.entities[name]!.columns) {
+  for (const e of m.entities.values()) {
+    for (const c of e.fields) {
       const problem = checkColumnName(c.name);
-      if (problem !== undefined) throw new Error(`${name}.${c.name}: ${problem}`);
+      if (problem !== undefined) throw new Error(`${e.name}.${c.name}: ${problem}`);
     }
   }
 }
 
-/** The style stages the executor applies (aes, hex, and ip stay with the dialect). */
+/** The codec stages that make the column a styled value (aes, hex, and ip keep a string). */
 export function clientStyles(c: Column): string[] {
-  return (c.styles ?? []).filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
+  return c.stages.filter(s => s !== 'aes' && s !== 'hex' && s !== 'ip');
 }
 
 export function numeric(c: Column): boolean {
-  return clientStyles(c).length === 0 && ['i32', 'i64', 'f64', 'decimal'].includes(c.type);
+  return c.stages.length === 0 && ['i16', 'i32', 'i64', 'f64', 'decimal'].includes(c.type);
 }
 
 /** Columns that accept column functions. */
 export function functionColumn(c: Column): boolean {
-  return clientStyles(c).length === 0 && (c.type === 'date' || c.type === 'datetime' || c.type === 'point');
+  return c.stages.length === 0 && (c.type === 'date' || c.type === 'datetime');
 }
 
+/**
+ * The value category of a column (docs/dbspec.md "Runtime model"): a styled
+ * value, or the value of its type; a column of aes, hex and ip stages holds a
+ * string.
+ */
 export function category(c: Column): string {
-  if (clientStyles(c).length > 0 || c.type === 'json') return 'none';
+  if (clientStyles(c).length > 0) return 'styled';
+  if (c.stages.length > 0) return 'string';
   switch (c.type) {
-    case 'i32': case 'i64': return 'int';
+    case 'i16': case 'i32': case 'i64': return 'int';
     case 'f64': return 'float';
     case 'decimal': return 'decimal';
     case 'bool': return 'bool';
     case 'date': case 'datetime': return 'time';
     case 'bytes': return 'bytes';
-    case 'point': return 'point';
   }
   return 'string';
 }
@@ -76,13 +81,13 @@ function key(fields: Partial<ChainKey>): ChainKey {
 }
 
 function indexColumns(e: Entity): Map<string, Column> {
-  return new Map(e.columns.map(c => [pascal(c.name), c]));
+  return new Map(e.fields.map(c => [pascal(c.name), c]));
 }
 
 /** The column of e (or of any entity when e is undefined) named by a PascalCase name. */
 export function columnName(m: Manifest, e: Entity | undefined, name: string): string {
-  const entities = e !== undefined ? [e] : m.order.map(n => m.entities[n]!);
-  for (const ent of entities) for (const c of ent.columns) if (pascal(c.name) === name) return c.name;
+  const entities = e !== undefined ? [e] : [...m.entities.values()];
+  for (const ent of entities) for (const c of ent.fields) if (pascal(c.name) === name) return c.name;
   return '';
 }
 
@@ -120,14 +125,6 @@ function tupleKey(e: Entity, ix: Map<string, Column>, ws: readonly string[], op:
   return key({ op, columns: cols.map(c => c.name) });
 }
 
-function fulltextKey(e: Entity, ix: Map<string, Column>, ws: readonly string[], op: string): ChainKey {
-  const cols = splitWith(ix, ws);
-  if (!cols || cols.length === 0) throw new NameError(`full-text columns of ${e.name} are not valid`);
-  const names = cols.map(c => c.name);
-  if ((e.fulltext ?? []).some(index => index.length === names.length && index.every((c, i) => c === names[i]))) return key({ op, columns: names });
-  throw new NameError(`${e.name} has no full-text index on ${names.join(', ')}`);
-}
-
 function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly string[]): ChainKey {
   if (ws.length === 0) throw new NameError('a condition key is empty');
   const text = ws.join('');
@@ -150,10 +147,6 @@ function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly 
     }
   }
   if (ws[0] === 'Tuple') attempt(() => tupleKey(e, ix, ws.slice(1), 'tuple'));
-  if (ws[0] === 'Fulltext') {
-    attempt(() => fulltextKey(e, ix, ws.slice(1), 'fulltext'));
-    if (ws.length > 1 && ws[1] === 'Boolean') attempt(() => fulltextKey(e, ix, ws.slice(2), 'fulltext_boolean'));
-  }
   for (let i = 1; i < ws.length - 1; i++) {
     const cmp = compareOps[ws[i]!];
     if (cmp === undefined) continue;

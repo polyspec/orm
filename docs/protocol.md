@@ -7,7 +7,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 ```json
 {
   "ir_version": 1,
-  "schema_hash": "cd21c76a45bcb2dd",
+  "manifest_hash": "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa",
   "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
   "entity": "author",
   "columns": Columns,
@@ -33,6 +33,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 
 | Field | Rule |
 |---|---|
+| `manifest_hash` | the `manifestHash` of the document set the generated code carries: `sha256:` followed by 64 lower-case hexadecimal digits ([manifest and hashes](dbspec.md#manifest-and-hashes)). A request whose hash differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`. The field replaces `schema_hash`; the error code keeps its name |
 | `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows |
 | `set` | assignments of `insert` and `update` |
 | `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
@@ -50,12 +51,12 @@ Columns = {
   "add": ["name"],
   "remove": ["description"],
   "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
-  "fn": {"distance": {"column": "location", "fn": Func}},
+  "fn": {"created_date": {"column": "created_ts", "fn": Func}},
   "sub": {"read_total": Sub}
 }
 ```
 
-- `mode` `""` selects the non-lazy columns, `all` selects every column, and `none` keeps primary and foreign keys.
+- `mode` `""` selects the default select set, every column except those of `select explicit` ([runtime model](dbspec.md#runtime-model)); `all` selects every column, and `none` keeps primary and foreign keys.
 - `expr`, `fn`, and `sub` add named outputs. An output name must not be a column of the entity.
 - The primary key and the keys that relations bind are always selected.
 
@@ -63,12 +64,12 @@ Columns = {
 
 ```json
 Join = {"rel": "service_model", "kind": "inner | left", "left": "service_seq", "right": "seq", "query": Query}
-Relation = {"rel": "writer", "kind": "one | many", "left": "user_seq", "right": "seq", "query": Query,
+Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq", "right": "seq"}], "query": Query,
             "key_by": "user_seq", "flatten": false, "limit_per_parent": 2,
             "if_parent": {"column": "is_close", "p": 4}, "no_cascade_delete": false}
 ```
 
-- `rel` is the result name. `left` is a column of the parent and `right` a column of the child.
+- `rel` is the result name. In a join, `left` is a column of the parent and `right` a column of the child; both are required. A relation requires `kind` and `keys`, one `{"left", "right"}` pair per key component in key order, so a relation over a composite foreign key carries every component: `composite_membership` loads from `composite_account` with `[{"left": "tenant_id", "right": "tenant_id"}, {"left": "account_id", "right": "account_id"}]`. An empty `keys`, a pair without `left` or `right`, or a column that appears in two pairs on the same side is `IR_INVALID`. The client never infers keys from names or foreign keys.
 - A join child's `on` group is added to the `ON` clause. Its `where` group is placed where a `joined` item names it, otherwise it is appended to the parent `WHERE` with `AND`.
 - A relation runs as a separate statement. `limit_per_parent` limits child rows per parent key, `if_parent` loads the child only for parents whose column equals the parameter, `flatten` merges the child columns into the parent row, `key_by` keys the child collection, and `no_cascade_delete` excludes the relation from recursive delete.
 
@@ -81,13 +82,12 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
       | {"conn", "column", "op": "is_null | is_not_null"}
       | {"conn", "column", "op": "eq_col | not_eq_col | gt_col | gte_col | lt_col | lte_col", "ref": {"path": "service_model", "column": "seq"}}
-      | {"conn", "op": "match | match_boolean", "match": ["name", "description"], "p"}
       | {"conn", "op": "tuple_in | tuple_not_in", "cols": ["tenant_id", "account_id"], "ps": [0, 1, 2, 3]}
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
       | {"conn", "expr": "{read_count} > ?", "ps": [0]}
-Func  = {"name": "day_of_week | year | month | date | distance | point_x | point_y | now | today | days_ago | …", "ps": [0, 1]}
+Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 ```
 
@@ -106,11 +106,13 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 A raw order expression carries its own direction. `minus_p` never stores a negative value.
 
+An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the operation column of every `insert`, `update`, soft delete and duplicate update; a request that assigns the AES key version or the operation column fails with `IR_INVALID`.
+
 ## 2. Plan
 
 ```json
 {
-  "schema_hash": "…", "kind": "all",
+  "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
     {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20",
      "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
@@ -123,10 +125,8 @@ A raw order expression carries its own direction. `minus_p` never stores a negat
 }
 ```
 
-- `bind_slots.from` is `param` (a request parameter, with `transform` for full-text and contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), or `now` (the client clock in the connection time zone).
-- The `now` slot is the wall clock with microsecond resolution, truncated to six fraction digits, in the connection time zone; PostgreSQL text carries the offset. A statement reads the clock once, so its `now` slots are equal. The SQLite dialect binds it for clock defaults, the update time, soft deletion, and the `now` function; MySQL and PostgreSQL use the database clock in SQL.
-- A database clock that the ORM writes or compares keeps microseconds. The update time and soft deletion assign the clock with the declared fraction digits of the column: `CURRENT_TIMESTAMP(p)` on MySQL for a `datetime(p)` column with `p > 0`, `CURRENT_TIMESTAMP` on PostgreSQL, and the `now` slot on SQLite. The MySQL `now` value function and its relative forms use `NOW(6)`. The SQLite relative forms apply the interval to a `now` slot with `datetime` and append the six fraction digits of a second `now` slot of the same statement.
-- The migration ledger `orm_schema_migrations` of the schema tools stores `started_at` and `finished_at` with six fraction digits on every database. MySQL declares `timestamp(6)` and the tools write `CURRENT_TIMESTAMP(6)`; PostgreSQL declares `timestamptz`, which keeps microseconds, and the tools write `CURRENT_TIMESTAMP`; SQLite declares `TEXT` with a `CHECK` that accepts only `YYYY-MM-DD HH:MM:SS.ffffff`, and the tools bind their wall clock in UTC in that form, because SQLite has no clock with microseconds. Every ledger write assigns the time it changes. Before a command reads or writes an existing ledger, the tool verifies its time columns: `timestamp(6)` on MySQL, `timestamp with time zone` with six fraction digits on PostgreSQL, and the column definitions above in the stored SQLite table statement. A ledger with other time columns fails with `MIGRATION_HISTORY_PRECISION`, naming the database, the column, and the required definition, and the tool changes neither the ledger nor its rows. A MySQL or SQLite ledger created before this rule keeps whole seconds and fails; its owner converts it with the statements in `docs/usage.md`. A PostgreSQL ledger created before this rule already has microsecond columns.
+- `bind_slots.from` is `param` (a request parameter, with `transform` for contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), `now` (the client clock in UTC), or `operation` (the operation id of the unit of work, with `col_type` `i64` or `uuid` of the operation column). A write that has an `operation` slot and runs without an operation id, or with one that does not fit `col_type`, fails with `CONFIG` before it reaches the database.
+- **Clock.** This is the one clock rule; [dialects](dialects.md) and [plans](plans.md) refer to it. Every connection reads and writes `datetime(p)` in UTC. The `now` slot is the client wall clock in UTC with microsecond resolution, truncated to six fraction digits, in the `datetime` text form; a statement reads the clock once, so its `now` slots are equal. A clock that the ORM writes or compares keeps microseconds: the update time and soft deletion assign the clock with the declared fraction digits of the column, `CURRENT_TIMESTAMP(p)` on MySQL for `p > 0`, `CURRENT_TIMESTAMP` on PostgreSQL and the `now` slot on SQLite; the MySQL `now` value function and its relative forms use `NOW(6)`, and PostgreSQL `now()`. SQLite has no clock with microseconds, so the SQLite dialect binds the `now` slot for the update time, soft deletion and the `now` function, renders a relative form as `datetime` of a `now` slot with the interval followed by the six fraction digits of a second `now` slot, and binds the `now` slot for every column with `default now` that an insert omits; MySQL and PostgreSQL inserts leave such a column to its database default. The plan history keeps the tool clock with six fraction digits ([plans](plans.md#apply)).
 - Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.
 - `assemble.key` is the collection identity: every primary-key component, or the group columns of a `group_count` row.
 - A `group_count` row retains the declared types of its selected group columns; a boolean group value is a JSON boolean, and an invalid database boolean fails decoding.
@@ -141,7 +141,7 @@ A raw order expression carries its own direction. `minus_p` never stores a negat
 
 ## 3. Errors
 
-Errors carry a code from [errors.yaml](errors.yaml) and a message, for example `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, and `COLUMN_ALIAS_CONFLICT`. Executors add `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, and `DRIVER`. The client returns every driver error as an ORM error: a condition that the catalog lists has its code, every other driver error has `DRIVER`, and each keeps the driver message and the driver error as its cause. A write that an `orm:audit` or `orm:immutable` trigger refuses is `DRIVER`. When the callback of a transaction or savepoint fails and its rollback fails too, the client returns one error with the code `ROLLBACK`; its message names both errors, and it keeps the callback error and the rollback error (PHP: the previous exception and `rollback`, TypeScript: `cause` and `rollback`, Go: `errors.Join` of both in that order, Rust: `Error::Rollback { callback, rollback }`). A `ROLLBACK` error is not retried. A NOWAIT lock failure is always `LOCK_NOT_AVAILABLE` and is not retried as a transaction conflict.
+Errors carry a code from [errors.yaml](errors.yaml) and a message, for example `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, and `COLUMN_ALIAS_CONFLICT`. Executors add `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, and `DRIVER`. The client returns every driver error as an ORM error: a condition that the catalog lists has its code, every other driver error has `DRIVER`, and each keeps the driver message and the driver error as its cause. A write that an `audit` or `immutable` trigger refuses is `DRIVER`. When the callback of a transaction or savepoint fails and its rollback fails too, the client returns one error with the code `ROLLBACK`; its message names both errors, and it keeps the callback error and the rollback error (PHP: the previous exception and `rollback`, TypeScript: `cause` and `rollback`, Go: `errors.Join` of both in that order, Rust: `Error::Rollback { callback, rollback }`). A `ROLLBACK` error is not retried. A NOWAIT lock failure is always `LOCK_NOT_AVAILABLE` and is not retried as a transaction conflict.
 
 ### 3.1 Test faults
 
@@ -162,13 +162,13 @@ Every client validates and plans requests in the calling process. No compiler se
 
 | Client | Validation, planning, dialects, and DDL |
 |---|---|
-| Go | `engine/ir`, `engine/planner`, `engine/dialect`, `internal/ormgen` DDL |
-| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Ddl.php` |
-| Rust | `clients/rust/orm/src/engine/` |
-| TypeScript | `clients/typescript/src/engine/` |
+| Go | `engine/ir`, `engine/planner`, `engine/dialect`, `engine/dbspec` DDL |
+| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| Rust | `clients/rust/orm/src/engine/`, `clients/rust/orm-schema/src/dbspec/` DDL |
+| TypeScript | `clients/typescript/src/engine/`, `clients/typescript/src/dbspec/` DDL |
 
-A connection loads `schema.json`, verifies its `schema_hash` against its content, and rejects generated models with a different hash (`SCHEMA_HASH_MISMATCH`). The plan cache key is the schema hash and the request shape. Parameter values are not part of the key.
+Generated code carries the manifest text of its document set and its `manifestHash`. The client builds the runtime model from that text once and rejects text whose hash differs from the declared one (`SCHEMA_HASH_MISMATCH`). The plan cache key is the manifest hash and the request shape. Parameter values are not part of the key.
 
-A process can load the generated models of several schemas, and one connection can serve all of them. Each generated model carries the `schema_hash` of the schema it was generated from, and every request it builds contains that hash. The hash is computed from the manifest content, so two different schemas cannot have the same hash. A connection starts with the engine of the schema given when it opens. `utils().schema().install(manifestJson)` verifies the manifest hash against its content as opening does and fails with `CONFIG` when they differ, creates the missing objects, and then adds the engine of that manifest to the connection. `utils().schema().register(manifestJson)` verifies the manifest in the same way, executes no statement, and adds the engine to the connection as `install` does; it registers a schema whose tables already exist. The connection plans a request with the engine of the request's `schema_hash` among the engines registered on that connection; a request whose schema the connection has not registered fails with `SCHEMA_HASH_MISMATCH` before execution, and no other engine plans it. Every client follows this rule; N3.2 records the clients that do not yet.
+A process can load the generated code of several document sets, and one connection can serve several of them. A connection plans a request only with a set registered on that connection, because what a request can run against is decided by the database the connection uses, not by the code the process loaded. A set is registered on a connection in two ways. The connect helper of generated code (Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript `connect(dsn, options)` of the generated module) opens the connection and registers its own set through `connectSchema` (Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`). `utils().schema().install(schema)` creates the tables of the set and registers it on the same connection. Both take the generated schema value, the manifest text with its declared `manifestHash` (Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`), and fail with `CONFIG` before any statement when the text does not hash to the declared hash. A raw connection (`connect(dsn, …)` of the client) registers no set, and loading generated code registers nothing on a connection. A request whose manifest is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` before execution, also when a plan of the same shape is cached, and so does a request of generated code whose manifest text does not hash to its declared `manifestHash`. No other registration call exists. Every client follows this rule.
 
 The four planners produce the same SQL and bind slots for the same request. `tests/conformance` runs the same vectors in the four clients on MySQL, PostgreSQL, and SQLite and compares the statements, binds, and results with the recorded expectations.

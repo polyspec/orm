@@ -5,8 +5,9 @@ go 1.27
 require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/polyspec/ordered-json/go v0.0.0-20260916090424-6d23a2a5e7c0
+	github.com/polyspec/ordered-json/go v0.0.0-20261002025228-b4c1c61cf2a2
 	go.yaml.in/yaml/v3 v3.0.5
+	golang.org/x/sys v0.47.0
 	golang.org/x/tools v0.49.0
 	modernc.org/sqlite v1.58.0
 )
@@ -24,7 +25,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	modernc.org/libc v1.75.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

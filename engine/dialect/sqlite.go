@@ -29,17 +29,7 @@ func (SQLite) Now(int) string                { return "CURRENT_TIMESTAMP" }
 func (SQLite) CurrentTime() string           { return "CURRENT_TIMESTAMP" }
 func (SQLite) HandlesStyle(string) bool      { return false }
 
-func (SQLite) Supports(op string) bool {
-	return op != "match" && op != "match_boolean"
-}
-
 func (SQLite) Like(col, ph string) string { return col + " LIKE " + ph + ` ESCAPE '\'` }
-
-func (SQLite) Fulltext(cols []string, ph string, boolean bool) string {
-	panic("sqlite: fulltext is rejected by Supports")
-}
-
-func (SQLite) FulltextValue(v string, _ bool) string { return v }
 
 func (SQLite) RowNumber(partition, orderBy string) string {
 	s := "ROW_NUMBER() OVER (PARTITION BY " + partition
@@ -57,8 +47,8 @@ func (SQLite) Upsert(conflict []string, assigns string) string {
 	return " ON CONFLICT (" + strings.Join(q, ", ") + ") DO UPDATE SET " + assigns
 }
 
-func (SQLite) ReadExpr(col, _ string, _ []string, _ func() string) (string, int) { return col, 0 }
-func (SQLite) WriteExpr(ph func() string, _ string, _ []string) (string, int)    { return ph(), 1 }
+func (SQLite) ReadExpr(col string, _ []string, _ func() string) (string, int) { return col, 0 }
+func (SQLite) WriteExpr(ph func() string, _ []string) (string, int)           { return ph(), 1 }
 
 func (SQLite) HostNow() bool { return true }
 

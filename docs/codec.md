@@ -20,20 +20,26 @@ Every AES column has a non-null integer `aes_key_version` column in the same ent
 
 A blob column with the stages `json aes` stores a JSON value encrypted with AES v2. The `json` stage writes the ordered-json text, and `aes` encrypts that text; a read decrypts the cell and returns the ordered-json value of the text, as for every `json` stage (see [Value model](#value-model)). The value keeps the member order, the number text, and an empty object apart from an empty array, so `1.50` reads back as `1.50`. The entity declares the non-null integer `aes_key_version` column.
 
-```mermaid
-erDiagram
-  service_config {
-    bigint   seq             PK "auto"
-    int      aes_key_version
-    longblob config             "json aes"
+```text
+dbspec 1 example
+
+table service_config {
+  seq i64 identity
+  aes_key_version i32
+  config bytes
+  primary key (seq)
+  settings {
+    codec config ordered_json aes
+    aes_version aes_key_version
   }
+}
 ```
 
 The keys come from the connection configuration: `AESKey`, `AESVersion`, and `AESKeys` in Go `orm.Config`; `aesKey`, `aesVersion`, and `aesKeys` in PHP `Config` and the TypeScript connection options; and `aes_key`, `aes_version`, and `aes_keys` in Rust `orm::Config`. A write encrypts with the key of the current version, `AESKeys[AESVersion]`, and records the version in `aes_key_version`; `AESKey` is that key and may be omitted when the key list holds it, and an `AESKey` that differs from it fails the connection with `CONFIG`; a read selects the key of the stored version. `utils().aes().rotate(model, keyring)` re-encrypts every row whose version differs from the keyring's current version. A `jsontext` column takes only the `json` or `jsons` stage, so an encrypted JSON value is always a blob column. Audit change rows record an AES column as `{"redacted": true, "present": true}`, never as its plaintext or ciphertext.
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
-| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | Common ordered-json `0.0.1`; Go uses `github.com/polyspec/ordered-json/go` at the version go.mod requires, and Rust/PHP/TypeScript use the root package |
+| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | Common ordered-json `0.0.1`; Go uses `github.com/polyspec/ordered-json/go` at the version go.mod requires, Rust the package of `rust/Cargo.toml`, and PHP/TypeScript the root package |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |

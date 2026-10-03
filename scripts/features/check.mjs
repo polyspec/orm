@@ -1,9 +1,13 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path, { resolve } from 'node:path';
+import { COMPUTE, runGroup, sections, stepLines } from '../../tests/testcase.mjs';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
+// 검증 명령 앞의 manifest 검사는 file을 읽고 비교하는 case 하나다.
+const log = sections();
+log.begin('features/contracts', COMPUTE);
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 const errors = [];
 const ids = new Set();
@@ -12,18 +16,25 @@ const clientStatuses = new Set(['planned', 'partial', 'pass', 'unsupported']);
 const clients = ['go', 'php', 'rust', 'typescript'];
 const databases = ['mysql', 'postgres', 'sqlite'];
 const runVerification = process.argv.includes('--run');
+// --feature <id>는 그 기능의 검증 명령만 실행한다. 검사는 여전히 모든 기능을 본다.
+const featureIndex = process.argv.indexOf('--feature');
+const onlyFeature = featureIndex >= 0 ? process.argv[featureIndex + 1] : undefined;
+if (featureIndex >= 0 && !onlyFeature) throw new Error('usage: check.mjs [--run] [--feature <id>]');
 
-const execute = (command, cwd) => new Promise((resolveRun) => {
+// execute는 명령의 출력 줄을 실행 중에 step으로 내보낸다. 명령이 실행하는 runner가 case마다
+// 시작, 결과, 경과 시간과 기한을 보고한다.
+const execute = (command, cwd, step) => new Promise((resolveRun) => {
   const child = spawn('/bin/sh', ['-c', command], { cwd, env: process.env });
-  let output = '';
-  child.stdout.on('data', chunk => { output += chunk; });
-  child.stderr.on('data', chunk => { output += chunk; });
+  const lines = stepLines(step);
+  child.stdout.on('data', chunk => lines.write(String(chunk)));
+  child.stderr.on('data', chunk => lines.write(String(chunk)));
   child.on('error', error => resolveRun({ code: 1, output: error.message }));
-  child.on('close', code => resolveRun({ code: code ?? 1, output }));
+  child.on('close', code => { lines.flush(); resolveRun({ code: code ?? 1 }); });
 });
 
 if (manifest.manifest_version !== 1) errors.push('manifest_version must be 1');
-if (manifest.contract_version !== '0.0.1') errors.push('contract_version must remain 0.0.1');
+const version = (await readFile(resolve(root, 'VERSION'), 'utf8')).trim();
+if (manifest.contract_version !== version) errors.push(`contract_version must equal VERSION ${version}`);
 if (!Array.isArray(manifest.source?.read_order) || manifest.source.read_order.length === 0) errors.push('source.read_order must be non-empty');
 for (const relative of manifest.source?.read_order ?? []) {
   try { await stat(resolve(root, relative)); }
@@ -51,6 +62,7 @@ for (const feature of manifest.features ?? []) {
     }
     for (const [index, check] of (feature.verification ?? []).entries()) {
       if (!check.id || !check.command) errors.push(`${feature.id}: verification ${index} is incomplete`);
+      if (check.exclusive !== undefined && typeof check.exclusive !== 'boolean') errors.push(`${feature.id}: verification ${index} exclusive is not a boolean`);
     }
   }
   for (const relative of [...feature.fixtures, ...feature.tests, ...feature.docs]) {
@@ -103,7 +115,7 @@ for (const feature of manifest.features ?? []) {
 // covers all clients because the conformance comparator fails when one
 // language does not run the declared vectors.
 const languageTests = {
-  go: { roots: ['clients/go', 'engine', 'internal', 'cmd', 'bench/go'], match: file => file.endsWith('_test.go') },
+  go: { roots: ['clients/go', 'engine', 'generator', 'cmd'], match: file => file.endsWith('_test.go') },
   php: { roots: ['clients/php/tests', 'tests/interfaces/php.php'], match: () => true },
   rust: { roots: ['clients/rust/orm/tests', 'clients/rust/orm-build/tests', 'clients/rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
   typescript: { roots: ['clients/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('clients/typescript/tests/') && file.endsWith('.mjs')) },
@@ -153,16 +165,44 @@ for (const [language, files] of Object.entries(existing)) {
   for (const file of files) if (!listedByFeatures.has(file)) errors.push(`${file}: ${language} test file belongs to no feature`);
 }
 
+if (onlyFeature !== undefined && !(manifest.features ?? []).some(feature => feature.id === onlyFeature)) errors.push(`unknown feature ${onlyFeature}`);
+log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
-  for (const feature of manifest.features ?? []) {
-    for (const check of feature.verification ?? []) {
-      console.log(`features: run ${feature.id}/${check.id}: ${check.command}`);
-      const result = await execute(check.command, resolve(root, check.cwd ?? '.'));
-      if (result.code !== 0) {
-        errors.push(`${feature.id}/${check.id}: command exited ${result.code}\n${result.output.trim()}`);
+  // 검증 명령은 서로 독립이다(database를 쓰는 test는 case마다 자기 database를 만든다). 그래서
+  // ORM_FEATURE_LANES개(기본 4)를 함께 실행한다. exclusive인 명령(추적되는 file을 다시 쓰는
+  // 명령)은 다른 명령과 겹치지 않도록 병렬 실행 앞에서 혼자 실행한다.
+  // 여러 기능이 같은 directory에서 같은 명령으로 검증하면(decimal, styled value, engine 검사)
+  // 명령은 처음 한 번만 실행하고, 다음 기능은 그 실행의 결과를 자기 결과로 보고한다. 같은
+  // 명령을 같은 tree에서 다시 실행해도 같은 일을 다시 할 뿐이다.
+  const lanes = Number(process.env.ORM_FEATURE_LANES ?? 4);
+  if (!(Number.isInteger(lanes) && lanes > 0)) throw new Error(`ORM_FEATURE_LANES ${process.env.ORM_FEATURE_LANES} is not a positive integer`);
+  const checks = (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)
+    .flatMap(feature => (feature.verification ?? []).map(check => ({ feature, check })));
+  const executed = new Map();
+  const verify = async ({ feature, check }) => {
+    const name = `features/${feature.id}/${check.id}`;
+    const key = JSON.stringify([check.cwd ?? '.', check.command]);
+    const previous = executed.get(key);
+    let settle;
+    if (!previous) executed.set(key, { name, done: new Promise(resolveDone => { settle = resolveDone; }) });
+    const passed = await runGroup(name, async ({ step }) => {
+      step(check.command);
+      if (previous) {
+        step(`the same command runs as ${previous.name}`);
+        if (!(await previous.done)) throw new Error(`${previous.name} failed`);
+        return;
       }
-    }
-  }
+      const result = await execute(check.command, resolve(root, check.cwd ?? '.'), step);
+      if (result.code !== 0) throw new Error(`command exited ${result.code}${result.output ? `: ${result.output}` : ''}`);
+    });
+    if (settle) settle(passed);
+    if (!passed) errors.push(`${feature.id}/${check.id}: command failed; its output is in the STEP lines above`);
+  };
+  for (const item of checks.filter(item => item.check.exclusive)) await verify(item);
+  const queue = checks.filter(item => !item.check.exclusive);
+  await Promise.all(Array.from({ length: lanes }, async () => {
+    while (queue.length > 0) await verify(queue.shift());
+  }));
 }
 
 if (errors.length) {

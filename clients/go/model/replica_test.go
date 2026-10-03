@@ -9,10 +9,13 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
 // replicaTargets returns the primary and replica DSN of MySQL and
-// PostgreSQL; the test fails when one is unset.
+// PostgreSQL; the test fails when one is unset. A case opens its own database
+// on the primary server and the same database on the replica.
 func replicaTargets(t *testing.T) map[string][2]string {
 	t.Helper()
 	out := map[string][2]string{}
@@ -32,8 +35,10 @@ func replicaTargets(t *testing.T) map[string][2]string {
 // logical message, commits after the standby has applied it; a transaction
 // that writes no WAL besides its commit record does not wait. On MySQL
 // SOURCE_POS_WAIT on the replica waits for the binary log position of the
-// primary.
-func awaitReplica(t *testing.T, driver, primary, replica string) {
+// primary. SOURCE_POS_WAIT runs on a connection to replicaServer, the
+// replica's own test database: the case database exists on the replica only
+// after the replica has applied its creation.
+func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 	t.Helper()
 	source := openNative(t, driver, primary)
 	defer source.Close()
@@ -63,7 +68,7 @@ func awaitReplica(t *testing.T, driver, primary, replica string) {
 	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
 		t.Fatal(err)
 	}
-	target := openNative(t, driver, replica)
+	target := openNative(t, driver, replicaServer)
 	defer target.Close()
 	var waited *int64
 	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 10)", file, position).Scan(&waited); err != nil {
@@ -79,26 +84,25 @@ func awaitReplica(t *testing.T, driver, primary, replica string) {
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
 func TestPrimaryAndReplica(t *testing.T) {
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testcase.Start(t, testcase.Database)
+	manifest := model.Schema
 	for driver, dsns := range replicaTargets(t) {
 		t.Run(driver, func(t *testing.T) {
-			primary, replica := dsns[0], dsns[1]
-			master, err := model.Connect(primary, schemaPath, orm.Config{})
+			// primary에 case database를 만들고 replica에서는 복제된 같은 이름의 database를 연다.
+			primary := testdb.New(t, driver)
+			replica := testdb.Retarget(t, dsns[1], testdb.DatabaseOf(t, primary))
+			master, err := model.Connect(primary, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer master.Close()
-			dropTables(t, driver, primary)
 			if err := master.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
 			name := fmt.Sprintf("replica-%d", time.Now().UnixNano())
 			must(model.User().Connect(master).SetName(name).Create())
-			awaitReplica(t, driver, primary, replica)
-			slave1, err := model.Connect(replica, schemaPath, orm.Config{})
+			awaitReplica(t, driver, primary, dsns[1])
+			slave1, err := model.Connect(replica, orm.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +135,7 @@ func TestPrimaryAndReplica(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			awaitReplica(t, driver, primary, replica)
+			awaitReplica(t, driver, primary, dsns[1])
 			if n := must(model.User().Connect(slave1).Name([]string{name + "-renamed", name + "-tx"}).GetCount()); n != 2 {
 				t.Fatalf("the replica reads %d of the 2 committed rows", n)
 			}
@@ -143,13 +147,11 @@ func TestPrimaryAndReplica(t *testing.T) {
 // that the process may only read: SQLite opens it read-only, reads succeed,
 // and a write returns READ_ONLY.
 func TestReadOnlySQLite(t *testing.T) {
-	manifest, err := os.ReadFile(schemaPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	testcase.Start(t, testcase.Database)
+	manifest := model.Schema
 	path := filepath.Join(t.TempDir(), "read-only.sqlite")
 	dsn := "sqlite://" + path
-	writable, err := model.Connect(dsn, schemaPath, orm.Config{})
+	writable, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +163,7 @@ func TestReadOnlySQLite(t *testing.T) {
 	if err := os.Chmod(path, 0o444); err != nil {
 		t.Fatal(err)
 	}
-	readOnly, err := model.Connect(dsn, schemaPath, orm.Config{})
+	readOnly, err := model.Connect(dsn, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

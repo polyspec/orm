@@ -6,18 +6,17 @@ namespace Orm\Testing;
 use Orm\Db;
 
 /**
- * The test entry point of the PHP client. The package autoloader does not map
- * this file, so a process has this class only after it requires
- * `testing/Faults.php` of the package by its path.
+ * PHP client의 test entry point다. package autoloader는 이 file을 map하지 않으므로,
+ * process는 package의 `testing/Faults.php`를 path로 require한 뒤에만 이 class를
+ * 가진다.
  */
 final class Faults
 {
     /**
-     * Arms a test fault on the connection: the next rollback of a transaction
-     * whose callback failed runs, and then reports a FAULT error as its
-     * rollback error, so the transaction throws a ROLLBACK error that keeps
-     * the callback error and the fault. The fault stays armed until such a
-     * rollback consumes it.
+     * connection에 test fault를 설정한다: callback이 실패한 다음 transaction의
+     * rollback은 실행된 뒤 rollback 오류로 FAULT 오류를 보고하므로, transaction은
+     * callback 오류와 fault를 가진 ROLLBACK 오류를 throw한다. fault는 그런
+     * rollback이 소비할 때까지 남는다.
      */
     public static function failNextRollback(Db $db): void
     {

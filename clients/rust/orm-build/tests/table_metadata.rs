@@ -5,12 +5,12 @@ use orm_build::{
 
 #[tokio::test]
 async fn qualified_table_metadata_preserves_identity_and_generated_columns() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table metadata deadline");
 }
 #[tokio::test]
 async fn mysql_system_views_are_described_without_row_identity() {
-    let started = std::time::Instant::now();
-    eprintln!("running mysql_system_view_metadata");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(10),async{
         let dsn=std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN");
         let mut catalog=CatalogConnection::connect(&dsn).await.expect("catalog connection");
@@ -20,15 +20,13 @@ async fn mysql_system_views_are_described_without_row_identity() {
         catalog.close().await;
         assert!(matches!(result,Ok(ref metadata) if metadata.kind==orm_build::catalog::TableKind::View&&!metadata.columns.is_empty()&&metadata.primary_key.is_empty()&&!metadata.reliable_row_identity),"system-view descriptor must remain read-only view metadata");
     }).await.expect("system view deadline");
-    eprintln!("passed mysql_system_view_metadata {:?}", started.elapsed());
 }
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-table-metadata-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running table_metadata:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -107,7 +105,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove owned fixture table");
         drop(seed);
         database.close().await;
-        eprintln!("finished table_metadata:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "table metadata cases failed: {failures:?}");

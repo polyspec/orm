@@ -10,9 +10,9 @@
 
 | 명세 호출 | Rust API와 동작 |
 |---|---|
-| 엔진 선택과 연결 | `Db::connect(dsn, pool_size, Config)`가 DSN에서 MySQL·PostgreSQL·SQLite를 선택하고 제한된 pool을 만든다. |
-| 스키마 해시 검사 | 생성된 `Schema::new(schema_json, schema_hash)`가 내장 manifest를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
-| 스키마 설치와 검사 | `db.utils().schema().install(manifest)`가 manifest를 설치하고 `exists`, `installed`, `empty`가 선택한 데이터베이스를 검사한다. manifest의 감사 지시어는 감사 테이블·trigger와 함께 설치된다. |
+| 엔진 선택과 연결 | `Db::connect(dsn, pool_size, Config)`가 DSN에서 MySQL·PostgreSQL·SQLite를 선택하고 등록된 set 없이 제한된 pool을 만든다. 생성된 `model::connect`가 부르는 `Db::connect_schema(dsn, &SCHEMA, pool_size, Config)`는 생성 모델의 set도 등록한다. |
+| 스키마 해시 검사 | 생성된 `Schema::new(manifest_text, manifest_hash)`가 내장 manifest text를 검증하며, 해시가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 거부한다. |
+| 스키마 설치와 검사 | `db.utils().schema().install(&model::SCHEMA)`가 set을 설치하고 연결에 등록하며 `exists`, `installed`, `empty`가 선택한 데이터베이스를 검사한다. manifest의 감사 지시어는 감사 테이블·trigger와 함께 설치된다. |
 | 트랜잭션 격리 수준·읽기 전용·시간 제한·재시도 | `db.transaction(callback).isolation(Isolation::...).read_only().timeout_ms(ms).retry(count)`가 선언된 옵션을 적용하며 `retry(0)`은 콜백을 한 번 실행한다. `Db::transaction_once`는 콜백 오류를 보존하고 재시도하지 않는다. |
 | 취소 | 문장 또는 트랜잭션 Future를 폐기하면 확인된 연결을 닫아 서버 작업을 취소하거나 롤백한 뒤 슬롯을 재사용하며, 드라이버 취소는 `CANCELED`로 대응한다. |
 | 암호화 열 | `Config::aes_version`, `Config::aes_keys`, `Config::blind_index_key`, `db.utils().aes()`가 생성된 암호화 열의 키 검증·암호화 쓰기·blind index·상태·회전을 제공한다. |
@@ -23,7 +23,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 | 인터페이스 | 구현과 검증 |
 |---|---|
 | IF-01, IF-18, IF-32 | 각 client는 같은 planner의 이식본으로 자기 process에서 request를 계획하고 모델의 schema hash를 확인한다. conformance 벡터가 네 client의 계획된 SQL과 bind를 비교한다. `tests/interfaces/check`는 Go, PHP, Rust, TypeScript의 request 레코드 20개를 필드 단위로 비교한다 |
-| IF-02 | 컬럼 값은 논리 타입을 유지한다. `TestConnectionTimeZone`과 PHP·TypeScript 대응 사례가 세 데이터베이스 네 시간대의 날짜·시각 값을 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
+| IF-02 | 컬럼 값은 논리 타입을 유지한다. `TestConnectionsUseUTC`와 PHP·TypeScript·Rust 대응 사례가 SQLite와 서버 시간대를 KST로 설정한 MySQL·PostgreSQL에서 날짜·시각 값을 UTC로 쓰고 읽는지 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
 | IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
 | IF-09 ~ IF-12 | 모델 메서드 22개를 언어별로 고정한다. Go는 생성 모델, PHP와 TypeScript는 기반 클래스, Rust는 `orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, AES 유틸리티를 언어별로 고정한다. `transactions` 벡터와 client 트랜잭션 테스트가 savepoint, 행 잠금, 이름 잠금, 지역 값을 검사한다 |

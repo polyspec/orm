@@ -15,10 +15,11 @@ use crate::driver::{child_keys, first_cell, parent_values, positional, relation_
 use crate::ir;
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
-use crate::schema::{EntitySchema, Schema};
+use crate::schema::Schema;
 use crate::tx::resolve;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
+use orm_schema::dbspec;
 
 /// Implemented by every generated model.
 pub trait Model: Clone + Send + Sync + 'static {
@@ -78,8 +79,8 @@ pub struct Entity {
 }
 
 impl Entity {
-    /// The manifest entry of the model.
-    pub fn entity_schema(&self) -> Result<EntitySchema> {
+    /// runtime model의 entity.
+    pub fn entity_schema(&self) -> Result<dbspec::Entity> {
         Ok(self.schema.manifest()?.entity(self.name)?.clone())
     }
 }
@@ -126,21 +127,38 @@ impl RowState {
 }
 
 impl Core {
-    /// The related row of a relation or join result.
-    pub fn related_one<M: Model>(&self, name: &str) -> Option<&M> {
-        match &self.row.as_ref()?.related.get(name)?.value {
-            RelatedValue::One(Some(m)) => m.as_any().downcast_ref::<M>(),
-            _ => None,
+    /// The related row of a relation or join result. A row without the result
+    /// or without a related row is `None`; a stored value of another model type
+    /// or a collection is `INTERNAL`.
+    pub fn related_one<M: Model>(&self, name: &str) -> Result<Option<&M>> {
+        let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
+        match &related.value {
+            RelatedValue::One(None) => Ok(None),
+            // 다른 model type을 None으로 버리지 않고 보고한다.
+            RelatedValue::One(Some(m)) => {
+                m.as_any().downcast_ref::<M>().map(Some).ok_or_else(|| related_mismatch::<M>(name, &format!("a row of {}", m.core_dyn().ent.name)))
+            }
+            RelatedValue::Many(_) => Err(related_mismatch::<M>(name, "a collection")),
         }
     }
 
-    /// The related rows of a relation result.
-    pub fn related_many<M: Model>(&self, name: &str) -> Option<&Collection<M>> {
-        match &self.row.as_ref()?.related.get(name)?.value {
-            RelatedValue::Many(c) => c.as_any().downcast_ref::<Collection<M>>(),
-            _ => None,
+    /// The related rows of a relation result. A row without the result is
+    /// `None`; a stored collection of another model type or a single row is
+    /// `INTERNAL`.
+    pub fn related_many<M: Model>(&self, name: &str) -> Result<Option<&Collection<M>>> {
+        let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
+        match &related.value {
+            RelatedValue::Many(c) => {
+                c.as_any().downcast_ref::<Collection<M>>().map(Some).ok_or_else(|| related_mismatch::<Collection<M>>(name, "a collection of another model"))
+            }
+            RelatedValue::One(_) => Err(related_mismatch::<Collection<M>>(name, "a single row")),
         }
     }
+}
+
+/// relation result name에 저장된 값이 요청한 type T와 다를 때의 INTERNAL error.
+fn related_mismatch<T>(name: &str, stored: &str) -> Error {
+    Error::internal(format!("relation result {name} holds {stored}, not {}", std::any::type_name::<T>()))
 }
 
 pub(crate) fn val_param(v: &Val) -> Param {
@@ -153,7 +171,6 @@ pub(crate) fn val_param(v: &Val) -> Param {
         Val::DateTime(t) => Param::DateTime(*t),
         Val::Date(d) => Param::Date(*d),
         Val::Bool(b) => Param::Bool(*b),
-        Val::Point(point) => Param::Point(*point),
         Val::Json(j) => Param::Str(j.to_string()),
         Val::Ordered(j) => Param::Str(j.compact()),
     }
@@ -169,7 +186,6 @@ pub(crate) fn param_val(p: &Param) -> Val {
         Param::Bytes(b) => Val::Bytes(b.clone()),
         Param::DateTime(t) => Val::DateTime(*t),
         Param::Date(d) => Val::Date(*d),
-        Param::Point(p) => Val::Point(*p),
     }
 }
 
@@ -384,7 +400,7 @@ impl<'a> Assembler<'a> {
             st.original.insert(name, val_param(&value));
         }
         let ent = b.ent.entity_schema()?;
-        let updated = ent.updated_column();
+        let updated = ent.updated.as_deref().unwrap_or("");
         if !updated.is_empty() && st.names.iter().any(|n| n == updated) {
             let value = m
                 .value_dyn(updated)
@@ -523,6 +539,31 @@ fn value_key(v: &Option<Val>) -> Result<String> {
     })
 }
 
+/// model의 relation key 성분 값을 key 순서로 반환한다. 부모 쪽은 `child`가 false,
+/// 자식 쪽은 true다. 성분 하나라도 null이면 None이다.
+fn match_values(m: &dyn AnyModel, ch: &Core, child: bool) -> Option<Vec<Val>> {
+    ch.matches
+        .iter()
+        .map(|&(left, right)| match m.value_dyn(if child { right } else { left }) {
+            None | Some(Val::Null) => None,
+            Some(v) => Some(v),
+        })
+        .collect()
+}
+
+/// relation key 성분 값의 key. 성분 하나는 그 값의 key이고, composite key는 성분 key를 길이와 함께 잇는다.
+fn match_key(values: &[Val]) -> Result<String> {
+    if let [v] = values {
+        return value_key(&Some(v.clone()));
+    }
+    let mut out = String::new();
+    for v in values {
+        let part = value_key(&Some(v.clone()))?;
+        out.push_str(&format!("{}:{part}", part.len()));
+    }
+    Ok(out)
+}
+
 /// Runs a relation whose child has its own connection and attaches the rows.
 async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Result<()> {
     let ch = &rel.child;
@@ -541,18 +582,25 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         if !allowed(p.as_ref())? {
             continue;
         }
-        let v = p.value_dyn(&ch.match_left);
-        if matches!(v, None | Some(Val::Null)) || !seen.insert(value_key(&v)?) {
+        let Some(v) = match_values(p.as_ref(), ch, false) else { continue };
+        if !seen.insert(match_key(&v)?) {
             continue;
         }
-        values.push(val_param(v.as_ref().unwrap()));
+        values.push(v.iter().map(val_param).collect::<Vec<_>>());
     }
     let mut by_key: HashMap<String, Boxed> = HashMap::new();
     if !values.is_empty() {
         let mut q = (**ch).clone();
-        q.match_left.clear();
+        q.matches.clear();
         q.alias.clear();
-        let pred = CondNode { conn: "", kind: CondKind::Pred(PredSpec { column: ch.match_right.clone(), op: "in", value: PredValue::List(values) }) };
+        let rights: Vec<&'static str> = ch.matches.iter().map(|&(_, right)| right).collect();
+        // composite key는 자식 key column 전체를 tuple로 거른다.
+        let spec = if rights.len() == 1 {
+            PredSpec { column: rights[0].into(), op: "in", value: PredValue::List(values.into_iter().flatten().collect()) }
+        } else {
+            PredSpec { column: String::new(), op: "tuple_in", value: PredValue::Tuples(rights, values) }
+        };
+        let pred = CondNode { conn: "", kind: CondKind::Pred(spec) };
         if q.where_.items.is_empty() {
             q.where_ = CondGroup { items: vec![pred], pending: "" };
         } else {
@@ -561,7 +609,8 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         }
         let rows = Box::pin(load(&q, "all")).await?;
         for (k, m) in rows.items {
-            let key = value_key(&m.value_dyn(&ch.match_right))?;
+            let Some(v) = match_values(m.as_ref(), ch, true) else { continue };
+            let key = match_key(&v)?;
             let list = by_key.entry(key).or_default();
             if ch.group_limit > 0 && list.len() >= ch.group_limit as usize {
                 continue;
@@ -572,8 +621,10 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
     let shared: HashMap<String, Shared> = by_key.into_iter().map(|(k, v)| (k, v.into_iter().map(|(key, m)| (key, Arc::from(m))).collect())).collect();
     let name = result_name(ch, rel.many);
     for p in parents.iter_mut() {
-        let matched: Shared =
-            if allowed(p.as_ref())? { shared.get(&value_key(&p.value_dyn(&ch.match_left))?).cloned().unwrap_or_default() } else { Vec::new() };
+        let matched: Shared = match (allowed(p.as_ref())?, match_values(p.as_ref(), ch, false)) {
+            (true, Some(v)) => shared.get(&match_key(&v)?).cloned().unwrap_or_default(),
+            _ => Vec::new(),
+        };
         let st = p.core_dyn_mut().row.get_or_insert_with(RowState::default);
         if st.related.contains_key(&name) {
             return Err(config(format!("relation result name {name} is used twice")));
@@ -767,17 +818,17 @@ fn write_req(c: &Core, kind: &str) -> Req {
     Req::new(c.ent.schema, kind, c.ent.name)
 }
 
-fn encode(ent: &EntitySchema, column: &str, v: &serde_json::Value) -> Result<Param> {
-    let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode(&col.codec_styles(), crate::StyledValue::Value(v))
+fn encode(ent: &dbspec::Entity, column: &str, v: &serde_json::Value) -> Result<Param> {
+    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    crate::codec::encode(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
-fn encode_ordered(ent: &EntitySchema, column: &str, v: &ordered_json::Value) -> Result<Param> {
-    let col = ent.column(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
-    crate::codec::encode_ordered(&col.codec_styles(), crate::StyledValue::Value(v))
+fn encode_ordered(ent: &dbspec::Entity, column: &str, v: &ordered_json::Value) -> Result<Param> {
+    let col = ent.field(column).ok_or_else(|| Error::Engine { code: codes::COLUMN_UNKNOWN.into(), msg: format!("{}.{column}", ent.name) })?;
+    crate::codec::encode_ordered(&crate::codec::executor_stages(&col.codec), crate::StyledValue::Value(v))
 }
 
-fn assign(r: &mut Req, ent: &EntitySchema, s: &SetSpec) -> Result<ir::Assign> {
+fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> {
     let mut a = ir::Assign { column: s.column.clone(), ..Default::default() };
     match &s.value {
         SetValue::Null => a.null = true,
@@ -859,13 +910,13 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    if !ent.auto.is_empty() {
-        st.add_name(&ent.auto);
+    if let Some(identity) = &ent.identity {
+        st.add_name(identity);
         let id = i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?;
-        assign_model(&mut out, &ent.auto, Val::I64(id))?;
+        assign_model(&mut out, identity, Val::I64(id))?;
     }
     st.loaded = true;
-    for pk in &ent.pk {
+    for pk in &ent.primary_key {
         match out.value(pk) {
             Some(v) if !matches!(v, Val::Null) && !(matches!(v, Val::I64(0))) && !(matches!(&v, Val::Str(s) if s.is_empty())) => {
                 st.original.insert(pk.clone(), val_param(&v));
@@ -942,10 +993,10 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
     .await
 }
 
-fn key_values(c: &Core, ent: &EntitySchema) -> Result<HashMap<String, Param>> {
+fn key_values(c: &Core, ent: &dbspec::Entity) -> Result<HashMap<String, Param>> {
     let mut keys = HashMap::new();
     let loaded = c.row.as_ref().map(|r| r.loaded).unwrap_or(false);
-    for pk in &ent.pk {
+    for pk in &ent.primary_key {
         if loaded {
             if let Some(v) = c.row.as_ref().unwrap().original.get(pk) {
                 keys.insert(pk.clone(), v.clone());
@@ -966,9 +1017,9 @@ fn key_values(c: &Core, ent: &EntitySchema) -> Result<HashMap<String, Param>> {
     Ok(keys)
 }
 
-fn key_where(req: &mut Req, ent: &EntitySchema, keys: &HashMap<String, Param>) {
+fn key_where(req: &mut Req, ent: &dbspec::Entity, keys: &HashMap<String, Param>) {
     let mut g = ir::Group::default();
-    for (i, pk) in ent.pk.iter().enumerate() {
+    for (i, pk) in ent.primary_key.iter().enumerate() {
         let p = req.p(keys[pk].clone());
         g.items.push(ir::Item::Pred {
             pred: Box::new(ir::Pred {
@@ -985,18 +1036,18 @@ fn key_where(req: &mut Req, ent: &EntitySchema, keys: &HashMap<String, Param>) {
 
 /// The sets of an update plus the other AES columns of the row when one AES
 /// column changes, so every AES column is written with the same key version.
-fn with_aes_columns<M: Model>(m: &M, ent: &EntitySchema) -> Result<Vec<SetSpec>> {
+fn with_aes_columns<M: Model>(m: &M, ent: &dbspec::Entity) -> Result<Vec<SetSpec>> {
     let c = m.core();
     let mut sets = c.sets.clone();
-    if ent.aes_version.is_empty() {
+    if ent.aes_version.is_none() {
         return Ok(sets);
     }
-    let changed = c.sets.iter().any(|s| ent.column(&s.column).map(|col| col.is_aes()).unwrap_or(false));
+    let changed = c.sets.iter().any(|s| ent.field(&s.column).map(|col| col.aes()).unwrap_or(false));
     if !changed {
         return Ok(sets);
     }
-    for col in &ent.columns {
-        if !col.is_aes() || c.sets.iter().any(|s| s.column == col.name) {
+    for col in &ent.fields {
+        if !col.aes() || c.sets.iter().any(|s| s.column == col.name) {
             continue;
         }
         let loaded = c.row.as_ref().map(|r| r.names.iter().any(|n| n == &col.name)).unwrap_or(false);
@@ -1025,7 +1076,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
     let keys = key_values(c, &ent)?;
     let loaded = c.row.as_ref().map(|r| r.loaded).unwrap_or(false);
     for s in with_aes_columns(m, &ent)? {
-        if !loaded && ent.pk.contains(&s.column) {
+        if !loaded && ent.primary_key.contains(&s.column) {
             continue;
         }
         let a = assign(&mut req, &ent, &s)?;
@@ -1035,7 +1086,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         return Ok(());
     }
     key_where(&mut req, &ent, &keys);
-    let column = ent.updated_column().to_owned();
+    let column = ent.updated.clone().unwrap_or_default();
     if optimistic {
         let version = c.row.as_ref().filter(|_| loaded && !column.is_empty()).and_then(|r| r.original.get(&column)).cloned();
         let Some(version) = version else {
@@ -1051,7 +1102,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         let changes: Vec<(String, Param)> = c
             .sets
             .iter()
-            .filter(|s| ent.pk.contains(&s.column))
+            .filter(|s| ent.primary_key.contains(&s.column))
             .filter_map(|s| match &s.value {
                 SetValue::Value(v) => Some((s.column.clone(), v.clone())),
                 _ => None,
@@ -1254,10 +1305,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
 }
 
 fn styled_column(c: &Core, name: &str) -> Result<bool> {
-    Ok(c.ent
-        .entity_schema()?
-        .column(name)
-        .is_some_and(|column| column.typ == "jsontext" || column.styles.iter().any(|style| matches!(style.as_str(), "json" | "jsons" | "serialize" | "yaml"))))
+    Ok(c.ent.entity_schema()?.field(name).is_some_and(|column| column.styled_value()))
 }
 
 fn missing_output_column(c: &Core, name: &str) -> Error {
@@ -1275,9 +1323,92 @@ mod column_decode_tests {
 
     #[test]
     fn decoded_cell_failure_names_the_column() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
         let error = Error::Engine { code: codes::CODEC_DECODE.into(), msg: "non-null JSON column received NULL".into() };
         let error = column_decode_error("author", "jsons_tags", error);
         assert_eq!(error.code(), codes::CODEC_DECODE);
         assert_eq!(error.to_string(), "CODEC_DECODE: author.jsons_tags: non-null JSON column received NULL");
+    }
+}
+#[cfg(test)]
+mod related_tests {
+    use super::{collect_boxed, new_boxed, Core, Entity, Model, Related, RelatedValue, RowState, Schema, Val};
+    use crate::{codes, Result};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    static SCHEMA: Schema = Schema::new("", "");
+    static LEFT: Entity = Entity { name: "left", schema: &SCHEMA, new: new_boxed::<Left>, collect: collect_boxed::<Left> };
+    static RIGHT: Entity = Entity { name: "right", schema: &SCHEMA, new: new_boxed::<Right>, collect: collect_boxed::<Right> };
+
+    macro_rules! test_model {
+        ($name:ident, $entity:ident) => {
+            #[derive(Clone)]
+            struct $name(Core);
+            impl Model for $name {
+                fn entity() -> &'static Entity {
+                    &$entity
+                }
+                fn core(&self) -> &Core {
+                    &self.0
+                }
+                fn core_mut(&mut self) -> &mut Core {
+                    &mut self.0
+                }
+                fn from_core(core: Core) -> Self {
+                    $name(core)
+                }
+                fn into_core(self) -> Core {
+                    self.0
+                }
+                fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
+                    Ok(false)
+                }
+                fn value(&self, _: &str) -> Option<Val> {
+                    None
+                }
+            }
+        };
+    }
+    test_model!(Left, LEFT);
+    test_model!(Right, RIGHT);
+
+    /// one, 빈 one, many relation result를 가진 Left row.
+    fn parent() -> Core {
+        let mut row = RowState::default();
+        let mut put = |name: &str, value: RelatedValue| {
+            row.related.insert(name.to_owned(), Related { value, cascade: false, flat: false });
+        };
+        put("one", RelatedValue::One(Some(Arc::new(Right(Core::new(&RIGHT))))));
+        put("empty", RelatedValue::One(None));
+        put("many", RelatedValue::Many(collect_boxed::<Right>(Vec::new(), HashMap::new())));
+        let mut core = Core::new(&LEFT);
+        core.row = Some(row);
+        core
+    }
+
+    /// 저장된 relation 값을 다른 model type이나 다른 relation 종류로 읽으면 INTERNAL이다.
+    #[test]
+    fn relation_results_report_a_mismatched_value() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let core = parent();
+        assert!(core.related_one::<Right>("one").unwrap().is_some());
+        assert!(core.related_one::<Right>("empty").unwrap().is_none());
+        assert!(core.related_one::<Right>("absent").unwrap().is_none());
+        assert!(core.related_many::<Right>("many").unwrap().is_some());
+        assert!(core.related_many::<Right>("absent").unwrap().is_none());
+        assert!(Core::new(&LEFT).related_one::<Right>("one").unwrap().is_none());
+        for (error, names) in [
+            (core.related_one::<Left>("one").map(|_| ()).unwrap_err(), ["one", "Left"]),
+            (core.related_one::<Right>("many").map(|_| ()).unwrap_err(), ["many", "Right"]),
+            (core.related_many::<Left>("many").map(|_| ()).unwrap_err(), ["many", "Left"]),
+            (core.related_many::<Right>("one").map(|_| ()).unwrap_err(), ["one", "Right"]),
+            (core.related_many::<Right>("empty").map(|_| ()).unwrap_err(), ["empty", "Right"]),
+        ] {
+            assert_eq!(error.code(), codes::INTERNAL, "{error}");
+            for name in names {
+                assert!(error.to_string().contains(name), "{error} does not name {name}");
+            }
+        }
     }
 }

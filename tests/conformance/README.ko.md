@@ -39,6 +39,9 @@ go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 `check run`은 `-dsn`이 필요하며 네 실행기에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, 존재할 때 SQLite `sqlite_sequence` 테이블을 읽는다. `AUTOINCREMENT` 테이블이 없는 SQLite 데이터베이스에는 sequence counter가 없으며 검사기는 모든 행을 계속 읽고 다른 질의 오류를 보고한다. 쓰기 벡터가 삽입하는 네 테이블의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
 비어 있는 SQLite `AUTOINCREMENT` 테이블에는 아직 `sqlite_sequence` 항목이 없을 수 있다. counter 테스트는 테이블 정의를 확인하고 첫 삽입으로 생긴 counter를 관찰한 뒤 원래의 항목 부재 상태로 복원한다.
 
+
+각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript는 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. 각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
+
 `check compare`는 저장된 파일을 비교하며 실행기가 현재 실행됐다는 증거가 아니다. 네 클라이언트의 출력이 정확히 하나씩 필요하다. `check run`은 시작할 때 이전 생성 출력을 제거하고 반복 실행, 상태 검사, 기대값 비교가 모두 통과한 뒤에만 네 출력 파일을 게시한다. 실패하면 현재 진단 파일을 `.run-*` 디렉터리에 남기되 검증된 출력으로 다루지 않는다. `check record -driver <db>`는 네 출력에 선언된 벡터만 있고 결과가 모두 같을 때만 기대값을 갱신한다. 거부된 출력은 기대값 파일을 변경하지 않는다.
 
 각 클라이언트는 자기 프로세스에서 SQL을 조립한다. `check run`은 실행기가 bench 데이터베이스를 쓰는 동안 디렉터리 잠금 `/tmp/orm-conformance.lock`을 잡으며, 두 번째 실행은 기다리지 않고 실패한다.

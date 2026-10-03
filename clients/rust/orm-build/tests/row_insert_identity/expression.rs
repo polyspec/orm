@@ -4,8 +4,8 @@ use orm_build::{
     tool_db::{self, Conn, GridCell, P},
 };
 use std::sync::{
-    Arc,
     atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
 pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, table: &TableRef, name: &str, dialect: &str) -> Vec<String> {

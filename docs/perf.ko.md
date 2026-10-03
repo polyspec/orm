@@ -29,12 +29,12 @@
 
 ## 3. 회귀 검사 (`make perf-check`)
 
-검사는 한 프로세스에서 생성 클라이언트와 같은 결과의 네이티브 코드를 측정한다. 준비 작업 100쌍 뒤에 순서를 번갈아 바꾸는 인접한 1,000쌍을 측정하고, 쌍별 client/native 비율의 중앙값을 한도와 비교한다. 한 쌍을 느리게 하는 부하는 그 쌍의 양쪽을 함께 느리게 하므로 중앙값 비율은 기계 부하를 따르지 않는다. 각 검사는 CPU마다 바쁜 프로세스 하나를 함께 실행한 상태(`TestHotPathGateUnderLoad`, PHP 검사는 `ORM_PERF_CPU_LOAD=1`)에서도 실행하며 그 상태에서도 통과해야 한다. 양쪽은 같은 non-lazy 컬럼을 선택한다. 모든 클라이언트의 네이티브 쪽은 타입 변환까지 수행한다. PHP 기준 코드는 셀을 디코딩하고 클라이언트 조립과 같은 타입 변환으로 행 값을 만든다. 비율은 클라이언트 기계 부분만 잰다. 모델 객체 생성은 행당 약 0.1µs로 측정된 클라이언트 작업이며 클라이언트 쪽에 남는다. 중앙값 비율이 한도를 넘으면 CI가 실패한다.
+검사는 한 프로세스에서 생성 클라이언트와 같은 결과의 네이티브 코드를 측정한다. 준비 작업 100쌍 뒤에 순서를 번갈아 바꾸는 인접한 1,000쌍을 측정하고, 쌍별 client/native 비율의 중앙값을 한도와 비교한다. 한 쌍을 느리게 하는 부하는 그 쌍의 양쪽을 함께 느리게 하므로 중앙값 비율은 기계 부하를 따르지 않는다. 각 검사는 CPU마다 바쁜 프로세스 하나를 함께 실행한 상태(`TestHotPathGateUnderLoad`, PHP 검사는 `ORM_PERF_CPU_LOAD=1`)에서도 실행하며 그 상태에서도 통과해야 한다. 양쪽은 같은 SQL text를 실행한다. `make perf-check`는 gate 전에 Go 네이티브 statement를 생성 클라이언트가 실행하는 statement와 비교하는 `TestNativeStatementsEqualClient`와 모든 네이티브 읽기 workload를 벤치 데이터베이스에서 실행하는 `TestNativeWorkloadsRead`를 실행한다. 모든 클라이언트의 네이티브 쪽은 타입 변환까지 수행한다. PHP 기준 코드는 셀을 디코딩하고 클라이언트 조립과 같은 타입 변환으로 행 값을 만든다. 비율은 클라이언트 기계 부분만 잰다. 모델 객체 생성은 행당 약 0.1µs로 측정된 클라이언트 작업이며 클라이언트 쪽에 남는다. 중앙값 비율이 한도를 넘으면 CI가 실패한다.
 
 | 클라이언트 | PK 한도 | 100행 한도 | 검사 |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `bench/go` `TestHotPathGate` |
-| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php <schema.json>` |
+| Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `clients/go/bench` `TestHotPathGate` |
+| PHP | 1.35 | 1.25 | `clients/php/tests/perf_gate.php` |
 
 두 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드된 벤치 데이터베이스를 읽는다. Go 검사는 `ORM_RUN_PERF_GATE=1`일 때 실행된다. `ORM_BENCH_MYSQL_DSN` 없이 실행한 검사는 그 변수 명칭을 출력하고 실패하며, 어떤 벤치 테스트도 로컬 서버로 대신하지 않는다.
 
@@ -51,7 +51,7 @@
 | PK 행 | 58.840µs | 61.825µs | 1.051 |
 | 100행 목록 | 1.180ms | 1.113ms | 0.943 |
 
-`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 프로그램을 컴파일하며, 지연 시간은 CI 통과 조건이 아니다.
+`bench/rust`에서 `cargo run --release --locked --bin driver_compare -- 1000`을 실행한다. 반복 횟수는 `native`, `driver_compare`, `client_bench`의 필수 인자다. 인자가 없거나 program의 최소값(3, 10, 1) 이상의 정수가 아니면 program은 연결하기 전에 status 1로 끝난다. 드라이버 교체에는 측정된 2배 개선이 필요하다. 두 작업 모두 조건을 충족하지 않으므로 Rust 클라이언트는 sqlx를 유지한다. `make rust-driver-check`는 `driver_compare`와 sqlx 기준 `native`를 `ORM_BENCH_MYSQL_DSN`의 시드된 벤치 데이터베이스에서 적은 반복 횟수로 실행하고, 둘 다 모든 작업의 row를 읽고 status 0으로 끝나지 않으면 실패한다. 지연 시간은 CI 통과 조건이 아니다.
 
 ## 5. 최신 기준 실행
 

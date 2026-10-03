@@ -1,120 +1,66 @@
-//! The parts of schema.json the generator reads.
+//! generator가 읽는 dbspec document set: manifest text, `manifestHash`, runtime model
+//! (docs/dbspec.md, "Manifest and hashes", "Runtime model").
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::path::Path;
 
-use serde::Deserialize;
-use sha2::{Digest, Sha256};
+use orm_schema::dbspec::{self, Document, Field, RuntimeModel};
 
-#[derive(Deserialize, Debug)]
-pub struct Manifest {
-    pub schema_hash: String,
-    #[serde(default)]
-    pub order: Vec<String>,
-    pub entities: HashMap<String, Entity>,
+/// 한 document set의 manifest와 runtime model.
+pub struct DocumentSet {
+    pub manifest_text: String,
+    pub manifest_hash: String,
+    pub model: RuntimeModel,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Entity {
-    pub name: String,
-    pub columns: Vec<Column>,
-    #[serde(default)]
-    pub indexes: BTreeMap<String, Vec<String>>,
-    #[serde(default)]
-    pub fulltext: Vec<Vec<String>>,
+fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
+    errors.iter().map(|e| format!("{path}: {e}")).collect::<Vec<_>>().join("\n")
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Column {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub typ: String,
-    #[serde(default)]
-    pub nullable: bool,
-    #[serde(default)]
-    pub styles: Vec<String>,
-    #[serde(default)]
-    pub precision: u8,
-    #[serde(default)]
-    pub scale: u8,
+/// `paths`의 dbspec document를 `dbspec::read_file`로 읽는다. 각 document는 나머지 document를 declared
+/// document set으로 삼아 parse한다.
+pub fn load(paths: &[&Path]) -> Result<DocumentSet, String> {
+    if paths.is_empty() {
+        return Err("the document set has no dbspec document".into());
+    }
+    let mut texts = Vec::with_capacity(paths.len());
+    for path in paths {
+        // signature가 없는 파일은 parse 전에 dbspec::read_file의 diagnostic으로 실패한다.
+        let text = dbspec::read_file(path).map_err(|e| match e {
+            dbspec::ReadError::Io(error) => format!("{}: {error}", path.display()),
+            dbspec::ReadError::Diagnostics(errors) => diagnostics(&path.display().to_string(), errors),
+        })?;
+        let name = text.lines().next().and_then(|header| header.split(' ').nth(2)).unwrap_or("").to_owned();
+        texts.push((path.display().to_string(), name, text));
+    }
+    let set: BTreeMap<String, String> = texts.iter().map(|(_, name, text)| (name.clone(), text.clone())).collect();
+    let mut documents: Vec<Document> = Vec::with_capacity(texts.len());
+    for (path, _, text) in &texts {
+        documents.push(dbspec::parse(text, &set).map_err(|errors| diagnostics(path, errors))?);
+    }
+    let refs: Vec<&Document> = documents.iter().collect();
+    let manifest = dbspec::manifest(&refs).map_err(|errors| diagnostics("document set", errors))?;
+    let model = dbspec::runtime_model(&refs).map_err(|errors| diagnostics("document set", errors))?;
+    Ok(DocumentSet { manifest_text: manifest.manifest_text, manifest_hash: manifest.manifest_hash, model })
 }
 
-impl Manifest {
-    pub fn load(text: &str) -> Result<Manifest, String> {
-        let m: Manifest = serde_json::from_str(text).map_err(|e| format!("schema manifest: {e}"))?;
-        let hash = content_hash(text).ok_or("schema manifest must start with schema_hash")?;
-        if hash != m.schema_hash {
-            return Err(format!("schema.json was edited by hand: hash {} does not match content {hash}", m.schema_hash));
-        }
-        for entity in m.entities.values() {
-            for column in &entity.columns {
-                if column.typ == "decimal" && (!(1..=18).contains(&column.precision) || column.scale > column.precision) {
-                    return Err(format!("{}.{}: decimal precision must be 1..18 and scale 0..precision", entity.name, column.name));
-                }
-            }
-        }
-        for name in &m.order {
-            if !m.entities.contains_key(name) {
-                return Err(format!("schema manifest: order names unknown entity {name}"));
-            }
-        }
-        Ok(m)
-    }
-
-    pub fn entities(&self) -> impl Iterator<Item = &Entity> {
-        self.order.iter().map(|n| &self.entities[n])
-    }
+/// executor codec이 적용하는 stage (`aes`, `hex`, `ip`는 빠진다).
+pub fn executor_stages(c: &Field) -> impl Iterator<Item = &str> {
+    c.codec.iter().map(String::as_str).filter(|s| !matches!(*s, "aes" | "hex" | "ip"))
 }
 
-impl Entity {
-    pub fn column(&self, name: &str) -> Option<&Column> {
-        self.columns.iter().find(|c| c.name == name)
-    }
+/// executor codec stage가 있는 column.
+pub fn styled(c: &Field) -> bool {
+    executor_stages(c).next().is_some()
 }
 
-impl Column {
-    /// The style stages the executor applies (aes, hex, and ip are not among them).
-    pub fn client_styles(&self) -> impl Iterator<Item = &str> {
-        self.styles.iter().map(String::as_str).filter(|s| !matches!(*s, "aes" | "hex" | "ip"))
-    }
-
-    pub fn styled(&self) -> bool {
-        self.client_styles().next().is_some()
-    }
-
-    pub fn numeric(&self) -> bool {
-        !self.styled() && matches!(self.typ.as_str(), "i32" | "i64" | "f64" | "decimal")
-    }
-
-    /// Columns that accept column functions.
-    pub fn function_column(&self) -> bool {
-        !self.styled() && matches!(self.typ.as_str(), "date" | "datetime" | "point")
-    }
+pub fn numeric(c: &Field) -> bool {
+    !styled(c) && matches!(c.ty.name(), "i16" | "i32" | "i64" | "f64" | "decimal")
 }
 
-/// SHA-256 of the compact manifest with an empty schema_hash, first 8 bytes.
-fn content_hash(text: &str) -> Option<String> {
-    let mut compact = String::with_capacity(text.len());
-    let (mut in_string, mut escaped) = (false, false);
-    for ch in text.chars() {
-        if in_string {
-            compact.push(ch);
-            if escaped {
-                escaped = false;
-            } else if ch == '\\' {
-                escaped = true;
-            } else if ch == '"' {
-                in_string = false;
-            }
-        } else if !ch.is_ascii_whitespace() {
-            in_string = ch == '"';
-            compact.push(ch);
-        }
-    }
-    let head = "{\"schema_hash\":\"";
-    let rest = compact.strip_prefix(head)?;
-    let end = rest.find('"')?;
-    let sum = Sha256::digest(format!("{head}{}", &rest[end..]).as_bytes());
-    Some(sum[..8].iter().map(|b| format!("{b:02x}")).collect())
+/// column function을 받는 column.
+pub fn function_column(c: &Field) -> bool {
+    !styled(c) && matches!(c.ty.name(), "date" | "datetime")
 }
 
 const RESERVED_SEGMENTS: &[&str] = &["and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"];

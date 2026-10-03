@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestAggregateNumericFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "aggregate_numeric.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -93,6 +95,7 @@ func mustInt64(v any) int64 {
 }
 
 func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, v := range []any{nil, "bad", "1.5", uint64(math.MaxUint64), math.Inf(1)} {
 		if _, err := orm.AsInt64(v); err == nil {
 			t.Errorf("AsInt64(%#v) accepted an invalid integer", v)
@@ -121,12 +124,40 @@ func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 			t.Errorf("AsBytes(%#v) accepted invalid bytes", v)
 		}
 	}
-	if _, err := orm.AsPoint("POINT(bad 2)"); err == nil {
-		t.Error("AsPoint accepted invalid coordinates")
+	for _, v := range []any{nil, int64(40000), int64(-32769), "1.5"} {
+		if _, err := orm.AsInt16(v); err == nil {
+			t.Errorf("AsInt16(%#v) accepted an invalid i16", v)
+		}
+	}
+	for _, c := range []struct {
+		value     any
+		precision int
+	}{{"24:00:00", 0}, {"10:60:00", 0}, {"10:20:30.1234", 3}, {"10:20", 0}, {"10:20:30.", 2}, {nil, 0}, {int64(5), 0}} {
+		if _, err := orm.AsTimeText(c.value, c.precision); err == nil {
+			t.Errorf("AsTimeText(%#v, %d) accepted an invalid time", c.value, c.precision)
+		}
+	}
+}
+
+// time(p) 값은 소수 자릿수가 정확히 p인 text다.
+func TestTimeTextHasExactlyPrecisionDigits(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, c := range []struct {
+		value     any
+		precision int
+		want      string
+	}{{"10:20:30", 0, "10:20:30"}, {"10:20:30.5", 3, "10:20:30.500"}, {[]byte("10:20:30.000000"), 2, "10:20:30.00"}, {"23:59:59.123456", 6, "23:59:59.123456"}} {
+		if got, err := orm.AsTimeText(c.value, c.precision); err != nil || got != c.want {
+			t.Errorf("AsTimeText(%#v, %d) = %q, %v; want %q", c.value, c.precision, got, err, c.want)
+		}
+	}
+	if got, err := orm.AsInt16("-7"); err != nil || got != -7 {
+		t.Errorf("AsInt16 = %d, %v", got, err)
 	}
 }
 
 func TestDatabaseValueConversionPreservesValidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if got, err := orm.AsInt64("42"); err != nil || got != 42 {
 		t.Fatalf("integer: %d, %v", got, err)
 	}

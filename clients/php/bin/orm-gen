@@ -1,9 +1,8 @@
 #!/usr/bin/env php
 <?php
-// Model generation and schema tools (docs/schema.md §4):
+// dbspec document set에서 model을 만든다:
 //
-//   vendor/bin/orm-gen gen --schema schema/schema.json --out src/Model --namespace Example\\Model
-//   vendor/bin/orm-gen build schema/*.mmd --out schema/schema.json
+//   vendor/bin/orm-gen gen --out src/Model --namespace Example\\Model schema/example.dbs
 declare(strict_types=1);
 
 foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
@@ -13,4 +12,4 @@ foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/aut
     }
 }
 
-exit(Orm\SchemaTool::main(array_slice($argv, 1)));
+exit(Orm\OrmGen::main(array_slice($argv, 1)));

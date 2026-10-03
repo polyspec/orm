@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestSnapshotIncludesRowsAndSequenceState(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", t.TempDir()+"/state.sqlite")
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +46,7 @@ func TestSnapshotIncludesRowsAndSequenceState(t *testing.T) {
 }
 
 func TestSQLiteStateWithoutAutoIncrement(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", t.TempDir()+"/plain.sqlite")
 	if err != nil {
 		t.Fatal(err)
@@ -88,6 +92,7 @@ func TestSQLiteStateWithoutAutoIncrement(t *testing.T) {
 }
 
 func TestRestoreDeclaredSequenceAfterWrite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", t.TempDir()+"/restore.sqlite")
 	if err != nil {
 		t.Fatal(err)

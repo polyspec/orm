@@ -7,20 +7,19 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Service;
 use Orm\Code;
 use Orm\Config;
 use Orm\Db;
-use Orm\Orm;
 use Orm\OrmException;
 
-$schema = dirname(__DIR__, 3) . '/schema/schema.json';
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbs')];
 
 function connect(string $dsn): Db
 {
-    global $schema;
-    return Orm::connect($dsn, new Config(schemaPath: $schema));
+    return \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
 }
 
 /** Runs $count transactions that read the service count and then insert one service. */
@@ -66,9 +65,9 @@ register_shutdown_function(static function () use ($work): void {
 /** A new SQLite file with the schema installed and its DSN. */
 function database(string $name): string
 {
-    global $schema, $work;
+    global $documents, $work;
     $dsn = "sqlite://$work/$name.sqlite";
-    connect($dsn)->utils()->schema()->install((string) file_get_contents($schema));
+    connect($dsn)->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     return $dsn;
 }
 
@@ -124,20 +123,21 @@ $tests['lock wait expires'] = function (): void {
     }, retry: 0);
 };
 
+// 각 case의 기한은 TESTCASE_PROCESS다. 가장 큰 case가 writer process 여러 개를 띄워
+// transaction을 commit한다.
 foreach ($tests as $name => $test) {
     $current = $name;
     $before = $failures;
-    $started = microtime(true);
-    echo "RUN  $name\n";
-    try {
+    $passed = testcase_run("sqlite_concurrency/$name", TESTCASE_PROCESS, static function () use ($test, $before): void {
         $test();
-    } catch (\Throwable $e) {
-        check(false, get_class($e) . ': ' . $e->getMessage());
+        if ($GLOBALS['failures'] > $before) {
+            throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+        }
+    });
+    if (!$passed && $failures === $before) {
+        $failures++;
     }
-    printf("%s %s (%.2fs)\n", $failures === $before ? 'PASS' : 'FAIL', $name, microtime(true) - $started);
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php sqlite concurrency: $failures failures\n");
     exit(1);
 }
-echo "php sqlite concurrency passed\n";

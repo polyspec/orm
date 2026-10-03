@@ -1,208 +1,84 @@
-//! Audit triggers: log tables from one manifest, audited tables from a second
-//! manifest installed on the same connection, and writes inside a transaction
-//! that names its operation with set_local, on SQLite, MySQL and PostgreSQL.
-//! The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
+//! audit operation id (docs/dbspec.md, "Audit"): executor는 transaction의 operation id를
+//! insert하거나 update하는 모든 감사 대상 row의 operation column에 쓰고, render된 trigger는
+//! 각 version을 이력 table에 복사한다. SQLite, MySQL, PostgreSQL에서 database마다 자기만의
+//! case database(orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
+//! 없으면 실패한다.
 
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+#[path = "common/audit_rows.rs"]
+mod audit_rows;
 
-/// Returns the DSN in `var`; an unset or empty variable fails the test.
-fn require_dsn(var: &str) -> String {
-    match std::env::var(var) {
-        Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
-    }
-}
-
-static LOG_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log.json"), "9c49bcffc9b79592");
-static ITEM_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item.json"), "cc6056c24cd4c1dc");
-static LOG_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_log_plain.json"), "e13f02f8e6ffeaeb");
-static ITEM_PLAIN_SCHEMA: Schema = Schema::new(include_bytes!("testdata/audit_item_plain.json"), "aa692ac83e247500");
-
-/// A model whose values are read and written by column name.
-macro_rules! row_model {
-    ($name:ident, $entity:ident, $entity_name:literal, $schema:expr, $columns:expr) => {
-        static $entity: Entity =
-            Entity { name: $entity_name, schema: $schema, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
-
-        #[derive(Clone)]
-        struct $name {
-            core: Core,
-            values: std::collections::BTreeMap<String, Val>,
-        }
-
-        impl Model for $name {
-            fn entity() -> &'static Entity {
-                &$entity
-            }
-            fn core(&self) -> &Core {
-                &self.core
-            }
-            fn core_mut(&mut self) -> &mut Core {
-                &mut self.core
-            }
-            fn from_core(core: Core) -> Self {
-                $name { core, values: std::collections::BTreeMap::new() }
-            }
-            fn into_core(self) -> Core {
-                self.core
-            }
-            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
-                if !$columns.contains(&name) {
-                    return Ok(false);
-                }
-                self.values.insert(name.to_owned(), v);
-                Ok(true)
-            }
-            fn value(&self, name: &str) -> Option<Val> {
-                self.values.get(name).cloned()
-            }
-        }
-    };
-}
-
-const CHANGE_COLUMNS: &[&str] = &["seq", "operation_seq", "change_kind", "service_ref", "table_label", "entity_ref", "before_value", "after_value"];
-
-row_model!(Operation, OPERATION, "audit_operation", &LOG_SCHEMA, ["seq", "operation_uuid"]);
-row_model!(Change, CHANGE, "audit_change", &LOG_SCHEMA, CHANGE_COLUMNS);
-row_model!(Item, ITEM, "audit_item", &ITEM_SCHEMA, ["seq", "service_ref", "title"]);
-row_model!(PlainOperation, PLAIN_OPERATION, "audit_operation", &LOG_PLAIN_SCHEMA, ["seq", "operation_uuid"]);
-row_model!(PlainChange, PLAIN_CHANGE, "audit_change", &LOG_PLAIN_SCHEMA, CHANGE_COLUMNS);
-row_model!(PlainItem, PLAIN_ITEM, "audit_item", &ITEM_PLAIN_SCHEMA, ["seq", "service_ref", "title"]);
-
-fn model<M: Model>() -> M {
-    M::from_core(Core::new(M::entity()))
-}
-
-fn connected<M: Model>(db: &Db) -> M {
-    let mut core = Core::new(M::entity());
-    core.connect(db);
-    M::from_core(core)
-}
-
-async fn exec(db: &Db, statement: &'static str) {
-    let sql = sqlx::raw_sql(statement);
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-    }
-    .unwrap_or_else(|e| panic!("{statement}: {e}"));
-}
-
-async fn drop_tables(db: &Db, driver: &str) {
-    let statements: &[&'static str] = match driver {
-        "postgres" => &["DROP SCHEMA IF EXISTS ormtest CASCADE"],
-        "mysql" => &["DROP TABLE IF EXISTS `audit_item`", "DROP TABLE IF EXISTS `audit_change`", "DROP TABLE IF EXISTS `audit_operation`"],
-        _ => &[r#"DROP TABLE IF EXISTS "ormtest__audit_item""#, r#"DROP TABLE IF EXISTS "ormtest__audit_change""#, r#"DROP TABLE IF EXISTS "ormtest__audit_operation""#],
-    };
-    for statement in statements {
-        exec(db, statement).await;
-    }
-}
+use audit_rows::{changed_item, code, history, new_item, SCHEMA};
+use orm::{Db, Model, Param};
+use orm_case_database::CaseDatabase;
 
 #[tokio::test]
-async fn audit_triggers() {
-    let tmp = std::env::temp_dir().join(format!("orm-rust-audit-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let mysql_dsn = require_dsn("ORM_TEST_MYSQL_DSN");
-    let postgres_dsn = require_dsn("ORM_TEST_POSTGRES_DSN");
-    let targets = vec![
-        ("sqlite".to_owned(), format!("sqlite://{}", tmp.join("audit.sqlite").display())),
-        ("mysql".to_owned(), mysql_dsn),
-        ("postgres".to_owned(), postgres_dsn),
-    ];
-    for (driver, dsn) in &targets {
-        let plain = driver == "mysql";
-        let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-        drop_tables(&db, driver).await;
-        let (log_json, item_json) = if plain { (LOG_PLAIN_SCHEMA.json(), ITEM_PLAIN_SCHEMA.json()) } else { (LOG_SCHEMA.json(), ITEM_SCHEMA.json()) };
-        for json in [log_json, item_json, item_json] {
-            db.utils().schema().install(json).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-        }
-        let table_label = if plain { "audit_item" } else { "ormtest.audit_item" };
+async fn audit_operation_id() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install again: {e}"));
 
-        let without_operation = db
+        // operation id가 없는 audit 대상 insert는 database에 닿기 전에 CONFIG로 실패한다.
+        let mut outside = new_item("a");
+        outside.core_mut().connect(&db);
+        assert_eq!(code(orm::model::create(&mut outside).await), orm::codes::CONFIG, "{driver}: insert outside a transaction");
+        let without = db.transaction(async || orm::model::create(&mut new_item("a")).await.map(|_| ())).await;
+        assert_eq!(code(without), orm::codes::CONFIG, "{driver}: insert without an operation id");
+        let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
+        let wrong = db.transaction(async || orm::model::create(&mut new_item("a")).await.map(|_| ())).operation(uuid).await;
+        assert_eq!(code(wrong), orm::codes::CONFIG, "{driver}: a uuid operation id for an i64 operation column");
+        let explicit = db
             .transaction(async || {
-                if plain {
-                    let mut row: PlainItem = model();
-                    row.core_mut().set("service_ref", Param::from("s1"));
-                    row.core_mut().set("title", Param::from("a"));
-                    orm::model::create(&mut row).await.map(|_| ())
-                } else {
-                    let mut row: Item = model();
-                    row.core_mut().set("service_ref", Param::from("s1"));
-                    row.core_mut().set("title", Param::from("a"));
-                    orm::model::create(&mut row).await.map(|_| ())
-                }
+                let mut row = new_item("a");
+                row.core_mut().set("operation_id", Param::I64(5));
+                orm::model::create(&mut row).await.map(|_| ())
             })
+            .operation(5)
             .await;
-        let message = without_operation.expect_err("write without an operation").to_string();
-        assert!(message.contains("audit operation context is required"), "{driver}: {message}");
+        assert_eq!(code(explicit), orm::codes::IR_INVALID, "{driver}: an assigned operation column");
+        let nested = db.transaction(async || db.transaction(async || Ok(())).operation(6).await).operation(5).await;
+        assert_eq!(code(nested), orm::codes::CONFIG, "{driver}: a nested operation id");
+        assert!(history(&db).await.is_empty(), "{driver}: a rejected write records no history");
 
-        let seq: i64 = db
+        let seq = db
             .transaction(async || {
-                if plain {
-                    let mut op: PlainOperation = model();
-                    op.core_mut().set("operation_uuid", Param::from("op-1"));
-                    orm::model::create(&mut op).await?;
-                    db.utils().set_local("ormtest.operation_id", "op-1").await?;
-                    let mut row: PlainItem = model();
-                    row.core_mut().set("service_ref", Param::from("s1"));
-                    row.core_mut().set("title", Param::from("a"));
-                    let created = orm::model::create(&mut row).await?;
-                    let seq = created.value("seq").expect("generated seq").as_i64()?;
-                    let mut changed: PlainItem = model();
-                    changed.core_mut().set("seq", Param::I64(seq));
-                    changed.core_mut().set("title", Param::from("b"));
-                    orm::model::update(&mut changed, false).await?;
-                    Ok(seq)
-                } else {
-                    let mut op: Operation = model();
-                    op.core_mut().set("operation_uuid", Param::from("op-1"));
-                    orm::model::create(&mut op).await?;
-                    db.utils().set_local("ormtest.operation_id", "op-1").await?;
-                    let mut row: Item = model();
-                    row.core_mut().set("service_ref", Param::from("s1"));
-                    row.core_mut().set("title", Param::from("a"));
-                    let created = orm::model::create(&mut row).await?;
-                    let seq = created.value("seq").expect("generated seq").as_i64()?;
-                    let mut changed: Item = model();
-                    changed.core_mut().set("seq", Param::I64(seq));
-                    changed.core_mut().set("title", Param::from("b"));
-                    orm::model::update(&mut changed, false).await?;
-                    Ok(seq)
-                }
+                let created = orm::model::create(&mut new_item("a")).await?;
+                created.value("seq").expect("generated seq").as_i64()
             })
+            .operation(7)
             .await
-            .unwrap_or_else(|e| panic!("{driver}: audited writes: {e}"));
+            .unwrap_or_else(|e| panic!("{driver}: insert: {e}"));
+        db.transaction(async || orm::model::update(&mut changed_item(seq, "b"), false).await)
+            .operation(8)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: update: {e}"));
+        db.transaction(async || orm::model::delete(&changed_item(seq, "b"), false).await)
+            .operation(9)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
 
-        let rows: Vec<std::collections::BTreeMap<String, Val>> = if plain {
-            let mut q: PlainChange = connected(&db);
-            q.core_mut().add_all_columns();
-            q.core_mut().order_by("seq", false, None);
-            orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
-        } else {
-            let mut q: Change = connected(&db);
-            q.core_mut().add_all_columns();
-            q.core_mut().order_by("seq", false, None);
-            orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
-        };
-        let text = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].as_string().unwrap();
-        let json = |row: &std::collections::BTreeMap<String, Val>, column: &str| row[column].to_json().unwrap().to_string();
-        assert_eq!(rows.len(), 2, "{driver}: change rows");
-        assert_eq!(rows.iter().map(|r| text(r, "change_kind")).collect::<Vec<_>>(), ["INSERT", "UPDATE"], "{driver}: change kinds");
-        for row in &rows {
-            assert_eq!(row["operation_seq"].as_i64().unwrap(), 1, "{driver}: operation");
-            assert_eq!(text(row, "service_ref"), "s1", "{driver}: site");
-            assert_eq!(text(row, "table_label"), table_label, "{driver}: table");
-            assert_eq!(json(row, "entity_ref"), format!("{{\"seq\":{seq}}}"), "{driver}: entity key");
-        }
-        assert_eq!(json(&rows[1], "before_value"), "{\"title\":\"a\"}", "{driver}: before");
-        assert_eq!(json(&rows[1], "after_value"), "{\"title\":\"b\"}", "{driver}: after");
-
-        drop_tables(&db, driver).await;
+        let rows = history(&db).await;
+        let summary: Vec<(String, Option<i64>, i64, i64, String, bool)> = rows
+            .iter()
+            .map(|r| {
+                let previous = if r["previous_operation_id"].is_null() { None } else { Some(r["previous_operation_id"].as_i64().unwrap()) };
+                let text = |column: &str| r[column].as_string().unwrap();
+                (text("change"), previous, r["operation_id"].as_i64().unwrap(), r["seq"].as_i64().unwrap(), text("title"), r["deleted_at"].is_null())
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                ("insert".to_owned(), None, 7, seq, "a".to_owned(), true),
+                ("update".to_owned(), Some(7), 8, seq, "b".to_owned(), true),
+                ("update".to_owned(), Some(8), 9, seq, "b".to_owned(), false),
+            ],
+            "{driver}: history rows"
+        );
         db.close().await;
+        database.drop().await;
+        orm_testcase::step(format_args!("audit_operation_id {driver}"));
     }
-    let _ = std::fs::remove_dir_all(&tmp);
 }

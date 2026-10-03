@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -12,7 +13,7 @@ import (
 
 // Parse real altered source files. Mutating an already-extracted JSON map would
 // test comparison only and could hide an extractor that misses a declaration.
-func parserMutations(toolRoot, lang, rust string) error {
+func parserMutations(ctx context.Context, toolRoot, lang, rust string) error {
 	fixtures := map[string]struct {
 		ext, source string
 		changes     [][2]string
@@ -88,7 +89,7 @@ class Query {
 	if err := os.WriteFile(path, []byte(f.source), 0600); err != nil {
 		return err
 	}
-	baseline, err := extract(dir, lang, []string{"."}, rust, toolRoot)
+	baseline, err := extract(ctx, dir, lang, []string{"."}, rust, toolRoot)
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ class Query {
 	if err := json.Unmarshal(raw, &owner); err != nil {
 		return err
 	}
-	if failures := checkOwners(lang, baseline, []Owner{owner}, nil); len(failures) != 0 {
+	if failures := checkOwners(lang, baseline, []Owner{owner}); len(failures) != 0 {
 		return fmt.Errorf("%s unmodified fixture failed the owner contract: %v", lang, failures)
 	}
 	for i, change := range f.changes {
@@ -111,7 +112,7 @@ class Query {
 		if err := os.WriteFile(path, []byte(strings.Replace(f.source, change[0], change[1], 1)), 0600); err != nil {
 			return err
 		}
-		got, err := extract(dir, lang, []string{"."}, rust, toolRoot)
+		got, err := extract(ctx, dir, lang, []string{"."}, rust, toolRoot)
 		if err != nil {
 			return err
 		}
@@ -119,7 +120,7 @@ class Query {
 			return fmt.Errorf("%s parser missed source mutation %d (%s)", lang, i, change[1])
 		}
 		if i == len(f.changes)-1 {
-			if len(checkOwners(lang, got, []Owner{owner}, nil)) == 0 {
+			if len(checkOwners(lang, got, []Owner{owner})) == 0 {
 				return fmt.Errorf("%s extra field passed the shared owner contract", lang)
 			}
 		}
@@ -127,7 +128,7 @@ class Query {
 	if err := os.WriteFile(path, []byte(strings.Replace(f.source, f.prohibited[0], f.prohibited[1], 1)), 0600); err != nil {
 		return err
 	}
-	withProhibitedMethod, err := extract(dir, lang, []string{"."}, rust, toolRoot)
+	withProhibitedMethod, err := extract(ctx, dir, lang, []string{"."}, rust, toolRoot)
 	if err != nil {
 		return err
 	}

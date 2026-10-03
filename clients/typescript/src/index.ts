@@ -1,37 +1,37 @@
-export { CodecError, blindIndex, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode, parsePoint, pointText } from './codec.js';
-export type { CodecValue, EncodedValue, JsonValue, Point } from './codec.js';
+export { CodecError, blindIndex, decode as decodeCodec, encode as encodeCodec, hostDecode, hostEncode } from './codec.js';
+export type { CodecValue, EncodedValue, JsonValue } from './codec.js';
 export { StyledValue } from './styled_value.js';
 export { AesKeyring } from './aes.js';
 export type { AesRotationColumn, AesRowCodec } from './aes.js';
 export type * from './ir.js';
-export { Engine, loadManifest, renderCreateDDL, renderDDL, splitSQL } from './engine/index.js';
-export type { LoadedManifest, Manifest } from './engine/index.js';
+export { Engine } from './engine/index.js';
+export type { Entity, Field, FieldType, RuntimeModel } from './engine/index.js';
 export { OrmError } from './runtime_error.js';
-export { Db, registerSchema } from './database.js';
-export type { ConnectOptions, Key, QueryEvent, TransactionOptions } from './database.js';
+export { Db, registerModel } from './database.js';
+export type { ConnectOptions, Key, OperationId, QueryEvent, Schema, TransactionOptions } from './database.js';
 export type { Isolation, PoolStats } from './driver.js';
 export { Utils, SchemaUtils, PrivilegeUtils, AesUtils } from './utils.js';
 export type { AesRotationStatus, TablePrivileges } from './utils.js';
 export { Model, Collection } from './model.js';
 export { GroupRow, GroupRows } from './group_rows.js';
-export { createPhysicalIdentity } from './physical.js';
-export type { PhysicalIdentity, PhysicalParts } from './physical.js';
-export { createPhysicalColumn } from './physical_column.js';
-export { createPhysicalCheck } from './physical_check.js';
-export { createPhysicalIndex } from './physical_index.js';
-export { createPhysicalKey } from './physical_key.js';
-export type { PhysicalKey } from './physical_key.js';
-export type { PhysicalIndex, PhysicalIndexSource, PhysicalIndexTerm } from './physical_index.js';
-export type { PhysicalCheck } from './physical_check.js';
-export type { PhysicalColumn, PhysicalDefault, PhysicalGeneration } from './physical_column.js';
-export { createPhysicalForeignKey } from './physical_foreign_key.js';
-export type { PhysicalForeignKey, PhysicalAction, PhysicalMatch } from './physical_foreign_key.js';
-export { createPhysicalGraph, PhysicalGraphError } from './physical_graph.js';
-export { parsePhysicalGraphJSON, emitPhysicalGraphJSON } from './physical_graph_json.js';
-export type { PhysicalGraph, PhysicalTable } from './physical_graph.js';
+export {
+  chainPlans,
+  dbspecManifest,
+  diffPlan,
+  emitDbspec,
+  emitPlan,
+  introspectDbspec,
+  parseDbspec,
+  parsePlan,
+  planSteps,
+  effectText,
+  readDbspecFile,
+  renderDbspec,
+} from './dbspec/index.js';
+export type * from './dbspec/index.js';
 export type { ModelClass, Page } from './model.js';
 export { CORE, Core } from './core.js';
 export type { EntityDef } from './core.js';
-export type { ChainKey, ColumnSchema, EntitySchema, SchemaSet } from './names.js';
+export type { ChainKey } from './names.js';
 export { orm, ColumnFunction, ValueFunction } from './values.js';
 export * from './models/models.js';

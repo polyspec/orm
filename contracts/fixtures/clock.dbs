@@ -1,0 +1,8 @@
+dbspec 1 clock
+
+table clock_event {
+  seq i64 identity
+  label varchar(32)
+  created_ts datetime(6) default now
+  primary key (seq)
+}

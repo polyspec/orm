@@ -2,7 +2,8 @@
 //! prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}; the
 //! other runners print the same document for the same chains.
 //!
-//! Usage: conformance --dsn URI <schema.json>
+//! Usage: conformance --dsn URI [--vector NAME]...
+//! Each --vector selects one vector by name; without one every vector runs.
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -81,18 +82,17 @@ fn param_json(p: &Param) -> Result<Value, String> {
         }
         Param::DateTime(t) => json!(time_text(t)),
         Param::Date(d) => json!(d.to_string()),
-        Param::Point(p) => json!(orm::point_text(*p).map_err(|e| e.to_string())?),
     })
 }
 
 #[test]
 fn invalid_binds_cannot_be_rendered_as_valid_values() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
     assert!(param_json(&Param::Bytes(b"ORM-AES2\0".to_vec())).is_err());
     let mut encrypted = b"ORM-AES2\0".to_vec();
     encrypted.extend([0xff; 12 + 16]);
     assert_eq!(param_json(&Param::Bytes(encrypted)).unwrap(), json!("$AES"));
-    assert!(param_json(&Param::Point((f64::NAN, 1.0))).is_err());
     assert!(param_json(&Param::F64(f64::INFINITY)).is_err());
     assert_eq!(param_json(&Param::Bytes(Vec::new())).unwrap(), json!(""));
     let log = Log::default();
@@ -169,6 +169,7 @@ fn int(v: Option<Value>) -> i64 {
 
 #[test]
 fn invalid_derived_integers_cannot_be_reported_as_zero() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for value in [None, Some(json!("bad")), Some(json!(1.5)), Some(json!(9_223_372_036_854_775_808.0))] {
         assert!(std::panic::catch_unwind(|| int(value)).is_err());
     }
@@ -177,34 +178,59 @@ fn invalid_derived_integers_cannot_be_reported_as_zero() {
 }
 
 struct Args {
-    schema: String,
     dsn: String,
+    /// 실행할 vector 이름. 비어 있으면 모든 vector를 실행한다.
+    vectors: Vec<String>,
 }
 
+const USAGE: &str = "usage: conformance --dsn URI [--vector NAME]...";
+
 impl Args {
-    fn parse() -> Args {
-        let mut rest = Vec::new();
+    fn parse(args: &[String]) -> Result<Args, String> {
         let mut dsn = None;
-        let mut it = std::env::args().skip(1);
-        while let Some(a) = it.next() {
-            match a.as_str() {
-                "--dsn" => dsn = Some(it.next().expect("--dsn value")),
-                _ => rest.push(a),
+        let mut vectors: Vec<String> = Vec::new();
+        let mut rest = args.iter();
+        while let Some(flag) = rest.next() {
+            let value = rest.next().ok_or_else(|| format!("{flag} requires a value; {USAGE}"))?;
+            match flag.as_str() {
+                "--dsn" if dsn.is_none() => dsn = Some(value.clone()),
+                "--dsn" => return Err(format!("--dsn is given twice; {USAGE}")),
+                "--vector" if value.is_empty() => return Err(format!("--vector requires a nonempty name; {USAGE}")),
+                "--vector" if vectors.contains(value) => return Err(format!("vector {value} is selected twice")),
+                "--vector" => vectors.push(value.clone()),
+                other => return Err(format!("unknown argument {other:?}; {USAGE}")),
             }
         }
-        let (Some(dsn), 1) = (dsn, rest.len()) else {
-            eprintln!("usage: conformance --dsn URI <schema.json>");
-            std::process::exit(2);
-        };
-        Args { schema: rest[0].clone(), dsn }
+        let dsn = dsn.ok_or_else(|| format!("--dsn is required; {USAGE}"))?;
+        Ok(Args { dsn, vectors })
+    }
+}
+
+#[test]
+fn arguments_reject_missing_duplicate_and_unknown_flags() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let parse = |args: &[&str]| Args::parse(&args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>());
+    let args = parse(&["--dsn", "sqlite://x", "--vector", "relations", "--vector", "conditions_values"]).unwrap();
+    assert_eq!((args.dsn.as_str(), args.vectors), ("sqlite://x", vec!["relations".to_owned(), "conditions_values".to_owned()]));
+    assert!(parse(&["--dsn", "sqlite://x"]).unwrap().vectors.is_empty());
+    for invalid in [
+        &["--vector", "relations"][..],
+        &["--dsn"],
+        &["--dsn", "a", "--dsn", "b"],
+        &["--dsn", "a", "--vector", ""],
+        &["--dsn", "a", "--vector", "relations", "--vector", "relations"],
+        &["--dsn", "a", "--vectors", "relations"],
+    ] {
+        assert!(parse(invalid).is_err(), "{invalid:?}");
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
-    let schema = orm::Manifest::load(&std::fs::read(&args.schema).expect("schema.json")).expect("schema manifest");
-    assert_eq!(schema.schema_hash, model::SCHEMA_HASH, "the models were generated from another schema");
+    let args = Args::parse(&std::env::args().skip(1).collect::<Vec<_>>()).unwrap_or_else(|e| {
+        eprintln!("conformance: {e}");
+        std::process::exit(2);
+    });
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
     let config = orm::Config {
@@ -217,27 +243,60 @@ async fn main() {
         })),
         ..Default::default()
     };
-    let db = Db::connect(&args.dsn, 4, config).await.expect("connect");
-    let out = run_all(&db, &shared).await;
+    let db = model::connect(&args.dsn, 4, config).await.expect("connect");
+    let out = match run_all(&db, &shared, &args.vectors).await {
+        Ok(out) => out,
+        Err(e) => {
+            db.close().await;
+            eprintln!("conformance: {e}");
+            std::process::exit(2);
+        }
+    };
     println!("{}", serde_json::to_string_pretty(&out).unwrap());
     db.close().await;
 }
 
-async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
+type Vector<'a> = (&'static str, std::pin::Pin<Box<dyn std::future::Future<Output = orm::Result<Value>> + 'a>>);
+
+/// 선언된 vector 중 `selected`가 고른 것을 선언 순서로 실행한다. `selected`가 비어 있으면
+/// 모두 실행하고, 선언되지 않은 이름이 있으면 어떤 vector도 실행하지 않고 오류를 돌려준다.
+async fn run_all(db: &Db, shared: &Shared, selected: &[String]) -> Result<BTreeMap<String, Value>, String> {
+    let vectors = vectors(db, shared);
+    let unknown: Vec<&str> = selected.iter().map(String::as_str).filter(|name| !vectors.iter().any(|(declared, _)| declared == name)).collect();
+    if !unknown.is_empty() {
+        return Err(format!("unknown vector {}", unknown.join(", ")));
+    }
     let mut out = BTreeMap::new();
+    for (name, body) in vectors {
+        if !selected.is_empty() && !selected.iter().any(|s| s == name) {
+            continue;
+        }
+        *shared.lock().unwrap() = Log::default();
+        let result = match body.await {
+            Ok(v) => v,
+            Err(e) => panic!("conformance vector {name} failed: {e}"),
+        };
+        let statements = std::mem::take(&mut shared.lock().unwrap().statements);
+        out.insert(name.to_owned(), json!({"statements": statements, "result": result}));
+    }
+    Ok(out)
+}
+
+/// 모든 vector를 선언 순서로 만든다. future는 await할 때 실행된다.
+fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
+    let mut out: Vec<Vector<'a>> = Vec::new();
     macro_rules! run {
         ($name:expr, $body:expr) => {{
-            *shared.lock().unwrap() = Log::default();
-            let res: orm::Result<Value> = $body.await;
-            let result = match res {
-                Ok(v) => v,
-                Err(e) => panic!("conformance vector {} failed: {e}", $name),
-            };
-            let statements = std::mem::take(&mut shared.lock().unwrap().statements);
-            out.insert($name.to_owned(), json!({"statements": statements, "result": result}));
+            out.push((
+                $name,
+                Box::pin(async move {
+                    let res: orm::Result<Value> = $body.await;
+                    res
+                }),
+            ));
         }};
     }
-    let author = || Author::new().connect(db);
+    let author = move || Author::new().connect(db);
     let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
     run!("conditions_connectors", async {
@@ -331,7 +390,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
         Ok::<Value, orm::Error>(json!({
             "rows": rows.to_array()?,
             "compared": compared,
-            "module": pick(left.first().and_then(|b| b.get_module()), &["seq", "name"]),
+            "module": pick(left.first().map(|b| b.get_module()).transpose()?.flatten(), &["seq", "name"]),
         }))
     });
     run!("relations", async {
@@ -552,7 +611,7 @@ async fn run_all(db: &Db, shared: &Shared) -> BTreeMap<String, Value> {
                 seqs.push(member.get_seq().unwrap());
             }
             let loaded = Service::new().connect(db).relations(ServiceMember::new().match_seq_with_service_seq()).get_by_seq(seq).await?;
-            let members = loaded.get_service_member_models().expect("selected service members").len();
+            let members = loaded.get_service_member_models()?.expect("selected service members").len();
             mask(shared, &seqs, &[]);
             loaded.delete(true).await?;
             let left = ServiceMember::new().connect(db).get_count_by_service_seq(seq).await?;

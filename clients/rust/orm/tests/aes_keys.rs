@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use orm::{Core, Db, Entity, Model, Schema, Val};
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
-static SCHEMA: Schema = Schema::new(include_bytes!("testdata/aes_json.json"), "e10e4baa11dd59da");
+static SCHEMA: Schema =
+    Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbs"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
 static SECRET: Entity = Entity { name: "secret_config", schema: &SCHEMA, new: orm::model::new_boxed::<Secret>, collect: orm::model::collect_boxed::<Secret> };
 const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
@@ -58,6 +59,7 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 
 #[tokio::test]
 async fn invalid_aes_configuration_fails_before_connection() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let cases = [
         ("zero current version", orm::Config { aes_version: 0, ..Default::default() }),
         ("negative current version", orm::Config { aes_version: -1, ..Default::default() }),
@@ -76,16 +78,18 @@ async fn invalid_aes_configuration_fails_before_connection() {
 
 #[tokio::test]
 async fn aes_write_uses_key_of_current_version() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("aes-keys.sqlite").display());
     let config = orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
     let writer = Db::connect(&dsn, 2, config).await.unwrap();
-    writer.utils().schema().install(SCHEMA.json()).await.unwrap();
+    writer.utils().schema().install(&SCHEMA).await.unwrap();
     let mut row = connected(&writer);
     row.core_mut().set_ordered("config", orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
     orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create with aes_keys and aes_version: {e}"));
-    let reader = Db::connect(&dsn, 2, orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() }).await.unwrap();
+    let reader =
+        Db::connect_schema(&dsn, &SCHEMA, 2, orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() }).await.unwrap();
     let mut q = connected(&reader);
     q.core_mut().add_all_columns();
     let rows = orm::model::gets(&q).await.unwrap().into_vec();

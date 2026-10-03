@@ -36,9 +36,9 @@ type Entity struct {
 // ChainKey is one key of a generated chain method.
 type ChainKey struct {
 	Conn    string   // connector before this key; empty for the first key
-	Op      string   // "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple
+	Op      string   // "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple
 	Column  string   // compared column
-	Columns []string // fulltext and tuple columns
+	Columns []string // tuple columns
 	Compare string   // column of the passed model for a column comparison
 }
 
@@ -56,19 +56,18 @@ type condGroup struct {
 }
 
 type predSpec struct {
-	column   string
-	op       string
-	value    any
-	fn       *Func
-	cols     []string
-	ref      *Core
-	refCol   string
-	sub      *Core
-	list     bool
-	isNull   bool
-	between  bool
-	tuple    bool
-	fulltext bool
+	column  string
+	op      string
+	value   any
+	fn      *Func
+	cols    []string
+	ref     *Core
+	refCol  string
+	sub     *Core
+	list    bool
+	isNull  bool
+	between bool
+	tuple   bool
 }
 
 type rawSpec struct {
@@ -177,15 +176,15 @@ type statement struct {
 	agg       string
 	aggFn     string
 
-	matchLeft, matchRight string
-	alias                 string
-	parentNode            bool
-	possible              *setSpec
-	groupLimit            int
-	deleteLock            bool
-	keyName               string
-	fetchKey              func(Model) any
-	fetchValue            func(Model) any
+	matches    []ir.KeyPair
+	alias      string
+	parentNode bool
+	possible   *setSpec
+	groupLimit int
+	deleteLock bool
+	keyName    string
+	fetchKey   func(Model) any
+	fetchValue func(Model) any
 }
 
 // NewCore creates the core of a new model of ent. Generated constructors call it.
@@ -381,16 +380,6 @@ var operators = map[string]string{"": "eq", "ne": "not_eq", "gt": "gt", "lt": "l
 func (c *Core) predicate(key ChainKey, value any, rest []any, single bool) (*predSpec, int, error) {
 	p := &predSpec{column: key.Column}
 	switch key.Op {
-	case "fulltext", "fulltext_boolean":
-		s, ok := value.(string)
-		if !ok {
-			return nil, 0, configErr("full-text value for %s must be a string", key.Column)
-		}
-		p.op, p.cols, p.value, p.fulltext = "match", key.Columns, s, true
-		if key.Op == "fulltext_boolean" {
-			p.op = "match_boolean"
-		}
-		return p, 0, nil
 	case "tuple", "ne_tuple":
 		rows, err := tupleRows(value, len(key.Columns))
 		if err != nil {
@@ -538,15 +527,19 @@ func (c *Core) Relation(many bool, child Model) {
 		return
 	}
 	ch := child.Orm_()
-	if ch.matchLeft == "" {
+	if len(ch.matches) == 0 {
 		c.fail("relation child %s requires match<L>With<R>()", ch.ent.Name)
 		return
 	}
 	c.relations = append(c.relations, relSpec{many: many, child: ch})
 }
 
-// Match sets the relation key: parent column left equals child column right.
-func (c *Core) Match(left, right string) { c.matchLeft, c.matchRight = left, right }
+// Match adds a component to the relation key: parent column left equals
+// child column right. A composite key calls it once per component, in key
+// order.
+func (c *Core) Match(left, right string) {
+	c.matches = append(c.matches, ir.KeyPair{Left: left, Right: right})
+}
 
 // Alias sets the result name of a relation or join.
 func (c *Core) Alias(name string) { c.alias = name }
@@ -821,6 +814,7 @@ func (c *Core) clone() *Core {
 	out.where = condGroup{items: slices.Clone(c.where.items), pending: c.where.pending}
 	out.joins = slices.Clone(c.joins)
 	out.relations = slices.Clone(c.relations)
+	out.matches = slices.Clone(c.matches)
 	out.order = slices.Clone(c.order)
 	out.groupBy = slices.Clone(c.groupBy)
 	out.groupRaw = slices.Clone(c.groupRaw)

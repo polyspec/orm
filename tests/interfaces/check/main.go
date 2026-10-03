@@ -4,9 +4,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -25,7 +27,8 @@ import (
 	"unicode"
 
 	"github.com/polyspec/orm/contracts"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 type Symbols map[string]string
@@ -65,7 +68,37 @@ type Sequence struct {
 	Statements int    `json:"statements"`
 }
 
+// interface check의 case 기한이다.
+const (
+	// manifestDeadline: manifest, error catalog, component diagram, dbspec 문서를 읽고
+	// 비교하는 memory 안의 계산이다.
+	manifestDeadline = testcase.Compute
+	// rustBuildDeadline: tests/interfaces/rust의 symbol 추출기를 build한다. target이 비면
+	// 의존성까지 compile한다.
+	rustBuildDeadline = testcase.Process
+	// languageDeadline: 한 언어의 native 선언을 추출기 process로 읽고, --self-test면
+	// source mutation마다 추출기를 다시 실행한다.
+	languageDeadline = testcase.Process
+	// resultsDeadline: conformance output file을 읽어 state trace를 비교한다.
+	resultsDeadline = testcase.Compute
+)
+
+// failure는 fatal이 case를 끝내는 error다. testcase.Run이 panic을 FAIL 줄로 보고하고,
+// case 밖에서는 main이 출력하고 끝낸다.
+type failure string
+
+func (f failure) Error() string { return string(f) }
+
 func main() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if f, ok := recovered.(failure); ok {
+				fmt.Fprintln(os.Stderr, string(f))
+				os.Exit(1)
+			}
+			panic(recovered)
+		}
+	}()
 	root := flag.String("root", ".", "repository root")
 	record := flag.Bool("record", false, "write candidate native symbol inventories after common-contract checks")
 	selfTest := flag.Bool("self-test", false, "also verify native parsers reject source mutations")
@@ -84,113 +117,158 @@ func main() {
 	abs, err := filepath.Abs(*root)
 	must(err)
 	var m Manifest
-	readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-	if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
-		fatal("invalid interface manifest")
-	}
-	must(validateProhibitions(m.ProhibitedSymbols))
-	codes, err := readErrorCatalog(abs)
-	must(err)
-	rules := append(append([]Rule{}, m.Rules...), m.Storage...)
-	if failures := checkErrorLabels(codes, rules, m.Sequences); len(failures) != 0 {
-		for _, failure := range failures {
-			fmt.Fprintln(os.Stderr, failure)
+	var s *runtimemodel.Model
+	if err := testcase.Run("interfaces/manifest", manifestDeadline, func(*testcase.Case) error {
+		readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
+		if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+			return errors.New("invalid interface manifest")
 		}
+		if err := validateProhibitions(m.ProhibitedSymbols); err != nil {
+			return err
+		}
+		codes, err := readErrorCatalog(abs)
+		if err != nil {
+			return err
+		}
+		rules := append(append([]Rule{}, m.Rules...), m.Storage...)
+		if failures := checkErrorLabels(codes, rules, m.Sequences); len(failures) != 0 {
+			return errors.New(strings.Join(failures, "\n"))
+		}
+		diagram, err := contracts.Diagram()
+		if err != nil {
+			return err
+		}
+		diagramPath := filepath.Join(abs, "docs/interfaces-model.md")
+		koDiagram, err := contracts.DiagramKO()
+		if err != nil {
+			return err
+		}
+		koDiagramPath := filepath.Join(abs, "docs/interfaces-model.ko.md")
+		if *generate {
+			if err := os.WriteFile(diagramPath, diagram, 0644); err != nil {
+				return err
+			}
+			if err := os.WriteFile(koDiagramPath, koDiagram, 0644); err != nil {
+				return err
+			}
+		} else {
+			stored, err := os.ReadFile(diagramPath)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(stored, diagram) {
+				return errors.New("component diagram differs from the manifest; run with --generate")
+			}
+			storedKo, err := os.ReadFile(koDiagramPath)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(storedKo, koDiagram) {
+				return errors.New("Korean component diagram differs from the manifest; run with --generate")
+			}
+		}
+		// entity 단위 rule은 contract가 가리키는 dbspec document의 entity 순서로 펼친다.
+		s, err = runtimemodel.LoadFiles(filepath.Join(abs, m.Schema))
+		return err
+	}); err != nil {
 		os.Exit(1)
 	}
-	diagram, err := contracts.Diagram()
-	must(err)
-	diagramPath := filepath.Join(abs, "docs/interfaces-model.md")
-	koDiagram, err := contracts.DiagramKO()
-	must(err)
-	koDiagramPath := filepath.Join(abs, "docs/interfaces-model.ko.md")
-	if *generate {
-		must(os.WriteFile(diagramPath, diagram, 0644))
-		must(os.WriteFile(koDiagramPath, koDiagram, 0644))
-	} else {
-		stored, err := os.ReadFile(diagramPath)
-		must(err)
-		if !bytes.Equal(stored, diagram) {
-			fatal("component diagram differs from the manifest; run with --generate")
-		}
-		storedKo, err := os.ReadFile(koDiagramPath)
-		must(err)
-		if !bytes.Equal(storedKo, koDiagram) {
-			fatal("Korean component diagram differs from the manifest; run with --generate")
-		}
-	}
-	js, err := os.ReadFile(filepath.Join(abs, m.Schema))
-	must(err)
-	s, err := schema.Load(js)
-	must(err)
 	rust := ""
 	if slices.Contains(languages, "rust") {
-		rust = buildRust(abs)
+		if err := testcase.Run("interfaces/rust-build", rustBuildDeadline, func(c *testcase.Case) (err error) {
+			rust, err = buildRust(c.Context(), abs)
+			return err
+		}); err != nil {
+			os.Exit(1)
+		}
 	}
 	failed := false
 	for _, lang := range languages {
-		config := m.Languages[lang]
-		callFailures, err := checkCallsInRoots(abs, lang, config.Roots)
-		must(err)
-		actual, err := extract(abs, lang, config.Roots, rust, abs)
-		must(err)
-		errors := checkRules(lang, actual, m.Rules, s)
-		errors = append(errors, checkRules(lang, actual, m.Storage, s)...)
-		errors = append(errors, checkRecords(lang, actual, m.Records)...)
-		errors = append(errors, checkOwners(lang, actual, m.Owners, s)...)
-		errors = append(errors, checkProhibitedSymbols(lang, actual, m.ProhibitedSymbols)...)
-		errors = append(errors, callFailures...)
-		if len(errors) > 0 {
-			for _, e := range errors {
-				fmt.Fprintln(os.Stderr, e)
-			}
-			failed = true
-			continue
-		}
-		path := filepath.Join(abs, config.Symbols)
-		if *record {
-			writeJSON(path, actual)
-		} else {
-			var expected Symbols
-			readJSON(path, &expected)
-			diff := differences(expected, actual)
-			if len(diff) > 0 {
-				for _, d := range diff {
-					fmt.Fprintf(os.Stderr, "%s: %s\n", lang, d)
-				}
-				failed = true
-			}
-		}
-		if gotHash, err := fileSHA256(path); err != nil {
-			must(err)
-		} else if wantHash := m.SymbolHashes[lang]; wantHash != gotHash {
-			fmt.Fprintf(os.Stderr, "%s: symbol snapshot hash differs from contracts/interfaces.json\n  want %s\n  got  %s\n", lang, wantHash, gotHash)
+		if err := testcase.Run("interfaces/"+lang, languageDeadline, func(c *testcase.Case) error {
+			return checkLanguage(c, abs, lang, rust, m, s, *record, *selfTest)
+		}); err != nil {
 			failed = true
 		}
-		if *selfTest {
-			must(parserMutations(abs, lang, rust))
-		}
-		fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
 	}
 	if *results != "" {
-		for _, lang := range languages {
-			var output map[string]struct {
-				Result     any               `json:"result"`
-				Statements []json.RawMessage `json:"statements"`
-			}
-			readJSON(filepath.Join(abs, *results, lang+".json"), &output)
-			for _, s := range m.Sequences {
-				got, ok := output[s.ID]
-				if !ok || !reflect.DeepEqual(got.Result, s.Expected) || len(got.Statements) != s.Statements {
-					fmt.Fprintf(os.Stderr, "%s: state contract %s failed\n", lang, s.ID)
-					failed = true
+		if err := testcase.Run("interfaces/results", resultsDeadline, func(*testcase.Case) error {
+			var problems []string
+			for _, lang := range languages {
+				var output map[string]struct {
+					Result     any               `json:"result"`
+					Statements []json.RawMessage `json:"statements"`
+				}
+				readJSON(filepath.Join(abs, *results, lang+".json"), &output)
+				for _, s := range m.Sequences {
+					got, ok := output[s.ID]
+					if !ok || !reflect.DeepEqual(got.Result, s.Expected) || len(got.Statements) != s.Statements {
+						problems = append(problems, fmt.Sprintf("%s: state contract %s failed", lang, s.ID))
+					}
 				}
 			}
+			if len(problems) > 0 {
+				return errors.New(strings.Join(problems, "\n"))
+			}
+			return nil
+		}); err != nil {
+			failed = true
 		}
 	}
 	if failed {
 		os.Exit(1)
 	}
+}
+
+// checkLanguage는 한 언어의 native 선언을 공통 contract, 기록된 symbol snapshot과 그 hash에
+// 비교하고, selfTest면 추출기가 source mutation을 놓치지 않는지 확인한다.
+func checkLanguage(c *testcase.Case, abs, lang, rust string, m Manifest, s *runtimemodel.Model, record, selfTest bool) error {
+	config := m.Languages[lang]
+	callFailures, err := checkCallsInRoots(abs, lang, config.Roots)
+	if err != nil {
+		return err
+	}
+	c.Step("extracting native declarations")
+	actual, err := extract(c.Context(), abs, lang, config.Roots, rust, abs)
+	if err != nil {
+		return err
+	}
+	problems := checkRules(lang, actual, m.Rules, s)
+	problems = append(problems, checkRules(lang, actual, m.Storage, s)...)
+	problems = append(problems, checkRecords(lang, actual, m.Records)...)
+	problems = append(problems, checkOwners(lang, actual, m.Owners)...)
+	problems = append(problems, checkProhibitedSymbols(lang, actual, m.ProhibitedSymbols)...)
+	problems = append(problems, callFailures...)
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "\n"))
+	}
+	path := filepath.Join(abs, config.Symbols)
+	if record {
+		writeJSON(path, actual)
+	} else {
+		var expected Symbols
+		readJSON(path, &expected)
+		for _, d := range differences(expected, actual) {
+			problems = append(problems, fmt.Sprintf("%s: %s", lang, d))
+		}
+	}
+	gotHash, err := fileSHA256(path)
+	if err != nil {
+		return err
+	}
+	if wantHash := m.SymbolHashes[lang]; wantHash != gotHash {
+		problems = append(problems, fmt.Sprintf("%s: symbol snapshot hash differs from contracts/interfaces.json\n  want %s\n  got  %s", lang, wantHash, gotHash))
+	}
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "\n"))
+	}
+	if selfTest {
+		c.Step("source mutations")
+		if err := parserMutations(c.Context(), abs, lang, rust); err != nil {
+			return err
+		}
+	}
+	fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
+	return nil
 }
 
 func checkProhibitedSymbols(lang string, actual Symbols, prohibited []string) []string {
@@ -253,7 +331,7 @@ func writeJSON(path string, value any) {
 	must(err)
 	must(os.WriteFile(path, append(b, '\n'), 0644))
 }
-func fatal(s string) { fmt.Fprintln(os.Stderr, s); os.Exit(1) }
+func fatal(s string) { panic(failure(s)) }
 func must(err error) {
 	if err != nil {
 		fatal(err.Error())
@@ -290,26 +368,26 @@ func differences(want, got Symbols) []string {
 	return out
 }
 
-func buildRust(root string) string {
+func buildRust(ctx context.Context, root string) (string, error) {
 	manifest := filepath.Join(root, "tests/interfaces/rust/Cargo.toml")
-	cmd := exec.Command("cargo", "build", "--quiet", "--locked", "--manifest-path", manifest)
+	cmd := exec.CommandContext(ctx, "cargo", "build", "--quiet", "--locked", "--manifest-path", manifest)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		fatal(string(out) + err.Error())
+		return "", errors.New(string(out) + err.Error())
 	}
-	return filepath.Join(root, "tests/interfaces/rust/target/debug/orm-interface-symbols")
+	return filepath.Join(root, "tests/interfaces/rust/target/debug/orm-interface-symbols"), nil
 }
 
-func extract(root, lang string, roots []string, rust, toolRoot string) (Symbols, error) {
+func extract(ctx context.Context, root, lang string, roots []string, rust, toolRoot string) (Symbols, error) {
 	if lang == "go" {
 		return goSymbols(root, roots)
 	}
 	var cmd *exec.Cmd
 	if lang == "php" {
-		cmd = exec.Command("php", append([]string{filepath.Join(toolRoot, "tests/interfaces/php.php"), root}, roots...)...)
+		cmd = exec.CommandContext(ctx, "php", append([]string{filepath.Join(toolRoot, "tests/interfaces/php.php"), root}, roots...)...)
 	} else if lang == "typescript" {
-		cmd = exec.Command("node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mjs"), root}, roots...)...)
+		cmd = exec.CommandContext(ctx, "node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mjs"), root}, roots...)...)
 	} else {
-		cmd = exec.Command(rust, append([]string{root}, roots...)...)
+		cmd = exec.CommandContext(ctx, rust, append([]string{root}, roots...)...)
 	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -416,7 +494,7 @@ func pascal(s string) string {
 	return b.String()
 }
 
-func checkRules(lang string, actual Symbols, rules []Rule, m *schema.Manifest) []string {
+func checkRules(lang string, actual Symbols, rules []Rule, m *runtimemodel.Model) []string {
 	var errors []string
 	for _, rule := range rules {
 		n, ok := rule.Native[lang]

@@ -1,581 +1,71 @@
 # Schema
 
-Physical primary/unique keys have exactly `id`, `name`, `tableId`, `kind`,
-`columns`, `indexId`, `deferrable`, `initiallyDeferred`, `nullsDistinct`,
-`withoutOverlaps`, `comment` and `options`. IDs and nullable names follow the
-physical-record rules. kind is primary/unique; columns contains 1–64 distinct
-stable column IDs in declaration order. indexId is null (no declared backing
-index) or a stable index ID, never a name inferred from the constraint.
-Deferral flags are boolean or unspecified null; initiallyDeferred true requires
-deferrable true. nullsDistinct is boolean or null for unique keys and must be
-null for primary keys, whose SQL null behavior is not a unique option.
-withoutOverlaps is boolean or unspecified null and preserves whether the last
-key column uses temporal overlap exclusion. Its dialect, range-type and
-backing-index semantics require later validation; structural acceptance does
-not authorize a database operation. Comments, ordered options, UTF-8, exact
-field shapes and the 65536-byte string budget use the common record rules.
-Reject invalid input with value-free SCHEMA_INVALID and return detached or
-deeply immutable values. Do not merge constraints into index records or infer
-missing states. Reference ownership, backing-index compatibility and one
-primary key per table are graph-level checks, not individual record checks.
+The schema source is a set of dbspec documents (`.dbs`). [dbspec.md](dbspec.md) defines the language, its validation rules, the manifest text and the two hashes; `schema/bench.dbs` is the schema of the tests and benchmarks. No other schema file exists: every generator, runtime and schema operation reads the document set.
 
-Public APIs are Go `orm.PhysicalKeyFromValue`, PHP `Orm\PhysicalKey::fromValue`,
-Rust `orm_schema::physical_key::PhysicalKey::from_value` and TypeScript package
-export `createPhysicalKey`. Run `make physical-key-check` for equivalent cases
-twice per client and related record regressions. These are decoded structural
-records, not SQL parsing, physical import, DDL or migration execution.
-Key and index distinctions, deferral and temporal syntax are documented in
-[PostgreSQL CREATE TABLE](https://www.postgresql.org/docs/18/sql-createtable.html);
-database-specific behavior must still be verified on owned database fixtures.
+## 1. Model generation
 
-Physical index records have exactly `id`, `name`, `tableId`, `unique`,
-`methodSql`, `terms`, `include`, `predicateSql`, `nullsDistinct`, `visible`,
-`comment` and `options`. IDs and nullable names use the existing record rules;
-unique is boolean. methodSql is null (unspecified) or nonempty text up to 128
-UTF-8 bytes. predicateSql is null (absent) or nonempty raw SQL up to 16384 bytes.
-nullsDistinct and visible independently distinguish boolean from unspecified
-null. Preserve comments/options and apply the existing 65536-byte total limit.
-Structural acceptance never implies a dialect supports an option.
+Each language generates its models from the document set with its own tool ([usage](usage.md#_3-code-generation)):
 
-terms is an ordered list of 1–64 exact objects: `source`, `order`, `nulls`,
-`collationSql`, `operatorClassSql`, `prefixLength`. source is exactly
-`{kind:"column",columnId}` or `{kind:"expression",sql}`; IDs use the stable-ID
-rule and raw expression text is nonempty up to 16384 UTF-8 bytes. Preserve
-repeated terms rather than deduplicating them. order is asc/desc/unspecified;
-nulls is first/last/unspecified. Nullable raw collation/operator-class text is
-nonempty up to 1024/4096 bytes respectively, including quoted names/parameters.
-prefixLength is null or an integer numeric value 1–2147483647 (never boolean),
-only for a column source. include is an ordered list of 0–64 distinct column
-IDs; it does not change uniqueness terms. Column ownership and dialect-specific
-cross-field restrictions are validated when assembling/planning the schema.
-Missing/unknown fields, types, encodings and bound violations return value-free
-SCHEMA_INVALID. Values are detached/deeply immutable without normalization.
-
-The APIs are Go `orm.PhysicalIndexFromValue`, PHP `Orm\PhysicalIndex::fromValue`,
-Rust `orm_schema::physical_index::PhysicalIndex::from_value` and TypeScript
-package export `createPhysicalIndex`. Run `make physical-index-check` for shared
-vectors twice per client. Index records are not primary/unique constraints;
-those constraints require separate records and explicit backing-index links.
-This primitive is not graph attachment, SQL parsing, imports, DDL or execution.
-Feature distinctions follow the official [PostgreSQL CREATE INDEX](https://www.postgresql.org/docs/18/sql-createindex.html),
-[MySQL CREATE INDEX](https://dev.mysql.com/doc/refman/8.4/en/create-index.html) and
-[SQLite CREATE INDEX](https://www.sqlite.org/lang_createindex.html) references.
-
-Physical CHECK records have exactly `id`, `name`, `tableId`, `expressionSql`,
-`enforced`, `validated`, `comment` and `options`. IDs use the physical-record
-ID rule; a nullable name otherwise follows the exact physical-name rule.
-Expressions are preserved verbatim as nonempty UTF-8 text up to 16384 bytes,
-not parsed or authorized for execution. Each independent state is boolean or
-null (unspecified); validation does not imply enforcement. Comments and
-ordered options use existing record bounds, including the 65536-byte total.
-Unknown/missing fields, invalid types, encodings and bounds reject with
-value-free `SCHEMA_INVALID`. Records detach caller-owned input/output.
-The APIs are Go `orm.PhysicalCheckFromValue`, PHP `Orm\PhysicalCheck::fromValue`,
-Rust `orm_schema::physical_check::PhysicalCheck::from_value` and TypeScript
-`createPhysicalCheck` from the package root. `make physical-check-check`
-executes the common vectors twice in each client. The record constructor does
-not resolve graph membership; PhysicalGraph resolves declared CHECK ownership
-and shared constraint names. Neither constructor validates dialect support, SQL
-grammar, expression references, imports, DDL or migration execution.
-
-Physical identities are separate from logical model identifiers. Preserve exact
-optional catalog/schema/column components and a required table, never lowercase
-or split a component at dots. Each present component is nonempty valid UTF-8,
-at most 1024 bytes, without ASCII controls (U+0000–001F or U+007F). Reject invalid
-components with SCHEMA_INVALID and a value-free message. An immutable identity
-key is `p1:` plus four dot-separated tokens: `-` for absent, otherwise lowercase
-UTF-8 hex, in catalog/schema/table/column order. This distinguishes namespace
-boundaries without SQL quoting or name normalization. This key identifies a
-name, not a stable document ID across renames. These primitives do not yet
-implement physical schema import, annotations, DDL or migration execution.
-
-Public APIs: Go `orm.NewPhysicalIdentity`, PHP `Orm\PhysicalIdentity`, Rust
-`orm_schema::physical::PhysicalIdentity::new`, TypeScript
-`createPhysicalIdentity` (exported from the package root). Components are returned
-as detached values or immutable borrows. `make physical-identity-check` executes
-the ten shared vectors twice per client and checks byte limits/invalid encodings.
-
-Physical column records have exactly `id`, `name`, `typeSql`, `nullable`,
-`default`, `generation`, `comment` and `options`. IDs match `[A-Za-z0-9_-]{1,128}`;
-names follow the physical identity component rules. Preserve nonempty typeSql
-up to 4096 UTF-8 bytes and comments up to 8192 bytes. nullable is a boolean.
-Defaults are `{kind:"absent"}` or `{kind:"null"}`, or literal/expression kinds
-with a nonempty `sql` up to 16384 bytes. Generation is `{kind:"none"}`, identity
-with `sql`, or computed with `sql` and `storage` (stored/virtual/unspecified).
-Generation SQL has the same 16384-byte limit. Ordered options contain at most 64
-exact `{name,value}` string objects; name is nonempty up to 128 bytes, value up
-to 4096 bytes. Every string is valid UTF-8 without NUL; a record contains at most
-65536 bytes across string values. Unknown fields and wrong types fail with
-value-free SCHEMA_INVALID. Return detached values or deeply immutable objects.
-These APIs accept already decoded records, not JSON text; strict text parsing is
-the input producer's responsibility. Classification and SQL semantics belong to
-the dialect-aware importer/planner; structural acceptance does not permit DDL
-or establish that an expression, literal or type is executable.
-
-Column APIs: Go `orm.PhysicalColumnFromValue`, PHP
-`Orm\PhysicalColumn::fromValue`, Rust
-`orm_schema::physical_column::PhysicalColumn::from_value`, TypeScript package
-export `createPhysicalColumn`. `make physical-column-check` runs the 25 shared
-vectors twice per client, plus aggregate/field/option limits, invalid encodings
-and alias checks. `PHYSICAL_NODE` explicitly selects its TypeScript tool runtime.
-
-Physical FK records have exactly `id`, `name`, `tableId`, `columns`, `target`,
-`onDelete`, `onUpdate`, `match`, `deferrable`, `initiallyDeferred`, `comment` and
-`options`. Stable IDs use the column ID rules; name is null for unnamed, otherwise
-an exact physical name. target is exactly `{tableId,columns}`. Local and target
-column ID lists each contain 1–64 distinct IDs, with equal length and preserved
-pair order. Self references and shared columns across independent FKs are valid.
-Actions distinguish noAction/restrict/cascade/setNull/setDefault/unspecified;
-match is simple/full/partial/unspecified. Deferral flags are boolean or null for
-unspecified; initiallyDeferred true requires deferrable true. Comments/options
-and whole-record string limits match physical columns. Unknown fields, invalid
-IDs, duplicate columns, unequal arity and contradictory deferral fail safely.
-This validates individual records, not graph membership or dialect support.
-
-FK APIs: Go `orm.PhysicalForeignKeyFromValue`, PHP
-`Orm\PhysicalForeignKey::fromValue`, Rust
-`orm_schema::physical_foreign_key::PhysicalForeignKey::from_value`, TypeScript
-package export `createPhysicalForeignKey`. Columns and FKs share bounded record
-validation; Rust returns `physical_record::RecordError`, whose safe code is
-SCHEMA_INVALID. `make physical-fk-check` executes all 26 shared FK vectors and
-existing 25 column vectors twice in each client. It also checks 64/65-column
-limits and measures creation/retention of 2000 independent FK records. This is
-not connected-graph resolution, archive import or memory proof.
-PHYSICAL_RUST_TOOLCHAIN selects Rust explicitly (default 1.98.1); the command
-does not replace the user's global toolchain.
-
-### Annotated physical Markdown requirements
-
-The physical JSON APIs do not yet parse annotated Markdown. The logical
-Mermaid parser remains a separate input and must not normalize physical names,
-native types or expressions into its supported logical vocabulary.
-
-Define and verify one versioned document grammar before activating this path:
-
-- Physical names and SQL text remain exact JSON strings. Mermaid attribute
-  comments do not accept embedded double quotes; they are not a lossless raw
-  SQL container. Display escaping must be reversible and verified with real
-  diagram parsing, including quotes, backslashes, Unicode, control characters,
-  HTML/comment closers and Markdown fence text. Do not silently replace names.
-- Table, column and constraint associations use stable IDs, not display labels,
-  concatenated qualified names or positional guesses. Composite pair order and
-  separate constraints on shared columns remain distinguishable in the view.
-- Crow-foot notation is view information, not proof of FK target uniqueness,
-  row existence or executable dialect semantics. Do not infer stronger physical
-  constraints from the diagram. Unverified multiplicity must be explicit rather
-  than silently emitted as a fact.
-- Parse the diagram and annotations together before returning an authoritative
-  document. Missing, extra, renamed, reordered or contradictory references need
-  located safe diagnostics; neither side silently overrides the other.
-- Preserve ordinary Markdown and unrelated fenced examples during read/edit/
-  emit. Text inside examples is not an active annotation. Duplicate or unknown
-  version markers, incomplete blocks and ambiguous ownership fail explicitly.
-- Specify total UTF-8 bytes, line/block/diagram counts and retained diagnostics
-  before allocation. Test both each supported limit and excess in four clients.
-  A document limit does not implicitly enlarge a wire payload limit.
-- Compare every physical field after document emission/parsing/re-emission,
-  including source containing comment/fence delimiters. Retain the connected
-  2000-table/60000-column/10000-FK scenario. Separate owner CPU/retention results
-  from actual platform evidence.
-
-These requirements do not enable physical documents, imports or execution.
-
-The joint parser under development uses `erDiagram`, followed by
-`%% orm:physical-json 1`, one compact physical JSON line prefixed with `%% `,
-and `%% orm:physical-json-end`. The remaining lines are a deterministic
-projection in original table, column and FK order. Stable ASCII IDs become
-hexadecimal `T_` and `C_` aliases. Display strings escape ASCII controls,
-quotes, backslashes, angle brackets, ampersands, hash marks, backticks,
-percent signs, brackets, braces and the escape marker as literal `␛XXXX`
-sequences. Mermaid entity aliases reject backslashes, so the display escape
-marker is U+241B, not an ASCII backslash. JSON retains exact physical values.
-Every FK has its own ID and ordered column-pair comment. Crow-foot endpoints
-are an explicitly labelled unverified view convention, never SQL evidence.
-Diagram mismatches fail rather than overwriting metadata. This draft is not
-an enabled import API; four-client and ownership verification remain required.
-
-PHP retains the original source and its byte ranges rather than duplicating
-large surrounding prose during parsing. `source()` returns the exact retained
-string through copy-on-write. `prefix()` and `suffix()` explicitly materialize
-their requested slices; callers must budget those allocations. The experimental
-document no longer has eager public prefix/suffix string fields. Retaining a
-64 MiB document is distinct from allocating a second complete edited output.
-
-#### Physical source block
-
-The owning internal scanner locates one top-level fenced block whose info is
-exactly `mermaid orm-physical-v1`. It returns four UTF-8 byte offsets: opening
-line start, body start, closing line start and the byte after the closing line.
-Slicing at these offsets preserves preceding/following Markdown and body
-bytes without a split-line copy. Body parsing is not yet enabled by this step.
-
-Owned opening fences have no indentation. Foreign opening fences use 0–3
-ASCII spaces. Both use at least three backticks or tildes. Trim only ASCII
-spaces/tabs around info. Backtick info cannot contain
-a backtick. Closing fences use the same character, at least the opening run
-length and only spaces/tabs afterward. Foreign fenced contents are opaque;
-an unfinished foreign fence also fails instead of hiding an owned block.
-An active info starting `mermaid orm-physical-` with any other suffix fails.
-Indented code and blockquote/list-contained fences are not owned blocks.
-Use a top-level block for the physical document; this scanner is not a general
-Markdown AST or a diagram validator. Explicitly terminated HTML blocks are
-opaque: raw pre/script/style/textarea elements, comments, processing
-instructions, declarations and CDATA. A raw-element start is ASCII
-case-insensitive and requires space/tab, `>` or end-of-line after the name;
-any of the four exact closing tags ends its block, also case-insensitively.
-Other starts are `<!--`, `<?`, `<!` followed by an ASCII letter, and
-`<![CDATA[`; their ends are `-->`, `?>`, `>` and `]]>` respectively.
-Allow 0–3 leading spaces. Ignore nested starts, blank lines and fence text
-until the terminating line; resume on the following line, not its suffix.
-An unfinished explicit HTML block fails at its opening line. HTML-looking
-text inside a code fence does not change ownership. Blank-line-terminated
-HTML with a standard block-tag name remains opaque through the next blank
-line (ASCII spaces/tabs only) or EOF, not merely its closing tag. Starts
-allow an opening or closing name followed by space/tab, `>`, `/>` or
-end-of-line, with ASCII case-insensitive matching and 0–3 leading spaces.
-These block names are enumerated in the shared HTML fixture. Nested starts
-do not switch its ending rule; explicit raw HTML keeps its own ending rule.
-This utility does not classify arbitrary HTML tags or full Markdown
-containers. Those are not implemented capabilities, and expanding a general
-HTML parser is not a prerequisite for defining the physical document format.
-The document reader must establish its own unambiguous source ownership
-and validate graph metadata with the diagram before enabling imports.
-
-Accept valid UTF-8 without a BOM, LF or CRLF (not bare CR), at most 64 MiB,
-200000 lines (LF count plus one, including a final empty line) and 4096 opening
-fences. Exactly one owned block is required. Failures retain one value-free
-SCHEMA_INVALID diagnostic: line zero for encoding/resource/missing-block
-errors, or a 1-based line for unknown info, duplicate or unfinished blocks.
-Source/line/block limits are checked before allocating a body or line list.
-These limits do not alter JSON or wire payload limits. The four owning
-tests use the same fixture through `make physical-envelope-check`.
-
-For text interchange, read one UTF-8 JSON object and emit a compact JSON object
-from a validated graph. Before general decoding, reject duplicate decoded
-member names at every depth, malformed syntax, invalid Unicode (including
-unpaired escaped surrogates), trailing input and a BOM. Limits are 32 MiB of
-UTF-8 input/output, container depth 16 and 3000000 value nodes. Number tokens
-are at most 64 ASCII bytes and must denote exact safe integers; integral
-decimal/exponent forms are accepted without rounding. Preserve every graph
-field and array order, not whitespace/member order or number spelling. Text
-syntax/resource failures have SCHEMA_INVALID and the empty graph pointer;
-valid JSON uses the existing graph's located structural errors. Neither text
-serialization nor decoding grants Markdown, import or execution authority.
-
-Text APIs are Go `orm.PhysicalGraphFromJSON([]byte)` / `graph.JSON()`, PHP
-`Orm\PhysicalGraph::fromJson(string)` / `graph->toJson()`, Rust
-`PhysicalGraph::from_json(&[u8])` / `graph.to_json()` and TypeScript
-`parsePhysicalGraphJSON(string)` / `emitPhysicalGraphJSON(graph)`. Invalid
-UTF-8 bytes fail in byte/string runtimes; TypeScript rejects ill-formed UTF-16
-strings and non-string inputs rather than accepting a byte array implicitly.
-`make physical-json-check PHYSICAL_NODE=/absolute/path/to/node` runs 30 shared
-syntax/value cases, six number-form cases, complete-record roundtrips and
-native encoding checks twice per client, plus two shared output-size cases.
-Owner decoder checks separately
-accept each byte/depth/node limit and reject its next value, so a structural
-graph error cannot stand in for a resource check. The connected graph case
-also compares every field through emission/parsing/emission and reports JSON
-byte count and elapsed time. PHP uses direct tree construction and bounded
-256-entry short-string/small-scalar-object caches with FIFO replacement;
-copy-on-write keeps shared immutable data detached after edits. Record actual
-PHP peak allocation with its unchanged 128M limit, not process RSS. These
-checks do not establish unexecuted platforms.
-
-Physical graphs have exactly `version` (numeric value 1, never a boolean),
-`dialect` (mysql/postgres/sqlite), nonempty UTF-8 `dialectVersion` up to 128 bytes,
-`tables`, `foreignKeys`, `indices`, `keys` and `checks`. All arrays are required;
-the former nodes/FK-only shape is rejected rather than filled implicitly.
-Each table has exactly `id`, `identity` (the four
-physical identity components, with column null), ordered `columns`, `comment`
-and `options`. Validate metadata with the record limits; require 1–4096 columns
-per table, at most 4096 tables, 120000 total columns, 20000 FKs and 16 MiB of
-string values in the graph. Each additional record list has at most 20000 entries;
-the four record lists together have at most 60000 entries (root error on excess).
-Empty graphs are valid; null lists are not.
-Table, column, FK, index, key and CHECK IDs are globally unique. Exact qualified table identities,
-column names within each table and named FKs within each source table are unique.
-Build table/column-owner maps once before resolving FK pairs. Every local and
-target ID must belong to its declared table; preserve order and allow cycles,
-self references and multiple independent constraints on shared columns.
-Graph errors expose SCHEMA_INVALID and a JSON-pointer path of fixed field names
-and numeric positions, never input names/SQL. Component errors locate their
-record; ownership/duplicate errors locate the invalid field. Results are
-detached/deeply immutable. These graphs represent physical nodes and FK links,
-including indices/keys/CHECKs, but not complete SQL object coverage, dialect validation or
-execution authority. The dialect version is preserved, not inferred or verified.
-
-Validation order is root bounds, tables/columns, FKs, indices, keys, CHECKs.
-Names of FKs, keys and CHECKs share one exact per-table constraint namespace.
-Index names have a separate per-table namespace, so a key and its index may
-share a name. Every record tableId and column/include ID resolves to its owner.
-Expression references require SQL parsing and are not inferred from SQL text.
-At most one primary key per table is permitted. A declared backing index must
-belong to the same table, have exactly the key's ordered column sources and no
-partial predicate; each backing index links to at most one key. Ordinary keys
-require a unique index; temporal overlap keys preserve exclusion-index metadata
-without claiming SQL/range-type validity. Explicit unique null-treatment values
-must agree when both key/index specify them. Mismatches locate the key indexId.
-Keep unspecified values unchanged rather than inferring defaults. New-list
-shape errors locate the record; duplicate/ownership errors locate its field.
-
-Public entry points are Go `orm.PhysicalGraphFromValue` (decoded JSON values,
-with version also accepting native int 1), PHP `Orm\PhysicalGraph::fromValue`,
-Rust `orm_schema::physical_graph::PhysicalGraph::from_value` and TypeScript
-`createPhysicalGraph`. Go/PHP return detached snapshots through Value()/value();
-Rust exposes an immutable borrowed Value and TypeScript deeply freezes output.
-The located error types are PhysicalGraphError in Go/PHP/TypeScript and
-GraphError in Rust. Root-shape errors have the empty JSON pointer.
-
-Run `make physical-graph-check PHYSICAL_NODE=/absolute/path/to/node` for
-28 existing graph vectors, five existing count/byte-limit vectors, 35 additional
-record graph vectors, three duplicates, three list counts, one combined count
-and three independently sized new-list byte-limit vectors. The connected
-2000-table/60000-column/10000-FK scenario also retains 2000 indices, 2000 keys
-and 2000 CHECKs. Run these cases and all record regressions twice in
-each client. Each owner reports its elapsed time and a 15-second graph-test
-deadline. Generation and validation timing are separate; Rust tests use debug
-builds. PHP reports process peak allocated bytes and its unmodified memory
-limit, not resident memory or the memory of another runtime. These are
-structural graph tests, not SQL dialect validation or DB proof.
-
-
-
-
-
-
-The human-maintained schema files are `schema/*.mmd` (Mermaid `erDiagram`). GitHub, IDEs, and build artifacts render them as diagrams, and `ormgen` parses them into a generated **manifest** (`schema.json`) with columns, keys, relations, indexes, and styles. Do not edit the manifest.
-For an existing database, `ormgen import --dsn … --out schema/service.mmd` creates the diagram; foreign keys become relation lines and indexes become `%%` directives.
-
-## 1. Example
-
-```mermaid
-erDiagram
-  author {
-    bigint       seq                 PK  "auto"
-    varchar(191) name
-    text         description             "? lazy"
-    datetime(6)  created_ts              "=now"
-    datetime(6)  updated_ts              "=now onupdate"
-    tinyint      is_close                "=0 bool"
-    tinyint      is_display              "=0 bool"
-    datetime(6)  display_start_dt        "?"
-    datetime(6)  display_end_dt          "?"
-    int          reader_count            "=0"
-    varchar(191) photo_url               "?"
-    varchar(255) aes_hex_email           "? aes,hex"
-    varbinary(16) ip                     "ip"
-    varchar(36)  uuid                UK  "?"
-    bigint       user_seq            FK
-    bigint       updated_user_seq    FK  "?"
-    bigint       service_seq         FK
-    bigint       game_group_seq      FK
-    int          game_group_number       "=1"
-  }
-  author_item {
-    bigint  seq          PK "auto"
-    bigint  author_seq   FK
-    int     order_number    "=0"
-    varchar(191) name
-  }
-
-  service       ||--o{ author        : service_seq
-  user          ||--o{ author        : user_seq
-  user          ||--o{ author        : "updated_user_seq (updater / updated_authors)"
-  game_group    ||--o{ author        : game_group_seq
-  author        ||--o{ author_item   : "author_seq (author / items)"
-
-  %% unique   author (game_group_seq, game_group_number)
-  %% index    author (service_seq, is_close)              ix_service
-  %% fulltext author (name, description)
-```
-
-## 2. Rules
-
-### 2.1 Column lines — `type name [PK|FK|UK] ["attributes"]`
-
-Column lines follow Mermaid syntax; `PK`, `FK`, and `UK` are Mermaid keywords. Mark every primary-key column with `PK`; the declaration order is the composite-key order. A primary key may use any valid name and may contain several columns; `seq` is a naming convention for automatic keys.
-Write the database type directly (`bigint`, `uuid`, `varchar(191)`, `datetime(6)`, `decimal(13_3)`, `enum(a_b)`, `jsontext`). The manifest normalizes it to types such as `i64`, `string`, and `datetime`; PostgreSQL DDL keeps a native `uuid`. `varchar` and `char` require a positive length.
-- A `jsontext` column holds JSON as its exact text: `text` on PostgreSQL, `LONGTEXT` on MySQL, and TEXT on SQLite. The ordered-json codec keeps the member order, the duplicate keys as written, and an empty object apart from an empty array, so the value reads back identically on the three databases. Every client returns the ordered-json value of the column and writes that value's text unchanged ([value model](codec.md#value-model)). The type `json` is rejected; write `jsontext`. A `jsontext` column takes only the `json` or `jsons` stage.
-- An encrypted JSON value is a blob column with the stages `json aes`, such as `longblob config "json aes"`, in an entity with a non-null integer `aes_key_version` column. The connection's AES key configuration supplies the keys ([encrypted JSON value](codec.md#encrypted-json-value)).
-- An `enum(a_b)` column is `enum('a','b')` on MySQL and text on PostgreSQL and SQLite. `ormgen diff`, `validate`, and migration verification compare a PostgreSQL `enum` column with a live text column as equal, because the live schema holds no value list.
-- Data that is filtered, sorted, or indexed inside the database is modeled as columns or a child table, never as a path into a `jsontext` column: the ORM has no JSON path conditions and no JSON indexes, and the native document types (MySQL `JSON`, PostgreSQL `jsonb`) normalize the document, so they cannot keep the stored text. A queryable document type would be a separate column type with its own condition and index syntax; it does not exist.
-
-The quoted string is a space-separated attribute list. Without it the column is NOT NULL, has no default, and has no style.
-
-A required column is NOT NULL, has no default, is not `auto`, and is not the `aes_key_version` column that the ORM writes with AES values. Every insert (`create()`, `creates()`, `duplication()` with `create()`, and `save()` without a primary key) sets every required column; otherwise the client fails with `IR_INVALID: required column <entity>.<column> is not set` before the statement runs, in all four clients and on MySQL, PostgreSQL, and SQLite. MySQL would otherwise store the first value of an omitted NOT NULL `enum` column.
-
-| Attribute | Meaning |
+| Language | Tool |
 |---|---|
-| `?` | nullable |
-| `=value` | default, such as `=0`, `='ko'`, `=now`, or `=null` |
-| `onupdate` | updated to the current time on every update |
-| `auto` | automatic key; the column must be a non-null signed primary key whose type normalizes to `i64`, otherwise schema build fails at the column's source line |
-| `unsigned` | unsigned integer (written by import; optional by hand) |
-| `bool` | expose a `tinyint` column as a boolean |
-| `lazy` | excluded from the default column set; select it with `addColumn<Col>()`. Text and blob columns are lazy by default |
-| `aes` `hex` `gz` `json` `jsons` `base64` `serialize` `ip` `yaml` | codec stages, applied in order on write and in reverse on read ([codecs](codec.md)); usually inferred from name prefixes such as `aes_hex_`, `gz_`, `json_`, and the column name `ip` |
-| `-> table.column` | explicit foreign-key target when no relation line exists |
+| Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
+| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
+| TypeScript | `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` of `@polyspec/orm-typescript` |
+| Rust | `orm_build::Builder::new([<files.dbs>]).scan("src").generate()` in `build.rs` |
 
-Column names follow the reserved-name rules of the [DSL](dsl.md#_9-reserved-names).
+Each tool reads every document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
-### 2.2 Relation lines — `parent ||--o{ child : "fk_column (child_name / parent_name)"`
+The `github.com/polyspec/orm/generator` package exposes Go generation to other programs. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
 
-| Notation | Meaning |
-|---|---|
-| `\|\|--o{` (1 : 0..N) | the child row has a foreign key to one parent row |
-| `\|\|--\|\|`, `\|\|--o\|` (1 : 0..1) | one row on each side |
-| `}o--o{` (N : M) | not supported; model the join table as an entity |
+## 2. Schema operations
 
-Relation lines declare foreign keys: generated DDL, import, and migration diff use them, and recursive delete uses their direction. Queries name their keys with `match<L>With<R>` and `join<L>With<R>`.
+The schema operations are functions of each client library. They take parsed documents and a dialect (`mysql`, `postgres` or `sqlite`) and return statements or located diagnostics.
 
-The label starts with the child foreign-key column. A composite relation lists the ordered foreign-key columns and names both sides: `(tenant_id, account_id) (account / memberships)`. The number of foreign-key columns equals the number of parent primary-key columns, matched by position. `(child / parent)` names are optional for a single-column relation; without them the child side removes `_seq` or `_id` from the column and the parent side pluralizes the child table name without the parent-table prefix. Name collisions are build errors.
-A column may take part in more than one foreign key; every relation line keeps its own key pairs.
+| Operation | Go `engine/dbspec` | PHP `Orm\Dbspec\Dbspec` | TypeScript | Rust |
+|---|---|---|---|---|
+| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
+| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
+| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `orm_schema::dbspec::diff` |
+| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `orm_schema::dbspec::plan_steps` |
+| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `orm::dbspec::apply` |
+| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
+| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `orm::dbspec::rollback` |
+| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `orm::dbspec::finalize` |
 
-### 2.3 `%%` directives
+[mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 
-Mermaid treats these lines as comments; only `ormgen` reads them.
+## 3. Rust catalog connections
 
-```text
-%% unique   <table> (<col>, …)                 # composite unique key; a single column uses UK on its line
-%% index    <table> (<col>, …) [name]          # composite index or single-column index on a non-FK column
-%% fulltext <table> (<col>, …)                 # full-text index used by fulltext<Col>With<Col> conditions
-%% check    <table> <name> : <expression>      # database CHECK constraint; backtick columns are validated
-%% timestamps <table> <created> <updated>      # timestamp columns (default: created_ts and updated_ts)
-%% aes_version <table> <column>                # non-null integer key version written with AES values
-%% soft_delete <table> <column>                # nullable datetime; reads exclude non-NULL rows
-%% table_comment <table> "comment"
-%% column_comment <table> <column> "comment"
-%% rename_table <new_table> <old_table>        # migration rename
-%% rename_column <table> <new_col> <old_col>   # migration rename
-%% orm:table entity=<entity> name=<schema.table>
-%% orm:foreign entity=<entity> columns=<col>[,<col>…] references=<schema.table>(<col>[,<col>…]) [name=<constraint>] [on_delete=<action>] [deferred=true]
-%% orm:immutable entity=<entity>
-%% orm:audit_log operation=<table>(<seq>, <uuid>) context=<setting> change=<table>(<operation_seq>, <operation>, <service>, <table_name>, <entity_key>, <old_value>, <new_value>)
-%% orm:audit entity=<entity> mode=changes|operations [service=<column>] [redact=<column.path>[,<column.path>…]]
-```
+Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values (grid cells also decimal, binary, date, time and datetime values; see [interfaces](interfaces.md)), but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
 
-- `orm:table` is the only declaration of a qualified physical table. PostgreSQL treats the schema and the table as separate identifiers; SQLite maps `schema.table` to the physical name `schema__table`, including generated index names, so two schemas with the same table name do not collide.
-- `orm:foreign` declares a physical foreign key to a table outside the manifest or with explicit constraint options. `deferred=true` creates a deferrable, initially deferred constraint on PostgreSQL and SQLite.
-- `orm:table` on MySQL places the table in the database named by the schema; DDL creates that database first.
-- `orm:immutable` creates database triggers that reject updates, deletes, and truncation of the entity's table. MySQL has no truncate trigger, so its guard rejects updates and deletes only.
-- `orm:audit_log` names the operation table (its sequence and id columns), the transaction setting that carries the current operation id, and the change table with its seven columns in the order shown. Like the target of `orm:foreign`, the two tables may belong to another manifest installed on the same connection, so only their names and column counts are checked; a schema declares at most one audit log.
-- `orm:audit` creates triggers on the entity's table that require an operation: a write fails with `audit operation context is required` when the setting is empty and `audit operation does not exist` when no operation row has that id. `mode=changes` also writes one change row per inserted, updated, or deleted row: the operation sequence, `INSERT`/`UPDATE`/`DELETE`, the `service` column value, the table name, the primary key as a JSON object, and the old and new row as JSON objects. An update records only the changed columns and writes no row when nothing changed. `redact` replaces each named JSON path with `{"redacted": true, "present": true}`; a redacted column must exist, must not be a key column, and a dotted path requires a column that can hold JSON. A column with the `aes` stage is always recorded as `{"redacted": true, "present": true}`, never as its plaintext or ciphertext. The `service` value keeps the audited column's type, so the change table's service column may be text or an integer; an entity without `service` records NULL. `mode=operations` records nothing. The audit log tables cannot be audited.
-- The calling code sets the operation id with `utils().setLocal(<setting>, id)` inside the transaction. PostgreSQL reads the transaction setting, MySQL the user variable `` @`orm.<setting>` `` that `setLocal` sets and clears at the end of the transaction, and SQLite the `orm__context` table. On PostgreSQL a truncate also requires an operation; MySQL and SQLite have no truncate trigger.
-- On MySQL with binary logging on (the default), the login that installs the manifest creates the triggers only when the server runs with `log_bin_trust_function_creators=ON` or the login has the `SUPER` privilege; otherwise installation fails with MySQL error 1419.
-- JSON row values: PostgreSQL uses `to_jsonb`. MySQL and SQLite list the columns by name; binary values are written as `\x` and lowercase hex, SQLite reads valid JSON text in text columns as JSON, and MySQL writes points as WKT.
-- The triggers carry a `-- orm:` comment with their directive, so `ormgen import`, `validate`, `migrate`, and `db:` sources read the directives back from the current schema. `ormgen diff` drops a changed trigger before the table changes and creates it after them, and creates the triggers of a rebuilt SQLite table again.
-- Rename directives are migration metadata. `ormgen diff` never infers a rename from similar names; keep the directive in later schema versions. Missing, duplicate, self-referencing, and ambiguous rename sources fail validation.
-- Table and column comments are schema data. `ormgen ddl` writes MySQL comments, PostgreSQL `COMMENT ON` statements, and SQLite rows in `orm_schema_comments`; `ormgen import` reads them back. A changed comment changes the schema hash.
+Tool `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through catalog operations, including transaction cleanup.
 
-### 2.4 Defaults
+The `live-db` feature exposes `orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. Catalog connections preserve SQLite foreign-key settings. A catalog connection reads table metadata and pages and changes rows; `orm::dbspec::introspect` reads the schema of a database.
 
-- `bigint seq PK "auto"` is the conventional automatic key. Other key names and composite keys are valid.
-- `created_ts` and `updated_ts` are timestamp columns by name.
-- `is_*` tinyint columns are booleans without `bool`.
-- Text, blob, and styled columns are lazy, except `aes_hex_*`.
-- Commas are invalid in Mermaid type strings; write `decimal(13_3)` and `enum(a_b_c)`. [Dialects](dialects.md) maps the normalized types to DDL.
+SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
 
-### 2.5 What the diagram stores
+## 4. Schema installation
 
-| Element | Location |
-|---|---|
-| tables, columns, types, keys, relations | Mermaid syntax |
-| nullability, defaults, automatic keys, update time, lazy, styles, explicit targets | column attribute string |
-| composite keys, index order, full-text indexes, timestamps, soft delete, checks, comments, renames | `%%` directives |
-| foreign-key delete actions | `cascade` or `setnull` in the relation label (RESTRICT by default) |
-| dialect differences | not stored; `ormgen ddl --dialect mysql\|postgres\|sqlite` renders each dialect |
-| partitions, collation and engine options, views, functions, sequences, extensions | not supported; write them in migration SQL |
+`connection.utils().schema().install(schema)` renders the document set of a generated schema value with the dialect of the connection, applies the statements, triggers included, and registers the set on the connection ([protocol](protocol.md)). A manifest text that does not hash to its declared `manifestHash` fails with `CONFIG` before any statement. It creates every table when no table of the set exists, changes nothing when every table exists, and fails with `CONFIG` when only some exist. A set with a diagnostic fails with `SCHEMA_INVALID`. PostgreSQL and SQLite apply the statements in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly, so it applies them outside a transaction, and a call inside a transaction returns `CONFIG`.
 
-## 3. Manifest
+| Language | Call | Input |
+|---|---|---|
+| Go | `Utils().Schema().Install(model.Schema)` | the schema value of the generated package (`*orm.Schema`) |
+| PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | the schema value of the generated models (`Orm\Schema`) |
+| TypeScript | `utils().schema().install(SCHEMA)` | the schema value of the generated module (`{ manifestText, manifestHash }`) |
+| Rust | `utils().schema().install(&model::SCHEMA).await` | the schema value of the generated models (`orm::Schema`) |
 
-```json
-{
-  "schema_hash": "…",
-  "entities": {
-    "author": {
-      "table": "author", "pk": ["seq"], "auto": "seq",
-      "columns": [{"name": "seq", "type": "i64", "pk": true, "auto": true}, {"name": "description", "type": "text", "nullable": true, "lazy": true}],
-      "relations": {"service": {"kind": "one", "target": "service", "keys": [{"local": "service_seq", "target": "seq"}]}},
-      "unique": [["uuid"], ["game_group_seq", "game_group_number"]],
-      "indexes": {"ix_service": ["service_seq", "is_close"]},
-      "fulltext": [["name", "description"]],
-      "timestamps": {"created": "created_ts", "updated": "updated_ts"}
-    }
-  }
-}
-```
+## 5. Adding tables and columns
 
-Commit the manifest and do not edit it. `ormgen validate` reports differences among the diagrams, the manifest, and a live database.
+`connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed document set to a new version of it that only adds: it creates every table of the set that the database lacks and adds the missing columns of the existing tables, when each of them is `null` or has a default. It returns a created table as `table` and an added column as `table.column`, in table name order and then column order. It introspects the database of the connection ([dialects](dialects.md#introspection)) and compares the tables of the set that exist with the set, as a [comparison](plans.md#comparison) of their schema texts; every table outside the set is neither compared nor changed, so one database can hold the tables of several sets. When every difference is a `create_table` or an `add_column` of such a column, it runs the [steps](plans.md#steps) of one plan from those tables to the set: a created table comes with its indexes, foreign keys, checks and `immutable` and `audit` triggers; an added column is an `ADD COLUMN` with the renderer CHECK of the column on MySQL and PostgreSQL and a rebuild of the table on SQLite, and for an audited table the replacement of its triggers, which then copy the new columns into the history table. A repeated call adds nothing and returns an empty list. It records no plan history and registers no set; the connect helper of generated code registers the set.
 
-### 3.1 Namespaced extensions
+Every other difference returns `SCHEMA_DIFFERS`, which names each difference as `<kind> <table>[.<name>]`, before any statement, also when the version adds tables: a missing column that is non-null without a default, a column that the set does not declare, a changed type, `null`, default or identity, a missing column before an existing one (`reorder_columns`, because PostgreSQL appends a column), a changed primary key, unique key, index, foreign key, check or setting of an existing table, and an object of a table of the set that introspection cannot read. A manifest text that does not hash to its declared `manifestHash` fails with `CONFIG` first, and a set with a diagnostic with `SCHEMA_INVALID`. PostgreSQL applies the steps in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly and SQLite rebuilds a table with foreign keys off, which a transaction cannot change, so both apply the steps outside a transaction and return `CONFIG` inside one; SQLite runs them in one `BEGIN IMMEDIATE` transaction on one connection, requires `PRAGMA foreign_key_check` to return no row before it commits, and turns foreign keys on again.
 
-The parser keeps `%% orm:<kind>` lines in `Manifest.ORM` and validates the kind, identifiers, key/value syntax, and duplicates. It does not interpret routes, permissions, public keys, or CRUD meaning; a higher-level generator owns those rules.
+| Language | Call | Steps |
+|---|---|---|
+| Go | `Utils().Schema().AddTablesAndColumns(model.Schema)` | `dbspec.AddTablesAndColumnsSteps` |
+| PHP | `utils()->schema()->addTablesAndColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addTablesAndColumnsSteps` |
+| TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
+| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_tables_and_columns_steps` |
 
-```text
-%% orm:field product.company_seq relation=company fk=company.seq public=company.uuid required=true order=1
-```
-
-## 4. Commands
-
-```sh
-ormgen import   --dsn mysql://… --out schema/service.mmd        # database → Mermaid
-ormgen build    schema/*.mmd --out schema/schema.json            # Mermaid → manifest, with validation
-ormgen validate --dsn … --schema schema/schema.json              # manifest ↔ live database
-ormgen ddl      --schema schema/schema.json --dialect mysql --out schema.sql   # manifest → CREATE statements
-ormgen diff     --from old.json --to schema/schema.json --dialect postgres --out migration.sql
-ormgen gen      --schema schema/schema.json --lang go --out model --scan ./...
-```
-
-`build` and `gen` with `--check` compare their output with the existing files, print `differs:`, `missing:`, or `extra:` with each path, write nothing, and exit with status 1 when a file differs ([usage](usage.md#_3-code-generation)).
-
-Every `--dsn` and `db:` source is the client DSN URI (`mysql://`, `postgres://`, or `sqlite:///<absolute path>`), and the scheme selects the database. `ormgen import` and `ormgen validate` read MySQL, PostgreSQL, and SQLite.
-
-`tests/schema/cases.json` records the manifest, the DDL of each dialect, the diff of each manifest pair, and the `ormgen plan` file of each pair for the Mermaid fixtures of the Go tests and the bench schema (`go run ./tests/schema/record`; `make schema-check` fails when it is stale). The schema tools of every language are compared with this file.
-
-`ormgen gen --lang go` writes the Go models; it reads the packages named by `--scan` and generates the chain methods they call. PHP, TypeScript, and Rust generate their models with their own tools: `vendor/bin/orm-gen`, the `orm-gen` npm bin, and the `orm-build` crate ([usage](usage.md)).
-
-The PHP tool runs the schema commands with the same flags and output: `vendor/bin/orm-gen build | import | validate | ddl | diff | migrate`. Its DSN is a `mysql://`, `postgres://`, or `sqlite://` URI, which selects the database.
-
-The TypeScript tool does the same with `npx orm-gen build | import | validate | ddl | diff | migrate | plan | apply | verify | recover | rollback`: the flags, the written files, the plan files, and the migration history match the Go tool, and the DSN is a `mysql://`, `postgres://`, or `sqlite://` URI, which selects the database.
-
-The Rust tool is the `orm-gen` binary of the `orm-build` crate, built with its `cli` feature (`cargo install --path clients/rust/orm-build --features cli`). It runs `orm-gen build | import | validate | ddl | diff | migrate | plan | apply | verify | recover | rollback` with the flags, written files, plan files, and migration history of the Go tool; the DSN is a URI. The library side needs no feature: `orm_build::schema::build_files` builds the manifest from `.mmd` files in `build.rs`, and `orm_build::ddl` renders DDL and migrations.
-
-## 5. Validation
-
-`ormgen build` fails on reserved column names, relation name collisions, missing child foreign-key columns, missing index columns, duplicate unique keys, and missing `-> table.column` targets. A foreign-key column without a relation line or target is a warning.
-
-## 6. Import
-
-`ormgen import --dsn … --out schema/example.mmd [--tables a,b]` reads the database catalog and writes the diagram. The output is deterministic (tables alphabetically, columns by position), so an unchanged database produces no diff.
-
-- MySQL types come from `COLUMN_TYPE`: `unsigned` becomes an attribute, `is_*` tinyint columns become booleans, `decimal(13,3)` becomes `decimal(13_3)`, and `enum('a','b')` becomes `enum(a_b)`.
-- Attributes include `?`, `=value` (`CURRENT_TIMESTAMP` becomes `=now`), `onupdate`, and `auto`.
-- Relation lines use the foreign-key constraints of the catalog; without a constraint, a column named `<role>_<table>_seq` is matched to `<table>`. A foreign-key constraint of a table to its own key becomes a relation line of the table to itself; a column name that only resembles the name of its own table adds no key.
-- Indexes become `%% unique`, `%% fulltext`, and `%% index` directives, `UK` for single-column unique keys, and nothing for single foreign-key indexes, which are automatic.
-- PostgreSQL (`postgres://` DSN) reads `information_schema.columns`, `pg_index`, and `pg_constraint`, normalizes types (`character varying(191)` → `varchar(191)`, `boolean` → `tinyint`, `numeric(p,s)` → `decimal(p_s)`, `timestamp(6) with time zone` → `datetime(6)`, `inet` → `varbinary(16)`, `json` and `jsonb` → `json`), maps identity columns to `auto`, and reconstructs generated full-text indexes. SQLite reads `PRAGMA table_info`, `index_list`, and `foreign_key_list`; an `INTEGER PRIMARY KEY AUTOINCREMENT` column becomes `auto`, and the clock default of the generated DDL becomes `=now`.
-- SQLite reports an automatic rowid column as `INTEGER`, although that value is a signed 64-bit integer. Live import writes the column as `bigint PK "auto"`, which builds as a signed `i64` key; other SQLite `INTEGER` columns remain `int`.
-- When `--out` exists, the importer keeps what the database cannot express: relation name overrides, `lazy`, `bool`, `int`, and explicit styles.
-
-## 7. Client generation API
-
-### Rust catalog connections
-
-Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
-
-Tool `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through catalog and migration operations, including transaction cleanup.
-
-The `live-db` feature exposes `orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. `dialect()`, `tables(only)` and `manifest()` reuse the CLI-owned catalog reader and logical conversion. Catalog connections preserve SQLite foreign-key settings instead of applying migration-rebuild settings.
-
-SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Four owner cases verify invalid DSNs, missing SQLite file rejection, SQLite FK/content preservation and repeatable MySQL/PostgreSQL catalog reads; this evidence does not establish lossless physical import.
-
-This extraction does not claim lossless physical import. The existing reader scopes PostgreSQL to the current schema and does not preserve every expression index or physical option. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
-
-The `github.com/polyspec/orm/generator` package exposes generation to other programs. `generator.Generate` takes a manifest, the language `Go`, and an output directory. Go generation also takes `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping, and output stay in the ORM generator.
-
-## 8. Schema installation
-
-`connection.utils().schema().install(manifestJson)` creates the missing tables, keys, indexes, comments, and triggers of the manifest on the connection's dialect, keeps existing tables, and registers the manifest with the connection. The manifest hash is verified against its content before any statement runs. After installation the connection plans requests of the models generated from that manifest ([protocol](protocol.md)). PostgreSQL and SQLite apply the statements in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly, so it applies them outside a transaction, and a call inside a transaction returns `CONFIG`. The manifest is the only input; callers do not pass SQL or select a dialect.
-
-`connection.utils().schema().register(manifestJson)` registers a manifest whose objects already exist, such as a schema that another connection installed. It verifies the manifest hash against its content and returns `CONFIG` when they differ, executes no statement, and registers the manifest with the connection as `install` does.
-
-`connection.utils().schema().addColumns(manifestJson)` (Go `AddColumns`, Rust `add_columns`) adds every missing column of the existing tables of the manifest that is nullable or has a default, replaces the audit triggers of each table that receives a column so that they record the new columns, and returns the added columns as `table.column` in manifest order. It reads only the tables of the manifest, through the import of §6 on the connection of the call, and takes the column facts that the catalog does not hold (`bool`, `int`, `lazy` and the styles) from the manifest. A string default that the catalog reports with its quotes and a decimal default that it reports with the digits of the column scale are the declared default, a column whose type the dialect stores as the declared type has the declared type (PostgreSQL stores `char(n)` as `varchar(n)` and every blob type as `bytea`), an index whose physical name is the physical name of a declared index has the declared name (a name longer than the identifier limit of the dialect is stored cut with a digest), and a CHECK expression is compared in its catalog form as a migration compares it. A table of the manifest that does not exist is left to `install`, and the tables of other manifests are neither read nor changed. Any other difference between an existing table and the manifest returns `SCHEMA_DIFFERS`, which names the difference, before any statement runs: a missing column that is required or automatic, a column that the manifest does not declare, a changed type, nullability or default, and a changed key, index, foreign key, check or comment. A table name qualified by a schema returns `CAPABILITY_UNSUPPORTED` on MySQL and PostgreSQL. A repeated call adds nothing and returns an empty list. The manifest hash is verified against its content first, and the transaction rule of `install` applies: PostgreSQL and SQLite apply the statements in the active transaction of the connection or in a new one; MySQL commits each schema statement implicitly, so it applies them outside a transaction, and a call inside a transaction returns `CONFIG`. The call registers no manifest; an installation calls `addColumns` and then `install`, which creates the missing tables and registers the manifest.
+`install` creates a set only whole and returns `CONFIG` for a set of which only some tables exist; `addTablesAndColumns` brings such a set to its new version, after which `install` changes nothing.

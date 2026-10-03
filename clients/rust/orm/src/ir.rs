@@ -6,7 +6,7 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Request {
     pub ir_version: u32,
-    pub schema_hash: String,
+    pub manifest_hash: String,
     pub kind: String,
     #[serde(flatten)]
     pub query: Query,
@@ -133,9 +133,15 @@ pub struct Relation {
     pub query: Box<Query>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub kind: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub keys: Vec<KeyPair>,
+}
+
+/// relation key의 한 성분: 부모 column `left`와 자식 column `right`가 같다.
+/// composite key의 relation은 성분마다 한 쌍을 key 순서대로 담는다.
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct KeyPair {
     pub left: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub right: String,
 }
 
@@ -178,8 +184,6 @@ pub struct Pred {
     pub r#ref: Option<ColRef>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub expr: String,
-    #[serde(rename = "match", skip_serializing_if = "Vec::is_empty")]
-    pub match_: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#fn: Option<Func>,
     #[serde(skip_serializing_if = "Option::is_none")]

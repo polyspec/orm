@@ -97,14 +97,14 @@ A terminal does not change the stored request, so repeated terminals produce the
 
 ### 5.0 Connection input
 
-Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. The optional `timezone` parameter sets the connection time zone; without it the server environment time zone is used. The caller does not pass a second driver value.
+Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. Every connection reads and writes datetime values in UTC; the optional `timezone` parameter accepts only `UTC` or `+00:00`. The caller does not pass a second driver value.
 
 | Client | Public connection call | Result |
 |---|---|---|
-| Go | `model.Connect(dsn, schemaPath, config)` | `(*orm.DB, error)` |
-| PHP | `Orm::connect(dsn, new Config(schemaPath: …))` | `Db` |
-| Rust | `orm::Db::connect(dsn, pool_size, config).await?` | `orm::Db` |
-| TypeScript | `Db.connect(dsn, schemaPath, options)` | `Promise<Db>` |
+| Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
+| PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
+| Rust | `model::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| TypeScript | `connect(dsn, options)` of the generated module | `Promise<Db>` |
 
 ### 5.1 Creation and language forms
 
@@ -151,7 +151,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 
 ## 6. Connections, transactions, and utilities — IF-13 to IF-17
 
-`connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned.
+`connection.transaction(fn, options)` runs the callback in one transaction. Begin, commit, rollback, and the executor are private. A callback error or exception rolls back the transaction; otherwise the transaction commits and the callback result is returned. Before the transaction ends, the client releases its MySQL `lock` locks, clears the MySQL values of `setLocal`, and restores the SQLite `query_only` and `read_uncommitted` modes, because named locks, user variables, and pragmas outlive `COMMIT` and `ROLLBACK` on a pooled connection. Every cleanup step runs and every failed step is reported; a `RELEASE_LOCK` that does not return 1 is `CONFIG` `lock <key> was not held at transaction end`. When that cleanup fails at commit, the transaction rolls back and returns the cleanup error. When the callback, the begin, or the commit cleanup fails and the cleanup or the rollback fails too, the error is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<transaction end error>)`; it keeps the cause and the transaction end error ([protocol](protocol.md)) and is not retried. A Go or Rust callback that panics, or a Go callback that leaves through `runtime.Goexit`, rolls the transaction back and the panic continues; when that rollback fails, the panic value is the `ROLLBACK` error of the same form. A rollback that fails because the server or the driver closed the connection, for example after a cancelled statement or a killed session, is a failed rollback too and is reported in that form, although the server ended the transaction with the session; a client that ends a failed transaction by closing its connection reports the cause alone. A Go transaction whose context is cancelled cannot run the cleanup statements, so it closes its connection instead of returning it to the pool and reports `CANCELED` alone; the server ends the transaction, its named locks, user variables and SQLite modes with the session. A Rust transaction future dropped before its transaction ends closes the connection at once, over TLS too, so the server ends the transaction and its locks with the session.
 
 | Option | Values |
 |---|---|
@@ -161,7 +161,7 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 | `retry` | deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry |
 
 - Each execution flow keeps a stack of active transactions: the goroutine in Go, the request in PHP, the async context in TypeScript, and the task in Rust. A model without `connect` uses the innermost transaction.
-- A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it.
+- A transaction on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it. After a callback error, a panic or a Go `runtime.Goexit`, the client runs both `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT`; when either fails, the error or the panic value is `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`, and a failed `RELEASE SAVEPOINT` after a successful callback is returned. A savepoint of a transaction that a cancelled transaction context has already ended ended with it.
 - Concurrent use of one transaction connection returns an error. A task or goroutine started inside the callback has no active transaction.
 - `transactionConflict(message)` (Go: `orm.TransactionConflict`) creates the retryable `DEADLOCK` error.
 - Row locks `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL append the lock clause; SQLite uses an ORM transaction-scoped lock row. A `*_nowait` request that cannot acquire the lock returns `LOCK_NOT_AVAILABLE` on every adapter.
@@ -174,9 +174,8 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 | `setLocal(key, value)`, `local(key)` | transaction-local values; requires an active transaction; `local` returns `NO_ROWS` for a missing key |
 | `wasInserted(entity, sequence)` | reports whether a generated ORM insert for the sequence succeeded in the active transaction; the fact is adapter-neutral and restored across savepoint rollback |
 | `backendWaitingForLock(ctx)` | reports PostgreSQL pool backends waiting for a lock; MySQL and SQLite return `false` without exposing a driver-specific caller API |
-| `schema().install(manifestJson)` | creates the missing tables, keys, indexes, comments, and triggers of the manifest on every database and keeps existing tables; on MySQL a call inside a transaction returns `CONFIG` |
-| `schema().register(manifestJson)` | registers an installed manifest with the connection without creating objects; a manifest whose hash differs from its content returns `CONFIG` |
-| `schema().addColumns(manifestJson)` | adds the missing nullable or defaulted columns of the existing tables of the manifest, replaces the audit triggers of each changed table, and returns the added columns as `table.column`; any other difference returns `SCHEMA_DIFFERS` before any change; on MySQL a call inside a transaction returns `CONFIG` |
+| `schema().install(schema)` | takes the generated schema value, fails with `CONFIG` before any statement when its manifest text does not hash to its `manifestHash`, renders the dbspec document set for the dialect of the connection and creates every table when none exists, and registers the set on the connection; changes nothing when every table exists and returns `CONFIG` when only some exist; on MySQL a call inside a transaction returns `CONFIG` |
+| `schema().addTablesAndColumns(schema)` | takes the generated schema value and upgrades its installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default, with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; returns the created tables as `table` and the added columns as `table.column`, leaves the tables of other sets unchanged and registers nothing; any other difference returns `SCHEMA_DIFFERS` before any change; on MySQL and SQLite a call inside a transaction returns `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)` | schema inspection |
 | `schema().empty()` | reports whether the database holds no user content. On PostgreSQL a schema other than `public`, `information_schema` and the `pg_` schemas is content even without objects, and so is a table, partitioned table, view, materialized view, or foreign table in `public`; functions, types, and sequences in `public` are not content. On MySQL a table or view of the connected database is content; on SQLite a table or view other than the `sqlite_` tables and the ORM's `orm__` tables is content |
 | `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)` | table privileges; non-PostgreSQL dialects return `CAPABILITY_UNSUPPORTED` |
@@ -195,7 +194,7 @@ Assembly uses `{alias, column, output_name, index}`. Join aliases remain separat
 
 A model row stores declared fields, added columns, relation results, and values attached with `new<Name>` in one name space; duplicate names are rejected. Getters return the declared type. Setters update the field and mark it dirty. Update operations send dirty fields only, except fields required by optimistic locking. The original version is read before mutation and is used in the update predicate.
 
-A relation result is either one row or a collection according to the schema. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
+A relation result is either one row or a collection according to the schema. The Go and Rust relation getters also return an error: a row without a related row reads as no result, and a stored relation value of another type than the getter's result is `INTERNAL`. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
 
 ## 9. Collection, key, and page — IF-25 to IF-27
 
@@ -314,6 +313,23 @@ binary floats or fixed-precision model codecs. SQLite has no native decimal
 storage class: its actual text/integer/real values keep their existing tags.
 Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.
 
+Temporal grid cells hold the dbspec text forms: `Date` is `YYYY-MM-DD`, `Time`
+is `HH:MM:SS` and `DateTime` is `YYYY-MM-DD HH:MM:SS` in UTC, the latter two with
+fraction digits. MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`,
+`time` and `timestamp` without time zone decode into them; MySQL `TIMESTAMP` and
+PostgreSQL `timestamptz` and `timetz` remain unsupported. A read of a described
+table (table page, row lookup, insert reads) writes exactly the declared
+precision p of the column, where MySQL `time` and `datetime` without p have 0 and
+PostgreSQL `time` and `timestamp` without p have 6; a read-only grid query has
+no column declaration and writes six digits. A time outside 00:00:00 to
+23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL
+infinity fail. SQLite has no temporal storage class: a read of
+a described table turns the stored text of a `DATE`, `TIME` or `DATETIME`
+column into the same temporal cell as MySQL and PostgreSQL, whose fraction
+digits the dbspec CHECK fixes at p, and a value that is not in the dbspec form
+fails with `GRID_TEMPORAL_VALUE`; a read-only grid query has no declaration and
+keeps the stored text.
+
 ### Qualified native Rust table metadata
 
 `CatalogConnection::current_namespace()` reports the selected namespace.
@@ -354,6 +370,11 @@ nonfinite MySQL floats and SQLite NaN before execution; SQLite infinities remain
 native float64 values. Reject malformed decimals, PostgreSQL text NUL, more than
 65535 parameters or total value bytes exceeding 16 MiB before preparing/executing.
 Typed NULLs use the selected native bind kind, not empty text or zero.
+`Date`, `Time` and `DateTime` binds take the dbspec text of the grid cells and
+reject any other form before execution; MySQL and PostgreSQL bind them as native
+date, time and timestamp values and SQLite binds the text, so a catalog write of
+a temporal column, a temporal row identity included, reads back the written
+cell when the value has the column's declared fraction digits.
 Native Boolean binding uses SQLx bool; PostgreSQL grid reads preserve Boolean,
 while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
 inventing a distinct native boolean type. SQLite storage class is owner-tested.

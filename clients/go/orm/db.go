@@ -21,7 +21,7 @@ import (
 	"github.com/polyspec/orm/engine"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
 )
 
 // Config is the connection configuration. Paths and secrets are declared,
@@ -55,9 +55,32 @@ const Secret = "$SECRET"
 // NowBind replaces an executor clock bind wherever binds are shown.
 const NowBind = "$NOW"
 
-// Schema identifies the schema a generated package was built from.
+// Schema은 generated package가 품은 manifest다: document set의 manifest
+// text와 그 manifestHash. runtime model은 처음 쓸 때 한 번 만든다.
 type Schema struct {
 	Hash string
+	Text string
+
+	once  sync.Once
+	model *runtimemodel.Model
+	err   error
+}
+
+// Model은 manifest text의 runtime model을 반환한다. text가 잘못되면
+// SCHEMA_INVALID, text의 hash가 Hash와 다르면 SCHEMA_HASH_MISMATCH다.
+func (s *Schema) Model() (*runtimemodel.Model, error) {
+	s.once.Do(func() {
+		m, diagnostics := runtimemodel.Load(s.Text)
+		switch {
+		case len(diagnostics) > 0:
+			s.err = &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+		case m.ManifestHash != s.Hash:
+			s.err = &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated code declares manifest %s, its manifest text hashes to %s: generate the models again", s.Hash, m.ManifestHash)}
+		default:
+			s.model = m
+		}
+	})
+	return s.model, s.err
 }
 
 // DB is a database connection with its schema engine, plan cache, and statement
@@ -65,11 +88,9 @@ type Schema struct {
 // every copy shares one connection through dbMutable.
 type DB struct {
 	sql      *sql.DB
-	eng      *engine.Engine
 	ctx      context.Context
 	root     *DB
 	m        *dbMutable
-	engines  map[string]*engine.Engine
 	cfg      Config
 	driver   string
 	location *time.Location
@@ -80,7 +101,9 @@ type DB struct {
 
 // dbMutable is the state every handle of one connection shares.
 type dbMutable struct {
+	// engines는 manifestHash마다 이 연결 dialect의 engine이다.
 	engineMu sync.RWMutex
+	engines  map[string]*engine.Engine
 
 	planMu    sync.RWMutex
 	planOrder []uint64
@@ -99,50 +122,62 @@ type dbMutable struct {
 	keyring     AESKeyring
 	keyringErr  error
 
-	// rollbackFault is the test fault that FailNextRollback arms; only a
-	// build with the tag ormtest can set it.
+	// rollbackFault는 FailNextRollback이 설정하는 test fault다. build tag
+	// ormtest가 있는 build만 설정할 수 있다.
 	rollbackFault atomic.Bool
 }
 
-var processSchemas = struct {
-	sync.RWMutex
-	byDriver map[string]map[string]*engine.Engine
-}{byDriver: map[string]map[string]*engine.Engine{}}
-
-// RegisterEngine makes a generated schema available to every connection of
-// its dialect. Generated Connect calls it.
-func RegisterEngine(eng *engine.Engine) error {
-	if eng == nil || eng.P == nil || eng.M == nil {
-		return configErr("schema engine is required")
+// engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated
+// code가 품은 text가 선언한 hash로 hash되지 않거나, 그 manifest가 이 연결에
+// 등록되지 않았으면 SCHEMA_HASH_MISMATCH다. 요청이 실행될 수 있는 대상은
+// process가 읽은 code가 아니라 연결이 쓰는 database가 정하므로, 연결은 자기에게
+// 등록된 set만 plan한다.
+func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
+	if s == nil {
+		return nil, configErr("the model has no schema")
 	}
-	driver := eng.P.D.Name()
-	processSchemas.Lock()
-	defer processSchemas.Unlock()
-	if processSchemas.byDriver[driver] == nil {
-		processSchemas.byDriver[driver] = map[string]*engine.Engine{}
+	if _, err := s.Model(); err != nil {
+		return nil, err
 	}
-	processSchemas.byDriver[driver][eng.M.SchemaHash] = eng
-	return nil
-}
-
-// CheckSchemaHash compares the generated schema hash with the loaded manifest.
-func CheckSchemaHash(eng *engine.Engine, generated string) error {
-	if eng.M.SchemaHash != generated {
-		return &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated models are from schema %s, the engine loaded %s: generate the models again", generated, eng.M.SchemaHash)}
-	}
-	return nil
-}
-
-func (d *DB) engineFor(hash string) *engine.Engine {
 	d.m.engineMu.RLock()
-	local := d.engines[hash]
+	eng := d.m.engines[s.Hash]
 	d.m.engineMu.RUnlock()
-	if local != nil {
-		return local
+	if eng == nil {
+		return nil, &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("manifest %s is not registered on this connection: connect through its generated package or install it", s.Hash)}
 	}
-	processSchemas.RLock()
-	defer processSchemas.RUnlock()
-	return processSchemas.byDriver[d.driver][hash]
+	return eng, nil
+}
+
+// registered는 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지
+// 않으면 어떤 statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
+func (s *Schema) registered() (*runtimemodel.Model, error) {
+	if s == nil {
+		return nil, configErr("schema is required")
+	}
+	m, err := s.Model()
+	if ErrorCode(err) == CodeSchemaHashMismatch {
+		return nil, configErr("invalid schema manifest: %s", err.(*ir.Error).Msg)
+	}
+	return m, err
+}
+
+// register는 schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+func (d *DB) register(s *Schema) error {
+	m, err := s.registered()
+	if err != nil {
+		return err
+	}
+	d.m.engineMu.Lock()
+	defer d.m.engineMu.Unlock()
+	if d.m.engines[s.Hash] != nil {
+		return nil
+	}
+	eng, err := engine.New(m, d.driver)
+	if err != nil {
+		return err
+	}
+	d.m.engines[s.Hash] = eng
+	return nil
 }
 
 // BackendWaitingForLock reports whether another backend of this PostgreSQL
@@ -168,11 +203,7 @@ func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
 	return waiting, mapDriverErr(err)
 }
 
-func (d *DB) compile(r *ir.Request) (*plan.Plan, error) {
-	eng := d.engineFor(r.SchemaHash)
-	if eng == nil {
-		return nil, configErr("schema %s is not registered for %s", r.SchemaHash, d.driver)
-	}
+func (d *DB) compile(eng *engine.Engine, r *ir.Request) (*plan.Plan, error) {
 	if err := ir.Validate(eng.M, r); err != nil {
 		return nil, err
 	}
@@ -193,9 +224,10 @@ const defaultCacheSize = 256
 // zero; the TypeScript and Rust clients use the same value.
 const defaultPoolSize = 10
 
-// Open connects to the database selected by the DSN URI scheme. The schema
-// engine plans every statement in this process.
-func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
+// Connect opens the database selected by the DSN URI scheme. The connection
+// has no schema registered: a model request on it fails with
+// SCHEMA_HASH_MISMATCH until Install registers the set of the model.
+func Connect(dsn string, cfg Config) (*DB, error) {
 	if cfg.StatementTimeoutMs < 0 {
 		return nil, configErr("statement timeout must not be negative")
 	}
@@ -203,16 +235,29 @@ func Open(dsn string, eng *engine.Engine, cfg Config) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if eng == nil || eng.M == nil || eng.P == nil {
-		return nil, configErr("schema engine is required")
-	}
-	if name := eng.P.D.Name(); name != parsed.driver {
-		return nil, configErr("driver %s but the schema engine uses %s", parsed.driver, name)
-	}
-	return open(context.Background(), parsed, eng, cfg)
+	return open(context.Background(), parsed, cfg)
 }
 
-func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*DB, error) {
+// ConnectSchema opens the database selected by the DSN URI scheme and
+// registers the set of a generated schema on the connection; the connect
+// helper of a generated package calls it. A manifest text that does not hash
+// to its declared hash fails with CONFIG before the connection opens.
+func ConnectSchema(dsn string, s *Schema, cfg Config) (*DB, error) {
+	if _, err := s.registered(); err != nil {
+		return nil, err
+	}
+	d, err := Connect(dsn, cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := d.register(s); err != nil {
+		d.Close()
+		return nil, err
+	}
+	return d, nil
+}
+
+func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	if cfg.PlanCacheSize == 0 {
 		cfg.PlanCacheSize = defaultCacheSize
 	}
@@ -225,8 +270,9 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 	sqlDriver, ok := lookupDriver(dsn.driver)
 	if !ok {
 		msg := fmt.Sprintf("driver %q is not registered", dsn.driver)
-		if dsn.driver == "postgres" || dsn.driver == "sqlite" {
-			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/clients/go/orm/%s"`, dsn.driver)
+		// driver package 이름은 pg와 sqlite다.
+		if pkg := map[string]string{"postgres": "pg", "sqlite": "sqlite"}[dsn.driver]; pkg != "" {
+			msg += fmt.Sprintf(`: import _ "github.com/polyspec/orm/clients/go/orm/%s"`, pkg)
 		}
 		return nil, configErr("%s", msg)
 	}
@@ -279,11 +325,7 @@ func open(ctx context.Context, dsn parsedDSN, eng *engine.Engine, cfg Config) (*
 		s.Close()
 		return nil, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
 	}
-	if err := RegisterEngine(eng); err != nil {
-		s.Close()
-		return nil, err
-	}
-	return &DB{sql: s, eng: eng, ctx: ctx, m: &dbMutable{}, engines: map[string]*engine.Engine{eng.M.SchemaHash: eng}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // checkSQLite rejects SQLite builds older than the supported minimum.
@@ -391,10 +433,9 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 	}
 	cfg.Loc = dsn.location
 	if dsn.sslCA != "" {
-		// ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate
-		// against the CA and the host name. The password then travels only
-		// inside TLS: the driver sends the caching_sha2_password secret over
-		// TLS and requests the RSA public key of the server only without it.
+		// ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는
+		// TLS다. password는 TLS 안에서만 오간다: driver는 caching_sha2_password
+		// secret을 TLS로 보내고, TLS가 없을 때만 server의 RSA public key를 요청한다.
 		pem, err := os.ReadFile(dsn.sslCA)
 		if err != nil {
 			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
@@ -449,9 +490,9 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-// mapDriverErr reports a driver error with the code the error catalog names
-// for it and every other driver error with DRIVER; the coded error keeps the
-// driver message and the driver error as its cause.
+// mapDriverErr는 error catalog가 이름 붙인 driver 오류를 그 code로, 나머지
+// driver 오류를 DRIVER로 보고한다. code가 붙은 오류는 driver message와 driver
+// 오류를 cause로 유지한다.
 func mapDriverErr(err error) error {
 	if err == nil {
 		return nil
@@ -474,7 +515,7 @@ func mapDriverErr(err error) error {
 			return mapped
 		}
 	}
-	// Every other driver error, such as a write that a trigger refuses, is DRIVER.
+	// trigger가 거절한 write 같은 나머지 driver 오류는 DRIVER다.
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
@@ -499,8 +540,6 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
-	case me.Number == 1298:
-		return configErr("dsn timezone: %s; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", me.Message)
 	}
 	return err
 }
@@ -542,13 +581,6 @@ func IsNoRows(err error) bool { return ErrorCode(err) == CodeNoRows }
 
 func configErr(format string, a ...any) error {
 	return &ir.Error{Code: CodeConfig, Msg: fmt.Sprintf(format, a...)}
-}
-
-func manifestEntity(eng *engine.Engine, name string) *schema.Entity {
-	if eng == nil || eng.M == nil {
-		return nil
-	}
-	return eng.M.Entities[name]
 }
 
 func quoteText(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }

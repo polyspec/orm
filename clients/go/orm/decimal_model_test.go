@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestDecimalModelFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile("../../../contracts/fixtures/decimal_model.json")
 	if err != nil {
 		t.Fatal(err)
@@ -23,8 +25,10 @@ func TestDecimalModelFixture(t *testing.T) {
 			ID       string `json:"id"`
 			Column   string `json:"column"`
 			Input    string `json:"input"`
-			Expected string `json:"expected"`
-			Error    string `json:"error"`
+			Expected struct {
+				Value string `json:"value"`
+				Error string `json:"error"`
+			} `json:"expected"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(data, &fixture); err != nil {
@@ -41,26 +45,32 @@ func TestDecimalModelFixture(t *testing.T) {
 				t.Fatalf("unknown column %q", tc.Column)
 			}
 			actual, err := orm.NormalizeDecimal(tc.Input, column.precision, column.scale)
-			if tc.Error != "" {
+			if tc.Expected.Error != "" {
 				if err == nil {
-					t.Fatalf("expected %s", tc.Error)
+					t.Fatalf("expected %s", tc.Expected.Error)
 				}
-				if code := orm.ErrorCode(err); code != tc.Error {
-					t.Fatalf("error code = %s, want %s", code, tc.Error)
+				if code := orm.ErrorCode(err); code != tc.Expected.Error {
+					t.Fatalf("error code = %s, want %s", code, tc.Expected.Error)
 				}
 				return
 			}
 			if err != nil {
 				t.Fatal(err)
 			}
-			if actual != tc.Expected {
-				t.Fatalf("decimal = %q, want %q", actual, tc.Expected)
+			if actual != tc.Expected.Value {
+				t.Fatalf("decimal = %q, want %q", actual, tc.Expected.Value)
 			}
 			scaled, err := orm.DecimalScaledInt(tc.Input, column.precision, column.scale)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			decoded, err := orm.DecimalFromScaledInt(scaled, column.precision, column.scale)
-			if err != nil { t.Fatal(err) }
-			if decoded != tc.Expected { t.Fatalf("SQLite decimal = %q, want %q", decoded, tc.Expected) }
+			if err != nil {
+				t.Fatal(err)
+			}
+			if decoded != tc.Expected.Value {
+				t.Fatalf("SQLite decimal = %q, want %q", decoded, tc.Expected.Value)
+			}
 		})
 	}
 }

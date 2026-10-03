@@ -2,8 +2,8 @@ use orm_build::tool_db::{self, Val};
 
 #[test]
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
-    let started = std::time::Instant::now();
-    eprintln!("running tool_accessors_reject_invalid_values_without_defaults_or_contents");
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let clock = orm_case_clock::CaseClock::start();
     for value in [Val::Null, Val::Text("private-invalid-number".into()), Val::Text("9223372036854775808".into())] {
         let error = value.int().expect_err("invalid required integer must fail");
         assert!(!error.to_string().contains("private-invalid-number"));
@@ -29,12 +29,14 @@ fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {
     for text in ["f", "false", "0"] {
         assert!(!Val::Text(text.into()).bool().unwrap());
     }
-    assert!(started.elapsed() < std::time::Duration::from_secs(1), "accessor test deadline");
-    eprintln!("passed tool_accessors_reject_invalid_values_without_defaults_or_contents {:?}", started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < std::time::Duration::from_secs(1), "accessor test deadline: cpu {cpu:?} (wall {wall:?})");
+    orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
 #[tokio::test]
 async fn physical_tool_accessors_preserve_errors_on_all_databases() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), physical_accessors()).await.expect("physical accessor test deadline");
 }
 
@@ -42,8 +44,7 @@ async fn physical_accessors() {
     let path = std::env::temp_dir().join(format!("orm-tool-values-{}.sqlite", std::process::id()));
     assert!(!path.exists(), "owned fixture must not already exist");
     for dialect in ["sqlite", "mysql", "postgres"] {
-        let started = std::time::Instant::now();
-        eprintln!("running physical_tool_accessors:{dialect}");
+        orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("declared MySQL test DSN"),
@@ -64,7 +65,7 @@ async fn physical_accessors() {
         }
         drop(connection);
         database.close().await;
-        eprintln!("passed physical_tool_accessors:{dialect} {:?}", started.elapsed());
+        orm_testcase::step(format_args!("{dialect} passed"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
 }

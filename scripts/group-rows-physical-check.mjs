@@ -1,8 +1,16 @@
 // Run PHP and TypeScript grouped-result owners twice on each database.
 import { spawn } from 'node:child_process';
+import { runCase } from '../tests/testcase.mjs';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
+// timeoutMs는 process 하나(owner test나 state reader)의 기한이다.
 const timeoutMs = 120_000;
+
+// 한 실행은 owner process 하나와 state reader process 하나이므로 그 기한은 둘의 timeoutMs를
+// 더한 것이다. 실패한 case는 이유와 함께 보고되고 check는 거기서 끝난다.
+async function step(name, deadline, body) {
+  if (!(await runCase(name, deadline, body))) process.exit(1);
+}
 
 function run(program, args, env = process.env) {
   return new Promise((resolve, reject) => {
@@ -41,18 +49,26 @@ for (const database of databases) {
   const key = `BENCH_${database.toUpperCase()}_DSN`;
   const dsn = process.env[key];
   if (!dsn) throw new Error(`${key} is required`);
-  const before = await state(database, dsn);
+  let before;
+  await step(`group-rows/${database}/state`, timeoutMs, async ({ step: progress }) => {
+    before = await state(database, dsn);
+    progress(`state ${before}`);
+  });
   for (const language of ['php', 'typescript']) {
     const program = language === 'php' ? 'php' : 'node';
     const path = `clients/${language}/tests/group_rows_db.${language === 'php' ? 'php' : 'mjs'}`;
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const output = await run(program, [path], { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn });
-      if (output.trim() !== `CASE group_rows_${database} PASS`) {
-        throw new Error(`${database}/${language}/${attempt}: missing exact pass event`);
-      }
-      const after = await state(database, dsn);
-      if (after !== before) throw new Error(`${database}/${language}/${attempt}: database state changed`);
-      console.log(`PASS ${database} ${language} ${attempt} state=${after}`);
+      await step(`group-rows/${database}/${language}/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {
+        let output;
+        try { output = await run(program, [path], { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn }); }
+        catch (error) { throw new Error(String(error.message).replaceAll(dsn, '[redacted]')); }
+        if (output.trim() !== `CASE group_rows_${database} PASS`) {
+          throw new Error(`${database}/${language}/${attempt}: missing exact pass event`);
+        }
+        const after = await state(database, dsn);
+        if (after !== before) throw new Error(`${database}/${language}/${attempt}: database state changed`);
+        progress(`state ${after}`);
+      });
     }
   }
 }

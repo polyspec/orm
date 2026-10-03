@@ -36,14 +36,21 @@ var outputs = map[string]map[string]string{
 	"ModelSuccess":      {"go": "error", "php": "void", "rust": "orm::Result<()>", "typescript": "Promise<void>"},
 	"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
 	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "orm::Result<orm::serde_json::Value>", "typescript": "Record<string,unknown>"},
-	"Db":                {"go": "(*orm.DB,error)", "php": "Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>"},
+	"Db":                {"go": "(*DB,error)", "php": "Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>"},
 	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>"},
 	"Utils":             {"go": "*Utils", "php": "Orm\\Utils", "rust": "Utils<'_>", "typescript": "Utils"},
 	"SchemaUtils":       {"go": "*SchemaUtils", "php": "Orm\\SchemaUtils", "rust": "SchemaUtils<'_>", "typescript": "SchemaUtils"},
 	"AesUtils":          {"go": "*AESUtils", "php": "Orm\\AesUtils", "rust": "AesUtils<'_>", "typescript": "AesUtils"},
 	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
-	"AddedColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
+	// dbspec parse returns the document or every diagnostic, never both.
+	"DbspecReadResult":      {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult"},
+	"DbspecBytesResult":     {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult"},
+	"DbspecParseResult":     {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult"},
+	"DbspecText":            {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
+	"DbspecRenderResult":    {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
+	"DbspecManifestResult":  {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
+	"AddedTablesAndColumns": {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -60,11 +67,18 @@ var inputs = map[string]map[string]string{
 	"Rows":                {"go": "rows[]*{Entity}Model", "php": "array$rows", "rust": "rows:Vec<Self>", "typescript": "rows:readonlythis[]"},
 	"Optimistic":          {"go": "optimistic...bool", "php": "bool$optimistic=false", "rust": "optimistic:bool", "typescript": "optimistic=false"},
 	"Recursive":           {"go": "recursive...bool", "php": "bool$recursive=false", "rust": "recursive:bool", "typescript": "recursive=false"},
-	"ConnectionOptions":   {"go": "dsn,schemaPathstring,cfgorm.Config", "php": "string$dsn,Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,schemaPath:string,options:ConnectOptions={}"},
-	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
+	"ConnectionOptions":   {"go": "dsnstring,cfgConfig", "php": "string$dsn,Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,options:ConnectOptions={}"},
+	"SchemaConnection":    {"go": "dsnstring,s*Schema,cfgConfig", "php": "string$dsn,Orm\\Schema$schema,Orm\\Config$config", "rust": "dsn:&str,schema:&Schema,pool_size:u32,cfg:Config", "typescript": "dsn:string,schema:Schema,options:ConnectOptions={}"},
+	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3,string|int|null$operation=null", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
 	"LockKey":             {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string"},
-	"ManifestJson":        {"go": "manifestJSON[]byte", "php": "string$manifestJson", "rust": "manifest_json:&[u8]", "typescript": "manifestJson:string"},
+	"GeneratedSchema":     {"go": "schema*Schema", "php": "Orm\\Schema$schema", "rust": "schema:&Schema", "typescript": "schema:Schema"},
 	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},
+	"DbspecFilePath":      {"go": "pathstring", "php": "string$path", "rust": "path:&Path", "typescript": "path:string"},
+	"DbspecFileBytes":     {"go": "namestring,b[]byte", "php": "string$name,string$bytes", "rust": "name:&str,bytes:Vec<u8>", "typescript": "name:string,bytes:Uint8Array"},
+	"DbspecSource":        {"go": "textstring,documentsmap[string]string", "php": "string$text,array$documents", "rust": "text:&str,documents:&BTreeMap<String,String>", "typescript": "text:string,documents:Readonly<Record<string,string>>"},
+	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument"},
+	"DbspecRenderSource":  {"go": "documents[]*Document,dialectDialect", "php": "array$documents,string$dialect", "rust": "documents:&[&Document],dialect:Dialect", "typescript": "documents:readonlyDbspecDocument[],dialect:DbspecDialect"},
+	"DbspecDocumentSet":   {"go": "documents[]*Document", "php": "array$documents", "rust": "documents:&[&Document]", "typescript": "documents:readonlyDbspecDocument[]"},
 }
 
 // validateRules checks every native adapter against the common inputs and

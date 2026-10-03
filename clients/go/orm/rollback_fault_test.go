@@ -7,16 +7,16 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var errRollbackFaultCallback = errors.New("rollback fault callback failed")
 
-// rollbackFault arms the rollback fault of the test entry point. A
-// committed transaction keeps the fault armed; the next transaction whose
-// callback fails is rolled back, its rollback reports FAULT, and the
-// transaction returns ROLLBACK with the callback error and the fault. The
-// fault is consumed: the transaction after it returns the callback error
-// alone, and the connection serves later requests.
+// rollbackFault는 test entry point의 rollback fault를 설정한다. commit된
+// transaction은 fault를 남기고, callback이 실패한 다음 transaction은 rollback되며
+// 그 rollback은 FAULT를 보고하고 transaction은 callback 오류와 fault를 가진
+// ROLLBACK을 반환한다. fault는 소비된다: 그 뒤 transaction은 callback 오류만
+// 반환하고 connection은 이후 요청을 처리한다.
 func rollbackFault(t *testing.T, driver string) {
 	db, model, _ := rollbackFixture(t, driver)
 	orm.FailNextRollback(db)
@@ -61,6 +61,15 @@ func rollbackFault(t *testing.T, driver string) {
 	}
 }
 
-func TestRollbackFaultSQLite(t *testing.T)   { rollbackFault(t, "sqlite") }
-func TestRollbackFaultMySQL(t *testing.T)    { rollbackFault(t, "mysql") }
-func TestRollbackFaultPostgres(t *testing.T) { rollbackFault(t, "postgres") }
+func TestRollbackFaultSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "sqlite")
+}
+func TestRollbackFaultMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "mysql")
+}
+func TestRollbackFaultPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "postgres")
+}

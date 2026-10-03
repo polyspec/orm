@@ -1,53 +1,61 @@
 <?php
-// Several schemas on one connection, on SQLite, MySQL and PostgreSQL. The
-// models of a core schema and a module schema are generated into separate
-// namespaces and loaded in one process. A connection opened with the core
-// schema installs both manifests and plans each model request with the
-// engine of that model's schema. A connection that has not installed the
-// module schema rejects a module model request with SCHEMA_HASH_MISMATCH, and
-// install rejects a manifest whose hash differs from its content. Register adds
-// an installed schema to a connection without creating anything.
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test databases; the test
-// fails when either is unset.
+// Several dbspec document sets in one process, on SQLite, MySQL and
+// PostgreSQL. The generated bench models (clients/php/gen) and the models of
+// contracts/fixtures/decimal_schema.dbs, generated into their own namespace,
+// are loaded together; each model class carries the manifestHash of its own
+// set. A connection plans only the sets registered on it: the connect helper
+// of generated code and install register a set, and a raw connection
+// registers none. A request of a set that is not registered on its connection
+// fails with SCHEMA_HASH_MISMATCH before execution, also when another
+// connection installed the set. A manifest text that does not hash to its
+// declared manifestHash fails with CONFIG when it is connected or installed,
+// and generated code of such a text fails with SCHEMA_HASH_MISMATCH when it
+// loads. Each case runs in a case database of its own (case_database.php: a
+// new SQLite file, or a database the case creates on the server of
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN); the test fails when either
+// variable is unset.
 // Usage: php clients/php/tests/schema_set_test.php [case ...]
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
+use Polyspec\Orm\Tests\Model\User;
 use Orm\Code;
 use Orm\Config;
 use Orm\Generator;
-use Orm\Manifest;
 use Orm\Orm;
 use Orm\OrmException;
-use Orm\SchemaBuilder;
-use SchemaSetCore\Orm\SchemaSetNote;
-use SchemaSetModule\Orm\SchemaSetItem;
+use Orm\RuntimeModel;
+use Orm\Schema;
+use SchemaSetDecimal\Orm\DecimalCase;
 
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
+const CASE_DEADLINE_SECONDS = 60;
+
+$root = dirname(__DIR__, 3);
 $work = sys_get_temp_dir() . '/orm-php-schema-set-' . getmypid();
 @mkdir($work, 0o700, true);
 register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-/** Builds a manifest, writes it to $work/$name.json and generates its models into $namespace. */
-function generated(string $work, string $name, string $source, string $namespace): string
+/** $namespace의 class를 $dir의 generated 파일에서 읽는 autoloader를 등록한다. */
+function autoload(string $dir, string $namespace): void
 {
-    $json = SchemaBuilder::json(SchemaBuilder::fromSources([$source]));
-    file_put_contents("$work/$name.json", $json);
-    Generator::generate(Manifest::load($json), "$work/$name", $namespace);
-    spl_autoload_register(static function (string $class) use ($work, $name, $namespace): void {
+    spl_autoload_register(static function (string $class) use ($dir, $namespace): void {
         if (str_starts_with($class, "$namespace\\")) {
-            require "$work/$name/" . substr($class, strlen($namespace) + 1) . '.php';
+            require "$dir/" . substr($class, strlen($namespace) + 1) . '.php';
         }
     });
-    require "$work/$name/bootstrap.php";
-    return $json;
 }
 
-$coreJson = generated($work, 'core', "erDiagram\n  schema_set_note {\n    bigint seq PK \"auto\"\n    varchar(64) title\n  }\n", 'SchemaSetCore\\Orm');
-$moduleJson = generated($work, 'module', "erDiagram\n  schema_set_item {\n    bigint seq PK \"auto\"\n    varchar(64) label\n    int amount\n  }\n", 'SchemaSetModule\\Orm');
-$corePath = "$work/core.json";
+$decimalDocuments = [(string) file_get_contents("$root/contracts/fixtures/decimal_schema.dbs")];
+$decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $decimalDocuments[0]]));
+Generator::generate($decimalModel, "$work/decimal", 'SchemaSetDecimal\\Orm');
+autoload("$work/decimal", 'SchemaSetDecimal\\Orm');
+require "$work/decimal/bootstrap.php";
 
 $failures = 0;
 $current = '';
@@ -60,6 +68,7 @@ function check(bool $ok, string $message): void
     }
 }
 
+/** call이 던진 OrmException의 code다. 오류가 없으면 빈 문자열이다. */
 function code(callable $f): string
 {
     try {
@@ -70,165 +79,152 @@ function code(callable $f): string
     return '';
 }
 
-function dropTables(string $dsn): void
-{
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    foreach (['schema_set_item', 'schema_set_note'] as $table) {
-        $pdo->exec("DROP TABLE IF EXISTS $table");
-    }
-}
-
-/** A connection opened with the core schema serves the models of both schemas after installing them. */
+/**
+ * bench helper로 연 연결이 bench와 decimal set을 설치하고(decimal은 두 번이며
+ * 두 번째 설치는 아무것도 바꾸지 않는다) 두 set의 model을 transaction 안팎에서 쓴다.
+ */
 function severalSchemas(string $dsn): void
 {
-    global $corePath, $coreJson, $moduleJson;
-    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     try {
-        $db->utils()->schema()->install($coreJson);
-        $db->utils()->schema()->install($moduleJson);
-        // A repeated install keeps the tables and the registered engine.
-        $db->utils()->schema()->install($moduleJson);
-        (new SchemaSetNote)($db)->setTitle('core')->create();
-        (new SchemaSetItem)($db)->setLabel('module')->setAmount(7)->create();
-        $db->transaction(function () use ($db): void {
-            (new SchemaSetNote)($db)->setTitle('core-tx')->create();
-            (new SchemaSetItem)($db)->setLabel('module-tx')->setAmount(8)->create();
+        foreach ([\Polyspec\Orm\Tests\Model\schema(), \SchemaSetDecimal\Orm\schema(), \SchemaSetDecimal\Orm\schema()] as $schema) {
+            $db->utils()->schema()->install($schema);
+        }
+        (new User)($db)->setName('core')->create();
+        (new DecimalCase)($db)->setSeq(1)->setAmount('48.0450')->create();
+        $db->transaction(function (): void {
+            (new User)->setName('core-tx')->create();
+            (new DecimalCase)->setSeq(2)->setAmount('1.5000')->create();
         }, retry: 0);
-        $notes = array_map(static fn($n) => $n->getTitle(), array_values(iterator_to_array((new SchemaSetNote)($db)->addAllColumns()->orderBySeqAsc()->gets())));
-        $items = array_map(static fn($i) => $i->getLabel() . ':' . $i->getAmount(), array_values(iterator_to_array((new SchemaSetItem)($db)->addAllColumns()->orderBySeqAsc()->gets())));
-        check($notes === ['core', 'core-tx'], 'core rows ' . implode(',', $notes));
-        check($items === ['module:7', 'module-tx:8'], 'module rows ' . implode(',', $items));
-        check((new SchemaSetItem)($db)->amount(8)->getCount() === 1, 'module count');
+        $users = (new User)($db)->getCount();
+        check($users === 2, "core rows $users");
+        $amount = (new DecimalCase)($db)->addAllColumns()->getBySeq(1)->getAmount();
+        check($amount === '48.0450', "decimal amount $amount");
+        $decimals = (new DecimalCase)($db)->getCount();
+        check($decimals === 2, "decimal rows $decimals");
     } finally {
         $db->close();
     }
 }
 
-/** A connection that has not installed the module schema rejects its models; no other engine plans them. */
+/** 실행한 statement 수를 세는 Config다. */
+function counted(int &$n): Config
+{
+    return new Config(onQuery: static function () use (&$n): void {
+        $n++;
+    });
+}
+
+/**
+ * 연결에 등록되지 않은 set의 요청은 table이 있어도 실행 전에
+ * SCHEMA_HASH_MISMATCH다. raw 연결은 아무 set도 등록하지 않고, bench helper로
+ * 연 연결은 다른 연결이 설치한 decimal set을 등록하지 않는다. decimal helper로
+ * 연 연결은 그 set을 쓴다.
+ */
 function unregisteredSchema(string $dsn): void
 {
-    global $corePath, $coreJson, $moduleJson;
-    $installer = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    $runs = 0;
+    $raw = Orm::connect($dsn, counted($runs));
     try {
-        $installer->utils()->schema()->install($coreJson);
-        $installer->utils()->schema()->install($moduleJson);
+        check(code(fn() => (new User)($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read on a raw connection');
     } finally {
-        $installer->close();
+        $raw->close();
     }
-    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    $core = \Polyspec\Orm\Tests\Model\connect($dsn, counted($runs));
     try {
-        check(code(fn() => (new SchemaSetItem)($db)->addAllColumns()->gets()) === Code::SCHEMA_HASH_MISMATCH, 'module read before install');
-        check(code(fn() => (new SchemaSetItem)($db)->setLabel('x')->setAmount(1)->create()) === Code::SCHEMA_HASH_MISMATCH, 'module write before install');
-        check((new SchemaSetNote)($db)->getCount() === 0, 'core read');
-        $db->utils()->schema()->install($moduleJson);
-        check((new SchemaSetItem)($db)->getCount() === 0, 'module read after install');
+        $installer = \SchemaSetDecimal\Orm\connect($dsn, new Config());
+        try {
+            $installer->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
+            (new DecimalCase)($installer)->setSeq(1)->setAmount('1.0000')->create();
+        } finally {
+            $installer->close();
+        }
+        check(code(fn() => (new DecimalCase)($core)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'decimal read on the bench connection');
+        check(code(fn() => (new DecimalCase)($core)->setSeq(2)->setAmount('2.0000')->create()) === Code::SCHEMA_HASH_MISMATCH, 'decimal write on the bench connection');
+        check($runs === 0, "unregistered requests ran $runs statements");
     } finally {
-        $db->close();
+        $core->close();
     }
-}
-
-/** Install verifies the manifest hash against its content before any statement runs. */
-function editedManifest(string $dsn): void
-{
-    global $corePath, $moduleJson;
-    $edited = str_replace('"schema_set_item"', '"schema_set_edit"', $moduleJson);
-    check($edited !== $moduleJson, 'edited manifest differs');
-    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    $decimal = \SchemaSetDecimal\Orm\connect($dsn, new Config());
     try {
-        check(code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
-        check(code(fn() => (new SchemaSetItem)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'edited manifest is not registered');
+        $rows = (new DecimalCase)($decimal)->getCount();
+        check($rows === 1, "decimal rows through the decimal helper $rows");
     } finally {
-        $db->close();
+        $decimal->close();
     }
 }
 
 /**
- * Register adds the engine of an installed schema to a connection and creates
- * nothing: before installation the module table stays absent, and after
- * installation by another connection the module models read and write.
+ * manifest text가 선언한 manifestHash로 hash되지 않는 schema의 connect와
+ * install은 어떤 statement보다 먼저 CONFIG이고 table을 바꾸지 않는다. 그런
+ * text의 generated code는 load할 때 SCHEMA_HASH_MISMATCH다.
  */
-function registerSchema(string $dsn): void
+function editedManifest(string $dsn): void
 {
-    global $corePath, $coreJson, $moduleJson;
-    $fresh = Orm::connect($dsn, new Config(schemaPath: $corePath));
+    global $work, $decimalDocuments, $decimalModel;
+    static $edits = 0;
+    $edited = new Schema(str_replace('decimal(13,4)', 'decimal(14,4)', $decimalModel->manifestText), $decimalModel->manifestHash);
+    check($edited->manifestText !== $decimalModel->manifestText, 'edited manifest differs');
+    check(code(fn() => Orm::connectSchema($dsn, $edited, new Config())) === Code::CONFIG, 'connect with an edited manifest');
+    $runs = 0;
+    $db = \SchemaSetDecimal\Orm\connect($dsn, counted($runs));
     try {
-        $fresh->utils()->schema()->register($moduleJson);
-        check(code(fn() => (new SchemaSetItem)($fresh)->getCount()) === Code::DRIVER, 'register creates no table');
-    } finally {
-        $fresh->close();
-    }
-    $installer = Orm::connect($dsn, new Config(schemaPath: $corePath));
-    try {
-        $installer->utils()->schema()->install($coreJson);
-        $installer->utils()->schema()->install($moduleJson);
-    } finally {
-        $installer->close();
-    }
-    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
-    try {
-        check(code(fn() => (new SchemaSetItem)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'module read before register');
-        $db->utils()->schema()->register($moduleJson);
-        // A repeated register keeps the registered engine.
-        $db->utils()->schema()->register($moduleJson);
-        (new SchemaSetItem)($db)->setLabel('registered')->setAmount(3)->create();
-        check((new SchemaSetItem)($db)->amount(3)->getCount() === 1, 'module write and read after register');
+        check(code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
+        check($runs === 0, "the edited install ran $runs statements");
+        $db->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
+        check((new DecimalCase)($db)->getCount() === 0, 'decimal read');
+        // 편집한 text의 generated code가 진짜 decimal set의 hash를 선언한다.
+        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => str_replace('decimal(13,4)', 'decimal(14,4)', $decimalDocuments[0])]));
+        $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
+        $dir = "$work/edited-$edits";
+        Generator::generate($editedModel, $dir, $namespace);
+        foreach (glob("$dir/*.php") as $file) {
+            file_put_contents($file, str_replace($editedModel->manifestHash, $decimalModel->manifestHash, (string) file_get_contents($file)));
+        }
+        check(code(function () use ($dir): void {
+            require "$dir/bootstrap.php";
+        }) === Code::SCHEMA_HASH_MISMATCH, 'loading generated code of an edited manifest');
+        [$driver] = Orm::parseDsn($dsn);
+        $type = match ($driver) {
+            'mysql' => $db->pdo()->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'decimal_case' AND COLUMN_NAME = 'amount'")->fetchColumn(),
+            'postgres' => $db->pdo()->query("SELECT numeric_precision || ',' || numeric_scale FROM information_schema.columns WHERE table_name = 'decimal_case' AND column_name = 'amount'")->fetchColumn(),
+            default => $db->pdo()->query("SELECT sql FROM sqlite_master WHERE name = 'decimal_case'")->fetchColumn(),
+        };
+        $unchanged = match ($driver) {
+            'mysql' => $type === 'decimal(13,4)',
+            'postgres' => $type === '13,4',
+            default => is_string($type) && str_contains($type, '"amount"') && !str_contains($type, '14'),
+        };
+        check($unchanged, 'decimal_case.amount is unchanged: ' . var_export($type, true));
     } finally {
         $db->close();
     }
 }
 
-/** Register verifies the manifest hash against its content and registers nothing when they differ. */
-function registerEditedManifest(string $dsn): void
-{
-    global $corePath, $moduleJson;
-    $edited = str_replace('"schema_set_item"', '"schema_set_edit"', $moduleJson);
-    $db = Orm::connect($dsn, new Config(schemaPath: $corePath));
-    try {
-        check(code(fn() => $db->utils()->schema()->register($edited)) === Code::CONFIG, 'register of an edited manifest');
-        check(code(fn() => (new SchemaSetItem)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'edited manifest is not registered');
-    } finally {
-        $db->close();
-    }
-}
-
-$cases = ['several_schemas' => severalSchemas(...), 'unregistered_schema' => unregisteredSchema(...), 'edited_manifest' => editedManifest(...),
-    'register_schema' => registerSchema(...), 'register_edited_manifest' => registerEditedManifest(...)];
+$cases = [
+    'several_schemas' => severalSchemas(...),
+    'unregistered_schema' => unregisteredSchema(...),
+    'edited_manifest' => editedManifest(...),
+];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => "sqlite://$work/schema-set.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    $before = $failures;
-    foreach ($targets as $driver => $dsn) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+        $before = $failures;
         $current = "$case/$driver";
-        $start = microtime(true);
-        echo "RUN  $current\n";
-        try {
-            dropTables($dsn);
-            $cases[$case]($dsn);
-        } catch (Throwable $e) {
+        $passed = testcase_run("schema_set/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
+            if ($GLOBALS['failures'] > $before) {
+                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+            }
+        });
+        if (!$passed && $failures === $before) {
             $failures++;
-            fwrite(STDERR, "FAIL $current: $e\n");
-        } finally {
-            dropTables($dsn);
         }
-        printf("%s %s %.3fs\n", $failures === $before ? 'ok  ' : 'FAIL', $current, microtime(true) - $start);
-    }
-    if ($failures === $before) {
-        echo "CASE $case PASS\n";
     }
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php schema set test: $failures failures\n");
     exit(1);
 }
-echo 'php schema set test: ' . count($selected) . ' cases on ' . count($targets) . " databases passed\n";

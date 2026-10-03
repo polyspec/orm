@@ -1,8 +1,13 @@
 package orm
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
+)
 
 func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	keys, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +48,7 @@ func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 }
 
 func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	keys, err := NewAESKeyring(map[int32]string{1: "old", 2: "new"}, 2)
 	if err != nil {
 		t.Fatal(err)

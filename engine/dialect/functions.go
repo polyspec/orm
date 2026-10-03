@@ -2,26 +2,18 @@ package dialect
 
 import "strings"
 
-// EarthRadiusMeters is the sphere radius used by MySQL ST_Distance_Sphere and
-// by the portable haversine rendering.
-const EarthRadiusMeters = "6370986"
-
 // ColumnFunctionTypes lists the column types each ORM column function accepts.
 var ColumnFunctionTypes = map[string][]string{
 	"day_of_week": {"date", "datetime"},
 	"year":        {"date", "datetime"},
 	"month":       {"date", "datetime"},
 	"date":        {"date", "datetime"},
-	"distance":    {"point"},
-	"point_x":     {"point"},
-	"point_y":     {"point"},
 }
 
 // ColumnFunctionArity is the number of function arguments (not counting the
 // compared value) each column function takes.
 var ColumnFunctionArity = map[string]int{
 	"day_of_week": 0, "year": 0, "month": 0, "date": 0,
-	"distance": 2, "point_x": 0, "point_y": 0,
 }
 
 // ValueFunctionUnits maps relative value functions to their interval unit.
@@ -36,13 +28,6 @@ func IsValueFunction(name string) bool {
 	return relative || name == "now" || name == "today"
 }
 
-// haversine renders the great-circle distance. x2 and y2 are called once per
-// occurrence so positional placeholders receive one bind each.
-func haversine(x1, y1 string, x2, y2 func() string) string {
-	rad := func(v string) string { return "RADIANS(" + v + ")" }
-	return "(2 * " + EarthRadiusMeters + " * ASIN(SQRT(POWER(SIN((" + rad(y2()) + " - " + rad(y1) + ") / 2), 2) + COS(" + rad(y1) + ") * COS(" + rad(y2()) + ") * POWER(SIN((" + rad(x2()) + " - " + rad(x1) + ") / 2), 2))))"
-}
-
 func (MySQL) ColumnFunction(name, col string, arg func(int) string) (string, bool) {
 	switch name {
 	case "day_of_week":
@@ -53,12 +38,6 @@ func (MySQL) ColumnFunction(name, col string, arg func(int) string) (string, boo
 		return "MONTH(" + col + ")", true
 	case "date":
 		return "DATE(" + col + ")", true
-	case "distance":
-		return "ST_Distance_Sphere(" + col + ", POINT(" + arg(0) + ", " + arg(1) + "))", true
-	case "point_x":
-		return "ST_X(" + col + ")", true
-	case "point_y":
-		return "ST_Y(" + col + ")", true
 	}
 	return "", false
 }
@@ -101,12 +80,6 @@ func (Postgres) ColumnFunction(name, col string, arg func(int) string) (string, 
 		return "EXTRACT(MONTH FROM " + col + ")::int", true
 	case "date":
 		return "CAST(" + col + " AS date)", true
-	case "distance":
-		return haversine(col+"[0]", col+"[1]", func() string { return "CAST(" + arg(0) + " AS double precision)" }, func() string { return "CAST(" + arg(1) + " AS double precision)" }), true
-	case "point_x":
-		return col + "[0]", true
-	case "point_y":
-		return col + "[1]", true
 	}
 	return "", false
 }
@@ -145,15 +118,6 @@ func (Postgres) ContainsBinary(col string, value func(string) string) string {
 	return col + " LIKE " + value("like_contains")
 }
 
-// sqlitePointCoordinate reads one coordinate of the stored `POINT(x y)` text.
-func sqlitePointCoordinate(col string, second bool) string {
-	space := "instr(" + col + ", ' ')"
-	if second {
-		return "CAST(substr(" + col + ", " + space + " + 1, length(" + col + ") - " + space + " - 1) AS REAL)"
-	}
-	return "CAST(substr(" + col + ", 7, " + space + " - 7) AS REAL)"
-}
-
 func (SQLite) ColumnFunction(name, col string, arg func(int) string) (string, bool) {
 	switch name {
 	case "day_of_week":
@@ -164,20 +128,14 @@ func (SQLite) ColumnFunction(name, col string, arg func(int) string) (string, bo
 		return "CAST(strftime('%m', " + col + ") AS INTEGER)", true
 	case "date":
 		return "date(" + col + ")", true
-	case "distance":
-		return haversine(sqlitePointCoordinate(col, false), sqlitePointCoordinate(col, true), func() string { return arg(0) }, func() string { return arg(1) }), true
-	case "point_x":
-		return sqlitePointCoordinate(col, false), true
-	case "point_y":
-		return sqlitePointCoordinate(col, true), true
 	}
 	return "", false
 }
 
 // ValueFunction binds the executor clock on SQLite and applies the interval
 // with datetime modifiers; `floor` keeps the last valid day of the month.
-// datetime returns whole seconds, so a relative form appends the six fraction
-// digits of a second clock slot, which equals the first in one statement.
+// datetime은 초 단위를 돌려주므로 상대 형식은 두 번째 clock slot의 소수 여섯
+// 자리를 붙인다. 한 statement에서 두 slot은 같다.
 func (SQLite) ValueFunction(name string, arg, now func() string) (string, bool) {
 	switch name {
 	case "now":

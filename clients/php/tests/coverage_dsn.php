@@ -24,8 +24,7 @@ try {
         throw $error;
     }
 }
-$root = dirname(__DIR__, 3);
-$db = Orm::connect($dsn, new Config(schemaPath: "$root/schema/schema.json"));
+$db = Orm::connect($dsn, new Config());
 try {
     if ($db->driver() !== $driver || (int) $db->pdo()->query('SELECT 1')->fetchColumn() !== 1) {
         throw new RuntimeException('DSN selected the wrong database or connection');

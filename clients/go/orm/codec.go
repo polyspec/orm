@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	orderedjson "github.com/polyspec/ordered-json/go"
 	"github.com/polyspec/orm/engine/ir"
@@ -27,7 +28,7 @@ func codecErr(code, format string, a ...any) error {
 func checkCodecStyles(styles []string) error {
 	for _, style := range styles {
 		switch style {
-		case "gz", "base64", "serialize", "yaml", "json", "jsons":
+		case "gz", "base64", "serialize", "yaml", "ordered_json":
 		default:
 			return codecErr(CodeCodecUnsupported, "style %s", style)
 		}
@@ -91,7 +92,7 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 			if err != nil {
 				return StyledValue{}, err
 			}
-		case "json", "jsons":
+		case "ordered_json":
 			v, err = orderedjson.ParseBytes(cur)
 			if err != nil {
 				return StyledValue{}, codecErr(CodeCodecDecode, "json: %v", err)
@@ -100,7 +101,11 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 			return StyledValue{}, codecErr(CodeCodecUnsupported, "style %s", styles[i])
 		}
 	}
-	if raw, ok := v.([]byte); ok { // e.g. styles = [] — never happens for styled columns
+	// 첫 stage가 gz나 base64면 값은 그 stage가 받은 text다.
+	if raw, ok := v.([]byte); ok {
+		if !utf8.Valid(raw) {
+			return StyledValue{}, codecErr(CodeCodecDecode, "decoded text is not valid UTF-8")
+		}
 		return Value(string(raw)), nil
 	}
 	return Value(v), nil
@@ -118,6 +123,7 @@ func Encode(styles []string, v StyledValue) (any, error) {
 		return nil, codecErr(CodeCodecEncode, "styled value is unset")
 	}
 	var cur []byte
+	var err error
 	value := v.value
 	for i, st := range styles {
 		switch st {
@@ -142,7 +148,7 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			if _, err := yamlDecode(cur); err != nil {
 				return nil, codecErr(CodeCodecEncode, "yaml: encoded value is outside the common value model: %v", err)
 			}
-		case "json", "jsons":
+		case "ordered_json":
 			if i != 0 {
 				return nil, codecErr(CodeCodecUnsupported, "json must be the first style")
 			}
@@ -156,8 +162,18 @@ func Encode(styles []string, v StyledValue) (any, error) {
 			}
 			cur = []byte(raw)
 		case "base64":
+			if i == 0 {
+				if cur, err = firstStageText(st, value); err != nil {
+					return nil, err
+				}
+			}
 			cur = []byte(base64.StdEncoding.EncodeToString(cur))
 		case "gz":
+			if i == 0 {
+				if cur, err = firstStageText(st, value); err != nil {
+					return nil, err
+				}
+			}
 			var buf bytes.Buffer
 			w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 			if err != nil {
@@ -175,6 +191,16 @@ func Encode(styles []string, v StyledValue) (any, error) {
 		}
 	}
 	return string(cur), nil
+}
+
+// firstStageText는 첫 stage인 gz나 base64가 encode하는 값이다. 그 stage는
+// byte를 받으므로 값은 string이어야 한다.
+func firstStageText(stage string, value any) ([]byte, error) {
+	s, ok := value.(string)
+	if !ok {
+		return nil, codecErr(CodeCodecEncode, "%s as the first stage encodes a string value, got %T", stage, value)
+	}
+	return []byte(s), nil
 }
 
 // NormalizeStyled validates a generated setter input and returns its decoded

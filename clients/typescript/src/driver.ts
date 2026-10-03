@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
-import { OrmError } from './runtime_error.js';
+import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -42,8 +42,9 @@ export interface DriverPool extends DriverConnection {
   begin(options: DriverTransactionOptions): Promise<DriverTransaction>;
   /**
    * Runs run with statements that are not prepared on one reserved connection
-   * outside a transaction (MySQL schema statements and the catalog reads they
-   * depend on).
+   * outside a transaction: MySQL schema statements and the catalog reads they
+   * depend on, and SQLite statements that turn foreign keys off, which a
+   * transaction cannot change.
    */
   session?<T>(run: (control: DriverControl) => Promise<T>): Promise<T>;
   stats(): PoolStats;
@@ -81,7 +82,9 @@ function driverError(name: DriverName, error: unknown): OrmError {
     return new OrmError('CANCELED', `${name}: ${message}`, error);
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;
-  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787;
+  const foreignKey = source.code === 'ER_NO_REFERENCED_ROW_2' || source.code === 'ER_ROW_IS_REFERENCED_2' || source.code === '23503' || source.errcode === 787 ||
+    // SQLite는 RESTRICT action의 FK 위반을 CONSTRAINT_TRIGGER(1811)로 보고한다. trigger RAISE의 1811은 DRIVER다.
+    (source.errcode === 1811 && message.includes('FOREIGN KEY constraint failed'));
   const deadlock = source.code === 'ER_LOCK_DEADLOCK' || source.code === '40P01' || source.code === '40001' || source.errcode === 6 || source.errcode === 262;
   // MySQL 1290/1792, PostgreSQL 25006, and SQLite READONLY (8) with its
   // extended codes report a write the read-only server or connection rejects.
@@ -153,7 +156,6 @@ interface SessionSetup { error?: unknown; }
 function sessionError(setup: SessionSetup): OrmError | undefined {
   const error = setup.error as { errno?: number; sqlMessage?: string; message?: string } | undefined;
   if (error === undefined) return undefined;
-  if (error.errno === 1298) return new OrmError('CONFIG', `dsn timezone: ${error.sqlMessage ?? error.message}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)`, error);
   return driverError('mysql', error);
 }
 
@@ -315,9 +317,13 @@ class PostgresPoolDriver implements DriverPool {
       if (options.readOnly) await client.query('SET TRANSACTION READ ONLY');
       if ((options.timeoutMs ?? 0) > 0) await client.query(`SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs!)}`);
     } catch (error) {
-      if (began) await client.query('ROLLBACK').catch(() => undefined);
-      this.release(client);
-      throw driverError(this.name, error);
+      const failure = driverError(this.name, error);
+      try {
+        if (began) await client.query('ROLLBACK');
+      } catch (rollback) {
+        throw rollbackFailed(failure, driverError(this.name, rollback));
+      } finally { this.release(client); }
+      throw failure;
     }
     return new PostgresTx(client, this.cacheSize, this.config, failed => this.release(client, failed));
   }
@@ -400,6 +406,14 @@ class SqlitePoolDriver implements DriverPool {
     if (signal?.aborted) throw canceled(this.name);
     return sqliteExecute(this.state, sql, params);
   }
+  /** transaction이 쓰지 않을 때 하나뿐인 SQLite 연결을 잡고 run을 transaction 밖에서 실행한다. */
+  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
+    await this.idle();
+    this.state.busy = true;
+    try {
+      return await run(async (sql, params = []) => sqliteExecute(this.state, sql, params));
+    } finally { this.release(); }
+  }
   /** Waits until no transaction holds the single SQLite connection. */
   private async idle(): Promise<void> {
     while (this.state.busy) await new Promise<void>(resolve => this.waiters.push(resolve));
@@ -413,13 +427,21 @@ class SqlitePoolDriver implements DriverPool {
       // A write transaction holds the write lock from its start and waits for
       // it up to busy_timeout; a read-only one begins deferred.
       this.state.db.exec(options.readOnly ? 'BEGIN DEFERRED' : 'BEGIN IMMEDIATE');
-      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
-      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
     } catch (error) {
       this.release();
       throw driverError(this.name, error);
     }
-    return new SqliteTx(this.state, options, () => this.release());
+    const tx = new SqliteTx(this.state, options, () => this.release());
+    try {
+      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
+      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
+    } catch (error) {
+      // 시작한 transaction은 mode까지 되돌리고 rollback한다.
+      const failure = driverError(this.name, error);
+      try { await tx.rollback(); } catch (rollback) { throw rollbackFailed(failure, rollback); }
+      throw failure;
+    }
+    return tx;
   }
   private release(): void {
     this.state.busy = false;
@@ -439,24 +461,42 @@ class SqliteTx implements DriverTransaction {
     return sqliteExecute(this.state, sql, params);
   }
   public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return sqliteExecute(this.state, sql, params); }
-  private finishModes(): void {
-    if (this.options.readOnly) this.state.db.exec('PRAGMA query_only = 0');
-    if (this.options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 0');
+  /**
+   * transaction 안에서 바꾼 mode를 되돌린다. PRAGMA 값은 transaction 뒤에도 connection에 남으므로
+   * 모든 단계를 시도하고 실패를 모두 돌려준다.
+   */
+  private finishModes(): unknown[] {
+    const errors: unknown[] = [];
+    const attempt = (sql: string): void => {
+      try { this.state.db.exec(sql); } catch (error) { errors.push(driverError(this.name, error)); }
+    };
+    if (this.options.readOnly) attempt('PRAGMA query_only = 0');
+    if (this.options.isolation === 'read_uncommitted') attempt('PRAGMA read_uncommitted = 0');
+    return errors;
   }
   public async commit(): Promise<void> {
     try {
-      this.finishModes();
-      this.state.db.exec('COMMIT');
-    } catch (error) {
-      try { this.state.db.exec('ROLLBACK'); } catch { /* the transaction already ended */ }
-      throw driverError(this.name, error);
+      let failure = joinedErrors(this.finishModes());
+      if (failure === undefined) {
+        try {
+          this.state.db.exec('COMMIT');
+          return;
+        } catch (error) { failure = driverError(this.name, error); }
+      }
+      // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있으므로 열려 있을 때만 rollback한다.
+      if (this.state.db.isTransaction) {
+        try { this.state.db.exec('ROLLBACK'); } catch (rollback) { throw rollbackFailed(failure, driverError(this.name, rollback)); }
+      }
+      throw failure;
     } finally { this.release(); }
   }
   public async rollback(): Promise<void> {
     try {
-      this.finishModes();
-      this.state.db.exec('ROLLBACK');
-    } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
+      const errors = this.finishModes();
+      try { this.state.db.exec('ROLLBACK'); } catch (error) { errors.push(driverError(this.name, error)); }
+      const failure = joinedErrors(errors);
+      if (failure !== undefined) throw failure;
+    } finally { this.release(); }
   }
   /**
    * SQLite has no row-lock clause; one lock row serializes ORM lock requests.
@@ -482,7 +522,7 @@ class SqliteTx implements DriverTransaction {
 
 export interface ParsedDsn { driver: DriverName; zone: string; sslCa?: string; }
 
-/** The parameters that a DSN of each scheme accepts (docs/config.md); another one returns CONFIG. */
+/** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
 const DSN_PARAMETERS: Record<string, readonly string[]> = {
   'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
   'postgres:': ['timezone', 'host', 'sslmode'],
@@ -490,8 +530,8 @@ const DSN_PARAMETERS: Record<string, readonly string[]> = {
 };
 
 /**
- * Checks the MySQL TLS parameters: `ssl-mode=VERIFY_IDENTITY` with the absolute path of the CA
- * file in `ssl-ca`, over TCP, or neither. Returns the CA path or none.
+ * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
+ * `ssl-mode=VERIFY_IDENTITY`로 TCP 연결하거나, 둘 다 없다. CA 경로나 undefined를 돌려준다.
  */
 function mysqlTls(url: URL): string | undefined {
   const mode = url.searchParams.get('ssl-mode');
@@ -501,14 +541,14 @@ function mysqlTls(url: URL): string | undefined {
   if (ca === null || ca === '') throw new OrmError('CONFIG', 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
   if (!ca.startsWith('/')) throw new OrmError('CONFIG', `mysql DSN ssl-ca ${ca} is not an absolute path`);
   if (url.searchParams.has('socket')) throw new OrmError('CONFIG', 'mysql DSN ssl-mode connects over TCP and does not accept socket');
-  // The identity check compares a host name with the certificate; the driver checks an IP address host against the name localhost.
+  // identity 검사는 host 이름을 인증서와 비교한다. driver는 IP 주소 host를 이름 localhost와 비교한다.
   if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError('CONFIG', `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
   return ca;
 }
 
 /**
- * The mysql2 TLS options of ssl-mode=VERIFY_IDENTITY, or none: the CA of `ssl-ca`, rejection of a
- * certificate that the CA did not sign, and the check of the host name.
+ * ssl-mode=VERIFY_IDENTITY의 mysql2 TLS option이거나 undefined다: `ssl-ca`의 CA, 그 CA가
+ * 서명하지 않은 인증서의 거부, host 이름 검사다.
  */
 export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
@@ -517,7 +557,11 @@ export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: t
   }
 }
 
-/** Splits a DSN URI into the dialect and the connection time zone. */
+/**
+ * Splits a DSN URI into the dialect and the connection time zone. Every
+ * connection reads and writes datetime values in UTC (docs/dialects.md "Date
+ * and time"), so the timezone parameter accepts only UTC or +00:00.
+ */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
   try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
@@ -527,8 +571,9 @@ export function parseDsn(dsn: string): ParsedDsn {
       if (!accepted.includes(name)) throw new OrmError('CONFIG', `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
     }
   }
-  const zone = url.searchParams.get('timezone') ?? '';
-  if (zone !== '') zoneOffset(zone, new Date());
+  const requested = url.searchParams.get('timezone');
+  if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError('CONFIG', `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
+  const zone = '+00:00';
   switch (url.protocol) {
     case 'mysql:': {
       if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
@@ -541,37 +586,33 @@ export function parseDsn(dsn: string): ParsedDsn {
     case 'sqlite:':
       if (url.hostname !== '' || !url.pathname.startsWith('/') || url.pathname === '/') throw new OrmError('CONFIG', 'sqlite DSN must include an absolute database path');
       if (url.searchParams.has('_txlock')) throw new OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
+      sqlitePath(url);
       return { driver: 'sqlite', zone };
   }
   throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
 }
 
-/** Returns the offset of zone at instant in minutes east of UTC. */
-export function zoneOffset(zone: string, instant: Date): number {
-  const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone);
-  if (fixed) return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
-  if (zone === '') return -instant.getTimezoneOffset();
-  let parts: Intl.DateTimeFormatPart[];
-  try {
-    parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(instant);
-  } catch { throw new OrmError('CONFIG', `dsn timezone ${zone} is unknown`); }
-  const get = (type: string) => Number(parts.find(part => part.type === type)!.value);
-  const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
-  return Math.round((wall - Math.floor(instant.getTime() / 1000) * 1000) / 60_000);
-}
-
 /**
- * Writes a fixed offset in the POSIX form PostgreSQL expects, where the sign
- * after the name is inverted: +09:00 becomes <+09:00>-09:00.
+ * Returns the percent-decoded path of a sqlite:// DSN. An invalid escape, a
+ * path that is not UTF-8 after decoding and a NUL byte are CONFIG errors.
  */
-export function postgresZone(zone: string): string {
-  const fixed = /^([+-])(\d{2}:\d{2})$/.exec(zone);
-  return fixed ? `<${zone}>${fixed[1] === '-' ? '+' : '-'}${fixed[2]}` : zone;
+function sqlitePath(url: URL): string {
+  let path: string;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    throw new OrmError('CONFIG', 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
+  }
+  // NUL 뒤를 버리는 opener는 다른 file을 연다.
+  if (path.includes('\0')) throw new OrmError('CONFIG', 'sqlite DSN path must not contain a NUL byte');
+  return path;
 }
 
-export function offsetText(minutes: number): string {
-  const abs = Math.abs(minutes);
-  return `${minutes < 0 ? '-' : '+'}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+/** Returns the offset of a fixed zone such as +00:00 in minutes east of UTC. */
+export function zoneOffset(zone: string): number {
+  const fixed = /^([+-])(\d{2}):(\d{2})$/.exec(zone);
+  if (!fixed) throw new OrmError('INTERNAL', `connection zone ${zone} is not a fixed offset`);
+  return (fixed[1] === '-' ? -1 : 1) * (Number(fixed[2]) * 60 + Number(fixed[3]));
 }
 
 /**
@@ -628,9 +669,9 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
   switch (parsed.driver) {
     case 'mysql': {
       const socket = url.searchParams.get('socket');
-      // ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate against the CA and the
-      // host name, the Node TLS default with rejectUnauthorized; the password then travels only
-      // inside TLS and the client requests no RSA public key of the server.
+      // ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는 TLS이며,
+      // rejectUnauthorized를 둔 Node TLS 기본값이다. password는 TLS 안에서만 오가고 client는
+      // server의 RSA public key를 요청하지 않는다.
       const ssl = mysqlSsl(parsed);
       const created = mysql.createPool({
         ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
@@ -645,13 +686,11 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
         jsonStrings: true,
         maxPreparedStatements: statementCacheSize,
       });
-      // Without a timezone parameter the session uses the offset of the process time zone.
-      const zone = () => `'${(parsed.zone !== '' ? parsed.zone : offsetText(zoneOffset('', new Date()))).replaceAll("'", "''")}'`;
       const setup: SessionSetup = {};
       const core = (created as unknown as { pool: MySqlCorePool }).pool;
       core.on('connection', connection => {
         // MySQL bounds SELECT statements with max_execution_time.
-        const session = statementTimeoutMs > 0 ? `SET time_zone = ${zone()}, SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = ${zone()}`;
+        const session = statementTimeoutMs > 0 ? `SET time_zone = '+00:00', SESSION max_execution_time = ${statementTimeoutMs}` : `SET time_zone = '+00:00'`;
         connection.query(session, error => { if (error) setup.error = error; });
       });
       boundMySqlPool(core, bounds);
@@ -661,8 +700,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
       const config: pg.PoolConfig = { connectionString: url.toString(), max: bounds.size };
       // pg closes a connection maxLifetimeSeconds after it opened, idle or at its release.
       if (bounds.lifetimeMs > 0) config.maxLifetimeSeconds = bounds.lifetimeMs / 1000;
-      // Without a timezone parameter the session uses the process time zone.
-      config.options = `-c TimeZone=${parsed.zone !== '' ? postgresZone(parsed.zone) : Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+      config.options = '-c TimeZone=UTC';
       if (statementTimeoutMs > 0) config.options += ` -c statement_timeout=${statementTimeoutMs}`;
       return new PostgresPoolDriver(new pg.Pool(config), statementCacheSize, bounds.size, bounds.idleSize, config);
     }
@@ -674,7 +712,7 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
       });
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
-      const db = new DatabaseSync(decodeURIComponent(url.pathname), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
+      const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       const version = String((db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v);
       const [major, minor] = version.split('.').map(Number);
       if (major! < 3 || (major === 3 && minor! < 46)) {

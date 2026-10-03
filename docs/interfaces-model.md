@@ -102,6 +102,7 @@ classDiagram
         ConnectionPool pool
         Cache_Sql_Statement statements
         connect()
+        connectSchema()
         transaction()
         utils()
         close()
@@ -175,6 +176,16 @@ classDiagram
         Text code
         Text message
     }
+    class Dbspec {
+        readFile()
+        readBytes()
+        parse()
+        emit()
+        manifest()
+        render()
+    }
+    class DbspecDocument {
+    }
     Model *-- Core : stores chain state
     Core --> Db : uses connection
     Core --> TransactionFlow : uses flow transaction
@@ -210,17 +221,19 @@ classDiagram
 | Plan | Immutable statements and assembly metadata cached per request shape. |
 | Step | One SQL statement of a plan. |
 | Assemble | Maps result columns by position to models, joins, and relations. |
-| Db | Owns the pool, the planners of registered schemas, and the plan and statement caches. |
+| Db | Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches. |
 | TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. |
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
-| SchemaUtils | Installs a manifest with the client DDL renderer. |
+| SchemaUtils | Installs the set of a generated schema with the client DDL renderer and registers it on the connection. |
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |
-| Generator | One per language. Reads schema.json and emits models; Go and Rust emit only the chain methods the sources call. |
+| Generator | One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call. |
 | Error | A stable code from docs/errors.yaml. |
+| Dbspec | Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md). |
+| DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |
 
 | From | To | Relation |
 |---|---|---|

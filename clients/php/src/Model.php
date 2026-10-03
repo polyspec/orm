@@ -42,8 +42,8 @@ abstract class Model implements \JsonSerializable
     private string $aggFn = '';
     private string $agg = '';
 
-    private string $matchLeft = '';
-    private string $matchRight = '';
+    /** @var list<array{left: string, right: string}> relation key 성분: match<L>With<R>()마다 한 쌍을 호출 순서로 더한다 */
+    private array $matches = [];
     private string $alias = '';
     private bool $parentNode = false;
     private ?array $possible = null;
@@ -67,10 +67,7 @@ abstract class Model implements \JsonSerializable
      */
     private ?array $row = null;
 
-    /**
-     * The model metadata: entity, pk, auto, updated, aes_version, columns
-     * (name => [type, nullable, styles]), fulltext, indexes.
-     */
+    /** model의 entity다: RuntimeModel이 정의하는 runtime model entity 배열이다. */
     abstract public static function meta(): array;
 
     // ---- connection and fixed builder methods ----
@@ -246,7 +243,7 @@ abstract class Model implements \JsonSerializable
     {
         if ($this->groupOf !== null) {
             $this->fail('relation is not allowed inside a group callback');
-        } elseif ($child->matchLeft === '') {
+        } elseif ($child->matches === []) {
             $this->fail('relation child ' . $child::meta()['entity'] . ' requires match<L>With<R>()');
         } else {
             $this->relations[] = ['many' => $many, 'child' => $child];
@@ -386,7 +383,7 @@ abstract class Model implements \JsonSerializable
             }
             $value = Decimal::normalize($value, $col['precision'], $col['scale']);
         }
-        if (self::isStyledValueColumn($col)) {
+        if (RuntimeModel::styled($col)) {
             if (!$value instanceof StyledValue) {
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires StyledValue");
             }
@@ -398,16 +395,6 @@ abstract class Model implements \JsonSerializable
         $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');
         $this->putSet($column, $sqlNull ? ['null' => true] : ['value' => $value]);
         return $this;
-    }
-
-    private static function isStyledValueColumn(array $column): bool
-    {
-        foreach ($column['styles'] as $style) {
-            if (in_array($style, ['json', 'jsons', 'serialize', 'yaml'], true)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** A loaded or set column value; loaded date text is converted on first read. */
@@ -443,17 +430,15 @@ abstract class Model implements \JsonSerializable
         if (is_resource($v)) {
             $v = stream_get_contents($v);
         }
-        if (Chain::clientStyled($col)) {
+        if ($col['codec'] !== []) {
             return $v;
         }
         return match ($col['type']) {
-            'i32', 'i64' => (int) $v,
+            'i16', 'i32', 'i64' => (int) $v,
             'f64' => (float) $v,
             'decimal' => is_string($v) ? Decimal::normalize($v, $col['precision'], $col['scale']) : throw new OrmException(Code::CODEC_DECODE, 'decimal cell requires exact text'),
             'bool' => (bool) $v,
             'date', 'datetime' => self::timeValue($v, $zone),
-            'point' => Codec::point($v),
-            'jsontext' => $v,
             default => is_string($v) ? $v : (string) $v,
         };
     }
@@ -536,7 +521,8 @@ abstract class Model implements \JsonSerializable
         }
         if (self::prefixed($name, 'match')) {
             self::arity($name, $args, 0);
-            [$this->matchLeft, $this->matchRight] = Chain::pair(null, $meta, substr($name, 5));
+            [$left, $right] = Chain::pair(null, $meta, substr($name, 5));
+            $this->matches[] = ['left' => $left, 'right' => $right];
             return $this;
         }
         if (self::prefixed($name, 'alias')) {
@@ -574,7 +560,7 @@ abstract class Model implements \JsonSerializable
             if ($column === '') {
                 continue;
             }
-            $numeric = !Chain::clientStyled($meta['columns'][$column]) && in_array($meta['columns'][$column]['type'], ['i32', 'i64', 'f64', 'decimal'], true);
+            $numeric = RuntimeModel::numeric($meta['columns'][$column]);
             if (in_array($prefix, ['plus', 'minus', 'sum', 'avg'], true) && !$numeric) {
                 throw new OrmException(Code::CONFIG, "$name requires a numeric column");
             }
@@ -613,7 +599,7 @@ abstract class Model implements \JsonSerializable
         }
         if (self::prefixed($name, 'possible')) {
             self::arity($name, $args, 1);
-            $column = Chain::schemaColumnName($meta['schema_hash'], substr($name, 8));
+            $column = Chain::schemaColumnName($meta['manifest_hash'], substr($name, 8));
             if ($column === '') {
                 throw new OrmException(Code::CONFIG, "$name: no model has the column " . substr($name, 8));
             }
@@ -623,7 +609,7 @@ abstract class Model implements \JsonSerializable
         if (self::prefixed($name, 'forceIndex')) {
             self::arity($name, $args, 0);
             $index = Chain::snake(substr($name, 10));
-            if (!in_array($index, $meta['indexes'], true)) {
+            if (!isset($meta['indexes'][$index])) {
                 throw new OrmException(Code::CONFIG, "{$meta['entity']} has no index $index");
             }
             $this->index = $index;
@@ -771,12 +757,6 @@ abstract class Model implements \JsonSerializable
         $column = $key['column'];
         $p = ['column' => $column];
         switch ($key['op']) {
-            case 'fulltext':
-            case 'fulltext_boolean':
-                if (!is_string($value)) {
-                    throw new OrmException(Code::CONFIG, 'a full-text value must be a string');
-                }
-                return [['op' => $key['op'] === 'fulltext' ? 'match' : 'match_boolean', 'cols' => $key['columns'], 'value' => $value, 'kind' => 'fulltext'], 0];
             case 'tuple':
             case 'ne_tuple':
                 if (!is_array($value) || !array_is_list($value)) {
@@ -866,7 +846,7 @@ abstract class Model implements \JsonSerializable
 
     private function build(string $kind, Db $db): Request
     {
-        $r = new Request($kind, static::meta()['schema_hash']);
+        $r = new Request($kind, static::manifestHash());
         $frame = new Frame($this, null);
         $r->ir += $this->query($r, $frame);
         return $r;
@@ -976,7 +956,7 @@ abstract class Model implements \JsonSerializable
         if ($this->possible !== null) {
             $q['if_parent'] = ['column' => $this->possible['column'], 'p' => $r->param($this->possible['value'])];
         }
-        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one', 'left' => $this->matchLeft, 'right' => $this->matchRight];
+        return ['rel' => $this->resultName($many), 'query' => $q, 'kind' => $many ? 'many' : 'one', 'keys' => $this->matches];
     }
 
     private function columnsIr(Request $r): ?array
@@ -1083,15 +1063,11 @@ abstract class Model implements \JsonSerializable
     private function predIr(array $p, Request $r, Frame $f): array
     {
         $out = [];
-        if (!in_array($p['kind'], ['fulltext', 'tuple'], true)) {
+        if ($p['kind'] !== 'tuple') {
             $out['column'] = $p['column'];
         }
         $out['op'] = $p['op'];
         switch ($p['kind']) {
-            case 'fulltext':
-                $out['match'] = $p['cols'];
-                $out['p'] = $r->param($p['value']);
-                break;
             case 'tuple':
                 $out['cols'] = $p['cols'];
                 foreach ($p['value'] as $row) {
@@ -1166,7 +1142,7 @@ abstract class Model implements \JsonSerializable
             $shapes = [];
         }
         $meta = static::meta();
-        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'other' => [], 'extra' => [],
+        $shape = ['int' => [], 'float' => [], 'decimal' => [], 'bool' => [], 'date' => [], 'string' => [], 'codec' => [], 'extra' => [],
             'names' => [], 'hidden' => [], 'original' => [], 'key' => null];
         foreach ($asm['columns'] as $col) {
             $name = $col['name'];
@@ -1176,14 +1152,15 @@ abstract class Model implements \JsonSerializable
             }
             if (($col['column'] ?? '') === $name && isset($meta['columns'][$name])) {
                 $mc = $meta['columns'][$name];
-                $kind = Chain::clientStyled($mc) ? 'json' : $mc['type'];
+                // codec column은 Codec::decodeRows가 이미 값으로 바꿨다.
+                $kind = $mc['codec'] !== [] ? 'codec' : $mc['type'];
                 $group = match ($kind) {
-                    'i32', 'i64' => 'int',
+                    'i16', 'i32', 'i64' => 'int',
                     'f64' => 'float',
                     'decimal' => 'decimal',
                     'bool' => 'bool',
                     'date', 'datetime' => 'date',
-                    'point', 'json', 'jsontext' => 'other',
+                    'codec' => 'codec',
                     default => 'string',
                 };
                 $shape[$group][] = [$col['index'], $name, $kind];
@@ -1243,12 +1220,8 @@ abstract class Model implements \JsonSerializable
             $v = $vals[$index];
             $values[$name] = $v === null || is_string($v) ? $v : (is_resource($v) ? stream_get_contents($v) : (string) $v);
         }
-        foreach ($shape['other'] as [$index, $name, $kind]) {
-            $v = $vals[$index];
-            if (is_resource($v)) {
-                $v = stream_get_contents($v);
-            }
-            $values[$name] = $v === null || $kind === 'json' ? $v : Codec::point($v);
+        foreach ($shape['codec'] as [$index, $name]) {
+            $values[$name] = $vals[$index];
         }
         $m->values = $values;
         foreach ($shape['extra'] as [$index, $name, $kind]) {
@@ -1257,7 +1230,7 @@ abstract class Model implements \JsonSerializable
                 $v = stream_get_contents($v);
             }
             $st['extra'][$name] = $v === null ? null : match ($kind) {
-                'i32', 'i64' => is_numeric($v) ? (int) $v : $v,
+                'i16', 'i32', 'i64' => is_numeric($v) ? (int) $v : $v,
                 'f64' => is_numeric($v) ? (float) $v : $v,
                 'date', 'datetime' => self::timeValue($v, $zone),
                 default => $v,
@@ -1366,6 +1339,38 @@ abstract class Model implements \JsonSerializable
         return $out;
     }
 
+    /**
+     * model의 relation key 성분 값을 key 순서로 반환한다. 성분 하나라도 null이면 null이다.
+     *
+     * @return list<mixed>|null
+     */
+    private function matchValues(Model $m, string $side): ?array
+    {
+        $values = [];
+        foreach ($this->matches as $k) {
+            $v = $m->columnOrExtra($k[$side]);
+            if ($v === null) {
+                return null;
+            }
+            $values[] = $v;
+        }
+        return $values;
+    }
+
+    /** @param list<mixed> $values relation key 성분 값의 collection key. */
+    private static function matchKey(array $values): string
+    {
+        if (count($values) === 1) {
+            return Db::scalarText($values[0]);
+        }
+        $out = '';
+        foreach ($values as $v) {
+            $part = Db::scalarText($v);
+            $out .= strlen($part) . ':' . $part;
+        }
+        return $out;
+    }
+
     /** @param list<Model> $parents */
     private function attachExternal(array $parents, bool $many): void
     {
@@ -1375,26 +1380,34 @@ abstract class Model implements \JsonSerializable
             if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 continue;
             }
-            $v = $p->columnOrExtra($this->matchLeft);
-            if ($v === null || isset($seen[Db::scalarText($v)])) {
+            $v = $this->matchValues($p, 'left');
+            if ($v === null || isset($seen[self::matchKey($v)])) {
                 continue;
             }
-            $seen[Db::scalarText($v)] = true;
-            $values[] = $v;
+            $seen[self::matchKey($v)] = true;
+            $values[] = count($v) === 1 ? $v[0] : $v;
         }
         $byKey = [];
         if ($values !== []) {
             $q = clone $this;
-            $q->matchLeft = '';
+            $q->matches = [];
             $q->alias = '';
-            $match = ['pred' => ['column' => $this->matchRight, 'op' => 'in', 'value' => $values, 'kind' => 'list']];
+            $rights = array_column($this->matches, 'right');
+            // composite key는 자식 key column 전체를 tuple로 거른다.
+            $match = count($rights) === 1
+                ? ['pred' => ['column' => $rights[0], 'op' => 'in', 'value' => $values, 'kind' => 'list']]
+                : ['pred' => ['op' => 'tuple_in', 'cols' => $rights, 'value' => $values, 'kind' => 'tuple']];
             if ($q->where['items'] !== []) {
                 $q->where['items'] = [['conn' => '', 'group' => $q->where['items']], $match + ['conn' => 'and']];
             } else {
                 $q->where['items'] = [$match + ['conn' => '']];
             }
             foreach ($q->gets()->entries() as [$key, $m]) {
-                $k = Db::scalarText($m->columnOrExtra($this->matchRight));
+                $v = $this->matchValues($m, 'right');
+                if ($v === null) {
+                    continue;
+                }
+                $k = self::matchKey($v);
                 if ($this->groupLimit > 0 && count($byKey[$k] ?? []) >= $this->groupLimit) {
                     continue;
                 }
@@ -1406,7 +1419,8 @@ abstract class Model implements \JsonSerializable
             if (array_key_exists($name, $p->row['related'])) {
                 throw new OrmException(Code::CONFIG, "relation result name $name is used twice");
             }
-            $matched = $byKey[Db::scalarText($p->columnOrExtra($this->matchLeft))] ?? [];
+            $v = $this->matchValues($p, 'left');
+            $matched = $v === null ? [] : $byKey[self::matchKey($v)] ?? [];
             if ($this->possible !== null && !Db::sameScalar($p->columnOrExtra($this->possible['column']), $this->possible['value'])) {
                 $matched = [];
             }
@@ -1505,12 +1519,12 @@ abstract class Model implements \JsonSerializable
             if ($raw === false) throw new OrmException(Code::CODEC_DECODE, "group column $name could not be read");
         }
         $type = $declared['type'] ?? $column['type'];
-        if ($declared !== null && Chain::clientStyled($declared)) {
+        if ($declared !== null && RuntimeModel::styled($declared)) {
             if (!$raw instanceof StyledValue) throw new OrmException(Code::CODEC_DECODE, "group column $name is not StyledValue");
             return $raw;
         }
         return match ($type) {
-            'i32', 'i64' => self::groupInteger($raw, $type, $name),
+            'i16', 'i32', 'i64' => self::groupInteger($raw, $type, $name),
             'bool' => match ($raw) {
                 true, 1, '1', 't', 'true' => true,
                 false, 0, '0', 'f', 'false' => false,
@@ -1523,8 +1537,7 @@ abstract class Model implements \JsonSerializable
                     ? Decimal::fromScaled($raw, $declared['precision'], $declared['scale'])
                     : Decimal::decode($raw, $declared['precision'], $declared['scale'])),
             'date', 'datetime' => self::timeValue($raw, $db->zone()),
-            'point' => Codec::point($raw),
-            'string', 'text', 'enum', 'inet', 'time', 'uuid', 'jsontext', 'bytes' => is_string($raw)
+            'varchar', 'text', 'time', 'uuid', 'bytes' => is_string($raw)
                 ? $raw : throw new OrmException(Code::CODEC_DECODE, "group column $name is not text or bytes"),
             default => throw new OrmException(Code::INTERNAL, "group column $name has unsupported type $type"),
         };
@@ -1542,6 +1555,9 @@ abstract class Model implements \JsonSerializable
         }
         if ($type === 'i32' && ($value < -2147483648 || $value > 2147483647)) {
             throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i32 range");
+        }
+        if ($type === 'i16' && ($value < -32768 || $value > 32767)) {
+            throw new OrmException(Code::CODEC_DECODE, "group column $name exceeds i16 range");
         }
         return $value;
     }
@@ -1624,9 +1640,25 @@ abstract class Model implements \JsonSerializable
 
     // ---- writes ----
 
+    /**
+     * 요청이 싣는 manifestHash다. generated bootstrap이 이 class를 그 hash로
+     * 등록하지 않았으면 SCHEMA_HASH_MISMATCH이므로 다른 set의 model이 이 요청을
+     * plan하지 않는다.
+     */
+    private static function manifestHash(): string
+    {
+        $meta = static::meta();
+        $hash = (string) ($meta['manifest_hash'] ?? '');
+        $registered = Registry::models($hash)[$meta['entity']] ?? null;
+        if ($registered !== static::class) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, static::class . " is not registered by the generated models of manifest $hash");
+        }
+        return $hash;
+    }
+
     private function writeRequest(string $kind, Db $db): Request
     {
-        $r = new Request($kind, static::meta()['schema_hash']);
+        $r = new Request($kind, static::manifestHash());
         $r->ir['entity'] = static::meta()['entity'];
         return $r;
     }
@@ -1659,7 +1691,7 @@ abstract class Model implements \JsonSerializable
 
     private static function encodeValue(array $col, mixed $v): mixed
     {
-        $codec = array_values(array_filter($col['styles'], static fn(string $s): bool => !Codec::isHostStyle($s)));
+        $codec = array_values(array_filter($col['codec'], static fn(string $s): bool => !Codec::isHostStyle($s)));
         if ($codec === []) {
             return $v;
         }
@@ -1700,11 +1732,11 @@ abstract class Model implements \JsonSerializable
                 $m->values[$column] = null;
             }
         }
-        if ($meta['auto'] !== '') {
-            if (!in_array($meta['auto'], $st['names'], true)) {
-                $st['names'][] = $meta['auto'];
+        if ($meta['identity'] !== '') {
+            if (!in_array($meta['identity'], $st['names'], true)) {
+                $st['names'][] = $meta['identity'];
             }
-            $m->values[$meta['auto']] = self::columnValue($meta['columns'][$meta['auto']], $id, $db->zone());
+            $m->values[$meta['identity']] = self::columnValue($meta['columns'][$meta['identity']], $id, $db->zone());
         }
         foreach ($meta['pk'] as $pk) {
             $v = $m->values[$pk] ?? null;
@@ -1817,7 +1849,7 @@ abstract class Model implements \JsonSerializable
         }
         $changed = false;
         foreach ($sets as $column => $_) {
-            if (in_array('aes', $meta['columns'][$column]['styles'], true)) {
+            if (RuntimeModel::encrypted($meta['columns'][$column])) {
                 $changed = true;
             }
         }
@@ -1825,7 +1857,7 @@ abstract class Model implements \JsonSerializable
             return $sets;
         }
         foreach ($meta['columns'] as $column => $col) {
-            if (!in_array('aes', $col['styles'], true) || isset($sets[$column])) {
+            if (!RuntimeModel::encrypted($col) || isset($sets[$column])) {
                 continue;
             }
             if ($this->row === null || !in_array($column, $this->row['names'], true)) {
@@ -2146,9 +2178,9 @@ final class Request
     /** @var array<int, list<array>> relations with their own connection, by parent model */
     public array $external = [];
 
-    public function __construct(string $kind, string $schemaHash)
+    public function __construct(string $kind, string $manifestHash)
     {
-        $this->ir = ['ir_version' => 1, 'schema_hash' => $schemaHash, 'kind' => $kind];
+        $this->ir = ['ir_version' => 1, 'manifest_hash' => $manifestHash, 'kind' => $kind];
     }
 
     public function param(mixed $v): int

@@ -12,6 +12,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // writerEnv names the database of a writer process started by
@@ -28,7 +29,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 	t.Helper()
 	out := make([]*orm.DB, count)
 	for i := range out {
-		db, err := model.Connect(dsn, schemaPath, orm.Config{})
+		db, err := model.Connect(dsn, orm.Config{})
 		if err != nil {
 			t.Fatalf("connection %d: %v", i, err)
 		}
@@ -36,10 +37,7 @@ func openSQLite(t *testing.T, dsn string, count int, install bool) []*orm.DB {
 		out[i] = db
 	}
 	if install {
-		manifest, err := os.ReadFile(schemaPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		manifest := model.Schema
 		if err := out[0].Utils().Schema().Install(manifest); err != nil {
 			t.Fatalf("install: %v", err)
 		}
@@ -93,6 +91,7 @@ func serviceCount(t *testing.T, db *orm.DB) int64 {
 // TestSQLiteWritersOnSeveralConnections runs 8 connections that each commit
 // 10 read-then-write transactions on one file with the default lock wait.
 func TestSQLiteWritersOnSeveralConnections(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "writers.sqlite")
 	dbs := openSQLite(t, dsn, 8, true)
 	for _, err := range runWriters(dbs, "c", 10) {
@@ -108,6 +107,7 @@ func TestSQLiteWritersOnSeveralConnections(t *testing.T) {
 // TestSQLiteWritersInSeveralProcesses runs 3 processes with 4 connections
 // each; every connection commits 20 read-then-write transactions on one file.
 func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	if dsn := os.Getenv(writerEnv); dsn != "" {
 		for _, err := range runWriters(openSQLite(t, dsn, 4, false), os.Getenv(writerNameEnv)+"-c", 20) {
 			if err != nil {
@@ -144,6 +144,7 @@ func TestSQLiteWritersInSeveralProcesses(t *testing.T) {
 // TestSQLiteReadsDuringWrite reads from another connection, with and without
 // a read-only transaction, while a write transaction holds the write lock.
 func TestSQLiteReadsDuringWrite(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "reads.sqlite")
 	dbs := openSQLite(t, dsn, 2, true)
 	writer, reader := dbs[0], dbs[1]
@@ -187,6 +188,7 @@ func TestSQLiteReadsDuringWrite(t *testing.T) {
 // of another connection, whose write transaction returns CANCELED after the
 // wait.
 func TestSQLiteLockWaitExpires(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	path := filepath.Join(t.TempDir(), "expiry.sqlite")
 	holder := openSQLite(t, "sqlite://"+path, 1, true)[0]
 	waiter := openSQLite(t, "sqlite://"+path+"?_pragma=busy_timeout(200)", 1, false)[0]

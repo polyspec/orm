@@ -11,21 +11,22 @@ final class Account extends Model
 {
     public static function meta(): array
     {
-        static $meta = null;
-        return $meta ??= [
+        return [
             'entity' => 'account',
             'table' => 'account',
             'pk' => ['seq'],
-            'auto' => 'seq',
+            'identity' => 'seq',
             'updated' => '',
+            'soft_delete' => '',
             'aes_version' => '',
-            'schema_hash' => '16198b563e2e3cae',
+            'audit' => '',
             'columns' => [
-                'seq' => ['type' => 'i64', 'nullable' => false, 'styles' => []],
-                'name' => ['type' => 'string', 'nullable' => false, 'styles' => []],
+                'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
+                'name' => ['name' => 'name', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false],
             ],
-            'fulltext' => [],
+            'unique' => [],
             'indexes' => [],
+            'manifest_hash' => 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa',
         ];
     }
 

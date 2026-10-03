@@ -1,6 +1,6 @@
 [package]
 name = "orm"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 publish = false
 description = "Rust ORM: model runtime, SQL planner, and sqlx executor"
@@ -11,21 +11,21 @@ keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
 [features]
-# The test entry point orm::testing. A build has it only when it enables this
-# feature; no default feature enables it.
+# test entry point orm::testing이다. build는 이 feature를 켤 때만 그것을 가지며,
+# 어떤 default feature도 켜지 않는다.
 test-faults = []
 
 [dependencies]
-orm-schema = { version = "=0.0.1", path = "../orm-schema" }
+orm-schema = { version = "=0.0.2", path = "../orm-schema" }
 ordered-json = { version = "=0.0.1", git = "https://github.com/polyspec/ordered-json.git" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
 rust_decimal = "1"
+regex = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 indexmap = "2"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-chrono-tz = "0.9"
 url = "2"
 # sqlx-postgres uses whoami without its std feature, which reports the OS user
 # as "anonymous"; a DSN without a user must connect as the OS user.
@@ -39,3 +39,13 @@ sha2 = "0.10"
 hmac = "0.12"
 serde_yaml_ng = "0.10.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }
+
+[dev-dependencies]
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+orm-testcase = { path = "../testcase" }
+# SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
+libsqlite3-sys = { version = "0.37", default-features = false }
+# coverage test가 자기 계산의 CPU 시간을 잰다.
+orm-case-clock = { path = "../case-clock" }
+# database case가 자기만의 database를 만들고 끝날 때 지운다.
+orm-case-database = { path = "../case-database" }

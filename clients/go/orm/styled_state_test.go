@@ -5,9 +5,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestStyledColumnStateFixture(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile("../../../contracts/fixtures/styled_column_states.json")
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +38,7 @@ func TestStyledColumnStateFixture(t *testing.T) {
 			if c.StoredText != nil {
 				raw = *c.StoredText
 			}
-			got, err := Decode([]string{c.Style}, raw)
+			got, err := Decode(codecStages([]string{c.Style}), raw)
 			if c.Error != "" {
 				if err == nil || !strings.Contains(err.Error(), c.Error) {
 					t.Fatalf("decode error = %v; want %s", err, c.Error)
@@ -59,7 +62,7 @@ func TestStyledColumnStateFixture(t *testing.T) {
 			if string(actualJSON) != string(wantJSON) {
 				t.Fatalf("output = %s; want %s", actualJSON, wantJSON)
 			}
-			encoded, err := Encode([]string{c.Style}, got)
+			encoded, err := Encode(codecStages([]string{c.Style}), got)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,6 +82,7 @@ func TestStyledColumnStateFixture(t *testing.T) {
 }
 
 func TestUnknownStyleRejectsSQLNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if _, err := Decode([]string{"unknown"}, nil); err == nil || !strings.Contains(err.Error(), CodeCodecUnsupported) {
 		t.Fatalf("decode unknown style with SQL NULL: %v", err)
 	}

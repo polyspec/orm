@@ -9,15 +9,15 @@
     },
     {
       "id": "schema.generated",
-      "source": "schema/*.mmd",
-      "checker": "schema-check",
-      "failure": "schema.json or generated clients are not reproducible from the Mermaid source"
+      "source": "schema/*.dbs",
+      "checker": "go-model-check and ts-model-check",
+      "failure": "the committed generated clients are not reproducible from the dbspec source"
     },
     {
       "id": "aes.version-column",
-      "source": "schema/*.mmd",
-      "checker": "schema-check",
-      "failure": "a table with an aes style does not contain a non-null aes_key_version column"
+      "source": "docs/dbspec.md",
+      "checker": "dbspec-go-check, dbspec-php-check, dbspec-ts-check and dbspec-rust-check",
+      "failure": "a table whose column has the aes codec stage parses without an aes_version setting naming a non-null integer column"
     },
     {
       "id": "docs.language-pair",
@@ -130,20 +130,18 @@
       "id": "git.subject-format",
       "source": "git history",
       "checker": "git-check",
-      "failure": "a new commit subject does not use type: concise English description",
+      "failure": "a commit subject after the baseline does not use type(scope): Subject (#id)",
       "baseline": "main",
       "types": [
         "feat",
         "fix",
         "docs",
-        "test",
-        "build",
-        "chore",
+        "style",
         "refactor",
-        "perf",
-        "merge"
+        "test",
+        "chore"
       ],
-      "subject_max": 72
+      "subject_max": 50
     }
   ]
 }

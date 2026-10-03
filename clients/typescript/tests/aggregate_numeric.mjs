@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { aggregateNumber } from '../dist/model.js';
 import { OrmError } from '../dist/index.js';
+import { cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/aggregate_numeric.json', import.meta.url), 'utf8'));
 
-for (const testCase of fixture.cases) {
+const run = cases();
+for (const testCase of fixture.cases) await run.run(`aggregate_numeric/${testCase.id}`, COMPUTE, () => {
   const input = {
     integer_text: () => BigInt(testCase.input),
     decimal_text: () => testCase.input,
@@ -21,5 +23,5 @@ for (const testCase of fixture.cases) {
   } catch (error) {
     if (!(error instanceof OrmError) || error.code !== testCase.expected.error) throw error;
   }
-  console.log(`CASE ${testCase.id} PASS`);
-}
+});
+run.finish();

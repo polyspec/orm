@@ -2,8 +2,8 @@
 //! stdout: the result as JSON. stderr: p50 of the generated client and of the
 //! same SQL through sqlx directly.
 //!
-//!   clients/rust/target/release/demo
-//! The DSN comes from ORM_BENCH_MYSQL_DSN when set, else the local socket.
+//!   clients/rust/target/debug/demo
+//! The DSN comes from ORM_BENCH_MYSQL_DSN, which the program requires.
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -17,9 +17,20 @@ use serde_json::json;
 const ITERATIONS: usize = 500;
 const AES_KEY: &str = "bench-salt";
 
+/// 시드된 bench database를 가리키는 `ORM_BENCH_MYSQL_DSN`이다. 없거나 비어 있으면 연결하지
+/// 않고 그 변수 이름을 출력하며 끝난다.
 fn dsn() -> String {
-    std::env::var("ORM_BENCH_MYSQL_DSN")
-        .unwrap_or_else(|_| "mysql://root@localhost/orm_bench?socket=/tmp/mysql.sock".into())
+    match std::env::var("ORM_BENCH_MYSQL_DSN") {
+        Ok(v) if !v.is_empty() => v,
+        Ok(_) | Err(std::env::VarError::NotPresent) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            std::process::exit(1)
+        }
+        Err(e) => {
+            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
+            std::process::exit(1)
+        }
+    }
 }
 
 fn p50(mut s: Vec<u128>) -> u128 {
@@ -56,7 +67,7 @@ async fn main() -> orm::Result<()> {
         )),
         ..Default::default()
     };
-    let db = orm::Db::connect(&dsn(), 1, config).await?;
+    let db = model::connect(&dsn(), 1, config).await?;
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
         .unwrap()
         .and_hms_opt(0, 0, 0)
@@ -106,7 +117,6 @@ async fn main() -> orm::Result<()> {
                 Param::Bytes(b) => q.bind(b.as_slice()),
                 Param::DateTime(t) => q.bind(*t),
                 Param::Date(d) => q.bind(*d),
-                Param::Point(point) => q.bind(orm::point_text(*point).expect("valid point")),
             };
         }
         let _rows: Vec<sqlx::mysql::MySqlRow> = q.fetch_all(pool).await.expect("native");

@@ -4,7 +4,11 @@
 use std::path::PathBuf;
 
 fn schema() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../orm/tests/testdata/zone_schema.json")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/zone.dbs")
+}
+
+fn bench() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbs")
 }
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -19,7 +23,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), source).unwrap();
-    let out = orm_build::Builder::new(schema).scan(&src).out_dir(dir.join("out")).try_generate();
+    let out = orm_build::Builder::new([schema]).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
     text
@@ -27,6 +31,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
 
 #[test]
 fn generates_called_methods() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let text = generate(
         r#"
         fn main() {
@@ -46,7 +51,8 @@ fn generates_called_methods() {
         "pub fn add_raw_column_total(mut self, sql: &str, binds: impl orm::Binds) -> Self",
         "pub fn get_total(&self) -> orm::Result<Option<orm::serde_json::Value>>",
         "pub fn get_label(&self) -> orm::Result<Option<orm::serde_json::Value>>",
-        "pub static SCHEMA: orm::Schema",
+        "pub static SCHEMA: orm::Schema = orm::Schema::new(include_str!(",
+        "pub const MANIFEST_HASH: &str = \"sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891\";",
     ] {
         assert!(text.contains(want), "missing {want}");
     }
@@ -55,6 +61,7 @@ fn generates_called_methods() {
 
 #[test]
 fn generated_rows_reject_unselected_fields_and_separate_group_results() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
     assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
     assert!(text.contains("pub fn get_start_dt(&self) -> orm::Result<orm::chrono::NaiveDateTime>"), "getter must report missing selection");
@@ -63,7 +70,8 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
 
 #[test]
 fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     let text = generate_with_schema(
         root,
         "fn main() { let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let _ = row.get_jsons_tags(); }",
@@ -83,6 +91,7 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
 
 #[test]
 fn column_function_order_takes_the_function() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(orm::year()); }").unwrap();
     assert!(text.contains("pub fn order_by_start_dt_asc(mut self, f: orm::Func) -> Self"));
     assert!(text.contains("pub fn order_by_seq_asc(mut self) -> Self"));
@@ -90,6 +99,7 @@ fn column_function_order_takes_the_function() {
 
 #[test]
 fn rejects_unknown_names_of_a_known_model() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let err = generate("fn main() {\n    ZoneEvent::new().and_lk_start_dt(\"x\").name(\"y\");\n}\n").unwrap_err();
     assert!(err.contains("main.rs:2:22: ZoneEvent has no method and_lk_start_dt"), "{err}");
     assert!(err.contains("main.rs:2:43: ZoneEvent has no method name"), "{err}");
@@ -97,30 +107,83 @@ fn rejects_unknown_names_of_a_known_model() {
 
 #[test]
 fn rejects_argument_count() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let err = generate("fn main() { let x = ZoneEvent::new(); x.seq(1, 2); }").unwrap_err();
     assert!(err.contains("ZoneEvent::seq takes 1 values, not 2"), "{err}");
 }
 
 #[test]
 fn ignores_calls_of_other_types() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let text = generate("fn main() { let v = vec![1]; v.len(); v.iter().map(|x| x + 1); }").unwrap();
     assert!(!text.contains("pub fn len"));
 }
 
 #[test]
-fn rejects_edited_schema() {
-    let dir = std::env::temp_dir().join(format!("orm-build-edited-{}", std::process::id()));
+fn rejects_an_invalid_document() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let dir = std::env::temp_dir().join(format!("orm-build-invalid-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt", "begin_dt");
-    std::fs::write(dir.join("schema.json"), text).unwrap();
-    let err = orm_build::Builder::new(dir.join("schema.json")).out_dir(dir.join("out")).try_generate().unwrap_err();
+    let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
+    std::fs::write(dir.join("zone.dbs"), text).unwrap();
+    let err = orm_build::Builder::new([dir.join("zone.dbs")]).out_dir(dir.join("out")).try_generate().unwrap_err();
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(err.contains("edited by hand"), "{err}");
+    assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
+}
+
+/// dbspec::read_file이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
+#[test]
+fn rejects_a_file_without_the_signature() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    for name in ["dbschema.dbs", "empty.dbs"] {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/files").join(name);
+        let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
+        let err = orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
+        assert!(!out.exists(), "{name}: generation wrote {}", out.display());
+        let display = path.display();
+        assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
+    }
+}
+
+#[test]
+fn manifest_text_is_embedded_with_its_hash() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-manifest-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
+    let audit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/audit.dbs");
+    orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
+    let embedded = std::fs::read_to_string(dir.join("out").join(orm_build::MANIFEST_FILE)).unwrap();
+    let zone = std::fs::read_to_string(schema()).unwrap();
+    let audit = std::fs::read_to_string(audit).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(embedded, format!("{audit}{zone}"), "the manifest text holds the documents in name order");
+}
+
+#[test]
+fn generated_field_types_follow_the_runtime_model() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let text = generate_with_schema(
+        bench(),
+        "fn main() { let row = Author::new(); let _ = row.get_gz_extend(); let _ = row.get_base64_extra(); let _ = row.get_ip(); let _ = row.get_aes_hex_email(); }",
+    )
+    .unwrap();
+    assert!(text.contains("pub fn get_gz_extend(&self) -> orm::Result<orm::StyledValue<orm::serde_json::Value>>"), "gz is a styled value");
+    assert!(text.contains("pub fn get_base64_extra(&self) -> orm::Result<orm::StyledValue<orm::serde_json::Value>>"), "base64 is a styled value");
+    assert!(
+        text.contains("pub fn set_gz_extend(mut self, v: orm::StyledValue<orm::serde_json::Value>) -> orm::Result<Self>"),
+        "gz setter takes a styled value"
+    );
+    assert!(text.contains("pub fn get_ip(&self) -> orm::Result<Option<&str>>"), "ip is the address text");
+    assert!(text.contains("pub fn get_aes_hex_email(&self) -> orm::Result<Option<&str>>"), "aes hex is a string");
+    assert!(text.contains("pub fn force_index_uq_author_uuid(mut self) -> Self"), "a unique key takes an index hint");
 }
 
 #[test]
 fn styled_setter_result_handling_preserves_model_calls() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     for handler in ["expect(\"assigned config\")", "unwrap()"] {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
         let text = generate_with_schema(root.clone(), &source).expect("Result handling must not be a column call");
@@ -132,7 +195,8 @@ fn styled_setter_result_handling_preserves_model_calls() {
 
 #[test]
 fn unknown_model_call_after_setter_result_handling_still_fails() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     let error = generate_with_schema(
         root,
         "fn main() { let _ = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).expect(\"config\").missing_method(); }",
@@ -143,7 +207,8 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
 
 #[test]
 fn styled_setter_result_transformations_are_not_column_calls() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).map(Some)"] {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; }}");
         let text = generate_with_schema(root.clone(), &source).expect("Result transformations are not columns");
@@ -154,7 +219,8 @@ fn styled_setter_result_transformations_are_not_column_calls() {
 
 #[test]
 fn unknown_model_after_result_error_mapping_still_fails() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).unwrap()"] {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
         let error = generate_with_schema(root.clone(), &source).expect_err("unknown model call must fail");
@@ -165,7 +231,8 @@ fn unknown_model_after_result_error_mapping_still_fails() {
 
 #[test]
 fn infallible_setter_does_not_accept_result_methods() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     let error = generate_with_schema(root, "fn main() { Author::new().set_seq(1).map_err(|error| error); }")
         .expect_err("infallible model setter does not return Result");
     assert!(error.contains("map_err"), "{error}");
@@ -173,9 +240,27 @@ fn infallible_setter_does_not_accept_result_methods() {
 
 #[test]
 fn bound_setter_results_preserve_model_calls_after_extraction() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/schema.json");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let root = bench();
     let source = "fn main() { let result = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
     let error = generate_with_schema(root, source).expect_err("bound Result must retain its model after extraction");
     assert!(error.contains("missing_method"), "{error}");
     assert!(!error.contains("MapErr"), "{error}");
+}
+
+/// relation getter는 실패한 downcast를 None으로 버리지 않고 `orm::Result`로 보고한다.
+#[test]
+fn relation_getters_report_a_mismatched_relation_value() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let text = generate_with_schema(
+        bench(),
+        "fn main() { let b = Author::new().relation(User::new().match_user_seq_with_seq().alias_owner()).relations(ServiceMember::new().match_service_seq_with_service_seq().alias_members()); let _ = b.get_owner(); let _ = b.get_members(); }",
+    )
+    .unwrap();
+    for want in [
+        "pub fn get_owner(&self) -> orm::Result<Option<&super::user::User>> {\n        self.__orm.related_one::<super::user::User>(\"owner\")\n    }",
+        "pub fn get_members(&self) -> orm::Result<Option<&orm::Collection<super::service_member::ServiceMember>>> {\n        self.__orm.related_many::<super::service_member::ServiceMember>(\"members\")\n    }",
+    ] {
+        assert!(text.contains(want), "generated source lacks\n{want}");
+    }
 }

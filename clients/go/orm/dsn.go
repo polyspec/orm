@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // sqliteBusyTimeoutMs is the time in milliseconds a SQLite connection waits
@@ -18,33 +19,28 @@ type parsedDSN struct {
 	driver   string
 	native   string
 	location *time.Location
-	// sslCA is the ssl-ca path of ssl-mode=VERIFY_IDENTITY and sslHost the
-	// host name that the server certificate must name; both are empty
-	// without TLS.
+	// sslCA는 ssl-mode=VERIFY_IDENTITY의 ssl-ca 경로이고 sslHost는 server
+	// 인증서가 이름으로 가져야 하는 host 이름이다. TLS가 없으면 둘 다 비어 있다.
 	sslCA   string
 	sslHost string
 }
 
-// parseDSN treats the URI scheme as the only database selector. The optional
-// timezone parameter sets the connection time zone; without it the server
-// environment time zone is used.
-// parseDSN reads the DSN URI. statementTimeoutMs bounds every statement of
-// the connection; zero keeps the server default.
+// parseDSN reads the DSN URI; the scheme is the only database selector.
+// statementTimeoutMs bounds every statement of the connection; zero keeps the
+// server default. Every connection reads and writes datetime values in UTC
+// (docs/dialects.md "Date and time"), so the timezone parameter accepts only
+// UTC or +00:00.
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" {
 		return parsedDSN{}, configErr("dsn must be a URI using mysql://, postgres://, or sqlite://")
 	}
 	q := u.Query()
-	out := parsedDSN{driver: strings.ToLower(u.Scheme), location: time.Local}
-	zone := q.Get("timezone")
-	if zone != "" {
-		loc, err := loadZone(zone)
-		if err != nil {
-			return parsedDSN{}, configErr("dsn timezone %q: %v", zone, err)
-		}
-		out.location = loc
+	out := parsedDSN{driver: strings.ToLower(u.Scheme), location: time.UTC}
+	if zone := q.Get("timezone"); zone != "" && zone != "UTC" && zone != "+00:00" {
+		return parsedDSN{}, configErr("dsn timezone %s: every connection reads and writes datetime values in UTC", zone)
 	}
+	q.Del("timezone")
 	switch out.driver {
 	case "mysql":
 		if u.Host == "" || strings.Trim(u.Path, "/") == "" {
@@ -58,10 +54,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 			network, address = "unix", socket
 			q.Del("socket")
 		}
-		q.Del("timezone")
-		if zone != "" {
-			q.Set("time_zone", quoteText(zone))
-		}
+		q.Set("time_zone", quoteText("+00:00"))
 		q.Set("clientFoundRows", "true")
 		if statementTimeoutMs > 0 {
 			// MySQL bounds SELECT statements with max_execution_time.
@@ -82,30 +75,29 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if u.Host == "" && q.Get("host") == "" || strings.Trim(u.Path, "/") == "" {
 			return parsedDSN{}, configErr("postgres DSN must include host and database")
 		}
-		out.native = raw
-		changed := false
 		if statementTimeoutMs > 0 {
 			options := q.Get("options")
 			if options != "" {
 				options += " "
 			}
 			q.Set("options", options+"-c statement_timeout="+strconv.Itoa(statementTimeoutMs))
-			changed = true
 		}
-		if posix := postgresZone(zone); posix != zone {
-			q.Set("timezone", posix)
-			changed = true
-		}
-		if changed {
-			// PostgreSQL reads the option string literally, so a space is
-			// percent-encoded instead of the form encoder's plus sign.
-			u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
-			out.native = u.String()
-		}
+		q.Set("timezone", "UTC")
+		// PostgreSQL reads the option string literally, so a space is
+		// percent-encoded instead of the form encoder's plus sign.
+		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")
+		out.native = u.String()
 	case "sqlite":
+		// url.Parse는 path를 percent-decode하고 잘못된 escape를 거부한다.
 		path := u.Path
 		if !strings.HasPrefix(path, "/") {
 			return parsedDSN{}, configErr("sqlite DSN must include an absolute database path")
+		}
+		if strings.ContainsRune(path, 0) {
+			return parsedDSN{}, configErr("sqlite DSN path must not contain a NUL byte")
+		}
+		if !utf8.ValidString(path) {
+			return parsedDSN{}, configErr("sqlite DSN path must be UTF-8 after percent-decoding")
 		}
 		// A write transaction begins with BEGIN IMMEDIATE and holds the
 		// write lock from its start; a read-only transaction begins
@@ -114,7 +106,6 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if q.Has("_txlock") {
 			return parsedDSN{}, configErr("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE")
 		}
-		q.Del("timezone")
 		q.Set("_txlock", "immediate")
 		pragmas := strings.Join(q["_pragma"], ",")
 		if !strings.Contains(pragmas, "busy_timeout") {
@@ -123,17 +114,19 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if !strings.Contains(pragmas, "foreign_keys") {
 			q.Add("_pragma", "foreign_keys(1)")
 		}
-		out.native = "file:" + path + "?" + q.Encode()
+		// SQLite는 file: URI의 path를 다시 percent-decode하므로, decode한 path를
+		// escape해 %, #, ? 같은 글자가 그대로 file 이름에 남게 한다.
+		out.native = "file:" + (&url.URL{Path: path}).EscapedPath() + "?" + q.Encode()
 	default:
 		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
 	}
 	return out, nil
 }
 
-// mysqlTLS reads ssl-mode and ssl-ca of a MySQL DSN (docs/config.md):
-// ssl-mode=VERIFY_IDENTITY with the absolute path of the CA file in ssl-ca,
-// over TCP to a host name, or neither. It removes both parameters from the
-// query, which the driver would otherwise read as session variables.
+// mysqlTLS는 MySQL DSN의 ssl-mode와 ssl-ca를 읽는다(docs/config.md):
+// ssl-ca에 CA file의 절대 경로를 둔 ssl-mode=VERIFY_IDENTITY로 host 이름에
+// TCP 연결하거나, 둘 다 없다. driver가 session variable로 읽지 않도록 두
+// parameter를 query에서 지운다.
 func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
 	mode, hasMode := q["ssl-mode"]
 	ca, hasCA := q["ssl-ca"]
@@ -154,38 +147,12 @@ func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
 	if q.Has("socket") {
 		return configErr("mysql DSN ssl-mode connects over TCP and does not accept socket")
 	}
-	// The identity check compares a host name with the certificate.
+	// identity 검사는 host 이름을 인증서와 비교한다.
 	if net.ParseIP(u.Hostname()) != nil {
 		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address %s", u.Hostname())
 	}
 	out.sslCA, out.sslHost = ca[0], u.Hostname()
 	return nil
-}
-
-// loadZone accepts an IANA name or a fixed offset such as +09:00.
-func loadZone(zone string) (*time.Location, error) {
-	if len(zone) == 6 && (zone[0] == '+' || zone[0] == '-') && zone[3] == ':' {
-		t, err := time.Parse("-07:00", zone)
-		if err != nil {
-			return nil, err
-		}
-		_, offset := t.Zone()
-		return time.FixedZone(zone, offset), nil
-	}
-	return time.LoadLocation(zone)
-}
-
-// postgresZone writes a fixed offset in the POSIX form PostgreSQL expects,
-// where the sign after the name is inverted: +09:00 becomes <+09:00>-09:00.
-func postgresZone(zone string) string {
-	if len(zone) == 6 && (zone[0] == '+' || zone[0] == '-') && zone[3] == ':' {
-		inverted := "-"
-		if zone[0] == '-' {
-			inverted = "+"
-		}
-		return "<" + zone + ">" + inverted + zone[1:]
-	}
-	return zone
 }
 
 // DriverFromDSN returns the database selected by a DSN URI.

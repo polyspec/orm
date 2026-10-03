@@ -6,45 +6,49 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/plan"
-	"github.com/polyspec/orm/engine/schema"
+	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
-const formsSchema = `erDiagram
-  place {
-    bigint        seq          PK "auto"
-    bigint        owner_seq
-    varchar(50)   name
-    int           price           "=0"
-    point         location        "?"
-    datetime(6)   created_ts      "=now"
-  }
-  owner {
-    bigint        seq          PK "auto"
-    varchar(50)   name
-    int           min_price       "=0"
-  }
-  visit {
-    bigint        seq          PK "auto"
-    bigint        place_seq
-    int           amount          "=0"
-    int           status          "=0"
-  }
-  membership {
-    int           tenant_id    PK
-    int           account_id   PK
-    varchar(20)   role
-  }
+const formsSchema = `dbspec 1 forms
+
+table place {
+  seq i64 identity
+  owner_seq i64
+  name varchar(50)
+  price i32 default 0
+  created_ts datetime(6) default now
+  primary key (seq)
+}
+
+table owner {
+  seq i64 identity
+  name varchar(50)
+  min_price i32 default 0
+  primary key (seq)
+}
+
+table visit {
+  seq i64 identity
+  place_seq i64
+  amount i32 default 0
+  status i32 default 0
+  primary key (seq)
+}
+
+table membership {
+  tenant_id i32
+  account_id i32
+  role varchar(20)
+  primary key (tenant_id, account_id)
+}
 `
 
 func formsEngine(t *testing.T, driver string) *Engine {
 	t.Helper()
-	d, err := schema.Parse(formsSchema)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := schema.Build(d)
-	if err != nil {
-		t.Fatal(err)
+	m, diagnostics := runtimemodel.LoadDocuments([]string{formsSchema})
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	e, err := New(m, driver)
 	if err != nil {
@@ -55,7 +59,7 @@ func formsEngine(t *testing.T, driver string) *Engine {
 
 func formsCompile(t *testing.T, e *Engine, body string) *plan.Plan {
 	t.Helper()
-	full := `{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","n_params":16,` + body + `}`
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + body + `}`
 	out, err := e.Compile([]byte(full))
 	if err != nil {
 		t.Fatalf("%s compile %s: %v", e.P.D.Name(), body, err)
@@ -69,7 +73,7 @@ func formsCompile(t *testing.T, e *Engine, body string) *plan.Plan {
 
 func formsError(t *testing.T, e *Engine, body, code string) {
 	t.Helper()
-	full := `{"ir_version":1,"schema_hash":"` + e.M.SchemaHash + `","n_params":16,` + body + `}`
+	full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + body + `}`
 	_, err := e.Compile([]byte(full))
 	if err == nil || !strings.Contains(err.Error(), code) {
 		t.Fatalf("%s: want %s, got %v", body, code, err)
@@ -86,6 +90,7 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 }
 
 func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"left","left":"owner_seq","right":"seq","query":{"entity":"owner",
@@ -108,6 +113,7 @@ func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
 }
 
 func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner",
@@ -117,6 +123,7 @@ func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
 }
 
 func TestJoinedReferenceErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"joined":{"join":"owner"}}]}`, "ENTITY_NOT_JOINED")
 	formsError(t, e, `"kind":"all","entity":"place",
@@ -128,9 +135,10 @@ func TestJoinedReferenceErrors(t *testing.T) {
 }
 
 func TestExplicitKeyRelation(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
-	 "relations":[{"rel":"visits","kind":"many","left":"seq","right":"place_seq",
+	 "relations":[{"rel":"visits","kind":"many","keys":[{"left":"seq","right":"place_seq"}],
 	   "query":{"entity":"visit","limit_per_parent":2,"order":[{"column":"seq","desc":true}]}}]`)
 	if len(p.Steps) != 2 {
 		t.Fatalf("steps %d", len(p.Steps))
@@ -140,13 +148,14 @@ func TestExplicitKeyRelation(t *testing.T) {
 	if child.Rel != "visits" || child.Kind != "many" || !child.Cascade {
 		t.Fatalf("child %+v", child)
 	}
-	formsError(t, e, `"kind":"all","entity":"place","relations":[{"rel":"name","kind":"one","left":"seq","right":"place_seq","query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
+	formsError(t, e, `"kind":"all","entity":"place","relations":[{"rel":"name","kind":"one","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
 	formsError(t, e, `"kind":"all","entity":"place","relations":[
-	 {"rel":"v","kind":"one","left":"seq","right":"place_seq","query":{"entity":"visit"}},
-	 {"rel":"v","kind":"many","left":"seq","right":"place_seq","query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
+	 {"rel":"v","kind":"one","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}},
+	 {"rel":"v","kind":"many","keys":[{"left":"seq","right":"place_seq"}],"query":{"entity":"visit"}}]`, "COLUMN_ALIAS_CONFLICT")
 }
 
 func TestColumnComparisonWithJoinedModel(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"place",
 	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner"}}],
@@ -155,53 +164,51 @@ func TestColumnComparisonWithJoinedModel(t *testing.T) {
 }
 
 func TestColumnFunctionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"place",
-	 "columns":{"fn":{"distance":{"column":"location","fn":{"name":"distance","ps":[0,1]}}}},
+	 "columns":{"fn":{"created_date":{"column":"created_ts","fn":{"name":"date"}}}},
 	 "where":{"items":[
-	   {"pred":{"column":"location","op":"lte","p":2,"fn":{"name":"distance","ps":[3,4]}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"eq","p":5,"fn":{"name":"day_of_week"}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"gt","p":6,"fn":{"name":"year"}}},
-	   {"pred":{"conn":"and","column":"created_ts","op":"in","ps":[7,8],"fn":{"name":"month"}}}]},
-	 "order":[{"column":"location","fn":{"name":"distance","ps":[9,10]}}]`
+	   {"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"day_of_week"}}},
+	   {"pred":{"conn":"and","column":"created_ts","op":"gt","p":1,"fn":{"name":"year"}}},
+	   {"pred":{"conn":"and","column":"created_ts","op":"in","ps":[2,3],"fn":{"name":"month"}}}]},
+	 "order":[{"column":"created_ts","fn":{"name":"year"}}]`
 	for driver, parts := range map[string][]string{
 		"mysql": {
-			"ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) AS `a__distance`",
-			"ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) <= ?",
+			"DATE(`a`.`created_ts`) AS `a__created_date`",
 			"DAYOFWEEK(`a`.`created_ts`) = ?",
 			"YEAR(`a`.`created_ts`) > ?",
 			"MONTH(`a`.`created_ts`) IN (?, ?)",
-			"ORDER BY ST_Distance_Sphere(`a`.`location`, POINT(?, ?)) ASC",
+			"ORDER BY YEAR(`a`.`created_ts`) ASC",
 		},
 		"postgres": {
-			`(2 * 6370986 * ASIN(SQRT(POWER(SIN((RADIANS(CAST($`,
+			`CAST("a"."created_ts" AS date) AS "a__created_date"`,
 			`(EXTRACT(DOW FROM "a"."created_ts")::int + 1) = $`,
 			`EXTRACT(YEAR FROM "a"."created_ts")::int > $`,
-			`RADIANS("a"."location"[1])`,
 		},
 		"sqlite": {
-			`CAST(substr("a"."location", 7, instr("a"."location", ' ') - 7) AS REAL)`,
+			`date("a"."created_ts") AS "a__created_date"`,
 			`(CAST(strftime('%w', "a"."created_ts") AS INTEGER) + 1) = ?`,
 			`CAST(strftime('%Y', "a"."created_ts") AS INTEGER) > ?`,
 		},
 	} {
 		p := formsCompile(t, formsEngine(t, driver), body)
 		requireSQL(t, p.Steps[0].SQL, parts...)
-		want := map[string]int{"mysql": 11, "postgres": 14, "sqlite": 14}[driver]
-		if n := len(p.Steps[0].BindSlots); n != want {
-			t.Errorf("%s binds %d, want %d", driver, n, want)
+		if n := len(p.Steps[0].BindSlots); n != 4 {
+			t.Errorf("%s binds %d, want 4", driver, n)
 		}
 		col := p.Steps[0].Assemble.Columns
-		if col[len(col)-1].Name != "distance" || col[len(col)-1].Type != "f64" {
-			t.Errorf("%s distance output %+v", driver, col[len(col)-1])
+		if col[len(col)-1].Name != "created_date" || col[len(col)-1].Type != "date" {
+			t.Errorf("%s created_date output %+v", driver, col[len(col)-1])
 		}
 	}
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"name","op":"eq","p":0,"fn":{"name":"year"}}}]}`, "OPERATOR_NOT_ALLOWED")
 	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"created_ts","op":"eq","p":0,"fn":{"name":"concat"}}}]}`, "FUNCTION_UNKNOWN")
-	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"location","op":"lte","p":0,"fn":{"name":"distance","ps":[1]}}}]}`, "IR_INVALID")
+	formsError(t, e, `"kind":"all","entity":"place","where":{"items":[{"pred":{"column":"created_ts","op":"lte","p":0,"fn":{"name":"year","ps":[1]}}}]}`, "IR_INVALID")
 }
 
 func TestValueFunctionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"place","where":{"items":[
 	  {"pred":{"column":"created_ts","op":"gt","value":{"name":"days_ago","ps":[0]}}},
 	  {"pred":{"conn":"and","column":"created_ts","op":"lte","value":{"name":"now"}}},
@@ -231,6 +238,7 @@ func TestValueFunctionsForEveryDialect(t *testing.T) {
 }
 
 func TestTupleConditionsForEveryDialect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	body := `"kind":"all","entity":"membership","where":{"items":[
 	  {"pred":{"column":"","op":"tuple_in","cols":["tenant_id","account_id"],"ps":[0,1,2,3]}},
 	  {"pred":{"conn":"and","op":"tuple_not_in","cols":["tenant_id","account_id"],"ps":[4,5]}}]}`
@@ -247,6 +255,7 @@ func TestTupleConditionsForEveryDialect(t *testing.T) {
 }
 
 func TestSubqueryConditionsAndColumns(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
 	p := formsCompile(t, e, `"kind":"all","entity":"owner",
 	 "columns":{"sub":{"visit_total":{"agg":"sum","column":"amount","query":{"entity":"visit",
@@ -264,6 +273,7 @@ func TestSubqueryConditionsAndColumns(t *testing.T) {
 }
 
 func TestRawColumnReferencesAndRandomOrder(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
 		"mysql":    {"(`a`.`price` * ? > ?)", "ORDER BY RAND()"},
 		"postgres": {`("a"."price" * $1 > $2)`, "ORDER BY random()"},
@@ -278,6 +288,7 @@ func TestRawColumnReferencesAndRandomOrder(t *testing.T) {
 }
 
 func TestBoundRawColumnAndBinaryContains(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
 		"mysql":    {"(`a`.`price` * ?) AS `a__doubled`", "`a`.`name` LIKE BINARY ?"},
 		"postgres": {`("a"."price" * $1) AS "a__doubled"`, `"a"."name" LIKE $2`},
@@ -299,6 +310,7 @@ func TestBoundRawColumnAndBinaryContains(t *testing.T) {
 }
 
 func TestMultiRowInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for driver, want := range map[string]string{
 		"mysql":    "INSERT INTO `visit` (`place_seq`, `amount`) VALUES (?, ?), (?, ?), (?, ?)",
 		"postgres": `INSERT INTO "visit" ("place_seq", "amount") VALUES ($1, $2), ($3, $4), ($5, $6)`,
@@ -316,4 +328,29 @@ func TestMultiRowInsert(t *testing.T) {
 	e := formsEngine(t, "mysql")
 	formsError(t, e, `"kind":"insert","entity":"visit","set":[{"column":"place_seq","p":0},{"column":"amount","p":1}],"rows":[[2]]`, "IR_INVALID")
 	formsError(t, e, `"kind":"update","entity":"visit","set":[{"column":"amount","p":0}],"rows":[[1]],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":2}}]}`, "IR_INVALID")
+}
+
+// TestKeyColumnsAreNotWritten은 insert가 identity column 값을, update와
+// duplicate update가 primary key와 identity column 값을 쓰지 못하게 하는지
+// 세 dialect에서 확인한다. PostgreSQL identity는 명시한 key를 지나 나아가지
+// 않으므로(postgres.identity.by_default_not_advanced) 이 거부가 없으면 다음
+// 생성 key가 충돌한다.
+func TestKeyColumnsAreNotWritten(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	cases := []struct{ body, message string }{
+		{`"kind":"insert","entity":"place","set":[{"column":"seq","p":0},{"column":"owner_seq","p":1},{"column":"name","p":2}]`, "cannot set identity column seq"},
+		{`"kind":"update","entity":"place","set":[{"column":"seq","p":0}],"where":{"items":[{"pred":{"column":"seq","op":"eq","p":1}}]}`, "cannot update seq"},
+		{`"kind":"insert","entity":"place","set":[{"column":"owner_seq","p":0},{"column":"name","p":1}],"on_duplicate":[{"column":"seq","p":2}]`, "on_duplicate cannot assign place.seq"},
+		{`"kind":"insert","entity":"membership","set":[{"column":"tenant_id","p":0},{"column":"account_id","p":1},{"column":"role","p":2}],"on_duplicate":[{"column":"tenant_id","p":3}]`, "on_duplicate cannot assign membership.tenant_id"},
+	}
+	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
+		e := formsEngine(t, driver)
+		for _, c := range cases {
+			full := `{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","n_params":16,` + c.body + `}`
+			_, err := e.Compile([]byte(full))
+			if err == nil || !strings.Contains(err.Error(), "IR_INVALID") || !strings.Contains(err.Error(), c.message) {
+				t.Errorf("%s %s: want IR_INVALID %q, got %v", driver, c.body, c.message, err)
+			}
+		}
+	}
 }

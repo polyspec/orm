@@ -1,17 +1,17 @@
 {
-  "version": 1,
+  "feature": "model_writes",
   "columns": [
     {"id": "scaled", "type": "decimal", "precision": 13, "scale": 4},
     {"id": "large", "type": "decimal", "precision": 16, "scale": 0}
   ],
   "cases": [
-    {"id": "fractional_value", "column": "scaled", "input": "48.0450", "expected": "48.0450"},
-    {"id": "pad_fraction", "column": "scaled", "input": "48.045", "expected": "48.0450"},
-    {"id": "negative_fraction", "column": "scaled", "input": "-0.0012", "expected": "-0.0012"},
-    {"id": "largest_magnitude", "column": "scaled", "input": "999999999.9999", "expected": "999999999.9999"},
-    {"id": "integer_beyond_binary64", "column": "large", "input": "9007199254740993", "expected": "9007199254740993"},
-    {"id": "excess_scale", "column": "scaled", "input": "1.00001", "error": "CODEC_ENCODE"},
-    {"id": "excess_precision", "column": "scaled", "input": "1000000000.0000", "error": "CODEC_ENCODE"},
-    {"id": "invalid_text", "column": "scaled", "input": "NaN", "error": "CODEC_ENCODE"}
+    {"id": "fractional_value", "operation": "decimal_value", "column": "scaled", "input": "48.0450", "expected": {"value": "48.0450"}},
+    {"id": "pad_fraction", "operation": "decimal_value", "column": "scaled", "input": "48.045", "expected": {"value": "48.0450"}},
+    {"id": "negative_fraction", "operation": "decimal_value", "column": "scaled", "input": "-0.0012", "expected": {"value": "-0.0012"}},
+    {"id": "largest_magnitude", "operation": "decimal_value", "column": "scaled", "input": "999999999.9999", "expected": {"value": "999999999.9999"}},
+    {"id": "integer_beyond_binary64", "operation": "decimal_value", "column": "large", "input": "9007199254740993", "expected": {"value": "9007199254740993"}},
+    {"id": "excess_scale", "operation": "decimal_value", "column": "scaled", "input": "1.00001", "expected": {"error": "CODEC_ENCODE"}},
+    {"id": "excess_precision", "operation": "decimal_value", "column": "scaled", "input": "1000000000.0000", "expected": {"error": "CODEC_ENCODE"}},
+    {"id": "invalid_text", "operation": "decimal_value", "column": "scaled", "input": "NaN", "expected": {"error": "CODEC_ENCODE"}}
   ]
 }

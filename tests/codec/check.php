@@ -5,10 +5,12 @@
 declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
+require_once dirname(__DIR__) . '/testcase.php';
 
 use Orm\Codec;
 use Orm\Code;
 use Orm\OrmException;
+use Orm\StyledValue;
 
 $root = __DIR__;
 $vectors = json_decode(file_get_contents("$root/vectors.json"), true, 512, JSON_THROW_ON_ERROR)['vectors'];
@@ -35,20 +37,28 @@ function canon(mixed $v): mixed
     return (object) $out;
 }
 
+// 각 구역은 memory 안에서 vector를 decode하고 encode하는 case다.
+testcase_begin('codec/php-vectors', TESTCASE_COMPUTE);
 foreach ($vectors as $v) {
+    // vector의 style 이름 json은 dbspec codec stage ordered_json이다.
+    $styles = array_map(static fn(string $s): string => $s === 'json' ? 'ordered_json' : $s, $v['styles']);
     $want = $canon($v['value']);
     $raw = $v['encoded_b64'] === null ? null : base64_decode($v['encoded_b64'], true);
-    $got = $canon(Codec::decode($v['styles'], $raw));
+    $decoded = Codec::decode($styles, $raw);
+    $got = $canon($decoded->kind === 'sql-null' ? null : $decoded->payload());
     if ($got !== $want) {
         $fail++;
         fwrite(STDERR, "php decode {$v['name']}: $got want $want\n");
     }
-    $enc = Codec::encode($v['styles'], $v['value']);
+    $enc = Codec::encode($styles, $v['encoded_b64'] === null ? StyledValue::sqlNull() : StyledValue::value($v['value']));
     if ($v['deterministic'] && ($enc === null ? null : base64_encode($enc)) !== $v['encoded_b64']) {
         $fail++;
         fwrite(STDERR, "php encode {$v['name']} differs\n");
     }
 }
+$vectorFailures = $fail;
+testcase_end($vectorFailures > 0 ? "$vectorFailures check(s) failed; each line above names one" : null);
+testcase_begin('codec/php-errors', TESTCASE_COMPUTE);
 $errors = [
     ['duplicate YAML key', fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE],
     ['multiple YAML documents', fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"), Code::CODEC_DECODE],
@@ -56,7 +66,7 @@ $errors = [
     ['YAML custom tag', fn() => Codec::decode(['yaml'], "a: !custom value\n"), Code::CODEC_DECODE],
     ['YAML non-finite number', fn() => Codec::decode(['yaml'], "value: .inf\n"), Code::CODEC_DECODE],
     ['YAML boolean map key', fn() => Codec::decode(['yaml'], "true: value\n"), Code::CODEC_DECODE],
-    ['invalid YAML order', fn() => Codec::encode(['serialize', 'yaml'], []), Code::CODEC_UNSUPPORTED],
+    ['invalid YAML order', fn() => Codec::encode(['serialize', 'yaml'], StyledValue::value([])), Code::CODEC_UNSUPPORTED],
 ];
 foreach ($errors as [$name, $operation, $code]) {
     try {
@@ -70,22 +80,13 @@ foreach ($errors as [$name, $operation, $code]) {
         }
     }
 }
-if ($canon(Codec::decode(['yaml'], "1: value\n")) !== '{"1":"value"}') {
+if ($canon(Codec::decode(['yaml'], "1: value\n")->payload()) !== '{"1":"value"}') {
     $fail++;
     fwrite(STDERR, "YAML integer map key: expected string key\n");
 }
-if ($canon(Codec::point('POINT(1.25 -2)')) !== '[1.25,-2]' || $canon(Codec::point('(1.25,-2)')) !== '[1.25,-2]' || Codec::pointText([1.25, -2]) !== 'POINT(1.25 -2)') {
-    $fail++;
-    fwrite(STDERR, "point conversion failed\n");
-}
-if (Codec::pointText([-0.0, 0.0]) !== 'POINT(0 0)') { $fail++; fwrite(STDERR, "point negative zero normalization failed\n"); }
-foreach ([
-    ['invalid point text', fn() => Codec::point('POINT(1)'), Code::CODEC_DECODE],
-    ['non-finite point', fn() => Codec::pointText([1.0, NAN]), Code::CODEC_ENCODE],
-] as [$name, $operation, $code]) {
-    try { $operation(); $fail++; fwrite(STDERR, "$name: expected $code\n"); }
-    catch (OrmException $e) { if ($e->code_ !== $code) { $fail++; fwrite(STDERR, "$name: {$e->code_} want $code\n"); } }
-}
+testcase_end($fail > $vectorFailures ? ($fail - $vectorFailures) . " check(s) failed; each line above names one" : null);
+$beforeOutputs = $fail;
+testcase_begin('codec/other-language-outputs', TESTCASE_COMPUTE);
 $langs = 0;
 foreach (glob("$root/out/*.json") as $file) {
     $lang = basename($file, '.json');
@@ -98,16 +99,14 @@ foreach (glob("$root/out/*.json") as $file) {
             continue;
         }
         $raw = $outs[$v['name']] === null ? null : base64_decode($outs[$v['name']], true);
-        $got = $canon(Codec::decode($v['styles'], $raw));
+        $decoded = Codec::decode(array_map(static fn(string $s): string => $s === 'json' ? 'ordered_json' : $s, $v['styles']), $raw);
+        $got = $canon($decoded->kind === 'sql-null' ? null : $decoded->payload());
         if ($got !== $canon($v['value'])) {
             $fail++;
             fwrite(STDERR, "$lang → php {$v['name']}: $got want " . $canon($v['value']) . "\n");
         }
     }
 }
-if ($fail === 0) {
-    echo 'codec: ' . count($vectors) . " vectors ok in PHP; $langs other-language outputs decode identically\n";
-    exit(0);
-}
-fwrite(STDERR, "codec: $fail failures\n");
-exit(1);
+testcase_step("$langs other-language outputs of " . count($vectors) . ' vectors');
+testcase_end($fail > $beforeOutputs ? ($fail - $beforeOutputs) . " check(s) failed; each line above names one" : null);
+exit($fail === 0 ? 0 : 1);

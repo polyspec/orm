@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Orm\Db;
@@ -15,6 +16,7 @@ function expect(bool $ok, string $message): void
     }
 }
 
+testcase_begin('relation_keys', TESTCASE_COMPUTE);
 $refs = [['column' => 'tenant_id', 'index' => 0], ['column' => 'account_id', 'index' => 1]];
 $first = Db::rowKey(['1', '23'], $refs);
 $second = Db::rowKey(['12', '3'], $refs);
@@ -28,4 +30,4 @@ foreach (['one', 'all', 'count', 'using', 'begin', 'commit', 'rollback', 'savepo
     expect(!method_exists(Author::class, $method), "removed method $method remains public");
 }
 
-echo "php relation keys: composite keys, null handling, and terminals passed\n";
+testcase_end();

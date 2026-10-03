@@ -1,36 +1,417 @@
 # Changelog
 
-Compare the PostgreSQL column types and the bounded index names of the
-existing tables by their stored form in addColumns (N19.1). PostgreSQL stores
-`char(n)` as `varchar(n)` and every blob type as `bytea`, and stores an index
-name longer than 63 bytes cut with a digest, so addColumns returned
-`SCHEMA_DIFFERS` for tables that matched their manifest. A column whose type
-the dialect stores as the declared type now has the declared type, and an
-index whose physical name is the physical name of a declared index has the
-declared name.
+## 0.0.2
 
-Add the missing columns of the existing tables of a manifest through the
-connection in the four clients (N19). `utils().schema().addColumns(manifestJson)`
-(Go `AddColumns`, Rust `add_columns`) reads only the tables of the manifest,
-adds every missing column that is nullable or has a default, replaces the
-audit triggers of each changed table so that they record the new columns, and
-returns the added columns as `table.column`. A missing table and the tables of
-other manifests are left unchanged, a repeated call adds nothing, and every
-other difference returns the new catalog code `SCHEMA_DIFFERS` before any
-statement runs. The import now reads a foreign key of a table to its own key as
-a relation of the table to itself. The Rust catalog reads and the live import
-moved from `orm-build` to `orm_schema::catalog` and `orm_schema::live`, so the
-runtime and the tool read the catalog in the same way.
+- T30: an `audit` setting may select the recorded columns with `exclude (col, ...)` or `include (col, ...)`, one list at most; the operation column is always recorded. The history table holds exactly the recorded columns besides its identity key, action and previous columns, the triggers copy only those columns on MySQL, PostgreSQL and SQLite, the schema text writes the setting with the `exclude` list of the unrecorded columns, and introspection restores it from the triggers. An unknown or repeated list column, both lists and a listed operation column are `setting` errors, and the PHP and Rust history table checks report one error per mismatch, as Go and TypeScript do. A value that needs encryption is encrypted by the codec before the write, so the triggers copy its ciphertext.
 
-Connect to MySQL with TLS through `ssl-mode=VERIFY_IDENTITY` and an absolute
-`ssl-ca` in the four clients (N18). The connection checks the server
-certificate against the CA and the host name of the DSN, and the password
-travels only inside TLS, with no RSA exchange. The Go, PHP and TypeScript
-clients return CONFIG for another `ssl-mode`, a missing or relative `ssl-ca`,
-`socket` with `ssl-mode` and an IP address host; the PHP and TypeScript clients
-also return CONFIG for a DSN parameter outside the documented set of its
-scheme. The Rust client passes `ssl-mode` to sqlx as before. `make
-test-servers` issues a test CA and server certificates for the MySQL TLS cases.
+- T8.8.5: `utils().schema().addColumns` is now `addTablesAndColumns` (Go `AddTablesAndColumns`, Rust `add_tables_and_columns`) in the four clients: the additive upgrade of an installed document set also creates every table of the set that the database lacks, with its indexes, foreign keys, checks and audit and immutable triggers through the same plan steps, and returns a created table as `table` next to the added columns as `table.column`; every other difference is still `SCHEMA_DIFFERS` before any statement. The step functions are renamed to `AddTablesAndColumnsSteps`, `Dbspec::addTablesAndColumnsSteps`, `addTablesAndColumnsSteps` and `add_tables_and_columns_steps`, and the fixtures moved to contracts/fixtures/add_tables_and_columns.
+
+- T8.8.4: main is merged into the dbspec branch again with N18, N19 and N19.1. A MySQL DSN connects with TLS through `ssl-mode=VERIFY_IDENTITY` and an absolute `ssl-ca` in the four clients, and the PHP and TypeScript clients refuse a DSN parameter outside the set of each scheme. `utils().schema().addColumns(schema)` (Go `AddColumns`, Rust `add_columns`) takes the generated schema value, introspects the database, compares only the existing tables of the document set and, when every difference is a missing column that is null or has a default, runs the plan steps from those tables to the set (`AddColumnSteps` in each client's dbspec module), which also replace the audit triggers of a changed table; every other difference returns the new code `SCHEMA_DIFFERS` before any statement. MySQL and SQLite add the columns outside a transaction, SQLite in one `BEGIN IMMEDIATE` transaction with foreign keys off.
+
+- T28: the version is 0.0.2. The new VERSION file states it, and `make version-check` (part of `make check`) fails when any Rust manifest or lockfile entry of the orm crates, the PHP composer file, the TypeScript package or lockfile, contracts/features.json or the documented version differs from it.
+
+- T27: every check finishes within minutes and `make check` reports each step; one full run passes 43 steps in 15 minutes, against about 100 minutes before.
+
+- T29.1: dbspec apply, recover, rollback and finalize check on MySQL and PostgreSQL that the connection keeps one server session of its own and stop with a `session` error before the next statement when the session that takes the lock already holds it or a later statement runs in another session, as through a transaction pooler; the requirement is a direct or session-pooled connection.
+
+- T29: the Rust `tx` tests that end or inspect server sessions connect through the server DSNs, so `make client-pooler-check` passes.
+
+- T27.5: every cargo test command shares one test build, client-db-check runs its four clients in parallel lanes and feature-check runs its verification commands in four lanes (a command marked `exclusive` runs alone first); the TypeScript replica case waits on connections without a database and closes them when one fails. client-db-check takes 86 s instead of 449 s and feature-check 251 s instead of 570 s.
+
+- T27.6: a JavaScript case that has not ended at its limit plus GRACE ends its process with a FAIL line, and a PHP case without pcntl has a watchdog process that does the same.
+
+- T27.4: `make bench` runs the 2000-table stress cases and the timing-budget cases (the four stress parse budgets, the 2000-table plan apply, the 2000-table introspection comparison with the release Rust runner, the 2000-table runner comparison and `make timing-check`) with their assertions; `make check` runs the runner comparison and the introspection comparison on a 20-table document of the same shape (`node tests/dbspec/stress.mjs 20`), and the dbspec, integration, conformance and example runners are debug builds.
+
+- T27.3: `make check` runs each target through scripts/check/run.mjs as a reported group with the free disk space, continues after a failure and prints every result; each run creates, seeds and finally drops its own bench and decimal databases (`make decimal-db-setup` takes `DECIMAL_ENV` and `DECIMAL_DATABASE`); every cargo command uses one toolchain and one target directory without incremental data and with line-table debug info; build limits are 8 minutes. The Rust `tx` probe tables live in case databases, and case-database-check counts only the leftovers of finished processes. The targets take about 36 minutes instead of about 100.
+
+- T27.2: `go run ./tests/conformance/check run` takes several `-driver`/`-dsn` pairs, builds the Rust, TypeScript and Go runners once and runs each prebuilt runner under a 1-minute limit; `make conformance-check` checks the three databases in one run, and the run lock is per bench database.
+
+- T27.1: `make feature-check` builds the state reader, one Go test binary per package and the test binaries of each Rust crate once, before its cases, and every coverage run executes those binaries (a Rust entry runs all its symbols in one process of each test binary that compiles the declared file) under a 2-minute limit per process instead of 10 minutes; the three databases run side by side; the state digest hashes typed values instead of JSON; an identical verification command runs once; and the verification commands use the TypeScript client the target builds once. The check passes again (the T25 case-database helpers belong to `schema_install`) and takes 17 minutes from an empty Rust target instead of 34.
+
+- T26: the rollback failure cases of every client end the server session of the transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, the server DSNs that the make targets export and a pooler check keeps, instead of a `KILL` that ProxySQL takes as its own command, and the Rust session connection is a client connection that sends no `extra_float_digits`, so the cases pass through ProxySQL and PgBouncer.
+
+- T25: every client database case that checks an empty database or installs a schema creates its own database `orm_case_<pid>_<n>` (on MySQL and PostgreSQL) or SQLite file and drops it when it ends, also after a failure, so a table left in the shared test databases no longer fails it; `make case-database-check` leaves a table in both shared databases and requires the model cases of the four clients to pass and leave the shared databases as they were.
+
+- T25.4: the Rust database tests and the `integration` program create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (the workspace crate `orm-case-database`), for every case that installs a schema or checks an empty database, and drop it when the case ends, also after a panic, instead of dropping and installing tables in the shared test databases.
+
+- T25.3: the TypeScript database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/typescript/tests/case-database.mjs), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases, so a table left there no longer fails `schemaEmpty`, `conditions` or `joinsAndRelations`.
+
+- T25.2: the PHP database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/php/tests/case_database.php), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases.
+
+- T25.1: the Go database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (internal/testdb), and drop it when the test ends, also after a failure, instead of dropping and installing tables in the shared test databases.
+
+- T24.6: the JavaScript, PHP and Rust case reports write a duration that rounds up to the next unit in that unit (`1s`, not `1000ms`), as Go does.
+
+- T24.5: the build, format, lint and package commands of the checks run as cases through tests/run-case.mjs: `RUN` with a deadline, their output lines as `STEP` lines with the elapsed time, and `PASS` or `FAIL` with the exit status, and a command past its deadline is stopped. The codec cross-check and the feature manifest validation report their cases.
+
+- T24: every check reports each case while it runs, with its start and deadline, its steps, and its result and elapsed time, in one form in Go, JavaScript, PHP and Rust, and no check bounds a whole run in place of the per-case deadlines.
+
+- T24.4: every Rust test case prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its panic message or reason and the elapsed time on stderr while it runs, without `--nocapture` (clients/rust/testcase), and a case past its deadline ends the test binary with a FAIL line. The `integration` program and the `dbspec_stress` example report their cases the same way.
+
+- T24.3: every PHP test case prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its reason and the elapsed time (tests/testcase.php), runs under its own deadline (a SIGALRM interrupts a stuck case where pcntl exists) instead of a whole-script limit, and a failing case no longer hides the cases after it where the script runs them in a loop. `make conformance-result-check` runs its four commands directly without the Python runner.
+
+- T24.2: every JavaScript test case and every Node check runner prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its reason and the elapsed time while it runs (tests/testcase.mjs), each case with its own deadline. `make feature-check` reports each coverage run and each verification command as it runs, and `node scripts/features/check.mjs --run --feature <id>` runs one feature's commands. The T19 and T20 records write their message placeholders as code, so the documentation builds again.
+
+- T24.1: every Go test case prints `RUN <case> deadline=<d>` when it starts, `STEP` lines with the elapsed time while a long case runs, and `PASS`, `FAIL` with its reason or `SKIP` with the elapsed time when it ends (internal/testcase). Each case has its own deadline, and a case that passes it fails with every goroutine stack. The Go checks of the Makefile, the client and performance scripts and the feature commands run with `go test -v -timeout 0` instead of whole-binary limits, and the conformance and interface checks report their build, language and comparison cases the same way.
+
+- N3.2: a connection plans only the schema sets registered on it, in every client. The connect helper of generated code (Go `model.Connect`, PHP `Polyspec\Orm\Tests\Model\connect`, Rust `model::connect`, TypeScript `connect`) opens a connection and registers its set through `connectSchema`, and `install(schema)` takes the generated schema value and registers the set it installs; a raw connection registers none. A request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` before execution, also with a cached plan, and a manifest text that does not hash to its declared hash fails with `CONFIG` when it is connected or installed. Go checks the schema before its plan cache, so edited generated code no longer runs from a cached plan.
+
+- N3.3.1: this branch provides no `utils().schema().register(manifestJson)`; a set reaches a connection through the connect helper of its generated code or through `install()`, and the records say so.
+
+- T18: a relation request carries every component of its key, one `{left, right}` pair per component in key order (`keys` in place of `left` and `right`), and each `match<L>With<R>()` adds one pair, so `composite_membership` loads from `composite_account` by `tenant_id` and `account_id` together in Go, PHP, Rust and TypeScript, also through a child with its own connection. An empty key list, a pair without a column or a column used twice on one side is `IR_INVALID`. Rust `Core::add_match` replaces `set_match`.
+
+- T8.9.1: each client checks the dbspec signature on bytes that the caller read, with the name its messages use: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes` and Rust `dbspec::read_bytes`, and the path readers use it. Bytes that are not UTF-8 after the signature are one `encoding` error `<name> is not valid UTF-8` at the first invalid byte in every client; TypeScript no longer replaces them with U+FFFD and Rust no longer returns an I/O error.
+
+- T21.2: the Rust catalog writes `date`, `time` and `datetime` columns with `Date`, `Time` and `DateTime` binds in the dbspec text form, including temporal row identities, and reads back the written cell on MySQL, PostgreSQL and SQLite instead of failing with `ROW_WRITE_MISMATCH`.
+
+- T21.1: on SQLite a described `DATE`, `TIME` or `DATETIME` column reads as the same `Date`, `Time` or `DateTime` grid cell as on MySQL and PostgreSQL, a value outside the dbspec form fails with `GRID_TEMPORAL_VALUE`, and a read-only grid query keeps the stored text.
+
+- T22: the root package.json no longer has the `schema:check` script, whose script file was removed, and `make repo-check` fails when a root npm script names a path that is not a tracked file or directory.
+
+- T21: the Rust catalog grid decodes MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`, `time` and `timestamp` cells as `Date`, `Time` and `DateTime` in the dbspec text forms, with exactly the declared fraction digits in a table page and six in a read-only grid query, so a table with a datetime column pages on every database.
+
+- T20: the Rust `client_bench` and the bench/rust `native` and `driver_compare` require their iterations argument; a missing argument or a value that is not an integer of at least the program's minimum ends the program with status 1 and an error naming the argument and the value, instead of running 3000 or 1000 iterations.
+
+- T19: a generated Go relation getter returns `(<result>, error)` and a Rust relation getter `orm::Result<Option<..>>`; a row without a related row reads as no result, and a stored relation value of another type is `INTERNAL` instead of a dropped type assertion or a `None`.
+
+- T8.8.3: main is merged into the dbspec branch again with N17: the PHP client requires no PDO driver extension, and `make php-without-mysql-check` installs `schema/bench.dbs` and creates and reads a row on SQLite in the official PHP image, which has no `pdo_mysql`.
+
+- T8.9: dbspec document files use the extension `.dbs` instead of `.dbspec`, and the header `dbspec 1 <document>` is the file signature. Every tool reads a document file with the one reader of its client (Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`), which rejects a file that does not start with the bytes `dbspec `, such as a DbSchema project file or an empty file, with one `signature` error `<path> is not a dbspec document` before parsing.
+
+- T17.7: the Go native baseline of the hot-path check runs the statements the generated client runs, its relation and list workloads bind only their keys, and the Rust native insert writes an AES ciphertext into the AES column.
+
+- T15: every feature of contracts/features.json declares its coverage, and `make feature-check` executes each client's owner cases twice on MySQL, PostgreSQL and SQLite or once without a database; a SQLite RESTRICT foreign key violation is FOREIGN_KEY and a CHECK violation is CONSTRAINT in every client.
+
+- T8.8.2: main is merged into the dbspec branch again with N16: each client's test entry point arms a rollback fault, and the next failed rollback is reported as `FAULT` through the single transaction-end form `transaction failed (<cause>) and rollback failed (<error>)` on MySQL, PostgreSQL and SQLite. Measured one client and one database at a time on an idle machine, the 2000-table introspection takes 0.73-2.56 s in every client, within the 5 s budget.
+
+- T8.6.8: every client applies a plan step by step on MySQL, PostgreSQL and SQLite: each statement commits on its own with its recorded history step, recover continues an interrupted plan from the catalog effect of the next step, and rollback undoes the last plan with the rollback statement of every step. Dropped tables and columns stay hidden under `dbspec$hold$` names until finalize drops them, added columns are hidden on rollback and come back on a second apply, a rollback of an applied plan fills or refuses the NULL rows of columns it makes non-null, lock waits end after 5 seconds, and `PlanSteps` replaces `PlanStatements` with each step's rollback statement, effect and finalize mark.
+
+- T8.8.1: main is merged into the dbspec branch, and its features work on the dbspec paths while the Mermaid source path stays removed. One process loads the generated code of several document sets and a connection plans every request with the model of its manifest hash; a request of a manifest that no loaded code registered, or code whose text does not hash to its declared hash, fails with `SCHEMA_HASH_MISMATCH`, and generated code registers its set, so no `utils().schema().register()` exists. A transaction or savepoint whose rollback fails too, also on a connection the server closed, reports one `ROLLBACK` error `transaction failed (<cause>) and rollback failed (<error>)` in every client, keeps both errors and is not retried. `docs/protocol.md` states one clock rule: the client clock is UTC with microseconds, MySQL writes `CURRENT_TIMESTAMP(p)` and `NOW(6)`, SQLite relative forms keep six fraction digits, SQLite binds the client clock for an omitted `default now` column, and every `now` slot carries the fraction digits of its column. The plan history writes `applied_at` as `YYYY-MM-DDTHH:MM:SS.ffffffZ`, and the TypeScript apply clock is microseconds since the epoch.
+
+- T10: all four clients use an ordered-json that keeps one Cargo manifest for its package, so cargo does not warn about a duplicate `ordered-json` package.
+
+- T17.6: every time limit that a test sets on its own computation bounds CPU time (the case thread in Rust, Go and TypeScript, the PHP process) and prints CPU and wall-clock time; `make timing-check` runs the stress, Rust vector and PHP dbspec tests while their process group receives one tenth of wall-clock time.
+
+- T17.5: the Rust native benchmarks `native` and `driver_compare` decode the bench schema types and read every workload's rows, and `make rust-driver-check` runs them against the seeded bench database.
+
+- T17.4: the Go, PHP and Rust programs of examples/complex print the same compact JSON bytes, and `make example-check` compares the outputs of examples/complex and examples/thin-slice byte for byte against the seeded bench database.
+
+- T8.0.14.4: a Go transaction whose context is cancelled closes its connection instead of returning it to the pool, so no named lock, user variable or SQLite mode outlives it, and it reports `CANCELED` alone.
+
+- T8.0.14.3: every client runs `ROLLBACK TO SAVEPOINT` and `RELEASE SAVEPOINT` after a failed or panicking nested transaction and reports a failure of either with the cause, and a Go savepoint whose transaction was cancelled or lost its connection returns the cause alone.
+
+- T8.0.14.2: a Rust transaction future dropped before its transaction ends closes its connection at once, so over TLS too the server ends the transaction and its named locks with the session.
+
+- T8.2.6.4.1: the Rust lock file no longer lists the removed `libc` dependency of `orm-schema`, so `cargo check --locked` passes.
+
+- T8.2, T8.2.6, T8.3, T8.5: closed with their completed sub-items; T7.17.2.10.3 and T7.17.2.10.3.1 closed as superseded by dbspec.
+
+- T8.2.6.4: the dbspec document set is the only schema source; the Mermaid schema source, its manifest and `orm-schema-v1` SQL, every schema CLI command that read them and the PhysicalGraph records are removed from every client, and the CLI is `orm-gen` in Go, PHP and TypeScript.
+
+- T8.2.6.3: every generator, runtime, schema tool and schema installation reads the dbspec document set.
+
+- T8.0.9.2: every client opens the percent-decoded path of a SQLite DSN and rejects an invalid escape, a NUL byte and a path that is not UTF-8 with `CONFIG`, checked by the shared cases of tests/dsn/sqlite-paths.json.
+
+- T8.5.1.1: a SQLite table rebuild carries the `sqlite_sequence` counter of an identity table, so a key deleted before the rebuild is not given again, in every client.
+
+- T8.6.7: the apply lock covers one MySQL database or one PostgreSQL schema, so applies to other databases or schemas run at the same time, an unexpected lock result is an error instead of `locked`, and an empty plan chain is valid for a database without tables in every client.
+
+- T8.7.6.2: the Go engine tests reject a missing or mistyped dbspec vector field with its file and location, and the dbspec compare harnesses and Makefile blocks are commented in Korean.
+
+- T8.5.7: every client lists every difference between two schema texts as `[kind, table, name]` without a plan, including the type, identity, primary key and column order changes that a plan refuses.
+
+- T17.1: the 15-second graph-test deadline bounds CPU time instead of wall-clock time in Rust (the thread of the case), Go and PHP (the test process), so a loaded shared machine no longer fails it; every case reports both times.
+
+- T17.3: the Rust native benchmarks read their database from `ORM_BENCH_MYSQL_DSN` instead of a fixed socket and database, exit with status 1 without connecting when it is unset or empty, and `make rust-driver-check` runs that test.
+
+- T17.2: the Go, PHP and Rust example programs require `ORM_BENCH_MYSQL_DSN` and exit with status 1 without connecting when it is unset or empty, and the PHP examples no longer pass the removed `schemaPath`.
+
+- T8.0.14.1: every client reports every transaction-end failure: each cleanup step runs, a `RELEASE_LOCK` that released nothing is an error, a failed rollback after a callback, begin or commit failure is reported with its cause, a Go or Rust callback that panics rolls back before the panic continues, and the Go client treats a rollback on a connection the driver closed as complete.
+
+- T8.7.6.1: a failing Go Mermaid or plan vector case logs only its failure under an enforced deadline, and every dbspec runner rejects a missing or directory input with `<path>: <reason>` and a nonzero exit.
+
+- T8.5.6.1: the dbspec compare runners reject a missing or mistyped vector section, id, document or line with `<file>: <location> <problem>` and a nonzero exit instead of reading it as empty.
+
+- T8.2.6.1.1.1: closed with T8.2.6.1.3, which corrected the same links.
+
+- T8.6: every client applies and recovers plan chains with lock, history, verification and events, and any client continues a chain that another applied.
+
+- T8.7.5.1: `make dbspec-rust-check` runs every Rust dbspec test twice.
+
+- T8.6.6: `make dbspec-apply-pairs-check` applies the first plan of a chain with one client and the rest with another, for every ordered pair of the Go, PHP, TypeScript and Rust clients on MySQL, PostgreSQL and SQLite, and finishes on MySQL with one client a plan another one stopped.
+
+- T8.6.2.2: Go, TypeScript and Rust assert the apply cleanup errors like PHP; TypeScript and Rust reject a PostgreSQL unlock that released nothing, Go returns a failure without cleanup errors unchanged, and docs/plans.md states how each client reports a failure with cleanup errors.
+
+- T8.7: every client exports and imports standard Mermaid erDiagrams with the list of what each leaves out, and the four clients agree byte for byte.
+
+- T8.7.6: `make dbspec-compare-check` compares the Mermaid export, import and round trip results of the Go, PHP, TypeScript and Rust clients.
+
+- T8.7.2.1: Mermaid import in every client reports a label whose column counts differ, decides dbspec type ranges before keys, requires single spaces between comment parts and adds a shared foreign key index once; export reports every comment it leaves out.
+
+- T8.6.3.1: a failed PHP apply reports its cleanup errors with the failure through `Orm\Dbspec\ApplyCleanupError`, an advisory unlock that released nothing is an error, and a MySQL effect query without a row or a result that cannot be closed is an error.
+
+- T8.0.9: `datetime(p)` renders as a local date-time on the three databases, every client connection reads and writes it in UTC, and introspection reports time-zone columns as unsupported.
+
+- T8.0.9.1: Go, TypeScript and Rust connections read and write datetime values in UTC like PHP, and `timezone` accepts only `UTC` or `+00:00`.
+
+- T8.0.14: A failed MySQL `setLocal` reset at the end of a transaction is reported in every client, and a callback failure with a failed cleanup reports both errors as `CONFIG`.
+
+- T8.0.13: Every client and schema tool asserts that a SQLite DSN with a query creates only the file named by its path.
+
+- T8.0.11: Introspection cases assert that PostgreSQL time zone, padded, single-precision and JSON types, MySQL `TIMESTAMP`, `char` and `float`, and `NO ACTION` and `SET DEFAULT` keys are reported as unsupported in every client.
+
+- T8.0.10: An introspection case asserts that a SQLite primary key column keeps its declared nullability in every client.
+
+- T8.0.8: A shared DDL step asserts that the rendered binary collations keep `a`, `A`, `á` and `a ` distinct in a unique key on MySQL, PostgreSQL and SQLite.
+
+- T8.0.7: Every client asserts on the three dialects that an insert cannot write the identity column and an update or duplicate update cannot write a primary key or identity column.
+
+- T8.0.6: The rendered `immutable` and `audit` guards are row triggers, and a shared DDL step asserts that an `UPDATE` or `DELETE` matching no row succeeds on MySQL, PostgreSQL and SQLite.
+
+- T8.0.5: Shared cases assert that `immutable` and `audit` are rejected on a child of a `cascade` or `set_null` foreign key in every client.
+
+- T8.0.4: Declared and generated names over 63 bytes are rejected before rendering in every client, asserted with names of exactly 64 bytes.
+
+- T8.0.3: The introspection cases assert that stored and virtual generated columns are reported as unsupported on MySQL, PostgreSQL and SQLite in every client.
+
+- T8.0.2: Introspection reports prefix, partial and expression indexes as unsupported with their table and name in every client.
+
+- T8.0.1: PostgreSQL introspection reports a foreign key whose referenced table is in another schema as unsupported instead of reading it as a key to a same-named table.
+
+- T8.6.2.1: a failed Go apply reports its cleanup errors together with the failure, and a MySQL effect query without a row is an error.
+
+- T8.7.4: the TypeScript client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.6.4: the TypeScript client applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery, and its introspection leaves `dbspec$plans` out.
+
+- T8.7.5: the Rust client exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.6.5: the Rust client applies plan chains with `orm::dbspec::apply` under a lock, with history, drift checks, transactions, verification and events, and `orm::dbspec::recover` finishes an interrupted MySQL plan; Rust introspection leaves `dbspec$plans` out.
+
+- T8.5.6: `make dbspec-compare-check` compares the plans of the Go, PHP, TypeScript and Rust clients, and PHP, TypeScript and Rust reject plan names over 63 bytes and run the shared plan parse cases.
+
+- T8.7.3: the PHP client exports dbspec documents to standard Mermaid erDiagrams with `Orm\Dbspec\Dbspec::exportMermaid` and imports them with `Dbspec::importMermaid`, with the list of what each leaves out.
+
+- T8.6.3: the PHP client applies plan chains through `Orm\Dbspec\Dbspec::apply` with a lock, history, drift checks, transactions, verification and events, and recovers an interrupted MySQL plan with `Dbspec::recover`; its introspection leaves `dbspec$plans` out.
+
+- T8.2.2.1: Go reports the identity rule for a table without a primary key line, as the other clients do.
+
+- T8.2.1.1: the Rust client exposes the parsed dbspec model in `orm_schema::dbspec::model`, as Go, PHP and TypeScript expose theirs.
+
+- T8.5.3: the PHP client parses, chains, diffs and writes schema plans through `Orm\Dbspec\Dbspec`; `make dbspec-plan-php-check` applies them to MySQL, PostgreSQL and SQLite.
+
+- T8.2.6.1.3: the Korean protocol page links the manifest section by its ASCII anchor.
+
+- T8.7.2: the Go engine exports dbspec documents to standard Mermaid erDiagrams and imports them with the list of what each leaves out.
+
+- T8.7.1: docs/mermaid.md specifies standard Mermaid export and import with the list of what each leaves out.
+
+- T17: the Rust client benchmark `client_bench` fails and names `ORM_BENCH_MYSQL_DSN` when the variable is unset or empty instead of connecting to a built-in local socket.
+
+- T12: `make ts-model-check` fails when the TypeScript models script scans a source that does not call models or misses one that does, or when the committed models.ts differs from its output; the script scans only the 8 sources that call models.
+
+- T8.5.2.2: plan names over 63 bytes are rejected, and shared cases cover plan parse errors.
+
+- T8.5.5: the Rust client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-rust-check` applies them.
+
+- T8.5.4: the TypeScript client parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-ts-check` applies them.
+
+- T8.6.2: the Go engine applies plan chains with a lock, history, drift checks, transactions, verification, events and MySQL recovery.
+
+- T8.6.1: docs/plans.md specifies how plans are applied: lock, history, drift, verification, events and MySQL recovery.
+
+- T8.5.2.1: the Go plan writer keeps no dropped result and no unused renderer state.
+
+- T8.5.2: the Go engine parses, chains, diffs and writes schema plans for MySQL, PostgreSQL and SQLite; `make dbspec-plan-check` applies them.
+
+- T8.5.1: docs/plans.md specifies schema plans: the plan document, the chain from an empty database, the diff and the statements of each dialect, with shared cases.
+
+- T8.4.2.4: MySQL introspection recognizes the time CHECK of a `time(p)` column after `ALTER TABLE` writes its literals with zero fractions.
+
+- T8.2.6.1.2: `schemaHash` is taken over one document `schema` with the tables of the set in name order, so it changes only when a table changes.
+
+- T8.4: MySQL, PostgreSQL and SQLite introspect into dbspec in every client.
+
+- T8.4.6: the four clients introspect the 2000-table stress database to the same document on MySQL, PostgreSQL and SQLite within 5 seconds each.
+
+- T8.4.3.1: PHP introspects the 2000-table stress database within the default 128 MB memory limit.
+
+- T8.4.2.3: MySQL introspection reads checks with two catalog queries instead of a join that took over a minute on 2000 tables.
+
+- T8.4.2.2: MySQL introspection recognizes renderer CHECKs after `ALTER TABLE` rewrites their character set introducers, in the four clients.
+
+- T8.4.2.1: introspection reports each unsupported object once, leaves the objects of a rejected table out with it, and reads only renderer-form SQLite table items, in Go, PHP, TypeScript and Rust.
+
+- T8.4.5: the Rust client introspects MySQL, PostgreSQL and SQLite into a dbspec document: `orm::dbspec::introspect` runs the catalog queries of `orm_schema::dbspec` on a sqlx connection and returns the document and the unsupported objects; `make dbspec-introspect-rust-check` runs the round trips and the unsupported cases.
+
+- T8.4.3: the PHP client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `Orm\Dbspec\Dbspec::introspect(PDO, dialect, name)` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-php-check` runs the round trips and the unsupported cases.
+
+- T8.4.4: the TypeScript client introspects MySQL, PostgreSQL and SQLite into a dbspec document through `introspectDbspec` with the catalog queries of the Go engine and reports unsupported objects; `make dbspec-introspect-ts-check` runs the round trips and the unsupported cases.
+
+- T8.2.6.3.7: the bench databases are installed from schema/bench.dbspec, the conformance runners take only a DSN, and the conformance vectors are recorded from the four dbspec clients on MySQL, PostgreSQL and SQLite.
+
+- T8.2.6.3.6: the Rust client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.5: the TypeScript client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.4: the PHP client builds its runtime model and generated code from the dbspec document set.
+
+- T8.2.6.3.3: the Go client builds its runtime model and generated code from the dbspec document set.
+
+- T14.2: the Rust decimal and generated-model coverage tests are ignored in workspace runs and run by their owners with `--include-ignored`.
+
+- T14.1: the Rust DSN coverage test is ignored in workspace runs and run by feature-check with `--include-ignored`.
+
+- T16: the send-savepoint SQLite file lives beside TEST_ENV, so the Rust send-savepoint tests run from any worktree.
+
+- T14: the decimal and feature-coverage Go tests run only from `decimal-physical-check` and `feature-check`, behind build tags, so `client-db-check` no longer runs tests whose DSNs it does not provide.
+
+- T8.4.2: the Go engine introspects MySQL, PostgreSQL and SQLite into a dbspec document with a constant number of catalog queries and reports unsupported objects; `make dbspec-introspect-check` runs the round trips and the unsupported cases.
+
+- T8.4.1: docs/dialects.md specifies how MySQL, PostgreSQL and SQLite are introspected into one dbspec document and which objects are reported as unsupported; tests/dbspec/introspect.json holds the unsupported cases.
+
+- T13: `make git-check` checks commit subjects against AGENTS.md: `type(scope): Subject (#id)`, types feat, fix, docs, style, refactor, test and chore, a capitalized subject of at most 50 characters without a final period; merge commits keep the subject git writes.
+
+- T8.2.6.1.1: the Korean manifest heading has the anchor `manifest-and-hashes`, which its links use; the decomposed Hangul id reached no link.
+
+- T8.1.8: `audit` no longer requires `soft_delete`. A schema setting is read back from the database and a manifest setting is not, so the requirement made every introspected audited table invalid; the `BEFORE DELETE` trigger still makes a physical delete fail.
+
+Keep only the dbspec check predicate forms that MySQL and PostgreSQL
+catalogs give back: remove `not`, `between` and a column alone, and
+write only the parentheses that an `or` inside an `and` needs, in every
+client (T8.1.7).
+
+Rewrite the bench schema and the shared schema fixtures as dbspec
+documents with every name convention declared as a setting, and apply
+each rendered document to MySQL, PostgreSQL and SQLite in `make
+dbspec-ddl-check` (T8.2.6.3.2).
+
+Specify the runtime model and generated code that clients build from a
+dbspec document set, and map every Mermaid manifest field to it
+(T8.2.6.3.1).
+
+Reserve `and`, `or`, `not`, `in`, `between` and `is` as dbspec names in
+every client, so a check predicate never reads a column named like a
+keyword (T8.1.6).
+
+Declare `Dbspec.render` in contracts/interfaces.json and compare the
+rendered statements of the four clients in `make dbspec-compare-check`
+(T8.3.6).
+
+Reject a dbspec document set with a repeated document name or a missing
+used document in the manifest and the renderer of every client, which
+now returns statements or diagnostics (T8.2.6.2.1).
+
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the Rust client (`dbspec::render`), compared with tests/dbspec/ddl.json
+(T8.3.5).
+
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the TypeScript client (`renderDbspec`), compared with
+tests/dbspec/ddl.json, and export `renderDbspec` and `dbspecManifest`
+from the package root (T8.3.4).
+
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the PHP client (`Dbspec::render`), compared with tests/dbspec/ddl.json
+(T8.3.3).
+
+Reject a dbspec table or column whose renderer-generated CHECK or
+trigger name would exceed 63 bytes, in every client (T8.1.5).
+
+Render dbspec document sets to MySQL, PostgreSQL and SQLite statements
+in the Go engine (`dbspec.Render`), compared with tests/dbspec/ddl.json
+(T8.3.2).
+
+Specify the statements that dbspec renders for MySQL, PostgreSQL and
+SQLite in docs/dialects.md, and add tests/dbspec/ddl.json with `make
+dbspec-ddl-check`, which applies every vector to the three databases and
+runs its behavior steps (T8.3.1).
+
+Type dbspec check predicates in every client: arithmetic, functions,
+the `null` literal and `bytes` columns are rejected, a literal must be a
+default of the column it meets and is written in that default form, and
+two columns compare only when their types meet (T8.1.4).
+
+Add `make go-fmt-check` to `make check`, format the six Go files that
+gofmt would change, and format the Rust workspace so `make
+rust-fmt-check` passes again (T11).
+
+Compute the manifest text, schema text, `manifestHash` and `schemaHash`
+of a dbspec document set in the Go, PHP, TypeScript and Rust clients
+(`ManifestOf`, `Dbspec::manifest`, `dbspecManifest`, `manifest`), and
+compare them in `make dbspec-compare-check` (T8.2.6.2).
+
+Define the dbspec manifest text, schema text, `manifestHash` and
+`schemaHash`, and make the document set the only schema source with no
+separate manifest file; three shared cases lock the texts and hashes
+(T8.2.6.1).
+
+Add `make dbspec-compare-check`, which runs the Go, PHP, TypeScript and
+Rust dbspec clients twice each on the shared cases and the stress
+document and fails on any difference in emission or diagnostics
+(T8.2.5). `make check` now runs every dbspec target.
+
+Point a dbspec `header` error at the first character that departs from
+`dbspec 1 <name>` in every client, and reject double spaces in the
+TypeScript header (T8.1.3). Seven shared cases lock the positions.
+
+Implement dbspec parse, validation and canonical emit in the Rust client
+(T8.2.1): parse and emit pass all 50 shared cases, and the 2000-table
+stress document parses with a 29-31 ms median in release mode. The Rust
+symbol snapshot now matches the code, so interface-check passes for all
+four languages.
+
+Judge each client's dbspec parse budget on the median of five parses of
+the stress document, so a parse slowed by other load on the machine no
+longer fails the check while a slow parser still does (T8.2.4.2).
+
+Sort repeated `blind_index` settings by AES column, and let a failed key,
+index or tab-broken line keep its kind so that it hides the rules that
+depend on its columns (T8.1.2). Six shared cases lock these rules, and
+the PHP and TypeScript parsers follow them.
+
+Implement dbspec parse, validation and canonical emit in the Go engine
+(T8.2.2): Parse and Emit pass all 44 shared cases, and the 2000-table
+stress document parses in 48-53 ms.
+
+Implement dbspec parse, validation and canonical emit in the PHP client
+(T8.2.3): Orm\Dbspec\Dbspec::parse and ::emit pass all 44 shared cases,
+and the 2000-table stress document parses in 218-308 ms within 128 MiB.
+
+State the dbspec parse budgets of every client in docs/dbspec.md and fail
+the Go, TypeScript and PHP stress tests above them (T8.2.4.1). Record
+every native Go, PHP and TypeScript symbol in contracts/symbols so
+interface-check passes for those languages.
+
+Implement dbspec parse, validation and canonical emit in the TypeScript
+client (T8.2.4) with the declared interface: parseDbspec, emitDbspec and
+DbspecDiagnostic. All 44 shared cases and 45 focused cases pass, and the
+2000-table stress document parses in 105-156 ms and emits unchanged.
+Record its 279 symbols in contracts/symbols/typescript.json.
+
+Specify dbspec, the neutral schema language that replaces the Mermaid
+schema source (T8.1). docs/dbspec.md and its Korean pair define documents
+joined by name through a declared document set, the thirteen neutral types,
+keys, indexes, foreign keys, the neutral check expressions, settings with
+their schemaHash or manifestHash membership, audit through an operation
+column and a history table copied by row triggers, diagrams, the canonical
+form, limits and sixteen located diagnostic rules, and decide the fate of
+every Mermaid feature. docs/dialects.md records the audit decision. Shared
+vectors in tests/dbspec/cases.json hold 4 canonical, 2 normalization and 17
+invalid cases. No client implements dbspec yet.
+
+Record the schema facts of MySQL, PostgreSQL and SQLite and decide neutral
+support per feature (T8.0, T8.0.12). Add 239 shared probes in
+tests/dialects and the dialect-facts-check target; each probe runs in its
+own disposable database, schema or file with its own deadline, and a SQLite
+file-name case shows that PDO, node:sqlite and the sqlite3 shell keep a DSN
+query in the file name. Two runs pass with no failure on MySQL 8.4.11,
+PostgreSQL 17.11 and SQLite 3.53.4. docs/dialects.md records syntax,
+meaning, probes, the neutral rendering or unsupported reason and the
+catalog source per feature, the decisions for a local datetime with a
+UTC connection rule and executor update-time stamping, and leaves the audit
+context definition for T8.1 review. Thirteen defects of the current schema
+tools and clients are recorded as T8.0.1-T8.0.11, T8.0.13 and T8.0.14.
 
 Require no PDO driver extension in the PHP client (N17). `composer.json`
 required `ext-pdo_mysql`, so `composer install` refused a PHP without it,
@@ -617,7 +998,7 @@ Add Rust `Db::transaction_once` for a callback that runs once and returns its ow
 It uses a savepoint inside an active transaction and reports both the callback and rollback
 failures when both fail. Database errors remain distinct from callback errors.
 
-## Unreleased — MySQL CHECK constraint namespace
+### MySQL CHECK constraint namespace
 
 Keep persistent development rules in `AGENTS.md` and concrete work in the project checklist. The checklist checker now rejects unnumbered policy and status prose, so dated progress claims cannot replace item states and executable evidence. The waiting generated-interface check must verify the `multi_statement` exclusion in each public client API.
 
@@ -772,7 +1153,6 @@ Prefix generated MySQL CHECK constraint names with their table name so distinct 
 
 - Add a bounded SQLite ORM lock-cancellation regression alongside serialization, `NoWait` and transaction-release coverage. Waiting lock requests now have tracked evidence that caller context cancellation returns without an unbounded wait.
 
-## Unreleased
 
 - Implement SQLite `forUpdate`, `forShare`, and both `NoWait` modes through an ORM-owned transaction-scoped lock row. SQLite emits no lock suffix; `NoWait` temporarily uses a zero busy timeout. Go, PHP, Rust, and TypeScript carry the same lock mode through the plan contract.
 - Preserve logical schema namespaces in SQLite physical table names by mapping `schema.table` to `schema__table`, preventing same-named tables from colliding in one database.

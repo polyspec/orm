@@ -1,23 +1,28 @@
 //! A transaction or savepoint whose callback fails and whose rollback fails
-//! too, on SQLite, MySQL and PostgreSQL. The client reports Error::Rollback
+//! too, on SQLite, MySQL and PostgreSQL (contracts/fixtures/rollback.dbs). The client reports Error::Rollback
 //! with the code ROLLBACK, which keeps the callback error and the rollback
 //! error. The callback runs only model calls. On SQLite a trigger of the test
 //! fixture raises ROLLBACK when a row labeled `end` is inserted, which ends
 //! the transaction, so the client's ROLLBACK finds no transaction. On MySQL
 //! and PostgreSQL a test connection ends the server session that holds the
-//! transaction, so the next statement and the rollback fail. The test fails
-//! when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
+//! transaction, so the next statement and the rollback fail; that connection
+//! reaches the server through ORM_TEST_MYSQL_SERVER_DSN or
+//! ORM_TEST_POSTGRES_SERVER_DSN (the make targets set them to the server DSNs
+//! of TEST_ENV), not through a pooler. Each case runs in a case database of its
+//! own (orm-case-database). The test fails when one of the four DSNs is unset.
 //!
-//! The cases `rollback_fault_*` arm the rollback fault of the test entry point
-//! `orm::testing` and run with the feature `test-faults`:
+//! `rollback_fault_*` case는 test entry point `orm::testing`의 rollback fault를
+//! 설정하며 feature `test-faults`로 실행한다:
 //! `cargo test -p orm --features test-faults --test rollback`.
 
 use std::time::Duration;
 
 use orm::db::Pool;
 use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use orm_case_database::CaseDatabase;
 
-static ROLLBACK_SCHEMA: Schema = Schema::new(include_bytes!("../../../../contracts/fixtures/rollback_schema.json"), "49f05d72379c94b4");
+static ROLLBACK_SCHEMA: Schema =
+    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
 static ROLLBACK_PROBE: Entity = Entity {
     name: "rollback_probe",
     schema: &ROLLBACK_SCHEMA,
@@ -67,71 +72,66 @@ fn connected(db: &Db) -> RollbackProbe {
     RollbackProbe::from_core(core)
 }
 
-/// Returns the DSN of a target; an unset or empty variable fails the test.
-fn target(driver: &str) -> String {
-    if driver == "sqlite" {
-        let dir = std::env::temp_dir().join(format!("orm-rust-rollback-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("rollback.sqlite");
-        let _ = std::fs::remove_file(&path);
-        return format!("sqlite://{}", path.display());
-    }
-    let var = format!("ORM_TEST_{}_DSN", driver.to_uppercase());
-    match std::env::var(&var) {
-        Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
-    }
-}
-
-async fn drop_table(db: &Db) {
-    let result = match db.pool() {
-        Pool::MySql(p) => sqlx::raw_sql("DROP TABLE IF EXISTS `rollback_probe`").execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sqlx::raw_sql(r#"DROP TABLE IF EXISTS "rollback_probe""#).execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sqlx::raw_sql(r#"DROP TABLE IF EXISTS "rollback_probe""#).execute(p).await.map(|_| ()),
-    };
-    result.unwrap_or_else(|e| panic!("drop rollback_probe: {e}"));
-}
-
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
-async fn installed(driver: &str) -> (Db, String) {
-    let dsn = target(driver);
-    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    drop_table(&db).await;
-    db.utils().schema().install(ROLLBACK_SCHEMA.json()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+async fn installed(driver: &str, dsn: &str) -> Db {
+    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    db.utils().schema().install(&ROLLBACK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     if let Pool::Sqlite(p) = db.pool() {
         sqlx::raw_sql("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END")
             .execute(p)
             .await
             .unwrap_or_else(|e| panic!("trigger: {e}"));
     }
-    (db, dsn)
+    db
 }
 
-/// Ends, from a test connection, the server session that holds a lock on
-/// rollback_probe; SQLite needs none, its trigger ends the transaction.
-async fn end_session(driver: &str, dsn: &str) {
-    match driver {
-        "postgres" => {
-            let pool = sqlx::PgPool::connect(dsn).await.unwrap();
+/// Ends the server session that holds a lock on rollback_probe in the case
+/// database; SQLite needs none, its trigger ends the transaction. `session`
+/// is the case database on the server of ORM_TEST_MYSQL_SERVER_DSN or
+/// ORM_TEST_POSTGRES_SERVER_DSN, not on a pooler, because a pooler may handle
+/// the statement on its own: ProxySQL takes a text-protocol KILL as a command
+/// for its own client sessions. The lock on the table of the case database
+/// marks the session that holds the transaction behind the pooler. The test
+/// connection is a client connection (`Db::connect`), so it sends the startup
+/// parameters of the client and no parameter a pooler rejects.
+async fn end_session(driver: &str, session: &str) {
+    if driver == "sqlite" {
+        return;
+    }
+    let admin = Db::connect(session, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: session connection: {e}"));
+    match admin.pool() {
+        Pool::Postgres(pool) => {
             let pid: i32 = sqlx::query_scalar(
-                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1",
+                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1",
             )
-            .fetch_one(&pool)
+            .fetch_one(pool)
             .await
             .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.unwrap();
-            pool.close().await;
+            sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.unwrap();
         }
-        "mysql" => {
-            let pool = sqlx::MySqlPool::connect(dsn).await.unwrap();
+        Pool::MySql(pool) => {
             let id: u64 = sqlx::query_scalar("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1")
-                .fetch_one(&pool)
+                .fetch_one(pool)
                 .await
                 .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(&pool).await.unwrap();
-            pool.close().await;
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.unwrap();
         }
-        _ => {}
+        Pool::Sqlite(_) => unreachable!("sqlite needs no session end"),
+    }
+    admin.close().await;
+}
+
+/// The DSN of the case database on the server itself: ORM_TEST_MYSQL_SERVER_DSN
+/// or ORM_TEST_POSTGRES_SERVER_DSN with the path of the case database. SQLite
+/// has no server; its DSN is the case file.
+fn session_dsn(driver: &str, database: &CaseDatabase) -> String {
+    if driver == "sqlite" {
+        return database.dsn().to_owned();
+    }
+    let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
+    match std::env::var(&env) {
+        Ok(server) if !server.is_empty() => database.related_dsn(&server),
+        _ => panic!("{env} is required; database tests never skip"),
     }
 }
 
@@ -152,12 +152,12 @@ fn check_rollback<'e>(driver: &str, error: &'e orm::Error, subject: &str) -> &'e
 }
 
 /// The callback of a transaction fails and the rollback fails.
-async fn rollback_failed(driver: &str) {
-    let (db, dsn) = installed(driver).await;
+async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
+    let db = installed(driver, dsn).await;
     let error = db
         .transaction(async || {
             create("kept").await?;
-            end_session(driver, &dsn).await;
+            end_session(driver, session).await;
             create("end").await
         })
         .await
@@ -172,14 +172,14 @@ async fn rollback_failed(driver: &str) {
 
 /// The callback of a savepoint fails and the savepoint rollback fails, and
 /// then the transaction rollback fails.
-async fn savepoint_rollback_failed(driver: &str) {
-    let (db, dsn) = installed(driver).await;
+async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
+    let db = installed(driver, dsn).await;
     let error = db
         .transaction(async || {
             create("kept").await?;
             db.transaction(async || {
                 create("nested").await?;
-                end_session(driver, &dsn).await;
+                end_session(driver, session).await;
                 create("end").await
             })
             .await
@@ -194,14 +194,14 @@ async fn savepoint_rollback_failed(driver: &str) {
     db.close().await;
 }
 
-/// The callback error of the rollback fault cases.
+/// rollback fault case의 callback 오류다.
 #[cfg(feature = "test-faults")]
 fn fault_callback() -> orm::Error {
     orm::Error::Config("rollback fault callback failed".into())
 }
 
-/// Checks a ROLLBACK error of the rollback fault: it keeps the callback
-/// error and a FAULT error.
+/// rollback fault의 ROLLBACK 오류가 callback 오류와 FAULT 오류를 가지는지
+/// 확인한다.
 #[cfg(feature = "test-faults")]
 fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
     let callback = check_rollback(driver, error, subject);
@@ -210,16 +210,15 @@ fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
     assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
 }
 
-/// The rollback fault of the test entry point. A committed transaction keeps
-/// the fault armed; the next transaction whose callback fails is rolled back,
-/// its rollback reports FAULT, and the transaction returns ROLLBACK with the
-/// callback error and the fault. The fault is consumed: the transaction
-/// after it returns the callback error alone. `transaction_send` and
-/// `transaction_once` consume an armed fault in the same way, and the
-/// connection serves later requests.
+/// test entry point의 rollback fault다. commit된 transaction은 fault를 남기고,
+/// callback이 실패한 다음 transaction은 rollback되며 그 rollback은 FAULT를
+/// 보고하고 transaction은 callback 오류와 fault를 가진 ROLLBACK을 반환한다.
+/// fault는 소비된다: 그 뒤 transaction은 callback 오류만 반환한다.
+/// `transaction_send`와 `transaction_once`도 설정된 fault를 같은 방식으로
+/// 소비하고, connection은 이후 요청을 처리한다.
 #[cfg(feature = "test-faults")]
-async fn rollback_fault(driver: &str) {
-    let (db, _) = installed(driver).await;
+async fn rollback_fault(driver: &str, dsn: &str) {
+    let db = installed(driver, dsn).await;
     orm::testing::fail_next_rollback(&db);
     db.transaction(async || create("committed").await).retry(0).await.unwrap_or_else(|e| panic!("{driver}: a committed transaction with an armed fault: {e}"));
     let failing = async || -> orm::Result<()> {
@@ -267,66 +266,86 @@ async fn rollback_fault(driver: &str) {
     db.close().await;
 }
 
-/// The cases of one database share its rollback_probe table, so they run one at a time.
-static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-
-async fn bounded<F: std::future::Future<Output = ()>>(driver: &str, case: F) {
-    let _serial = SERIAL.lock().await;
-    tokio::time::timeout(CASE_DEADLINE, case).await.unwrap_or_else(|_| panic!("{driver}: timeout after {CASE_DEADLINE:?}"));
+/// case를 자기만의 case database에서 기한 안에 실행하고, 끝나면 database를 지운다.
+async fn bounded(driver: &str, case: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let dsn = database.dsn();
+    let session = session_dsn(driver, &database);
+    let run = async {
+        match case {
+            "rollback_failed" => rollback_failed(driver, dsn, &session).await,
+            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, dsn, &session).await,
+            #[cfg(feature = "test-faults")]
+            "rollback_fault" => rollback_fault(driver, dsn).await,
+            other => unreachable!("unknown case {other}"),
+        }
+    };
+    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+    database.drop().await;
 }
 
 #[tokio::test]
 async fn rollback_failed_sqlite() {
-    bounded("sqlite", rollback_failed("sqlite")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("sqlite", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn rollback_failed_mysql() {
-    bounded("mysql", rollback_failed("mysql")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("mysql", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn rollback_failed_postgres() {
-    bounded("postgres", rollback_failed("postgres")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("postgres", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_sqlite() {
-    bounded("sqlite", savepoint_rollback_failed("sqlite")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("sqlite", "savepoint_rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_mysql() {
-    bounded("mysql", savepoint_rollback_failed("mysql")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("mysql", "savepoint_rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_postgres() {
-    bounded("postgres", savepoint_rollback_failed("postgres")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("postgres", "savepoint_rollback_failed").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_sqlite() {
-    bounded("sqlite", rollback_fault("sqlite")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("sqlite", "rollback_fault").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_mysql() {
-    bounded("mysql", rollback_fault("mysql")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("mysql", "rollback_fault").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_postgres() {
-    bounded("postgres", rollback_fault("postgres")).await;
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    bounded("postgres", "rollback_fault").await;
 }
 
-/// The test entry point exists only with the feature `test-faults`, which no
-/// default feature of the crate enables.
+/// test entry point는 feature `test-faults`가 있을 때만 있으며, crate의 어떤
+/// default feature도 그것을 켜지 않는다.
 #[test]
 fn rollback_fault_entry() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");

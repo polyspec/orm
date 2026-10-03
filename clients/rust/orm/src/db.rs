@@ -20,7 +20,8 @@ use crate::engine::{self, Dialect};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
-use crate::tx::TxShared;
+use crate::schema::Schema;
+use crate::tx::{OperationId, TxShared};
 use crate::value::Param;
 use crate::{codes, Error, Result};
 
@@ -69,24 +70,18 @@ impl Default for Config {
 
 const SQLITE_DATETIME: &str = "%Y-%m-%d %H:%M:%S%.6f";
 
-/// The time zone of a connection.
+/// The time zone of a connection. Every connection reads and writes datetime
+/// values in UTC (docs/dialects.md "Date and time").
 #[derive(Clone, Copy, Debug)]
-pub enum Zone {
-    Local,
-    Fixed(FixedOffset),
-    Named(chrono_tz::Tz),
-}
+pub struct Zone;
 
 impl Zone {
+    /// The `timezone` parameter accepts only UTC.
     fn parse(value: &str) -> Result<Zone> {
-        let b = value.as_bytes();
-        if b.len() == 6 && (b[0] == b'+' || b[0] == b'-') && b[3] == b':' {
-            let hours: i32 = value[1..3].parse().map_err(|_| Error::Config(format!("dsn timezone {value:?}")))?;
-            let minutes: i32 = value[4..6].parse().map_err(|_| Error::Config(format!("dsn timezone {value:?}")))?;
-            let secs = (hours * 3600 + minutes * 60) * if b[0] == b'-' { -1 } else { 1 };
-            return FixedOffset::east_opt(secs).map(Zone::Fixed).ok_or_else(|| Error::Config(format!("dsn timezone {value:?}")));
+        match value {
+            "UTC" | "+00:00" => Ok(Zone),
+            _ => Err(Error::Config(format!("dsn timezone {value}: every connection reads and writes datetime values in UTC"))),
         }
-        chrono_tz::Tz::from_str(value).map(Zone::Named).map_err(|_| Error::Config(format!("dsn timezone {value:?} is not a time zone")))
     }
 
     /// The current time in the zone.
@@ -96,27 +91,17 @@ impl Zone {
 
     /// An instant in the zone.
     pub fn at(&self, t: chrono::DateTime<Utc>) -> chrono::DateTime<FixedOffset> {
-        match self {
-            Zone::Local => t.with_timezone(&chrono::Local).fixed_offset(),
-            Zone::Fixed(o) => t.with_timezone(o),
-            Zone::Named(z) => t.with_timezone(z).fixed_offset(),
-        }
+        t.fixed_offset()
     }
 
-    /// The instant of a wall-clock time in the zone; the earlier one when the
-    /// time occurs twice, None when it does not occur.
+    /// The instant of a wall-clock time in the zone.
     pub fn instant(&self, t: NaiveDateTime) -> Option<chrono::DateTime<Utc>> {
-        use chrono::TimeZone;
-        match self {
-            Zone::Local => chrono::Local.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-            Zone::Fixed(o) => o.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-            Zone::Named(z) => z.from_local_datetime(&t).earliest().map(|x| x.to_utc()),
-        }
+        Some(t.and_utc())
     }
 
     /// An instant as wall-clock time in the zone.
     pub fn local(&self, t: chrono::DateTime<Utc>) -> NaiveDateTime {
-        self.at(t).naive_local()
+        t.naive_utc()
     }
 }
 
@@ -128,8 +113,7 @@ pub enum ConnectOptions {
 }
 
 /// A DSN URI split into driver options and the connection time zone. The
-/// scheme selects the database; the optional `timezone` parameter sets the
-/// connection time zone, otherwise the server environment's is used.
+/// scheme selects the database; the `timezone` parameter accepts only UTC.
 pub struct ParsedDsn {
     pub options: ConnectOptions,
     pub zone: Zone,
@@ -145,21 +129,35 @@ impl ParsedDsn {
     }
 }
 
-/// A fixed offset in the POSIX form PostgreSQL expects, where the sign after
-/// the name is inverted: +09:00 becomes <+09:00>-09:00. Named zones pass through.
-fn postgres_zone(zone: &str) -> String {
-    let b = zone.as_bytes();
-    if b.len() == 6 && (b[0] == b'+' || b[0] == b'-') && b[3] == b':' {
-        let inverted = if b[0] == b'-' { '+' } else { '-' };
-        return format!("<{zone}>{inverted}{}", &zone[1..]);
-    }
-    zone.to_owned()
-}
-
 /// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
 
 /// Parses a DSN URI.
+/// sqlite:// DSN의 path를 UTF-8로 percent-decode한다. 두 hex 자리가 없는 `%`,
+/// NUL byte, UTF-8이 아닌 결과는 다른 file을 열게 되므로 `CONFIG`다.
+fn sqlite_path(raw: &str) -> Result<String> {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'%' {
+            out.push(bytes[i]);
+            i += 1;
+            continue;
+        }
+        let digit = |at: usize| bytes.get(at).and_then(|&b| char::from(b).to_digit(16));
+        match (digit(i + 1), digit(i + 2)) {
+            (Some(high), Some(low)) => out.push((high * 16 + low) as u8),
+            _ => return Err(Error::Config("sqlite DSN path has a % without two hexadecimal digits".into())),
+        }
+        i += 3;
+    }
+    if out.contains(&0) {
+        return Err(Error::Config("sqlite DSN path must not contain a NUL byte".into()));
+    }
+    String::from_utf8(out).map_err(|_| Error::Config("sqlite DSN path must be UTF-8 after percent-decoding".into()))
+}
+
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
     let url = url::Url::parse(dsn).map_err(|_| bad("dsn must be a URI using mysql://, postgres://, or sqlite://".into()))?;
@@ -183,7 +181,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     }
     let zone = match &zone_text {
         Some(z) => Zone::parse(z)?,
-        None => Zone::Local,
+        None => Zone,
     };
     let sqlx_err = |e: sqlx::Error| Error::Config(format!("dsn: {e}"));
     let options = match url.scheme() {
@@ -191,7 +189,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if url.host_str().unwrap_or("").is_empty() || url.path().trim_matches('/').is_empty() {
                 return Err(bad("mysql DSN must include host and database".into()));
             }
-            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(zone_text.clone()))
+            ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())))
         }
         "postgres" => {
             let host = url.host_str().unwrap_or("").to_owned() + &pairs.iter().filter(|(k, _)| k == "host").map(|(_, v)| v.clone()).collect::<String>();
@@ -201,19 +199,16 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             // The server default extra_float_digits of PostgreSQL 12 and later
             // prints float8 values exactly, and a pooler rejects a startup
             // parameter it does not track, so the connection sends none.
-            let mut o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None);
-            if let Some(z) = &zone_text {
-                o = o.options([("timezone", postgres_zone(z).as_str())]);
-            }
+            let o = PgConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.extra_float_digits(None).options([("timezone", "UTC")]);
             ConnectOptions::Postgres(o)
         }
         "sqlite" => {
-            let path = url.path();
+            let path = sqlite_path(url.path())?;
             if !path.starts_with('/') || path.len() < 2 {
                 return Err(bad("sqlite DSN must include an absolute database path".into()));
             }
             let mut o = SqliteConnectOptions::new()
-                .filename(path)
+                .filename(&path)
                 .create_if_missing(true)
                 .foreign_keys(true)
                 .busy_timeout(std::time::Duration::from_millis(SQLITE_BUSY_TIMEOUT_MS));
@@ -263,11 +258,13 @@ pub(crate) struct DbInner {
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
     plan_order: Mutex<VecDeque<u64>>,
+    /// 이 연결에 등록된 set의 manifest hash.
+    sets: std::sync::RwLock<std::collections::HashSet<String>>,
     pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
-    /// The test fault that `orm::testing::fail_next_rollback` arms; only a
-    /// build with the feature `test-faults` can set it.
+    /// `orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
+    /// `test-faults`가 있는 build만 설정할 수 있다.
     pub(crate) rollback_fault: AtomicBool,
 }
 
@@ -315,8 +312,28 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
 }
 
 impl Db {
+    /// Connects to the database selected by the DSN URI and registers the set
+    /// of a generated schema on the connection; the connect helper of
+    /// generated models calls it. A manifest text that does not hash to its
+    /// declared hash fails with CONFIG before the connection opens.
+    pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db> {
+        schema.registered()?;
+        let db = Db::connect(dsn, pool_size, cfg).await?;
+        db.register(schema)?;
+        Ok(db)
+    }
+
+    /// schema의 set을 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
+    pub(crate) fn register(&self, schema: &Schema) -> Result<()> {
+        schema.registered()?;
+        self.inner.sets.write().unwrap().insert(schema.hash().to_owned());
+        Ok(())
+    }
+
     /// Connects to the database selected by the DSN URI with at most
-    /// `pool_size` open connections; zero uses 10.
+    /// `pool_size` open connections; zero uses 10. The connection has no set
+    /// registered: a model request on it fails with SCHEMA_HASH_MISMATCH until
+    /// `install` registers the set of the model.
     pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db> {
         if cfg.plan_cache_size == 0 || cfg.statement_cache_size == 0 {
             return Err(Error::Config("cache sizes must be positive".into()));
@@ -398,6 +415,7 @@ impl Db {
                 zone: parsed.zone,
                 plans: Mutex::new(HashMap::new()),
                 plan_order: Mutex::new(VecDeque::new()),
+                sets: std::sync::RwLock::new(std::collections::HashSet::new()),
                 pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
@@ -453,11 +471,21 @@ impl Db {
         if let Some(e) = req.error() {
             return Err(e);
         }
+        // plan cache는 manifest_hash로 구분되므로, 같은 hash를 선언하고 다른 text를 가진
+        // generated code가 다른 model의 plan을 쓰지 않게 cache를 보기 전에 그 text를 확인한다.
+        let manifest = req.schema.manifest()?;
+        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
+        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        if !self.inner.sets.read().unwrap().contains(req.schema.hash()) {
+            return Err(Error::Engine {
+                code: codes::SCHEMA_HASH_MISMATCH.into(),
+                msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
+            });
+        }
         let key = req.shape_key();
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let manifest = req.schema.manifest()?;
         let mut plan = engine::compile(&manifest, self.inner.dialect, &req.ir)?;
         for st in &mut plan.steps {
             st.plan_id = key;
@@ -490,8 +518,9 @@ impl Db {
 
     /// Writes a datetime or date value in the text form SQLite stores, so a
     /// string value compares equal to the stored value. A datetime string with
-    /// an offset is converted to the connection time zone.
-    fn sqlite_time_value(&self, v: Param, col_type: &str) -> Result<Param> {
+    /// an offset is converted to the connection time zone. `datetime(p)` text는
+    /// 소수 p자리로 쓰고, p자리 뒤에 0이 아닌 자리가 있으면 CODEC_ENCODE다.
+    fn sqlite_time_value(&self, v: Param, col_type: &str, precision: i64) -> Result<Param> {
         match v {
             Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
             Param::Str(text) if col_type == "date" => {
@@ -501,15 +530,18 @@ impl Db {
                     Err(invalid_time_text(&text, col_type))
                 }
             }
-            Param::Str(text) => sqlite_datetime_text(&text, &self.inner.zone).map(Param::Str).ok_or_else(|| invalid_time_text(&text, col_type)),
+            Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
+            Param::Str(text) => {
+                let full = sqlite_datetime_text(&text, &self.inner.zone).ok_or_else(|| invalid_time_text(&text, col_type))?;
+                datetime_digits(&full, precision).map(Param::Str)
+            }
             other => Ok(other),
         }
     }
 
-    /// Resolves the bind slots of a step.
-    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param]) -> Result<Vec<Param>> {
+    /// step의 bind slot 값을 정한다. `operation`은 step이 실행되는 transaction의 operation id다.
+    pub(crate) fn args(&self, st: &Step, params: &[Param], parent_vals: &[Param], operation: Option<&OperationId>) -> Result<Vec<Param>> {
         let cfg = &self.inner.cfg;
-        let postgres = matches!(self.inner.pool, Pool::Postgres(_));
         let sqlite = matches!(self.inner.pool, Pool::Sqlite(_));
         let mut out = Vec::with_capacity(st.bind_slots.len() + parent_vals.len());
         let mut clock: Option<String> = None;
@@ -519,7 +551,10 @@ impl Db {
                 "param" => {
                     let mut v = param_arg(b, params)?;
                     if sqlite && (b.col_type == "datetime" || b.col_type == "date") {
-                        v = self.sqlite_time_value(v, &b.col_type)?;
+                        v = self.sqlite_time_value(v, &b.col_type, b.precision)?;
+                    }
+                    if b.col_type == "time" {
+                        v = time_value(v, b.precision)?;
                     }
                     if b.col_type == "decimal" {
                         let precision = u8::try_from(b.precision)
@@ -536,19 +571,6 @@ impl Db {
                                     msg: format!("decimal bind requires exact text, received {other:?}"),
                                 })
                             }
-                        };
-                    }
-                    if b.col_type == "point" {
-                        v = match v {
-                            Param::Null => Param::Null,
-                            Param::Point(point) => {
-                                Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
-                            }
-                            Param::Str(text) => {
-                                let point = crate::value::parse_point(&text)?;
-                                Param::Str(if postgres { crate::value::postgres_point_text(point)? } else { crate::value::point_text(point)? })
-                            }
-                            other => return Err(Error::Config(format!("point parameter requires two coordinates, received {other:?}"))),
                         };
                     }
                     out.push(if b.host_styles.is_empty() {
@@ -574,8 +596,21 @@ impl Db {
                 "now" => {
                     // One statement reads the clock once, so its clock columns are equal.
                     let text = clock.get_or_insert_with(|| self.now_text()).clone();
-                    out.push(Param::Str(text));
+                    out.push(Param::Str(clock_digits(&text, b.precision)));
                 }
+                "operation" => out.push(match (operation, b.col_type.as_str()) {
+                    (Some(OperationId::I64(id)), "i64") => Param::I64(*id),
+                    (Some(OperationId::Uuid(id)), "uuid") => Param::Str(id.clone()),
+                    (Some(other), column_type) => {
+                        return Err(Error::Config(format!("operation id {other:?} does not fit the {column_type} operation column {}", b.column)));
+                    }
+                    (None, _) => {
+                        return Err(Error::Config(format!(
+                            "a write of the audited column {} requires an operation id; run it in a transaction with operation(id)",
+                            b.column
+                        )))
+                    }
+                }),
                 other => return Err(Error::internal(format!("bind from {other}"))),
             }
         }
@@ -627,10 +662,17 @@ impl Db {
         Ok(t)
     }
 
-    pub(crate) async fn run_query(&self, mut target: Target<'_>, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+    pub(crate) async fn run_query(
+        &self,
+        mut target: Target<'_>,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+        operation: Option<&OperationId>,
+    ) -> Result<Vec<DriverRow>> {
         acquire_sqlite_row_lock(&mut target, &st.lock).await?;
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
-        let args = self.args(st, params, &parent_vals)?;
+        let args = self.args(st, params, &parent_vals, operation)?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
@@ -657,8 +699,8 @@ impl Db {
         r
     }
 
-    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
-        let args = self.args(st, params, &[])?;
+    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param], operation: Option<&OperationId>) -> Result<(u64, u64)> {
+        let args = self.args(st, params, &[], operation)?;
         let sql = st.sql.as_str();
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
@@ -685,7 +727,8 @@ impl Db {
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
-        let args = self.args(st, &req.params, &[])?;
+        let operation = crate::tx::active_for(self).and_then(|t| t.operation.clone());
+        let args = self.args(st, &req.params, &[], operation.as_ref())?;
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
             binds.push(match b.from.as_str() {
@@ -729,12 +772,12 @@ impl Executor {
                 if !st.lock.is_empty() {
                     return Err(Error::Config("row locks are allowed only inside a transaction".into()));
                 }
-                d.run_query(Target::Pool(&d.inner.pool), st, params, parent_vals).await
+                d.run_query(Target::Pool(&d.inner.pool), st, params, parent_vals, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_query(Target::Tx(inner), st, params, parent_vals).await
+                t.db.run_query(Target::Tx(inner), st, params, parent_vals, t.operation.as_ref()).await
             }
         }
     }
@@ -745,12 +788,12 @@ impl Executor {
                 if d.inner.closed.load(Ordering::Acquire) {
                     return Err(Error::Config("database is closed".into()));
                 }
-                d.run_execute(Target::Pool(&d.inner.pool), st, params).await
+                d.run_execute(Target::Pool(&d.inner.pool), st, params, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                t.db.run_execute(Target::Tx(inner), st, params).await
+                t.db.run_execute(Target::Tx(inner), st, params, t.operation.as_ref()).await
             }
         }
     }
@@ -807,6 +850,57 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
             Some(format!("{}.{:0<6}", zone.local(instant).format("%Y-%m-%d %H:%M:%S"), fraction))
         }
     }
+}
+
+/// 소수 6자리 `YYYY-MM-DD HH:MM:SS.ffffff` text를 소수 p자리로 줄인다. 버리는 자리에
+/// 0이 아닌 숫자가 있으면 값이 바뀌므로 CODEC_ENCODE다.
+fn datetime_digits(text: &str, precision: i64) -> Result<String> {
+    let Some((whole, fraction)) = text.split_once('.') else {
+        return Ok(text.to_owned());
+    };
+    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
+    if fraction[p..].bytes().any(|b| b != b'0') {
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
+    }
+    Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
+}
+
+/// executor 시계의 소수 6자리 text를 `datetime(p)` column의 소수 p자리로 자른다.
+fn clock_digits(text: &str, precision: i64) -> String {
+    let Some((whole, fraction)) = text.split_once('.') else {
+        return text.to_owned();
+    };
+    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
+    if p == 0 {
+        whole.to_owned()
+    } else {
+        format!("{whole}.{}", &fraction[..p])
+    }
+}
+
+/// `time(p)` 값은 소수 정확히 p자리의 `HH:MM:SS` text다 (docs/dbspec.md, "Runtime model").
+fn time_value(v: Param, precision: i64) -> Result<Param> {
+    let text = match v {
+        Param::Null => return Ok(Param::Null),
+        Param::Str(text) => text,
+        other => return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value must be HH:MM:SS text, received {other:?}") }),
+    };
+    let p = usize::try_from(precision).unwrap_or(0);
+    let b = text.as_bytes();
+    let clock = b.len() >= 8
+        && digits(&b[0..2])
+        && b[2] == b':'
+        && digits(&b[3..5])
+        && b[5] == b':'
+        && digits(&b[6..8])
+        && &text[0..2] < "24"
+        && &text[3..5] < "60"
+        && &text[6..8] < "60";
+    let fraction = if p == 0 { b.len() == 8 } else { b.len() == 9 + p && b[8] == b'.' && digits(&b[9..]) };
+    if !clock || !fraction {
+        return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS with {p} fraction digits") });
+    }
+    Ok(Param::Str(text))
 }
 
 fn invalid_time_text(text: &str, col_type: &str) -> Error {

@@ -5,12 +5,20 @@ use crate::{
 };
 #[test]
 fn page_assembly_rejects_column_or_descriptor_changes() {
-    let started = std::time::Instant::now();
-    eprintln!("running table_page_validation");
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let clock = orm_case_clock::CaseClock::start();
     let metadata = TableMetadata {
         table: TableRef { namespace: "main".into(), name: "fixture".into() },
         kind: TableKind::Table,
-        columns: vec![TableColumnMetadata { name: "a".into(), native_type: "INTEGER".into(), nullable: false, generated: false, automatic_key: false, default_expression: None, expression_default: false }],
+        columns: vec![TableColumnMetadata {
+            name: "a".into(),
+            native_type: "INTEGER".into(),
+            nullable: false,
+            generated: false,
+            automatic_key: false,
+            default_expression: None,
+            expression_default: false,
+        }],
         primary_key: vec!["a".into()],
         reliable_row_identity: true,
     };
@@ -28,6 +36,7 @@ fn page_assembly_rejects_column_or_descriptor_changes() {
         assert!(assemble(metadata.clone(), result.clone(), after, 1, 0).unwrap_err().starts_with("TABLE_PAGE_METADATA_CHANGED"));
     }
     assert!(assemble(metadata.clone(), result, metadata, 1, 0).is_ok());
-    assert!(started.elapsed() < std::time::Duration::from_secs(5));
-    eprintln!("passed table_page_validation {:?}", started.elapsed());
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    assert!(cpu < std::time::Duration::from_secs(5), "table page validation: cpu {cpu:?} (wall {wall:?})");
+    orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }

@@ -9,7 +9,7 @@ final class Orm
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
-    /** The parameters that a DSN of each scheme accepts (docs/config.md); another one returns CONFIG. */
+    /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
         'postgres' => ['timezone', 'host', 'sslmode'],
@@ -17,19 +17,27 @@ final class Orm
     ];
 
     /**
-     * Opens the database selected by the DSN URI (mysql://, postgres://, sqlite://).
-     * The optional `timezone` parameter sets the connection time zone; without
-     * it the server environment time zone is used.
+     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 열고 generated
+     * schema의 set을 그 연결에 등록한다. generated code의 connect helper가 부른다.
+     * text가 선언한 hash로 hash되지 않으면 연결을 열기 전에 CONFIG다.
+     */
+    public static function connectSchema(string $dsn, Schema $schema, Config $config): Db
+    {
+        $schema->verify();
+        $db = self::connect($dsn, $config);
+        $db->registerSet($schema);
+        return $db;
+    }
+
+    /**
+     * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다. 연결에는
+     * 등록된 set이 없으므로 model 요청은 install이 그 set을 등록할 때까지
+     * SCHEMA_HASH_MISMATCH다. 모든 connection은 datetime을 UTC로 읽고 쓴다
+     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다.
      */
     public static function connect(string $dsn, Config $config): Db
     {
-        [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = $parsed = self::parseDsn($dsn);
-        $pragmas = $driver === 'sqlite' ? $parsed[6] : [];
-        $sslCa = $driver === 'mysql' ? $parsed[6] : null;
-        $engine = Engine::for($config->schemaPath, $driver, $config->planCacheSize);
-        if (!Registry::loaded($engine->manifest->schemaHash)) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "no loaded models were generated from schema {$engine->manifest->schemaHash} of {$config->schemaPath}: generate the models again");
-        }
+        [$driver, $pdoDsn, $user, $password, $pragmas, $sslCa] = self::parseDsn($dsn);
         if ($config->poolSize < 0) {
             throw new OrmException(Code::CONFIG, 'pool size must not be negative');
         }
@@ -52,24 +60,14 @@ final class Orm
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             switch ($driver) {
                 case 'mysql':
-                    if ($zoneName !== null) {
-                        try {
-                            $pdo->prepare('SET time_zone = ?')->execute([$zoneName]);
-                        } catch (\PDOException $e) {
-                            if ((int) ($e->errorInfo[1] ?? 0) === 1298) {
-                                throw new OrmException(Code::CONFIG, 'dsn timezone: ' . ($e->errorInfo[2] ?? $e->getMessage()) . '; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)', $e);
-                            }
-                            throw $e;
-                        }
-                    }
+                    $pdo->exec("SET time_zone = '+00:00'");
                     if ($config->statementTimeoutMs > 0) {
                         // MySQL bounds SELECT statements with max_execution_time.
                         $pdo->exec('SET SESSION max_execution_time = ' . $config->statementTimeoutMs);
                     }
                     break;
                 case 'postgres':
-                    // Bound times carry no offset, so the session always uses the connection zone.
-                    $pdo->exec('SET TIME ZONE ' . $pdo->quote(self::postgresZone($zoneName ?? $zone->getName())));
+                    $pdo->exec("SET TIME ZONE 'UTC'");
                     break;
                 default:
                     $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();
@@ -85,13 +83,16 @@ final class Orm
         } catch (\PDOException $e) {
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
-        return new Db($pdo, $driver, $config, $engine, $zone);
+        return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
     /**
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string, 6?: list<array{0: string, 1: string}>|?string}
-     *     driver, PDO DSN, user, password, time zone, the time zone parameter, and the SQLite
-     *     `_pragma=name(value)` parameters or the MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY
+     * `timezone` parameter는 UTC(`+00:00`, `UTC`)만 받는다. 다른 zone은 UTC 규칙과
+     * 맞지 않으므로 CONFIG로 실패한다.
+     *
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>, 5: ?string}
+     *     driver, PDO DSN, user, password, the SQLite `_pragma=name(value)` parameters, and the
+     *     MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY
      */
     public static function parseDsn(string $dsn): array
     {
@@ -115,11 +116,8 @@ final class Orm
                 throw new OrmException(Code::CONFIG, "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
             }
         }
-        $zoneName = isset($query['timezone']) ? (string) $query['timezone'] : null;
-        try {
-            $zone = new \DateTimeZone($zoneName ?? date_default_timezone_get());
-        } catch (\Exception $e) {
-            throw new OrmException(Code::CONFIG, "dsn timezone $zoneName: " . $e->getMessage());
+        if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
+            throw new OrmException(Code::CONFIG, 'dsn timezone ' . (is_string($query['timezone']) ? $query['timezone'] : '') . ': every connection reads and writes datetime values in UTC');
         }
         $user = isset($parts['user']) ? rawurldecode($parts['user']) : null;
         $password = isset($parts['pass']) ? rawurldecode($parts['pass']) : null;
@@ -133,7 +131,7 @@ final class Orm
                 $pdo = isset($query['socket'])
                     ? 'mysql:unix_socket=' . $query['socket']
                     : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
-                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', $zone, $zoneName, self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
+                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', [], self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
             case 'postgres':
                 if ($name === '') {
                     throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
@@ -146,7 +144,7 @@ final class Orm
                 if (isset($query['sslmode'])) {
                     $pdo .= ';sslmode=' . $query['sslmode'];
                 }
-                return [$driver, $pdo, $user, $password, $zone, $zoneName];
+                return [$driver, $pdo, $user, $password, [], null];
             default:
                 if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
@@ -167,13 +165,26 @@ final class Orm
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];
                 }
-                return [$driver, 'sqlite:' . $path, null, null, $zone, $zoneName, $pragmas];
+                // parse_url 은 path 를 decode 하지 않는다. 잘못된 escape, NUL, UTF-8 이 아닌
+                // 결과는 다른 file 을 열게 되므로 거부한다.
+                if (preg_match('/%(?![0-9A-Fa-f]{2})/', $path) === 1) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path has a % without two hexadecimal digits');
+                }
+                $path = rawurldecode($path);
+                if (str_contains($path, "\0")) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must not contain a NUL byte');
+                }
+                if (preg_match('//u', $path) !== 1) {
+                    throw new OrmException(Code::CONFIG, 'sqlite DSN path must be UTF-8 after percent-decoding');
+                }
+                return [$driver, 'sqlite:' . $path, null, null, $pragmas, null];
         }
     }
 
     /**
-     * Checks the MySQL TLS parameters: `ssl-mode=VERIFY_IDENTITY` with the absolute path of the CA
-     * file in `ssl-ca`, over TCP to a host name, or neither. Returns the CA path or null.
+     * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
+     * `ssl-mode=VERIFY_IDENTITY`로 host 이름에 TCP 연결하거나, 둘 다 없다. CA 경로나 null을
+     * 돌려준다.
      *
      * @param array<array-key, mixed> $query
      */
@@ -196,7 +207,7 @@ final class Orm
         if (isset($query['socket'])) {
             throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
         }
-        // The identity check compares a host name with the certificate.
+        // identity 검사는 host 이름을 인증서와 비교한다.
         if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
             throw new OrmException(Code::CONFIG, "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
         }
@@ -204,9 +215,9 @@ final class Orm
     }
 
     /**
-     * The PDO options of the `ssl-ca` path of ssl-mode=VERIFY_IDENTITY, or none: TLS that checks the
-     * server certificate against the CA and the host name. The password then travels only inside
-     * TLS, and the client sets no server public key, so it makes no RSA password exchange.
+     * ssl-mode=VERIFY_IDENTITY의 `ssl-ca` 경로로 만드는 PDO option이거나 빈 배열이다: server
+     * 인증서를 CA와 host 이름으로 검사하는 TLS다. password는 TLS 안에서만 오가고, client는
+     * server public key를 두지 않으므로 RSA password 교환을 하지 않는다.
      *
      * @return array<int, mixed>
      */
@@ -219,18 +230,6 @@ final class Orm
             throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $sslCa is not a readable file");
         }
         return [\Pdo\Mysql::ATTR_SSL_CA => $sslCa, \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true];
-    }
-
-    /**
-     * A fixed offset in the POSIX form PostgreSQL expects, where the sign after
-     * the name is inverted: +09:00 becomes <+09:00>-09:00.
-     */
-    public static function postgresZone(string $zone): string
-    {
-        if (preg_match('/^[+-]\d\d:\d\d$/', $zone) === 1) {
-            return '<' . $zone . '>' . ($zone[0] === '-' ? '+' : '-') . substr($zone, 1);
-        }
-        return $zone;
     }
 
     /** The retryable DEADLOCK error. */
@@ -318,21 +317,6 @@ final class Orm
     {
         return new Func('date', [], true);
     }
-
-    public static function distance(float $longitude, float $latitude): Func
-    {
-        return new Func('distance', [$longitude, $latitude], true);
-    }
-
-    public static function pointX(): Func
-    {
-        return new Func('point_x', [], true);
-    }
-
-    public static function pointY(): Func
-    {
-        return new Func('point_y', [], true);
-    }
 }
 
 /** Connection options. */
@@ -342,8 +326,6 @@ final class Config
     public readonly string $aesKey;
 
     public function __construct(
-        /** absolute path of schema.json the models were generated from */
-        public readonly string $schemaPath,
         string $aesKey = '',
         public readonly string $blindIndexKey = '',
         public readonly int $aesVersion = 1,
@@ -365,9 +347,6 @@ final class Config
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,
     ) {
-        if (!str_starts_with($schemaPath, '/')) {
-            throw new OrmException(Code::CONFIG, 'schemaPath must be absolute');
-        }
         if ($aesVersion < 1 || $planCacheSize < 1 || $statementCacheSize < 1) {
             throw new OrmException(Code::CONFIG, 'AES version and cache sizes must be positive');
         }
@@ -400,10 +379,13 @@ final class OrmException extends \RuntimeException
         parent::__construct($code_ . ': ' . $message, 0, $previous);
     }
 
-    /** The error of a callback that failed and whose rollback failed too. */
-    public static function rollback(\Throwable $callback, \Throwable $rollback): self
+    /**
+     * transaction이나 savepoint의 작업이 실패하고 그 rollback도 실패한 오류다.
+     * 원인을 previous로, rollback 오류를 rollback으로 갖는다.
+     */
+    public static function rollback(\Throwable $cause, \Throwable $rollback): self
     {
-        return new self(Code::ROLLBACK, 'callback failed (' . $callback->getMessage() . ') and rollback failed (' . $rollback->getMessage() . ')', $callback, $rollback);
+        return new self(Code::ROLLBACK, 'transaction failed (' . $cause->getMessage() . ') and rollback failed (' . $rollback->getMessage() . ')', $cause, $rollback);
     }
 
     /**
@@ -432,7 +414,8 @@ final class OrmException extends \RuntimeException
                 is_int($num) && ($num & 0xff) === 5 => Code::CANCELED,
                 in_array($num, [6, 262], true) => Code::DEADLOCK,
                 in_array($num, [2067, 1555], true) || ($num === 19 && str_starts_with($message, 'UNIQUE constraint failed')) => Code::DUPLICATE_KEY,
-                $num === 787 || ($num === 19 && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
+                // RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+                $num === 787 || (in_array($num, [19, 1811], true) && str_starts_with($message, 'FOREIGN KEY constraint failed')) => Code::FOREIGN_KEY,
                 $num === 275 || ($num === 19 && str_starts_with($message, 'CHECK constraint failed')) => Code::CONSTRAINT,
                 $num === 9 => Code::CANCELED,
                 is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,

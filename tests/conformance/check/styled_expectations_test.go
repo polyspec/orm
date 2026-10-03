@@ -5,9 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestWriteCycleExpectationsUseTaggedStyledValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, file := range []string{"vectors.json", "vectors.postgres.json", "vectors.sqlite.json"} {
 		t.Run(file, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join("..", file))

@@ -1,28 +1,8 @@
 //! Schema definitions for the Rust ORM.
 //!
-//! `schema` parses Mermaid diagrams and builds the validated manifest
-//! (schema.json); `ddl` renders the CREATE statements of a manifest and the
-//! migration between two manifests for one dialect; `sql` splits rendered SQL
-//! into statements. The runtime installs schemas with it, and `orm-build`
-//! uses it for build scripts and the `orm-gen` tool.
+//! `dbspec`는 dbspec document를 parse하고 canonical text로 emit하며, manifest,
+//! runtime model, dialect statement, plan과 Mermaid export/import를 만든다.
+//! `sql`은 SQL text를 statement로 나눈다.
 
-pub mod catalog;
-pub mod ddl;
-pub mod live;
-pub mod physical;
-pub mod physical_column;
-pub mod physical_check;
-pub mod physical_index;
-pub mod physical_key;
-pub mod physical_foreign_key;
-pub mod physical_record;
-pub mod physical_graph;
-mod physical_graph_records;
-mod physical_json;
-pub mod physical_envelope;
-pub mod physical_document;
-mod physical_projection;
-mod physical_html;
-pub mod schema;
+pub mod dbspec;
 pub mod sql;
-pub mod triggers;

@@ -1,22 +1,28 @@
 <?php
-// The client clock of the `now` bind slot, on SQLite, MySQL and PostgreSQL.
-// Each insert of clock_event fills created_ts from the clock, so its stored
-// fraction holds the microseconds of the wall clock. A clock with millisecond
-// resolution stores every value as `.mmm000`. ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name test databases; the test fails when either is
+// The clock of datetime(6) columns, on SQLite, MySQL and PostgreSQL. An
+// insert of clock_event omits created_ts, whose default is `now`: SQLite binds
+// the client clock of the `now` slot, MySQL and PostgreSQL apply the database
+// default. Either way the stored fraction holds the microseconds of the wall
+// clock; a clock with millisecond resolution stores every value as `.mmm000`.
+// The fixtures are contracts/fixtures/clock.dbs and clock_mark.dbs. Each case
+// runs in a case database of its own (case_database.php) created through
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either is
 // unset.
 // Usage: php clients/php/tests/clock_test.php [case ...]
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use ClockCase\Orm\ClockEvent;
 use ClockMarkCase\Orm\ClockMark;
 use Orm\Config;
 use Orm\Generator;
-use Orm\Manifest;
 use Orm\Orm;
+use Orm\RuntimeModel;
 
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
 
 $work = sys_get_temp_dir() . '/orm-php-clock-' . getmypid();
@@ -25,18 +31,16 @@ register_shutdown_function(static function () use ($work): void {
     exec('rm -rf ' . escapeshellarg($work));
 });
 
-$schemaPath = dirname(__DIR__, 3) . '/contracts/fixtures/clock_schema.json';
-$schemaJson = (string) file_get_contents($schemaPath);
-Generator::generate(Manifest::load($schemaJson), "$work/models", 'ClockCase\\Orm');
+$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => $documents[0]])), "$work/models", 'ClockCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'ClockCase\\Orm\\')) {
         require "$work/models/" . substr($class, strlen('ClockCase\\Orm\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
-$markSchemaPath = dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark_schema.json';
-$markSchemaJson = (string) file_get_contents($markSchemaPath);
-Generator::generate(Manifest::load($markSchemaJson), "$work/mark-models", 'ClockMarkCase\\Orm');
+$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => $markDocuments[0]])), "$work/mark-models", 'ClockMarkCase\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'ClockMarkCase\\Orm\\')) {
         require "$work/mark-models/" . substr($class, strlen('ClockMarkCase\\Orm\\')) . '.php';
@@ -55,13 +59,6 @@ function check(bool $ok, string $message): void
     }
 }
 
-function dropTable(string $dsn): void
-{
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $pdo->exec('DROP TABLE IF EXISTS clock_event');
-    $pdo->exec('DROP TABLE IF EXISTS clock_mark');
-}
 
 /**
  * Sixteen inserts in separate statements store created_ts with six fraction
@@ -70,10 +67,10 @@ function dropTable(string $dsn): void
  */
 function clockMicroseconds(string $dsn): void
 {
-    global $schemaPath, $schemaJson;
-    $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config(schemaPath: $schemaPath));
+    global $documents;
+    $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
     try {
-        $db->utils()->schema()->install($schemaJson);
+        $db->utils()->schema()->install(\ClockCase\Orm\schema());
         $before = microtime(true);
         for ($i = 0; $i < 16; $i++) {
             (new ClockEvent)($db)->setLabel("event-$i")->create();
@@ -97,9 +94,9 @@ function clockMicroseconds(string $dsn): void
 
 function markDb(string $dsn): \Orm\Db
 {
-    global $markSchemaPath, $markSchemaJson;
-    $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config(schemaPath: $markSchemaPath));
-    $db->utils()->schema()->install($markSchemaJson);
+    global $markDocuments;
+    $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
+    $db->utils()->schema()->install(\ClockMarkCase\Orm\schema());
     return $db;
 }
 
@@ -161,47 +158,25 @@ $cases = [
     'clock_now_condition' => clockNowCondition(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => "sqlite://$work/clock.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    $caseBefore = $failures;
-    foreach ($targets as $driver => $dsn) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $start = microtime(true);
-        echo "RUN  $current\n";
-        pcntl_async_signals(true);
-        pcntl_signal(SIGALRM, static function (): never {
-            throw new RuntimeException('timeout after ' . CASE_DEADLINE_SECONDS . ' s');
+        // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.
+        $passed = testcase_run("clock/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
+            if ($GLOBALS['failures'] > $before) {
+                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+            }
         });
-        pcntl_alarm(CASE_DEADLINE_SECONDS);
-        try {
-            dropTable($dsn);
-            $cases[$case]($dsn);
-        } catch (Throwable $e) {
+        if (!$passed && $failures === $before) {
             $failures++;
-            fwrite(STDERR, "FAIL $current: $e\n");
-        } finally {
-            pcntl_alarm(0);
-            dropTable($dsn);
         }
-        printf("%s %s %.3fs\n", $failures === $before ? 'ok  ' : 'FAIL', $current, microtime(true) - $start);
-    }
-    if ($failures === $caseBefore) {
-        echo "CASE $case PASS\n";
     }
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php clock test: $failures failures\n");
     exit(1);
 }
-echo 'php clock test: ' . count($selected) . ' cases on ' . count($targets) . " databases passed\n";

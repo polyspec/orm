@@ -4,9 +4,188 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
+use Orm\Config;
+use Orm\Db;
+use Orm\Orm;
 use Orm\Registry;
+use Orm\Schema;
 
-Registry::generated('16198b563e2e3cae');
+/** The manifestHash of the document set the models were generated from. */
+const MANIFEST_HASH = 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa';
+
+/** The manifest text of the document set the models were generated from. */
+const MANIFEST_TEXT = 'dbspec 1 bench
+
+table author {
+  seq i64 identity
+  name varchar(191)
+  description text null
+  created_ts datetime(6) default now
+  updated_ts datetime(6) default now
+  is_close bool default false
+  is_display bool default false
+  display_start_dt datetime(6) null
+  display_end_dt datetime(6) null
+  is_allday bool default false
+  target_club_reader_count i32 default 0
+  success_count i32 default 0
+  reader_count i32 default 0
+  read_count i32 default 0
+  photo_url varchar(191) null
+  user_seq i64
+  service_seq i64
+  service_region_seq i64
+  service_member_seq i64
+  start_dt datetime(6)
+  end_dt datetime(6)
+  uuid varchar(36) null
+  is_single_work bool default false
+  like_count i32 default 0
+  aes_key_version i32 default 1
+  aes_hex_email varchar(255) null
+  email_blind_index varchar(64) null
+  aes_hex_phone varchar(255) null
+  phone_blind_index varchar(64) null
+  price decimal(13,3) null
+  ip bytes null
+  gz_extend bytes null
+  json_setting text null
+  jsons_tags text null
+  base64_extra text null
+  serialize_data text null
+  primary key (seq)
+  unique uq_author_uuid (uuid)
+  index ik (service_region_seq, is_close, is_display, is_allday)
+  index ix_author_service_member (service_member_seq)
+  index ix_email_blind_index (email_blind_index)
+  index ix_phone_blind_index (phone_blind_index)
+  index ix_service (service_seq, is_close)
+  index ix_user (user_seq, is_close)
+  foreign key fk_author_service (service_seq) references service (seq) on delete restrict on update restrict
+  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict
+  foreign key fk_author_service_region (service_region_seq) references service_region (seq) on delete restrict on update restrict
+  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict
+  check ck_author_counts (target_club_reader_count >= 0 and success_count >= 0 and reader_count >= 0 and read_count >= 0 and like_count >= 0)
+  settings {
+    updated updated_ts
+    select explicit description email_blind_index phone_blind_index ip gz_extend json_setting jsons_tags base64_extra serialize_data aes_key_version
+    codec aes_hex_email aes hex
+    codec aes_hex_phone aes hex
+    codec base64_extra base64
+    codec gz_extend gz
+    codec ip ip
+    codec json_setting ordered_json
+    codec jsons_tags ordered_json
+    codec serialize_data serialize
+    aes_version aes_key_version
+    blind_index aes_hex_email email_blind_index
+    blind_index aes_hex_phone phone_blind_index
+  }
+}
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table service {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table service_region {
+  seq i64 identity
+  service_seq i64
+  name varchar(191)
+  primary key (seq)
+  index ix_service_region_service (service_seq)
+  foreign key fk_service_region_service (service_seq) references service (seq) on delete restrict on update restrict
+}
+
+table service_member {
+  seq i64 identity
+  service_seq i64
+  user_seq i64
+  primary key (seq)
+  index ix_service_member_service (service_seq)
+  index ix_service_member_user (user_seq)
+  foreign key fk_service_member_service (service_seq) references service (seq) on delete restrict on update restrict
+  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict
+}
+
+table composite_account {
+  tenant_id i64
+  account_id i64
+  name varchar(191)
+  primary key (tenant_id, account_id)
+}
+
+table composite_membership {
+  tenant_id i64
+  account_id i64
+  role varchar(191)
+  primary key (tenant_id, account_id)
+  foreign key fk_composite_membership_account (tenant_id, account_id) references composite_account (tenant_id, account_id) on delete cascade on update restrict
+  settings {
+    navigation fk_composite_membership_account account memberships
+  }
+}
+
+table soft_record {
+  seq i64 identity
+  name varchar(191)
+  deleted_at datetime(6) null
+  primary key (seq)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
+table account {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table project {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table account_project {
+  account_seq i64
+  project_seq i64
+  primary key (account_seq, project_seq)
+  index ix_account_project_project (project_seq)
+  foreign key fk_account_project_account (account_seq) references account (seq) on delete restrict on update restrict
+  foreign key fk_account_project_project (project_seq) references project (seq) on delete restrict on update restrict
+}
+
+table task {
+  seq i64 identity
+  title varchar(191)
+  state varchar(8)
+  primary key (seq)
+  check ck_task_state (state in (\'open\', \'done\'))
+}
+';
+
+/** The generated schema value: install takes it to create the tables and register the set. */
+function schema(): Schema
+{
+    return new Schema(MANIFEST_TEXT, MANIFEST_HASH);
+}
+
+/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */
+function connect(string $dsn, Config $config): Db
+{
+    return Orm::connectSchema($dsn, schema(), $config);
+}
+
+Registry::generated(MANIFEST_HASH, MANIFEST_TEXT);
 Registry::register(Author::class);
 Registry::register(User::class);
 Registry::register(Service::class);

@@ -1,0 +1,7 @@
+dbspec 1 rollback
+
+table rollback_probe {
+  seq i64 identity
+  label varchar(32)
+  primary key (seq)
+}

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Codec;
 use Orm\Model;
@@ -18,11 +19,14 @@ if (!class_exists(StyledValue::class)) {
 $tested = 0;
 foreach ($fixture['cases'] as $case) {
     $id = $case['id'];
-    $styles = [$case['style']];
+    testcase_begin("styled_value/$id", TESTCASE_COMPUTE);
+    // fixture의 Mermaid style 이름 json과 jsons는 둘 다 dbspec codec stage ordered_json이다.
+    $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
     if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {
         if (!in_array($id, ['unselected', 'nonnull_sql_null'], true)) {
             throw new RuntimeException("$id: fixture case has no codec operation");
         }
+        testcase_end();
         continue;
     }
     $tested++;
@@ -50,15 +54,18 @@ foreach ($fixture['cases'] as $case) {
             throw new RuntimeException("$id: encoded cell differs from fixture");
         }
     }
+    testcase_end();
 }
 
+testcase_begin('styled_value/model-states', TESTCASE_COMPUTE);
 $probe = new class extends Model {
     public static function meta(): array
     {
         return [
-            'entity' => 'styled_probe', 'table' => 'styled_probe', 'pk' => [], 'auto' => '',
-            'updated' => '', 'aes_version' => '', 'fulltext' => [], 'indexes' => [],
-            'columns' => ['payload' => ['type' => 'jsontext', 'nullable' => false, 'styles' => ['json']]],
+            'entity' => 'styled_probe', 'table' => 'styled_probe', 'pk' => [], 'identity' => '',
+            'updated' => '', 'soft_delete' => '', 'aes_version' => '', 'audit' => '', 'unique' => [], 'indexes' => [],
+            'columns' => ['payload' => ['name' => 'payload', 'type' => 'text', 'nullable' => false, 'default' => false, 'select' => true,
+                'codec' => ['ordered_json'], 'blind_index' => '', 'pk' => false, 'foreign_key' => false]],
         ];
     }
 
@@ -82,4 +89,4 @@ if (json_decode(Model::jsonText($probe->getPayload()), true, 512, JSON_THROW_ON_
     throw new RuntimeException('non-null column rejected JSON literal null');
 }
 
-echo "styled value fixture: $tested codec cases and 3 model states passed\n";
+testcase_end();

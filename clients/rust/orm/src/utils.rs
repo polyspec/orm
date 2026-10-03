@@ -1,17 +1,18 @@
 //! Operations outside the query syntax: `db.utils()`.
 
 use std::collections::BTreeMap;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::db::{Db, DbStats, Executor};
+use crate::driver::TxInner;
 use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
-use crate::schema::Manifest;
+use crate::schema::Schema;
 use crate::tx::{active_for, transaction_conflict, TxShared};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
+use orm_schema::dbspec::{self, Document};
 
 /// The utilities of a connection.
 pub struct Utils<'a> {
@@ -166,16 +167,8 @@ impl<'a> Utils<'a> {
             "mysql" => {
                 self.exec(&ex, format!("SET @`orm.{key}` = ?"), &params[1..]).await?;
             }
-            _ => {
-                self.exec(&ex, r#"CREATE TABLE IF NOT EXISTS "orm__context" ("key" TEXT PRIMARY KEY, "value" TEXT NOT NULL)"#.into(), &[]).await?;
-                self.exec(
-                    &ex,
-                    r#"INSERT INTO "orm__context" ("key", "value") VALUES (?, ?) ON CONFLICT ("key") DO UPDATE SET "value" = excluded."value""#.into(),
-                    &params,
-                )
-                .await?;
-                t.context_row.store(true, Ordering::Release);
-            }
+            // SQLite에는 transaction-local 값을 담는 database 기능이 없어 transaction이 값을 갖는다.
+            _ => {}
         }
         t.locals.lock().unwrap().insert(key.to_owned(), value.to_owned());
         Ok(())
@@ -204,64 +197,50 @@ impl<'a> Utils<'a> {
     }
 }
 
-/// The catalog reads of add_columns on the executor of the call.
-struct ExecutorCatalog<'a> {
-    u: &'a Utils<'a>,
-    ex: &'a Executor,
-}
-
-/// A catalog value of a decoded row; bytes are UTF-8 text.
-fn catalog_value(v: Val) -> Result<orm_schema::catalog::CatalogValue> {
-    use orm_schema::catalog::CatalogValue;
-    match v {
-        Val::Null => Ok(CatalogValue::Null),
-        Val::I64(n) => Ok(CatalogValue::Int(n)),
-        Val::Str(s) => Ok(CatalogValue::Text(s)),
-        Val::Bool(b) => Ok(CatalogValue::Bool(b)),
-        Val::Bytes(b) => String::from_utf8(b)
-            .map(CatalogValue::Text)
-            .map_err(|e| Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("catalog text is not UTF-8: {e}") }),
-        other => Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("unsupported catalog value {other:?}") }),
-    }
-}
-
-impl orm_schema::catalog::Catalog for ExecutorCatalog<'_> {
-    type Error = Error;
-
-    async fn query(&mut self, sql: &str) -> Result<orm_schema::catalog::Rows> {
-        let rows = self.u.query(self.ex, sql.to_owned(), &[]).await?;
-        rows.into_iter().map(|row| row.into_iter().map(catalog_value).collect()).collect()
-    }
-
-    async fn exec(&mut self, sql: &str) -> Result<()> {
-        self.u.exec(self.ex, sql.to_owned(), &[]).await.map(|_| ())
-    }
-}
-
-/// A manifest whose hash matches its content; CONFIG otherwise.
-fn verified(manifest_json: &[u8]) -> Result<Manifest> {
-    Manifest::load(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))
-}
-
 /// Schema installation and inspection.
 pub struct SchemaUtils<'a> {
     u: &'a Utils<'a>,
 }
 
 impl SchemaUtils<'_> {
-    /// Installs a schema manifest on the connection's database. Existing
-    /// tables and indexes are kept. PostgreSQL and SQLite apply it in the
-    /// active transaction or in a new one; MySQL commits schema statements
-    /// implicitly, so it applies them outside a transaction and returns CONFIG
-    /// inside one.
-    pub async fn install(&self, manifest_json: &[u8]) -> Result<()> {
-        verified(manifest_json)?;
-        let text = std::str::from_utf8(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let manifest = orm_schema::schema::Manifest::load(text).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let ddl = orm_schema::ddl::render_create_ddl(&manifest, self.u.db.driver()).map_err(|e| Error::Config(format!("render schema: {e}")))?;
-        let statements = orm_schema::sql::split_sql(&ddl);
-        if statements.is_empty() {
-            return Err(Error::Config("schema manifest produced no statements".into()));
+    /// generated schema의 dbspec document set을 연결의 dialect로 render한 statement를
+    /// 적용하고 그 set을 이 연결에 등록한다 (docs/dialects.md, "Rendered statements").
+    /// manifest text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 CONFIG다.
+    /// document set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 CONFIG를
+    /// 돌려준다. PostgreSQL과 SQLite는 활성 transaction이나 새 transaction에서 적용한다.
+    /// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서 적용하고,
+    /// transaction 안에서는 CONFIG를 돌려준다.
+    pub async fn install(&self, schema: &Schema) -> Result<()> {
+        self.apply(schema).await?;
+        self.u.db.register(schema)
+    }
+
+    /// schema의 table을 만든다 (`install` 참고).
+    async fn apply(&self, schema: &Schema) -> Result<()> {
+        schema.registered()?;
+        let documents = schema.documents()?;
+        let refs: Vec<&Document> = documents.iter().collect();
+        let dialect = match self.u.db.driver() {
+            "mysql" => dbspec::Dialect::MySql,
+            "postgres" => dbspec::Dialect::Postgres,
+            _ => dbspec::Dialect::Sqlite,
+        };
+        let statements = dbspec::render(&refs, dialect).map_err(|errors| Error::Engine {
+            code: codes::SCHEMA_INVALID.into(),
+            msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
+        })?;
+        let tables: Vec<String> = schema.manifest()?.model.entities.iter().map(|e| e.table.clone()).collect();
+        let existing = self.existing_tables(&tables).await?;
+        if existing.len() == tables.len() {
+            return Ok(());
+        }
+        if !existing.is_empty() {
+            return Err(Error::Config(format!(
+                "schema install creates every table of the document set or none; {} of {} tables exist: {}",
+                existing.len(),
+                tables.len(),
+                existing.join(", ")
+            )));
         }
         if let crate::db::Pool::MySql(pool) = self.u.db.pool() {
             // MySQL commits schema statements implicitly, so they run outside a transaction.
@@ -285,62 +264,78 @@ impl SchemaUtils<'_> {
             .await
     }
 
-    /// Adds every missing column of the existing tables of a schema manifest
-    /// that is nullable or has a default, and replaces the audit triggers of
-    /// each changed table so that they record the new columns. A table that
-    /// does not exist and the tables of other manifests are left unchanged.
-    /// Any other difference between the existing tables and the manifest
-    /// returns SCHEMA_DIFFERS before any statement runs. The manifest hash is
-    /// verified against its content first. PostgreSQL and SQLite apply the
-    /// statements in the active transaction or in a new one; MySQL commits
-    /// schema statements implicitly, so it reads the tables in a transaction,
-    /// applies the statements outside it and returns CONFIG inside one. It
-    /// returns the added columns as `table.column`, in manifest order.
-    pub async fn add_columns(&self, manifest_json: &[u8]) -> Result<Vec<String>> {
-        verified(manifest_json)?;
-        let text = std::str::from_utf8(manifest_json).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let manifest = orm_schema::schema::Manifest::load(text).map_err(|e| Error::Config(format!("invalid schema manifest: {e}")))?;
-        let driver = self.u.db.driver();
-        let plan = async |ex: &Executor| {
-            let mut catalog = ExecutorCatalog { u: self.u, ex };
-            orm_schema::catalog::plan_add_columns(&mut catalog, driver, &manifest).await.map_err(|e| match e {
-                orm_schema::catalog::AddColumnsError::Query(e) => e,
-                orm_schema::catalog::AddColumnsError::Differs(msg) => Error::Engine { code: codes::SCHEMA_DIFFERS.into(), msg },
-                orm_schema::catalog::AddColumnsError::Unsupported(msg) => Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg },
-                orm_schema::catalog::AddColumnsError::Internal(msg) => Error::internal(msg),
-            })
+    /// 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md,
+    /// "Adding tables and columns"). 연결의 database를 introspect해 database에 있는 set의 table을
+    /// set과 비교하고, database에 없는 set의 table을 index, foreign key, check, trigger와 함께
+    /// 만들며, 있는 table에 빠진 column 가운데 null이거나 default가 있는 column을 더한다.
+    /// `dbspec::add_tables_and_columns_steps`의 plan step을 실행하므로 바뀐 table의 audit
+    /// trigger도 새 column을 기록하도록 바뀐다. 다른 set의 table은 그대로 두며 set을 등록하지
+    /// 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가 선언한
+    /// hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 활성 transaction이나 새 transaction에서
+    /// 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채
+    /// table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지
+    /// 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한
+    /// column은 "table.column"으로 table 이름, column 순서로 돌려준다.
+    pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>> {
+        schema.registered()?;
+        let documents = schema.documents()?;
+        let refs: Vec<&Document> = documents.iter().collect();
+        let invalid = |errors: Vec<dbspec::Diagnostic>| Error::Engine {
+            code: codes::SCHEMA_INVALID.into(),
+            msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
         };
-        if let crate::db::Pool::MySql(pool) = self.u.db.pool() {
-            // MySQL commits schema statements implicitly, so they run outside a transaction.
-            if active_for(self.u.db).is_some() {
-                return Err(Error::Config("MySQL commits schema statements implicitly; add columns outside a transaction".into()));
+        let manifest = dbspec::manifest(&refs).map_err(invalid)?;
+        let target = dbspec::parse(&manifest.schema_text, &BTreeMap::new()).map_err(invalid)?;
+        match self.u.db.pool() {
+            crate::db::Pool::Postgres(_) => {
+                self.u
+                    .run(async |ex: &Executor| {
+                        let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
+                        let mut guard = t.enter()?;
+                        let Some(TxInner::Postgres(conn)) = guard.as_mut() else {
+                            return Err(Error::internal("a PostgreSQL transaction holds another connection"));
+                        };
+                        add_tables_and_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target).await
+                    })
+                    .await
             }
-            let planned = self.u.run(plan).await?;
-            let mut conn = pool.acquire().await?;
-            for statement in &planned.statements {
-                sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.clone()))).execute(&mut *conn).await?;
+            _ if active_for(self.u.db).is_some() => Err(Error::Config(format!(
+                "{} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table",
+                self.u.db.driver()
+            ))),
+            crate::db::Pool::MySql(pool) => {
+                let mut conn = pool.acquire().await?;
+                add_tables_and_columns_on(&mut *conn, dbspec::Dialect::MySql, &target).await
             }
-            return Ok(planned.added);
-        }
-        self.u
-            .run(async |ex: &Executor| {
-                let planned = plan(ex).await?;
-                let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
-                for statement in &planned.statements {
-                    t.raw(statement).await?;
+            crate::db::Pool::Sqlite(pool) => {
+                let mut conn = pool.acquire().await?;
+                let result = without_foreign_keys(&mut conn, &target).await;
+                if result.is_err() {
+                    // foreign key가 꺼졌을 수 있는 연결은 pool에 돌려주지 않는다.
+                    conn.close_on_drop();
                 }
-                Ok(planned.added)
-            })
-            .await
+                result
+            }
+        }
     }
 
-    /// Registers an installed schema manifest on the connection without
-    /// running any statement: the manifest hash is verified against its
-    /// content, and a manifest that does not match returns CONFIG. Generated
-    /// Rust models plan with the manifest they embed, so the connection keeps
-    /// no engine for it.
-    pub async fn register(&self, manifest_json: &[u8]) -> Result<()> {
-        verified(manifest_json).map(|_| ())
+    /// `tables` 중 연결의 database(MySQL), current schema(PostgreSQL), file(SQLite)에 있는 table.
+    async fn existing_tables(&self, tables: &[String]) -> Result<Vec<String>> {
+        let marks: Vec<String> = (1..=tables.len()).map(|i| self.u.ph(i)).collect();
+        let sql = match self.u.db.driver() {
+            "postgres" => format!(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ({}) ORDER BY table_name",
+                marks.join(", ")
+            ),
+            "mysql" => format!(
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ({}) ORDER BY TABLE_NAME",
+                marks.join(", ")
+            ),
+            _ => format!("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({}) ORDER BY name", marks.join(", ")),
+        };
+        let params: Vec<Param> = tables.iter().map(|t| Param::Str(t.clone())).collect();
+        let rows = self.u.query(&self.u.reader(), sql, &params).await?;
+        rows.into_iter().map(|mut row| row.swap_remove(0).take_string()).collect()
     }
 
     /// Whether a schema exists.
@@ -535,16 +530,12 @@ impl AesUtils<'_> {
     fn spec<M: Model>(&self, _m: &M) -> Result<AesSpec> {
         let name = M::entity().name;
         let ent = M::entity().entity_schema()?;
-        let columns: Vec<(String, Vec<String>)> = ent
-            .columns
-            .iter()
-            .filter(|c| c.is_aes())
-            .map(|c| (c.name.clone(), c.styles.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect()))
-            .collect();
-        if ent.aes_version.is_empty() || columns.is_empty() {
+        let columns: Vec<(String, Vec<String>)> =
+            ent.fields.iter().filter(|c| c.aes()).map(|c| (c.name.clone(), c.codec.iter().filter(|s| *s == "aes" || *s == "hex").cloned().collect())).collect();
+        let Some(version) = ent.aes_version.clone().filter(|_| !columns.is_empty()) else {
             return Err(Error::Config(format!("entity {name} has no AES columns with a key version")));
-        }
-        Ok(AesSpec { table: ent.table.clone(), keys: ent.pk.clone(), version: ent.aes_version.clone(), columns })
+        };
+        Ok(AesSpec { table: ent.table.clone(), keys: ent.primary_key.clone(), version, columns })
     }
 
     /// Reads the key version of every row of the model table.
@@ -622,5 +613,68 @@ impl AesUtils<'_> {
                 }
             })
             .await
+    }
+}
+
+/// 연결의 database를 introspect하고 `dbspec::add_tables_and_columns_steps`의 step을 실행한다.
+async fn add_tables_and_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document) -> Result<Vec<String>>
+where
+    C: crate::dbspec::CatalogQuerier + Send,
+    for<'c> &'c mut C: sqlx::Executor<'c>,
+{
+    let live = crate::dbspec::introspect(conn, dialect, "schema").await.map_err(|e| match e {
+        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
+        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
+    })?;
+    let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
+    if !planned.differences.is_empty() {
+        return Err(Error::Engine {
+            code: codes::SCHEMA_DIFFERS.into(),
+            msg: format!(
+                "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: {}",
+                planned.differences.join("; ")
+            ),
+        });
+    }
+    for step in &planned.steps {
+        sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(step.statement.clone()))).execute(&mut *conn).await?;
+    }
+    Ok(planned.added)
+}
+
+/// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
+/// key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md,
+/// "Apply"의 SQLite 다시 만들기).
+async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Document) -> Result<Vec<String>> {
+    sqlx::raw_sql("PRAGMA foreign_keys = OFF").execute(&mut *conn).await?;
+    let result = async {
+        sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut *conn).await?;
+        let applied = async {
+            let added = add_tables_and_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target).await?;
+            let broken: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_foreign_key_check").fetch_one(&mut *conn).await?;
+            if broken != 0 {
+                return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
+            }
+            Ok(added)
+        }
+        .await;
+        match applied {
+            Ok(added) => {
+                sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
+                Ok(added)
+            }
+            Err(error) => match sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await {
+                Ok(_) => Err(error),
+                Err(rollback) => Err(Error::Rollback { callback: Box::new(error), rollback: Box::new(rollback.into()) }),
+            },
+        }
+    }
+    .await;
+    let restored = sqlx::raw_sql("PRAGMA foreign_keys = ON").execute(&mut *conn).await;
+    match (result, restored) {
+        (result, Ok(_)) => result,
+        (Ok(_), Err(e)) => Err(e.into()),
+        // foreign key를 다시 켜지 못한 오류도 message에 남긴다.
+        (Err(error), Err(restore)) => Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}") }),
     }
 }
