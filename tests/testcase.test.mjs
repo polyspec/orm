@@ -23,7 +23,8 @@ function inOrder(output, patterns) {
   }
 }
 
-async function runChild(source, args = []) {
+// timeout은 멈춘 fixture가 이 test를 붙잡지 않도록 하위 process를 끝내는 시간(ms)이다.
+async function runChild(source, args = [], timeout = 30_000) {
   const dir = await mkdtemp(join(tmpdir(), 'orm-testcase-'));
   try {
     const file = join(dir, 'fixture.mjs');
@@ -32,9 +33,10 @@ async function runChild(source, args = []) {
     const env = { ...process.env };
     delete env.NODE_TEST_CONTEXT;
     try {
-      const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env });
+      const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env, timeout, killSignal: 'SIGKILL' });
       return { code: 0, stdout };
     } catch (error) {
+      if (error.killed) throw new Error(`fixture did not exit within ${duration(timeout)}\n${error.stdout}`);
       return { code: error.code, stdout: error.stdout };
     }
   } finally { await rm(dir, { recursive: true, force: true }); }
@@ -57,13 +59,22 @@ import { runCase } from ${JSON.stringify(harness)};
 await runCase('fixture/pass', 60000, ({ step }) => step('first step'));
 await runCase('fixture/fail', 60000, () => { throw new Error('fixture failure reason'); });
 await runCase('fixture/signal', 100, ({ signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason))));
-await runCase('fixture/stuck', 100, () => new Promise(() => {}));
+console.log('after signal');
 `);
   assert.equal(code, 0, stdout);
   inOrder(stdout, ['RUN fixture/pass deadline=1m0s', `STEP fixture/pass ${elapsed}: first step`, `PASS fixture/pass ${elapsed}`]);
   inOrder(stdout, ['RUN fixture/fail deadline=1m0s', `FAIL fixture/fail ${elapsed}: fixture failure reason`]);
-  inOrder(stdout, ['RUN fixture/signal deadline=100ms', `FAIL fixture/signal ${elapsed}: deadline 100ms exceeded`]);
-  inOrder(stdout, ['RUN fixture/stuck deadline=100ms', `FAIL fixture/stuck ${elapsed}: deadline 100ms exceeded`]);
+  inOrder(stdout, ['RUN fixture/signal deadline=100ms', `FAIL fixture/signal ${elapsed}: deadline 100ms exceeded`, 'after signal']);
+  // signal을 따르지 않고 timer, socket 같은 handle을 쥔 채 멈춘 case는 GRACE 뒤 process를 끝낸다.
+  // 끝내지 않으면 그 handle이 process를 살려 둔다.
+  const stuck = await runChild(`
+import { runCase } from ${JSON.stringify(harness)};
+await runCase('fixture/stuck', 100, () => new Promise(() => { setInterval(() => {}, 1000); }));
+console.log('after stuck');
+`);
+  assert.equal(stuck.code, 1, stuck.stdout);
+  inOrder(stuck.stdout, ['RUN fixture/stuck deadline=100ms', `FAIL fixture/stuck ${elapsed}: deadline 100ms exceeded and the case did not stop`]);
+  assert.doesNotMatch(stuck.stdout, /after stuck/);
 });
 
 caseTest('testcase/runGroup', PROCESS, async () => {

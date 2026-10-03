@@ -13,8 +13,10 @@ declare(strict_types=1);
  * 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는
  * 제한이 아니기 때문이다(AGENTS.md testing rule). pcntl이 있으면 기한에 SIGALRM이 case를
  * TestCaseDeadline으로 끊고, 그 뒤 TESTCASE_GRACE 안에 끝나지 않으면 FAIL 줄을 출력하고
- * process를 끝낸다. SIGALRM은 초 단위이므로, 그리고 pcntl이 없는 PHP(공식 image)에서는
- * 끝난 case의 경과 시간이 기한을 넘었으면 FAIL로 보고한다.
+ * process를 끝낸다. pcntl이 없는 PHP(공식 image)에서는 case마다 watchdog process가 기한에
+ * TESTCASE_GRACE를 더한 시간까지 끝나지 않은 case의 FAIL 줄을 출력하고 process를 끝낸다.
+ * SIGALRM은 초 단위이므로, 그리고 pcntl이 없으면 case를 기한에 끊을 수 없으므로 끝난
+ * case의 경과 시간이 기한을 넘었으면 FAIL로 보고한다.
  */
 
 // 기한의 등급(초)이다. case는 자기가 하는 일에 맞는 등급을 쓰고, 등급보다 오래 걸리는 일은
@@ -66,6 +68,65 @@ function testcase_emit(string $line): void
 }
 
 /**
+ * pcntl이 없을 때 case 하나를 지키는 watchdog process를 시작한다. watchdog은 stdin이 닫히기를
+ * $deadline + TESTCASE_GRACE초까지 기다리고, 그때까지 닫히지 않으면 FAIL 줄을 출력하고 이
+ * process를 SIGTERM으로 끝낸다. testcase_watchdog_stop이 stdin을 닫아 watchdog을 끝내고, 이
+ * process가 먼저 끝나도 stdin이 닫혀 watchdog이 끝난다. pcntl이 있으면 null이다.
+ *
+ * @return array{resource, resource}|null watchdog process와 그 stdin
+ */
+function testcase_watchdog(string $name, float $deadline): ?array
+{
+    if (function_exists('pcntl_alarm') && function_exists('pcntl_signal')) {
+        return null;
+    }
+    $code = 'require $argv[1]; testcase_watchdog_wait($argv[2], (float) $argv[3], (int) $argv[4]);';
+    $process = proc_open(
+        [PHP_BINARY, '-r', $code, __FILE__, $name, (string) $deadline, (string) getmypid()],
+        [0 => ['pipe', 'r'], 1 => STDOUT, 2 => STDERR],
+        $pipes,
+    );
+    if ($process === false) {
+        throw new RuntimeException("testcase $name: the watchdog process did not start");
+    }
+    return [$process, $pipes[0]];
+}
+
+/** watchdog의 stdin을 닫고 watchdog이 끝나기를 기다린다. */
+function testcase_watchdog_stop(?array $watchdog): void
+{
+    if ($watchdog === null) {
+        return;
+    }
+    fclose($watchdog[1]);
+    proc_close($watchdog[0]);
+}
+
+/** watchdog process의 본문이다. testcase_watchdog을 본다. */
+function testcase_watchdog_wait(string $name, float $deadline, int $parent): void
+{
+    $started = hrtime(true);
+    $limit = $deadline + TESTCASE_GRACE;
+    while (($left = $limit - (hrtime(true) - $started) / 1e9) > 0) {
+        $read = [STDIN];
+        $write = $except = null;
+        $ready = @stream_select($read, $write, $except, (int) $left, (int) (($left - floor($left)) * 1e6));
+        // stdin은 닫힐 때만 읽을 수 있게 된다(case가 끝났거나 process가 끝났다).
+        if ($ready === false || ($ready > 0 && (string) fread(STDIN, 1) === '')) {
+            return;
+        }
+    }
+    testcase_emit("FAIL $name elapsed=" . testcase_duration((hrtime(true) - $started) / 1e9) . ': deadline '
+        . testcase_duration($deadline) . ' exceeded and the case did not stop');
+    // posix가 없으면 sh의 내장 kill을 쓴다. kill binary가 없는 image도 있다.
+    if (function_exists('posix_kill')) {
+        posix_kill($parent, 15);
+        return;
+    }
+    proc_close(proc_open(['sh', '-c', 'kill -TERM "$0"', (string) $parent], [], $pipes));
+}
+
+/**
  * case 하나를 $deadline(초) 아래에서 실행하고 시작, 단계, 결과, 경과 시간을 출력한다.
  * $body는 단계 줄을 출력하는 callable(string): void를 받는다. 통과하면 true, 실패하면
  * false를 돌려준다. process의 종료 코드는 호출자가 정한다.
@@ -99,6 +160,7 @@ function testcase_run(string $name, float $deadline, callable $body): bool
         }, false);
         pcntl_alarm(max(1, (int) ceil($deadline)));
     }
+    $watchdog = testcase_watchdog($name, $deadline);
     try {
         $body($step);
         // SIGALRM은 초 단위이므로 끝난 case의 경과 시간도 기한과 비교한다.
@@ -121,13 +183,14 @@ function testcase_run(string $name, float $deadline, callable $body): bool
         testcase_emit("FAIL $name elapsed={$elapsed()}: $reason");
         return false;
     } finally {
+        testcase_watchdog_stop($watchdog);
         if ($alarm) {
             pcntl_signal(SIGALRM, SIG_DFL);
         }
     }
 }
 
-/** 열린 구역 case: [name, deadline, started hrtime] 또는 null. */
+/** 열린 구역 case: [name, deadline, started hrtime, watchdog] 또는 null. */
 $GLOBALS['testcase_section'] = null;
 
 /**
@@ -183,6 +246,7 @@ function testcase_begin(string $name, float $deadline): void
         }, false);
         pcntl_alarm(max(1, (int) ceil($deadline)));
     }
+    $GLOBALS['testcase_section'][3] = testcase_watchdog($name, $deadline);
 }
 
 /** 열린 구역 case의 단계 줄을 경과 시간과 함께 출력한다. */
@@ -210,6 +274,8 @@ function testcase_end(?string $failure = null): void
         pcntl_alarm(0);
         pcntl_signal(SIGALRM, SIG_DFL);
     }
+    testcase_watchdog_stop($open[3]);
+    $GLOBALS['testcase_section'][3] = null;
     // SIGALRM은 초 단위이므로 끝난 구역의 경과 시간도 기한과 비교한다.
     $seconds = (hrtime(true) - $open[2]) / 1e9;
     if ($seconds > $open[1]) {
