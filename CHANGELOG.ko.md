@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T25.1: schema를 설치하거나 빈 database를 확인하는 Go database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(internal/testdb)을 만들고, test가 끝날 때 실패한 뒤에도 지운다.
+
 - T24.6: JavaScript, PHP, Rust case 보고는 다음 단위로 반올림되는 시간을 Go처럼 그 단위로 쓴다(`1000ms`가 아니라 `1s`).
 
 - T24.5: check의 build, format, lint, package 명령은 tests/run-case.mjs로 case가 되어 기한과 함께 `RUN`, 경과 시간을 담은 `STEP` 줄로 출력 줄, 종료 상태와 함께 `PASS`나 `FAIL`을 출력하고, 기한을 넘긴 명령은 멈춘다. codec 교차 검사와 feature manifest 검사도 자기 case를 보고한다.

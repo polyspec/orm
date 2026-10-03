@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -57,15 +56,9 @@ func TestStyledFixturePhysicalCells(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := documentSchema(t, styledStateSchema)
-	for driver, dsn := range map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "styled-state.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	} {
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			requireTarget(t, driver, dsn)
-			dropTable(t, driver, dsn, "styled_case")
-			defer dropTable(t, driver, dsn, "styled_case")
+			dsn := newDatabase(t, driver)
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 			if err != nil {
 				t.Fatal(err)

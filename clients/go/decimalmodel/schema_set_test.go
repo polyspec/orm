@@ -1,16 +1,9 @@
 package decimalmodel_test
 
 import (
-	"database/sql"
-	"fmt"
-	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/polyspec/orm/clients/go/decimalmodel"
 	"github.com/polyspec/orm/clients/go/model"
@@ -19,55 +12,15 @@ import (
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 
 	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
-// schemaSetDatabase는 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 가리키는
-// server에 새 database를 만들어 그 DSN을 돌려주고 test가 끝나면 지운다. SQLite는
-// 새 file이다.
+// schemaSetDatabase는 case가 혼자 쓰는 database(internal/testdb)의 DSN이다.
+// ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN의 server에 새 database를 만들고, SQLite는
+// 새 file이며, test가 끝나면 지운다.
 func schemaSetDatabase(t *testing.T, driver string) string {
 	t.Helper()
-	if driver == "sqlite" {
-		return "sqlite://" + filepath.Join(t.TempDir(), "schema-set.sqlite")
-	}
-	env := "ORM_TEST_" + strings.ToUpper(driver) + "_DSN"
-	base := os.Getenv(env)
-	if base == "" {
-		t.Fatalf("%s is required; database tests never skip", env)
-	}
-	u, err := url.Parse(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDriver, native := "pgx", base
-	if driver == "mysql" {
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.DBName = strings.TrimPrefix(u.Path, "/")
-		cfg.Net, cfg.Addr = "tcp", u.Host
-		sqlDriver, native = "mysql", cfg.FormatDSN()
-	}
-	server, err := sql.Open(sqlDriver, native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := fmt.Sprintf("orm_schema_set_%d", time.Now().UnixNano())
-	if _, err := server.Exec("CREATE DATABASE " + name); err != nil {
-		server.Close()
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		defer server.Close()
-		stmt := "DROP DATABASE " + name
-		if driver == "postgres" {
-			stmt += " WITH (FORCE)"
-		}
-		if _, err := server.Exec(stmt); err != nil {
-			t.Errorf("drop database %s: %v", name, err)
-		}
-	})
-	u.Path = "/" + name
-	return u.String()
+	return testdb.New(t, driver)
 }
 
 // schemaSet은 bench set의 connect helper로 연결하고 bench와 decimal schema를

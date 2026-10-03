@@ -3,40 +3,33 @@ package model_test
 import (
 	"database/sql"
 	"errors"
-	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 
 	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
-var tables = []string{"task", "account_project", "composite_membership", "composite_account", "author", "service_member", "service_region", "soft_record", "account", "project", "user", "service"}
-
-// databases returns a fresh SQLite, MySQL and PostgreSQL database;
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
-// the test fails when either is unset.
+// databases returns a case database of its own (internal/testdb) for SQLite,
+// MySQL and PostgreSQL with the schema installed: a new SQLite file and new
+// databases on the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN,
+// dropped when the test ends. The test fails when either DSN is unset.
 func databases(t *testing.T) map[string]*orm.DB {
 	t.Helper()
 	out := map[string]*orm.DB{}
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "model.sqlite") + "?_pragma=busy_timeout(5000)",
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
 	manifest := model.Schema
-	for driver, dsn := range targets {
-		if dsn == "" {
-			t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+		dsn := testdb.New(t, driver)
+		if driver == "sqlite" {
+			dsn += "?_pragma=busy_timeout(5000)"
 		}
 		db, err := model.Connect(dsn, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 		if err != nil {
@@ -44,9 +37,6 @@ func databases(t *testing.T) map[string]*orm.DB {
 		}
 		t.Cleanup(func() { db.Close() })
 		dsns.Store(db, dsn)
-		if driver != "sqlite" {
-			dropTables(t, driver, dsn)
-		}
 		if err := db.Utils().Schema().Install(manifest); err != nil {
 			t.Fatalf("%s install: %v", driver, err)
 		}
@@ -59,50 +49,7 @@ func databases(t *testing.T) map[string]*orm.DB {
 // database/sql driver.
 func openNative(t *testing.T, driver, dsn string) *sql.DB {
 	t.Helper()
-	native := dsn
-	sqlDriver := "pgx"
-	if driver == "mysql" {
-		sqlDriver = "mysql"
-		u, err := url.Parse(dsn)
-		if err != nil {
-			t.Fatal(err)
-		}
-		cfg := mysql.NewConfig()
-		cfg.User = u.User.Username()
-		cfg.Passwd, _ = u.User.Password()
-		cfg.DBName = strings.TrimPrefix(u.Path, "/")
-		cfg.Net, cfg.Addr = "tcp", u.Host
-		if socket := u.Query().Get("socket"); socket != "" {
-			cfg.Net, cfg.Addr = "unix", socket
-		}
-		native = cfg.FormatDSN()
-	}
-	raw, err := sql.Open(sqlDriver, native)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
-func dropTables(t *testing.T, driver, dsn string) {
-	t.Helper()
-	raw := openNative(t, driver, dsn)
-	defer raw.Close()
-	raw.SetMaxOpenConns(1)
-	if driver == "mysql" {
-		raw.Exec("SET FOREIGN_KEY_CHECKS = 0")
-	}
-	for _, table := range tables {
-		stmt := "DROP TABLE IF EXISTS " + table
-		if driver == "postgres" {
-			stmt = `DROP TABLE IF EXISTS "` + table + `" CASCADE`
-		} else {
-			stmt = "DROP TABLE IF EXISTS `" + table + "`"
-		}
-		if _, err := raw.Exec(stmt); err != nil {
-			t.Fatalf("%s: %v", stmt, err)
-		}
-	}
+	return testdb.Open(t, driver, dsn)
 }
 
 func each(t *testing.T, fn func(t *testing.T, db *orm.DB)) {

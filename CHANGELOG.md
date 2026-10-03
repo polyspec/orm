@@ -1,5 +1,7 @@
 # Changelog
 
+- T25.1: the Go database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (internal/testdb), and drop it when the test ends, also after a failure, instead of dropping and installing tables in the shared test databases.
+
 - T24.6: the JavaScript, PHP and Rust case reports write a duration that rounds up to the next unit in that unit (`1s`, not `1000ms`), as Go does.
 
 - T24.5: the build, format, lint and package commands of the checks run as cases through tests/run-case.mjs: `RUN` with a deadline, their output lines as `STEP` lines with the elapsed time, and `PASS` or `FAIL` with the exit status, and a command past its deadline is stopped. The codec cross-check and the feature manifest validation report their cases.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
 )
 
 var zoneColumns = []string{"seq", "start_dt", "created_ts"}
@@ -51,21 +52,10 @@ func TestConnectionsUseUTC(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	targets := map[string]string{
-		"sqlite":   "sqlite://",
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
-	for driver, base := range targets {
-		if base == "" && driver != "sqlite" {
-			t.Run(driver, func(t *testing.T) { requireTarget(t, driver, base) })
-			continue
-		}
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
 		for _, zone := range []string{"", "UTC", "+00:00"} {
 			t.Run(driver+"/"+zone, func(t *testing.T) {
-				if driver == "sqlite" {
-					base = "sqlite://" + filepath.Join(t.TempDir(), "zone.sqlite")
-				}
+				base := newDatabase(t, driver)
 				dsn := base
 				if zone != "" {
 					sep := "?"
@@ -74,8 +64,6 @@ func TestConnectionsUseUTC(t *testing.T) {
 					}
 					dsn = base + sep + "timezone=" + strings.ReplaceAll(zone, "+", "%2B")
 				}
-				dropTable(t, driver, base, "zone_event")
-				defer dropTable(t, driver, base, "zone_event")
 				db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 				if err != nil {
 					t.Fatal(err)
@@ -325,17 +313,11 @@ func TestStatementTimeout(t *testing.T) {
 		"mysql":    "(SELECT COUNT(*) FROM zone_event a, zone_event b WHERE MD5(a.start_dt) < MD5(b.start_dt)) >= 0",
 		"postgres": "pg_sleep(2) IS NULL",
 	}
-	targets := map[string]string{
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
-	for driver, dsn := range targets {
-		requireTarget(t, driver, dsn)
+	for _, driver := range []string{"mysql", "postgres"} {
 		t.Run(driver, func(t *testing.T) {
-			dropTable(t, driver, dsn, "zone_event")
-			defer dropTable(t, driver, dsn, "zone_event")
+			dsn := newDatabase(t, driver)
 			// The table and its rows are created without a statement timeout;
 			// only the checked statement runs on the connection with the timeout.
 			setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
@@ -385,14 +367,25 @@ func TestStatementTimeout(t *testing.T) {
 // connection bounds only the statements of that connection when a pooler in
 // transaction mode hands one server session to every client in turn: through
 // ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection.
+// PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case
+// database에 닿지 못하므로, case는 그 database에 자기 이름(testdb.Name)의 table 하나를
+// 만들고 끝날 때 실패한 뒤에도 그 table만 지운다.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
-	testcase.Start(t, testcase.Database)
+	c := testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
 	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
-	s := fixtureSchema(t, "zone")
+	table := testdb.Name()
+	s := documentSchema(t, "dbspec 1 zone\n\ntable "+table+" {\n  seq i64 identity\n  start_dt datetime(6)\n  created_ts datetime(6) default now\n  primary key (seq)\n}\n")
 	manifest := s
-	dropTable(t, "postgres", base, "zone_event")
-	defer dropTable(t, "postgres", base, "zone_event")
+	t.Cleanup(func() {
+		raw := openNative(t, "postgres", base)
+		defer raw.Close()
+		if _, err := raw.Exec(`DROP TABLE IF EXISTS "` + table + `"`); err != nil {
+			t.Errorf("drop case table %s: %v", table, err)
+			return
+		}
+		c.Step("table %s dropped", table)
+	})
 	setup, err := orm.ConnectSchema(base, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -401,7 +394,8 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err := setup.Utils().Schema().Install(manifest); err != nil {
 		t.Fatal(err)
 	}
-	ent := zoneEntity(s)
+	c.Step("table %s created", table)
+	ent := rowEntity(table, s, zoneColumns...)
 	// Three rows sleep 0.1 s each, so the statement runs past 200 ms.
 	for i := 0; i < 3; i++ {
 		row := orm.NewCore(ent)

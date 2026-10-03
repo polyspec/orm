@@ -79,12 +79,35 @@ func Start(t testing.TB, deadline time.Duration) *Case {
 	c.ctx, c.cancel = context.WithTimeout(context.Background(), deadline)
 	emit("RUN %s deadline=%s", c.name, deadline)
 	c.watchdog = time.AfterFunc(deadline+Grace, c.expire)
+	started.Store(c.name, c)
 	t.Cleanup(func() {
+		started.Delete(c.name)
 		c.watchdog.Stop()
 		c.cancel()
 		c.finish(t)
 	})
 	return c
+}
+
+// started는 Start로 시작해 아직 끝나지 않은 case를 test 이름으로 찾는다.
+var started sync.Map
+
+// Of는 t에 Start한 case나, 없으면 t를 감싼 가장 가까운 test에 Start한 case다. case 값을
+// 받지 않는 helper가 자기 단계를 그 case의 STEP 줄로 보고할 때 쓴다. 시작한 case가 없으면
+// t를 실패시킨다.
+func Of(t testing.TB) *Case {
+	t.Helper()
+	for name := t.Name(); ; {
+		if c, ok := started.Load(name); ok {
+			return c.(*Case)
+		}
+		i := strings.LastIndexByte(name, '/')
+		if i < 0 {
+			t.Fatalf("testcase.Of: no case started for %s", t.Name())
+			return nil
+		}
+		name = name[:i]
+	}
 }
 
 // Group은 저마다 Start하는 case를 묶는 test를 시작한다. 묶음 자신은 기한이 없고 시작과
