@@ -1,6 +1,6 @@
 // orm-gen: the TypeScript model generator.
 //
-//   orm-gen gen --schema <document.dbs>... --out src/models [--scan <file or directory>]... [--check]
+//   orm-gen gen --schema <document.dbs>... [--use <document.dbs>...] --out src/models [--scan <file or directory>]... [--check]
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
@@ -9,7 +9,7 @@ import { modelOfDocuments, parseDocumentSet } from '../engine/model.js';
 import { OrmError } from '../runtime_error.js';
 import { generateTypeScript, renderTypeScript } from '../generate/typescript.js';
 
-const usageText = `usage: orm-gen gen --schema <document.dbs>... --out <directory> [--scan <file or directory>]... [--check]`;
+const usageText = `usage: orm-gen gen --schema <document.dbs>... [--use <document.dbs>...] --out <directory> [--scan <file or directory>]... [--check]`;
 
 class UsageError extends Error {}
 
@@ -71,13 +71,20 @@ function readDocument(path: string): string {
   return read.text;
 }
 
-/** Generates models.ts from the dbspec documents of one document set, each named by --schema. */
+/**
+ * Generates models.ts from the dbspec documents of one document set, each named by --schema, and the external
+ * documents that it uses but does not own, each named by --use. Only the owned tables get models.
+ */
 function gen(args: readonly string[]): number {
-  const { values } = parse(args, { schema: { type: 'string', multiple: true }, out: { type: 'string' }, scan: { type: 'string', multiple: true }, check: { type: 'boolean' } });
+  const { values } = parse(args, {
+    schema: { type: 'string', multiple: true }, use: { type: 'string', multiple: true }, out: { type: 'string' },
+    scan: { type: 'string', multiple: true }, check: { type: 'boolean' },
+  });
   const schemas = (values.schema as string[] | undefined) ?? [];
   const out = text(values.out);
   if (schemas.length === 0 || out === '') usage();
-  const model = modelOfDocuments(parseDocumentSet(schemas.map(readDocument)));
+  const uses = (values.use as string[] | undefined) ?? [];
+  const model = modelOfDocuments(parseDocumentSet(schemas.map(readDocument), uses.map(readDocument)));
   const scan = (values.scan as string[] | undefined) ?? [];
   if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(model, out, scan)));
   generateTypeScript(model, out, scan);

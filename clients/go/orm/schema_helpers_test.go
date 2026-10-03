@@ -37,6 +37,24 @@ func fixtureSchema(t *testing.T, names ...string) *orm.Schema {
 	return documentSchema(t, documents...)
 }
 
+// externalSchema은 contracts/fixtures의 소유 문서와 외부 문서(use로 쓰는 다른 set의
+// 문서)로 만든 orm.Schema다. generated code처럼 external text를 싣는다.
+func externalSchema(t *testing.T, owned, external []string) *orm.Schema {
+	t.Helper()
+	paths := func(names []string) []string {
+		out := make([]string, len(names))
+		for i, name := range names {
+			out[i] = filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs")
+		}
+		return out
+	}
+	m, err := runtimemodel.LoadFileSet(paths(owned), paths(external))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
+}
+
 // rowEntity는 이름으로 column 값을 담는 손으로 쓴 model의 entity다.
 func rowEntity(name string, s *orm.Schema, columns ...string) *orm.Entity {
 	return &orm.Entity{

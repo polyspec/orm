@@ -26,7 +26,7 @@ table clients {
 - 그다음 한 줄에 하나씩 `rename table <old> <new>`, `rename column <table>.<old> <new>`(`<table>`은 target의 table 이름), `allow drop table <name>`, `allow drop column <table>.<name>`(source의 이름)을 쓴다.
 - 빈 줄에서 header가 끝난다. 나머지는 target이다. canonical form의 `schema`라는 문서 하나인 [schema text](dbspec.md#manifest-and-hashes)이며, plan의 `to` hash는 그 text의 `schemaHash`다.
 
-canonical plan은 header 줄을 `rename table`, `rename column`, `allow drop table`, `allow drop column` 순서로, 각각 이름 순으로 쓴다. 줄이 다른 형식이거나, 이름이 이름 규칙을 어기거나, 줄이 반복되거나, 두 rename이 한 이름을 주거나, target이 schema text가 아니면 plan은 그 줄에 `plan` diagnostic을 가진 잘못된 plan이다. target의 diagnostic은 plan 안의 위치로 보고한다. target hash가 `from`과 같은 plan도 잘못이다.
+canonical plan은 header 줄을 `rename table`, `rename column`, `allow drop table`, `allow drop column` 순서로, 각각 이름 순으로 쓴다. 줄이 다른 형식이거나, 이름이 이름 규칙을 어기거나, 줄이 반복되거나, 두 rename이 한 이름을 주거나, target이 schema text가 아니면 plan은 그 줄에 `plan` diagnostic을 가진 잘못된 plan이다. target의 diagnostic은 plan 안의 위치로 보고한다. target hash가 `from`과 같은 plan도 잘못이고, target에 `use` 줄이 있는 plan도 그렇다. plan은 database 전체를 바꾸며, [외부 문서](dbspec.ko.md#external-documents)를 쓰는 집합은 install과 addTablesAndColumns로 설치하고 올린다.
 
 ## Chain
 
@@ -117,7 +117,7 @@ MySQL은 column을 렌더링한 전체 정의의 `MODIFY COLUMN`으로 바꾸고
 
 ## Apply
 
-orm은 세 database 모두에서 schema 변경을 step 하나씩 적용한다. 모든 statement는 transaction 밖에서 따로 commit하고, 그 뒤에 history step을 기록한다. plan이 실행되는 동안 다른 session은 commit된 step을 하나씩 본다. 중단되거나 실패한 plan은 알려진 step에서 멈추며, `recover`가 그것을 이어 가고 `rollback`이 step 하나씩 되돌린다. 다른 session이 변경을 한꺼번에 보거나 전혀 보지 않아야 하면 maintenance window나 database의 blue-green 전환이 필요하며, 이것은 운영자가 선택하고 orm은 제공하지 않는다.
+orm은 세 database 모두에서 schema 변경을 step 하나씩 적용한다. 모든 statement는 transaction 밖에서 따로 commit하고, 그 뒤에 history step을 기록한다. plan이 실행되는 동안 다른 session은 commit된 step을 하나씩 본다. 중단되거나 실패한 plan은 알려진 step에서 멈추며, `recover`가 그것을 이어 가고 `rollback`이 step 하나씩 되돌린다. 다른 session이 변경을 한꺼번에 보거나 전혀 보지 않아야 하면 maintenance window나 database의 blue-green 전환이 필요하며, 이것은 운영자가 선택하고 orm은 제공하지 않는다. 이 명령들은 database를 document set 하나의 schema로 본다. 그 상태는 database의 모든 table의 schema이므로, 한 set이 다른 set의 [외부 문서](dbspec.ko.md#external-documents)를 쓰며 database 하나를 나누는 여러 set의 table은 대신 install과 addTablesAndColumns로 설치하고 올린다.
 
 apply, recover, rollback, finalize는 caller가 가진 connection 하나에서 실행되며 끝에 그 session 설정을 되돌린다. lock과 session 설정은 server session에 속하므로 MySQL과 PostgreSQL에서 connection은 명령 내내 다른 client와 나누지 않는 server session 하나를 지켜야 한다: 직접 연결이나 session pooling 연결이다. `pool_mode = transaction`인 PgBouncer 같은 transaction pooler는 transaction이나 statement마다 server connection을 고르므로, lock이 transaction 밖에서 하나씩 실행되는 step을 덮지 못한다. 명령은 이것을 알아내고 lock 없이 실행하는 대신 `session` error로 멈춘다. lock을 잡기 전에 명령은 server session(MySQL `CONNECTION_ID()`, PostgreSQL `pg_backend_pid()`)과, 그 session이 lock을 이미 잡고 있는지(MySQL lock 이름의 `IS_USED_LOCK`, PostgreSQL advisory key의 `pg_locks` row)를 읽는다. 이미 잡고 있는 session은 다른 client와 나눠 쓰는 것이므로 `session` error다. lock statement도 server session을 돌려주고(`SELECT GET_LOCK(…, 0), CONNECTION_ID()`, `SELECT pg_try_advisory_lock(…), pg_backend_pid()`), 명령은 모든 step의 statement 앞에서 server session을 다시 읽는다. 처음과 다른 session은 plan과 step이 들어 있는 `session` error이며 그 step의 statement는 실행되지 않는다. error message에는 요구가 들어 있다: `apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection`. ProxySQL이 multiplexing하는 connection은 `GET_LOCK`을 실행한 뒤 server session을 지키므로 이 확인을 통과한다.
 

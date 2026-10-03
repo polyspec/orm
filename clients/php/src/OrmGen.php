@@ -6,12 +6,15 @@ namespace Orm;
 /**
  * The orm-gen command line: model generation from a dbspec document set.
  *
- *   orm-gen gen --out <dir> --namespace <Php\Namespace> [--check] <files.dbs...>
+ *   orm-gen gen --out <dir> --namespace <Php\Namespace> [--check] [--use <file.dbs>]... <files.dbs...>
+ *
+ * `--use` (repeatable) names an external document: a document of another set that the
+ * documents use. It is parsed with the set and gets no model.
  */
 final class OrmGen
 {
     private const USAGE = [
-        'gen' => 'orm-gen gen --out <dir> --namespace <Php\\Namespace> [--check] <files.dbs...>',
+        'gen' => 'orm-gen gen --out <dir> --namespace <Php\\Namespace> [--check] [--use <file.dbs>]... <files.dbs...>',
     ];
 
     /** @var resource */
@@ -109,11 +112,33 @@ final class OrmGen
 
     private static function gen(array $args): int
     {
-        [$o, $files] = self::flags($args, ['out' => '', 'namespace' => '', 'check' => false], true);
+        // --use는 반복할 수 있으므로 다른 flag보다 먼저 모은다.
+        $uses = [];
+        $rest = [];
+        for ($i = 0; $i < count($args); $i++) {
+            $a = $args[$i];
+            if ($a === '--') {
+                array_push($rest, ...array_slice($args, $i));
+                break;
+            }
+            if ($a === '--use' || $a === '-use') {
+                if ($i + 1 >= count($args)) {
+                    throw new UsageError('flag needs an argument: -use');
+                }
+                $uses[] = $args[++$i];
+                continue;
+            }
+            if (str_starts_with($a, '--use=') || str_starts_with($a, '-use=')) {
+                $uses[] = substr($a, strpos($a, '=') + 1);
+                continue;
+            }
+            $rest[] = $a;
+        }
+        [$o, $files] = self::flags($rest, ['out' => '', 'namespace' => '', 'check' => false], true);
         if ($files === [] || $o['out'] === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $o['namespace']) !== 1) {
             throw new UsageError('');
         }
-        $model = RuntimeModel::build(RuntimeModel::files($files));
+        $model = RuntimeModel::build(RuntimeModel::files($files, $uses));
         if ($o['check']) {
             return self::report(Generator::check($model, $o['out'], $o['namespace']));
         }

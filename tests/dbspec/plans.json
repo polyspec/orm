@@ -4147,6 +4147,33 @@
         "  id i64 identity",
         "}"
       ]
+    },
+    {
+      "errors": [
+        [
+          "plan",
+          6,
+          1,
+          "a plan targets a whole database, and its target uses the external document core: install a set that uses external documents with install or addTablesAndColumns"
+        ]
+      ],
+      "id": "target-uses-external-document",
+      "plan": [
+        "dbplan 1 x",
+        "from empty",
+        "",
+        "dbspec 1 schema",
+        "",
+        "use core { users }",
+        "",
+        "table orders {",
+        "  id i64 identity",
+        "  user_id i64",
+        "  primary key (id)",
+        "  index ix_orders_user (user_id)",
+        "  foreign key fk_orders_user (user_id) references users (id)",
+        "}"
+      ]
     }
   ],
   "comparisons": [

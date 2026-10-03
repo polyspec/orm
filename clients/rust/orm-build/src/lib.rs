@@ -35,9 +35,14 @@ pub const MODEL_FILE: &str = "orm_model.rs";
 /// generated model이 `include_str!`로 담는 manifest text file의 `OUT_DIR` 안 이름.
 pub const MANIFEST_FILE: &str = "orm_manifest.dbs";
 
+/// The text of the tables that the set uses from external documents, written next to the manifest text when
+/// the set has external documents.
+pub const EXTERNAL_FILE: &str = "orm_external.dbs";
+
 /// Configures one generation.
 pub struct Builder {
     documents: Vec<PathBuf>,
+    uses: Vec<PathBuf>,
     scan: Vec<PathBuf>,
     out_dir: Option<PathBuf>,
 }
@@ -45,7 +50,17 @@ pub struct Builder {
 impl Builder {
     /// dbspec document set의 file path로 생성을 시작한다. path는 package directory 기준이다.
     pub fn new<P: AsRef<Path>>(documents: impl IntoIterator<Item = P>) -> Builder {
-        Builder { documents: documents.into_iter().map(|p| p.as_ref().to_path_buf()).collect(), scan: Vec::new(), out_dir: None }
+        Builder { documents: documents.into_iter().map(|p| p.as_ref().to_path_buf()).collect(), uses: Vec::new(), scan: Vec::new(), out_dir: None }
+    }
+
+    /// Adds external dbspec documents: documents of other sets that the set
+    /// uses but does not own. They are parsed with the set, and only the
+    /// tables that the set uses travel in the generated schema value; they get
+    /// no models and are never installed. Paths are relative to the package
+    /// directory.
+    pub fn uses<P: AsRef<Path>>(mut self, documents: impl IntoIterator<Item = P>) -> Builder {
+        self.uses.extend(documents.into_iter().map(|p| p.as_ref().to_path_buf()));
+        self
     }
 
     /// Adds a source file or directory whose model calls are generated.
@@ -78,7 +93,8 @@ impl Builder {
             Some(d) => abs(d),
             None => PathBuf::from(std::env::var_os("OUT_DIR").ok_or("OUT_DIR is not set; call the generator from build.rs or set out_dir")?),
         };
-        let set = manifest::load(&documents.iter().map(PathBuf::as_path).collect::<Vec<_>>())?;
+        let uses: Vec<PathBuf> = self.uses.iter().map(|p| abs(p)).collect();
+        let set = manifest::load_set(&documents.iter().map(PathBuf::as_path).collect::<Vec<_>>(), &uses.iter().map(PathBuf::as_path).collect::<Vec<_>>())?;
         let models: HashSet<String> = set.model.entities.iter().map(|e| names::pascal(&e.name)).collect();
         let paths: Vec<PathBuf> = self.scan.iter().map(|p| abs(p)).collect();
         let fallible_setters = generate::fallible_setters(&set.model);
@@ -86,10 +102,13 @@ impl Builder {
         std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         let manifest_file = out_dir.join(MANIFEST_FILE);
         write_if_changed(&manifest_file, set.manifest_text.as_bytes())?;
+        if !set.external_text.is_empty() {
+            write_if_changed(&out_dir.join(EXTERNAL_FILE), set.external_text.as_bytes())?;
+        }
         let source = generate::generate(&set, &scanned, &manifest_file.display().to_string())?;
         let out = out_dir.join(MODEL_FILE);
         write_if_changed(&out, source.as_bytes())?;
-        for document in &documents {
+        for document in documents.iter().chain(&uses) {
             println!("cargo:rerun-if-changed={}", document.display());
         }
         for p in &paths {

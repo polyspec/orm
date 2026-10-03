@@ -1,7 +1,8 @@
 //! 연결의 addTablesAndColumns가 실행할 step을 쓴다(docs/schema.md, "Adding tables and columns").
 
 use super::model::{Name, Pos, Table};
-use super::{compare_schemas, emit, manifest, parse_plan, plan_steps, Dialect, Document, PlanStep, Unsupported};
+use super::plan::plan_to;
+use super::{compare_schemas, emit, manifest, plan_steps, Dialect, Document, Plan, PlanStep, Unsupported};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// [`add_tables_and_columns_steps`]의 결과: 만드는 table과 더하는 column, step, 또는 차이다.
@@ -29,6 +30,7 @@ fn schema_document(tables: Vec<Table>) -> Document {
         tables,
         diagrams: Vec::new(),
         trailing: Vec::new(),
+        external: false,
     }
 }
 
@@ -96,11 +98,25 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
     // 갖는다.
     let start = (!source.tables.is_empty()).then_some(&source);
     let from = match start {
-        Some(source) => manifest(&[source]).map(|m| m.schema_hash),
-        None => Ok("empty".to_owned()),
+        Some(source) => manifest(&[source]).map(|m| Some(m.schema_hash)),
+        None => Ok(None),
     };
+    // target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지 않고 target으로 plan을
+    // 만든다.
     let steps = from
-        .and_then(|from| parse_plan(&format!("dbplan 1 add_tables_and_columns\nfrom {from}\n\n{}", emit(target))))
+        .and_then(|from| {
+            plan_to(Plan {
+                name: "add_tables_and_columns".to_owned(),
+                from,
+                rename_tables: Vec::new(),
+                rename_columns: Vec::new(),
+                drop_tables: Vec::new(),
+                drop_columns: Vec::new(),
+                schema: target.clone(),
+                schema_text: emit(target),
+                to: String::new(),
+            })
+        })
         .and_then(|plan| plan_steps(start, &plan, dialect));
     match steps {
         Ok(steps) => AddTablesAndColumnsSteps { added, steps, differences: Vec::new() },

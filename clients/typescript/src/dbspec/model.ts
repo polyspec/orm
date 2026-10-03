@@ -160,6 +160,12 @@ export interface DbspecDiagram {
 
 export interface DbspecDocument {
   readonly name: string;
+  /**
+   * The document belongs to another set: a document of the set uses its tables but the set does not own
+   * them, so it is parsed and validated but never rendered, installed, altered, compared or generated
+   * (docs/dbspec.md "Documents and use"). The flag is not part of the text.
+   */
+  readonly external?: boolean;
   readonly uses: readonly DbspecUse[];
   readonly tables: readonly DbspecTable[];
   readonly diagrams: readonly DbspecDiagram[];

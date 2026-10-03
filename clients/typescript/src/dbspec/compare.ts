@@ -1,6 +1,7 @@
 // plan 없이 두 schema의 모든 차이를 나열한다 (docs/plans.md "Comparison").
 // 기준은 Go 엔진(engine/dbspec/compare.go)이며 diagnostic message는 Go와 같은 바이트다.
-import { dbspecManifest, emitDbspec } from './index.js';
+import { emitDbspec } from './index.js';
+import { emitDocument } from './emit.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSetting, DbspecTable } from './model.js';
 import { auditRecords } from './audit.js';
 import { columnOf, sameDefault, sameType, sortedKeys, widens } from './plan_diff.js';
@@ -86,10 +87,16 @@ export function compareSchemas(source: DbspecDocument, target: DbspecDocument): 
   return Object.freeze({ differences: Object.freeze(differences), diagnostics: Object.freeze([]) as readonly [] });
 }
 
-/** 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다. */
-function isSchemaText(document: DbspecDocument): boolean {
-  const { manifest } = dbspecManifest([document]);
-  return manifest !== null && emitDbspec(document) === manifest.schemaText;
+/**
+ * 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다. 외부 문서의 use 줄은 문서 이름 순, 그 table은
+ * 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+ */
+export function isSchemaText(document: DbspecDocument): boolean {
+  if (document.name !== 'schema') return false;
+  const order = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+  const tables = [...document.tables].sort((a, b) => order(a.name, b.name));
+  const uses = document.uses.map(u => ({ comments: [], document: u.document, tables: [...new Set(u.tables)].sort(order) }));
+  return emitDbspec(document) === emitDocument({ name: document.name, uses, tables, diagrams: [], closingComments: [] }, 'schema');
 }
 
 /** 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다. */

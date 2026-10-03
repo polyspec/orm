@@ -1,7 +1,7 @@
 // orm-gen은 dbspec document set에서 Go model을 만들고 docs/errors.yaml에서 각
 // 언어의 오류 코드 file을 만든다.
 //
-//	orm-gen gen --document <file.dbs>... --lang go --out <directory> [--scan <package pattern>...] [--check]
+//	orm-gen gen --document <file.dbs>... [--use <file.dbs>...] --lang go --out <directory> [--scan <package pattern>...] [--check]
 //	orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]
 package main
 
@@ -31,7 +31,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --document <file.dbs>... --lang go --out <directory> [--scan <package pattern>...] [--check]")
+	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --document <file.dbs>... [--use <file.dbs>...] --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]")
 	os.Exit(2)
 }
@@ -40,6 +40,8 @@ func gen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
 	var documents stringList
 	fs.Var(&documents, "document", "dbspec document of the document set (repeatable, required)")
+	var uses stringList
+	fs.Var(&uses, "use", "external dbspec document that the set uses but does not own (repeatable)")
 	lang := fs.String("lang", "go", "go")
 	out := fs.String("out", "", "output directory (required)")
 	var scan stringList
@@ -52,7 +54,7 @@ func gen(args []string) {
 	if *lang != "go" {
 		fail(fmt.Errorf("lang %q: orm-gen of the Go module generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
 	}
-	m, err := runtimemodel.LoadFiles(documents...)
+	m, err := runtimemodel.LoadFileSet(documents, uses)
 	if err != nil {
 		fail(err)
 	}

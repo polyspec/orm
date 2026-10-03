@@ -184,7 +184,7 @@ final class SchemaUtils
     {
         $schema->verify();
         $driver = $this->db->driver();
-        $parsed = RuntimeModel::parse(RuntimeModel::splitManifest($schema->manifestText));
+        $parsed = $schema->documents();
         $rendered = Dbspec::render($parsed, $driver);
         if ($rendered->statements === null) {
             $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $rendered->diagnostics);
@@ -196,11 +196,16 @@ final class SchemaUtils
         }
         $tables = [];
         foreach ($parsed as $document) {
+            // 외부 문서의 table은 그 문서를 소유한 set이 설치한다.
+            if ($document->external) {
+                continue;
+            }
             foreach ($document->tables as $table) {
                 $tables[] = $table->name;
             }
         }
-        $apply = function () use ($statements, $driver, $tables): void {
+        $apply = function () use ($statements, $driver, $tables, $parsed): void {
+            self::checkExternal($this->db->pdo(), $driver, $parsed);
             $present = array_values(array_filter($tables, $this->tableExists(...)));
             if ($present === $tables) {
                 return;
@@ -247,8 +252,16 @@ final class SchemaUtils
     {
         $schema->verify();
         $driver = $this->db->driver();
-        $manifest = Dbspec::manifest(RuntimeModel::parse(RuntimeModel::splitManifest($schema->manifestText)));
-        $target = $manifest->manifest === null ? null : Dbspec::parse($manifest->manifest->schemaText, []);
+        $documents = $schema->documents();
+        $manifest = Dbspec::manifest($documents);
+        // schema text는 외부 문서를 use 줄로 쓰므로 외부 문서의 text를 집합으로 parse한다.
+        $externalTexts = [];
+        foreach ($documents as $document) {
+            if ($document->external) {
+                $externalTexts[$document->name] = Dbspec::emit($document);
+            }
+        }
+        $target = $manifest->manifest === null ? null : Dbspec::parse($manifest->manifest->schemaText, $externalTexts);
         $diagnostics = $manifest->manifest === null ? $manifest->diagnostics : $target->diagnostics;
         if ($diagnostics !== []) {
             $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
@@ -256,9 +269,13 @@ final class SchemaUtils
         }
         $document = $target->document;
         $pdo = $this->db->pdo();
-        $apply = static function () use ($pdo, $driver, $document): array {
+        $apply = static function () use ($pdo, $driver, $document, $documents): array {
             try {
                 $live = Dbspec::introspect($pdo, $driver, 'schema');
+                $differences = Dbspec::externalDifferences($live->document, $documents);
+                if ($differences !== []) {
+                    throw self::externalError($differences);
+                }
                 [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
                 if ($differences !== []) {
                     throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ' . implode('; ', $differences));
@@ -281,6 +298,38 @@ final class SchemaUtils
             return $apply();
         }
         return $this->withoutForeignKeys($apply);
+    }
+
+    /**
+     * @internal set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External
+     * documents"). 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
+     *
+     * @param list<Dbspec\Document> $documents
+     */
+    public static function checkExternal(\PDO $pdo, string $driver, array $documents): void
+    {
+        $external = false;
+        foreach ($documents as $document) {
+            $external = $external || $document->external;
+        }
+        if (!$external) {
+            return;
+        }
+        try {
+            $live = Dbspec::introspect($pdo, $driver, 'schema');
+        } catch (\PDOException $e) {
+            throw OrmException::fromDriver($e, $driver);
+        }
+        $differences = Dbspec::externalDifferences($live->document, $documents);
+        if ($differences !== []) {
+            throw self::externalError($differences);
+        }
+    }
+
+    /** @param list<string> $differences */
+    private static function externalError(array $differences): OrmException
+    {
+        return new OrmException(Code::CONFIG, 'the tables that the set uses from external documents differ from the database: ' . implode('; ', $differences));
     }
 
     /**

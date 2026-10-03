@@ -442,7 +442,8 @@ export function renderDbspec(documents: readonly DbspecDocument[], dialect: Dbsp
   const { diagnostics } = checkSet(documents);
   if (diagnostics.length > 0) return Object.freeze({ statements: null, diagnostics });
   const r = new Renderer(dialect);
-  const ordered = useOrder(documents);
+  // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+  const ordered = useOrder(documents).filter(d => d.external !== true);
   const out: string[] = [];
   for (const document of ordered) for (const t of document.tables) out.push(...r.table(t));
   if (dialect !== 'sqlite') {

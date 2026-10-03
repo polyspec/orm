@@ -117,11 +117,11 @@ impl Field {
     }
 }
 
-/// document를 이름 순서로 놓은 document set의 runtime model을 돌려준다.
-/// 잘못된 document set이면 `manifest`와 같은 diagnostic을 돌려준다.
+/// document를 이름 순서로 놓은 document set의 runtime model을 돌려준다. entity는 소유한 문서의 table이며
+/// 외부 문서의 table은 entity가 아니다. 잘못된 document set이면 `manifest`와 같은 diagnostic을 돌려준다.
 pub fn runtime_model(documents: &[&Document]) -> Result<RuntimeModel, Vec<Diagnostic>> {
     let ordered = super::check_set(documents)?;
-    let entities = ordered.iter().flat_map(|d| d.tables.iter()).map(entity).collect();
+    let entities = ordered.iter().filter(|d| !d.external).flat_map(|d| d.tables.iter()).map(entity).collect();
     Ok(RuntimeModel { entities })
 }
 
@@ -199,6 +199,41 @@ fn entity(table: &Table) -> Entity {
 /// document set으로 삼아 parse한다. diagnostic은 manifest text의 line을 갖고
 /// message에 document 이름을 적는다. 첫 header 앞의 text는 `header` error다.
 pub fn parse_manifest(text: &str) -> Result<Vec<Document>, Vec<Diagnostic>> {
+    parse_manifest_set(text, "")
+}
+
+/// manifest text와 external text(외부 문서에서 set이 쓰는 table, `Manifest::external_text`)의 document를
+/// parse한다. 각 document는 두 text의 다른 모든 document를 set으로 삼아 parse하고, external text의 document는
+/// `external`로 표시한다.
+pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, Vec<Diagnostic>> {
+    let owned = manifest_chunks(text)?;
+    let externals = if external.is_empty() { Vec::new() } else { manifest_chunks(external)? };
+    let set: BTreeMap<String, String> = owned.iter().chain(&externals).map(|(_, name, chunk)| (name.clone(), chunk.clone())).collect();
+    let mut documents = Vec::with_capacity(owned.len() + externals.len());
+    let mut errors = Vec::new();
+    for (chunks, is_external) in [(&externals, true), (&owned, false)] {
+        for (start, name, chunk) in chunks {
+            let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
+            match super::parse(chunk, &others) {
+                Ok(mut document) => {
+                    document.external = is_external;
+                    documents.push(document);
+                }
+                Err(diagnostics) => {
+                    errors.extend(diagnostics.into_iter().map(|d| Diagnostic { line: d.line + start, message: format!("document {name}: {}", d.message), ..d }))
+                }
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(documents)
+    } else {
+        Err(errors)
+    }
+}
+
+/// manifest text를 document마다 (시작 줄, 이름, text)로 나눈다.
+fn manifest_chunks(text: &str) -> Result<Vec<(usize, String, String)>, Vec<Diagnostic>> {
     let mut chunks: Vec<(usize, String, String)> = Vec::new();
     for (i, line) in text.split_inclusive('\n').enumerate() {
         if line.starts_with("dbspec ") {
@@ -220,20 +255,5 @@ pub fn parse_manifest(text: &str) -> Result<Vec<Document>, Vec<Diagnostic>> {
     if chunks.is_empty() {
         return Err(vec![Diagnostic { rule: "header".into(), line: 1, column: 1, message: "a manifest text holds at least one document".into() }]);
     }
-    let set: BTreeMap<String, String> = chunks.iter().map(|(_, name, chunk)| (name.clone(), chunk.clone())).collect();
-    let mut documents = Vec::with_capacity(chunks.len());
-    let mut errors = Vec::new();
-    for (start, name, chunk) in &chunks {
-        match super::parse(chunk, &set) {
-            Ok(document) => documents.push(document),
-            Err(diagnostics) => {
-                errors.extend(diagnostics.into_iter().map(|d| Diagnostic { line: d.line + start, message: format!("document {name}: {}", d.message), ..d }))
-            }
-        }
-    }
-    if errors.is_empty() {
-        Ok(documents)
-    } else {
-        Err(errors)
-    }
+    Ok(chunks)
 }

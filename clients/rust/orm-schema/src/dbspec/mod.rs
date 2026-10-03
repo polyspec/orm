@@ -38,7 +38,7 @@ pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, Tab
 pub use plan_diff::{diff, Change};
 pub use plan_steps::{plan_steps, Effect, NullCheck, PlanStep};
 pub use render::{render, Dialect};
-pub use runtime::{parse_manifest, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
+pub use runtime::{parse_manifest, parse_manifest_set, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
 
 use parser::Diag;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -92,6 +92,9 @@ pub fn emit(document: &Document) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Manifest {
     pub manifest_text: String,
+    /// 외부 문서마다 소유한 문서가 쓰는 table의 column, primary key, unique key만 담은 canonical text다.
+    /// 외부 문서가 없으면 비어 있다.
+    pub external_text: String,
     pub schema_text: String,
     pub manifest_hash: String,
     pub schema_hash: String,
@@ -142,6 +145,26 @@ pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Docume
             });
         }
     }
+    // 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+    let mut reached: BTreeSet<&str> = BTreeSet::new();
+    let mut pending: Vec<&Document> = ordered.iter().copied().filter(|d| !d.external).collect();
+    while let Some(document) = pending.pop() {
+        for line in &document.uses {
+            if let Some(next) = ordered.iter().find(|d| d.name.text == line.document.text) {
+                if reached.insert(next.name.text.as_str()) {
+                    pending.push(next);
+                }
+            }
+        }
+    }
+    for document in ordered.iter().filter(|d| d.external && !reached.contains(d.name.text.as_str())) {
+        out.push(Diagnostic {
+            rule: "use".to_owned(),
+            line: 1,
+            column: header,
+            message: format!("external document {} is not used by a document of the set", document.name.text),
+        });
+    }
     if out.is_empty() {
         Ok(ordered)
     } else {
@@ -154,24 +177,132 @@ pub(crate) fn check_set<'d>(documents: &[&'d Document]) -> Result<Vec<&'d Docume
 /// repeated document names and used documents missing from the set.
 pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>> {
     let ordered = check_set(documents)?;
+    // 외부 문서마다 소유한 문서가 use로 쓰는 table이다. 처음 나온 순서를 지킨다.
+    let mut used: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for document in ordered.iter().filter(|d| !d.external) {
+        for line in &document.uses {
+            let tables = used.entry(line.document.text.as_str()).or_default();
+            for table in &line.tables {
+                if !tables.contains(&table.text.as_str()) {
+                    tables.push(&table.text);
+                }
+            }
+        }
+    }
     let mut manifest_text = String::new();
+    let mut external_text = String::new();
+    let mut uses = Vec::new();
     for document in &ordered {
+        if document.external {
+            let tables = used.get(document.name.text.as_str()).cloned().unwrap_or_default();
+            if let Some(trimmed) = external_document(document, &tables) {
+                external_text.push_str(&emit::emit(&trimmed, emit::View::Manifest));
+                let mut names = tables.clone();
+                names.sort_unstable();
+                uses.push(model::Use {
+                    comments: Vec::new(),
+                    document: document.name.clone(),
+                    tables: names.into_iter().map(|t| model::Name { text: t.to_owned(), pos: Default::default() }).collect(),
+                });
+            }
+            continue;
+        }
         manifest_text.push_str(&emit::emit(document, emit::View::Manifest));
     }
-    // schema text는 집합의 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
-    let mut tables: Vec<model::Table> = ordered.iter().flat_map(|d| d.tables.iter().cloned()).collect();
+    // schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과
+    // 무관하다. 외부 문서에서 쓰는 table은 그 문서의 use 줄로 남는다.
+    let mut tables: Vec<model::Table> = ordered.iter().filter(|d| !d.external).flat_map(|d| d.tables.iter().cloned()).collect();
     tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
     let schema = Document {
         name: model::Name { text: "schema".to_owned(), pos: Default::default() },
-        uses: Vec::new(),
+        uses,
         tables,
         diagrams: Vec::new(),
         trailing: Vec::new(),
+        external: false,
     };
     let schema_text = emit::emit(&schema, emit::View::Schema);
-    let manifest_hash = text_hash(&manifest_text);
+    let manifest_hash = text_hash(&format!("{manifest_text}{external_text}"));
     let schema_hash = text_hash(&schema_text);
-    Ok(Manifest { manifest_text, schema_text, manifest_hash, schema_hash })
+    Ok(Manifest { manifest_text, external_text, schema_text, manifest_hash, schema_hash })
+}
+
+/// 외부 문서에서 `tables`의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이 없으면
+/// None이다. foreign key, index, check, setting과 주석은 외부 문서가 소유하므로 담지 않는다.
+fn external_document(document: &Document, tables: &[&str]) -> Option<Document> {
+    let kept: Vec<model::Table> = document
+        .tables
+        .iter()
+        .filter(|t| tables.contains(&t.name.text.as_str()))
+        .map(|t| model::Table {
+            comments: Vec::new(),
+            name: t.name.clone(),
+            columns: t.columns.iter().map(|c| model::Column { comments: Vec::new(), ..c.clone() }).collect(),
+            primary: t.primary.iter().map(|k| model::PrimaryKey { comments: Vec::new(), ..k.clone() }).collect(),
+            uniques: t.uniques.iter().map(|u| model::Unique { comments: Vec::new(), ..u.clone() }).collect(),
+            indexes: Vec::new(),
+            foreign_keys: Vec::new(),
+            checks: Vec::new(),
+            settings: None,
+            closing: Vec::new(),
+        })
+        .collect();
+    if kept.is_empty() {
+        return None;
+    }
+    Some(Document { name: document.name.clone(), uses: Vec::new(), tables: kept, diagrams: Vec::new(), trailing: Vec::new(), external: true })
+}
+
+/// set이 외부 문서에서 쓰는 table이 database에 있는지 확인한다(docs/dbspec.md "External documents").
+/// `live`는 database를 introspect한 문서다. 쓰는 table마다 table이 없거나, 외부 문서의 column이 없거나 type이나
+/// null이 다르거나, primary key가 다르거나, unique key의 column 목록이 없으면 그 차이를 table, column 순으로
+/// 돌려준다. 외부 문서가 없으면 빈 목록이다.
+pub fn external_differences(live: &Document, documents: &[&Document]) -> Vec<String> {
+    let mut tables: Vec<&model::Table> = Vec::new();
+    for document in documents.iter().filter(|d| !d.external) {
+        for line in &document.uses {
+            let Some(external) = documents.iter().find(|d| d.external && d.name.text == line.document.text) else { continue };
+            for name in &line.tables {
+                if let Some(table) = external.tables.iter().find(|t| t.name.text == name.text) {
+                    if !tables.iter().any(|t| t.name.text == name.text) {
+                        tables.push(table);
+                    }
+                }
+            }
+        }
+    }
+    tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    let keys = |t: &model::Table| -> Vec<String> { t.primary.first().map(|k| k.columns.iter().map(|c| c.text.clone()).collect()).unwrap_or_default() };
+    let null_text = |null: bool| if null { "null" } else { "not null" };
+    let mut out = Vec::new();
+    for want in tables {
+        let name = &want.name.text;
+        let Some(got) = live.tables.iter().find(|t| t.name.text == *name) else {
+            out.push(format!("table {name} does not exist"));
+            continue;
+        };
+        for c in &want.columns {
+            match got.columns.iter().find(|g| g.name.text == c.name.text) {
+                None => out.push(format!("column {name}.{} does not exist", c.name.text)),
+                Some(g) if g.ty.render() != c.ty.render() => out.push(format!("column {name}.{} is {}, not {}", c.name.text, g.ty.render(), c.ty.render())),
+                Some(g) if g.nullable != c.nullable => {
+                    out.push(format!("column {name}.{} is {}, not {}", c.name.text, null_text(g.nullable), null_text(c.nullable)))
+                }
+                Some(_) => {}
+            }
+        }
+        let (got_keys, want_keys) = (keys(got), keys(want));
+        if got_keys != want_keys {
+            out.push(format!("table {name} has the primary key ({}), not ({})", got_keys.join(", "), want_keys.join(", ")));
+        }
+        for unique in &want.uniques {
+            let columns: Vec<&str> = unique.columns.iter().map(|c| c.text.as_str()).collect();
+            if !got.uniques.iter().any(|g| g.columns.iter().map(|c| c.text.as_str()).eq(columns.iter().copied())) {
+                out.push(format!("table {name} has no unique key ({})", columns.join(", ")));
+            }
+        }
+    }
+    out
 }
 
 /// The rules in the order of the rule table of docs/dbspec.md, which orders

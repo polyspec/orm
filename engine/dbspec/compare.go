@@ -81,9 +81,20 @@ func CompareSchemas(source, target *Document) ([]Difference, []Diagnostic) {
 }
 
 // isSchemaText는 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다.
+// 외부 문서의 use 줄은 문서 이름 순, 그 table은 이름 순이어야 한다. 외부 문서 자체는
+// 필요 없다.
 func isSchemaText(d *Document) bool {
-	manifest, diagnostics := ManifestOf([]*Document{d})
-	return len(diagnostics) == 0 && Emit(d) == manifest.SchemaText
+	if d.Name != "schema" {
+		return false
+	}
+	schema := &Document{Name: d.Name, Tables: slices.Clone(d.Tables)}
+	slices.SortStableFunc(schema.Tables, func(a, b Table) int { return strings.Compare(a.Name, b.Name) })
+	for _, u := range d.Uses {
+		tables := slices.Clone(u.Tables)
+		slices.Sort(tables)
+		schema.Uses = append(schema.Uses, Use{Document: u.Document, Tables: slices.Compact(tables)})
+	}
+	return Emit(d) == emitDocument(schema, viewSchema)
 }
 
 // compareTables는 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다.

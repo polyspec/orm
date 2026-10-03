@@ -220,6 +220,7 @@ impl SchemaUtils<'_> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
+        check_external(self.u.db, &refs).await?;
         let dialect = match self.u.db.driver() {
             "mysql" => dbspec::Dialect::MySql,
             "postgres" => dbspec::Dialect::Postgres,
@@ -285,7 +286,9 @@ impl SchemaUtils<'_> {
             msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
         };
         let manifest = dbspec::manifest(&refs).map_err(invalid)?;
-        let target = dbspec::parse(&manifest.schema_text, &BTreeMap::new()).map_err(invalid)?;
+        // schema text의 use 줄은 외부 문서를 가리킨다.
+        let externals: BTreeMap<String, String> = documents.iter().filter(|d| d.external).map(|d| (d.name.text.clone(), dbspec::emit(d))).collect();
+        let target = dbspec::parse(&manifest.schema_text, &externals).map_err(invalid)?;
         match self.u.db.pool() {
             crate::db::Pool::Postgres(_) => {
                 self.u
@@ -295,7 +298,7 @@ impl SchemaUtils<'_> {
                         let Some(TxInner::Postgres(conn)) = guard.as_mut() else {
                             return Err(Error::internal("a PostgreSQL transaction holds another connection"));
                         };
-                        add_tables_and_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target).await
+                        add_tables_and_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target, &refs).await
                     })
                     .await
             }
@@ -305,11 +308,11 @@ impl SchemaUtils<'_> {
             ))),
             crate::db::Pool::MySql(pool) => {
                 let mut conn = pool.acquire().await?;
-                add_tables_and_columns_on(&mut *conn, dbspec::Dialect::MySql, &target).await
+                add_tables_and_columns_on(&mut *conn, dbspec::Dialect::MySql, &target, &refs).await
             }
             crate::db::Pool::Sqlite(pool) => {
                 let mut conn = pool.acquire().await?;
-                let result = without_foreign_keys(&mut conn, &target).await;
+                let result = without_foreign_keys(&mut conn, &target, &refs).await;
                 if result.is_err() {
                     // foreign key가 꺼졌을 수 있는 연결은 pool에 돌려주지 않는다.
                     conn.close_on_drop();
@@ -617,7 +620,7 @@ impl AesUtils<'_> {
 }
 
 /// 연결의 database를 introspect하고 `dbspec::add_tables_and_columns_steps`의 step을 실행한다.
-async fn add_tables_and_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document) -> Result<Vec<String>>
+async fn add_tables_and_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document, documents: &[&Document]) -> Result<Vec<String>>
 where
     C: crate::dbspec::CatalogQuerier + Send,
     for<'c> &'c mut C: sqlx::Executor<'c>,
@@ -626,6 +629,7 @@ where
         crate::dbspec::IntrospectError::Query(e) => Error::from(e),
         crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
     })?;
+    external_error(dbspec::external_differences(&live.document, documents))?;
     let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
     if !planned.differences.is_empty() {
         return Err(Error::Engine {
@@ -645,12 +649,12 @@ where
 /// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
 /// key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md,
 /// "Apply"의 SQLite 다시 만들기).
-async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Document) -> Result<Vec<String>> {
+async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
     sqlx::raw_sql("PRAGMA foreign_keys = OFF").execute(&mut *conn).await?;
     let result = async {
         sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut *conn).await?;
         let applied = async {
-            let added = add_tables_and_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target).await?;
+            let added = add_tables_and_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
             let broken: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_foreign_key_check").fetch_one(&mut *conn).await?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
@@ -677,4 +681,46 @@ async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Docume
         // foreign key를 다시 켜지 못한 오류도 message에 남긴다.
         (Err(error), Err(restore)) => Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}") }),
     }
+}
+
+/// 외부 문서와 database의 차이를 CONFIG로 돌려준다. 차이가 없으면 Ok다.
+fn external_error(differences: Vec<String>) -> Result<()> {
+    if differences.is_empty() {
+        return Ok(());
+    }
+    Err(Error::Config(format!("the tables that the set uses from external documents differ from the database: {}", differences.join("; "))))
+}
+
+/// set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). 외부 문서가 없는
+/// set은 database를 읽지 않는다. 연결에 활성 transaction이 있으면 그 연결에서, 아니면 pool 연결 하나에서
+/// introspect하며, 차이는 CONFIG다.
+pub(crate) async fn check_external(db: &crate::Db, documents: &[&Document]) -> Result<()> {
+    if !documents.iter().any(|d| d.external) {
+        return Ok(());
+    }
+    let failed = |e: crate::dbspec::IntrospectError| match e {
+        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
+        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
+    };
+    let live = match active_for(db) {
+        Some(t) => {
+            let mut guard = t.enter()?;
+            match guard.as_mut() {
+                Some(TxInner::MySql(inner)) => {
+                    let conn = inner.conn.as_mut().expect("active MySQL transaction connection");
+                    crate::dbspec::introspect(&mut **conn, dbspec::Dialect::MySql, "schema").await
+                }
+                Some(TxInner::Postgres(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Postgres, "schema").await,
+                Some(TxInner::Sqlite(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Sqlite, "schema").await,
+                None => return Err(Error::Config("transaction already finished".into())),
+            }
+        }
+        None => match db.pool() {
+            crate::db::Pool::MySql(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::MySql, "schema").await,
+            crate::db::Pool::Postgres(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Postgres, "schema").await,
+            crate::db::Pool::Sqlite(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Sqlite, "schema").await,
+        },
+    }
+    .map_err(failed)?;
+    external_error(dbspec::external_differences(&live.document, documents))
 }

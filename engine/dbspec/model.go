@@ -10,7 +10,11 @@ import (
 // applies the canonical order. Comments hold whole comment lines from `#` to
 // the end of the line, attached to the line that follows them.
 type Document struct {
-	Name     string
+	Name string
+	// External은 문서가 set의 소유가 아니라 소유한 문서가 use로 쓰는 외부 문서임을
+	// 뜻한다. 외부 문서는 parse하고 검사하지만 렌더링, 설치, 비교, 생성하지 않는다
+	// (docs/dbspec.md "Documents and use"). 문서 text에는 나오지 않는다.
+	External bool
 	Uses     []Use
 	Tables   []Table
 	Diagrams []Diagram

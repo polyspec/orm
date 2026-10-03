@@ -20,6 +20,7 @@ export {
   diffPlan,
   emitDbspec,
   emitPlan,
+  externalDifferences,
   introspectDbspec,
   parseDbspec,
   parsePlan,

@@ -4,7 +4,7 @@
 use super::model::{Setting, Table};
 use super::plan_diff::{column_of, primary_key, same_default, widens};
 use super::plan_objects::{expr_text, foreign_key_def, index_def, names_def, same};
-use super::{emit, manifest, Diagnostic, Document};
+use super::{emit, Diagnostic, Document};
 use std::collections::BTreeMap;
 
 /// 비교 대상이 schema text가 아닐 때의 diagnostic rule.
@@ -88,9 +88,19 @@ fn rank(kind: &str) -> usize {
     KINDS.iter().position(|k| *k == kind).expect("every difference kind is listed")
 }
 
-/// 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다.
-fn is_schema_text(document: &Document) -> bool {
-    manifest(&[document]).is_ok_and(|m| emit(document) == m.schema_text)
+/// 문서의 canonical emission이 그 문서 하나의 schema text인지 알려 준다. 외부 문서의 use 줄은 문서 이름 순,
+/// 그 table은 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+pub(crate) fn is_schema_text(document: &Document) -> bool {
+    if document.name.text != "schema" {
+        return false;
+    }
+    let mut schema = document.clone();
+    schema.tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
+    for line in &mut schema.uses {
+        line.tables.sort_by(|a, b| a.text.cmp(&b.text));
+        line.tables.dedup_by(|a, b| a.text == b.text);
+    }
+    emit(document) == super::emit::emit(&schema, super::emit::View::Schema)
 }
 
 /// 두 쪽에 다 있는 table의 column, primary key, 객체, setting 차이를 더한다.

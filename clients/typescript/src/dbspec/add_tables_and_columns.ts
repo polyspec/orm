@@ -3,7 +3,7 @@ import { compareSchemas } from './compare.js';
 import { emitDocument } from './emit.js';
 import type { DbspecUnsupported } from './introspect_catalog.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecTable } from './model.js';
-import { parsePlan } from './plan.js';
+import { planTo } from './plan.js';
 import { planSteps, type DbspecPlanStep } from './plan_steps.js';
 import type { DbspecDialect } from './render.js';
 import { dbspecManifest } from './index.js';
@@ -69,7 +69,7 @@ export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: read
   // 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서 시작하므로
   // (하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을 그대로 갖는다.
   let failed: readonly DbspecDiagnostic[] = [];
-  let from = 'empty';
+  let from: string | null = null;
   if (source.tables.length > 0) {
     const manifest = dbspecManifest([source]);
     failed = manifest.diagnostics;
@@ -77,7 +77,12 @@ export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: read
   }
   let steps: readonly DbspecPlanStep[] = [];
   if (failed.length === 0) {
-    const plan = parsePlan(`dbplan 1 add_tables_and_columns\nfrom ${from}\n\n${emitDocument(target, 'canonical')}`);
+    // target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지 않고 target으로 plan을 만든다.
+    const plan = planTo(
+      { name: 'add_tables_and_columns', from, renameTables: [], renameColumns: [], dropTables: [], dropColumns: [] },
+      target,
+      emitDocument(target, 'canonical'),
+    );
     failed = plan.diagnostics;
     if (plan.plan !== null) {
       const written = planSteps(source.tables.length > 0 ? source : null, plan.plan, dialect);

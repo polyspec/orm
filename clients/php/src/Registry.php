@@ -13,6 +13,8 @@ final class Registry
 {
     /** @var array<string, string> manifest hash => manifest text */
     private static array $texts = [];
+    /** @var array<string, string> manifest hash => external text(외부 문서에서 쓰는 table) */
+    private static array $externals = [];
     /** @var array<string, array<string, class-string<Model>>> manifest hash => entity => class */
     private static array $models = [];
     /** @var array<string, RuntimeModel> manifest hash => runtime model */
@@ -23,13 +25,14 @@ final class Registry
      * 등록한다. text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저
      * SCHEMA_HASH_MISMATCH로 실패하고 아무것도 등록하지 않는다.
      */
-    public static function generated(string $hash, string $text): void
+    public static function generated(string $hash, string $text, string $external = ''): void
     {
-        $actual = 'sha256:' . hash('sha256', $text);
+        $actual = 'sha256:' . hash('sha256', $text . $external);
         if ($actual !== $hash) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "generated code declares manifest $hash, its manifest text hashes to $actual: generate the models again");
         }
         self::$texts[$hash] = $text;
+        self::$externals[$hash] = $external;
         self::$models[$hash] ??= [];
     }
 
@@ -63,7 +66,7 @@ final class Registry
     /** 등록된 model의 meta() 배열로 만든 manifest hash의 runtime model이다. */
     public static function model(string $hash): RuntimeModel
     {
-        return self::$runtime[$hash] ??= RuntimeModel::fromModels($hash, self::manifestText($hash), array_values(self::models($hash)));
+        return self::$runtime[$hash] ??= RuntimeModel::fromModels($hash, self::manifestText($hash), array_values(self::models($hash)), self::$externals[$hash] ?? '');
     }
 
     /** @return array<string, class-string<Model>> 한 document set의 model을 entity별로 돌려준다. */

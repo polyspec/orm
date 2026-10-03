@@ -328,11 +328,18 @@ impl Db {
     /// Connects to the database selected by the DSN URI and registers the set
     /// of a generated schema on the connection; the connect helper of
     /// generated models calls it. A manifest text that does not hash to its
-    /// declared hash fails with CONFIG before the connection opens.
+    /// declared hash fails with CONFIG before the connection opens, and so does
+    /// a set whose tables of external documents differ from the database.
     pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db> {
         schema.registered()?;
         let db = Db::connect(dsn, pool_size, cfg).await?;
-        db.register(schema)?;
+        // 외부 문서를 쓰는 set은 그 table을 database에서 확인한다. 쓰지 않는 set은 database를 읽지 않는다.
+        let documents = schema.documents()?;
+        let refs: Vec<&orm_schema::dbspec::Document> = documents.iter().collect();
+        if let Err(error) = crate::utils::check_external(&db, &refs).await.and_then(|()| db.register(schema)) {
+            db.close().await;
+            return Err(error);
+        }
         Ok(db)
     }
 

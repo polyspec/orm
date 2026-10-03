@@ -1861,8 +1861,8 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference. A set that uses external documents of another set owns only its own tables: install, addTablesAndColumns and connecting with its generated schema value require the used external tables in the database as declared and fail with CONFIG otherwise, and never create or change them.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다. 다른 set의 외부 문서를 쓰는 set은 자기 table만 소유한다. install, addTablesAndColumns, 생성한 schema 값으로 하는 연결은 쓰는 외부 table이 선언대로 database에 있기를 요구하고 아니면 CONFIG로 실패하며, 그 table을 만들거나 바꾸지 않는다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1887,7 +1887,7 @@
         },
         {
           "code": "CONFIG",
-          "when": "only some tables of the set exist, MySQL installs inside a transaction, or MySQL or SQLite adds columns inside a transaction"
+          "when": "only some tables of the set exist, a table that the set uses from an external document differs from the database, MySQL installs inside a transaction, or MySQL or SQLite adds columns inside a transaction"
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
@@ -1919,7 +1919,11 @@
         "contracts/fixtures/add_tables_and_columns/required.dbs",
         "contracts/fixtures/add_tables_and_columns/unique.dbs",
         "contracts/fixtures/add_tables_and_columns/v1.dbs",
-        "contracts/fixtures/add_tables_and_columns/v2.dbs"
+        "contracts/fixtures/add_tables_and_columns/v2.dbs",
+        "contracts/fixtures/external/core.dbs",
+        "contracts/fixtures/external/core_extra.dbs",
+        "contracts/fixtures/external/member.dbs",
+        "contracts/fixtures/external/member_v2.dbs"
       ],
       "tests": [
         "clients/go/orm/keyword_test.go",
@@ -1941,11 +1945,14 @@
         "clients/go/orm/add_tables_and_columns_test.go",
         "clients/php/tests/add_tables_and_columns_test.php",
         "clients/rust/orm/tests/add_tables_and_columns.rs",
-        "clients/typescript/tests/add-tables-and-columns.mjs"
+        "clients/typescript/tests/add-tables-and-columns.mjs",
+        "clients/go/orm/external_documents_test.go",
+        "clients/rust/orm/tests/external_documents.rs"
       ],
       "docs": [
         "docs/schema.md",
-        "docs/usage.md"
+        "docs/usage.md",
+        "docs/dbspec.md"
       ],
       "verification": [
         {
@@ -1977,7 +1984,8 @@
         "kind": "database",
         "cases": [
           "schema_install_existing",
-          "schema_install_partial"
+          "schema_install_partial",
+          "schema_install_external_documents"
         ],
         "owners": {
           "go": {
@@ -1992,11 +2000,13 @@
                   "test": "clients/go/model/coverage_schema_install_test.go",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
+                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2007,11 +2017,13 @@
                   "test": "clients/go/model/coverage_schema_install_test.go",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
+                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2022,11 +2034,13 @@
                   "test": "clients/go/model/coverage_schema_install_test.go",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "TestCoverageSchemaInstallExisting",
-                    "schema_install_partial": "TestCoverageSchemaInstallPartial"
+                    "schema_install_partial": "TestCoverageSchemaInstallPartial",
+                    "schema_install_external_documents": "TestCoverageSchemaInstallExternalDocuments"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2045,7 +2059,8 @@
                   "test": "clients/php/tests/coverage_schema_install.php",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2056,7 +2071,8 @@
                   "test": "clients/php/tests/coverage_schema_install.php",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2067,7 +2083,8 @@
                   "test": "clients/php/tests/coverage_schema_install.php",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2086,11 +2103,13 @@
                   "test": "clients/rust/tests/src/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
+                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2101,11 +2120,13 @@
                   "test": "clients/rust/tests/src/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
+                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2116,11 +2137,13 @@
                   "test": "clients/rust/tests/src/coverage_schema_install.rs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "symbols": {
                     "schema_install_existing": "coverage_schema_install::coverage_schema_install_existing",
-                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial"
+                    "schema_install_partial": "coverage_schema_install::coverage_schema_install_partial",
+                    "schema_install_external_documents": "coverage_schema_install::coverage_schema_install_external_documents"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2139,7 +2162,8 @@
                   "test": "clients/typescript/tests/coverage_schema_install.mjs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2150,7 +2174,8 @@
                   "test": "clients/typescript/tests/coverage_schema_install.mjs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2161,7 +2186,8 @@
                   "test": "clients/typescript/tests/coverage_schema_install.mjs",
                   "cases": [
                     "schema_install_existing",
-                    "schema_install_partial"
+                    "schema_install_partial",
+                    "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

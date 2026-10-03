@@ -182,18 +182,146 @@ final class Dbspec
         if ($diagnostics !== []) {
             return ManifestResult::invalid($diagnostics);
         }
-        $manifestText = '';
-        $tables = [];
+        $used = [];
         foreach ($ordered as $document) {
+            if ($document->external) {
+                continue;
+            }
+            foreach ($document->uses as $use) {
+                foreach ($use->tables as $table) {
+                    if (!in_array($table, $used[$use->document] ?? [], true)) {
+                        $used[$use->document][] = $table;
+                    }
+                }
+            }
+        }
+        $manifestText = '';
+        $externalText = '';
+        $tables = [];
+        $schema = new Document('schema');
+        foreach ($ordered as $document) {
+            if ($document->external) {
+                $trimmed = self::externalDocument($document, $used[$document->name] ?? []);
+                if ($trimmed !== null) {
+                    $externalText .= Emitter::emit($trimmed, View::Manifest);
+                    $names = $used[$document->name];
+                    sort($names, SORT_STRING);
+                    $schema->uses[] = new UseLine($document->name, $names);
+                }
+                continue;
+            }
             $manifestText .= Emitter::emit($document, View::Manifest);
             array_push($tables, ...$document->tables);
         }
-        // schema text 는 집합의 모든 table 을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
+        // schema text 는 집합이 소유한 모든 table 을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는
+        // 방식과 무관하다. 외부 문서에서 쓰는 table 은 그 문서의 use 줄로 남는다.
         usort($tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
-        $schema = new Document('schema');
         $schema->tables = $tables;
         $schemaText = Emitter::emit($schema, View::Schema);
-        return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText), 'sha256:' . hash('sha256', $schemaText)));
+        return ManifestResult::valid(new Manifest($manifestText, $schemaText, 'sha256:' . hash('sha256', $manifestText . $externalText), 'sha256:' . hash('sha256', $schemaText), $externalText));
+    }
+
+    /**
+     * 외부 문서에서 $tables의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이
+     * 없으면 null이다. foreign key, index, check, setting은 외부 문서가 소유하므로 담지 않는다.
+     *
+     * @param list<string> $tables
+     */
+    private static function externalDocument(Document $document, array $tables): ?Document
+    {
+        $out = new Document($document->name);
+        foreach ($document->tables as $table) {
+            if (!in_array($table->name, $tables, true)) {
+                continue;
+            }
+            $trimmed = new Table($table->name);
+            $trimmed->columns = $table->columns;
+            $trimmed->primaryKey = $table->primaryKey === null ? null : new PrimaryKey($table->primaryKey->columns);
+            $trimmed->uniqueKeys = array_map(static fn(UniqueKey $u): UniqueKey => new UniqueKey($u->name, $u->columns), $table->uniqueKeys);
+            $out->tables[] = $trimmed;
+        }
+        return $out->tables === [] ? null : $out;
+    }
+
+    /**
+     * set이 외부 문서에서 쓰는 table이 database에 있는지 확인한다(docs/dbspec.md "External
+     * documents"). `$live`는 database를 introspect한 문서다. 쓰는 table마다 table이 없거나, 외부
+     * 문서의 column이 없거나 type이나 null이 다르거나, primary key가 다르거나, unique key의 column
+     * 목록이 없으면 그 차이를 table 이름, column 순으로 돌려준다. 외부 문서가 없으면 빈 목록이다.
+     *
+     * @param list<Document> $documents
+     * @return list<string>
+     */
+    public static function externalDifferences(Document $live, array $documents): array
+    {
+        $external = [];
+        foreach ($documents as $document) {
+            if ($document->external) {
+                $external[$document->name] = $document;
+            }
+        }
+        $tables = [];
+        foreach ($documents as $document) {
+            if ($document->external) {
+                continue;
+            }
+            foreach ($document->uses as $use) {
+                $source = $external[$use->document] ?? null;
+                if ($source === null) {
+                    continue;
+                }
+                foreach ($use->tables as $name) {
+                    foreach ($source->tables as $table) {
+                        if ($table->name === $name && !isset($tables[$name])) {
+                            $tables[$name] = $table;
+                        }
+                    }
+                }
+            }
+        }
+        ksort($tables, SORT_STRING);
+        $liveTables = [];
+        foreach ($live->tables as $table) {
+            $liveTables[$table->name] = $table;
+        }
+        $nullText = static fn(bool $null): string => $null ? 'null' : 'not null';
+        $out = [];
+        foreach ($tables as $name => $want) {
+            $got = $liveTables[$name] ?? null;
+            if ($got === null) {
+                $out[] = "table $name does not exist";
+                continue;
+            }
+            $gotColumns = [];
+            foreach ($got->columns as $column) {
+                $gotColumns[$column->name] = $column;
+            }
+            foreach ($want->columns as $column) {
+                $g = $gotColumns[$column->name] ?? null;
+                if ($g === null) {
+                    $out[] = "column $name.{$column->name} does not exist";
+                } elseif ($g->type->text() !== $column->type->text()) {
+                    $out[] = "column $name.{$column->name} is {$g->type->text()}, not {$column->type->text()}";
+                } elseif ($g->nullable !== $column->nullable) {
+                    $out[] = "column $name.{$column->name} is {$nullText($g->nullable)}, not {$nullText($column->nullable)}";
+                }
+            }
+            $gotKey = $got->primaryKey?->columns ?? [];
+            $wantKey = $want->primaryKey?->columns ?? [];
+            if ($gotKey !== $wantKey) {
+                $out[] = "table $name has the primary key (" . implode(', ', $gotKey) . '), not (' . implode(', ', $wantKey) . ')';
+            }
+            foreach ($want->uniqueKeys as $unique) {
+                $found = false;
+                foreach ($got->uniqueKeys as $g) {
+                    $found = $found || $g->columns === $unique->columns;
+                }
+                if (!$found) {
+                    $out[] = "table $name has no unique key (" . implode(', ', $unique->columns) . ')';
+                }
+            }
+        }
+        return $out;
     }
 
     /**
@@ -326,7 +454,7 @@ final class Dbspec
         $diagnostics = [];
         $steps = [];
         $start = $source->tables === [] ? null : $source;
-        $from = 'empty';
+        $from = null;
         if ($start !== null) {
             $manifest = self::manifest([$start]);
             if ($manifest->manifest === null) {
@@ -336,7 +464,9 @@ final class Dbspec
             }
         }
         if ($diagnostics === []) {
-            $plan = self::parsePlan("dbplan 1 add_tables_and_columns\nfrom $from\n\n" . self::emit($target));
+            // target 은 외부 문서를 쓰는 set 의 schema text 일 수 있으므로 plan 문서를 parse 하지 않고
+            // target 으로 plan 을 만든다.
+            $plan = PlanText::planTo('add_tables_and_columns', $from, [], [], [], [], $target, self::emit($target));
             if ($plan->plan === null) {
                 $diagnostics = $plan->diagnostics;
             } else {

@@ -26,6 +26,10 @@ pub struct Document {
     pub diagrams: Vec<Diagram>,
     /// Comment lines after the last line of the document.
     pub trailing: Vec<String>,
+    /// 문서가 set의 소유가 아니라 소유한 문서가 use로 쓰는 외부 문서임을 뜻한다. 외부 문서는 parse하고
+    /// 검사하지만 렌더링, 설치, 비교, 생성하지 않는다(docs/dbspec.md "Documents and use"). 문서 text에는
+    /// 나오지 않는다.
+    pub external: bool,
 }
 
 #[derive(Clone, Debug)]

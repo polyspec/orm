@@ -89,12 +89,15 @@ final class Generator
             self::checkNames($e);
         }
         $files = [];
+        $external = $m->externalText !== '';
         $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Config;\nuse Orm\\Db;\nuse Orm\\Orm;\nuse Orm\\Registry;\nuse Orm\\Schema;\n\n"
             . "/** The manifestHash of the document set the models were generated from. */\nconst MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"
             . "/** The manifest text of the document set the models were generated from. */\nconst MANIFEST_TEXT = " . self::str($m->manifestText) . ";\n\n"
-            . "/** The generated schema value: install takes it to create the tables and register the set. */\nfunction schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH);\n}\n\n"
+            // 외부 문서를 쓰지 않는 set의 bootstrap은 external text를 쓰지 않으므로 그대로다.
+            . ($external ? "/** The tables that the set uses from external documents, which other sets own. */\nconst EXTERNAL_TEXT = " . self::str($m->externalText) . ";\n\n" : '')
+            . "/** The generated schema value: install takes it to create the tables and register the set. */\nfunction schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n}\n\n"
             . "/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */\nfunction connect(string \$dsn, Config \$config): Db\n{\n    return Orm::connectSchema(\$dsn, schema(), \$config);\n}\n\n"
-            . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT);\n";
+            . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n";
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
             if (isset($files["$class.php"])) {

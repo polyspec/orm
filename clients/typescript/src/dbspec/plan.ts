@@ -1,6 +1,8 @@
 // schema plan 문서와 plan chain (docs/plans.md "Plan document", "Chain").
 // 기준은 Go 엔진(engine/dbspec/plan.go)이며 diagnostic message는 Go와 같은 바이트다.
-import { dbspecManifest, parseDbspec } from './index.js';
+import { createHash } from 'node:crypto';
+import { isSchemaText } from './compare.js';
+import { emitDbspec, parseDbspec } from './index.js';
 import type { DbspecDiagnostic, DbspecDocument } from './model.js';
 import { RESERVED } from './parse.js';
 
@@ -138,41 +140,54 @@ export function parsePlan(text: string): DbspecPlanResult {
   }
   if (i >= lines.length) return failed(i + 1, 'a blank line and the target schema text follow the header');
   const offset = i + 1;
+  // plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과 addTablesAndColumns가 만든다.
+  for (let k = offset; k < lines.length; k++) {
+    if (lines[k]!.startsWith('use ')) {
+      return failed(k + 1, `a plan targets a whole database, and its target uses the external document ${lines[k]!.split(/\s+/)[1]}: install a set that uses external documents with install or addTablesAndColumns`);
+    }
+  }
   const schemaText = lines.slice(offset).join('\n') + '\n';
   const parsed = parseDbspec(schemaText, {});
   if (parsed.document === null) {
     const diagnostics = parsed.diagnostics.map(d => Object.freeze({ ...d, line: d.line + offset }));
     return Object.freeze({ plan: null, diagnostics: Object.freeze(diagnostics) });
   }
-  const manifest = dbspecManifest([parsed.document]);
-  if (manifest.manifest === null) return Object.freeze({ plan: null, diagnostics: manifest.diagnostics });
-  if (manifest.manifest.schemaText !== schemaText) {
+  if (!isSchemaText(parsed.document) || emitDbspec(parsed.document) !== schemaText) {
     return failed(
       offset + 1,
       'the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings',
     );
   }
-  if (manifest.manifest.schemaHash === from) return failed(2, 'the plan starts from its own target schema');
+  return planTo({ name, from, renameTables, renameColumns, dropTables, dropColumns }, parsed.document, schemaText);
+}
+
+/**
+ * Sets the target of a plan to a schema text document whose text is schemaText; its hash is `to`. A target that
+ * equals `from` is a plan diagnostic at line 2.
+ */
+export function planTo(
+  header: Omit<DbspecPlan, 'schema' | 'to'>,
+  schema: DbspecDocument,
+  schemaText: string,
+): DbspecPlanResult {
+  const to = `sha256:${createHash('sha256').update(schemaText, 'utf8').digest('hex')}`;
+  if (to === header.from) return failed(2, 'the plan starts from its own target schema');
   const plan: DbspecPlan = Object.freeze({
-    name,
-    from,
-    renameTables: Object.freeze(renameTables),
-    renameColumns: Object.freeze(renameColumns),
-    dropTables: Object.freeze(dropTables),
-    dropColumns: Object.freeze(dropColumns),
-    schema: parsed.document,
-    to: manifest.manifest.schemaHash,
+    name: header.name,
+    from: header.from,
+    renameTables: Object.freeze([...header.renameTables]),
+    renameColumns: Object.freeze([...header.renameColumns]),
+    dropTables: Object.freeze([...header.dropTables]),
+    dropColumns: Object.freeze([...header.dropColumns]),
+    schema,
+    to,
   });
   return Object.freeze({ plan, diagnostics: NO_DIAGNOSTICS });
 }
 
-/** The schema text of a plan's target; a plan from parsePlan always has one. */
+/** The schema text of a plan's target: the canonical emission of a schema text document. */
 export function planSchemaText(schema: DbspecDocument): string {
-  const result = dbspecManifest([schema]);
-  if (result.manifest === null) {
-    throw new Error(`plan target is not a valid document set: ${result.diagnostics.map(d => d.message).join('; ')}`);
-  }
-  return result.manifest.schemaText;
+  return emitDbspec(schema);
 }
 
 /**

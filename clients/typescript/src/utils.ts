@@ -1,12 +1,12 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
-import type { DriverControl, DriverValue, PoolStats } from './driver.js';
+import type { DriverControl, DriverName, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
-import { addTablesAndColumnsSteps, dbspecManifest, parseDbspec, renderDbspec } from './dbspec/index.js';
+import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, parseDbspec, renderDbspec } from './dbspec/index.js';
 import { introspectCatalog } from './dbspec/introspect.js';
 import { CatalogRow } from './dbspec/introspect_catalog.js';
-import { parseDocumentSet, splitDocuments } from './engine/model.js';
+import type { RuntimeModel } from './engine/model.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 export interface AesRotationStatus {
@@ -71,6 +71,27 @@ async function inTx<T>(db: Db, fn: (frame: TxFrame) => Promise<T>): Promise<T> {
 async function read(db: Db, sql: string, params: readonly DriverValue[]): Promise<unknown[][]> {
   const frame = activeFor(db);
   return frame ? (await frame.tx.control(sql, params)).rows : (await db.pool.execute(sql, params)).rows;
+}
+
+/** 외부 문서의 쓰는 table이 database와 다른 set의 CONFIG다. */
+function externalError(differences: readonly string[]): OrmError {
+  return config(`the tables that the set uses from external documents differ from the database: ${differences.join('; ')}`);
+}
+
+/** set의 외부 문서 text를 문서 이름마다 돌려준다. schema text의 use 줄을 parse할 때 쓴다. */
+function externalTexts(model: RuntimeModel): Record<string, string> {
+  return Object.fromEntries(model.documents.filter(d => d.external === true).map(d => [d.name, emitDbspec(d)]));
+}
+
+/**
+ * set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). query는 연결의 database를
+ * 읽는다. 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
+ */
+export async function checkExternal(model: RuntimeModel, driver: DriverName, query: (sql: string) => Promise<readonly (readonly unknown[])[]>): Promise<void> {
+  if (!model.documents.some(d => d.external === true)) return;
+  const live = await introspectCatalog(async sql => (await query(sql)).map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
+  const differences = externalDifferences(live.document, model.documents);
+  if (differences.length > 0) throw externalError(differences);
 }
 
 /** Operations outside the query syntax. */
@@ -159,7 +180,7 @@ export class SchemaUtils {
    */
   public async install(schema: Schema): Promise<void> {
     const model = schemaModel(schema);
-    const documents = parseDocumentSet(splitDocuments(schema.manifestText));
+    const documents = model.documents;
     const rendered = renderDbspec(documents, this.db.driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
@@ -168,7 +189,8 @@ export class SchemaUtils {
     const statements = rendered.statements;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
     if (this.db.driver === 'mysql' && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-    const tables = documents.flatMap(d => d.tables.map(t => t.name));
+    await checkExternal(model, this.db.driver, sql => read(this.db, sql, []));
+    const tables = documents.filter(d => d.external !== true).flatMap(d => d.tables.map(t => t.name));
     const present: string[] = [];
     for (const table of tables) if (await this.table(table)) present.push(table);
     if (present.length === tables.length) {
@@ -202,9 +224,10 @@ export class SchemaUtils {
    * "table.column"으로 table 이름, column 순서로 돌려준다.
    */
   public async addTablesAndColumns(schema: Schema): Promise<string[]> {
-    schemaModel(schema);
-    const manifest = dbspecManifest(parseDocumentSet(splitDocuments(schema.manifestText)));
-    const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, {});
+    const model = schemaModel(schema);
+    const manifest = dbspecManifest(model.documents);
+    // schema text의 use 줄은 외부 문서를 가리키므로 외부 문서를 집합으로 삼아 parse한다.
+    const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
     const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
     if (failed.length > 0) {
       const d = failed[0]!;
@@ -215,6 +238,8 @@ export class SchemaUtils {
     const apply = async (control: DriverControl): Promise<string[]> => {
       const query = async (sql: string) => (await control(sql)).rows.map(values => new CatalogRow(sql, values));
       const live = await introspectCatalog(query, driver, 'schema');
+      const external = externalDifferences(live.document, model.documents);
+      if (external.length > 0) throw externalError(external);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
       if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ${differences.join('; ')}`);
       for (const step of steps) await control(step.statement);
