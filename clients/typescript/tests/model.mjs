@@ -1,8 +1,10 @@
 // Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN
-// and ORM_TEST_POSTGRES_DSN name test databases and must be set, e.g.
+// and ORM_TEST_POSTGRES_DSN must be set, e.g.
 //   ORM_TEST_MYSQL_DSN='mysql://root@localhost/orm_ts_test?socket=/tmp/mysql.sock'
 //   ORM_TEST_POSTGRES_DSN='postgres:///orm_ts_test?host=/tmp'
-// The test drops and recreates the schema tables in those databases.
+// Every case that installs the schema or checks an empty database runs on a
+// case database of its own (case-database.mjs), created on those servers and
+// dropped when the case ends; the databases the DSNs name are not changed.
 //
 // Usage: node clients/typescript/tests/model.mjs (after npm run typescript:build)
 import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -16,11 +18,10 @@ import {
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 import { DATABASE, sections } from '../../../tests/testcase.mjs';
+import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
-const bench = await readFile(join(root, 'schema/bench.dbs'), 'utf8');
-const benchTables = parseDbspec(bench, {}).document.tables.map(t => t.name);
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
   throw new Error('usage: model.mjs [--case styledStates --dialect sqlite|mysql|postgres]');
@@ -55,19 +56,6 @@ function end() {
   caseLog.end(failures > caseFailures ? `${failures - caseFailures} check(s) failed; each FAIL line above names one` : undefined);
 }
 
-/** A mysql2 connection to the database, host, port, or socket of a DSN. */
-function mysqlConnection(dsn) {
-  const url = new URL(dsn);
-  return require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-}
-
-/** A pg client for the database, host, and port of a DSN. */
-function postgresClient(dsn) {
-  const url = new URL(dsn);
-  const { Client } = require('pg');
-  return new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
-}
-
 /**
  * Returns after the replica has applied every change the primary committed
  * before the call. On PostgreSQL a transaction with
@@ -90,8 +78,9 @@ async function awaitReplica(dialect, primary, replica) {
     } finally { await client.end(); }
     return;
   }
-  const source = await mysqlConnection(primary);
-  const target = await mysqlConnection(replica);
+  // replica에 case database가 아직 없을 수 있으므로 두 연결 모두 database 없이 연다.
+  const source = await mysqlConnection(primary, undefined);
+  const target = await mysqlConnection(replica, undefined);
   try {
     const [[status]] = await source.query('SHOW BINARY LOG STATUS');
     const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
@@ -105,7 +94,7 @@ async function awaitReplica(dialect, primary, replica) {
  * without a connection inside a transaction uses the transaction.
  */
 async function primaryAndReplica(dialect, primary, replica) {
-  await install(dialect, primary);
+  await install(primary);
   const master = await connect(primary);
   let slave1;
   try {
@@ -131,19 +120,6 @@ async function primaryAndReplica(dialect, primary, replica) {
   }
 }
 
-/** Drops the tables of schema/bench.dbs; each SQLite case starts from a new file. */
-async function dropTables(dialect, dsn) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try {
-      await conn.query('SET FOREIGN_KEY_CHECKS = 0');
-      for (const t of benchTables) await conn.query(`DROP TABLE IF EXISTS \`${t}\``);
-    } finally { await conn.end(); }
-  } else if (dialect === 'postgres') {
-    await postgres(dsn, benchTables.map(t => `DROP TABLE IF EXISTS "${t}" CASCADE`));
-  }
-}
-
 /** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
 async function postgres(dsn, statements) {
   const client = postgresClient(dsn);
@@ -154,9 +130,8 @@ async function postgres(dsn, statements) {
   } finally { await client.end(); }
 }
 
-/** Drops the schema tables, then installs the schema through the connection. */
-async function install(dialect, dsn) {
-  await dropTables(dialect, dsn);
+/** Installs the schema twice through a connection to the new case database, which must be empty first. */
+async function install(dsn) {
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'schema().empty() before install');
@@ -166,11 +141,10 @@ async function install(dialect, dsn) {
 }
 
 /**
- * Checks schema().empty() on the test database without the schema tables, with
- * an empty PostgreSQL schema other than public, and with the installed tables.
+ * Checks schema().empty() on a new case database, with an empty PostgreSQL
+ * schema other than public, and with the installed tables.
  */
 async function schemaEmpty(dialect, dsn) {
-  await dropTables(dialect, dsn);
   const db = await connect(dsn);
   try {
     check(await db.utils().schema().empty(), 'a database without tables');
@@ -582,7 +556,6 @@ function documentModels(text) {
 async function aesJsonColumn(dialect, dsn, sqlitePath) {
   const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
   const { secret_config: SecretConfig } = documentModels(secret);
-  await dropTable(dialect, dsn, 'secret_config');
   const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
   const updatedText = '{"token":"next-token","list":[1,"two",null]}';
   const open = (keys, version) => Db.connectSchema(dsn, schemaOf(secret), { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
@@ -624,7 +597,6 @@ async function aesJsonColumn(dialect, dsn, sqlitePath) {
     check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
     check(await read(again) === updatedText, `updated read ${await read(again)}`);
   } finally { await again.close(); }
-  await dropTable(dialect, dsn, 'secret_config');
 }
 
 /** The stored config cell and key version of the single secret_config row. */
@@ -644,18 +616,10 @@ async function storedCell(dialect, dsn, sqlitePath) {
   try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
 }
 
-/** Drops one table on MySQL and PostgreSQL; each SQLite case starts from a new file. */
-async function dropTable(dialect, dsn, table) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try { await conn.query(`DROP TABLE IF EXISTS ${table}`); } finally { await conn.end(); }
-  } else if (dialect === 'postgres') {
-    await postgres(dsn, [`DROP TABLE IF EXISTS ${table}`]);
-  }
-}
-
 const zones = ['', 'UTC', '+00:00'];
 
+// poolSize와 failedLocalReset, failedLockRelease는 schema를 설치하지 않고 table도 만들지 않으므로
+// DSN이 가리키는 database에 연결만 한다. 나머지 case는 저마다 case database를 받는다.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
@@ -663,23 +627,35 @@ targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
 if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
+const dialects = targets.map(([dialect]) => dialect);
+
+/**
+ * 열린 case에서 dialect의 새 case database로 body(dsn, database)를 실행하고 끝나면 지운다. SQLite DSN은
+ * busy_timeout을 가진다. body나 database 지우기의 실패는 열린 case의 FAIL이 된다.
+ */
+async function inCaseDatabase(dialect, body) {
+  try {
+    await withCaseDatabase(dialect, text => caseLog.step(text), database =>
+      body(dialect === 'sqlite' ? `${database.dsn}?_pragma=busy_timeout(5000)` : database.dsn, database));
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+}
 
 try {
   if (selectedCase === undefined) {
-  for (const [dialect, dsn] of targets) {
+  for (const dialect of dialects) {
     begin(`${dialect}/schemaEmpty`);
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    try { await schemaEmpty(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    await inCaseDatabase(dialect, dsn => schemaEmpty(dialect, dsn));
     end();
   }
   }
-  for (const [dialect, dsn] of targets) {
+  for (const dialect of dialects) {
     for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined || name === selectedCase)) {
       begin(`${dialect}/${name}`);
-      if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-      await install(dialect, dsn);
-      const db = await connect(dsn);
-      try { await fn(db, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
+      await inCaseDatabase(dialect, async dsn => {
+        await install(dsn);
+        const db = await connect(dsn);
+        try { await fn(db, dsn); } finally { await db.close(); }
+      });
       end();
     }
   }
@@ -747,21 +723,22 @@ try {
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
     end();
   }
-  for (const [dialect, dsn] of targets) {
+  for (const dialect of dialects) {
     begin(`${dialect}/statementTimeout`);
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    await install(dialect, dsn);
-    check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
-    // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
-    // SQLite has no session timeout.
-    const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
-    if (slow !== undefined) {
-      const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
-      try {
-        await seed(bounded);
-        check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
-      } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); }
-    }
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
+      check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
+      // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
+      // SQLite has no session timeout.
+      const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
+      if (slow !== undefined) {
+        const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
+        try {
+          await seed(bounded);
+          check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
+        } finally { await bounded.close(); }
+      }
+    });
     end();
   }
   {
@@ -769,98 +746,128 @@ try {
     // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
     // server connection, so the statement timeout of one connection must
     // bound only the statements of that connection.
+    // PgBouncer의 orm_test_single은 정해진 database 하나에만 닿으므로 새 case database를 쓸 수
+    // 없다. case는 그 database에 자기 이름(orm_case_<pid>_<counter>)의 table 하나를 만들고, 끝날 때
+    // 실패한 뒤에도 그 table만 지운다.
     begin('postgres/statementTimeoutThroughAPooler');
-    const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-    if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
-    const postgres = targets.find(([dialect]) => dialect === 'postgres')[1];
-    await install('postgres', postgres);
-    const setup = await connect(postgres);
-    try { await seed(setup); } finally { await setup.close(); }
-    // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
-    const slow = 'pg_sleep(0.1) IS NOT NULL';
-    const bounded = await connectBench(single, { statementTimeoutMs: 200 });
-    const plain = await connectBench(single, {});
     try {
-      check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
-      check(await new Author().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
-      check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); await plain.close(); }
-    end();
-  }
-  for (const [dialect, dsn] of targets) {
-    begin(`${dialect}/cancellation`);
-    if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-    await install(dialect, dsn);
-    const db = await connect(dsn);
-    try {
-      // The slow condition is evaluated per row, so the table holds rows.
-      await seed(db);
-      const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
-      const before = new AbortController();
-      before.abort();
-      check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
-      if (slow !== undefined) {
-        const running = new AbortController();
-        const timer = setTimeout(() => running.abort(), 300);
-        const started = Date.now();
-        check(await code(new Author().connect(db.withSignal(running.signal)).raw(slow).getCount()) === 'CANCELED', 'a statement cancelled while it runs');
-        check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
-        clearTimeout(timer);
+      const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+      const table = caseName();
+      const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
+      const { [table]: Probe } = documentModels(probeText);
+      const probe = schemaOf(probeText);
+      const setup = await Db.connect(single);
+      try {
+        await setup.utils().schema().install(probe);
+        caseLog.step(`table ${table} created`);
+        // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
+        for (let i = 0; i < 4; i++) {
+          const row = new Probe().connect(setup);
+          row[CORE].setValue('label', `row-${i}`);
+          await row.create();
+        }
+        const slow = 'pg_sleep(0.1) IS NOT NULL';
+        const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
+        const plain = await Db.connect(single, {});
+        try {
+          await bounded.utils().schema().install(probe);
+          await plain.utils().schema().install(probe);
+          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
+          check(await new Probe().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
+          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
+        } finally { await bounded.close(); await plain.close(); }
+      } finally {
+        await setup.close();
+        const client = postgresClient(single);
+        await client.connect();
+        try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
+          throw new Error(`drop table ${table}: ${error.message}`);
+        } finally { await client.end(); }
+        caseLog.step(`table ${table} dropped`);
       }
-      check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
+    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
     end();
   }
-  for (const [dialect, dsn] of targets) {
+  for (const dialect of dialects) {
+    begin(`${dialect}/cancellation`);
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
+      const db = await connect(dsn);
+      try {
+        // The slow condition is evaluated per row, so the table holds rows.
+        await seed(db);
+        const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
+        const before = new AbortController();
+        before.abort();
+        check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
+        if (slow !== undefined) {
+          const running = new AbortController();
+          const timer = setTimeout(() => running.abort(), 300);
+          const started = Date.now();
+          check(await code(new Author().connect(db.withSignal(running.signal)).raw(slow).getCount()) === 'CANCELED', 'a statement cancelled while it runs');
+          check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
+          clearTimeout(timer);
+        }
+        check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
+      } finally { await db.close(); }
+    });
+    end();
+  }
+  for (const dialect of dialects) {
     begin(`${dialect}/aesJsonColumn`);
-    const sqlitePath = join(work, 'model.sqlite');
-    if (dialect === 'sqlite') await rm(sqlitePath, { force: true });
-    try { await aesJsonColumn(dialect, dialect === 'sqlite' ? `sqlite://${sqlitePath}` : dsn, sqlitePath); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    // SQLite case는 busy_timeout 없는 DSN으로 연결하고 저장된 cell을 file에서 직접 읽는다.
+    await inCaseDatabase(dialect, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path));
     end();
   }
-  for (const [dialect, dsn] of targets.filter(t => t[0] === 'mysql')) {
+  for (const dialect of dialects.filter(dialect => dialect === 'mysql')) {
     begin(`${dialect}/installInsideTransaction`);
-    await install(dialect, dsn);
-    const db = await connect(dsn);
-    try { await mysqlInstallInsideTransaction(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
+    await inCaseDatabase(dialect, async dsn => {
+      await install(dsn);
+      const db = await connect(dsn);
+      try { await mysqlInstallInsideTransaction(db); } finally { await db.close(); }
+    });
     end();
   }
-  for (const [dialect, base] of targets) {
+  for (const dialect of dialects) {
     for (const zone of zones) {
       begin(`${dialect}/connectionsUseUtc/${zone}`);
-      if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
-      const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
-      await install(dialect, dsn);
-      const db = await connect(dsn);
-      try { await connectionsUseUtc(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
+      await inCaseDatabase(dialect, async base => {
+        const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
+        await install(dsn);
+        const db = await connect(dsn);
+        try { await connectionsUseUtc(db); } finally { await db.close(); }
+      });
       end();
     }
   }
-  {
+  if (dialects.includes('sqlite')) {
     // A connection to a SQLite database file that the process may only read:
     // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
     begin('sqlite/readOnly');
-    const path = join(work, 'read-only.sqlite');
-    const dsn = `sqlite://${path}`;
-    try {
-      await install('sqlite', dsn);
-      const writable = await connect(dsn);
+    await inCaseDatabase('sqlite', async (_, database) => {
+      await install(database.dsn);
+      const writable = await connect(database.dsn);
       try { await new User().connect(writable).setName('read-only').create(); } finally { await writable.close(); }
-      await chmod(path, 0o444);
-      const readOnly = await connect(dsn);
+      await chmod(database.path, 0o444);
+      const readOnly = await connect(database.dsn);
       try {
         check(await new User().connect(readOnly).name('read-only').getCount() === 1, 'the read-only database reads the row');
         check(await code(new User().connect(readOnly).setName('rejected').create()) === 'READ_ONLY', 'a write to the read-only database');
       } finally { await readOnly.close(); }
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    });
     end();
   }
-  for (const [dialect, primary] of targets) {
+  for (const dialect of dialects) {
     if (dialect === 'sqlite') continue;
     begin(`${dialect}/primaryAndReplica`);
-    const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
-    if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
-    try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+    // replica DSN은 case database와 같은 이름을 가리킨다. replica는 primary의 CREATE DATABASE를
+    // 복제하고, primaryAndReplica는 replica에 연결하기 전에 replica가 따라오기를 기다린다.
+    await inCaseDatabase(dialect, async primary => {
+      const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
+      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
+      await primaryAndReplica(dialect, primary, relatedDsn(replica, new URL(primary).pathname.slice(1)));
+    });
     end();
   }
   // transaction 끝의 MySQL local 값 reset이 실패하면 commit과 rollback이 그 오류를 보고한다.

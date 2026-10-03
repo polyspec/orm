@@ -1,5 +1,7 @@
 # Changelog
 
+- T25.3: the TypeScript database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/typescript/tests/case-database.mjs), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases, so a table left there no longer fails `schemaEmpty`, `conditions` or `joinsAndRelations`.
+
 - T25.2: the PHP database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (clients/php/tests/case_database.php), and drop it when the case ends, also after a failure, instead of dropping and installing tables in the shared test databases.
 
 - T25.1: the Go database tests that install a schema or check an empty database create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (internal/testdb), and drop it when the test ends, also after a failure, instead of dropping and installing tables in the shared test databases.

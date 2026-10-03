@@ -8,22 +8,18 @@
 // connection fails with SCHEMA_HASH_MISMATCH before any statement, also when
 // another connection installed the set. A manifest text that does not hash to
 // its declared hash fails with CONFIG when it is connected or installed.
-// Each case runs on its own new database (a new SQLite file).
+// Each case runs on a case database of its own (case-database.mjs).
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test servers; the
 // test fails when either is unset.
 //
 // Usage: node clients/typescript/tests/schema-set.mjs [case ...] (after npm run typescript:build)
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { runCase } from '../../../tests/testcase.mjs';
+import { withCaseDatabase } from './case-database.mjs';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
 const benchText = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-schema-set-'));
 // CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
 const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
@@ -65,41 +61,6 @@ const { decimal_case: DecimalCase } = classes(decimalModel);
 const user = (db, name) => { const m = new User().connect(db); m[CORE].setValue('name', name); return m; };
 const decimalRow = (db, seq, amount) => { const m = new DecimalCase().connect(db); m[CORE].setValue('seq', seq); m[CORE].setValue('amount', amount); return m; };
 const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).raw('{seq} = ?', seq).get())[CORE].column('amount');
-
-/** Connects with the server's own driver to the database of dsn. */
-async function server(driver, dsn) {
-  const url = new URL(dsn);
-  if (driver === 'mysql') {
-    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-    return { run: async sql => { await conn.query(sql); }, end: () => conn.end() };
-  }
-  const { Client } = require('pg');
-  const client = new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
-  await client.connect();
-  return { run: async sql => { await client.query(sql); }, end: () => client.end() };
-}
-
-let databases = 0;
-/** Creates a new database for one case and returns its DSN and its cleanup; SQLite takes a new file. */
-async function newDatabase(driver, dsn) {
-  databases++;
-  if (driver === 'sqlite') {
-    const path = join(work, `schema-set-${databases}.sqlite`);
-    return { dsn: `sqlite://${path}`, drop: () => rm(path, { force: true }) };
-  }
-  const name = `orm_schema_set_${process.pid}_${databases}`;
-  const admin = await server(driver, dsn);
-  try { await admin.run(`CREATE DATABASE ${name}`); } finally { await admin.end(); }
-  const url = new URL(dsn);
-  url.pathname = `/${name}`;
-  return {
-    dsn: url.toString(),
-    drop: async () => {
-      const again = await server(driver, dsn);
-      try { await again.run(`DROP DATABASE ${name}${driver === 'postgres' ? ' WITH (FORCE)' : ''}`); } finally { await again.end(); }
-    },
-  };
-}
 
 /**
  * The bench helper connects, installs the bench set and the decimal set (the
@@ -178,33 +139,20 @@ async function editedManifest(dsn) {
 
 const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-const targets = { sqlite: '' };
-for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {
-  const value = process.env[env];
-  if (!value) throw new Error(`${env} is required; database tests never skip`);
-  targets[driver] = value;
+for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);
 }
-try {
-  for (const name of selected) {
-    const run = cases[name];
-    if (run === undefined) throw new Error(`unknown case ${name}`);
-    for (const [driver, base] of Object.entries(targets)) {
-      const before = failures;
-      current = `${name}/${driver}`;
-      const passed = await runCase(`schema-set/${current}`, CASE_DEADLINE_MS, async () => {
-        let database;
-        try {
-          database = await newDatabase(driver, base);
-          await run(database.dsn);
-        } finally {
-          try { await database?.drop(); } catch (error) { failures++; console.error(`FAIL ${current}: drop database: ${error?.stack ?? error}`); }
-        }
-        if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-      });
-      if (!passed && failures === before) failures++;
-    }
+for (const name of selected) {
+  const run = cases[name];
+  if (run === undefined) throw new Error(`unknown case ${name}`);
+  for (const driver of ['sqlite', 'mysql', 'postgres']) {
+    const before = failures;
+    current = `${name}/${driver}`;
+    const passed = await runCase(`schema-set/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+      await withCaseDatabase(driver, step, database => run(database.dsn));
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
-} finally {
-  await rm(work, { recursive: true, force: true });
 }
 if (failures > 0) process.exitCode = 1;
