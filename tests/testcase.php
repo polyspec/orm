@@ -40,10 +40,11 @@ final class TestCaseDeadline extends RuntimeException
 function testcase_duration(float $seconds): string
 {
     $ms = $seconds * 1000;
-    if ($ms < 1) {
+    // 반올림한 값으로 단위를 고른다. 999.6ms는 1000ms가 아니라 1s다.
+    if (round($ms * 1000) < 1000) {
         return round($ms * 1000) . 'µs';
     }
-    if ($ms < 1000) {
+    if (round($ms) < 1000) {
         return round($ms) . 'ms';
     }
     $total = round($ms) / 1000;

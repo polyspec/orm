@@ -101,6 +101,8 @@ fn report_form() {
     let _case = case!(PROCESS);
     assert_eq!(duration(Duration::from_micros(500)), "500µs");
     assert_eq!(duration(Duration::from_millis(12)), "12ms");
+    assert_eq!(duration(Duration::from_nanos(999_600)), "1ms");
+    assert_eq!(duration(Duration::from_micros(999_600)), "1s");
     assert_eq!(duration(Duration::from_millis(1340)), "1.34s");
     assert_eq!(duration(Duration::from_secs(60)), "1m0s");
     assert_eq!(duration(Duration::from_millis(75_030)), "1m15.03s");

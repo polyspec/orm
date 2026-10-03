@@ -29,8 +29,9 @@ export const GRACE = 5_000;
 // duration은 ms를 Go time.Duration의 String 형식(1m0s, 1.5s, 12ms)으로 쓴다. 세 언어의
 // 보고 줄이 같은 형식을 가진다.
 export function duration(ms) {
-  if (ms < 1) return `${Math.round(ms * 1000)}µs`;
-  if (ms < 1000) return `${Math.round(ms)}ms`;
+  // 반올림한 값으로 단위를 고른다. 999.6ms는 1000ms가 아니라 1s다.
+  if (Math.round(ms * 1000) < 1000) return `${Math.round(ms * 1000)}µs`;
+  if (Math.round(ms) < 1000) return `${Math.round(ms)}ms`;
   const totalSeconds = Math.round(ms) / 1000;
   if (totalSeconds < 60) return `${trim(totalSeconds)}s`;
   const hours = Math.floor(totalSeconds / 3600);

@@ -50,7 +50,7 @@ function in_order(string $output, string ...$patterns): void
 
 $cases = new TestCases();
 $cases->run('testcase/duration', TESTCASE_COMPUTE, static function (): void {
-    foreach ([[0.0005, '500µs'], [0.012, '12ms'], [1.34, '1.34s'], [60.0, '1m0s'], [75.03, '1m15.03s'], [3600.0, '1h0m0s']] as [$seconds, $want]) {
+    foreach ([[0.0005, '500µs'], [0.012, '12ms'], [0.0009996, '1ms'], [0.9996, '1s'], [1.34, '1.34s'], [60.0, '1m0s'], [75.03, '1m15.03s'], [3600.0, '1h0m0s']] as [$seconds, $want]) {
         if (testcase_duration($seconds) !== $want) {
             throw new RuntimeException("duration $seconds: " . testcase_duration($seconds) . ", want $want");
         }
