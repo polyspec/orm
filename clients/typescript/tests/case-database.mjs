@@ -25,13 +25,17 @@ export function relatedDsn(dsn, name) {
   return url.toString();
 }
 
-/** DSN의 user, password, socket, host, port로 연 mysql2 연결이다. database가 undefined면 database 없이 연다. */
+/**
+ * DSN의 user, password, socket, host, port로 연 mysql2 연결이다. database를 주지 않으면 DSN의
+ * database를 열고, null이면 database 없이 연다. undefined를 넘기면 기본값이 쓰이므로 database
+ * 없는 연결은 undefined가 아니라 null로 요청한다.
+ */
 export function mysqlConnection(dsn, database = new URL(dsn).pathname.slice(1)) {
   const url = new URL(dsn);
   return require('mysql2/promise').createConnection({
     user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
     socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname,
-    port: url.port ? Number(url.port) : undefined, database,
+    port: url.port ? Number(url.port) : undefined, database: database ?? undefined,
   });
 }
 
@@ -53,7 +57,7 @@ async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
   if (!dsn) throw new Error(`${adminEnv[dialect]} is required; database tests never skip`);
   if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn, undefined);
+    const conn = await mysqlConnection(dsn, null);
     try { await conn.query(statement); } finally { await conn.end(); }
     return dsn;
   }

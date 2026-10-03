@@ -1491,7 +1491,8 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test -v -timeout 0 ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- ."
+          "command": "go test -v -timeout 0 ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- .",
+          "exclusive": true
         },
         {
           "id": "generation-typescript",

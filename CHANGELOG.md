@@ -1,5 +1,7 @@
 # Changelog
 
+- T27.5: every cargo test command shares one test build, client-db-check runs its four clients in parallel lanes and feature-check runs its verification commands in four lanes (a command marked `exclusive` runs alone first); the TypeScript replica case waits on connections without a database and closes them when one fails. client-db-check takes 86 s instead of 449 s and feature-check 251 s instead of 570 s.
+
 - T27.6: a JavaScript case that has not ended at its limit plus GRACE ends its process with a FAIL line, and a PHP case without pcntl has a watchdog process that does the same.
 
 - T27.4: `make bench` runs the 2000-table stress cases and the timing-budget cases (the four stress parse budgets, the 2000-table plan apply, the 2000-table introspection comparison with the release Rust runner, the 2000-table runner comparison and `make timing-check`) with their assertions; `make check` runs the runner comparison and the introspection comparison on a 20-table document of the same shape (`node tests/dbspec/stress.mjs 20`), and the dbspec, integration, conformance and example runners are debug builds.
