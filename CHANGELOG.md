@@ -1,5 +1,7 @@
 # Changelog
 
+- T26: the rollback failure cases of every client end the server session of the transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, the server DSNs that the make targets export and a pooler check keeps, instead of a `KILL` that ProxySQL takes as its own command, and the Rust session connection is a client connection that sends no `extra_float_digits`, so the cases pass through ProxySQL and PgBouncer.
+
 - T25: every client database case that checks an empty database or installs a schema creates its own database `orm_case_<pid>_<n>` (on MySQL and PostgreSQL) or SQLite file and drops it when it ends, also after a failure, so a table left in the shared test databases no longer fails it; `make case-database-check` leaves a table in both shared databases and requires the model cases of the four clients to pass and leave the shared databases as they were.
 
 - T25.4: the Rust database tests and the `integration` program create a database of their own, `orm_case_<pid>_<n>` or a SQLite file (the workspace crate `orm-case-database`), for every case that installs a schema or checks an empty database, and drop it when the case ends, also after a panic, instead of dropping and installing tables in the shared test databases.

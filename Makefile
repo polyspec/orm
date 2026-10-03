@@ -13,7 +13,11 @@ TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
+# WITH_TEST_ENV는 TEST_ENV를 읽고, pooler를 거치지 않는 server DSN을 ORM_TEST_MYSQL_SERVER_DSN과
+# ORM_TEST_POSTGRES_SERVER_DSN으로 남긴다. client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로
+# 바꾸어도 rollback 실패 case는 이 DSN으로 server에서 transaction의 session을 끝낸다. ProxySQL은
+# text protocol의 KILL을 자기 client session의 명령으로 가로채기 때문이다.
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" ORM_TEST_MYSQL_SERVER_DSN="$$ORM_TEST_MYSQL_DSN" ORM_TEST_POSTGRES_SERVER_DSN="$$ORM_TEST_POSTGRES_DSN" &&
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. -v는 각 case가 internal/testcase로 내는
 # RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을 가지므로 -timeout 0이

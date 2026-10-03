@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T26: 모든 client의 rollback 실패 case는 ProxySQL이 자기 명령으로 받는 `KILL` 대신, make target이 export하고 pooler check가 그대로 두는 server DSN `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 server session을 종료한다. Rust session 연결은 `extra_float_digits`를 보내지 않는 client 연결이다. 그래서 이 case들은 ProxySQL과 PgBouncer를 거쳐도 통과한다.
+
 - T25: 빈 database를 확인하거나 schema를 설치하는 모든 client database case는 자기 database `orm_case_<pid>_<n>`(MySQL과 PostgreSQL)이나 SQLite file을 만들고 끝날 때 실패한 뒤에도 지우므로, 공유 test database에 남은 table이 더는 그 case를 실패시키지 않는다. `make case-database-check`는 두 공유 database에 table 하나를 남겨 둔 채 네 client의 model case가 통과하고 공유 database를 그대로 두는지 확인한다.
 
 - T25.4: Rust database test와 `integration` program은 schema를 설치하거나 빈 database를 확인하는 모든 case에서 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(workspace crate `orm-case-database`)을 만들고, case가 끝날 때 panic한 뒤에도 지운다.

@@ -121,13 +121,13 @@ Rust 도구/카탈로그 조회는 스트리밍 중 검증된 예산으로 행�
 ```sh
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… cargo test --workspace
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build --release -p orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbs
 ./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```
 
-`integration`과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. 테스트는 그 DB에서 자기 테이블을 삭제하고 설치한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.
+`integration`과 `zone` 테스트는 SQLite·MySQL·PostgreSQL에서 실행된다. `ORM_TEST_MYSQL_DSN`과 `ORM_TEST_POSTGRES_DSN`은 시험 DB를 가리켜야 하고 하나라도 없으면 테스트가 실패한다. schema를 설치하거나 빈 DB를 확인하는 case는 그 DSN으로 자기 DB를 만들고 끝날 때 지운다. rollback 테스트는 pooler 없는 서버를 가리키는 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 서버 session을 종료한다. make target은 둘을 `.runtime/servers/env`에서 정한다. `conformance`, `complex`, `demo`는 데이터가 준비된 bench DB를 읽는다.
 Rust conformance 출력은 bind를 손실 없이 표현할 수 없거나 요청한 선택 필드·관계가 없거나 계산한 정수가 유효하지 않거나 범위를 벗어나면 실패한다. 이런 오류를 null, 0, 대체 텍스트로 바꾸지 않는다.
 
 Rust 소스 검사기는 styled setter 바로 다음 `expect`와 `unwrap`을 Result 처리로 구분한다.

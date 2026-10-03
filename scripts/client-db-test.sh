@@ -1,6 +1,8 @@
 #!/bin/sh
 # Runs the database tests of every client on SQLite, MySQL and PostgreSQL.
-# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name empty test databases, and
+# ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name the test servers (each case
+# creates its own database there), ORM_TEST_MYSQL_SERVER_DSN and
+# ORM_TEST_POSTGRES_SERVER_DSN name the same servers without a pooler, and
 # ORM_TOOLS_MYSQL_DSN and ORM_TOOLS_POSTGRES_DSN name dedicated databases for the
 # Rust catalog connection tests; a test fails when one it needs is unset. ORM_CLIENT_DB_LANGS selects
 # clients (default: all).

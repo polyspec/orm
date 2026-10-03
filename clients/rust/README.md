@@ -159,13 +159,13 @@ types fail rather than being converted. This is not a read-only SQL sandbox.
 ```sh
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
-ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… cargo test --workspace
+ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
 cargo build --release -p orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/release/integration ../../schema/bench.dbs
 ./target/release/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```
 
-`integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. The tests drop and install their tables there. `conformance`, `complex`, and `demo` read the seeded bench database.
+`integration` and the `zone` test run on SQLite, MySQL and PostgreSQL; `ORM_TEST_MYSQL_DSN` and `ORM_TEST_POSTGRES_DSN` must name test databases, and a test fails when either is unset. A case that installs a schema or checks an empty database creates a database of its own through them and drops it when it ends. The rollback tests end the server session of a transaction through `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which name the servers without a pooler; the make targets set both from `.runtime/servers/env`. `conformance`, `complex`, and `demo` read the seeded bench database.
 The Rust conformance output fails when a bind cannot be represented without loss, a requested
 selected field or relation is absent, or a derived integer is invalid or out of range. It never
 substitutes null, zero, or replacement text for those errors.
