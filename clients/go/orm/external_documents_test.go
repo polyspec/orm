@@ -48,10 +48,19 @@ func externalCase(t *testing.T, driver, dsn string) {
 	schema := db.Utils().Schema()
 	raw := restoreNative(t, driver, dsn)
 	defer raw.Close()
-	// exists는 table이 있는지 raw 연결의 count로 확인한다.
+	// exists는 table이 있는지 raw 연결의 catalog로 확인한다. 없는 table을 읽는 실패는
+	// transaction pooler(PgBouncer)에서 이름 붙은 prepared statement를 남기므로 쓰지 않는다.
 	exists := func(table string) bool {
+		query := map[string]string{
+			"mysql":    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'",
+			"postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '" + table + "'",
+			"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '" + table + "'",
+		}[driver]
 		var n int
-		return raw.QueryRow("SELECT COUNT(*) FROM "+table).Scan(&n) == nil
+		if err := raw.QueryRow(query).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
 	}
 	expectConfig("install before core", schema.Install(member), missing)
 	_, err = schema.AddTablesAndColumns(member)
