@@ -368,13 +368,40 @@ func differences(want, got Symbols) []string {
 	return out
 }
 
+// buildRust는 Rust symbol 도구를 build하고 cargo가 보고한 실행 file을 돌려준다.
+// target directory는 CARGO_TARGET_DIR이나 cargo 설정이 정하므로(Makefile은 모든
+// cargo 명령에 clients/rust/target을 준다) 경로를 짐작하지 않고 cargo의
+// compiler-artifact message에서 읽는다.
 func buildRust(ctx context.Context, root string) (string, error) {
 	manifest := filepath.Join(root, "tests/interfaces/rust/Cargo.toml")
-	cmd := exec.CommandContext(ctx, "cargo", "build", "--quiet", "--locked", "--manifest-path", manifest)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", errors.New(string(out) + err.Error())
+	cmd := exec.CommandContext(ctx, "cargo", "build", "--quiet", "--locked", "--manifest-path", manifest, "--message-format", "json-render-diagnostics")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", errors.New(stderr.String() + err.Error())
 	}
-	return filepath.Join(root, "tests/interfaces/rust/target/debug/orm-interface-symbols"), nil
+	executable := ""
+	for _, line := range bytes.Split(out, []byte("\n")) {
+		var message struct {
+			Reason     string                `json:"reason"`
+			Target     struct{ Name string } `json:"target"`
+			Executable string                `json:"executable"`
+		}
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		if err := json.Unmarshal(line, &message); err != nil {
+			return "", fmt.Errorf("cargo build message %q: %w", line, err)
+		}
+		if message.Reason == "compiler-artifact" && message.Target.Name == "orm-interface-symbols" && message.Executable != "" {
+			executable = message.Executable
+		}
+	}
+	if executable == "" {
+		return "", errors.New("cargo build reported no orm-interface-symbols executable")
+	}
+	return executable, nil
 }
 
 func extract(ctx context.Context, root, lang string, roots []string, rust, toolRoot string) (Symbols, error) {
