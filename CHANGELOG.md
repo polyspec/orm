@@ -1,5 +1,7 @@
 # Changelog
 
+- T27: every check finishes within minutes and `make check` reports each step; one full run passes 43 steps in 15 minutes, against about 100 minutes before.
+
 - T29.1: dbspec apply, recover, rollback and finalize check on MySQL and PostgreSQL that the connection keeps one server session of its own and stop with a `session` error before the next statement when the session that takes the lock already holds it or a later statement runs in another session, as through a transaction pooler; the requirement is a direct or session-pooled connection.
 
 - T29: the Rust `tx` tests that end or inspect server sessions connect through the server DSNs, so `make client-pooler-check` passes.
