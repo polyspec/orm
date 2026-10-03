@@ -107,12 +107,15 @@ fn remember_panics() {
 /// Go time.Duration의 String 형식(1m0s, 1.5s, 12ms, 500µs)으로 쓴다. 네 언어의 보고 줄이 같은
 /// 형식을 가진다.
 pub fn duration(d: Duration) -> String {
+    // 반올림한 값으로 단위를 고른다. 999.6ms는 1000ms가 아니라 1s다.
     let nanos = d.as_nanos();
-    if nanos < 1_000_000 {
-        return format!("{}µs", (nanos + 500) / 1_000);
+    let micros = (nanos + 500) / 1_000;
+    if micros < 1_000 {
+        return format!("{micros}µs");
     }
-    if nanos < 1_000_000_000 {
-        return format!("{}ms", (nanos + 500_000) / 1_000_000);
+    let rounded_millis = (nanos + 500_000) / 1_000_000;
+    if rounded_millis < 1_000 {
+        return format!("{rounded_millis}ms");
     }
     let millis = (nanos + 500_000) / 1_000_000;
     let trim = |ms: u128| {

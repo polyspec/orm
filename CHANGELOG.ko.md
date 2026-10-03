@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T24.6: JavaScript, PHP, Rust case 보고는 다음 단위로 반올림되는 시간을 Go처럼 그 단위로 쓴다(`1000ms`가 아니라 `1s`).
+
 - T24.5: check의 build, format, lint, package 명령은 tests/run-case.mjs로 case가 되어 기한과 함께 `RUN`, 경과 시간을 담은 `STEP` 줄로 출력 줄, 종료 상태와 함께 `PASS`나 `FAIL`을 출력하고, 기한을 넘긴 명령은 멈춘다. codec 교차 검사와 feature manifest 검사도 자기 case를 보고한다.
 
 - T24: 모든 check는 실행 중에 case마다 시작과 기한, 단계, 결과와 경과 시간을 Go, JavaScript, PHP, Rust에서 한 형식으로 보고하고, 어느 check도 case별 기한 대신 실행 전체를 묶지 않는다.

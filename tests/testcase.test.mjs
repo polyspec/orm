@@ -43,6 +43,8 @@ async function runChild(source, args = []) {
 caseTest('testcase/duration', COMPUTE, () => {
   assert.equal(duration(0.5), '500µs');
   assert.equal(duration(12), '12ms');
+  assert.equal(duration(0.9996), '1ms');
+  assert.equal(duration(999.6), '1s');
   assert.equal(duration(1340), '1.34s');
   assert.equal(duration(60_000), '1m0s');
   assert.equal(duration(75_030), '1m15.03s');
