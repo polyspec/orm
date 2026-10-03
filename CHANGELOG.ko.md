@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T29: server session을 끊거나 보는 Rust `tx` test는 server DSN으로 연결하므로 `make client-pooler-check`가 통과한다.
+
 - T27.5: 모든 cargo test 명령이 test build 하나를 함께 쓰고, client-db-check는 네 client를 병렬 줄로, feature-check는 검증 명령을 네 줄로 실행한다(`exclusive`인 명령은 먼저 혼자 실행한다). TypeScript replica case는 database 없는 연결로 기다리고 한 연결이 실패하면 열린 연결을 닫는다. client-db-check는 449 s 대신 86 s, feature-check는 570 s 대신 251 s 걸린다.
 
 - T27.6: 기한에 GRACE를 더한 시간까지 끝나지 않은 JavaScript case는 FAIL 줄과 함께 process를 끝내고, pcntl이 없는 PHP case는 같은 일을 하는 watchdog process를 가진다.
