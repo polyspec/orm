@@ -7,6 +7,7 @@ declare(strict_types=1);
 // cannot be closed.
 // Usage: php clients/php/tests/dbspec_apply_cleanup_test.php
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Dbspec\ApplyCleanupError;
 use Orm\Dbspec\ApplyError;
@@ -15,6 +16,7 @@ use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Effect;
 use Orm\Dbspec\PlanApply;
 
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case는 memory SQLite database에 plan 하나를 적용한다.
 const CASE_DEADLINE_MS = 20000;
 
 /**
@@ -77,8 +79,6 @@ final class FailingStatement extends PDOStatement
     }
 }
 
-$started = hrtime(true);
-echo "RUN dbspec_apply_cleanup\n";
 $root = dirname(__DIR__, 3);
 $vectors = json_decode(file_get_contents("$root/tests/dbspec/plans.json"), true, 512, JSON_THROW_ON_ERROR);
 $plans = [];
@@ -197,21 +197,10 @@ $cases = [
 
 $failed = 0;
 foreach ($cases as [$id, $case]) {
-    $caseStarted = hrtime(true);
-    echo "RUN $id deadlineMs=" . CASE_DEADLINE_MS . "\n";
-    try {
-        $case();
-        $elapsed = (hrtime(true) - $caseStarted) / 1e6;
-        if ($elapsed > CASE_DEADLINE_MS) {
-            throw new RuntimeException('deadline of ' . CASE_DEADLINE_MS . " ms exceeded ($elapsed ms)");
-        }
-        echo "PASS $id elapsedMs=$elapsed\n";
-    } catch (Throwable $e) {
+    if (!testcase_run($id, CASE_DEADLINE_MS / 1000, static fn() => $case())) {
         $failed++;
-        echo "FAIL $id elapsedMs=" . ((hrtime(true) - $caseStarted) / 1e6) . ": {$e->getMessage()}\n";
     }
 }
 if ($failed > 0) {
-    throw new RuntimeException("dbspec_apply_cleanup: $failed of " . count($cases) . ' cases failed');
+    exit(1);
 }
-echo 'PASS dbspec_apply_cleanup cases=' . count($cases) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";

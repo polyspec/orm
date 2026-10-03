@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T24.3: 모든 PHP test case는 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.php), script 전체의 한도 대신 자기 기한 아래에서 실행되며(pcntl이 있으면 SIGALRM이 멈춘 case를 끊는다), script가 loop로 실행하는 case는 앞의 실패가 뒤의 case를 가리지 않는다. `make conformance-result-check`는 Python runner 없이 네 명령을 직접 실행한다.
+
 - T24.2: 모든 JavaScript test case와 Node check runner는 실행 중에 `RUN <case> deadline=<d>`, `STEP` 줄, 경과 시간과 함께 `PASS`나 이유를 담은 `FAIL`을 출력하고(tests/testcase.mjs), case마다 자기 기한을 가진다. `make feature-check`는 coverage 실행과 검증 명령을 실행하는 동안 하나씩 보고하고, `node scripts/features/check.mjs --run --feature <id>`는 한 기능의 명령만 실행한다. T19와 T20 기록은 message placeholder를 code로 써서 문서가 다시 build된다.
 
 - T24.1: 모든 Go test case는 시작할 때 `RUN <case> deadline=<d>`, 긴 case가 도는 동안 경과 시간을 담은 `STEP` 줄, 끝날 때 경과 시간과 함께 `PASS`, 이유를 담은 `FAIL`, 또는 `SKIP`을 출력한다(internal/testcase). case마다 자기 기한이 있고, 기한을 넘긴 case는 모든 goroutine stack과 함께 실패한다. Makefile의 Go check, client와 performance script, feature 명령은 binary 전체의 한도 대신 `go test -v -timeout 0`으로 실행하며, conformance check와 interface check도 build, 언어, 비교 case를 같은 방식으로 보고한다.

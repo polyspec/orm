@@ -5,11 +5,13 @@ declare(strict_types=1);
 // memory_limit: the document keeps its schema text and no object is
 // unsupported.
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Dbspec\Dbspec;
 
-$started = hrtime(true);
-echo 'RUN dbspec_introspect_stress memoryLimit=' . ini_get('memory_limit') . "\n";
+// case는 2000 table 문서를 만들어(node process 하나) SQLite file에 적용하고 introspect한다.
+testcase_begin('dbspec_introspect_stress', TESTCASE_PROCESS);
+testcase_step('memoryLimit=' . ini_get('memory_limit'));
 $root = dirname(__DIR__, 3);
 $process = proc_open(['node', "$root/tests/dbspec/stress.mjs"], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
 if (!is_resource($process)) {
@@ -46,8 +48,8 @@ try {
         $pdo->exec($statement);
     }
     $pdo->exec('COMMIT');
+    testcase_step('applied ' . count($statements) . ' statements');
     unset($statements);
-    echo 'STEP applied elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";
     $introspectStarted = hrtime(true);
     $result = Dbspec::introspect($pdo, 'sqlite', 'stress');
     $introspectMs = (hrtime(true) - $introspectStarted) / 1e6;
@@ -66,5 +68,5 @@ try {
         }
     }
 }
-echo 'PASS dbspec_introspect_stress introspectMs=' . round($introspectMs, 1) . ' peakBytes=' . memory_get_peak_usage(true)
-    . ' memoryLimit=' . ini_get('memory_limit') . ' elapsedMs=' . round((hrtime(true) - $started) / 1e6, 1) . "\n";
+testcase_step('introspectMs=' . round($introspectMs, 1) . ' peakBytes=' . memory_get_peak_usage(true));
+testcase_end();

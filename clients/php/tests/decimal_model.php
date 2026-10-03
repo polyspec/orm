@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Decimal;
 use Orm\OrmException;
@@ -13,6 +14,7 @@ foreach ($fixture['columns'] as $column) {
     $columns[$column['id']] = $column;
 }
 foreach ($fixture['cases'] as $case) {
+    testcase_begin("decimal_model/{$case['id']}", TESTCASE_COMPUTE);
     $column = $columns[$case['column']] ?? throw new RuntimeException("unknown column {$case['column']}");
     try {
         $actual = Decimal::normalize($case['input'], $column['precision'], $column['scale']);
@@ -32,12 +34,13 @@ foreach ($fixture['cases'] as $case) {
             throw new RuntimeException("{$case['id']}: unexpected {$error->code_}", 0, $error);
         }
     }
-    echo "CASE {$case['id']} PASS\n";
+    testcase_end();
 }
 
+testcase_begin('decimal_model/generated_decimal_type', TESTCASE_COMPUTE);
 $getter = (new ReflectionMethod(Author::class, 'getPrice'))->getReturnType();
 $setter = (new ReflectionMethod(Author::class, 'setPrice'))->getParameters()[0]->getType();
 if (!$getter instanceof ReflectionNamedType || !$setter instanceof ReflectionNamedType || $getter->getName() !== 'string' || $setter->getName() !== 'string') {
     throw new RuntimeException('generated decimal getter and setter must use nullable string');
 }
-echo "CASE generated_decimal_type PASS\n";
+testcase_end();

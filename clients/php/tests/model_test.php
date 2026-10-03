@@ -5,6 +5,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;
@@ -31,6 +32,19 @@ $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 $tables = ['account_project', 'composite_membership', 'composite_account', 'author', 'service_member', 'service_region', 'soft_record', 'account', 'project', 'user', 'service', 'task'];
 
 $failures = 0;
+/** 각 구역은 case 하나다. 기한은 TESTCASE_DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를 실행한다. */
+function modelBegin(string $name): void
+{
+    $GLOBALS['caseFailures'] = $GLOBALS['failures'];
+    testcase_begin("model/$name", TESTCASE_DATABASE);
+}
+
+function modelEnd(): void
+{
+    $failed = $GLOBALS['failures'] - $GLOBALS['caseFailures'];
+    testcase_end($failed > 0 ? "$failed check(s) failed; each FAIL line above names one" : null);
+}
+
 function check(bool $ok, string $message): void
 {
     global $failures, $current;
@@ -537,17 +551,19 @@ function connectionUtc(Db $db): void
 
 foreach ($targets as $driver => $dsn) {
     $current = "schema empty/$driver";
+    modelBegin($current);
     try {
         schemaEmpty($driver, $dsn);
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $dsn) {
     $current = "pool size/$driver";
+    modelBegin($current);
     try {
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
@@ -559,11 +575,12 @@ foreach ($targets as $driver => $dsn) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $dsn) {
     $current = "statement timeout/$driver";
+    modelBegin($current);
     try {
         check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
@@ -582,7 +599,7 @@ foreach ($targets as $driver => $dsn) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 // A pooler in transaction mode hands one server session to every client in
@@ -590,6 +607,7 @@ foreach ($targets as $driver => $dsn) {
 // connection, so the statement timeout of one connection must bound only the
 // statements of that connection.
 $current = 'statement timeout through a pooler/postgres';
+modelBegin($current);
 try {
     $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
     if ($single === false || $single === '') {
@@ -611,10 +629,11 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 if (isset($targets['mysql'])) {
     $current = 'install inside a transaction/mysql';
+    modelBegin($current);
     try {
         $db = database('mysql', $targets['mysql']);
         $inside = null;
@@ -630,12 +649,13 @@ if (isset($targets['mysql'])) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 foreach ($targets as $driver => $base) {
     foreach (['', '+00:00', 'UTC', '+09:00', 'Asia/Seoul'] as $zoneName) {
         $current = "connection time zone $zoneName/$driver";
+        modelBegin($current);
         try {
             $base = preg_replace('/[?&]timezone=[^&]*/', '', $base);
             $dsn = $zoneName === '' ? $base : $base . (str_contains($base, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
@@ -648,13 +668,14 @@ foreach ($targets as $driver => $base) {
             $failures++;
             fwrite(STDERR, "FAIL $current: $e\n");
         }
-        echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+        modelEnd();
     }
 }
 
 foreach ($targets as $driver => $dsn) {
     foreach ($tests as $name => $test) {
         $current = "$name/$driver";
+        modelBegin($current);
         try {
             $db = database($driver, $dsn);
             $test($db, $dsn);
@@ -662,7 +683,7 @@ foreach ($targets as $driver => $dsn) {
             $failures++;
             fwrite(STDERR, "FAIL $current: $e\n");
         }
-        echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+        modelEnd();
     }
 }
 /**
@@ -704,6 +725,7 @@ function awaitReplica(string $driver, string $primary, string $replica): void
 // without a connection inside a transaction uses the transaction.
 foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
     $current = "primary and replica/$driver";
+    modelBegin($current);
     try {
         $replica = getenv("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
@@ -732,12 +754,13 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+    modelEnd();
 }
 
 // A connection to a SQLite database file that the process may only read:
 // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
 $current = 'read-only/sqlite';
+modelBegin($current);
 try {
     $path = "$work/read-only.sqlite";
     $writable = database('sqlite', "sqlite://$path");
@@ -752,7 +775,7 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 // 실제 server 는 transaction 끝의 cleanup statement 와 rollback 을 거부하지 않으므로
 // PDO 가 rejects 가 고른 statement 와, rejectRollback 이면 rollback 을 실패시킨다.
@@ -813,6 +836,7 @@ function checkBoth(string $what, string $message, string $cause, string $end): v
 // 보고한다. MySQL user variable 은 COMMIT 과 ROLLBACK 뒤에도 남는다
 // (mysql.context.user_variable_session_scope).
 $current = 'failed local reset/mysql';
+modelBegin($current);
 try {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
     $pdo = new FailingPdo($pdoDsn, $user, $password);
@@ -831,11 +855,12 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 // transaction 끝의 MySQL RELEASE_LOCK 이 실패하거나 lock 을 풀지 못하면 commit 과
 // rollback 이 그 오류를 보고한다. 풀리지 않은 named lock 은 connection 에 남는다.
 $current = 'failed lock release/mysql';
+modelBegin($current);
 try {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
     $pdo = new FailingPdo($pdoDsn, $user, $password);
@@ -862,11 +887,12 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 // native rollback, SQLite mode 복원, begin 뒤의 rollback 이 실패하면 transaction 이
 // 그 오류를 원인과 함께 보고한다.
 $current = 'failed rollback/sqlite';
+modelBegin($current);
 try {
     $pdo = new FailingPdo("sqlite:$work/transaction-end.sqlite");
     $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -891,12 +917,13 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 // 중첩 transaction 의 savepoint 를 끝내는 ROLLBACK TO SAVEPOINT 나 RELEASE SAVEPOINT 가
 // 실패하면 callback 오류와 그 오류를 함께 보고하고, 성공한 callback 은 실패한
 // RELEASE SAVEPOINT 를 보고한다.
 $current = 'failed savepoint end/sqlite';
+modelBegin($current);
 try {
     $pdo = new FailingPdo("sqlite:$work/savepoint-end.sqlite");
     $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -922,10 +949,8 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
 }
-echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
+modelEnd();
 
 if ($failures > 0) {
-    fwrite(STDERR, "php model test: $failures failures\n");
     exit(1);
 }
-echo "php model test: " . count($tests) . ' tests × ' . count($targets) . " databases passed\n";

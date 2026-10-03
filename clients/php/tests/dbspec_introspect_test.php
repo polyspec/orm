@@ -10,6 +10,7 @@ declare(strict_types=1);
 // Each case creates and drops its own database, schema or file.
 // Usage: php clients/php/tests/dbspec_introspect_test.php
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Dbspec\Dbspec;
 use Orm\Dbspec\Document;
@@ -29,14 +30,14 @@ final class CountingPdo extends PDO
     }
 }
 
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 문서 집합을 적용해
+// introspect한 뒤 지운다.
 const CASE_DEADLINE_MS = 60000;
 // dialect 마다 table 수와 무관한 catalog query 수 (docs/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 // 모든 client 가 새 connection 에서 실행하는 statement.
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];
 
-$started = hrtime(true);
-echo "RUN dbspec_introspect\n";
 $root = dirname(__DIR__, 3);
 $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
 foreach ($dsns as $dialect => $dsn) {
@@ -173,13 +174,9 @@ function unsupported_entries(array $unsupported): array
     return array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name], $unsupported);
 }
 
-function finish_case(string $id, int $caseStarted): void
+function finish_case(string $id): void
 {
-    $elapsed = (hrtime(true) - $caseStarted) / 1e6;
-    if ($elapsed > CASE_DEADLINE_MS) {
-        throw new RuntimeException("$id: deadline of " . CASE_DEADLINE_MS . " ms exceeded ($elapsed ms)");
-    }
-    echo "PASS $id elapsedMs=$elapsed\n";
+    testcase_end();
 }
 
 // round trip: ddl.json 의 모든 case 와 모든 schema 문서.
@@ -206,8 +203,7 @@ foreach ($sets as $setId => $texts) {
     $want = expected_schema_text($documents);
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         $id = "introspect/$dialect/$setId";
-        echo "RUN $id\n";
-        $caseStarted = hrtime(true);
+        testcase_begin($id, CASE_DEADLINE_MS / 1000);
         [$result, $queries] = introspect_applied($dialect, render_statements($id, $documents, $dialect));
         $counts[$dialect][$queries][] = $setId;
         if ($result->unsupported !== []) {
@@ -218,14 +214,16 @@ foreach ($sets as $setId => $texts) {
             throw new RuntimeException("$id: schema text differs\n--- want\n$want--- got\n$got");
         }
         $roundTrips++;
-        finish_case($id, $caseStarted);
+        finish_case($id);
     }
 }
 foreach (QUERY_COUNTS as $dialect => $expected) {
+    testcase_begin("introspect/$dialect/queries", TESTCASE_COMPUTE);
     if (array_keys($counts[$dialect]) !== [$expected]) {
         throw new RuntimeException("$dialect: introspection query counts " . json_encode(array_map('count', $counts[$dialect])) . " differ from $expected for every set");
     }
-    echo "PASS introspect/$dialect queries=$expected sets=" . count($counts[$dialect][$expected]) . "\n";
+    testcase_step("queries=$expected sets=" . count($counts[$dialect][$expected]));
+    testcase_end();
 }
 
 // 미지원 case: tests/dbspec/introspect.json.
@@ -235,8 +233,7 @@ if (($vectors['cases'] ?? []) === []) {
 }
 foreach ($vectors['cases'] as $case) {
     $id = "introspect/{$case['dialect']}/{$case['id']}";
-    echo "RUN $id\n";
-    $caseStarted = hrtime(true);
+    testcase_begin($id, CASE_DEADLINE_MS / 1000);
     $documents = parse_set($id, array_map(lines_text(...), $case['documents']));
     $statements = [...render_statements($id, $documents, $case['dialect']), ...$case['statements']];
     [$result] = introspect_applied($case['dialect'], $statements);
@@ -248,10 +245,10 @@ foreach ($vectors['cases'] as $case) {
     if (unsupported_entries($result->unsupported) !== $case['unsupported']) {
         throw new RuntimeException("$id: unsupported differs\nwant " . json_encode($case['unsupported']) . "\ngot  " . json_encode(array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $result->unsupported)));
     }
-    finish_case($id, $caseStarted);
+    finish_case($id);
 }
 
-echo "RUN introspect/unknown-dialect\n";
+testcase_begin('introspect/unknown-dialect', TESTCASE_COMPUTE);
 try {
     Dbspec::introspect(new PDO('sqlite::memory:'), 'oracle', 'introspected');
     throw new RuntimeException('unknown dialect oracle was accepted');
@@ -260,11 +257,11 @@ try {
         throw new RuntimeException('unknown dialect message does not name it: ' . $e->getMessage());
     }
 }
-echo "PASS introspect/unknown-dialect\n";
+testcase_end();
 
 // query 실패는 connection 의 error mode 와 무관하게 error 다.
 foreach ([PDO::ERRMODE_EXCEPTION => 'exception', PDO::ERRMODE_SILENT => 'silent'] as $mode => $label) {
-    echo "RUN introspect/query-failure-$label\n";
+    testcase_begin("introspect/query-failure-$label", TESTCASE_COMPUTE);
     try {
         Dbspec::introspect(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]), 'mysql', 'introspected');
         throw new LogicException("a failing catalog query in $label mode was not reported");
@@ -273,7 +270,6 @@ foreach ([PDO::ERRMODE_EXCEPTION => 'exception', PDO::ERRMODE_SILENT => 'silent'
             throw new LogicException("query failure in $label mode does not name the query: " . $e->getMessage());
         }
     }
-    echo "PASS introspect/query-failure-$label\n";
+    testcase_end();
 }
 
-echo 'PASS dbspec_introspect roundTrips=' . $roundTrips . ' sets=' . count($sets) . ' unsupportedCases=' . count($vectors['cases']) . ' elapsedMs=' . ((hrtime(true) - $started) / 1e6) . "\n";

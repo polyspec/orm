@@ -1,5 +1,7 @@
 # Changelog
 
+- T24.3: every PHP test case prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its reason and the elapsed time (tests/testcase.php), runs under its own deadline (a SIGALRM interrupts a stuck case where pcntl exists) instead of a whole-script limit, and a failing case no longer hides the cases after it where the script runs them in a loop. `make conformance-result-check` runs its four commands directly without the Python runner.
+
 - T24.2: every JavaScript test case and every Node check runner prints `RUN <case> deadline=<d>`, `STEP` lines and `PASS` or `FAIL` with its reason and the elapsed time while it runs (tests/testcase.mjs), each case with its own deadline. `make feature-check` reports each coverage run and each verification command as it runs, and `node scripts/features/check.mjs --run --feature <id>` runs one feature's commands. The T19 and T20 records write their message placeholders as code, so the documentation builds again.
 
 - T24.1: every Go test case prints `RUN <case> deadline=<d>` when it starts, `STEP` lines with the elapsed time while a long case runs, and `PASS`, `FAIL` with its reason or `SKIP` with the elapsed time when it ends (internal/testcase). Each case has its own deadline, and a case that passes it fails with every goroutine stack. The Go checks of the Makefile, the client and performance scripts and the feature commands run with `go test -v -timeout 0` instead of whole-binary limits, and the conformance and interface checks report their build, language and comparison cases the same way.

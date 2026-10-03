@@ -5,6 +5,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\OrmGen;
 
@@ -73,17 +74,19 @@ $tests['gen is the only command'] = function (): void {
     }
 };
 
+// 각 case는 orm-gen을 같은 process에서 실행해 임시 directory에 models를 쓰고 읽는다.
 foreach ($tests as $current => $test) {
-    try {
+    $before = $failures;
+    $passed = testcase_run("orm_gen/$current", TESTCASE_COMPUTE, static function () use ($test, $before): void {
         $test();
-    } catch (Throwable $e) {
+        if ($GLOBALS['failures'] > $before) {
+            throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+        }
+    });
+    if (!$passed && $failures === $before) {
         $failures++;
-        fwrite(STDERR, "FAIL $current: $e\n");
     }
-    echo ($failures === 0 ? 'ok   ' : '...  ') . "$current\n";
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php orm-gen test: $failures failures\n");
     exit(1);
 }
-echo 'php orm-gen test: ' . count($tests) . " tests passed\n";

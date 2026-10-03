@@ -17,6 +17,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\User;
 use Orm\Code;
@@ -28,6 +29,7 @@ use Orm\RuntimeModel;
 use Orm\Schema;
 use SchemaSetDecimal\Orm\DecimalCase;
 
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
 const CASE_DEADLINE_SECONDS = 60;
 
 $root = dirname(__DIR__, 3);
@@ -247,43 +249,28 @@ foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    $caseBefore = $failures;
     foreach ($targets as $driver => $base) {
         $before = $failures;
         $current = "$case/$driver";
-        $start = microtime(true);
-        echo "RUN  $current\n";
-        pcntl_async_signals(true);
-        pcntl_signal(SIGALRM, static function (): never {
-            throw new RuntimeException('timeout after ' . CASE_DEADLINE_SECONDS . ' s');
-        });
-        pcntl_alarm(CASE_DEADLINE_SECONDS);
-        $drop = null;
-        try {
-            [$dsn, $drop] = caseDatabase($driver, $base);
-            $cases[$case]($dsn);
-        } catch (Throwable $e) {
-            $failures++;
-            fwrite(STDERR, "FAIL $current: $e\n");
-        } finally {
-            pcntl_alarm(0);
+        $passed = testcase_run("schema_set/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $driver, $base, $before): void {
+            $drop = null;
             try {
+                [$dsn, $drop] = caseDatabase($driver, $base);
+                $cases[$case]($dsn);
+            } finally {
                 if ($drop !== null) {
                     $drop();
                 }
-            } catch (Throwable $e) {
-                $failures++;
-                fwrite(STDERR, "FAIL $current: drop database: $e\n");
             }
+            if ($GLOBALS['failures'] > $before) {
+                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+            }
+        });
+        if (!$passed && $failures === $before) {
+            $failures++;
         }
-        printf("%s %s %.3fs\n", $failures === $before ? 'ok  ' : 'FAIL', $current, microtime(true) - $start);
-    }
-    if ($failures === $caseBefore) {
-        echo "CASE $case PASS\n";
     }
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php schema set test: $failures failures\n");
     exit(1);
 }
-echo 'php schema set test: ' . count($selected) . ' cases on ' . count($targets) . " databases passed\n";

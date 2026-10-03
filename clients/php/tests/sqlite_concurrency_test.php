@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Service;
 use Orm\Code;
@@ -122,20 +123,21 @@ $tests['lock wait expires'] = function (): void {
     }, retry: 0);
 };
 
+// 각 case의 기한은 TESTCASE_PROCESS다. 가장 큰 case가 writer process 여러 개를 띄워
+// transaction을 commit한다.
 foreach ($tests as $name => $test) {
     $current = $name;
     $before = $failures;
-    $started = microtime(true);
-    echo "RUN  $name\n";
-    try {
+    $passed = testcase_run("sqlite_concurrency/$name", TESTCASE_PROCESS, static function () use ($test, $before): void {
         $test();
-    } catch (\Throwable $e) {
-        check(false, get_class($e) . ': ' . $e->getMessage());
+        if ($GLOBALS['failures'] > $before) {
+            throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+        }
+    });
+    if (!$passed && $failures === $before) {
+        $failures++;
     }
-    printf("%s %s (%.2fs)\n", $failures === $before ? 'PASS' : 'FAIL', $name, microtime(true) - $started);
 }
 if ($failures > 0) {
-    fwrite(STDERR, "php sqlite concurrency: $failures failures\n");
     exit(1);
 }
-echo "php sqlite concurrency passed\n";

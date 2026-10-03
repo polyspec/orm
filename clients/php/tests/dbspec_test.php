@@ -6,7 +6,6 @@ require_once __DIR__ . '/case_clock.php';
 require __DIR__ . '/dbspec_cases.php';
 
 $started = caseClockStart();
-echo "RUN dbspec_vectors\n";
 $root = dirname(__DIR__, 3);
 $cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
 if ($cases['version'] !== 1) {
@@ -35,8 +34,8 @@ foreach ($cases['files'] as $case) {
     ];
     foreach ($readers as $kind => [$name, $reader]) {
         $id = 'files/' . $case['id'] . '/' . $kind;
-        echo "RUN $id\n";
-        $caseStarted = caseClockStart();
+        // files case는 file 하나를 읽고 parse하는 계산이며 CPU 한도 2 s를 가진다.
+        $clock = cpuCaseBegin($id, 2.0);
         $read = $reader();
         if ($case['errors'] !== []) {
             if ($read->text !== null) {
@@ -60,13 +59,15 @@ foreach ($cases['files'] as $case) {
                 throw new RuntimeException("$id: the file text does not parse and emit unchanged");
             }
         }
-        [$caseCpuMs, $caseWallMs] = caseClockElapsed($caseStarted);
-        echo "PASS $id cpuMs=$caseCpuMs wallMs=$caseWallMs\n";
+        cpuCaseEnd($id, $clock);
         $counts['files'] = ($counts['files'] ?? 0) + 1;
     }
 }
+// 모든 vector를 합친 CPU 시간도 10 s 한도를 가진다.
+testcase_begin('dbspec_vectors/cpu-total', TESTCASE_COMPUTE);
 [$cpuMs, $wallMs] = caseClockElapsed($started);
 if ($cpuMs > 10000) {
     throw new RuntimeException("dbspec_vectors CPU deadline of 10 s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
 }
-echo "PASS dbspec_vectors canonical={$counts['canonical']} normalize={$counts['normalize']} invalid={$counts['invalid']} files={$counts['files']} cpuMs=$cpuMs wallMs=$wallMs\n";
+testcase_step("canonical={$counts['canonical']} normalize={$counts['normalize']} invalid={$counts['invalid']} files={$counts['files']} cpuMs=$cpuMs wallMs=$wallMs");
+testcase_end();
