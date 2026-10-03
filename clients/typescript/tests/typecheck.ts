@@ -1,7 +1,26 @@
 // Type checks only (tsc): valid chains compile, and invalid chain names and
 // values are rejected. Each @ts-expect-error fails the check when its line
 // compiles.
+import type { DatabaseSync } from 'node:sqlite';
+import type { Connection as MySqlConnection, Pool as MySqlPool, PoolConnection as MySqlPoolConnection } from 'mysql2/promise';
+import type pg from 'pg';
 import { Author, Db, ServiceMember, User, orm } from '../src/index.js';
+import type {
+  DbspecApplyMySqlConnection, DbspecApplyPostgresConnection, DbspecApplySqliteConnection,
+  DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection,
+} from '../src/index.js';
+
+// dbspec의 connection type은 driver type 없이 선언되지만 driver의 connection을 그대로 받는다.
+export function driverConnections(
+  mysql: MySqlConnection, mysqlPool: MySqlPool, mysqlPoolConnection: MySqlPoolConnection,
+  client: pg.Client, poolClient: pg.PoolClient, pool: pg.Pool, sqlite: DatabaseSync,
+): void {
+  const introspected: [DbspecMySqlConnection, DbspecMySqlConnection, DbspecMySqlConnection, DbspecPostgresConnection, DbspecPostgresConnection, DbspecPostgresConnection, DbspecSqliteConnection] =
+    [mysql, mysqlPool, mysqlPoolConnection, client, poolClient, pool, sqlite];
+  const applied: [DbspecApplyMySqlConnection, DbspecApplyMySqlConnection, DbspecApplyPostgresConnection, DbspecApplyPostgresConnection, DbspecApplySqliteConnection] =
+    [mysql, mysqlPoolConnection, client, poolClient, sqlite];
+  void introspected; void applied;
+}
 
 export async function valid(db: Db): Promise<void> {
   const rows = await new Author().connect(db)

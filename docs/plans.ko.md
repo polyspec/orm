@@ -141,7 +141,7 @@ apply, recover, rollback, finalize는 caller가 가진 connection 하나에서 �
 
 중단된 뒤 recover나 rollback 전까지 plan의 table에 쓰면 안 된다. 예를 들어 SQLite 다시 만들기가 비운 table에 쓴 row는 작업 table에 없다. chain 전체를 적용한 database에서 apply는 아무것도 바꾸지 않는다. 빈 chain의 apply는 history table을 만들고, table이 없는 database를 요구하며, event를 알리지 않는다. 빈 chain의 recover, rollback, finalize는 아무것도 바꾸지 않는다.
 
-Go에는 `Apply`, `Recover`, `Rollback`, `Finalize`, PHP에는 `Dbspec::apply`, `recover`, `rollback`, `finalize`, TypeScript에는 `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, Rust에는 `orm::dbspec::apply`, `recover`, `rollback`, `finalize`가 있다. 각각 connection, dialect, chain의 plan, `applied_at`의 clock, event handler를 받는다.
+Go에는 `Apply`, `Recover`, `Rollback`, `Finalize`, PHP에는 `Dbspec::apply`, `recover`, `rollback`, `finalize`, TypeScript에는 `applyPlans`, `recoverPlans`, `rollbackPlans`, `finalizePlans`, Rust에는 `orm::dbspec::apply`, `recover`, `rollback`, `finalize`가 있다. 각각 connection, dialect, chain의 plan, `applied_at`의 clock, event handler를 받는다. TypeScript connection type(`DbspecApplyMySqlConnection`, `DbspecApplyPostgresConnection`, `DbspecApplySqliteConnection`, 그리고 `introspectDbspec`의 `DbspecMySqlConnection`, `DbspecPostgresConnection`, `DbspecSqliteConnection`)은 pg, mysql2, node:sqlite의 type 없이 client가 호출하는 method만 적는다. mysql2 connection, pg client, node:sqlite database가 이 type에 맞으며, driver 하나만 설치한 code도 공개 선언의 type 검사를 통과한다.
 
 ## 검증
 

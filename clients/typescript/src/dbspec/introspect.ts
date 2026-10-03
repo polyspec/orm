@@ -1,9 +1,7 @@
 // connection의 database를 dbspec 문서로 읽는다 (docs/dialects.md "Introspection").
 // dialect reader가 고정된 수의 catalog query로 중립 catalog을 채우고, catalog이
 // 문서를 만들어 parse한다.
-import type { DatabaseSync } from 'node:sqlite';
-import type { Connection as MySqlConnection, Pool as MySqlPool } from 'mysql2/promise';
-import type pg from 'pg';
+import type { DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection } from './connections.js';
 import { CatalogRow, type Catalog, type CatalogQuery, type DbspecUnsupported } from './introspect_catalog.js';
 import { readMySQL } from './introspect_mysql.js';
 import { readPostgres } from './introspect_postgres.js';
@@ -13,12 +11,7 @@ import type { DbspecDialect } from './render.js';
 
 export type { DbspecUnsupported } from './introspect_catalog.js';
 
-/** A mysql2 promise connection, pool connection or pool. */
-export type DbspecMySqlConnection = MySqlConnection | MySqlPool;
-/** A pg client, pool client or pool. */
-export type DbspecPostgresConnection = pg.ClientBase | pg.Pool;
-/** A node:sqlite database. */
-export type DbspecSqliteConnection = DatabaseSync;
+export type { DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection } from './connections.js';
 
 /** The introspected document and the objects it leaves out, ordered by table, kind and name. */
 export interface DbspecIntrospection {
@@ -107,6 +100,6 @@ function sqliteQuery(connection: DbspecSqliteConnection): CatalogQuery {
   return async sql => {
     const statement = connection.prepare(sql);
     statement.setReturnArrays(true);
-    return (statement.all() as unknown as unknown[][]).map(values => new CatalogRow(sql, values));
+    return (statement.all() as unknown[][]).map(values => new CatalogRow(sql, values));
   };
 }

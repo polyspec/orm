@@ -1617,8 +1617,8 @@
       "title": "Schema definition and migration",
       "title_ko": "스키마 정의와 마이그레이션",
       "status": "implemented",
-      "description": "Parse and emit dbspec documents, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams.",
-      "description_ko": "dbspec document를 parse하고 emit하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다.",
+      "description": "Parse and emit dbspec documents, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so a dependent type-checks without the pg, mysql2 or node:sqlite types.",
+      "description_ko": "dbspec document를 parse하고 emit하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1726,7 +1726,8 @@
         "clients/go/orm/coverage_schema_definition_test.go",
         "clients/php/tests/coverage_schema_definition.php",
         "clients/rust/orm-schema/tests/coverage_schema_definition.rs",
-        "clients/typescript/tests/coverage_schema_definition.mjs"
+        "clients/typescript/tests/coverage_schema_definition.mjs",
+        "clients/typescript/tests/package-declarations.mjs"
       ],
       "docs": [
         "docs/dbspec.md",

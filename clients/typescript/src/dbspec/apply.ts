@@ -2,9 +2,9 @@
 // 되돌리고, 적용한 plan을 finalize한다(docs/plans.md "Apply"). 기준은 Go 엔진
 // (engine/dbspec/apply.go)이며 lock, session 설정, history table, step, 검증과 효과
 // query가 Go와 같다.
-import type { DatabaseSync } from 'node:sqlite';
-import mysql, { type Connection as MySqlConnection } from 'mysql2/promise';
+import mysql from 'mysql2/promise';
 import pg from 'pg';
+import type { DbspecMySqlConnection, DbspecPostgresConnection, DbspecSqliteConnection } from './connections.js';
 import { dbspecManifest } from './index.js';
 import { introspectDbspec } from './introspect.js';
 import type { DbspecDocument } from './model.js';
@@ -13,11 +13,11 @@ import { effectText, planSteps, type DbspecEffect, type DbspecPlanStep } from '.
 import { Renderer, type DbspecDialect } from './render.js';
 
 /** A mysql2 promise connection or pool connection; apply runs its lock and statements on it. */
-export type DbspecApplyMySqlConnection = MySqlConnection;
+export type DbspecApplyMySqlConnection = DbspecMySqlConnection;
 /** A pg client or pool client; apply runs its lock and transactions on it. */
-export type DbspecApplyPostgresConnection = pg.ClientBase;
+export type DbspecApplyPostgresConnection = DbspecPostgresConnection;
 /** A node:sqlite database. */
-export type DbspecApplySqliteConnection = DatabaseSync;
+export type DbspecApplySqliteConnection = DbspecSqliteConnection;
 
 /** What apply, recover, rollback and finalize report (docs/plans.md "Apply"). */
 export type DbspecApplyEventKind = 'plan' | 'rollback' | 'finalize' | 'irreversible' | 'statement' | 'applied' | 'verified' | 'done';
@@ -153,10 +153,10 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
       requireMethod(connection, 'query', dialect);
       // pool은 statement마다 다른 connection을 쓰므로 lock과 기록이 맞지 않는다.
       if (connection instanceof MYSQL_POOL) throw new TypeError('apply needs one mysql connection, not a pool');
-      const c = connection as MySqlConnection;
+      const c = connection as DbspecMySqlConnection;
       return {
         exec: async (sql, args = []) => {
-          await c.query(sql, [...args]);
+          await c.query({ sql }, [...args]);
         },
         rows: async (sql, args = []) => (await c.query({ sql, rowsAsArray: true }, [...args]))[0] as unknown[][],
       };
@@ -164,17 +164,17 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
     case 'postgres': {
       requireMethod(connection, 'query', dialect);
       if (connection instanceof pg.Pool) throw new TypeError('apply needs one postgres client, not a pool');
-      const c = connection as pg.ClientBase;
+      const c = connection as DbspecPostgresConnection;
       return {
         exec: async (sql, args = []) => {
-          await c.query(sql, [...args]);
+          await c.query({ text: sql, values: [...args] });
         },
         rows: async (sql, args = []) => (await c.query({ text: sql, values: [...args], rowMode: 'array' })).rows as unknown[][],
       };
     }
     case 'sqlite': {
       requireMethod(connection, 'prepare', dialect);
-      const c = connection as DatabaseSync;
+      const c = connection as DbspecSqliteConnection;
       return {
         exec: async (sql, args = []) => {
           if (args.length === 0) c.exec(sql);
@@ -183,7 +183,7 @@ function session(connection: unknown, dialect: DbspecDialect): Session {
         rows: async (sql, args = []) => {
           const statement = c.prepare(sql);
           statement.setReturnArrays(true);
-          return statement.all(...args) as unknown as unknown[][];
+          return statement.all(...args) as unknown[][];
         },
       };
     }
