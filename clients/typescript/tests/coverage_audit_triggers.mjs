@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
+import { restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 
 const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbs'), 'utf8');
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
@@ -210,5 +211,31 @@ await runCases('coverage_audit_triggers.mjs', {
         ['update', 7, seq, 'second', 8, false],
       ], 'item_history in history_id order');
     });
+  },
+  // contracts/fixtures/restore.dbs: unique key 와 exclude 목록을 가진 audit table 과 audit 없는 table 의 soft delete 한
+  // 행을 restore 로 되돌린다(tests/restore_case.mjs). 끝에, 실패해도 table 과 PostgreSQL trigger function 을 지운다.
+  async soft_delete_restore() {
+    const { driver, dsn } = featureDatabase();
+    for (const table of restoreTables) {
+      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
+    }
+    const db = await Db.connect(dsn);
+    try {
+      assert.equal(db.driver, driver);
+      await withCleanup(async () => {
+        await db.utils().schema().install(restoreSchema());
+        await restoreCase(db);
+      }, async () => {
+        const quote = driver === 'mysql' ? name => `\`${name}\`` : name => `"${name}"`;
+        const statements = ['membership_history', 'membership', 'label'].map(t => `DROP TABLE IF EXISTS ${quote(t)}`);
+        if (driver === 'postgres') {
+          for (const e of ['audit_insert', 'audit_update', 'audit_delete']) statements.push(`DROP FUNCTION IF EXISTS "membership$${e}"()`);
+        }
+        await nativeQuery(driver, dsn, statements);
+      });
+    } finally { await db.close(); }
+    for (const table of restoreTables) {
+      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
+    }
   },
 }, 300_000);

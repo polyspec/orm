@@ -935,7 +935,7 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 	return nil, 0, &ir.Error{Code: CodeInternal, Msg: "paginate plan has no count step"}
 }
 
-// write runs an insert, update, or delete and returns the generated id and
+// write runs an insert, update, delete, or restore and returns the generated id and
 // the affected row count.
 func write(ex executor, r *request) (lastID, affected int64, err error) {
 	done, err := ex.enter()

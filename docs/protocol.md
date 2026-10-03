@@ -8,7 +8,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 {
   "ir_version": 1,
   "manifest_hash": "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -34,7 +34,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 | Field | Rule |
 |---|---|
 | `manifest_hash` | the `manifestHash` of the document set the generated code carries: `sha256:` followed by 64 lower-case hexadecimal digits ([manifest and hashes](dbspec.md#manifest-and-hashes)). A request whose hash differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`. The field replaces `schema_hash`; the error code keeps its name |
-| `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows |
+| `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows, and `restore` clears the soft delete column of one deleted row ([restore](#_1-5-restore)) |
 | `set` | assignments of `insert` and `update` |
 | `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
 | `on_duplicate` | assignments applied when an inserted row meets an existing unique key |
@@ -106,7 +106,17 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 A raw order expression carries its own direction. `minus_p` never stores a negative value.
 
-An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the operation column of every `insert`, `update`, soft delete and duplicate update; a request that assigns the AES key version or the operation column fails with `IR_INVALID`.
+An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the operation column of every `insert`, `update`, soft delete, restore and duplicate update; a request that assigns the AES key version or the operation column fails with `IR_INVALID`.
+
+### 1.5 Restore
+
+A `restore` request names one soft-deleted row of a table with a `soft_delete` setting ([dbspec](dbspec.md#settings)). Its `where` holds only `eq` predicates with a parameter, joined by `and`, that name every column of the primary key or of one unique key once, in any order. Its `set` holds the new values written with the restore, under the rules of an `update` assignment; a primary key, identity or soft delete column assignment fails with `IR_INVALID`. It has no `optimistic`. The plan is one `main` step:
+
+```sql
+UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`team_id` = ? AND `link`.`member_id` = ? AND `link`.`deleted_at` IS NOT NULL
+```
+
+The step writes the new values, clears the soft delete column and, on a table with an `audit` setting, writes the operation column; like a soft delete it does not assign the `updated` column. A row that is not deleted and a missing row match no row, so the statement changes nothing, the new values included. A request on a table without `soft_delete`, a predicate of another form, a column outside the key or a key that is named only in part fails with `IR_INVALID`. Reads always exclude soft-deleted rows; `restore` is the only request that matches one. The model method `restore` runs the step and then reads the row by the same key ([usage](usage.md#restore-a-soft-deleted-row)).
 
 ## 2. Plan
 

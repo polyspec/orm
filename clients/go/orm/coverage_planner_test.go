@@ -104,3 +104,15 @@ func TestCoveragePlannerRejectsUnknownColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_unknown_column")
 }
+
+// TestCoveragePlannerRestore는 soft delete한 행을 primary key로 되돌리는 restore를 compile한다.
+func TestCoveragePlannerRestore(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore")
+}
+
+// TestCoveragePlannerRestoreRejectsNonKey는 key가 아닌 column의 restore가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRestoreRejectsNonKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore_rejects_non_key")
+}

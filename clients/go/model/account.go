@@ -194,6 +194,15 @@ func (x *AccountModel) Save() (*AccountModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *AccountModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *AccountModel) Restore() (*AccountModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*AccountModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *AccountModel) Duplication(m *AccountModel) *AccountModel { x.m.Duplication(m); return x }
 

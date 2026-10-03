@@ -341,6 +341,28 @@ err := master.Transaction(func() error {
 
 A write of an audited table outside such a transaction, or with an id that does not fit the operation column, fails with `CONFIG` before it reaches the database; `orm.Operation` with a value that is neither `int64` nor `string` fails the transaction with `CONFIG` before it begins. A request that assigns the operation column itself fails with `IR_INVALID`.
 
+### Restore a soft-deleted row
+
+A delete of a table with a `soft_delete` setting keeps the row and its unique key values, and reads never return it, so inserting the same key again fails with `DUPLICATE_KEY`. `restore()` brings such a row back: set the values of the primary key or of one unique key on a new model, and any new values of other columns, and call `restore()`. It writes the new values and clears the soft delete column with one `UPDATE` ([protocol](protocol.md#_1-5-restore)), reads the row by the same key with the default select set and returns it as a loaded model.
+
+```go
+row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").Restore()
+```
+```php
+$row = (new Membership)->connect($master)->setTeamId(1)->setMemberId(2)->setRole('owner')->restore();
+```
+```rust
+let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set_role("owner").restore().await?;
+```
+```typescript
+const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restore();
+```
+
+- The key is the primary key when every primary key column has a set value, otherwise the first unique key, in name order, whose columns all have set values; a key value is a plain value, not null, raw, plus or minus. Every other set value is a new value, assigned as in `update`. Without the values of a key restore fails with `CONFIG`; an assignment of a primary key or soft delete column, or a table without `soft_delete`, fails with `IR_INVALID`.
+- A row that is not deleted is returned unchanged and nothing is written, the new values included. A key that no row has fails with `NO_ROWS`.
+- On a table with an `audit` setting the restore is an update like any other: it runs in a transaction with an operation id, writes that id into the operation column, and the triggers record the version in the history table. Without an operation id it fails with `CONFIG`.
+- Like a soft delete, restore does not assign the `updated` column. The update and the read are two statements; inside a transaction they see one state.
+
 ---
 
 ## 8. Styled columns

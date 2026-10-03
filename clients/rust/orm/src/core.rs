@@ -412,6 +412,11 @@ impl Core {
         }
     }
 
+    /// column이 value와 같다는 조건을 붙인다. restore가 key 조건을 read의 eq 조건과 같은 방법으로 만든다.
+    pub(crate) fn add_eq(&mut self, conn: &'static str, column: &str, value: Param) {
+        self.add(conn, CondKind::Pred(PredSpec { column: column.to_owned(), op: "eq", value: PredValue::One(value) }));
+    }
+
     /// Adds a configured child model as an INNER or LEFT join.
     pub fn join(&mut self, kind: &'static str, left: &str, right: &str, child: Core) {
         if self.group {

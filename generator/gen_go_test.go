@@ -102,6 +102,7 @@ func TestColumnNameRules(t *testing.T) {
 		"get_name":       "start with",
 		"random":         "reserved",
 		"create":         "reserved",
+		"restore":        "reserved",
 	} {
 		err := checkNames(namesManifest(t, thingDocument(column)))
 		if err == nil || !strings.Contains(err.Error(), message) {

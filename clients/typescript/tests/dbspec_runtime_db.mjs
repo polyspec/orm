@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mjs';
 import { createCaseDatabase } from './case-database.mjs';
+import { restoreCase, restoreSchema } from './restore_case.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -185,6 +186,12 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     const rows = history.values().map(h => [h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('operation_id'), h[CORE].column('title'), h[CORE].column('deleted_at') !== null]);
     assert.deepEqual(rows, [['insert', null, 7, 'a', false], ['update', 7, 8, 'b', false], ['update', 8, 9, 'b', true]]);
     assert.equal(await new Item().connect(db).getCount(), 0);
+  });
+
+  // soft delete 한 행을 unique key 나 primary key 로 restore 한다(tests/restore_case.mjs).
+  caseTest(`${dialect}: restore brings back a soft-deleted row by its primary key or a unique key`, 60_000, async () => {
+    await db.utils().schema().install(restoreSchema());
+    await restoreCase(db);
   });
 
   caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {

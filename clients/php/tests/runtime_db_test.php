@@ -3,8 +3,9 @@ declare(strict_types=1);
 // Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
-// column rule, and the audit operation id. The models of
-// contracts/fixtures/audit.dbs and a values document are generated into a
+// column rule, the audit operation id and the restore of soft-deleted rows. The
+// models of contracts/fixtures/audit.dbs, contracts/fixtures/restore.dbs and a
+// values document are generated into a
 // temporary directory, so the test runs in its own process.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
@@ -15,6 +16,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
+require_once __DIR__ . '/restore_case.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -36,8 +38,8 @@ register_shutdown_function(static function () use ($work): void {
 
 $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
     . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
-$documents = [(string) file_get_contents("$root/contracts/fixtures/audit.dbs"), $values];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $documents[0], 'values.dbs' => $values])), "$work/gen", 'RuntimeDb\\Orm');
+$documents = [(string) file_get_contents("$root/contracts/fixtures/audit.dbs"), (string) file_get_contents("$root/contracts/fixtures/restore.dbs"), $values];
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $documents[0], 'restore.dbs' => $documents[1], 'values.dbs' => $values])), "$work/gen", 'RuntimeDb\\Orm');
 spl_autoload_register(static function (string $class) use ($work): void {
     if (str_starts_with($class, 'RuntimeDb\\Orm\\')) {
         require "$work/gen/" . substr($class, strlen('RuntimeDb\\Orm\\')) . '.php';
@@ -117,6 +119,11 @@ $cases['audit operation id'] = function (Db $db): void {
     want($history === $expected, 'history ' . json_encode($history));
     $count = (int) $db->pdo()->query('SELECT COUNT(*) FROM item')->fetchColumn();
     want($count === 1, "stored rows $count");
+};
+
+// restore는 soft delete한 행을 primary key나 unique key로 되돌린다(restore_case.php).
+$cases['restore of soft-deleted rows'] = function (Db $db): void {
+    restoreCase($db, 'RuntimeDb\\Orm');
 };
 
 $failures = 0;

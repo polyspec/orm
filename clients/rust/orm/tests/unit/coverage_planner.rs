@@ -193,3 +193,17 @@ fn coverage_planner_rejects_unknown_column() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_rejects_unknown_column");
 }
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_restore");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_restore_rejects_non_key() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_restore_rejects_non_key");
+}

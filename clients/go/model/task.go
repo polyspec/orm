@@ -198,6 +198,15 @@ func (x *TaskModel) Save() (*TaskModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *TaskModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *TaskModel) Restore() (*TaskModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*TaskModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *TaskModel) Duplication(m *TaskModel) *TaskModel { x.m.Duplication(m); return x }
 

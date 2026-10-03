@@ -2,7 +2,7 @@
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
 
-로컬 검증: **conformance 벡터 25개 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 생성 인터페이스, 네이티브 심볼, 레코드 검사는 `make interface-check`에서 실행한다.
+로컬 검증: **conformance 벡터 26개 × Go·PHP·Rust·TypeScript × MySQL·PostgreSQL·SQLite에서 문장, bind, 결과가 같다**. 생성 인터페이스, 네이티브 심볼, 레코드 검사는 `make interface-check`에서 실행한다.
 
 ### Rust ORM 대응
 
@@ -25,10 +25,10 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 | IF-01, IF-18, IF-32 | 각 client는 같은 planner의 이식본으로 자기 process에서 request를 계획하고 모델의 schema hash를 확인한다. conformance 벡터가 네 client의 계획된 SQL과 bind를 비교한다. `tests/interfaces/check`는 Go, PHP, Rust, TypeScript의 request 레코드 20개를 필드 단위로 비교한다 |
 | IF-02 | 컬럼 값은 논리 타입을 유지한다. `TestConnectionsUseUTC`와 PHP·TypeScript·Rust 대응 사례가 SQLite와 서버 시간대를 KST로 설정한 MySQL·PostgreSQL에서 날짜·시각 값을 UTC로 쓰고 읽는지 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
 | IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
-| IF-09 ~ IF-12 | 모델 메서드 22개를 언어별로 고정한다. Go는 생성 모델, PHP와 TypeScript는 기반 클래스, Rust는 `orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
+| IF-09 ~ IF-12 | 모델 메서드 23개를 언어별로 고정한다. Go는 생성 모델, PHP와 TypeScript는 기반 클래스, Rust는 `orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, AES 유틸리티를 언어별로 고정한다. `transactions` 벡터와 client 트랜잭션 테스트가 savepoint, 행 잠금, 이름 잠금, 지역 값을 검사한다 |
 | IF-19, IF-20 | `relations`, `relation_empty`, `subqueries` 벡터가 관계 statement와 조립을 검사한다. `TestBindLimitSplitting`이 세 데이터베이스에서 Go의 큰 IN 목록 분할을 검사하며 PHP·Rust·TypeScript는 공통 planner 명세과 각 client suite의 관계·subquery 경로를 검사한다 |
-| IF-21 ~ IF-24 | `write_cycle`, `now_defaults`, `creates_and_save`, `delete_recursive` 벡터가 변경 필드 쓰기, 시각 기본값, upsert, 낙관적 갱신, 재귀 삭제를 검사한다 |
+| IF-21 ~ IF-24 | `write_cycle`, `now_defaults`, `creates_and_save`, `delete_recursive`, `restore` 벡터가 변경 필드 쓰기, 시각 기본값, upsert, 낙관적 갱신, 재귀 삭제, soft delete한 행의 restore를 검사한다 |
 | IF-25 ~ IF-27 | owner 규칙이 모든 언어에서 `Page` 필드 5개와 `AESRotationStatus` 필드 4개를 고정한다. client 모델 테스트가 key 컬렉션과 페이지를 검사한다 |
 | IF-28 ~ IF-31 | 코덱 벡터 80개, AES 벡터, `aes_values`, `aes_status`, `get_query`, `errors` 벡터가 코덱, key version, 마스킹된 bind, 오류 코드를 검사한다 |
 | IF-33 | 매니페스트에서 구성요소 도표를 생성한다. `make interface-check`가 도표, 심볼 스냅샷, 소스 변이를 검사한다 |

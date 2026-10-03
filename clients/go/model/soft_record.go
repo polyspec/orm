@@ -223,6 +223,15 @@ func (x *SoftRecordModel) Save() (*SoftRecordModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *SoftRecordModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *SoftRecordModel) Restore() (*SoftRecordModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*SoftRecordModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *SoftRecordModel) Duplication(m *SoftRecordModel) *SoftRecordModel {
 	x.m.Duplication(m)
@@ -373,3 +382,16 @@ func (x *SoftRecordModel) OrderByDeletedAtDesc(fn ...orm.Func) *SoftRecordModel 
 	x.m.OrderBy("deleted_at", true, fn)
 	return x
 }
+
+func (x *SoftRecordModel) GetBySeq[T0 argIntEq](v0 T0) (*SoftRecordModel, error) {
+	return oneSoftRecord(x.m.By(chainSoftRecordGetBySeq, v0))
+}
+
+func (x *SoftRecordModel) Name[T0 argStringEq](v0 T0) *SoftRecordModel {
+	x.m.Where("", chainSoftRecordName, v0)
+	return x
+}
+
+var chainSoftRecordGetBySeq = []orm.ChainKey{{Column: "seq"}}
+
+var chainSoftRecordName = []orm.ChainKey{{Column: "name"}}

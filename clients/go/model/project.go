@@ -194,6 +194,15 @@ func (x *ProjectModel) Save() (*ProjectModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *ProjectModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *ProjectModel) Restore() (*ProjectModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*ProjectModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *ProjectModel) Duplication(m *ProjectModel) *ProjectModel { x.m.Duplication(m); return x }
 

@@ -418,3 +418,53 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 		t.Fatalf("tag_history = %v\nwant          %v", rows, want)
 	}
 }
+
+// dropRestore는 restore fixture가 만든 table과 PostgreSQL trigger function을
+// 지운다. trigger는 table과 함께 지워진다.
+func dropRestore(t *testing.T, raw *sql.DB, driver string) {
+	t.Helper()
+	quote := func(name string) string { return `"` + name + `"` }
+	if driver == "mysql" {
+		quote = func(name string) string { return "`" + name + "`" }
+	}
+	var statements []string
+	for _, table := range []string{"membership_history", "membership", "label"} {
+		statements = append(statements, "DROP TABLE IF EXISTS "+quote(table))
+	}
+	if driver == "postgres" {
+		for _, event := range []string{"audit_insert", "audit_update", "audit_delete"} {
+			statements = append(statements, `DROP FUNCTION IF EXISTS "membership$`+event+`"()`)
+		}
+	}
+	for _, statement := range statements {
+		if _, err := raw.Exec(statement); err != nil {
+			t.Errorf("%s: %v", statement, err)
+		}
+	}
+}
+
+// TestCoverageSoftDeleteRestore는 고른 database에서 restoreCase를 실행한다:
+// unique key와 exclude 목록을 가진 audit table과 audit 없는 table의 soft
+// delete한 행을 restore로 되돌린다. 끝나면 설치한 table과 function을 지운다.
+func TestCoverageSoftDeleteRestore(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	driver, dsn := featureDatabase(t)
+	raw := openFeatureNative(t, driver, dsn)
+	defer func() {
+		if err := raw.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	for _, table := range restoreTables {
+		if rows := restoreTextRows(t, raw, map[string]string{
+			"mysql":    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '" + table + "'",
+			"postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = '" + table + "'",
+			"sqlite":   "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '" + table + "'",
+		}[driver]); rows[0][0] != "0" {
+			t.Fatalf("table %s exists before the case", table)
+		}
+	}
+	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	defer dropRestore(t, raw, driver)
+	restoreCase(t, driver, dsn)
+}

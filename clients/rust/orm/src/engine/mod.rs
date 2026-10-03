@@ -188,4 +188,141 @@ mod tests {
         let explicit = compile(&manifest, Dialect::Sqlite, &assigned).unwrap();
         assert!(explicit.steps[0].bind_slots.iter().all(|b| b.from != "now"), "an assigned default now column binds its value");
     }
+
+    /// unique key를 가진 soft delete table 두 개(audit table link와 audit 없는 tag)와
+    /// soft_delete가 없는 plain이다. engine/planner/restore_test.go와 같은 문서다.
+    const RESTORE_DOCUMENT: &str = "dbspec 1 restore\n\ntable link {\n  id i64 identity\n  team_id i64\n  member_id i64\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_link_pair (team_id, member_id)\n  settings {\n    soft_delete deleted_at\n    audit into link_history operation operation_id action change previous previous_operation_id\n  }\n}\n\ntable link_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_operation_id i64 null\n  id i64\n  team_id i64\n  member_id i64\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n}\n\ntable tag {\n  id i64 identity\n  name varchar(64)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_tag_name (name)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable plain {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n}\n";
+
+    fn restore_manifest() -> Manifest {
+        let document = crate::dbspec::parse(RESTORE_DOCUMENT, &Default::default()).unwrap();
+        let set = crate::dbspec::manifest(&[&document]).unwrap();
+        Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
+    }
+
+    /// (conn, column, op) 조건으로 entity를 restore하는 request다. is_null이 아니면 조건마다 param 하나를 둔다.
+    fn restore_request(m: &Manifest, entity: &str, preds: &[(&str, &str, &str)]) -> ir::Request {
+        let mut n = 0;
+        let items = preds
+            .iter()
+            .map(|&(conn, column, op)| {
+                let p = (op != "is_null").then(|| {
+                    n += 1;
+                    n - 1
+                });
+                ir::Item::Pred { pred: Box::new(ir::Pred { conn: conn.into(), column: column.into(), op: op.into(), p, ..Default::default() }) }
+            })
+            .collect();
+        ir::Request {
+            ir_version: 1,
+            manifest_hash: m.manifest_hash.clone(),
+            kind: "restore".into(),
+            query: ir::Query { entity: entity.into(), where_: Some(ir::Group { items, ..Default::default() }), ..Default::default() },
+            n_params: n,
+            ..Default::default()
+        }
+    }
+
+    /// request에 새 값의 assignment를 더한다. 값의 parameter는 조건 뒤에 이어진다.
+    fn with_set(mut r: ir::Request, columns: &[&str]) -> ir::Request {
+        for column in columns {
+            r.set.push(ir::Assign { column: (*column).into(), p: Some(r.n_params), ..Default::default() });
+            r.n_params += 1;
+        }
+        r
+    }
+
+    // restore는 primary key나 unique key 하나의 eq 조건으로 soft delete column을 NULL로 되돌리는 update
+    // 하나다. 지워진 행만 고치고, audit table이면 operation column도 쓴다.
+    #[test]
+    fn restore_plans_guarded_update() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let m = restore_manifest();
+        let cases = [
+            (
+                Dialect::Sqlite,
+                restore_request(&m, "link", &[("", "team_id", "eq"), ("and", "member_id", "eq")]),
+                r#"UPDATE "link" SET "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["operation", "param 0", "param 1"],
+            ),
+            (
+                Dialect::MySql,
+                restore_request(&m, "link", &[("", "member_id", "eq"), ("and", "team_id", "eq")]),
+                "UPDATE `link` SET `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL",
+                vec!["operation", "param 0", "param 1"],
+            ),
+            (
+                Dialect::Postgres,
+                restore_request(&m, "link", &[("", "id", "eq")]),
+                r#"UPDATE "link" SET "deleted_at" = NULL, "operation_id" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["operation", "param 0"],
+            ),
+            (
+                Dialect::MySql,
+                restore_request(&m, "tag", &[("", "name", "eq")]),
+                "UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL",
+                vec!["param 0"],
+            ),
+            (
+                Dialect::Sqlite,
+                with_set(restore_request(&m, "link", &[("", "team_id", "eq"), ("and", "member_id", "eq")]), &["team_id"]),
+                r#"UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["param 2", "operation", "param 0", "param 1"],
+            ),
+            (
+                Dialect::Postgres,
+                with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["label"]),
+                r#"UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL"#,
+                vec!["param 1", "param 0"],
+            ),
+        ];
+        for (dialect, request, sql, slots) in cases {
+            let plan = compile(&m, dialect, &request).unwrap_or_else(|e| panic!("{sql}: {e}"));
+            assert_eq!(plan.steps.len(), 1, "{sql}");
+            assert_eq!(plan.steps[0].role, "main");
+            assert_eq!(plan.steps[0].sql, sql);
+            let got: Vec<String> =
+                plan.steps[0].bind_slots.iter().map(|b| if b.from == "param" { format!("param {}", b.param) } else { b.from.clone() }).collect();
+            assert_eq!(got, slots, "{sql}");
+        }
+    }
+
+    // key 하나를 eq 값으로 정확히 이름하지 않는 restore와 soft_delete가 없는 table의 restore는 IR_INVALID다.
+    #[test]
+    fn restore_rejects_other_requests() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let m = restore_manifest();
+        let mut group = restore_request(&m, "tag", &[]);
+        group.n_params = 1;
+        group.query.where_ = Some(ir::Group {
+            items: vec![ir::Item::Group {
+                group: ir::Group {
+                    items: vec![ir::Item::Pred { pred: Box::new(ir::Pred { column: "name".into(), op: "eq".into(), p: Some(0), ..Default::default() }) }],
+                    ..Default::default()
+                },
+            }],
+            ..Default::default()
+        });
+        let mut optimistic = restore_request(&m, "tag", &[("", "name", "eq")]);
+        optimistic.optimistic = Some(ir::Optimist { column: "label".into(), p: 0 });
+        let cases = [
+            ("part of a unique key", restore_request(&m, "link", &[("", "team_id", "eq")])),
+            ("a column that is no key", restore_request(&m, "tag", &[("", "label", "eq")])),
+            ("a key and another column", restore_request(&m, "tag", &[("", "name", "eq"), ("and", "label", "eq")])),
+            ("a repeated column", restore_request(&m, "tag", &[("", "name", "eq"), ("and", "name", "eq")])),
+            ("another operator", restore_request(&m, "tag", &[("", "name", "gt")])),
+            ("an or connector", restore_request(&m, "link", &[("", "team_id", "eq"), ("or", "member_id", "eq")])),
+            ("a null test", restore_request(&m, "tag", &[("", "name", "is_null")])),
+            ("no condition", restore_request(&m, "tag", &[])),
+            ("a group", group),
+            ("an assignment of the soft delete column", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["deleted_at"])),
+            ("an assignment of the primary key", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["id"])),
+            ("an assignment of the operation column", with_set(restore_request(&m, "link", &[("", "id", "eq")]), &["operation_id"])),
+            ("an optimistic check", optimistic),
+            ("a table without soft_delete", restore_request(&m, "plain", &[("", "id", "eq")])),
+        ];
+        for (name, request) in cases {
+            let error = compile(&m, Dialect::Sqlite, &request).expect_err(name);
+            assert_eq!(error.code(), crate::codes::IR_INVALID, "{name}: {error}");
+        }
+    }
 }

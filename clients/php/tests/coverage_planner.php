@@ -48,4 +48,6 @@ runCoverageCases($argv, [
     'planner_statement' => fn() => plannerCase($root, $fixture, 'planner_statement'),
     'planner_count' => fn() => plannerCase($root, $fixture, 'planner_count'),
     'planner_rejects_unknown_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_unknown_column'),
+    'planner_restore' => fn() => plannerCase($root, $fixture, 'planner_restore'),
+    'planner_restore_rejects_non_key' => fn() => plannerCase($root, $fixture, 'planner_restore_rejects_non_key'),
 ]);

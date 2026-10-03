@@ -66,7 +66,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.manifest_hash != m.manifest_hash {
         return Err(err(codes::SCHEMA_HASH_MISMATCH, format!("client {}, engine {}", r.manifest_hash, m.manifest_hash)));
     }
-    if !matches!(r.kind.as_str(), "one" | "all" | "count" | "group_count" | "sum" | "avg" | "paginate" | "insert" | "update" | "delete") {
+    if !matches!(r.kind.as_str(), "one" | "all" | "count" | "group_count" | "sum" | "avg" | "paginate" | "insert" | "update" | "delete" | "restore") {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
     }
     let v = Validator { m, n: r.n_params };
@@ -85,8 +85,8 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.kind == "group_count" && q.group_by.is_empty() && q.group_by_expr.is_empty() {
         return Err(err(codes::IR_INVALID, "group_count needs group_by"));
     }
-    if r.kind == "insert" || r.kind == "update" {
-        if r.set.is_empty() {
+    if r.kind == "insert" || r.kind == "update" || r.kind == "restore" {
+        if r.set.is_empty() && r.kind != "restore" {
             return Err(err(codes::IR_INVALID, format!("{} needs set[]", r.kind)));
         }
         for a in &r.set {
@@ -127,8 +127,12 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         }
         v.params(&[o.p])?;
     }
-    if (r.kind == "update" || r.kind == "delete") && q.where_.as_ref().map(|g| g.items.is_empty()).unwrap_or(true) {
+    if (r.kind == "update" || r.kind == "delete" || r.kind == "restore") && q.where_.as_ref().map(|g| g.items.is_empty()).unwrap_or(true) {
         return Err(err(codes::IR_INVALID, format!("{} without where", r.kind)));
+    }
+    // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+    if r.kind == "restore" && r.optimistic.is_some() {
+        return Err(err(codes::IR_INVALID, "restore takes no optimistic"));
     }
     Ok(())
 }

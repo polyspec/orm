@@ -632,6 +632,15 @@ func (x *AuthorModel) Save() (*AuthorModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *AuthorModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *AuthorModel) Restore() (*AuthorModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*AuthorModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *AuthorModel) Duplication(m *AuthorModel) *AuthorModel { x.m.Duplication(m); return x }
 

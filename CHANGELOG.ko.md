@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T32: 네 client에서 `restore()`가 soft delete한 행을 되돌린다. primary key나 unique key 하나의 값과 다른 column의 새 값을 지정하면 `UPDATE` 하나가 새 값을 쓰고 soft delete column을 비우며(감사 대상 table에서는 operation id와 함께 쓰고 이력이 기록한다), key로 행을 다시 읽는다. 지워지지 않은 행은 그대로 반환되고, 없는 행은 `NO_ROWS`이며, 기본 읽기는 여전히 soft delete한 행을 뺀다. IR에 kind `restore`가 있고 `restore`는 예약 column 이름이다.
+
 - T31: Rust `Db::transaction_once(callback)`는 `transaction`, `transaction_send`처럼 `operation(id)`를 받는 builder이므로, 감사 대상 write가 모든 transaction 진입점을 거쳐 실행된다. 기존 `.await` 호출부는 그대로이고, callback과 그 future가 `Send`이면 future도 `Send`다. operation id를 가진 중첩 `transaction_once`는 `CONFIG`를 담은 `TransactionOnceError::Orm`을 돌려준다.
 
 - T31.1: `go run ./tests/interfaces/check`는 cargo가 build했다고 보고한 위치에서 Rust symbol 도구를 찾는다. Makefile이 모든 cargo 명령에 주는 것처럼 `CARGO_TARGET_DIR`이 다른 target directory를 정해도 이 검사는 현재 도구를 실행한다.

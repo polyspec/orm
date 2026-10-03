@@ -37,4 +37,6 @@ await runCases('coverage_planner.mjs', {
   async planner_statement() { compileCase('planner_statement'); },
   async planner_count() { compileCase('planner_count'); },
   async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
+  async planner_restore() { compileCase('planner_restore'); },
+  async planner_restore_rejects_non_key() { compileCase('planner_restore_rejects_non_key'); },
 }, 60_000);

@@ -18,12 +18,12 @@ import (
 const Version = 1
 
 // Request is one statement: a query (select/count/sum/avg), a write
-// (insert/update/delete), or a paginate (select + count).
+// (insert/update/delete/restore), or a paginate (select + count).
 type Request struct {
 	IRVersion int `json:"ir_version"`
 	// ManifestHash는 request를 만든 generated code의 manifestHash다.
 	ManifestHash string `json:"manifest_hash"`
-	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete
+	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete restore
 	Query
 	Set         []Assign `json:"set,omitempty"`
 	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
@@ -327,7 +327,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.ManifestHash, m.ManifestHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete":
+	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete", "restore":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
@@ -352,8 +352,8 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	if r.Kind == "group_count" && !hasGroupBy(&r.Query) {
 		return errf("IR_INVALID", "group_count needs group_by")
 	}
-	if r.Kind == "insert" || r.Kind == "update" {
-		if len(r.Set) == 0 {
+	if r.Kind == "insert" || r.Kind == "update" || r.Kind == "restore" {
+		if len(r.Set) == 0 && r.Kind != "restore" {
 			return errf("IR_INVALID", "%s needs set[]", r.Kind)
 		}
 		for _, a := range r.Set {
@@ -401,8 +401,12 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			return err
 		}
 	}
-	if (r.Kind == "update" || r.Kind == "delete") && (r.Where == nil || len(r.Where.Items) == 0) {
+	if (r.Kind == "update" || r.Kind == "delete" || r.Kind == "restore") && (r.Where == nil || len(r.Where.Items) == 0) {
 		return errf("IR_INVALID", "%s without where", r.Kind)
+	}
+	// restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+	if r.Kind == "restore" && r.Optimistic != nil {
+		return errf("IR_INVALID", "restore takes no optimistic")
 	}
 	return nil
 }

@@ -323,7 +323,7 @@ function joinedRefs(g: Group, seen: Set<string>): void {
   }
 }
 
-const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete']);
+const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore']);
 
 function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0 || (q.group_by_expr ?? []).length > 0;
@@ -343,9 +343,9 @@ export function validate(m: RuntimeModel, r: Request): void {
     if (!numericTypes.has(c.type)) fail('OPERATOR_NOT_ALLOWED', `${r.kind} on ${r.entity}.${r.agg} (${c.type})`);
   }
   if (r.kind === 'group_count' && !hasGroupBy(r)) fail('IR_INVALID', 'group_count needs group_by');
-  if (r.kind === 'insert' || r.kind === 'update') {
-    if ((r.set ?? []).length === 0) fail('IR_INVALID', `${r.kind} needs set[]`);
-    for (const a of r.set!) v.assign(ent, r, a);
+  if (r.kind === 'insert' || r.kind === 'update' || r.kind === 'restore') {
+    if ((r.set ?? []).length === 0 && r.kind !== 'restore') fail('IR_INVALID', `${r.kind} needs set[]`);
+    for (const a of r.set ?? []) v.assign(ent, r, a);
   }
   if ((r.rows ?? []).length > 0) {
     if (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0) fail('IR_INVALID', 'rows are only valid on insert without on_duplicate');
@@ -367,5 +367,7 @@ export function validate(m: RuntimeModel, r: Request): void {
     if (!columnOf(ent, r.optimistic.column)) fail('COLUMN_UNKNOWN', `${r.entity}.${r.optimistic.column}`);
     v.params([r.optimistic.p]);
   }
-  if ((r.kind === 'update' || r.kind === 'delete') && (!r.where || r.where.items.length === 0)) fail('IR_INVALID', `${r.kind} without where`);
+  if ((r.kind === 'update' || r.kind === 'delete' || r.kind === 'restore') && (!r.where || r.where.items.length === 0)) fail('IR_INVALID', `${r.kind} without where`);
+  // restore 는 지워진 행만 고치므로 읽은 version 과 비교할 것이 없다.
+  if (r.kind === 'restore' && r.optimistic !== undefined) fail('IR_INVALID', 'restore takes no optimistic');
 }

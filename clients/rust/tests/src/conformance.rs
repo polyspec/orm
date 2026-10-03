@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 orm::models!();
 
-use model::{Author, CompositeAccount, Service, ServiceMember, ServiceRegion, Task, User};
+use model::{Author, CompositeAccount, Service, ServiceMember, ServiceRegion, SoftRecord, Task, User};
 use orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -650,6 +650,42 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let left = Service::new().connect(db).name(vec!["tx-outer", "tx-inner"]).get_count().await?;
         events.push(json!(left));
         Ok::<Value, orm::Error>(Value::Array(events))
+    });
+    run!("restore", async {
+        // soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database와
+        // runner의 bind가 같다. transaction은 끝에 rollback하므로 database는 처음과 같다.
+        let result = Mutex::new(Map::new());
+        let ended: orm::Result<()> = db
+            .transaction(async || {
+                let mut created = SoftRecord::new().set_name("restore").create().await?;
+                let seq = created.get_seq().unwrap();
+                mask(shared, &[seq], &[]);
+                let deleted_at = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(3, 4, 5).unwrap();
+                created = created.set_deleted_at(deleted_at);
+                created.update(false).await?;
+                let hidden = SoftRecord::new().get_by_seq(seq).await;
+                result.lock().unwrap().insert("hidden".into(), code_of(hidden));
+                // key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은 행을 바꾸지 않고
+                // 돌려준다.
+                for (name, value) in [("restored", "restore-2"), ("again", "ignored")] {
+                    let row = SoftRecord::new().set_seq(seq).set_name(value).restore().await?;
+                    let mut array = row.to_array()?;
+                    array["seq"] = json!("$SEQ");
+                    result.lock().unwrap().insert(name.into(), array);
+                }
+                let missing = SoftRecord::new().set_seq(0).restore().await;
+                result.lock().unwrap().insert("missing".into(), code_of(missing));
+                Err(orm::Error::Config("boom".into()))
+            })
+            .retry(0)
+            .await;
+        if !matches!(&ended, Err(orm::Error::Config(m)) if m == "boom") {
+            ended?;
+        }
+        let left = SoftRecord::new().connect(db).name("restore").get_count().await?;
+        let mut result = result.into_inner().unwrap();
+        result.insert("left".into(), json!(left));
+        Ok::<Value, orm::Error>(Value::Object(result))
     });
     run!("aes_status", async {
         let keyring = AesKeyring::new([(1, "bench-salt".to_owned())].into_iter().collect(), 1)?;

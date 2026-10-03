@@ -1100,6 +1100,8 @@ export class SoftRecord extends Model {
   public orderByDeletedAtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('deleted_at', true, fn); return this; }
 }
 export interface SoftRecord {
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
+  name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */

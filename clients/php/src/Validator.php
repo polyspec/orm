@@ -98,7 +98,7 @@ final class Validator
             throw self::err(Code::SCHEMA_HASH_MISMATCH, 'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
         }
         $kind = $r['kind'] ?? '';
-        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete'], true)) {
+        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore'], true)) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
         $this->n = $r['n_params'] ?? 0;
@@ -119,8 +119,8 @@ final class Validator
             throw self::err(Code::IR_INVALID, 'group_count needs group_by');
         }
         $set = $r['set'] ?? [];
-        if ($kind === 'insert' || $kind === 'update') {
-            if ($set === []) {
+        if ($kind === 'insert' || $kind === 'update' || $kind === 'restore') {
+            if ($set === [] && $kind !== 'restore') {
                 throw self::err(Code::IR_INVALID, "$kind needs set[]");
             }
             foreach ($set as $a) {
@@ -163,8 +163,12 @@ final class Validator
             }
             $this->params([$r['optimistic']['p'] ?? 0]);
         }
-        if (($kind === 'update' || $kind === 'delete') && ($r['where']['items'] ?? []) === []) {
+        if (($kind === 'update' || $kind === 'delete' || $kind === 'restore') && ($r['where']['items'] ?? []) === []) {
             throw self::err(Code::IR_INVALID, "$kind without where");
+        }
+        // restore는 지워진 행만 고치므로 읽은 version과 비교할 것이 없다.
+        if ($kind === 'restore' && isset($r['optimistic'])) {
+            throw self::err(Code::IR_INVALID, 'restore takes no optimistic');
         }
     }
 

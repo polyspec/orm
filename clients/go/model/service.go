@@ -194,6 +194,15 @@ func (x *ServiceModel) Save() (*ServiceModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *ServiceModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *ServiceModel) Restore() (*ServiceModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*ServiceModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *ServiceModel) Duplication(m *ServiceModel) *ServiceModel { x.m.Duplication(m); return x }
 

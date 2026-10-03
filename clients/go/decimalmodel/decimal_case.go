@@ -223,6 +223,15 @@ func (x *DecimalCaseModel) Save() (*DecimalCaseModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *DecimalCaseModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *DecimalCaseModel) Restore() (*DecimalCaseModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*DecimalCaseModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *DecimalCaseModel) Duplication(m *DecimalCaseModel) *DecimalCaseModel {
 	x.m.Duplication(m)

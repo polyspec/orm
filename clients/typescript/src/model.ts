@@ -116,6 +116,12 @@ export abstract class Model implements ModelLike {
   public async save(): Promise<this> { return save(this[CORE]) as Promise<this>; }
   /** Deletes the row; delete(true) first deletes loaded related rows. */
   public async delete(recursive = false): Promise<void> { await deleteRow(this[CORE], recursive); }
+  /**
+   * Restores the soft-deleted row that the set values name by its primary key or one unique key, writes the other
+   * set values into it, and returns the restored row. A row that is not deleted is returned unchanged; a missing row
+   * fails with NO_ROWS.
+   */
+  public async restore(): Promise<this> { return restore(this[CORE]) as Promise<this>; }
 
   public toArray(): Record<string, unknown> { return toArray(this[CORE]); }
   public toJSON(): Record<string, unknown> { return toJson(this[CORE]); }
@@ -724,6 +730,35 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
   const r = writeRequest(c, 'delete');
   keyWhere(r, schema, keyValues(c, schema));
   await write(ex, finishWrite(r), r.params);
+}
+
+/**
+ * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. key 는 모든 column 에
+ * 값(null, raw, plus, minus 가 아닌 set 값)이 있으면 primary key, 아니면 모든 column 에 값이 있는 첫 unique key(이름
+ * 순서)다. key 밖의 set 값은 되돌리는 행에 update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼
+ * operation id 를 쓴다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
+ * 지운 행을 읽지 않는다.
+ */
+async function restore(c: Core): Promise<Model> {
+  const ex = terminal(c);
+  const schema = c.ent.entity;
+  const values = new Map<string, unknown>();
+  for (const s of c.sets) if (!s.null && !s.plus && !s.minus && !s.raw) values.set(s.column, s.value);
+  const covered = (columns: readonly string[]) => columns.every(column => values.has(column));
+  // unique key 는 이름 순서로 고른다. indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
+  const uniques = schema.uniques.map((columns, i) => ({ name: schema.indexes[i]!, columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const key = covered(schema.primaryKey) ? schema.primaryKey : uniques.find(u => covered(u.columns))?.columns;
+  if (key === undefined) throw configError(`restore requires the set values of the primary key or a unique key of ${schema.name}`);
+  // key 조건은 read 와 같은 방법으로 만들므로 restore update 와 그 뒤의 read 가 같은 행을 같은 값 변환으로 찾는다.
+  const q = newModel(c.ent);
+  q.conn = c.conn;
+  q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), key.map(column => values.get(column)));
+  const r = q.build('restore');
+  if (r.error) throw r.error;
+  const set = c.sets.filter(s => !key.includes(s.column)).map(s => assign(r, schema, s));
+  if (set.length > 0) r.ir.set = set;
+  await write(ex, r.finish(), r.params);
+  return (q.self as Model).get();
 }
 
 function arrayValue(value: unknown): unknown {

@@ -50,7 +50,7 @@ state after declared sequence cleanup. It reads every table row and observes
 MySQL auto-increment values, PostgreSQL sequence values, and SQLite's
 `sqlite_sequence` table when it exists. SQLite databases without an
 `AUTOINCREMENT` table have no sequence counters; the checker still reads all
-rows and reports any other query error. Only counters of the four tables that the write vectors
+rows and reports any other query error. Only counters of the five tables that the write vectors
 insert into may be restored. Each restoration is reported; a missing table,
 unreadable sequence, undeclared counter change, cleanup failure, or remaining
 state change fails. The bench database must have no external writer during the run.

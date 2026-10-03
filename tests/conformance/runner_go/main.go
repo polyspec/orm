@@ -734,6 +734,48 @@ func main() {
 		events = append(events, left)
 		return events, err
 	})
+	run("restore", func() (any, error) {
+		// soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든
+		// database와 runner의 bind가 같다. transaction은 끝에 rollback하므로 database는 처음과
+		// 같다.
+		boom := errors.New("boom")
+		result := map[string]any{}
+		err := db.Transaction(func() error {
+			created, err := model.SoftRecord().SetName("restore").Create()
+			if err != nil {
+				return err
+			}
+			seq := created.GetSeq()
+			mask([]int64{seq})
+			deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+			if _, err := created.SetDeletedAt(&deletedAt).Update(); err != nil {
+				return err
+			}
+			_, hidden := model.SoftRecord().GetBySeq(seq)
+			result["hidden"] = code(hidden)
+			// key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은
+			// 행을 바꾸지 않고 돌려준다.
+			for _, step := range [][2]string{{"restored", "restore-2"}, {"again", "ignored"}} {
+				name := step[0]
+				row, err := model.SoftRecord().SetSeq(seq).SetName(step[1]).Restore()
+				if err != nil {
+					return err
+				}
+				array := row.ToArray()
+				array["seq"] = "$SEQ"
+				result[name] = array
+			}
+			_, missing := model.SoftRecord().SetSeq(0).Restore()
+			result["missing"] = code(missing)
+			return boom
+		}, orm.Retry(0))
+		if !errors.Is(err, boom) {
+			return nil, err
+		}
+		left, err := model.SoftRecord().Connect(db).Name("restore").GetCount()
+		result["left"] = left
+		return result, err
+	})
 	run("aes_status", func() (any, error) {
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "bench-salt"}, 1)
 		if err != nil {

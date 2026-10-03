@@ -1278,6 +1278,92 @@
       }
     },
     {
+      "name": "restore",
+      "chain": "transaction: create, set deleted_at, getBySeq, setSeq(seq)-\u003esetName(...)-\u003erestore() twice, setSeq(0)-\u003erestore(), rollback",
+      "expect": {
+        "result": {
+          "again": {
+            "deleted_at": null,
+            "name": "restore-2",
+            "seq": "$SEQ"
+          },
+          "hidden": "NO_ROWS",
+          "left": 0,
+          "missing": "NO_ROWS",
+          "restored": {
+            "deleted_at": null,
+            "name": "restore-2",
+            "seq": "$SEQ"
+          }
+        },
+        "statements": [
+          {
+            "binds": [
+              "restore"
+            ],
+            "sql": "INSERT INTO \"soft_record\" (\"name\") VALUES ($1) RETURNING \"seq\""
+          },
+          {
+            "binds": [
+              "2026-01-02 03:04:05.000000",
+              "$SEQ"
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = $1 WHERE \"soft_record\".\"seq\" = $2 AND \"soft_record\".\"deleted_at\" IS NULL"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "restore-2",
+              "$SEQ"
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"name\" = $1, \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $2 AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "ignored",
+              "$SEQ"
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"name\" = $1, \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $2 AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+          },
+          {
+            "binds": [
+              "$SEQ"
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              0
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $1 AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+          },
+          {
+            "binds": [
+              0
+            ],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
+          },
+          {
+            "binds": [
+              "restore"
+            ],
+            "sql": "SELECT COUNT(*) FROM \"soft_record\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1"
+          }
+        ]
+      }
+    },
+    {
       "name": "aes_status",
       "chain": "utils()-\u003eaes()-\u003estatus(model, keyring)",
       "expect": {

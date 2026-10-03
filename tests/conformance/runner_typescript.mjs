@@ -6,7 +6,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of schema/bench.dbs.
 import {
-  AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, StyledValue, Task, User, connect, orm,
+  AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
 } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
@@ -406,6 +406,32 @@ async function main() {
     events.push(failed === boom);
     events.push(await new Service().connect(db).name(['tx-outer', 'tx-inner']).getCount());
     return events;
+  });
+  await run('restore', async () => {
+    // soft delete 한 행을 primary key 로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database 와 runner 의 bind 가
+    // 같다. transaction 은 끝에 rollback 하므로 database 는 처음과 같다.
+    const boom = new Error('boom');
+    const result = {};
+    let failed;
+    try {
+      await db.transaction(async () => {
+        const created = await new SoftRecord().setName('restore').create();
+        const seq = created.getSeq();
+        mask([seq]);
+        await created.setDeletedAt(new Date(Date.UTC(2026, 0, 2, 3, 4, 5))).update();
+        result.hidden = await caught(new SoftRecord().getBySeq(seq));
+        for (const [name, value] of [['restored', 'restore-2'], ['again', 'ignored']]) {
+          const array = (await new SoftRecord().setSeq(seq).setName(value).restore()).toArray();
+          array.seq = '$SEQ';
+          result[name] = array;
+        }
+        result.missing = await caught(new SoftRecord().setSeq(0).restore());
+        throw boom;
+      }, { retry: 0 });
+    } catch (error) { failed = error; }
+    if (failed !== boom) throw failed;
+    result.left = await new SoftRecord().connect(db).name('restore').getCount();
+    return result;
   });
   await run('aes_status', async () => {
     const keyring = new AesKeyring(new Map([[1, 'bench-salt']]), 1);

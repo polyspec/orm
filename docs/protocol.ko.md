@@ -8,7 +8,7 @@
 {
   "ir_version": 1,
   "manifest_hash": "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -34,7 +34,7 @@
 | 필드 | 규칙 |
 |---|---|
 | `manifest_hash` | generated code가 가진 document set의 `manifestHash`다. `sha256:` 뒤에 소문자 16진수 64자리가 온다([manifest와 hash](dbspec.ko.md#manifest-and-hashes)). 클라이언트가 읽은 모델과 hash가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. 이 필드는 `schema_hash`를 대신하며 오류 코드 이름은 그대로다 |
-| `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓴다 |
+| `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓰고, `restore`는 지워진 행 하나의 soft delete 컬럼을 비운다([restore](#_1-5-restore)) |
 | `set` | `insert`와 `update`의 할당 |
 | `rows` | 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다 |
 | `on_duplicate` | 삽입한 행이 기존 고유 키와 겹칠 때 적용하는 할당 |
@@ -106,7 +106,17 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} |
 
 원시 정렬 표현식은 방향을 직접 포함한다. `minus_p`는 음수 값을 저장하지 않는다.
 
-default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, duplicate update의 operation 컬럼이다. AES 키 버전이나 operation 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
+default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 operation 컬럼이다. AES 키 버전이나 operation 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
+
+### 1.5 Restore
+
+`restore` 요청은 `soft_delete` setting이 있는 테이블([dbspec](dbspec.ko.md#settings))에서 soft delete한 행 하나를 지정한다. `where`에는 매개변수를 가진 `eq` predicate만 `and`로 이어지며, 이 predicate들은 primary key나 unique key 하나의 모든 컬럼을 순서와 상관없이 한 번씩 지정한다. `set`은 restore와 함께 쓰는 새 값이며 `update` 할당과 같은 규칙을 따른다. primary key, identity, soft delete 컬럼의 할당은 `IR_INVALID`로 실패한다. `optimistic`은 없다. plan은 `main` step 하나다:
+
+```sql
+UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`team_id` = ? AND `link`.`member_id` = ? AND `link`.`deleted_at` IS NOT NULL
+```
+
+이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 operation 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청, 다른 형태의 predicate, key 밖의 컬럼, key의 일부만 지정한 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 이 step을 실행한 뒤 같은 key로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
 
 ## 2. Plan
 

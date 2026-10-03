@@ -67,6 +67,17 @@ $tests['gen rejects a file without the dbspec signature'] = function () use ($wo
     }
 };
 
+$tests['gen rejects a column named after a model method'] = function () use ($work): void {
+    // restore()는 모든 model의 method이므로 restore column의 condition method와 겹친다.
+    $dir = "$work/gen-reserved";
+    @mkdir("$dir/model", 0o700, true);
+    foreach (['create', 'restore'] as $column) {
+        file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  $column varchar(32)\n  primary key (seq)\n}\n");
+        [$code, $out, $err] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', "$dir/example.dbs"]);
+        check($code !== 0 && str_contains($out . $err, "column name is a reserved method name: $column"), "$column: $code $out $err");
+    }
+};
+
 $tests['gen is the only command'] = function (): void {
     foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
         [$code, $out, $err] = tool([$command]);

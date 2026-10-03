@@ -110,6 +110,122 @@ await run.run('engine', COMPUTE, async () => {
     `soft-delete guarded update: ${softDelete.steps[0].sql}`,
   );
 
+  // Restore: primary key 나 unique key 하나의 eq 조건으로 soft delete column 을 NULL 로 되돌리는 update 하나다.
+  // 지워진 행만 고치고, audit table 이면 operation column 도 쓴다(engine/planner/restore_test.go 와 같은 case).
+  {
+    const restoreText = `dbspec 1 restore
+
+table link {
+  id i64 identity
+  team_id i64
+  member_id i64
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_link_pair (team_id, member_id)
+  settings {
+    soft_delete deleted_at
+    audit into link_history operation operation_id action change previous previous_operation_id
+  }
+}
+
+table link_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_operation_id i64 null
+  id i64
+  team_id i64
+  member_id i64
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (history_id)
+}
+
+table tag {
+  id i64 identity
+  name varchar(64)
+  label varchar(64)
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_tag_name (name)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
+table plain {
+  id i64 identity
+  name varchar(64)
+  primary key (id)
+}
+`;
+    const { manifest: restoreManifest } = dbspecManifest([parseDbspec(restoreText, {}).document]);
+    const restoreModel = registerModel(restoreManifest.manifestText, restoreManifest.manifestHash);
+    const restoreRequest = (entity, ...preds) => {
+      const r = { ir_version: 1, manifest_hash: restoreManifest.manifestHash, kind: 'restore', entity, n_params: 0, where: { items: [] } };
+      for (const pred of preds) {
+        const p = { ...pred };
+        if (p.p === undefined && p.op !== 'is_null') p.p = r.n_params++;
+        r.where.items.push({ pred: p });
+      }
+      return r;
+    };
+    const withSet = (r, ...assigns) => {
+      r.set = r.set ?? [];
+      for (const a of assigns) r.set.push({ ...a, p: r.n_params++ });
+      return r;
+    };
+    const slotsOf = step => step.bind_slots.map(s => (s.from === 'param' ? `param ${s.param}` : s.from));
+    for (const [name, dialect, request, sql, slots] of [
+      ['unique key with audit', 'sqlite', restoreRequest('link', { column: 'team_id', op: 'eq' }, { conn: 'and', column: 'member_id', op: 'eq' }),
+        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['operation', 'param 0', 'param 1']],
+      ['unique key in another order', 'mysql', restoreRequest('link', { column: 'member_id', op: 'eq' }, { conn: 'and', column: 'team_id', op: 'eq' }),
+        'UPDATE `link` SET `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
+        ['operation', 'param 0', 'param 1']],
+      ['primary key', 'postgres', restoreRequest('link', { column: 'id', op: 'eq' }),
+        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL',
+        ['operation', 'param 0']],
+      ['without audit', 'mysql', restoreRequest('tag', { column: 'name', op: 'eq' }),
+        'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
+        ['param 0']],
+      ['new values', 'sqlite', withSet(restoreRequest('link', { column: 'team_id', op: 'eq' }, { conn: 'and', column: 'member_id', op: 'eq' }), { column: 'team_id' }),
+        'UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['param 2', 'operation', 'param 0', 'param 1']],
+      ['new value and null', 'postgres', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'label' }),
+        'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL',
+        ['param 1', 'param 0']],
+    ]) {
+      let plan;
+      try { plan = new Engine(restoreModel, dialect).compile(request); } catch (error) { check(false, `restore ${name}: ${error.code ?? ''} ${error.message}`); continue; }
+      check(plan.steps.length === 1 && plan.steps[0].role === 'main' && plan.steps[0].sql === sql, `restore ${name}: ${JSON.stringify(plan.steps)}, want ${sql}`);
+      check(JSON.stringify(slotsOf(plan.steps[0])) === JSON.stringify(slots), `restore ${name}: bind slots ${JSON.stringify(slotsOf(plan.steps[0]))}, want ${JSON.stringify(slots)}`);
+    }
+    const sqlite = new Engine(restoreModel, 'sqlite');
+    const group = restoreRequest('tag');
+    group.n_params = 1;
+    group.where.items = [{ group: { items: [{ pred: { column: 'name', op: 'eq', p: 0 } }] } }];
+    for (const [name, request] of [
+      ['part of a unique key', restoreRequest('link', { column: 'team_id', op: 'eq' })],
+      ['a column that is no key', restoreRequest('tag', { column: 'label', op: 'eq' })],
+      ['a key and another column', restoreRequest('tag', { column: 'name', op: 'eq' }, { conn: 'and', column: 'label', op: 'eq' })],
+      ['a repeated column', restoreRequest('tag', { column: 'name', op: 'eq' }, { conn: 'and', column: 'name', op: 'eq' })],
+      ['another operator', restoreRequest('tag', { column: 'name', op: 'gt' })],
+      ['an or connector', restoreRequest('link', { column: 'team_id', op: 'eq' }, { conn: 'or', column: 'member_id', op: 'eq' })],
+      ['a null test', restoreRequest('tag', { column: 'name', op: 'is_null' })],
+      ['no condition', restoreRequest('tag')],
+      ['a group', group],
+      ['an assignment of the soft delete column', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'deleted_at' })],
+      ['an assignment of the primary key', withSet(restoreRequest('tag', { column: 'name', op: 'eq' }), { column: 'id' })],
+      ['an assignment of the operation column', withSet(restoreRequest('link', { column: 'id', op: 'eq' }), { column: 'operation_id' })],
+      ['an optimistic check', { ...restoreRequest('tag', { column: 'name', op: 'eq' }), optimistic: { column: 'label', p: 0 } }],
+      ['a table without soft_delete', restoreRequest('plain', { column: 'id', op: 'eq' })],
+    ]) {
+      const got = code(() => sqlite.compile(request));
+      check(got === 'IR_INVALID', `restore with ${name}: ${got}, want IR_INVALID`);
+    }
+  }
+
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
 });
 run.finish();

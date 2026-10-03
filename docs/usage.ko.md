@@ -341,6 +341,28 @@ err := master.Transaction(func() error {
 
 그런 트랜잭션 밖에서 audit 테이블을 쓰거나 operation 컬럼에 맞지 않는 id로 쓰면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다. `int64`나 `string`이 아닌 값을 준 `orm.Operation`은 트랜잭션을 시작하기 전에 `CONFIG`로 실패한다. operation 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
 
+### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
+
+`soft_delete` setting이 있는 테이블의 삭제는 행과 그 unique key 값을 남기고, 읽기는 그 행을 반환하지 않으므로 같은 key를 다시 삽입하면 `DUPLICATE_KEY`로 실패한다. `restore()`는 그런 행을 되돌린다. 새 모델에 primary key나 unique key 하나의 값과, 다른 컬럼의 새 값을 지정하고 `restore()`를 호출한다. 이 호출은 `UPDATE` 하나로 새 값을 쓰고 soft delete 컬럼을 비우며([protocol](protocol.ko.md#_1-5-restore)), 같은 key로 기본 select 집합의 행을 읽어 조회한 모델로 반환한다.
+
+```go
+row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").Restore()
+```
+```php
+$row = (new Membership)->connect($master)->setTeamId(1)->setMemberId(2)->setRole('owner')->restore();
+```
+```rust
+let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set_role("owner").restore().await?;
+```
+```typescript
+const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restore();
+```
+
+- key는 모든 primary key 컬럼에 값을 지정했으면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 지정한 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. 나머지 지정 값은 새 값이며 `update`처럼 할당한다. key의 값이 없으면 `CONFIG`로 실패하고, primary key나 soft delete 컬럼의 할당, `soft_delete`가 없는 테이블은 `IR_INVALID`로 실패한다.
+- 지워지지 않은 행은 바뀌지 않은 채 반환되며 새 값을 포함해 아무것도 쓰지 않는다. 어떤 행도 갖지 않은 key는 `NO_ROWS`로 실패한다.
+- `audit` setting이 있는 테이블에서 restore는 다른 update와 같다. operation id를 가진 트랜잭션 안에서 실행하고, 그 id를 operation 컬럼에 쓰며, trigger가 그 버전을 history 테이블에 기록한다. operation id가 없으면 `CONFIG`로 실패한다.
+- restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
+
 ---
 
 ## 8. 스타일 컬럼

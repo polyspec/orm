@@ -4,6 +4,8 @@
 
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
+#[path = "common/restore_rows.rs"]
+mod restore_rows;
 
 use audit_rows::{changed_item, code, drop_tables, history, new_item, Item, SCHEMA};
 use orm::db::Pool;
@@ -368,5 +370,51 @@ async fn coverage_audit_operation_entry_points() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, audit_operation_entry_points()).await.is_err() {
         panic!("audit_operation_entry_points: not finished within {DEADLINE:?}");
+    }
+}
+
+/// restore fixture가 만든 table과 PostgreSQL trigger function을 지운다.
+async fn drop_restore_tables(db: &Db, driver: &str) {
+    let quote = |n: &str| if driver == "mysql" { format!("`{n}`") } else { format!("\"{n}\"") };
+    let mut statements: Vec<String> = ["membership_history", "membership", "label"].iter().map(|t| format!("DROP TABLE IF EXISTS {}", quote(t))).collect();
+    if driver == "postgres" {
+        for event in ["audit_insert", "audit_update", "audit_delete"] {
+            statements.push(format!("DROP FUNCTION IF EXISTS \"membership${event}\"()"));
+        }
+    }
+    for statement in statements {
+        audit_rows::exec(db, &statement).await;
+    }
+}
+
+/// 고른 database에서 restore_rows::restore_case를 실행한다: unique key와 exclude 목록을 가진 audit table과
+/// audit 없는 table의 soft delete한 행을 restore로 되돌린다. 끝나면 설치한 table과 function을 지운다.
+async fn soft_delete_restore() {
+    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
+    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
+    for table in restore_rows::TABLES {
+        assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
+    }
+    // 실패해도 설치한 table을 지우도록 case를 따로 실행하고 그 panic을 정리 뒤에 이어 간다.
+    let case = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(restore_rows::restore_case(&driver, &dsn))).await;
+    drop_restore_tables(&db, &driver).await;
+    for table in restore_rows::TABLES {
+        assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
+    }
+    db.close().await;
+    if let Err(payload) = case {
+        std::panic::resume_unwind(payload);
+    }
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
+async fn coverage_soft_delete_restore() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    if tokio::time::timeout(DEADLINE, soft_delete_restore()).await.is_err() {
+        panic!("soft_delete_restore: not finished within {DEADLINE:?}");
     }
 }
