@@ -13,7 +13,7 @@ spl_autoload_register(static function (string $class) use ($root): void {
                 'Config' => 'Orm', 'OrmException' => 'Orm',
                 'Page' => 'Collection', 'GroupRow' => 'GroupRows',
                 'PlanScope' => 'Planner', 'PlanRelation' => 'Planner', 'PlanBinds' => 'Planner', 'PlanSteps' => 'Planner', 'PlanStep' => 'Planner', 'PlanAssemble' => 'Planner', 'PlanChild' => 'Planner',
-                'Stats' => 'Utils', 'UtilsSql' => 'Utils', 'SchemaUtils' => 'Utils', 'PrivilegeUtils' => 'Utils', 'AesUtils' => 'Utils',
+                'Stats' => 'Utils', 'SchemaUtils' => 'Utils', 'PrivilegeUtils' => 'Utils', 'AesUtils' => 'Utils',
                 'Assemble' => 'Engine', 'Bytes' => 'Codec', 'AesRotationStatus' => 'AesKeyring',
             ],
         ],

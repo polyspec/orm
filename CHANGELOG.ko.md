@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T37: utility의 internal helper는 네 client에서 한 이름과 한 자리를 갖는다: `Utils`가 `active`, `run`, `read`를 갖고 schema, privilege, AES utility는 그것을 거쳐 부른다(PHP `UtilsSql`과 TypeScript `inTx`는 제거, Rust `reader`는 `read`). 동작은 바뀌지 않는다.
+
 - T35.1: 문서 집합은 다른 집합의 table을 소유하지 않고 쓸 수 있다. Go와 PHP `orm-gen gen --use`, TypeScript `orm-gen gen --use`, Rust `Builder::uses`로 주는 외부 문서는 집합과 함께 검사하지만 렌더링, 설치, 변경, 비교, 생성하지 않는다. `manifestHash`는 쓰는 외부 table을 포함하고, install, addTablesAndColumns, 생성한 schema 값의 연결은 그 table이 database와 다르면 `CONFIG`로 실패하며, target이 외부 문서를 쓰는 plan은 잘못이다.
 
 - T35.2: audit 값은 handle이 아니라 연결 설정의 audit source에서 온다: Go `Config.AuditSource(ctx)`, PHP `Config(auditSource:)`, TypeScript `connect({ auditSource })`, Rust `Config.audit_source`. audit 값을 가진 transaction은 이를 한 번 부르고, 호출 값이 source 값을 이기며, 기록 table은 `references`가 정하는 table이다. `audit(defaults)`와 그 handle은 제거했다.

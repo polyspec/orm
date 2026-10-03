@@ -8,16 +8,48 @@ use Orm\Dbspec\Dbspec;
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
 {
-    private readonly UtilsSql $sql;
+    public function __construct(private readonly Db $db) {}
 
-    public function __construct(private readonly Db $db)
-    {
-        $this->sql = new UtilsSql($db);
-    }
-
-    private function active(string $name): TxFrame
+    /**
+     * @internal the active transaction of the connection; CONFIG names $name when there is none.
+     * SchemaUtils, PrivilegeUtils and AesUtils reach the helpers through the Utils they hold.
+     */
+    public function active(string $name): TxFrame
     {
         return Db::activeFor($this->db) ?? throw new OrmException(Code::CONFIG, "$name requires an active transaction of the connection");
+    }
+
+    /** @internal runs $fn in the active transaction of the connection or in a new one without retry */
+    public function run(\Closure $fn): mixed
+    {
+        if (Db::activeFor($this->db) !== null) {
+            return $fn();
+        }
+        return $this->db->transaction($fn, retry: 0);
+    }
+
+    /** @internal the first column of the first row of a statement, read through the active transaction or the connection */
+    public function read(string $sql, array $args): mixed
+    {
+        try {
+            $st = $this->db->pdo()->prepare($sql);
+            $st->execute($args);
+            $v = $st->fetchColumn();
+            $st->closeCursor();
+            return $v;
+        } catch (\PDOException $e) {
+            throw $this->driverError($e);
+        }
+    }
+
+    /** @internal runs a statement through the active transaction or the connection */
+    public function exec(string $sql, array $args = []): void
+    {
+        try {
+            $this->db->pdo()->prepare($sql)->execute($args);
+        } catch (\PDOException $e) {
+            throw $this->driverError($e);
+        }
     }
 
     private static function validKey(string $key): bool
@@ -96,17 +128,17 @@ final class Utils
 
     public function schema(): SchemaUtils
     {
-        return new SchemaUtils($this->db, $this->sql);
+        return new SchemaUtils($this->db, $this);
     }
 
     public function privileges(): PrivilegeUtils
     {
-        return new PrivilegeUtils($this->db, $this->sql);
+        return new PrivilegeUtils($this->db, $this);
     }
 
     public function aes(): AesUtils
     {
-        return new AesUtils($this->db, $this->sql);
+        return new AesUtils($this->db, $this);
     }
 
     /** The connection state: one connection per Db in PHP. */
@@ -114,48 +146,6 @@ final class Utils
     {
         $busy = Db::activeFor($this->db) !== null ? 1 : 0;
         return new Stats($this->db->poolSize(), 1, $busy, 1 - $busy);
-    }
-}
-
-/** @internal statements of the utilities */
-final class UtilsSql
-{
-    public function __construct(private readonly Db $db) {}
-
-    /** Runs $fn in the active transaction of the connection or in a new one. */
-    public function run(\Closure $fn): mixed
-    {
-        if (Db::activeFor($this->db) !== null) {
-            return $fn();
-        }
-        return $this->db->transaction($fn, retry: 0);
-    }
-
-    private function driverError(\PDOException $e): OrmException
-    {
-        return OrmException::fromDriver($e, $this->db->driver());
-    }
-
-    public function scalar(string $sql, array $args): mixed
-    {
-        try {
-            $st = $this->db->pdo()->prepare($sql);
-            $st->execute($args);
-            $v = $st->fetchColumn();
-            $st->closeCursor();
-            return $v;
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
-        }
-    }
-
-    public function exec(string $sql, array $args = []): void
-    {
-        try {
-            $this->db->pdo()->prepare($sql)->execute($args);
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
-        }
     }
 }
 
@@ -167,7 +157,7 @@ final readonly class Stats
 /** Schema installation and inspection. */
 final class SchemaUtils
 {
-    public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u) {}
 
     /**
      * generated schema의 document set을 connection의 database에 설치하고 그 set을
@@ -222,7 +212,7 @@ final class SchemaUtils
             }
         };
         if ($driver !== 'mysql') {
-            $this->sql->run($apply);
+            $this->u->run($apply);
         } else {
             if (Db::activeFor($this->db) !== null) {
                 throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
@@ -289,7 +279,7 @@ final class SchemaUtils
             }
         };
         if ($driver === 'postgres') {
-            return $this->sql->run($apply);
+            return $this->u->run($apply);
         }
         if (Db::activeFor($this->db) !== null) {
             throw new OrmException(Code::CONFIG, "$driver adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table");
@@ -383,7 +373,7 @@ final class SchemaUtils
 
     private function bool(string $sql, array $args): bool
     {
-        return (bool) $this->sql->scalar($sql, $args);
+        return (bool) $this->u->read($sql, $args);
     }
 
     private static function name(string $name): string
@@ -436,7 +426,7 @@ final class SchemaUtils
 /** Table privileges (PostgreSQL only). */
 final class PrivilegeUtils
 {
-    public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u) {}
 
     private function table(string $table): string
     {
@@ -463,9 +453,9 @@ final class PrivilegeUtils
         $qualified = $this->table($table);
         $r = self::role($role);
         $schema = substr($qualified, 0, (int) strpos($qualified, '.'));
-        $this->sql->run(function () use ($qualified, $r, $schema): void {
-            $this->sql->exec("GRANT USAGE ON SCHEMA $schema TO $r");
-            $this->sql->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON $qualified TO $r");
+        $this->u->run(function () use ($qualified, $r, $schema): void {
+            $this->u->exec("GRANT USAGE ON SCHEMA $schema TO $r");
+            $this->u->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON $qualified TO $r");
         });
     }
 
@@ -477,7 +467,7 @@ final class PrivilegeUtils
         if (!in_array($privilege, ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'], true)) {
             throw new OrmException(Code::CONFIG, "unsupported table privilege $privilege");
         }
-        $this->sql->run(fn() => $this->sql->exec("REVOKE $privilege ON $qualified FROM $r"));
+        $this->u->run(fn() => $this->u->exec("REVOKE $privilege ON $qualified FROM $r"));
     }
 
     /** @return array{insert: bool, select: bool, update: bool, delete: bool, truncate: bool} */
@@ -486,7 +476,7 @@ final class PrivilegeUtils
         $qualified = $this->table($table);
         $out = [];
         foreach (['insert', 'select', 'update', 'delete', 'truncate'] as $p) {
-            $out[$p] = (bool) $this->sql->scalar('SELECT has_table_privilege(current_user, ?, ?)', [$qualified, strtoupper($p)]);
+            $out[$p] = (bool) $this->u->read('SELECT has_table_privilege(current_user, ?, ?)', [$qualified, strtoupper($p)]);
         }
         return $out;
     }
@@ -495,7 +485,7 @@ final class PrivilegeUtils
 /** AES key version status and rotation. */
 final class AesUtils
 {
-    public function __construct(private readonly Db $db, private readonly UtilsSql $sql) {}
+    public function __construct(private readonly Db $db, private readonly Utils $u) {}
 
     /** @return array{table: string, keys: list<string>, version: string, columns: list<array{name: string, styles: list<string>}>} */
     private function spec(Model $model): array
@@ -557,7 +547,7 @@ final class AesUtils
         $where = array_map(fn(string $k): string => $this->q($k) . ' = ?', $spec['keys']);
         $where[] = $this->q($spec['version']) . ' = ?';
         $update = "UPDATE {$this->q($spec['table'])} SET " . implode(', ', $sets) . ' WHERE ' . implode(' AND ', $where);
-        return $this->sql->run(function () use ($select, $update, $spec, $keyring, $keyCount): int {
+        return $this->u->run(function () use ($select, $update, $spec, $keyring, $keyCount): int {
             $pdo = $this->db->pdo();
             $rotated = 0;
             try {
