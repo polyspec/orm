@@ -107,3 +107,18 @@ async fn audit_operation_id() {
         orm_testcase::step(format_args!("audit_operation_id {driver}"));
     }
 }
+
+/// 실행 중인 transaction 안에서 utils().set_operation(id)로 operation id를 정한다(audit_rows::set_operation_case).
+#[tokio::test]
+async fn set_operation_in_transaction() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        audit_rows::set_operation_case(&db, driver).await;
+        db.close().await;
+        database.drop().await;
+        orm_testcase::step(format_args!("set_operation_in_transaction {driver}"));
+    }
+}

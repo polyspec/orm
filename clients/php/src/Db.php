@@ -406,6 +406,8 @@ final class Db
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
+        // savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
+        $operationBefore = $frame->operation;
         try {
             try {
                 $this->pdo->exec("SAVEPOINT $name");
@@ -417,6 +419,7 @@ final class Db
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
+                $frame->operation = $operationBefore;
                 $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
                 // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
                 $ended = self::joined(array_values(array_filter([
@@ -712,7 +715,7 @@ final class Db
                     $out[] = self::timeText($clock, $b['precision']);
                     break;
                 case 'operation':
-                    $operation = $frame?->operation ?? throw new OrmException(Code::CONFIG, 'an insert or update of an audited table needs an operation id: run it in transaction(..., operation: $id)');
+                    $operation = $frame?->operation ?? throw new OrmException(Code::CONFIG, 'an insert or update of an audited table needs an operation id: run it in transaction(..., operation: $id) or set the id with utils()->setOperation($id)');
                     $valid = $b['col_type'] === 'i64'
                         ? is_int($operation)
                         : is_string($operation) && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $operation) === 1;

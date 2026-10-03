@@ -3,7 +3,8 @@ declare(strict_types=1);
 // Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
-// column rule, the audit operation id and the restore of soft-deleted rows. The
+// column rule, the audit operation id set by a transaction option or inside
+// the transaction, and the restore of soft-deleted rows. The
 // models of contracts/fixtures/audit.dbs, contracts/fixtures/restore.dbs and a
 // values document are generated into a
 // temporary directory, so the test runs in its own process.
@@ -17,6 +18,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 require_once __DIR__ . '/restore_case.php';
+require_once __DIR__ . '/set_operation_case.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -119,6 +121,11 @@ $cases['audit operation id'] = function (Db $db): void {
     want($history === $expected, 'history ' . json_encode($history));
     $count = (int) $db->pdo()->query('SELECT COUNT(*) FROM item')->fetchColumn();
     want($count === 1, "stored rows $count");
+};
+
+// utils()->setOperation은 실행 중인 transaction의 operation id를 정한다(set_operation_case.php).
+$cases['operation id set in a transaction'] = function (Db $db): void {
+    setOperationCase($db, 'RuntimeDb\\Orm');
 };
 
 // restore는 soft delete한 행을 primary key나 unique key로 되돌린다(restore_case.php).

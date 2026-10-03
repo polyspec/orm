@@ -418,3 +418,23 @@ async fn coverage_soft_delete_restore() {
         panic!("soft_delete_restore: not finished within {DEADLINE:?}");
     }
 }
+
+/// 실행 중인 transaction 안에서 utils().set_operation(id)로 operation id를 정한다(audit_rows::set_operation_case).
+async fn audit_operation_set_in_transaction() {
+    let (driver, db) = installed_audit().await;
+    audit_rows::set_operation_case(&db, &driver).await;
+    drop_tables(&db, &driver).await;
+    for table in ["item", "item_history"] {
+        assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
+    }
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
+async fn coverage_audit_operation_set_in_transaction() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    if tokio::time::timeout(DEADLINE, audit_operation_set_in_transaction()).await.is_err() {
+        panic!("audit_operation_set_in_transaction: not finished within {DEADLINE:?}");
+    }
+}

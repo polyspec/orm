@@ -1,6 +1,6 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
-import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
+import { activeFor, isOperationId, registerSet, schemaModel, type Db, type OperationId, type Schema, type TxFrame } from './database.js';
 import type { DriverControl, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
 import { addTablesAndColumnsSteps, dbspecManifest, parseDbspec, renderDbspec } from './dbspec/index.js';
@@ -122,6 +122,22 @@ export class Utils {
         break;
     }
     frame.locals.set(key, value);
+  }
+
+  /**
+   * Sets the operation id of the active transaction of the connection, for a unit of work whose id is known only
+   * after the transaction began. Every later insert and update of an audited table in the transaction writes it. id
+   * is a safe integer for an i64 operation column and a string for a uuid one. Setting the id the transaction already
+   * has changes nothing; another id, also from a nested transaction or after the operation option, fails with CONFIG.
+   * A savepoint that rolls back restores the id it began with.
+   */
+  public setOperation(id: OperationId): void {
+    const frame = this.active('setOperation');
+    if (!isOperationId(id)) throw config('setOperation operation id must be a safe integer or a non-empty string');
+    if (frame.operation !== undefined && frame.operation !== id) {
+      throw config(`the transaction already has the operation id ${frame.operation}; it cannot change to ${id}`);
+    }
+    frame.operation = id;
   }
 
   /** Returns a value set with setLocal; NO_ROWS when it is missing. */

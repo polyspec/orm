@@ -341,6 +341,50 @@ err := master.Transaction(func() error {
 
 그런 트랜잭션 밖에서 audit 테이블을 쓰거나 operation 컬럼에 맞지 않는 id로 쓰면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다. `int64`나 `string`이 아닌 값을 준 `orm.Operation`은 트랜잭션을 시작하기 전에 `CONFIG`로 실패한다. operation 컬럼을 직접 할당하는 요청은 `IR_INVALID`로 실패한다.
 
+### 트랜잭션 안에서 operation id 정하기 {#set-the-operation-id-inside-a-transaction}
+
+operation id를 트랜잭션이 시작한 뒤에야 알 때, 예를 들어 작업 단위가 먼저 삽입하는 행의 key일 때는 첫 감사 대상 write 전에 실행 중인 트랜잭션에 id를 정한다. 트랜잭션의 연결에서 utilities로 호출한다:
+
+```go
+err := master.Transaction(func() error {
+    op, err := model.Operation().SetName("import").Create() // a table without audit
+    if err != nil {
+        return err
+    }
+    if err := master.Utils().SetOperation(op.GetSeq()); err != nil {
+        return err
+    }
+    _, err = model.Item().SetTitle("draft").Create()
+    return err
+})
+```
+```php
+$master->transaction(function () use ($master): void {
+    $op = (new Operation)->setName('import')->create();
+    $master->utils()->setOperation($op->getSeq());
+    (new Item)->setTitle('draft')->create();
+});
+```
+```rust
+master.transaction(async || {
+    let op = Operation::new().set_name("import").create().await?;
+    master.utils().set_operation(op.get_seq()?)?;
+    Item::new().set_title("draft").create().await.map(|_| ())
+}).await?;
+```
+```typescript
+await master.transaction(async () => {
+    const op = await new Operation().setName('import').create();
+    master.utils().setOperation(op.getSeq());
+    await new Item().setTitle('draft').create();
+});
+```
+
+- 연결의 활성 트랜잭션이 필요하며, 그 밖에서는 `CONFIG`로 실패한다. 이 호출 전의 감사 대상 write는 operation id가 없을 때처럼 `CONFIG`로 실패한다.
+- id는 트랜잭션 전체에 속한다. 중첩 트랜잭션은 그 id를 쓰며, 바깥 트랜잭션에 id가 없으면 정할 수 있다. 옵션이나 이전 호출로 트랜잭션이 이미 가진 id를 다시 정하면 아무것도 바뀌지 않고, 다른 id는 `CONFIG`로 실패한다.
+- savepoint가 rollback된 중첩 트랜잭션은 시작할 때의 id로 되돌린다. 그 아래에서 쓴 행도 함께 되돌아가기 때문이다.
+- id의 type은 트랜잭션 옵션처럼 operation 컬럼의 type이다.
+
 ### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
 
 `soft_delete` setting이 있는 테이블의 삭제는 행과 그 unique key 값을 남기고, 읽기는 그 행을 반환하지 않으므로 같은 key를 다시 삽입하면 `DUPLICATE_KEY`로 실패한다. `restore()`는 그런 행을 되돌린다. 새 모델에 primary key나 unique key 하나의 값과, 다른 컬럼의 새 값을 지정하고 `restore()`를 호출한다. 이 호출은 `UPDATE` 하나로 새 값을 쓰고 soft delete 컬럼을 비우며([protocol](protocol.ko.md#_1-5-restore)), 같은 key로 기본 select 집합의 행을 읽어 조회한 모델로 반환한다.

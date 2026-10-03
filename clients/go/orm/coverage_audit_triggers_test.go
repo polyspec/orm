@@ -468,3 +468,24 @@ func TestCoverageSoftDeleteRestore(t *testing.T) {
 	defer dropRestore(t, raw, driver)
 	restoreCase(t, driver, dsn)
 }
+
+// TestCoverageAuditOperationSetInTransaction는 고른 database에서
+// setOperationCase를 실행한다: id 없이 시작한 transaction에
+// Utils().SetOperation으로 operation id를 정한다. 끝나면 설치한 table과
+// function을 지운다.
+func TestCoverageAuditOperationSetInTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	driver, dsn := featureDatabase(t)
+	raw := openFeatureNative(t, driver, dsn)
+	defer func() {
+		if err := raw.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if present := auditTables(t, raw, driver); len(present) > 0 {
+		t.Fatalf("audit tables exist before the case: %v", present)
+	}
+	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	defer dropAudit(t, raw, driver)
+	setOperationCase(t, driver, dsn)
+}

@@ -1,6 +1,7 @@
-// restore case: contracts/fixtures/restore.dbs 를 설치한 연결에서 soft delete 한 행을 restore 로 되돌린다
-// (clients/go/orm/restore_test.go 의 restoreCase 와 같은 순서와 결과). owner test(dbspec_runtime_db.mjs)와
-// coverage case(coverage_audit_triggers.mjs)가 함께 쓴다.
+// audit 와 restore 의 공유 case: restoreCase 는 contracts/fixtures/restore.dbs 를 설치한 연결에서 soft delete 한 행을
+// restore 로 되돌리고(clients/go/orm/restore_test.go 의 restoreCase), setOperationCase 는 audit.dbs 에서 시작한
+// transaction 안에 operation id 를 정한다(audit_operation_test.go 의 setOperationCase). 같은 순서와 결과다. owner
+// test(dbspec_runtime_db.mjs)와 coverage case(coverage_audit_triggers.mjs)가 함께 쓴다.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CORE, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
@@ -93,4 +94,83 @@ export async function restoreCase(db) {
     ['update', 2, seq, 1, 2, 4, 'live'],
   ], 'membership_history in history_id order');
   assert.equal(await new Label().connect(db).getCount(), 1, 'live labels');
+}
+
+export const auditText = await readFile(new URL('../../../contracts/fixtures/audit.dbs', import.meta.url), 'utf8');
+
+/** The generated schema value of the audit fixture. */
+export function auditSchema() {
+  const { manifest } = dbspecManifest([parseDbspec(auditText, {}).document]);
+  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
+}
+
+/**
+ * contracts/fixtures/audit.dbs 가 설치된 db 에서 Go setOperationCase 를 실행한다: 시작한 transaction 안에서
+ * utils().setOperation(id)로 operation id 를 정한다(clients/go/orm/audit_operation_test.go).
+ * - transaction 밖에서는 CONFIG 다. id 를 정하기 전의 audit 대상 write 와 safe integer 도 문자열도 아닌 id 는 CONFIG 다.
+ * - 같은 id 는 아무것도 바꾸지 않고, 다른 id 는 중첩 transaction 에서도, transaction option 의 id 뒤에서도 CONFIG 다.
+ * - rollback 한 savepoint 는 그 안에서 정한 id 를 되돌리고, 그 뒤의 audit 대상 write 는 다시 CONFIG 다.
+ */
+export async function setOperationCase(db) {
+  const parsed = parseDbspec(auditText, {});
+  const { manifest } = dbspecManifest([parsed.document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
+  const classes = {};
+  for (const entity of model.entities.values()) {
+    const cls = class extends Model {};
+    cls.entity = { model, entity, create: core => new cls(core) };
+    classes[entity.name] = cls;
+  }
+  const { item: Item, item_history: ItemHistory } = classes;
+  const item = values => {
+    const m = new Item();
+    for (const [column, value] of Object.entries(values)) m[CORE].setValue(column, value);
+    return m;
+  };
+  const codeSync = fn => { try { fn(); return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); } };
+  assert.equal(codeSync(() => db.utils().setOperation(1)), 'CONFIG', 'setOperation outside a transaction');
+
+  let seq;
+  await db.transaction(async () => {
+    assert.equal(await codeOf(item({ title: 'before' }).create()), 'CONFIG', 'an audited insert before setOperation');
+    assert.equal(codeSync(() => db.utils().setOperation(1.5)), 'CONFIG', 'setOperation with a number that is not a safe integer');
+    db.utils().setOperation(7);
+    seq = (await item({ title: 'first' }).create())[CORE].column('seq');
+    db.utils().setOperation(7);
+    assert.equal(codeSync(() => db.utils().setOperation(8)), 'CONFIG', 'another operation id');
+    await db.transaction(async () => {
+      assert.equal(codeSync(() => db.utils().setOperation(9)), 'CONFIG', 'another operation id in a nested transaction');
+      await item({ seq, title: 'second' }).update();
+    }, { retry: 0 });
+  }, { retry: 0 });
+
+  const rolledBack = new Error('savepoint rolled back');
+  await db.transaction(async () => {
+    let nested;
+    try {
+      await db.transaction(async () => { db.utils().setOperation(10); throw rolledBack; }, { retry: 0 });
+    } catch (error) { nested = error; }
+    assert.equal(nested, rolledBack, 'the nested transaction returns its error');
+    assert.equal(await codeOf(item({ seq, title: 'third' }).update()), 'CONFIG', 'an audited update after the savepoint that set the id rolled back');
+    db.utils().setOperation(11);
+    await item({ seq, title: 'third' }).update();
+  }, { retry: 0 });
+
+  await db.transaction(async () => {
+    db.utils().setOperation(12);
+    assert.equal(codeSync(() => db.utils().setOperation(13)), 'CONFIG', "another id than the option's");
+    await item({ seq }).delete();
+  }, { operation: 12, retry: 0 });
+
+  // 이 case 가 쓴 행의 이력만 읽는다. owner test 에서는 앞 case 의 이력이 같은 table 에 있다.
+  const history = await new ItemHistory().connect(db).addAllColumns().raw('{seq} = ?', seq).orderByRaw('{history_id} ASC').gets();
+  assert.deepEqual(history.values().map(h => [
+    h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('seq'), h[CORE].column('title'),
+    h[CORE].column('operation_id'), h[CORE].column('deleted_at') !== null,
+  ]), [
+    ['insert', null, seq, 'first', 7, false],
+    ['update', 7, seq, 'second', 7, false],
+    ['update', 7, seq, 'third', 11, false],
+    ['update', 11, seq, 'third', 12, true],
+  ], 'item_history in history_id order');
 }

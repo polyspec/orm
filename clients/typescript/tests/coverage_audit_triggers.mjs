@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
-import { restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
+import { restoreCase, restoreSchema, restoreTables, setOperationCase } from './restore_case.mjs';
 
 const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbs'), 'utf8');
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
@@ -237,5 +237,9 @@ await runCases('coverage_audit_triggers.mjs', {
     for (const table of restoreTables) {
       assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
     }
+  },
+  // 시작한 transaction 안에서 utils().setOperation(id)로 operation id 를 정한다(tests/restore_case.mjs).
+  async audit_operation_set_in_transaction() {
+    await withAudit(async db => { await setOperationCase(db); });
   },
 }, 300_000);

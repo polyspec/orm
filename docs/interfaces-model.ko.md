@@ -139,6 +139,7 @@ classDiagram
         lock()
         setLocal()
         local()
+        setOperation()
         schema()
         privileges()
         aes()
