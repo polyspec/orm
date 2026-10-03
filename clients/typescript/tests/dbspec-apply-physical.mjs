@@ -11,7 +11,7 @@
 // applyPlans, recoverPlans, rollbackPlans and finalizePlans. Each run uses an empty database, schema or
 // file named after the language, the pid and the run.
 //
-// Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test clients/typescript/tests/dbspec-apply-physical.mjs (after the build)
+// Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... ORM_TEST_PGBOUNCER_DSN=... node --test clients/typescript/tests/dbspec-apply-physical.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -32,9 +32,10 @@ const CONNECTION_RULES = {
   sqlite: ['PRAGMA foreign_keys = ON'],
 };
 
-const mysqlDSN = process.env.ORM_TEST_MYSQL_DSN;
-const postgresDSN = process.env.ORM_TEST_POSTGRES_DSN;
-if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');
+// scenario는 lock과 session 설정을 server에서 확인하므로 pooler가 아니라 server DSN을 쓴다.
+const mysqlDSN = process.env.ORM_TEST_MYSQL_SERVER_DSN;
+const postgresDSN = process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+if (!mysqlDSN || !postgresDSN) throw new Error('ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN are required; pass TEST_ENV');
 
 // tool clock: 2026-10-01T00:00:00.123456789Z를 microsecond로 자른 값(epoch 이후 microsecond)이다.
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
@@ -441,3 +442,69 @@ vector('every apply scenario runs on its dialects', () => {
   assert.equal(runs, 25 + ALL.reduce((n, dialect) => n + repCounts[dialect][1][1], 0));
   console.log(`apply runs: ${runs}`);
 });
+
+// apply는 처음부터 끝까지 다른 client와 나누지 않는 server session 하나가 필요하다(docs/plans.md
+// "Apply"). PgBouncer의 transaction pooling은 statement마다 server connection을 다시 고르므로
+// apply는 lock에서와 step마다 server session을 확인하고 session error로 멈춘다. 각 scenario는
+// server에 자기 database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는 쉬는 server
+// connection을 LIFO로 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다.
+const poolerScenarios = {
+  // 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+  lock_shared: async (apply, other) => {
+    await other.query(`SELECT pg_advisory_lock(${POSTGRES_APPLY_LOCK})`);
+    return applyPlans(apply, 'postgres', plans, fixedNow, null);
+  },
+  // 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
+  // 다음 statement는 다른 server connection에서 실행된다.
+  session_changed: async (apply, other) => {
+    let held = false;
+    try {
+      return await applyPlans(apply, 'postgres', plans, fixedNow, async event => {
+        if (event.kind !== 'statement' || held) return;
+        held = true;
+        await other.query('BEGIN');
+        await other.query('SELECT 1');
+      });
+    } finally {
+      if (held) await other.query('ROLLBACK');
+    }
+  },
+};
+for (const [name, scenario] of Object.entries(poolerScenarios)) {
+  caseTest(`postgres.apply.pooler.${name}`, TIMEOUT, async () => {
+    const serverDSN = process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+    const poolerDSN = process.env.ORM_TEST_PGBOUNCER_DSN;
+    if (!serverDSN || !poolerDSN) throw new Error('ORM_TEST_POSTGRES_SERVER_DSN and ORM_TEST_PGBOUNCER_DSN are required; pass TEST_ENV');
+    const database = `orm_case_${process.pid}_pooler_${name}`;
+    const admin = new pg.Client({ connectionString: serverDSN });
+    await admin.connect();
+    try {
+      await admin.query(`CREATE DATABASE "${database}"`);
+      try {
+        const url = new URL(poolerDSN);
+        url.pathname = `/${database}`;
+        const apply = new pg.Client({ connectionString: url.toString() });
+        const other = new pg.Client({ connectionString: url.toString() });
+        await apply.connect();
+        await other.connect();
+        try {
+          // 정리 단계의 error(다른 server connection에서 실행된 unlock)가 있으면 AggregateError의 첫 error가 실패다.
+          await assert.rejects(scenario(apply, other), error => {
+            const failure = error instanceof AggregateError ? error.errors[0] : error;
+            assert(failure instanceof DbspecApplyError, `${error}`);
+            assert.equal(failure.code, 'session', `${error}`);
+            assert.match(failure.detail, /a direct or session-pooled connection/);
+            return true;
+          });
+        } finally {
+          await apply.end();
+          await other.end();
+        }
+      } finally {
+        await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);
+      }
+    } finally {
+      await admin.end();
+    }
+  });
+}

@@ -78,12 +78,17 @@ pub type ApplyEventError = Box<dyn std::error::Error + Send + Sync>;
 
 /// The failure of [`apply`], [`recover`], [`rollback`] and [`finalize`]. The
 /// coded failures of docs/plans.md carry their code through
-/// [`ApplyError::code`]: locked, interrupted, drift, chain, failed, verify,
+/// [`ApplyError::code`]: locked, session, interrupted, drift, chain, failed, verify,
 /// irreversible and nulls.
 #[derive(Debug)]
 pub enum ApplyError {
     /// Another session holds the lock; nothing changed.
     Locked { message: String, source: Option<sqlx::Error> },
+    /// The connection does not keep one server session of its own for the
+    /// whole command: the session that took the lock already held it, or a
+    /// later statement ran in another session. `plan` and `step` name the
+    /// step before which the session changed; `None` is the lock.
+    Session { plan: Option<(String, usize)>, message: String },
     /// The last plan of the history is applying, finalizing or rolling back
     /// at `step`.
     Interrupted { plan: String, step: usize, message: String },
@@ -121,6 +126,7 @@ impl ApplyError {
     pub fn code(&self) -> Option<&'static str> {
         match self {
             ApplyError::Locked { .. } => Some("locked"),
+            ApplyError::Session { .. } => Some("session"),
             ApplyError::Interrupted { .. } => Some("interrupted"),
             ApplyError::Drift { .. } => Some("drift"),
             ApplyError::Chain { .. } => Some("chain"),
@@ -139,6 +145,8 @@ impl std::fmt::Display for ApplyError {
         match self {
             ApplyError::Locked { message, source: None } => write!(f, "locked: {message}"),
             ApplyError::Locked { message, source: Some(e) } => write!(f, "locked: {message}: {e}"),
+            ApplyError::Session { plan: None, message } => write!(f, "session: {message}"),
+            ApplyError::Session { plan: Some((plan, step)), message } => write!(f, "session {plan} at step {step}: {message}"),
             ApplyError::Interrupted { plan, step, message } => write!(f, "interrupted {plan} at step {step}: {message}"),
             ApplyError::Drift { message } => write!(f, "drift: {message}"),
             ApplyError::Chain { plan: None, message } => write!(f, "chain: {message}"),
@@ -183,6 +191,24 @@ const MYSQL_LOCK: &str = "CONCAT('dbspec$plans$', LEFT(SHA2(DATABASE(), 256), 51
 
 /// 현재 database의 현재 schema 하나의 advisory lock key.
 const POSTGRES_LOCK: &str = "hashtext('dbspec$plans'), hashtext(current_schema())";
+
+/// session error가 밝히는 요구. lock은 server session에 속하므로 명령은 처음부터 끝까지 다른
+/// client와 나누지 않는 server session 하나에서 실행해야 한다. transaction pooler는 statement마다
+/// server connection을 다시 고르므로 그 요구를 지키지 못한다.
+const SESSION_REQUIREMENT: &str =
+    "apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection";
+
+/// 현재 server session의 id와, 그 session이 이 명령의 lock을 이미 잡고 있는지를 읽는 query.
+/// lock을 잡기 전에 이미 잡혀 있으면 다른 client가 같은 server session을 쓰고 있다.
+fn session_query(d: Dialect) -> String {
+    match d {
+        Dialect::MySql => format!("SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK({MYSQL_LOCK}) = CONNECTION_ID(), 0)"),
+        _ => format!(
+            "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2 \
+             AND classid = (hashtext('{HISTORY_TABLE}')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)"
+        ),
+    }
+}
 
 /// statement가 다른 session의 lock을 기다리는 최대 시간(docs/plans.md "Apply"의 lock 대기).
 const LOCK_WAIT_SECONDS: i64 = 5;
@@ -355,6 +381,8 @@ struct Applier<'a, C: ?Sized> {
     events: &'a mut ApplyEvents<'a>,
     chain: Vec<&'a Plan>,
     history: Vec<HistoryRow>,
+    /// lock을 잡은 server session의 id(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+    server_session: i64,
 }
 
 /// dialect의 식별자 quote.
@@ -377,7 +405,7 @@ fn finalize_start(steps: &[PlanStep]) -> usize {
 impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     fn new(c: &'a mut C, d: Dialect, plans: &'a [Plan], now: &'a ApplyClock<'a>, events: &'a mut ApplyEvents<'a>) -> Result<Self, ApplyError> {
         let chain = chain(plans).map_err(|diagnostics| ApplyError::Chain { plan: None, message: diagnostics[0].message.clone() })?;
-        Ok(Applier { c, d, now, events, chain, history: Vec::new() })
+        Ok(Applier { c, d, now, events, chain, history: Vec::new(), server_session: 0 })
     }
 
     fn q(&self, name: &str) -> String {
@@ -427,13 +455,62 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         Ok(self.c.execute(statement).await?)
     }
 
+    /// lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미 잡고 있으면 다른
+    /// client가 같은 server session을 쓰는 것이므로 session error다.
+    async fn open_session(&mut self) -> Result<(), ApplyError> {
+        let query = session_query(self.d);
+        let row = self.row(&query, &[]).await?;
+        let held = match row.as_slice() {
+            [CatalogValue::Int(id), CatalogValue::Bool(held)] => {
+                self.server_session = *id;
+                *held
+            }
+            [CatalogValue::Int(id), CatalogValue::Int(held)] => {
+                self.server_session = *id;
+                *held != 0
+            }
+            _ => return Err(ApplyError::Database(protocol(format!("{query} returned {row:?}")))),
+        };
+        if held {
+            return Err(ApplyError::Session {
+                plan: None,
+                message: format!("this server session already holds the {HISTORY_TABLE} lock, so another client shares it; {SESSION_REQUIREMENT}"),
+            });
+        }
+        Ok(())
+    }
+
+    /// current가 lock을 잡은 server session인지 확인한다. 다르면 `plan`의 step 앞에서(None이면
+    /// lock에서) session error다.
+    fn same_session(&self, plan: Option<(&Plan, usize)>, current: i64) -> Result<(), ApplyError> {
+        if current == self.server_session {
+            return Ok(());
+        }
+        Err(ApplyError::Session {
+            plan: plan.map(|(p, i)| (p.name().to_owned(), i)),
+            message: format!("the connection moved from server session {} to {current}; {SESSION_REQUIREMENT}", self.server_session),
+        })
+    }
+
+    /// lock query의 결과 row(lock 결과, server session id)를 나눈다.
+    fn lock_row(query: &str, row: Vec<CatalogValue>) -> Result<(CatalogValue, i64), ApplyError> {
+        match <[CatalogValue; 2]>::try_from(row) {
+            Ok([got, CatalogValue::Int(current)]) => Ok((got, current)),
+            Ok(row) => Err(ApplyError::Database(protocol(format!("{query} returned {row:?}")))),
+            Err(row) => Err(ApplyError::Database(protocol(format!("{query} returned {} values; want two", row.len())))),
+        }
+    }
+
     /// dialect의 lock을 잡고 session 설정을 바꾼다. 실패하면 그때까지 바꾼 것을
     /// 되돌리고 놓은 뒤 error를 돌려준다.
     async fn open(&mut self) -> Result<Restore, ApplyError> {
         match self.d {
             Dialect::MySql => {
+                self.open_session().await?;
                 // GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
-                match self.value(&format!("SELECT GET_LOCK({MYSQL_LOCK}, 0)")).await? {
+                let query = format!("SELECT GET_LOCK({MYSQL_LOCK}, 0), CONNECTION_ID()");
+                let (got, current) = Self::lock_row(&query, self.row(&query, &[]).await?)?;
+                match got {
                     CatalogValue::Int(1) => {}
                     CatalogValue::Int(0) => {
                         return Err(ApplyError::Locked { message: format!("another session holds the {HISTORY_TABLE} lock of this database"), source: None })
@@ -441,6 +518,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     other => return Err(ApplyError::Database(protocol(format!("GET_LOCK returned {other:?}; want 1 or 0")))),
                 }
                 let settings = async {
+                    self.same_session(None, current)?;
                     let query = "SELECT @@SESSION.lock_wait_timeout, @@SESSION.innodb_lock_wait_timeout";
                     let row = self.row(query, &[]).await?;
                     let [CatalogValue::Int(lock_wait), CatalogValue::Int(row_wait)] = row.as_slice() else {
@@ -460,8 +538,11 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 }
             }
             Dialect::Postgres => {
+                self.open_session().await?;
                 // current_schema()가 NULL이면 결과도 NULL이며 error다.
-                match self.value(&format!("SELECT pg_try_advisory_lock({POSTGRES_LOCK})")).await? {
+                let query = format!("SELECT pg_try_advisory_lock({POSTGRES_LOCK}), pg_backend_pid()");
+                let (got, current) = Self::lock_row(&query, self.row(&query, &[]).await?)?;
+                match got {
                     CatalogValue::Bool(true) => {}
                     CatalogValue::Bool(false) => {
                         return Err(ApplyError::Locked {
@@ -472,6 +553,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     other => return Err(ApplyError::Database(protocol(format!("pg_try_advisory_lock returned {other:?}")))),
                 }
                 let settings = async {
+                    self.same_session(None, current)?;
                     let lock_timeout = self.text("SELECT current_setting('lock_timeout')").await?;
                     self.value(&format!("SELECT set_config('lock_timeout', '{LOCK_WAIT_SECONDS}s', false)")).await?;
                     Ok(Restore::Postgres { lock_timeout })
@@ -910,9 +992,28 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         self.emit(ApplyEventKind::Done, p, 0, steps.len(), "")
     }
 
-    /// step i의 statement 하나를 event와 함께 실행한다.
+    /// step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을
+    /// 확인한다(SQLite connection은 file 하나의 connection이다).
     async fn run(&mut self, p: &Plan, steps: usize, i: usize, statement: &str) -> Result<(), ApplyError> {
         self.emit(ApplyEventKind::Statement, p, i, steps, statement)?;
+        let query = match self.d {
+            Dialect::MySql => Some("SELECT CONNECTION_ID()"),
+            Dialect::Postgres => Some("SELECT pg_backend_pid()"),
+            Dialect::Sqlite => None,
+        };
+        if let Some(query) = query {
+            let current = match self.c.query_bound(query, &[]).await {
+                Ok(rows) => match rows.as_slice() {
+                    [row] => match row.as_slice() {
+                        [CatalogValue::Int(id)] => *id,
+                        _ => return Err(ApplyError::Database(protocol(format!("{query} returned {row:?}")))),
+                    },
+                    _ => return Err(ApplyError::Database(protocol(format!("{query} returned {} rows; want one", rows.len())))),
+                },
+                Err(source) => return Err(ApplyError::Failed { plan: p.name().to_owned(), step: i, statement: query.to_owned(), source }),
+            };
+            self.same_session(Some((p, i)), current)?;
+        }
         if let Err(source) = self.c.execute(statement).await {
             return Err(ApplyError::Failed { plan: p.name().to_owned(), step: i, statement: statement.to_owned(), source });
         }

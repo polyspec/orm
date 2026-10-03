@@ -5,8 +5,9 @@ namespace Orm\Dbspec;
 
 /**
  * A failure of apply or recover (docs/plans.md "Apply"). The code is locked,
- * interrupted, drift, chain, failed or verify; `plan` is empty when no plan
- * is named, `step` is the statement index of failed and interrupted, and
+ * session, interrupted, drift, chain, failed or verify; `plan` is empty when no plan
+ * is named, `step` is the statement index of failed, interrupted and a session
+ * error before a step, and
  * the previous throwable is the database or verification error.
  */
 final class ApplyError extends \RuntimeException
@@ -22,7 +23,7 @@ final class ApplyError extends \RuntimeException
         if ($plan !== '') {
             $message .= " $plan";
         }
-        if ($code_ === 'failed' || $code_ === 'interrupted') {
+        if ($code_ === 'failed' || $code_ === 'interrupted' || ($code_ === 'session' && $plan !== '')) {
             $message .= " at step $step";
         }
         if ($detail !== '') {

@@ -27,7 +27,7 @@ type ApplyEvent struct {
 	Statement string
 }
 
-// ApplyError는 명령의 실패다. Code는 locked, interrupted, drift, chain, failed,
+// ApplyError는 명령의 실패다. Code는 locked, session, interrupted, drift, chain, failed,
 // verify, irreversible, nulls 중 하나다.
 type ApplyError struct {
 	Code    string
@@ -45,6 +45,10 @@ func (e *ApplyError) Error() string {
 	switch e.Code {
 	case "failed", "interrupted", "irreversible", "nulls":
 		s += fmt.Sprintf(" at step %d", e.Step)
+	case "session":
+		if e.Plan != "" {
+			s += fmt.Sprintf(" at step %d", e.Step)
+		}
 	}
 	if e.Message != "" {
 		s += ": " + e.Message
@@ -67,6 +71,20 @@ const mysqlLockName = "CONCAT('" + historyTable + "$', LEFT(SHA2(DATABASE(), 256
 
 // postgresLockKey는 현재 database의 현재 schema 하나의 advisory lock key다.
 const postgresLockKey = "hashtext('" + historyTable + "'), hashtext(current_schema())"
+
+// sessionRequirement는 session error가 밝히는 요구다. lock은 server session에 속하므로 명령은
+// 처음부터 끝까지 다른 client와 나누지 않는 server session 하나에서 실행해야 한다. transaction
+// pooler는 statement마다 server connection을 다시 고르므로 그 요구를 지키지 못한다.
+const sessionRequirement = "apply, recover, rollback and finalize need one server session of their own for the whole run: a direct or session-pooled connection"
+
+// mysqlSessionQuery와 postgresSessionQuery는 현재 server session의 id와, 그 session이 이 명령의
+// lock을 이미 잡고 있는지를 읽는다. lock을 잡기 전에 이미 잡혀 있으면 다른 client가 같은 server
+// session을 쓰고 있다.
+const (
+	mysqlSessionQuery    = "SELECT CONNECTION_ID(), COALESCE(IS_USED_LOCK(" + mysqlLockName + ") = CONNECTION_ID(), 0)"
+	postgresSessionQuery = "SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND objsubid = 2" +
+		" AND classid = (hashtext('" + historyTable + "')::bigint & 4294967295)::oid AND objid = (hashtext(current_schema())::bigint & 4294967295)::oid)"
+)
 
 // lockWait은 statement가 다른 session의 lock을 기다리는 최대 시간이다(docs/plans.md
 // "Apply"의 lock 대기).
@@ -93,6 +111,8 @@ type applier struct {
 	events  func(ApplyEvent) error
 	chain   []*Plan
 	history map[string]historyRow
+	// serverSession은 lock을 잡은 server session의 id다(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
+	serverSession int64
 }
 
 type historyRow struct {
@@ -312,8 +332,12 @@ func (a *applier) irreversible(p *Plan, steps []PlanStep, i int) error {
 func (a *applier) session(f func() error) error {
 	switch a.r.d {
 	case DialectMySQL:
+		if err := a.openSession(mysqlSessionQuery); err != nil {
+			return err
+		}
 		var got sql.NullInt64
-		if err := a.queryRow("SELECT GET_LOCK("+mysqlLockName+", 0)", &got); err != nil {
+		var session int64
+		if err := a.queryRow("SELECT GET_LOCK("+mysqlLockName+", 0), CONNECTION_ID()", &got, &session); err != nil {
 			return err
 		}
 		// GET_LOCK의 NULL은 lock을 기다리던 중의 error다.
@@ -326,7 +350,10 @@ func (a *applier) session(f func() error) error {
 			return &ApplyError{Code: "locked", Message: "another session holds the " + historyTable + " lock of this database"}
 		}
 		var lockWait, rowWait int64
-		err := a.queryRow("SELECT @@SESSION.lock_wait_timeout, @@SESSION.innodb_lock_wait_timeout", &lockWait, &rowWait)
+		err := a.sameSession(nil, 0, session)
+		if err == nil {
+			err = a.queryRow("SELECT @@SESSION.lock_wait_timeout, @@SESSION.innodb_lock_wait_timeout", &lockWait, &rowWait)
+		}
 		if err == nil {
 			_, err = a.c.ExecContext(a.ctx, fmt.Sprintf("SET SESSION lock_wait_timeout = %d, innodb_lock_wait_timeout = %d", lockWaitSeconds, lockWaitSeconds))
 			if err == nil {
@@ -339,15 +366,22 @@ func (a *applier) session(f func() error) error {
 		return joinCleanup(err, unlock)
 	case DialectPostgres:
 		// current_schema()가 NULL이면 결과도 NULL이며, bool로 읽지 못해 error다.
+		if err := a.openSession(postgresSessionQuery); err != nil {
+			return err
+		}
 		var got bool
-		if err := a.queryRow("SELECT pg_try_advisory_lock("+postgresLockKey+")", &got); err != nil {
+		var session int64
+		if err := a.queryRow("SELECT pg_try_advisory_lock("+postgresLockKey+"), pg_backend_pid()", &got, &session); err != nil {
 			return err
 		}
 		if !got {
 			return &ApplyError{Code: "locked", Message: "another session holds the " + historyTable + " advisory lock of this schema"}
 		}
 		var previous, set string
-		err := a.queryRow("SELECT current_setting('lock_timeout')", &previous)
+		err := a.sameSession(nil, 0, session)
+		if err == nil {
+			err = a.queryRow("SELECT current_setting('lock_timeout')", &previous)
+		}
 		if err == nil {
 			err = a.queryRow(fmt.Sprintf("SELECT set_config('lock_timeout', '%ds', false)", lockWaitSeconds), &set)
 			if err == nil {
@@ -364,6 +398,46 @@ func (a *applier) session(f func() error) error {
 		return joinCleanup(err, unlock)
 	}
 	return a.sqliteSession(f)
+}
+
+// openSession은 lock을 잡기 전에 server session의 id를 기억한다. 그 session이 lock을 이미
+// 잡고 있으면 다른 client가 같은 server session을 쓰는 것이므로 session error다.
+func (a *applier) openSession(query string) error {
+	var held bool
+	if err := a.queryRow(query, &a.serverSession, &held); err != nil {
+		return err
+	}
+	if held {
+		return &ApplyError{Code: "session", Message: "this server session already holds the " + historyTable + " lock, so another client shares it; " + sessionRequirement}
+	}
+	return nil
+}
+
+// sameSession은 current가 lock을 잡은 server session인지 확인한다. 다르면 plan p의 step i
+// 앞에서(p가 nil이면 lock에서) session error다.
+func (a *applier) sameSession(p *Plan, i int, current int64) error {
+	if current == a.serverSession {
+		return nil
+	}
+	e := &ApplyError{Code: "session", Message: fmt.Sprintf("the connection moved from server session %d to %d; %s", a.serverSession, current, sessionRequirement)}
+	if p != nil {
+		e.Plan, e.Step = p.Name, i
+	}
+	return e
+}
+
+// checkSession은 step 앞에서 connection이 아직 lock을 잡은 server session인지 확인한다.
+// SQLite connection은 file 하나의 connection이므로 확인하지 않는다.
+func (a *applier) checkSession(p *Plan, i int) error {
+	query := map[Dialect]string{DialectMySQL: "SELECT CONNECTION_ID()", DialectPostgres: "SELECT pg_backend_pid()"}[a.r.d]
+	if query == "" {
+		return nil
+	}
+	var current int64
+	if err := a.queryRow(query, &current); err != nil {
+		return &ApplyError{Code: "failed", Plan: p.Name, Step: i, Message: query, Err: err}
+	}
+	return a.sameSession(p, i, current)
 }
 
 // sqliteSession은 SQLite의 exclusive locking mode로 file을 잠그고, foreign key를 끄고,
@@ -721,9 +795,13 @@ func (a *applier) finalizeFrom(p *Plan, steps []PlanStep, start int) error {
 	return a.emit(ApplyEvent{Kind: "done", Plan: p.Name, Steps: len(steps)})
 }
 
-// run은 step i의 statement 하나를 event와 함께 실행한다.
+// run은 step i의 statement 하나를 event와 함께 실행한다. statement 앞에서 server session을
+// 확인한다.
 func (a *applier) run(p *Plan, steps []PlanStep, i int, statement string) error {
 	if err := a.emit(ApplyEvent{Kind: "statement", Plan: p.Name, Step: i, Steps: len(steps), Statement: statement}); err != nil {
+		return err
+	}
+	if err := a.checkSession(p, i); err != nil {
 		return err
 	}
 	if _, err := a.c.ExecContext(a.ctx, statement); err != nil {

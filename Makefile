@@ -173,7 +173,7 @@ dbspec-plan-check:
 # statement와 history step 22000개씩을 따로 commit하므로 그 case의 기한이 길다.
 .PHONY: dbspec-apply-check
 dbspec-apply-check:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChain$$' -count=1
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
 
 # dbspec-apply-stress-bench는 2000 table 문서를 첫 plan으로 MySQL, PostgreSQL, SQLite에
 # 적용한다(make bench). MySQL은 statement와 history step 22000개씩을 따로 commit한다.

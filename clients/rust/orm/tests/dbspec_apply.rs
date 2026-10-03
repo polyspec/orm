@@ -15,7 +15,8 @@
 mod dbspec_probe;
 
 use chrono::{DateTime, TimeZone, Utc};
-use dbspec_probe::{connection_rules, lines, repository, run_probe, Conn, Servers, Session, DIALECTS};
+use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
+use orm::db::{parse_dsn, ConnectOptions};
 use orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
     Dialect, Plan,
@@ -646,4 +647,83 @@ async fn apply_chain_on_three_databases() {
     orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
     // 세 database의 apply scenario는 개발 machine에서 1분 안에 끝난다(T27 측정 41 s, build 포함). 5분이 지나면 멈춘 것이다.
     assert!(started.elapsed() < Duration::from_secs(300), "apply exceeded 300s");
+}
+
+/// PgBouncer DSN의 database를 `name`으로 바꾼 connection. pooler 뒤의 server connection은
+/// statement마다 바뀔 수 있으므로 prepared statement cache를 쓰지 않는다.
+async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
+    use sqlx::Connection as _;
+    let ConnectOptions::Postgres(options) = parse_dsn(dsn).expect("ORM_TEST_PGBOUNCER_DSN").options else {
+        panic!("ORM_TEST_PGBOUNCER_DSN is not postgres://")
+    };
+    sqlx::PgConnection::connect_with(&options.database(name).statement_cache_capacity(0)).await.expect("connection through PgBouncer")
+}
+
+/// apply는 처음부터 끝까지 다른 client와 나누지 않는 server session 하나가 필요하다(docs/plans.md
+/// "Apply"). PgBouncer의 transaction pooling은 statement마다 server connection을 다시 고르므로 apply는
+/// lock에서와 step마다 server session을 확인하고 session error로 멈춘다. 각 scenario는 server에 자기
+/// database를 만들고 PgBouncer로 그 database에 연결한다. PgBouncer는 쉬는 server connection을 LIFO로
+/// 다시 쓰므로(server_round_robin = 0) 아래 순서가 정해진다. event 처리기는 동기 함수이므로 다른
+/// connection의 transaction은 다른 task가 열고, 처리기는 그 task를 block_in_place로 기다린다.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn apply_through_a_transaction_pooler() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let server = require_dsn("ORM_TEST_POSTGRES_SERVER_DSN");
+    let pooler = require_dsn("ORM_TEST_PGBOUNCER_DSN");
+    let plans = apply_chain();
+    let ConnectOptions::Postgres(admin_options) = parse_dsn(&server).expect("ORM_TEST_POSTGRES_SERVER_DSN").options else { panic!("not postgres://") };
+    let mut admin = {
+        use sqlx::Connection as _;
+        sqlx::PgConnection::connect_with(&admin_options).await.expect("admin connection")
+    };
+    let mut failures = Vec::new();
+    for scenario in ["lock_shared", "session_changed"] {
+        let name = format!("orm_case_{}_pooler_{scenario}", std::process::id());
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("CREATE DATABASE \"{name}\""))).execute(&mut admin).await.expect("create database");
+        let mut apply_conn = pooler_connection(&pooler, &name).await;
+        let other = std::sync::Arc::new(tokio::sync::Mutex::new(pooler_connection(&pooler, &name).await));
+        let result = match scenario {
+            // 다른 client가 session advisory lock을 잡은 server connection을 apply가 이어받는다.
+            "lock_shared" => {
+                let lock = format!("SELECT pg_advisory_lock({POSTGRES_APPLY_LOCK})");
+                sqlx::raw_sql(sqlx::AssertSqlSafe(lock)).execute(&mut *other.lock().await).await.expect("hold the lock");
+                apply(&mut apply_conn, Dialect::Postgres, &plans, &fixed_now, &mut quiet).await
+            }
+            // 첫 step 앞에서 다른 client가 transaction으로 apply의 server connection을 잡으므로 apply의
+            // 다음 statement는 다른 server connection에서 실행된다.
+            _ => {
+                let mut held = false;
+                let handle = tokio::runtime::Handle::current();
+                let holder = other.clone();
+                let mut hold = move |event: &ApplyEvent| -> Result<(), EventError> {
+                    if event.kind != ApplyEventKind::Statement || held {
+                        return Ok(());
+                    }
+                    held = true;
+                    let holder = holder.clone();
+                    tokio::task::block_in_place(|| {
+                        handle.block_on(async move {
+                            let mut conn = holder.lock().await;
+                            sqlx::raw_sql("BEGIN").execute(&mut *conn).await?;
+                            sqlx::raw_sql("SELECT 1").execute(&mut *conn).await.map(drop)
+                        })
+                    })
+                    .map_err(|e| Box::new(e) as EventError)
+                };
+                let result = apply(&mut apply_conn, Dialect::Postgres, &plans, &fixed_now, &mut hold).await;
+                let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *other.lock().await).await;
+                result
+            }
+        };
+        match &result {
+            Err(e) if e.code() == Some("session") && e.to_string().contains("a direct or session-pooled connection") => {
+                orm_testcase::step(format_args!("{scenario}: {e}"));
+            }
+            other => failures.push(format!("{scenario}: apply through a transaction pooler: {other:?}, want a session error")),
+        }
+        drop(apply_conn);
+        drop(other);
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("DROP DATABASE \"{name}\" WITH (FORCE)"))).execute(&mut admin).await.expect("drop database");
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
