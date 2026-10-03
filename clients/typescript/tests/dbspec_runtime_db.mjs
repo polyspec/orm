@@ -10,7 +10,8 @@ import { createRequire } from 'node:module';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { after, before, test } from 'node:test';
+import { after, before } from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -112,16 +113,18 @@ const targets = [
 
 after(async () => { await rm(work, { recursive: true, force: true }); });
 
+// 각 case의 기한: 연결이나 statement 몇 개는 30 s, schema 설치와 audit trigger를 거치는 쓰기는
+// DDL을 실행하므로 60 s다.
 for (const [dialect, dsn] of targets) {
   let db;
   before(async () => { await dropTables(dialect, dsn); });
 
-  test(`${dialect}: connect takes the DSN and options without a schema path`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async () => {
     db = await Db.connect(dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
     assert.equal(db.driver, dialect);
   });
 
-  test(`${dialect}: install renders the dbspec documents and repeats without a change`, { timeout: 60_000 }, async () => {
+  caseTest(`${dialect}: install renders the dbspec documents and repeats without a change`, 60_000, async () => {
     await db.utils().schema().install(schemaOf(probeText));
     await db.utils().schema().install(schemaOf(probeText));
     await db.utils().schema().install(schemaOf(auditText));
@@ -129,7 +132,7 @@ for (const [dialect, dsn] of targets) {
     assert.equal(await new Item().connect(db).getCount(), 0);
   });
 
-  test(`${dialect}: an i16 column reads and writes its whole range`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: an i16 column reads and writes its whole range`, 30_000, async () => {
     for (const small of [-32768, 32767]) {
       const row = new Probe().connect(db);
       row[CORE].setValue('small', small);
@@ -142,7 +145,7 @@ for (const [dialect, dsn] of targets) {
     }
   });
 
-  test(`${dialect}: an omitted column takes the database default and a required column is checked`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: an omitted column takes the database default and a required column is checked`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 1);
     const seq = (await row.create())[CORE].column('seq');
@@ -153,7 +156,7 @@ for (const [dialect, dsn] of targets) {
     assert.equal(await code(missing.create()), 'IR_INVALID');
   });
 
-  test(`${dialect}: the default select set leaves out only select explicit columns`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: the default select set leaves out only select explicit columns`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 2);
     row[CORE].setValue('note', 'long text');
@@ -166,7 +169,7 @@ for (const [dialect, dsn] of targets) {
     assert.equal(all[CORE].column('hidden'), 'h');
   });
 
-  test(`${dialect}: every codec stage and dbspec type reads its value type`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: every codec stage and dbspec type reads its value type`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 3);
     row[CORE].setValue('secret', 'person@example.com');
@@ -189,7 +192,7 @@ for (const [dialect, dsn] of targets) {
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
   });
 
-  test(`${dialect}: an audited write takes the operation id of its transaction`, { timeout: 60_000 }, async () => {
+  caseTest(`${dialect}: an audited write takes the operation id of its transaction`, 60_000, async () => {
     const item = title => { const m = new Item().connect(db); m[CORE].setValue('title', title); return m; };
     assert.equal(await code(item('a').create()), 'CONFIG');
     assert.equal(await code(db.transaction(async () => { await item('a').create(); }, { retry: 0 })), 'CONFIG');
@@ -210,7 +213,7 @@ for (const [dialect, dsn] of targets) {
     assert.equal(await new Item().connect(db).getCount(), 0);
   });
 
-  test(`${dialect}: close and drop the tables`, { timeout: 30_000 }, async () => {
+  caseTest(`${dialect}: close and drop the tables`, 30_000, async () => {
     await db.close();
     await dropTables(dialect, dsn);
   });

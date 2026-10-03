@@ -11,7 +11,7 @@
 // 출력만 한다.
 //
 // Usage: node --test clients/typescript/tests/dbspec-stress.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -33,12 +33,9 @@ function generate() {
   });
 }
 
-test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }, async () => {
-  const started = performance.now();
-  console.log('start dbspec stress');
-  try {
+caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async ({ step }) => {
     const text = await generate();
-    console.log(`step generated ${Buffer.byteLength(text)} bytes in ${(performance.now() - started).toFixed(1)} ms`);
+    step(`generated ${Buffer.byteLength(text)} bytes`);
     const parses = [];
     let result;
     for (let i = 0; i < PARSES; i++) {
@@ -47,7 +44,7 @@ test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }
       result = parseDbspec(text, {});
       const cpu = process.threadCpuUsage(cpuStart);
       const cpuMs = (cpu.user + cpu.system) / 1000;
-      console.log(`step parse cpu ${cpuMs.toFixed(1)} ms wall ${(performance.now() - wallStart).toFixed(1)} ms`);
+      step(`parse cpu ${cpuMs.toFixed(1)} ms wall ${(performance.now() - wallStart).toFixed(1)} ms`);
       parses.push(cpuMs);
     }
     parses.sort((a, b) => a - b);
@@ -61,13 +58,8 @@ test('dbspec stress document parses and emits canonically', { timeout: TIMEOUT }
     const first = emitDbspec(document);
     const emitMs = performance.now() - emitStart;
     const second = emitDbspec(document);
-    console.log(`step parse cpu min ${parses[0].toFixed(1)} median ${parseMs.toFixed(1)} max ${parses[PARSES - 1].toFixed(1)} ms emit ${emitMs.toFixed(1)} ms`);
+    step(`parse cpu min ${parses[0].toFixed(1)} median ${parseMs.toFixed(1)} max ${parses[PARSES - 1].toFixed(1)} ms emit ${emitMs.toFixed(1)} ms`);
     assert.equal(first, text);
     assert.equal(second, first);
     assert.ok(parseMs <= PARSE_BUDGET_MS, `median parse CPU ${parseMs.toFixed(1)} ms exceeds the ${PARSE_BUDGET_MS} ms budget`);
-  } catch (error) {
-    console.log(`fail dbspec stress ${(performance.now() - started).toFixed(1)} ms`);
-    throw error;
-  }
-  console.log(`pass dbspec stress ${(performance.now() - started).toFixed(1)} ms`);
 });

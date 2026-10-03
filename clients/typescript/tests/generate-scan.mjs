@@ -6,9 +6,11 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runCase } from '../../../tests/testcase.mjs';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'clients/typescript/dist/bin/orm-gen.js');
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case는 orm-gen process 하나로 models를 만들고 읽는다.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
@@ -101,22 +103,10 @@ for (const name of selected) {
   if (run === undefined) throw new Error(`unknown case ${name}`);
   current = name;
   const before = failures;
-  const start = performance.now();
-  console.log(`RUN  ${name}`);
-  let timer;
-  try {
-    const deadline = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timeout after ${CASE_DEADLINE_MS} ms`)), CASE_DEADLINE_MS); });
-    await Promise.race([run(), deadline]);
-  } catch (error) {
-    failures++;
-    console.error(`FAIL ${name}: ${error?.stack ?? error}`);
-  } finally {
-    clearTimeout(timer);
-  }
-  console.log(`${failures === before ? 'ok  ' : 'FAIL'} ${name} ${((performance.now() - start) / 1000).toFixed(3)}s`);
+  const passed = await runCase(`generate-scan/${name}`, CASE_DEADLINE_MS, async () => {
+    await run();
+    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+  });
+  if (!passed && failures === before) failures++;
 }
-if (failures > 0) {
-  console.error(`typescript generator scan test: ${failures} failures`);
-  process.exit(1);
-}
-console.log(`typescript generator scan test: ${selected.length} cases passed`);
+if (failures > 0) process.exitCode = 1;

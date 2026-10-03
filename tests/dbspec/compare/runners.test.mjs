@@ -3,13 +3,16 @@
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/compare/runners.test.mjs
 // (after the TypeScript build and the release build of the Rust example)
-import test, { after } from 'node:test';
+import { after } from 'node:test';
+import { caseTest } from '../../testcase.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { root, runRunner, runners } from './runners.mjs';
 
+// TIMEOUT은 case 하나의 기한이다. case는 Go, PHP, TypeScript, Rust runner process를 vector file 하나로
+// 실행하고, Go runner는 `go run` compile을 포함한다.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required');
@@ -65,7 +68,7 @@ function inputsWith(index, mutation) {
   return { path, location, inputs: [paths.cases, stress, paths.ddl, paths.plans, paths.mermaid] };
 }
 
-test('the unchanged vectors run in every runner', { timeout: TIMEOUT }, async () => {
+caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   const inputs = [join(root, 'tests/dbspec/cases.json'), stress, ...['ddl', 'plans', 'mermaid'].map(name => join(root, `tests/dbspec/${name}.json`))];
   for (const runner of runners) {
     const result = await runRunner(runner, inputs, TIMEOUT);
@@ -76,7 +79,7 @@ test('the unchanged vectors run in every runner', { timeout: TIMEOUT }, async ()
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
   for (const runner of runners) {
-    test(`${runner.name} rejects ${mutation.file} ${location} that ${mutation.problem}`, { timeout: TIMEOUT }, async () => {
+    caseTest(`${runner.name} rejects ${mutation.file} ${location} that ${mutation.problem}`, TIMEOUT, async () => {
       const result = await runRunner(runner, inputs, TIMEOUT);
       assert.notEqual(result.code, 0, `${runner.name} exited 0`);
       assert.equal(result.signal, null, `${runner.name} ended by ${result.signal}`);

@@ -15,6 +15,7 @@ import {
   registerModel,
 } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { DATABASE, sections } from '../../../tests/testcase.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
@@ -41,6 +42,18 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 let current = '';
+// 각 구역은 case 하나다. 기한은 DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를
+// 실행한다.
+const caseLog = sections();
+let caseFailures = 0;
+function begin(name) {
+  current = name;
+  caseFailures = failures;
+  caseLog.begin(`model/${name}`, DATABASE);
+}
+function end() {
+  caseLog.end(failures > caseFailures ? `${failures - caseFailures} check(s) failed; each FAIL line above names one` : undefined);
+}
 
 /** A mysql2 connection to the database, host, port, or socket of a DSN. */
 function mysqlConnection(dsn) {
@@ -654,25 +667,25 @@ if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.fil
 try {
   if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/schemaEmpty`;
+    begin(`${dialect}/schemaEmpty`);
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     try { await schemaEmpty(dialect, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    end();
   }
   }
   for (const [dialect, dsn] of targets) {
     for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined || name === selectedCase)) {
-      current = `${dialect}/${name}`;
+      begin(`${dialect}/${name}`);
       if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
       await install(dialect, dsn);
       const db = await connect(dsn);
       try { await fn(db, dsn); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-      console.log(`${current} done`);
+      end();
     }
   }
   if (selectedCase === undefined) {
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/poolSize`;
+    begin(`${dialect}/poolSize`);
     const sized = await connectBench(dsn, { poolSize: 3 });
     try {
       // The SQLite driver holds one connection, so the size applies to the pooled drivers.
@@ -732,10 +745,10 @@ try {
         check(await code(connectBench(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
       }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/statementTimeout`;
+    begin(`${dialect}/statementTimeout`);
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     await install(dialect, dsn);
     check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
@@ -749,14 +762,14 @@ try {
         check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
       } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); }
     }
-    console.log(`${current} done`);
+    end();
   }
   {
     // A pooler in transaction mode hands one server session to every client
     // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
     // server connection, so the statement timeout of one connection must
     // bound only the statements of that connection.
-    current = 'postgres/statementTimeoutThroughAPooler';
+    begin('postgres/statementTimeoutThroughAPooler');
     const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
     if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
     const postgres = targets.find(([dialect]) => dialect === 'postgres')[1];
@@ -772,10 +785,10 @@ try {
       check(await new Author().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
       check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await bounded.close(); await plain.close(); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/cancellation`;
+    begin(`${dialect}/cancellation`);
     if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
     await install(dialect, dsn);
     const db = await connect(dsn);
@@ -796,37 +809,37 @@ try {
       }
       check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, dsn] of targets) {
-    current = `${dialect}/aesJsonColumn`;
+    begin(`${dialect}/aesJsonColumn`);
     const sqlitePath = join(work, 'model.sqlite');
     if (dialect === 'sqlite') await rm(sqlitePath, { force: true });
     try { await aesJsonColumn(dialect, dialect === 'sqlite' ? `sqlite://${sqlitePath}` : dsn, sqlitePath); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, dsn] of targets.filter(t => t[0] === 'mysql')) {
-    current = `${dialect}/installInsideTransaction`;
+    begin(`${dialect}/installInsideTransaction`);
     await install(dialect, dsn);
     const db = await connect(dsn);
     try { await mysqlInstallInsideTransaction(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, base] of targets) {
     for (const zone of zones) {
-      current = `${dialect}/connectionsUseUtc/${zone}`;
+      begin(`${dialect}/connectionsUseUtc/${zone}`);
       if (dialect === 'sqlite') await rm(join(work, 'model.sqlite'), { force: true });
       const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
       await install(dialect, dsn);
       const db = await connect(dsn);
       try { await connectionsUseUtc(db); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await db.close(); }
-      console.log(`${current} done`);
+      end();
     }
   }
   {
     // A connection to a SQLite database file that the process may only read:
     // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
-    current = 'sqlite/readOnly';
+    begin('sqlite/readOnly');
     const path = join(work, 'read-only.sqlite');
     const dsn = `sqlite://${path}`;
     try {
@@ -840,20 +853,20 @@ try {
         check(await code(new User().connect(readOnly).setName('rejected').create()) === 'READ_ONLY', 'a write to the read-only database');
       } finally { await readOnly.close(); }
     } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    end();
   }
   for (const [dialect, primary] of targets) {
     if (dialect === 'sqlite') continue;
-    current = `${dialect}/primaryAndReplica`;
+    begin(`${dialect}/primaryAndReplica`);
     const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
     if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
     try { await primaryAndReplica(dialect, primary, replica); } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    console.log(`${current} done`);
+    end();
   }
   // transaction 끝의 MySQL local 값 reset이 실패하면 commit과 rollback이 그 오류를 보고한다.
   // MySQL user variable은 COMMIT과 ROLLBACK 뒤에도 남는다(mysql.context.user_variable_session_scope).
   // 실제 server는 reset을 거부하지 않으므로 transaction connection의 control이 reset만 실패시킨다.
-  current = 'mysql/failedLocalReset';
+  begin('mysql/failedLocalReset');
   try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
     try {
@@ -874,14 +887,14 @@ try {
       await db.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  console.log(`${current} done`);
+  end();
   const failureMessage = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
   // message가 원인과 transaction 끝의 오류를 함께 담은 ROLLBACK인지 확인한다.
   const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
   // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
   // 보고한다. 풀리지 않은 named lock은 connection에 남는다. 실제 server는 RELEASE_LOCK을 거부하지 않으므로
   // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
-  current = 'mysql/failedLockRelease';
+  begin('mysql/failedLockRelease');
   try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
     try {
@@ -905,11 +918,11 @@ try {
       await db.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  console.log(`${current} done`);
+  end();
   // native rollback, SQLite mode 복원, begin 뒤의 rollback이 실패하면 transaction이 그 오류를 원인과
   // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 exec가 실패시킨다.
   // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
-  current = 'sqlite/failedRollback';
+  begin('sqlite/failedRollback');
   try {
     const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
     try {
@@ -940,11 +953,11 @@ try {
       await db.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  console.log(`${current} done`);
+  end();
   // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
   // 오류와 그 오류를 함께 보고하고, 성공한 callback은 실패한 RELEASE SAVEPOINT를 보고한다. 실제 SQLite는
   // 이 statement를 거부하지 않으므로 transaction connection의 control이 실패시킨다.
-  current = 'sqlite/failedSavepointEnd';
+  begin('sqlite/failedSavepointEnd');
   try {
     const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
     try {
@@ -967,13 +980,9 @@ try {
       await db.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-  console.log(`${current} done`);
+  end();
   }
 } finally {
   await rm(work, { recursive: true, force: true });
 }
-if (failures > 0) {
-  console.error(`typescript model test: ${failures} failure(s)`);
-  process.exit(1);
-}
-console.log(`typescript model test passed (${targets.map(t => t[0]).join(', ')})`);
+if (failures > 0) process.exitCode = 1;

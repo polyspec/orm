@@ -1,17 +1,17 @@
 // Tests the comparison of client outputs (tests/dbspec/compare/check.mjs).
 //
 // Usage: node --test tests/dbspec/compare/check.test.mjs
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../testcase.mjs';
 import assert from 'node:assert/strict';
 import { compare } from './compare.mjs';
 
 const go = 'canonical/a\n| dbspec 1 shop\n| \ninvalid/b\n! header 1 14\nstress\n= unchanged\n';
 
-test('equal outputs agree', () => {
+caseTest('equal outputs agree', COMPUTE, () => {
   assert.equal(compare([{ name: 'go 1', output: go }, { name: 'rust 1', output: go }]), null);
 });
 
-test('a different diagnostic names its case and both lines', () => {
+caseTest('a different diagnostic names its case and both lines', COMPUTE, () => {
   const rust = go.replace('! header 1 14', '! header 1 15');
   assert.deepEqual(compare([{ name: 'go 1', output: go }, { name: 'rust 1', output: rust }]), {
     reference: 'go 1',
@@ -23,7 +23,7 @@ test('a different diagnostic names its case and both lines', () => {
   });
 });
 
-test('a different plan message names its plan case', () => {
+caseTest('a different plan message names its plan case', COMPUTE, () => {
   const plans = 'plans/parse/name-too-long\n! plan 1 1 the first line is exactly `dbplan 1 <name>`\n';
   const rust = plans.replace('exactly', 'not');
   assert.deepEqual(compare([{ name: 'go 1', output: plans }, { name: 'rust 1', output: rust }]), {
@@ -36,18 +36,18 @@ test('a different plan message names its plan case', () => {
   });
 });
 
-test('a shorter output differs at its end', () => {
+caseTest('a shorter output differs at its end', COMPUTE, () => {
   const php = go.slice(0, go.indexOf('stress'));
   const difference = compare([{ name: 'go 1', output: go }, { name: 'php 1', output: php }]);
   assert.equal(difference.case, 'stress');
   assert.equal(difference.actual, '(end of output)');
 });
 
-test('an empty output is a difference, not an agreement', () => {
+caseTest('an empty output is a difference, not an agreement', COMPUTE, () => {
   assert.throws(() => compare([{ name: 'go 1', output: '' }]), /go 1 printed no case/);
 });
 
-test('a different Mermaid dropped object names its case', () => {
+caseTest('a different Mermaid dropped object names its case', COMPUTE, () => {
   const go = 'mermaid/import/a\n| dbspec 1 imported\n= index\tb\tix_b_a_id\n';
   const ts = go.replace('= index\tb\tix_b_a_id\n', '= index\tb\tix_b_a_id\n= index\tb\tix_b_a_id\n');
   assert.deepEqual(compare([{ name: 'go 1', output: go }, { name: 'typescript 1', output: ts }]), {

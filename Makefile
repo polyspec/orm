@@ -29,6 +29,7 @@ check: checklist-check testcase-check repo-check feature-check git-check docs-ru
 .PHONY: testcase-check
 testcase-check:
 	$(GO_TEST) ./internal/testcase -count=1
+	node --test tests/testcase.test.mjs
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.

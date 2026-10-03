@@ -3,26 +3,16 @@
 // each normalize case its canonical text.
 //
 // Usage: node --test clients/typescript/tests/dbspec-rules.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
-import { performance } from 'node:perf_hooks';
 import { emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import * as api from '../dist/index.js';
 
+// TIMEOUT은 case 하나의 기한(ms)이다. rule case 하나는 memory 안에서 문서 몇 개를 parse한다.
 const TIMEOUT = 15000;
 
 function rule(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`fail ${name} ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`pass ${name} ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 const text = lines => lines.join('\n') + '\n';

@@ -9,18 +9,18 @@
 // run, the target is read again and no dbspec$ table or column remains.
 //
 // Usage: ORM_TEST_MYSQL_DSN=... ORM_TEST_POSTGRES_DSN=... node --test clients/typescript/tests/dbspec-plan-physical.mjs (after the build)
-import test from 'node:test';
+import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
 import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planSteps, renderDbspec } from '../dist/dbspec/index.js';
 
 const root = new URL('../../../', import.meta.url);
+// TIMEOUT은 case 하나의 기한(ms)이다. plan case 하나는 database 하나를 만들고 step을 적용, 되돌리기, 다시 적용, finalize한 뒤 지운다.
 const TIMEOUT = 60000;
 const DIALECTS = ['mysql', 'postgres', 'sqlite'];
 // 모든 client가 새 connection에서 실행하는 문장이다(tests/dialects connectionRules).
@@ -39,17 +39,7 @@ const text = lines => lines.join('\n') + '\n';
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
 function vector(name, body) {
-  test(name, { timeout: TIMEOUT }, async () => {
-    const started = performance.now();
-    console.log(`start ${name}`);
-    try {
-      await body();
-    } catch (error) {
-      console.log(`result ${name}: FAIL after ${(performance.now() - started).toFixed(1)} ms`);
-      throw error;
-    }
-    console.log(`result ${name}: PASS after ${(performance.now() - started).toFixed(1)} ms`);
-  });
+  caseTest(name, TIMEOUT, body);
 }
 
 function mysqlOptions(database) {

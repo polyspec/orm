@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path, { resolve } from 'node:path';
+import { runGroup, stepLines } from '../../tests/testcase.mjs';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
@@ -12,14 +13,20 @@ const clientStatuses = new Set(['planned', 'partial', 'pass', 'unsupported']);
 const clients = ['go', 'php', 'rust', 'typescript'];
 const databases = ['mysql', 'postgres', 'sqlite'];
 const runVerification = process.argv.includes('--run');
+// --feature <id>는 그 기능의 검증 명령만 실행한다. 검사는 여전히 모든 기능을 본다.
+const featureIndex = process.argv.indexOf('--feature');
+const onlyFeature = featureIndex >= 0 ? process.argv[featureIndex + 1] : undefined;
+if (featureIndex >= 0 && !onlyFeature) throw new Error('usage: check.mjs [--run] [--feature <id>]');
 
-const execute = (command, cwd) => new Promise((resolveRun) => {
+// execute는 명령의 출력 줄을 실행 중에 step으로 내보낸다. 명령이 실행하는 runner가 case마다
+// 시작, 결과, 경과 시간과 기한을 보고한다.
+const execute = (command, cwd, step) => new Promise((resolveRun) => {
   const child = spawn('/bin/sh', ['-c', command], { cwd, env: process.env });
-  let output = '';
-  child.stdout.on('data', chunk => { output += chunk; });
-  child.stderr.on('data', chunk => { output += chunk; });
+  const lines = stepLines(step);
+  child.stdout.on('data', chunk => lines.write(String(chunk)));
+  child.stderr.on('data', chunk => lines.write(String(chunk)));
   child.on('error', error => resolveRun({ code: 1, output: error.message }));
-  child.on('close', code => resolveRun({ code: code ?? 1, output }));
+  child.on('close', code => { lines.flush(); resolveRun({ code: code ?? 1 }); });
 });
 
 if (manifest.manifest_version !== 1) errors.push('manifest_version must be 1');
@@ -153,14 +160,16 @@ for (const [language, files] of Object.entries(existing)) {
   for (const file of files) if (!listedByFeatures.has(file)) errors.push(`${file}: ${language} test file belongs to no feature`);
 }
 
+if (onlyFeature !== undefined && !(manifest.features ?? []).some(feature => feature.id === onlyFeature)) errors.push(`unknown feature ${onlyFeature}`);
 if (runVerification && errors.length === 0) {
-  for (const feature of manifest.features ?? []) {
+  for (const feature of (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)) {
     for (const check of feature.verification ?? []) {
-      console.log(`features: run ${feature.id}/${check.id}: ${check.command}`);
-      const result = await execute(check.command, resolve(root, check.cwd ?? '.'));
-      if (result.code !== 0) {
-        errors.push(`${feature.id}/${check.id}: command exited ${result.code}\n${result.output.trim()}`);
-      }
+      const passed = await runGroup(`features/${feature.id}/${check.id}`, async ({ step }) => {
+        step(check.command);
+        const result = await execute(check.command, resolve(root, check.cwd ?? '.'), step);
+        if (result.code !== 0) throw new Error(`command exited ${result.code}${result.output ? `: ${result.output}` : ''}`);
+      });
+      if (!passed) errors.push(`${feature.id}/${check.id}: command failed; its output is in the STEP lines above`);
     }
   }
 }

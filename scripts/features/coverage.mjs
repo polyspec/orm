@@ -3,6 +3,7 @@ import { readFile, realpath } from 'node:fs/promises';
 import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { runCase, stepLines } from '../../tests/testcase.mjs';
 
 export const languages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
@@ -144,9 +145,12 @@ function validJSON(value) {
   catch { return false; }
 }
 
-function run(program, args, cwd, timeoutMs, env = process.env) {
+// run은 program을 실행해 출력을 모은다. step이 있으면 stderr 줄(cargo와 go의 build 진행)을
+// 실행 중에 단계로 내보낸다. stdout은 test event이므로 모아서 읽기만 한다.
+function run(program, args, cwd, timeoutMs, env = process.env, step = undefined) {
   return new Promise((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
+    const progress = step ? stepLines(step) : null;
     let output = '';
     let settled = false;
     const stop = () => {
@@ -165,9 +169,10 @@ function run(program, args, cwd, timeoutMs, env = process.env) {
       if (output.length > 1_000_000) stop();
     };
     child.stdout.on('data', append);
-    child.stderr.on('data', append);
+    child.stderr.on('data', chunk => { append(chunk); progress?.write(String(chunk)); });
     child.on('error', error => done(error.message));
     child.on('close', code => {
+      progress?.flush();
       if (output.length > 1_000_000) return done('test output exceeds 1000000 characters');
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
       done(null, output);
@@ -330,30 +335,43 @@ export async function executeCoverage(manifest, root, timeoutMs = 600_000) {
           testEnv.ORM_FEATURE_DATABASE = item.database;
           testEnv.ORM_FEATURE_DSN = dsn;
         }
+        // 한 실행의 기한은 그 실행이 띄우는 process 기한의 합이다. state reader 두 번과 native
+        // 명령마다(cargo는 symbol마다) 한 번씩 timeoutMs를 가진다.
+        const processes = (dsn ? 2 : 0) + native.reduce((sum, spec) => sum + (spec.format === 'cargo' ? spec.symbols.length : 1), 0);
         for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
-            const results = [];
-            for (let index = 0; index < native.length; index++) {
-              const spec = native[index];
-              const entry = command[index];
-              let output = '';
-              for (const symbol of spec.format === 'cargo' ? spec.symbols : [null]) {
-                const args = spec.format === 'cargo' ? [...spec.args, symbol, '--', '--exact', '--include-ignored'] : spec.args;
-                const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs, testEnv);
-                if (result.error) throw new Error(result.error);
-                output += result.value + '\n';
+          let failure;
+          const passed = await runCase(`${key} run ${attempt}`, processes * timeoutMs, async ({ step }) => {
+            try {
+              const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
+              if (dsn) step(`state before ${stateBefore}`);
+              const results = [];
+              for (let index = 0; index < native.length; index++) {
+                const spec = native[index];
+                const entry = command[index];
+                let output = '';
+                for (const symbol of spec.format === 'cargo' ? spec.symbols : [null]) {
+                  const args = spec.format === 'cargo' ? [...spec.args, symbol, '--', '--exact', '--include-ignored'] : spec.args;
+                  step(`${spec.program} ${entry.test}${symbol ? ` ${symbol}` : ''}`);
+                  const result = await run(spec.program, args, spec.cwd ?? cwd, timeoutMs, testEnv, dsn ? text => step(text.replaceAll(dsn, '[redacted]')) : step);
+                  if (result.error) throw new Error(result.error);
+                  output += result.value + '\n';
+                }
+                results.push(...observedCases(spec.format, output, entry.cases, spec.symbols));
               }
-              results.push(...observedCases(spec.format, output, entry.cases, spec.symbols));
+              const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
+              if (dsn) step(`state after ${stateAfter}`);
+              reports[key].push({ feature: feature.id, role: item.role, language: item.language,
+                database: item.database, part: item.part, tests: item.tests, success: true,
+                cases: item.cases, results, ...(item.dependent ? { dependent: item.dependent } : {}),
+                ...(dsn ? { state_before: stateBefore, state_after: stateAfter } : {}) });
+            } catch (error) {
+              const message = String(error.message);
+              failure = dsn ? message.replaceAll(dsn, '[redacted]') : message;
+              throw new Error(failure);
             }
-            const stateAfter = dsn ? await state(item.database, dsn, timeoutMs) : null;
-            reports[key].push({ feature: feature.id, role: item.role, language: item.language,
-              database: item.database, part: item.part, tests: item.tests, success: true,
-              cases: item.cases, results, ...(item.dependent ? { dependent: item.dependent } : {}),
-              ...(dsn ? { state_before: stateBefore, state_after: stateAfter } : {}) });
-          } catch (error) {
-            const message = String(error.message);
-            errors.push(`${key} run ${attempt}: ${dsn ? message.replaceAll(dsn, '[redacted]') : message}`);
+          });
+          if (!passed) {
+            errors.push(`${key} run ${attempt}: ${failure ?? `deadline ${processes * timeoutMs} ms exceeded`}`);
             break;
           }
         }

@@ -5,13 +5,16 @@
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mjs
 // (after the TypeScript build and the release builds of the Rust dbspec_compare,
 // dbspec_apply and dbspec_stress examples)
-import test, { after } from 'node:test';
+import { after } from 'node:test';
+import { caseTest } from '../testcase.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { root, runRunner, runners } from './compare/runners.mjs';
 
+// TIMEOUT은 case 하나의 기한이다. case는 runner process 하나를 없거나 directory인 input으로
+// 실행하고, Go runner는 `go run` compile을 포함한다.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
 if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required');
@@ -73,7 +76,7 @@ const signatureCases = runners.map(runner => {
 });
 signatureCases.push({ name: `${stressHarness.name} rejects a document without the signature`, runner: stressHarness, inputs: [unsigned] });
 for (const c of signatureCases) {
-  test(c.name, { timeout: TIMEOUT }, async () => {
+  caseTest(c.name, TIMEOUT, async () => {
     const result = await runRunner(c.runner, c.inputs, TIMEOUT);
     assert.equal(result.signal, null, `ended by ${result.signal}`);
     assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);
@@ -82,7 +85,7 @@ for (const c of signatureCases) {
 }
 
 for (const c of cases) {
-  test(c.name, { timeout: TIMEOUT }, async () => {
+  caseTest(c.name, TIMEOUT, async () => {
     const result = await runRunner(c.runner, c.inputs, TIMEOUT);
     assert.equal(result.signal, null, `ended by ${result.signal}`);
     assert.notEqual(result.code, 0, `exited 0; stderr: ${result.stderr}`);
