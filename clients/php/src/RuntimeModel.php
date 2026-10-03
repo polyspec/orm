@@ -27,11 +27,16 @@ final class RuntimeModel
     /** dialect나 executor가 bind 값 주위에 적용하는 codec stage다. */
     public const HOST_STAGES = ['aes', 'hex', 'ip'];
 
-    /** @param array<string, array> $entities entity name => entity */
+    /**
+     * @param array<string, array> $entities entity name => entity
+     * @param string $externalText 외부 문서에서 소유한 문서가 쓰는 table의 text(Dbspec Manifest)이며, 외부
+     *     문서를 쓰지 않는 set은 빈 text다. 외부 문서의 table은 entity가 아니다.
+     */
     public function __construct(
         public readonly string $manifestHash,
         public readonly string $manifestText,
         public readonly array $entities,
+        public readonly string $externalText = '',
     ) {}
 
     /**
@@ -44,27 +49,62 @@ final class RuntimeModel
      */
     public static function parse(array $texts): array
     {
+        return self::parseSet($texts, []);
+    }
+
+    /**
+     * 소유한 문서와 외부 문서(소유한 문서가 use로 쓰는 다른 set의 문서)의 document set을
+     * parse한다. 모든 문서는 나머지 모든 문서를 선언된 집합으로 삼아 parse하고, 외부 문서는
+     * external로 표시한다. 외부 문서는 parse하고 검사하지만 렌더링, 설치, 비교, 생성하지 않는다.
+     * 두 map은 label에서 text로의 map이다. diagnostic이 있으면 SCHEMA_INVALID로 실패한다.
+     *
+     * @param array<string, string> $owned
+     * @param array<string, string> $external
+     * @return list<Document>
+     */
+    public static function parseSet(array $owned, array $external): array
+    {
         $named = [];
-        foreach ($texts as $label => $text) {
-            if (preg_match('/\Adbspec 1 ([a-z][a-z0-9_]*)(?:\r?\n|\z)/', $text, $m) === 1) {
-                $named[$m[1]] = $text;
+        foreach ([$external, $owned] as $texts) {
+            foreach ($texts as $text) {
+                if (preg_match('/\Adbspec 1 ([a-z][a-z0-9_]*)(?:\r?\n|\z)/', $text, $m) === 1) {
+                    $named[$m[1]] = $text;
+                }
             }
         }
         $documents = [];
         $errors = [];
-        foreach ($texts as $label => $text) {
-            $result = Dbspec::parse($text, $named);
-            foreach ($result->diagnostics as $d) {
-                $errors[] = "$label:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
-            }
-            if ($result->document !== null) {
-                $documents[] = $result->document;
+        foreach ([[$external, true], [$owned, false]] as [$texts, $isExternal]) {
+            foreach ($texts as $label => $text) {
+                $result = Dbspec::parse($text, $named);
+                foreach ($result->diagnostics as $d) {
+                    $errors[] = "$label:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+                }
+                if ($result->document !== null) {
+                    $result->document->external = $isExternal;
+                    $documents[] = $result->document;
+                }
             }
         }
         if ($errors !== []) {
             throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
         }
         return $documents;
+    }
+
+    /**
+     * generated schema 값의 manifest text와 external text(외부 문서에서 쓰는 table)를 parse한
+     * document set이다. external text의 문서는 external로 표시한다.
+     *
+     * @return list<Document>
+     */
+    public static function loadSet(string $manifestText, string $externalText): array
+    {
+        $external = $externalText === '' ? [] : array_combine(
+            array_map(static fn(string $label): string => "external $label", array_keys(self::splitManifest($externalText))),
+            self::splitManifest($externalText),
+        );
+        return self::parseSet(self::splitManifest($manifestText), $external);
     }
 
     /**
@@ -86,33 +126,41 @@ final class RuntimeModel
     }
 
     /**
-     * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. 읽을 수 없는 파일은
-     * CONFIG, signature가 없는 파일은 SCHEMA_INVALID로 실패한다. @param list<string> $paths
+     * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. $external은 소유한 문서가
+     * use로 쓰는 외부 문서 파일이다(parseSet). 읽을 수 없는 파일은 CONFIG, signature가 없는
+     * 파일은 SCHEMA_INVALID로 실패한다.
+     *
+     * @param list<string> $paths
+     * @param list<string> $external
+     * @return list<Document>
      */
-    public static function files(array $paths): array
+    public static function files(array $paths, array $external = []): array
     {
         if ($paths === []) {
             throw new OrmException(Code::CONFIG, 'a document set needs at least one dbspec file');
         }
-        $texts = [];
-        $errors = [];
-        foreach ($paths as $path) {
-            try {
-                $read = Dbspec::readFile($path);
-            } catch (\RuntimeException $e) {
-                throw new OrmException(Code::CONFIG, $e->getMessage(), $e);
+        $read = static function (array $paths): array {
+            $texts = [];
+            $errors = [];
+            foreach ($paths as $path) {
+                try {
+                    $read = Dbspec::readFile($path);
+                } catch (\RuntimeException $e) {
+                    throw new OrmException(Code::CONFIG, $e->getMessage(), $e);
+                }
+                foreach ($read->diagnostics as $d) {
+                    $errors[] = "$path:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+                }
+                if ($read->text !== null) {
+                    $texts[$path] = $read->text;
+                }
             }
-            foreach ($read->diagnostics as $d) {
-                $errors[] = "$path:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+            if ($errors !== []) {
+                throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
             }
-            if ($read->text !== null) {
-                $texts[$path] = $read->text;
-            }
-        }
-        if ($errors !== []) {
-            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
-        }
-        return self::parse($texts);
+            return $texts;
+        };
+        return self::parseSet($read($paths), $read($external));
     }
 
     /** parse된 document set의 runtime model을 만든다. @param list<Document> $documents */
@@ -126,6 +174,10 @@ final class RuntimeModel
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
         $entities = [];
         foreach ($documents as $document) {
+            // 외부 문서의 table은 entity가 아니다.
+            if ($document->external) {
+                continue;
+            }
             foreach ($document->tables as $table) {
                 $entity = self::tableEntity($table);
                 if (isset($entities[$entity['entity']])) {
@@ -134,11 +186,11 @@ final class RuntimeModel
                 $entities[$entity['entity']] = $entity;
             }
         }
-        return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities);
+        return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities, $result->manifest->externalText);
     }
 
     /** 등록된 generated class의 model이다. @param list<class-string<Model>> $classes */
-    public static function fromModels(string $manifestHash, string $manifestText, array $classes): self
+    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): self
     {
         $entities = [];
         foreach ($classes as $class) {
@@ -147,7 +199,7 @@ final class RuntimeModel
             unset($meta['manifest_hash']);
             $entities[$meta['entity']] = $meta;
         }
-        return new self($manifestHash, $manifestText, $entities);
+        return new self($manifestHash, $manifestText, $entities, $externalText);
     }
 
     public function entity(string $name): ?array

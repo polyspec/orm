@@ -40,7 +40,8 @@ final class Renderer
     public static function render(array $documents, string $dialect): array
     {
         $r = new self($dialect);
-        $ordered = self::useOrder($documents);
+        // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+        $ordered = array_values(array_filter(self::useOrder($documents), static fn(Document $d): bool => !$d->external));
         $out = [];
         foreach ($ordered as $document) {
             foreach ($document->tables as $table) {

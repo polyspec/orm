@@ -189,6 +189,44 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 		if s.Parsing, err = r.linesMap(c, location, "parsing"); err != nil {
 			return s, err
 		}
+		// external과 manifest는 외부 문서를 가진 case에만 있다.
+		if _, ok := c["external"]; ok {
+			items, err := r.arrayField(c, location, "external")
+			if err != nil {
+				return s, err
+			}
+			for i, item := range items {
+				lines, err := r.lines(item, fmt.Sprintf("%s[%d]", vectorAt(location, "external"), i))
+				if err != nil {
+					return s, err
+				}
+				s.External = append(s.External, lines)
+			}
+		}
+		if _, ok := c["manifest"]; ok {
+			field, err := r.field(c, location, "manifest")
+			if err != nil {
+				return s, err
+			}
+			object, ok := field.(map[string]any)
+			if !ok {
+				return s, r.fail(vectorAt(location, "manifest"), "is not an object")
+			}
+			at := vectorAt(location, "manifest")
+			m := &setManifest{}
+			for key, target := range map[string]*[]string{"manifestText": &m.ManifestText, "externalText": &m.ExternalText, "schemaText": &m.SchemaText, "created": &m.Created} {
+				if *target, err = r.linesField(object, at, key); err != nil {
+					return s, err
+				}
+			}
+			if m.ManifestHash, err = r.string(object, at, "manifestHash"); err != nil {
+				return s, err
+			}
+			if m.SchemaHash, err = r.string(object, at, "schemaHash"); err != nil {
+				return s, err
+			}
+			s.Manifest = m
+		}
 		s.Errors, err = r.locatedErrors(c, location, "errors")
 		return s, err
 	})

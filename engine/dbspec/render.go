@@ -32,6 +32,8 @@ func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
 	r := renderer{d: dialect}
 	ordered := useOrder(documents)
 	var out []string
+	// 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+	ordered = slices.DeleteFunc(ordered, func(d *Document) bool { return d.External })
 	for _, document := range ordered {
 		for i := range document.Tables {
 			out = append(out, r.table(&document.Tables[i])...)

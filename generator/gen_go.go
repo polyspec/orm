@@ -261,7 +261,12 @@ func (g *goGen) write() error {
 	b.WriteString("var _ time.Time\n\n")
 	fmt.Fprintf(&b, "// ManifestHash is the manifestHash of the document set the models were generated from.\nconst ManifestHash = %q\n\n", g.m.ManifestHash)
 	fmt.Fprintf(&b, "// ManifestText is the manifest text of the document set the models were generated from.\nconst ManifestText = %s\n\n", goStringLiteral(g.m.ManifestText))
-	b.WriteString("// Schema is the generated schema value: the manifest text with its declared\n// manifestHash. Install takes it to create the tables and register the set.\nvar Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}\n\n")
+	if g.m.ExternalText == "" {
+		b.WriteString("// Schema is the generated schema value: the manifest text with its declared\n// manifestHash. Install takes it to create the tables and register the set.\nvar Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}\n\n")
+	} else {
+		fmt.Fprintf(&b, "// ExternalText is the text of the tables that the document set uses from external documents.\nconst ExternalText = %s\n\n", goStringLiteral(g.m.ExternalText))
+		b.WriteString("// Schema is the generated schema value: the manifest text and the external\n// text with their declared manifestHash. Install takes it to create the tables\n// and register the set.\nvar Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText, External: ExternalText}\n\n")
+	}
 	b.WriteString(`// Connect opens the database selected by the DSN URI and registers the
 // set of these models on the connection, so the models plan their requests on
 // it. A manifest text that does not hash to ManifestHash fails with CONFIG.

@@ -3,6 +3,7 @@
 package model_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
@@ -58,5 +59,64 @@ func TestCoverageSchemaInstallPartial(t *testing.T) {
 	}
 	if nativeTableExists(t, driver, dsn, "coverage_install_missing") {
 		t.Fatal("the rejected install created table coverage_install_missing")
+	}
+}
+
+// externalUser는 bench database의 table user를 외부 문서로 쓰는 document set의
+// 외부 문서다. drift는 database에 없는 column을 더한다.
+const externalUser = `dbspec 1 bench_user
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+`
+
+// externalMember는 externalUser의 user를 쓰고 coverage_external_post만 소유한다.
+const externalMember = `dbspec 1 coverage_external
+
+use bench_user { user }
+
+table coverage_external_post {
+  seq i64 identity
+  user_seq i64
+  primary key (seq)
+  index ix_coverage_external_post_user (user_seq)
+  foreign key fk_coverage_external_post_user (user_seq) references user (seq)
+}
+`
+
+// TestCoverageSchemaInstallExternalDocuments는 외부 문서를 쓰는 set의 연결이 외부
+// table을 database에서 확인하는지 본다. 같은 table이면 연결하고, 외부 문서의 column이
+// database에 없으면 연결과 install이 CONFIG이며 소유한 table을 만들지 않는다.
+func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, driver, dsn := connectFeature(t)
+	schema := func(external string) *orm.Schema {
+		m, diagnostics := runtimemodel.LoadDocumentSet([]string{externalMember}, []string{external})
+		if len(diagnostics) > 0 {
+			t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+		}
+		return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
+	}
+	member := schema(externalUser)
+	connected, err := orm.ConnectSchema(dsn, member, orm.Config{})
+	if err != nil {
+		t.Fatalf("connect of a set whose external table user matches the database: %v", err)
+	}
+	if err := connected.Close(); err != nil {
+		t.Fatal(err)
+	}
+	drifted := schema(strings.Replace(externalUser, "  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n", 1))
+	want := "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist"
+	if _, err := orm.ConnectSchema(dsn, drifted, orm.Config{}); orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), want) {
+		t.Fatalf("connect with a drifted external table = %v, want CONFIG with %q", err, want)
+	}
+	if err := db.Utils().Schema().Install(drifted); orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), want) {
+		t.Fatalf("install with a drifted external table = %v, want CONFIG with %q", err, want)
+	}
+	if nativeTableExists(t, driver, dsn, "coverage_external_post") {
+		t.Fatal("the rejected install created table coverage_external_post")
 	}
 }

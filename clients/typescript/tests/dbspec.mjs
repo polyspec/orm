@@ -154,25 +154,46 @@ function expectErrors(diagnostics, errors) {
 }
 
 assert(cases.sets.length > 0, 'sets cases');
+// textOf joins lines with LF; no lines is the empty text.
+const textOf = lines => (lines.length === 0 ? '' : join(lines, false));
+// createdTables are the table names that the CREATE TABLE statements create, in statement order.
+const createdTables = statements => statements
+  .filter(s => s.startsWith('CREATE TABLE '))
+  .map(s => s.slice('CREATE TABLE '.length).split(' ')[0].replace(/^[`"]|[`"]$/g, ''));
 for (const c of cases.sets) {
   vector(`sets ${c.id}`, () => {
-    // 각 문서는 나머지 나열된 문서(header 이름으로)와 parsing 문서를 집합으로 파싱한다.
-    const documents = c.documents.map((lines, i) => {
+    // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 파싱한다. 외부 문서는 external로 표시한다.
+    const owned = c.documents.length;
+    const all = [...c.documents, ...(c.external ?? [])];
+    const documents = all.map((lines, i) => {
       const set = {};
       for (const [name, other] of Object.entries(c.parsing)) set[name] = join(other, false);
-      c.documents.forEach((other, j) => {
+      all.forEach((other, j) => {
         if (j !== i) set[headerName(other)] = join(other, false);
       });
-      return parsed(join(lines, false), set);
+      const parsed = parseDbspec(join(lines, false), set);
+      const result = parsed.document !== null && i >= owned ? { ...parsed, document: Object.freeze({ ...parsed.document, external: true }) } : parsed;
+      assert.deepEqual(result.diagnostics, [], 'diagnostics of a valid document');
+      return result.document;
     });
     const manifest = dbspecManifest(documents);
     expectErrors(manifest.diagnostics, c.errors);
     assert.equal(manifest.manifest === null, c.errors.length > 0);
+    if (c.manifest !== undefined) {
+      for (const [field, want] of [
+        ['manifestText', textOf(c.manifest.manifestText)],
+        ['externalText', textOf(c.manifest.externalText)],
+        ['schemaText', textOf(c.manifest.schemaText)],
+        ['manifestHash', c.manifest.manifestHash],
+        ['schemaHash', c.manifest.schemaHash],
+      ]) assert.equal(manifest.manifest[field], want, field);
+    }
     for (const dialect of ['mysql', 'postgres', 'sqlite']) {
       const rendered = renderDbspec(documents, dialect);
       assert(Object.isFrozen(rendered) && Object.isFrozen(rendered.diagnostics));
       expectErrors(rendered.diagnostics, c.errors);
       assert.equal(rendered.statements === null, c.errors.length > 0, `statements of ${dialect}`);
+      if (c.manifest !== undefined) assert.deepEqual(createdTables(rendered.statements), c.manifest.created, `tables that ${dialect} creates`);
     }
   });
 }

@@ -2,8 +2,9 @@
 //! "Chain"): [`parse_plan`] reads a plan, [`emit_plan`] writes its canonical
 //! text and [`chain`] orders plans from the empty database.
 
+use super::compare::is_schema_text;
 use super::parser::reserved;
-use super::{manifest, parse, Diagnostic, Document};
+use super::{emit, parse, text_hash, Diagnostic, Document};
 use regex::Regex;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::LazyLock;
@@ -185,6 +186,19 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
         return Err(plan_failure(i + 1, "a blank line and the target schema text follow the header".to_owned()));
     }
     let offset = i + 1;
+    // plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은 install과
+    // addTablesAndColumns가 만든다.
+    for (k, line) in lines.iter().enumerate().skip(offset) {
+        if let Some(rest) = line.strip_prefix("use ") {
+            let document = rest.split_whitespace().next().unwrap_or("");
+            return Err(plan_failure(
+                k + 1,
+                format!(
+                    "a plan targets a whole database, and its target uses the external document {document}: install a set that uses external documents with install or addTablesAndColumns"
+                ),
+            ));
+        }
+    }
     let schema_text = format!("{}\n", lines[offset..].join("\n"));
     let schema = parse(&schema_text, &BTreeMap::new()).map_err(|mut diagnostics| {
         for d in &mut diagnostics {
@@ -192,18 +206,23 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
         }
         diagnostics
     })?;
-    let target = manifest(&[&schema])?;
-    if target.schema_text != schema_text {
+    if !is_schema_text(&schema) || emit(&schema) != schema_text {
         return Err(plan_failure(
             offset + 1,
             "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings"
                 .to_owned(),
         ));
     }
-    if from.as_deref() == Some(target.schema_hash.as_str()) {
+    plan_to(Plan { name, from, rename_tables, rename_columns, drop_tables, drop_columns, schema, schema_text, to: String::new() })
+}
+
+/// plan의 target을 그 schema text 문서로 정한다. target이 from과 같으면 diagnostic이다.
+pub(crate) fn plan_to(mut plan: Plan) -> Result<Plan, Vec<Diagnostic>> {
+    plan.to = text_hash(&plan.schema_text);
+    if plan.from.as_deref() == Some(plan.to.as_str()) {
         return Err(plan_failure(2, "the plan starts from its own target schema".to_owned()));
     }
-    Ok(Plan { name, from, rename_tables, rename_columns, drop_tables, drop_columns, schema, schema_text: target.schema_text, to: target.schema_hash })
+    Ok(plan)
 }
 
 /// `key` 순으로 정렬한 참조. 같은 key는 원래 순서를 지킨다.

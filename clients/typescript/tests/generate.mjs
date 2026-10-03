@@ -93,6 +93,19 @@ await suite.run('generate', PROCESS, async () => {
     await rm(join(out, 'models.ts'));
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
+    // 외부 문서(--use)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는다.
+    const external = join(root, 'contracts/fixtures/external');
+    const memberOut = join(work, 'member');
+    const member = run('gen', '--schema', join(external, 'member.dbs'), '--use', join(external, 'core.dbs'), '--out', memberOut);
+    check(member.status === 0, `orm-gen of a set with an external document: ${member.status} ${member.stderr}`);
+    if (member.status === 0) {
+      const generated = await readFile(join(memberOut, 'models.ts'), 'utf8');
+      const classes = [...generated.matchAll(/^export class (\w+) extends Model/gm)].map(m => m[1]);
+      check(JSON.stringify(classes) === JSON.stringify(['ExtPost', 'ExtPostHistory']), `classes of the member set ${JSON.stringify(classes)}, want the owned tables`);
+      check(generated.includes('export const EXTERNAL_TEXT = `dbspec 1 ext_core\n'), 'the generated models carry the external text');
+      check(generated.includes('externalText: EXTERNAL_TEXT') && generated.includes('registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT)'), 'the schema value and the registered model carry the external text');
+      check(!generated.includes('ext_session'), 'the generated models carry ext_session, which the set does not use');
+    }
     // 모델 method 이름은 column 이름이 될 수 없다: restore() 가 있으므로 restore column 도 거부한다.
     const reservedSchema = join(work, 'reserved.dbs');
     await writeFile(reservedSchema, 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n');

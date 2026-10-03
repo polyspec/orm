@@ -18,11 +18,13 @@ type Model struct {
 	// ManifestHash를 싣는다.
 	ManifestText string
 	ManifestHash string
+	// ExternalText는 외부 문서에서 소유한 문서가 쓰는 table의 text다(dbspec.Manifest).
+	ExternalText string
 	// Documents는 document name 순서의 parse된 document이며 schema 설치가
 	// 이를 render한다.
 	Documents []*dbspec.Document
-	// Order는 entity 이름 목록이다. document는 이름 순서, table은 document
-	// 순서다.
+	// Order는 소유한 문서의 entity 이름 목록이다. document는 이름 순서, table은
+	// document 순서다. 외부 문서의 table은 entity가 아니다.
 	Order    []string
 	Entities map[string]*Entity
 }
@@ -60,7 +62,8 @@ type Key struct {
 
 // Audit은 audit setting 중 executor가 쓰는 부분이다. table의 모든 insert와
 // update가 transaction의 audit 기록 key를 Column에 쓴다. Record는 audit 기록
-// table의 이름이다.
+// table의 이름이다. 그 table은 외부 문서의 table일 수 있으므로 entity가 아니라
+// table로 정한다.
 type Audit struct {
 	History string
 	Column  string
@@ -121,8 +124,11 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 	}
 	ordered := slices.Clone(documents)
 	slices.SortStableFunc(ordered, func(a, b *dbspec.Document) int { return strings.Compare(a.Name, b.Name) })
-	m := &Model{ManifestText: manifest.ManifestText, ManifestHash: manifest.ManifestHash, Documents: ordered, Entities: map[string]*Entity{}}
+	m := &Model{ManifestText: manifest.ManifestText, ManifestHash: manifest.ManifestHash, ExternalText: manifest.ExternalText, Documents: ordered, Entities: map[string]*Entity{}}
 	for _, document := range ordered {
+		if document.External {
+			continue
+		}
 		for i := range document.Tables {
 			e := entityOf(&document.Tables[i])
 			if _, duplicate := m.Entities[e.Name]; duplicate {
@@ -135,53 +141,113 @@ func Build(documents []*dbspec.Document) (*Model, []dbspec.Diagnostic) {
 	return m, nil
 }
 
-// Load는 manifest text(set의 canonical document를 document name 순서로
-// 이어 붙인 text)를 parse해 runtime model을 반환한다. "dbspec "으로
+// Load는 manifest text(set이 소유한 canonical document를 document name
+// 순서로 이어 붙인 text)를 parse해 runtime model을 반환한다. "dbspec "으로
 // 시작하는 줄마다 document가 시작한다.
 func Load(text string) (*Model, []dbspec.Diagnostic) {
+	return LoadSet(text, "")
+}
+
+// LoadSet은 manifest text와 external text(외부 문서에서 쓰는 table)를 parse해
+// runtime model을 반환한다. 외부 문서는 자기들끼리, 소유한 문서는 모든 문서를
+// set으로 삼아 parse한다.
+func LoadSet(text, external string) (*Model, []dbspec.Diagnostic) {
 	texts, names, diagnostics := splitDocuments(text)
 	if len(diagnostics) > 0 {
 		return nil, diagnostics
 	}
-	return parseSet(texts, names)
+	externalTexts, externalNames := map[string]string{}, []string(nil)
+	if external != "" {
+		if externalTexts, externalNames, diagnostics = splitDocuments(external); len(diagnostics) > 0 {
+			return nil, diagnostics
+		}
+	}
+	return parseSet(texts, names, externalTexts, externalNames)
 }
 
 // LoadDocuments는 document text 목록을 하나의 document set으로 parse해
 // runtime model을 반환한다. document 이름은 각 text의 header 이름이다.
 func LoadDocuments(documents []string) (*Model, []dbspec.Diagnostic) {
-	texts := map[string]string{}
-	names := make([]string, 0, len(documents))
-	for _, text := range documents {
-		header, _, _ := strings.Cut(text, "\n")
-		name := header[strings.LastIndexByte(header, ' ')+1:]
-		if _, duplicate := texts[name]; duplicate {
-			return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleNameDuplicate, Line: 1, Column: 10, Message: "document " + name + " appears twice in the document set"}}
-		}
-		texts[name] = text
-		names = append(names, name)
-	}
-	return parseSet(texts, names)
+	return LoadDocumentSet(documents, nil)
 }
 
-// parseSet은 각 document를 나머지 document를 set으로 삼아 parse한다.
-// diagnostic message는 document 이름으로 시작한다.
-func parseSet(texts map[string]string, names []string) (*Model, []dbspec.Diagnostic) {
-	documents := make([]*dbspec.Document, 0, len(names))
+// LoadDocumentSet은 소유한 document text와 외부 document text로 document
+// set의 runtime model을 반환한다.
+func LoadDocumentSet(owned, external []string) (*Model, []dbspec.Diagnostic) {
+	collect := func(documents []string, texts map[string]string, names []string) ([]string, []dbspec.Diagnostic) {
+		for _, text := range documents {
+			header, _, _ := strings.Cut(text, "\n")
+			name := header[strings.LastIndexByte(header, ' ')+1:]
+			if _, duplicate := texts[name]; duplicate {
+				return nil, []dbspec.Diagnostic{{Rule: dbspec.RuleNameDuplicate, Line: 1, Column: 10, Message: "document " + name + " appears twice in the document set"}}
+			}
+			texts[name] = text
+			names = append(names, name)
+		}
+		return names, nil
+	}
+	all := map[string]string{}
+	names, diagnostics := collect(owned, all, nil)
+	if len(diagnostics) > 0 {
+		return nil, diagnostics
+	}
+	externalNames, diagnostics := collect(external, all, nil)
+	if len(diagnostics) > 0 {
+		return nil, diagnostics
+	}
+	texts, externalTexts := map[string]string{}, map[string]string{}
 	for _, name := range names {
+		texts[name] = all[name]
+	}
+	for _, name := range externalNames {
+		externalTexts[name] = all[name]
+	}
+	return parseSet(texts, names, externalTexts, externalNames)
+}
+
+// parseSet은 각 document를 나머지 document를 set으로 삼아 parse한다. 외부
+// document는 External로 표시한다. diagnostic message는 document 이름으로
+// 시작한다.
+func parseSet(texts map[string]string, names []string, externalTexts map[string]string, externalNames []string) (*Model, []dbspec.Diagnostic) {
+	all := map[string]string{}
+	for name, text := range externalTexts {
+		all[name] = text
+	}
+	for name, text := range texts {
+		all[name] = text
+	}
+	documents := make([]*dbspec.Document, 0, len(names)+len(externalNames))
+	parse := func(name string, external bool) []dbspec.Diagnostic {
 		others := map[string]string{}
-		for other, otherText := range texts {
+		for other, otherText := range all {
 			if other != name {
 				others[other] = otherText
 			}
 		}
-		document, diagnostics := dbspec.Parse(texts[name], others)
+		text := texts[name]
+		if external {
+			text = externalTexts[name]
+		}
+		document, diagnostics := dbspec.Parse(text, others)
 		if len(diagnostics) > 0 {
 			for i := range diagnostics {
 				diagnostics[i].Message = "document " + name + ": " + diagnostics[i].Message
 			}
+			return diagnostics
+		}
+		document.External = external
+		documents = append(documents, document)
+		return nil
+	}
+	for _, name := range externalNames {
+		if diagnostics := parse(name, true); len(diagnostics) > 0 {
 			return nil, diagnostics
 		}
-		documents = append(documents, document)
+	}
+	for _, name := range names {
+		if diagnostics := parse(name, false); len(diagnostics) > 0 {
+			return nil, diagnostics
+		}
 	}
 	return Build(documents)
 }
@@ -298,18 +364,35 @@ func DiagnosticsError(diagnostics []dbspec.Diagnostic) string {
 // runtime model을 반환한다. signature가 없는 파일과 잘못된 set은 SCHEMA_INVALID와
 // 각 diagnostic을 담은 error다.
 func LoadFiles(paths ...string) (*Model, error) {
-	texts := make([]string, len(paths))
-	for i, path := range paths {
-		text, diagnostics, err := dbspec.ReadFile(path)
-		if err != nil {
-			return nil, err
+	return LoadFileSet(paths, nil)
+}
+
+// LoadFileSet은 소유한 문서 파일과 외부 문서 파일(use로 쓰는 다른 set의 문서)을
+// 읽어 document set의 runtime model을 반환한다.
+func LoadFileSet(owned, external []string) (*Model, error) {
+	read := func(paths []string) ([]string, error) {
+		texts := make([]string, len(paths))
+		for i, path := range paths {
+			text, diagnostics, err := dbspec.ReadFile(path)
+			if err != nil {
+				return nil, err
+			}
+			if len(diagnostics) > 0 {
+				return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+			}
+			texts[i] = text
 		}
-		if len(diagnostics) > 0 {
-			return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
-		}
-		texts[i] = text
+		return texts, nil
 	}
-	m, diagnostics := LoadDocuments(texts)
+	texts, err := read(owned)
+	if err != nil {
+		return nil, err
+	}
+	externalTexts, err := read(external)
+	if err != nil {
+		return nil, err
+	}
+	m, diagnostics := LoadDocumentSet(texts, externalTexts)
 	if len(diagnostics) > 0 {
 		return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
 	}

@@ -9,6 +9,8 @@ use orm_schema::dbspec::{self, Document, Field, RuntimeModel};
 /// 한 document set의 manifest와 runtime model.
 pub struct DocumentSet {
     pub manifest_text: String,
+    /// 외부 문서에서 set이 쓰는 table의 text. 외부 문서가 없으면 비어 있다.
+    pub external_text: String,
     pub manifest_hash: String,
     pub model: RuntimeModel,
 }
@@ -17,14 +19,15 @@ fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
     errors.iter().map(|e| format!("{path}: {e}")).collect::<Vec<_>>().join("\n")
 }
 
-/// `paths`의 dbspec document를 `dbspec::read_file`로 읽는다. 각 document는 나머지 document를 declared
-/// document set으로 삼아 parse한다.
-pub fn load(paths: &[&Path]) -> Result<DocumentSet, String> {
+/// `dbspec::read_file`로 소유한 document `paths`와 외부 document `uses`(set이 use로 쓰지만 소유하지 않는 다른 set의 문서)를 읽는다.
+/// 각 document는 나머지 모든 document를 declared document set으로 삼아 parse하고, 외부 document는 `external`로
+/// 표시한다. 외부 document의 table은 model이 되지 않는다.
+pub fn load_set(paths: &[&Path], uses: &[&Path]) -> Result<DocumentSet, String> {
     if paths.is_empty() {
         return Err("the document set has no dbspec document".into());
     }
-    let mut texts = Vec::with_capacity(paths.len());
-    for path in paths {
+    let mut texts = Vec::with_capacity(paths.len() + uses.len());
+    for path in paths.iter().chain(uses) {
         // signature가 없는 파일은 parse 전에 dbspec::read_file의 diagnostic으로 실패한다.
         let text = dbspec::read_file(path).map_err(|e| match e {
             dbspec::ReadError::Io(error) => format!("{}: {error}", path.display()),
@@ -35,13 +38,16 @@ pub fn load(paths: &[&Path]) -> Result<DocumentSet, String> {
     }
     let set: BTreeMap<String, String> = texts.iter().map(|(_, name, text)| (name.clone(), text.clone())).collect();
     let mut documents: Vec<Document> = Vec::with_capacity(texts.len());
-    for (path, _, text) in &texts {
-        documents.push(dbspec::parse(text, &set).map_err(|errors| diagnostics(path, errors))?);
+    for (i, (path, name, text)) in texts.iter().enumerate() {
+        let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
+        let mut document = dbspec::parse(text, &others).map_err(|errors| diagnostics(path, errors))?;
+        document.external = i >= paths.len();
+        documents.push(document);
     }
     let refs: Vec<&Document> = documents.iter().collect();
     let manifest = dbspec::manifest(&refs).map_err(|errors| diagnostics("document set", errors))?;
     let model = dbspec::runtime_model(&refs).map_err(|errors| diagnostics("document set", errors))?;
-    Ok(DocumentSet { manifest_text: manifest.manifest_text, manifest_hash: manifest.manifest_hash, model })
+    Ok(DocumentSet { manifest_text: manifest.manifest_text, external_text: manifest.external_text, manifest_hash: manifest.manifest_hash, model })
 }
 
 /// executor codec이 적용하는 stage (`aes`, `hex`, `ip`는 빠진다).

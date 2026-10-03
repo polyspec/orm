@@ -23,13 +23,17 @@ fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
     invalid(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
 }
 
-/// manifest text의 document. 그 document의 manifest가 text 자신이고 hash가 `hash`여야 한다.
-fn documents(text: &str, hash: &str) -> Result<Vec<Document>> {
-    let documents = dbspec::parse_manifest(text).map_err(diagnostics)?;
+/// manifest text와 external text의 document. 외부 문서는 `external`이다. 그 document의 manifest text와 external
+/// text가 두 text 자신이고 hash가 `hash`여야 한다.
+fn documents(text: &str, external: &str, hash: &str) -> Result<Vec<Document>> {
+    let documents = dbspec::parse_manifest_set(text, external).map_err(diagnostics)?;
     let refs: Vec<&Document> = documents.iter().collect();
     let manifest = dbspec::manifest(&refs).map_err(diagnostics)?;
     if manifest.manifest_text != text {
         return Err(invalid("the embedded text is not the manifest text of its documents".into()));
+    }
+    if manifest.external_text != external {
+        return Err(invalid("the embedded external text is not the text of the tables that the set uses from external documents".into()));
     }
     if manifest.manifest_hash != hash {
         // text는 manifest지만 선언한 hash로 hash되지 않는다 (docs/dbspec.md, "Manifest and hashes").
@@ -44,7 +48,13 @@ fn documents(text: &str, hash: &str) -> Result<Vec<Document>> {
 impl Manifest {
     /// manifest text의 runtime model을 만들고 text의 hash가 `manifest_hash`인지 확인한다.
     pub fn load(manifest_text: &str, manifest_hash: &str) -> Result<Manifest> {
-        let documents = documents(manifest_text, manifest_hash)?;
+        Manifest::load_set(manifest_text, "", manifest_hash)
+    }
+
+    /// manifest text와 external text(외부 문서에서 set이 쓰는 table)의 runtime model을 만들고 두 text의 hash가
+    /// `manifest_hash`인지 확인한다. 외부 문서의 table은 entity가 아니다.
+    pub fn load_set(manifest_text: &str, external_text: &str, manifest_hash: &str) -> Result<Manifest> {
+        let documents = documents(manifest_text, external_text, manifest_hash)?;
         let refs: Vec<&Document> = documents.iter().collect();
         let model = dbspec::runtime_model(&refs).map_err(diagnostics)?;
         Ok(Manifest { manifest_hash: manifest_hash.to_owned(), model })
@@ -59,6 +69,9 @@ impl Manifest {
 /// runtime model은 처음 쓸 때 한 번 만든다.
 pub struct Schema {
     text: &'static str,
+    /// 외부 문서에서 set이 쓰는 table의 text(`dbspec::Manifest::external_text`). 외부 문서를 쓰지 않는 set은
+    /// 비어 있다.
+    external: &'static str,
     hash: &'static str,
     /// 처음 만든 runtime model, 또는 그때 난 오류의 code와 message.
     manifest: OnceLock<std::result::Result<Arc<Manifest>, (String, String)>>,
@@ -66,7 +79,17 @@ pub struct Schema {
 
 impl Schema {
     pub const fn new(manifest_text: &'static str, manifest_hash: &'static str) -> Schema {
-        Schema { text: manifest_text, hash: manifest_hash, manifest: OnceLock::new() }
+        Schema::with_external(manifest_text, "", manifest_hash)
+    }
+
+    /// 외부 문서를 쓰는 set의 schema: manifest text, 외부 문서에서 쓰는 table의 text, 두 text의 hash.
+    pub const fn with_external(manifest_text: &'static str, external_text: &'static str, manifest_hash: &'static str) -> Schema {
+        Schema { text: manifest_text, external: external_text, hash: manifest_hash, manifest: OnceLock::new() }
+    }
+
+    /// 외부 문서에서 set이 쓰는 table의 text. 외부 문서를 쓰지 않으면 비어 있다.
+    pub fn external(&self) -> &'static str {
+        self.external
     }
 
     /// model을 생성한 `manifestHash`.
@@ -81,7 +104,7 @@ impl Schema {
 
     /// statement를 render할 manifest text의 document.
     pub fn documents(&self) -> Result<Vec<Document>> {
-        documents(self.text, self.hash)
+        documents(self.text, self.external, self.hash)
     }
 
     /// 등록할 schema의 runtime model. text가 선언한 hash로 hash되지 않으면 어떤
@@ -98,10 +121,10 @@ impl Schema {
     pub(crate) fn interned(&self) -> &'static Schema {
         static INTERNED: std::sync::Mutex<Vec<&'static Schema>> = std::sync::Mutex::new(Vec::new());
         let mut interned = INTERNED.lock().unwrap();
-        if let Some(found) = interned.iter().find(|s| s.hash == self.hash && s.text == self.text) {
+        if let Some(found) = interned.iter().find(|s| s.hash == self.hash && s.text == self.text && s.external == self.external) {
             return found;
         }
-        let schema: &'static Schema = Box::leak(Box::new(Schema::new(self.text, self.hash)));
+        let schema: &'static Schema = Box::leak(Box::new(Schema::with_external(self.text, self.external, self.hash)));
         interned.push(schema);
         schema
     }
@@ -110,7 +133,7 @@ impl Schema {
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest
             .get_or_init(|| {
-                Manifest::load(self.text, self.hash).map(Arc::new).map_err(|e| match e {
+                Manifest::load_set(self.text, self.external, self.hash).map(Arc::new).map_err(|e| match e {
                     Error::Engine { code, msg } => (code, msg),
                     other => (codes::SCHEMA_INVALID.to_owned(), other.to_string()),
                 })

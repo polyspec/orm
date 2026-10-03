@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T35.1: 문서 집합은 다른 집합의 table을 소유하지 않고 쓸 수 있다. Go와 PHP `orm-gen gen --use`, TypeScript `orm-gen gen --use`, Rust `Builder::uses`로 주는 외부 문서는 집합과 함께 검사하지만 렌더링, 설치, 변경, 비교, 생성하지 않는다. `manifestHash`는 쓰는 외부 table을 포함하고, install, addTablesAndColumns, 생성한 schema 값의 연결은 그 table이 database와 다르면 `CONFIG`로 실패하며, target이 외부 문서를 쓰는 plan은 잘못이다.
+
 - T35.2: audit 값은 handle이 아니라 연결 설정의 audit source에서 온다: Go `Config.AuditSource(ctx)`, PHP `Config(auditSource:)`, TypeScript `connect({ auditSource })`, Rust `Config.audit_source`. audit 값을 가진 transaction은 이를 한 번 부르고, 호출 값이 source 값을 이기며, 기록 table은 `references`가 정하는 table이다. `audit(defaults)`와 그 handle은 제거했다.
 
 - T35: 감사 대상 작업 단위는 선언한 audit 기록 table의 row 하나로 기록한다. `audit` setting은 `audit into <history> column <col> references <table> action <col> previous <col> [exclude (...) | include (...)]`이고, 감사 대상 table은 audit column에서 기록 table의 column 하나짜리 primary key로 가는 restrict foreign key를 선언하므로 database는 어떤 기록의 key도 아닌 값을 거부한다. 이력의 `previous`는 이전 audit key를 갖는다. audit 값을 가진 transaction(Go `orm.Audit(map)`, PHP `audit:`, TypeScript `{ audit }`, 세 builder의 Rust `.audit(pairs)`)은 callback 전에 연결의 audit source(T35.2)와 그 값으로 기록 하나를 삽입하고 모든 감사 대상 insert, update, soft delete, restore에 그 key를 쓴다. operation id, 그 transaction option, `setOperation`은 제거했다.

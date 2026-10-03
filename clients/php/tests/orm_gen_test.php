@@ -78,6 +78,23 @@ $tests['gen rejects a column named after a model method'] = function () use ($wo
     }
 };
 
+$tests['gen --use generates only the owned tables of a set with external documents'] = function () use ($work): void {
+    // member.dbs는 core.dbs의 ext_account와 ext_audit을 use로 쓴다. core는 --use로 주는 외부 문서이므로
+    // model을 만들지 않고, bootstrap은 외부 문서에서 쓰는 table의 text를 담는다.
+    $root = dirname(__DIR__, 3);
+    $dir = "$work/gen-use";
+    @mkdir($dir, 0o700, true);
+    [$code, $out, $err] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', '--use', "$root/contracts/fixtures/external/core.dbs", "$root/contracts/fixtures/external/member.dbs"]);
+    check($code === 0, "gen: $code $out $err");
+    $files = array_map('basename', glob("$dir/model/*.php") ?: []);
+    sort($files);
+    check($files === ['ExtPost.php', 'ExtPostHistory.php', 'bootstrap.php'], 'generated files ' . json_encode($files));
+    $bootstrap = (string) @file_get_contents("$dir/model/bootstrap.php");
+    check(str_contains($bootstrap, 'const EXTERNAL_TEXT = ') && str_contains($bootstrap, 'table ext_account {') && !str_contains($bootstrap, 'table ext_session {'), 'bootstrap carries the used external tables');
+    [$code, $out] = tool(['gen', '--out', "$dir/model", '--namespace', 'Example\\Model', '--check', '--use', "$root/contracts/fixtures/external/core.dbs", "$root/contracts/fixtures/external/member.dbs"]);
+    check($code === 0 && $out === '', "gen --check with --use: $code $out");
+};
+
 $tests['gen is the only command'] = function (): void {
     foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
         [$code, $out, $err] = tool([$command]);

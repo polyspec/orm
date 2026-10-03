@@ -76,25 +76,54 @@ foreach ($cases['hashes'] as $case) {
     testcase_end();
 }
 
+/** 줄을 LF로 잇는다. 줄이 없으면 빈 text다. @param list<string> $lines */
+function set_text(array $lines): string
+{
+    return $lines === [] ? '' : manifest_text($lines);
+}
+
+/**
+ * statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+ *
+ * @param list<string> $statements
+ * @return list<string>
+ */
+function created_tables(array $statements): array
+{
+    $out = [];
+    foreach ($statements as $statement) {
+        if (str_starts_with($statement, 'CREATE TABLE ')) {
+            $name = explode(' ', substr($statement, strlen('CREATE TABLE ')), 2)[0];
+            $out[] = trim($name, '`"');
+        }
+    }
+    return $out;
+}
+
 foreach ($cases['sets'] as $case) {
     testcase_begin("sets/{$case['id']}", TESTCASE_COMPUTE);
-    // 각 문서는 다른 나열 문서(헤더 이름이 키)와 parsing 문서를 집합으로 파싱한다.
+    // 각 문서는 다른 소유 문서, 외부 문서(external), parsing 문서(헤더 이름이 키)를 집합으로 파싱한다.
+    // 외부 문서는 external로 표시한다.
+    $all = array_merge($case['documents'], $case['external'] ?? []);
+    $owned = count($case['documents']);
     $names = [];
-    foreach ($case['documents'] as $i => $lines) {
+    foreach ($all as $i => $lines) {
         if (preg_match('/\Adbspec 1 ([A-Za-z0-9_]+)\z/', $lines[0] ?? '', $m) !== 1) {
             throw new RuntimeException("{$case['id']}: document $i has no header name");
         }
         $names[$i] = $m[1];
     }
     $documents = [];
-    foreach ($case['documents'] as $i => $lines) {
+    foreach ($all as $i => $lines) {
         $set = array_map(manifest_text(...), $case['parsing']);
-        foreach ($case['documents'] as $j => $otherLines) {
+        foreach ($all as $j => $otherLines) {
             if ($j !== $i) {
                 $set[$names[$j]] = manifest_text($otherLines);
             }
         }
-        $documents[] = manifest_parsed("{$case['id']}/$i", $lines, $set);
+        $document = manifest_parsed("{$case['id']}/$i", $lines, $set);
+        $document->external = $i >= $owned;
+        $documents[] = $document;
     }
     $want = array_map(fn($e) => [$e['rule'], $e['line'], $e['column']], $case['errors']);
     $result = Dbspec::manifest($documents);
@@ -102,11 +131,29 @@ foreach ($cases['sets'] as $case) {
     if ($got !== $want || ($want === []) !== ($result->manifest !== null)) {
         throw new RuntimeException("{$case['id']}: manifest diagnostics " . json_encode($got) . ' want ' . json_encode($want));
     }
+    $expected = $case['manifest'] ?? null;
+    if ($expected !== null) {
+        $m = $result->manifest;
+        foreach ([
+            'manifestText' => [$m->manifestText, set_text($expected['manifestText'])],
+            'externalText' => [$m->externalText, set_text($expected['externalText'])],
+            'schemaText' => [$m->schemaText, set_text($expected['schemaText'])],
+            'manifestHash' => [$m->manifestHash, $expected['manifestHash']],
+            'schemaHash' => [$m->schemaHash, $expected['schemaHash']],
+        ] as $field => [$gotText, $wantText]) {
+            if ($gotText !== $wantText) {
+                throw new RuntimeException("{$case['id']}: $field differs\n--- want\n$wantText\n--- got\n$gotText");
+            }
+        }
+    }
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
         $rendered = Dbspec::render($documents, $dialect);
         $got = array_map(fn($d) => [$d->rule, $d->line, $d->column], $rendered->diagnostics);
         if ($got !== $want || ($want === []) !== ($rendered->statements !== null)) {
             throw new RuntimeException("{$case['id']}/$dialect: render diagnostics " . json_encode($got) . ' want ' . json_encode($want));
+        }
+        if ($expected !== null && ($created = created_tables($rendered->statements)) !== $expected['created']) {
+            throw new RuntimeException("{$case['id']}/$dialect: render creates " . json_encode($created) . ' want ' . json_encode($expected['created']));
         }
     }
     testcase_end();

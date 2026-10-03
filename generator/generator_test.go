@@ -54,3 +54,39 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 	}
 	return m
 }
+
+// TestGenerateLeavesExternalTablesOut는 외부 문서(--use)를 쓰는 set이 소유한 table의
+// model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는 것을 확인한다.
+func TestGenerateLeavesExternalTablesOut(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	fixtures := filepath.Join("..", "contracts", "fixtures", "external")
+	m, err := runtimemodel.LoadFileSet([]string{filepath.Join(fixtures, "member.dbs")}, []string{filepath.Join(fixtures, "core.dbs")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "member")
+	if err := Generate(Options{Model: m, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []string
+	for _, e := range entries {
+		files = append(files, e.Name())
+	}
+	if strings.Join(files, " ") != "ext_post.go ext_post_history.go orm.go" {
+		t.Fatalf("generated files %v, want the owned tables ext_post and ext_post_history and orm.go", files)
+	}
+	body, err := os.ReadFile(filepath.Join(out, "orm.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), "External: ExternalText}") || !strings.Contains(string(body), `const ExternalText = "dbspec 1 ext_core\n"`) {
+		t.Fatalf("orm.go does not carry the external text:\n%s", body)
+	}
+	if strings.Contains(string(body), "ext_session") {
+		t.Fatal("orm.go carries ext_session, which the set does not use")
+	}
+}

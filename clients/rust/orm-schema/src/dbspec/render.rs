@@ -18,7 +18,8 @@ pub enum Dialect {
 pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>> {
     check_set(documents)?;
     let r = Renderer { d: dialect };
-    let ordered = use_order(documents);
+    // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
+    let ordered: Vec<_> = use_order(documents).into_iter().filter(|d| !d.external).collect();
     let mut out = Vec::new();
     for document in &ordered {
         for table in &document.tables {

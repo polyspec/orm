@@ -173,9 +173,14 @@ class Generator {
     b += `import { CORE, Db, Model, registerModel, type CodecValue, type Collection, type ColumnFunction, type ConnectOptions, type EntityDef, type JsonValue, type Schema, StyledValue, type ValueFunction } from ${tsString(runtime)};\n\n`;
     b += `/** The manifest text of the dbspec document set the models were generated from. */\nexport const MANIFEST_TEXT = ${tsTemplate(m.manifestText)};\n\n`;
     b += `export const MANIFEST_HASH = ${tsString(m.manifestHash)};\n\n`;
-    b += '/** The generated schema value: install takes it to create the tables and register the set. */\nexport const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };\n\n';
+    if (m.externalText === '') {
+      b += '/** The generated schema value: install takes it to create the tables and register the set. */\nexport const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };\n\n';
+    } else {
+      b += `/** The text of the tables that the document set uses from external documents. */\nexport const EXTERNAL_TEXT = ${tsTemplate(m.externalText)};\n\n`;
+      b += '/** The generated schema value: install takes it to create the tables and register the set. */\nexport const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH, externalText: EXTERNAL_TEXT };\n\n';
+    }
     b += '/** Opens the database selected by the DSN URI and registers the set of these models on the connection. */\nexport function connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {\n  return Db.connectSchema(dsn, SCHEMA, options);\n}\n\n';
-    b += 'const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);\n';
+    b += m.externalText === '' ? 'const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH);\n' : 'const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);\n';
 
     const getters = [...this.getters.keys()].sort(byteOrder);
     for (const e of m.entities.values()) {

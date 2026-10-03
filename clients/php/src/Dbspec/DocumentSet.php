@@ -5,8 +5,9 @@ namespace Orm\Dbspec;
 
 /**
  * Checks the parsed documents of one set (docs/dbspec.md "Manifest and
- * hashes"): a repeated document name and a used document missing from the
- * set are diagnostics at the header name.
+ * hashes"): a repeated document name, a used document missing from the set
+ * and an external document that no owned document reaches through `use` are
+ * diagnostics at the header name.
  *
  * @internal
  */
@@ -37,6 +38,31 @@ final class DocumentSet
                 if (!isset($names[$name])) {
                     $diagnostics[] = new Diagnostic('use', 1, $header, "document {$document->name} uses $name, which is not in the document set");
                 }
+            }
+        }
+        // 외부 문서는 소유한 문서에서 use를 따라 닿는 문서다.
+        $byName = [];
+        foreach ($documents as $document) {
+            $byName[$document->name] ??= $document;
+        }
+        $reached = [];
+        $walk = static function (Document $d) use (&$walk, &$reached, $byName): void {
+            foreach ($d->uses as $use) {
+                $next = $byName[$use->document] ?? null;
+                if ($next !== null && !isset($reached[$next->name])) {
+                    $reached[$next->name] = true;
+                    $walk($next);
+                }
+            }
+        };
+        foreach ($documents as $document) {
+            if (!$document->external) {
+                $walk($document);
+            }
+        }
+        foreach ($documents as $document) {
+            if ($document->external && !isset($reached[$document->name])) {
+                $diagnostics[] = new Diagnostic('use', 1, $header, "external document {$document->name} is not used by a document of the set");
             }
         }
         return [$documents, $diagnostics];

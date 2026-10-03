@@ -11,8 +11,8 @@
 // (docs/plans.md). exportMermaid and importMermaid write and read
 // standard Mermaid erDiagrams (docs/mermaid.md).
 import { createHash } from 'node:crypto';
-import { emitDocument } from './emit.js';
-import type { DbspecDiagnostic, DbspecDocument } from './model.js';
+import type { DbspecColumn, DbspecDiagnostic, DbspecDocument, DbspecTable, DbspecUse } from './model.js';
+import { emitDocument, typeText } from './emit.js';
 import { parseDocument } from './parse.js';
 import { checkSet } from './set.js';
 
@@ -83,7 +83,9 @@ export function parseDbspec(text: string, documents: Readonly<Record<string, str
     set[name] = source;
   }
   const parsed = parseDocument(text, Object.freeze(set));
-  if (parsed.document !== null) return Object.freeze({ document: parsed.document, diagnostics: Object.freeze([]) as readonly [] });
+  if (parsed.document !== null) {
+    return Object.freeze({ document: parsed.document, diagnostics: Object.freeze([]) as readonly [] });
+  }
   const diagnostics = parsed.diagnostics.map(d =>
     Object.freeze({ rule: d.rule, line: d.line, column: d.column, message: d.message }),
   );
@@ -98,6 +100,11 @@ export function emitDbspec(document: DbspecDocument): string {
 /** The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes"). */
 export interface DbspecManifest {
   readonly manifestText: string;
+  /**
+   * For each external document in name order, the tables that owned documents use, with their columns,
+   * primary key and unique keys; empty without external documents.
+   */
+  readonly externalText: string;
   readonly schemaText: string;
   readonly manifestHash: string;
   readonly schemaHash: string;
@@ -116,17 +123,116 @@ function textHash(text: string): string {
 /**
  * Returns the manifest of the document set, whose documents are taken in
  * document name order, or the diagnostics of an invalid set (docs/dbspec.md,
- * "Manifest and hashes").
+ * "Manifest and hashes"). The manifest text holds the owned documents; the
+ * external text holds, for each external document, the tables that owned
+ * documents use, with their columns, primary key and unique keys; the schema
+ * text holds the owned tables and a use line for each external document they
+ * use; and manifestHash covers the manifest text followed by the external text.
  */
 export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult {
   if (!Array.isArray(documents)) throw new TypeError('dbspec documents must be an array of parsed documents');
   const { ordered, diagnostics } = checkSet(documents);
   if (diagnostics.length > 0) return Object.freeze({ manifest: null, diagnostics });
+  const used = new Map<string, string[]>();
+  for (const document of ordered) {
+    if (document.external === true) continue;
+    for (const u of document.uses) {
+      const tables = used.get(u.document) ?? [];
+      for (const table of u.tables) if (!tables.includes(table)) tables.push(table);
+      used.set(u.document, tables);
+    }
+  }
   let manifestText = '';
-  for (const document of ordered) manifestText += emitDocument(document, 'manifest');
-  // schema text는 집합의 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
-  const tables = ordered.flatMap(d => d.tables).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  const schemaText = emitDocument({ name: 'schema', uses: [], tables, diagrams: [], closingComments: [] }, 'schema');
-  const manifest = Object.freeze({ manifestText, schemaText, manifestHash: textHash(manifestText), schemaHash: textHash(schemaText) });
+  let externalText = '';
+  const uses: DbspecUse[] = [];
+  const owned: DbspecTable[] = [];
+  for (const document of ordered) {
+    if (document.external === true) {
+      const trimmed = externalDocument(document, used.get(document.name) ?? []);
+      if (trimmed !== null) {
+        externalText += emitDocument(trimmed, 'manifest');
+        uses.push({ comments: [], document: document.name, tables: [...used.get(document.name)!].sort(compareText) });
+      }
+      continue;
+    }
+    manifestText += emitDocument(document, 'manifest');
+    owned.push(...document.tables);
+  }
+  // schema text는 집합이 소유한 모든 table을 이름 순으로 담은 문서 `schema` 하나이므로 문서를 나누는 방식과 무관하다.
+  // 외부 문서에서 쓰는 table은 그 문서의 use 줄로 남는다.
+  const tables = owned.sort((a, b) => compareText(a.name, b.name));
+  const schemaText = emitDocument({ name: 'schema', uses, tables, diagrams: [], closingComments: [] }, 'schema');
+  const manifest = Object.freeze({
+    manifestText, externalText, schemaText, manifestHash: textHash(manifestText + externalText), schemaHash: textHash(schemaText),
+  });
   return Object.freeze({ manifest, diagnostics: Object.freeze([]) as readonly [] });
+}
+
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * 외부 문서에서 tables의 column, primary key, unique key만 문서 순서로 담은 문서다. 그 table이 없으면 null이다. foreign
+ * key, index, check, setting은 외부 문서가 소유하므로 담지 않는다.
+ */
+function externalDocument(document: DbspecDocument, tables: readonly string[]): DbspecDocument | null {
+  const kept: DbspecTable[] = document.tables.filter(t => tables.includes(t.name)).map(t => ({
+    comments: [], name: t.name, columns: t.columns, primaryKey: { comments: [], columns: t.primaryKey.columns }, uniques: t.uniques,
+    indexes: [], foreignKeys: [], checks: [], settings: null, closingComments: [],
+  }));
+  if (kept.length === 0) return null;
+  return { name: document.name, uses: [], tables: kept, diagrams: [], closingComments: [] };
+}
+
+/**
+ * Checks the tables that a document set uses from external documents against the database (docs/dbspec.md
+ * "External documents"). `live` is the introspected database. For every used table, in table name order, it
+ * returns the differences: a missing table; per column of the external document in column order a missing
+ * column, another type or another nullability; another primary key; and a unique key whose columns no live
+ * unique key has. Extra live columns are not differences. A set without external documents has none.
+ */
+export function externalDifferences(live: DbspecDocument, documents: readonly DbspecDocument[]): string[] {
+  const externals = new Map(documents.filter(d => d.external === true).map(d => [d.name, d]));
+  const tables: DbspecTable[] = [];
+  const seen = new Set<string>();
+  for (const document of documents) {
+    if (document.external === true) continue;
+    for (const u of document.uses) {
+      const external = externals.get(u.document);
+      if (external === undefined) continue;
+      for (const name of u.tables) {
+        const table = external.tables.find(t => t.name === name);
+        if (table !== undefined && !seen.has(name)) {
+          seen.add(name);
+          tables.push(table);
+        }
+      }
+    }
+  }
+  tables.sort((a, b) => compareText(a.name, b.name));
+  const liveTables = new Map(live.tables.map(t => [t.name, t]));
+  const nullText = (nullable: boolean): string => (nullable ? 'null' : 'not null');
+  const same = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((c, i) => c === b[i]);
+  const out: string[] = [];
+  for (const want of tables) {
+    const got = liveTables.get(want.name);
+    if (got === undefined) {
+      out.push(`table ${want.name} does not exist`);
+      continue;
+    }
+    for (const c of want.columns) {
+      const g: DbspecColumn | undefined = got.columns.find(x => x.name === c.name);
+      if (g === undefined) out.push(`column ${want.name}.${c.name} does not exist`);
+      else if (typeText(g.type) !== typeText(c.type)) out.push(`column ${want.name}.${c.name} is ${typeText(g.type)}, not ${typeText(c.type)}`);
+      else if (g.nullable !== c.nullable) out.push(`column ${want.name}.${c.name} is ${nullText(g.nullable)}, not ${nullText(c.nullable)}`);
+    }
+    if (!same(got.primaryKey.columns, want.primaryKey.columns)) {
+      out.push(`table ${want.name} has the primary key (${got.primaryKey.columns.join(', ')}), not (${want.primaryKey.columns.join(', ')})`);
+    }
+    for (const u of want.uniques) {
+      if (!got.uniques.some(g => same(g.columns, u.columns))) out.push(`table ${want.name} has no unique key (${u.columns.join(', ')})`);
+    }
+  }
+  return out;
 }

@@ -122,6 +122,13 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 		return fail(i+1, "a blank line and the target schema text follow the header")
 	}
 	offset := i + 1
+	// plan은 database 전체를 하나의 schema로 옮긴다. 외부 문서를 쓰는 set의 table은
+	// install과 addTablesAndColumns가 만든다.
+	for k := offset; k < len(lines); k++ {
+		if strings.HasPrefix(lines[k], "use ") {
+			return fail(k+1, "a plan targets a whole database, and its target uses the external document %s: install a set that uses external documents with install or addTablesAndColumns", strings.Fields(lines[k])[1])
+		}
+	}
 	schemaText := strings.Join(lines[offset:], "\n") + "\n"
 	document, diagnostics := Parse(schemaText, nil)
 	if len(diagnostics) > 0 {
@@ -130,17 +137,20 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 		}
 		return nil, diagnostics
 	}
-	manifest, diagnostics := ManifestOf([]*Document{document})
-	if len(diagnostics) > 0 {
-		return nil, diagnostics
-	}
-	if manifest.SchemaText != schemaText {
+	if !isSchemaText(document) || Emit(document) != schemaText {
 		return fail(offset+1, "the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings")
 	}
-	if manifest.SchemaHash == p.From {
-		return fail(2, "the plan starts from its own target schema")
+	return planTo(p, document, schemaText)
+}
+
+// planTo는 plan의 target을 schema text 문서로 정한다. target이 from과 같으면
+// diagnostic이다.
+func planTo(p *Plan, document *Document, schemaText string) (*Plan, []Diagnostic) {
+	to := textHash(schemaText)
+	if to == p.From {
+		return nil, []Diagnostic{{Rule: RulePlan, Line: 2, Column: 1, Message: "the plan starts from its own target schema"}}
 	}
-	p.Schema, p.To, p.schemaText = document, manifest.SchemaHash, schemaText
+	p.Schema, p.To, p.schemaText = document, to, schemaText
 	return p, nil
 }
 

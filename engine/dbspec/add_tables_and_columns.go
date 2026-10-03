@@ -69,15 +69,17 @@ func AddTablesAndColumnsSteps(live *Document, unsupported []Unsupported, target 
 	// 더하는 table과 column은 plan 하나로 쓴다. plan은 database에 있는 set의 table에서
 	// 시작하므로(하나도 없으면 빈 database) step은 docs/plans.md의 순서와 rollback을 그대로
 	// 갖는다.
-	from, start := "empty", (*Document)(nil)
+	from, start := "", (*Document)(nil)
 	if len(source.Tables) > 0 {
 		manifest, manifestDiagnostics := ManifestOf([]*Document{source})
 		diagnostics = manifestDiagnostics
 		from, start = manifest.SchemaHash, source
 	}
 	if len(diagnostics) == 0 {
+		// target은 외부 문서를 쓰는 set의 schema text일 수 있으므로 plan 문서를 parse하지
+		// 않고 target으로 plan을 만든다.
 		var plan *Plan
-		plan, diagnostics = ParsePlan("dbplan 1 add_tables_and_columns\nfrom " + from + "\n\n" + Emit(target))
+		plan, diagnostics = planTo(&Plan{Name: "add_tables_and_columns", From: from}, target, Emit(target))
 		if len(diagnostics) == 0 {
 			steps, diagnostics = PlanSteps(start, plan, dialect)
 		}

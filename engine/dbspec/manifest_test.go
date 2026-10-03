@@ -112,8 +112,38 @@ func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 type setCase struct {
 	ID        string
 	Documents [][]string
-	Parsing   map[string][]string
-	Errors    []vectorError
+	// External은 set이 소유하지 않고 use로 쓰는 외부 문서다.
+	External [][]string
+	Parsing  map[string][]string
+	Errors   []vectorError
+	Manifest *setManifest
+}
+
+// setManifest는 유효한 set의 manifest와 render가 만드는 table이다. 빈 text는 빈 배열이다.
+type setManifest struct {
+	ManifestText, ExternalText, SchemaText []string
+	ManifestHash, SchemaHash               string
+	Created                                []string
+}
+
+// textOf는 줄을 LF로 잇는다. 줄이 없으면 빈 text다.
+func textOf(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	return joinLines(lines, false)
+}
+
+// createdTables는 statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+func createdTables(statements []string) []string {
+	var out []string
+	for _, s := range statements {
+		if rest, ok := strings.CutPrefix(s, "CREATE TABLE "); ok {
+			name, _, _ := strings.Cut(rest, " ")
+			out = append(out, strings.Trim(name, "`\""))
+		}
+	}
+	return out
 }
 
 func expectSetErrors(want []vectorError, got []Diagnostic) error {
@@ -137,13 +167,15 @@ func TestDocumentSets(t *testing.T) {
 	for _, c := range vectors.Sets {
 		t.Run(c.ID, func(t *testing.T) {
 			runTimed(t, "sets/"+c.ID, 5*time.Second, func() error {
+				// 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
+				all := append(slices.Clone(c.Documents), c.External...)
 				var documents []*Document
-				for i, lines := range c.Documents {
+				for i, lines := range all {
 					set := map[string]string{}
 					for name, other := range c.Parsing {
 						set[name] = joinLines(other, false)
 					}
-					for j, other := range c.Documents {
+					for j, other := range all {
 						if j != i {
 							name := strings.TrimPrefix(other[0], "dbspec 1 ")
 							set[name] = joinLines(other, false)
@@ -153,6 +185,7 @@ func TestDocumentSets(t *testing.T) {
 					if err := expectDocument(document, diagnostics); err != nil {
 						return fmt.Errorf("document %d: %w", i+1, err)
 					}
+					document.External = i >= len(c.Documents)
 					documents = append(documents, document)
 				}
 				manifest, diagnostics := ManifestOf(documents)
@@ -162,6 +195,19 @@ func TestDocumentSets(t *testing.T) {
 				if (manifest == nil) != (len(c.Errors) > 0) {
 					return fmt.Errorf("manifest present: %v with %d errors", manifest != nil, len(c.Errors))
 				}
+				if want := c.Manifest; want != nil {
+					for _, field := range []struct{ name, got, want string }{
+						{"manifestText", manifest.ManifestText, textOf(want.ManifestText)},
+						{"externalText", manifest.ExternalText, textOf(want.ExternalText)},
+						{"schemaText", manifest.SchemaText, textOf(want.SchemaText)},
+						{"manifestHash", manifest.ManifestHash, want.ManifestHash},
+						{"schemaHash", manifest.SchemaHash, want.SchemaHash},
+					} {
+						if field.got != field.want {
+							return fmt.Errorf("%s:\n%s\nwant\n%s", field.name, field.got, field.want)
+						}
+					}
+				}
 				for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
 					statements, diagnostics := Render(documents, dialect)
 					if err := expectSetErrors(c.Errors, diagnostics); err != nil {
@@ -169,6 +215,11 @@ func TestDocumentSets(t *testing.T) {
 					}
 					if (len(statements) == 0) != (len(c.Errors) > 0) {
 						return fmt.Errorf("render %s: %d statements with %d errors", dialect, len(statements), len(c.Errors))
+					}
+					if c.Manifest != nil {
+						if got := createdTables(statements); !slices.Equal(got, c.Manifest.Created) {
+							return fmt.Errorf("render %s creates %v, want %v", dialect, got, c.Manifest.Created)
+						}
 					}
 				}
 				return nil

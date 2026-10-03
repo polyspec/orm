@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:a61ea50060b1821eb9002adfa319ba0dc940992a96d31d0243409f8b8d779d6e",
-    "php": "sha256:64e992f2286243e7864d6bedf674cf46f3aefe52aa8bdd58d71873ee20031aec",
-    "rust": "sha256:842bd6480521b432eb8d44e96f2173c32fc4358f1ff4925c49ff774bd311de85",
-    "typescript": "sha256:8f6defa3da18a1bfa7bef5eff4f012134c5205b7e45922fee9fab85e10c0c863"
+    "go": "sha256:664004b1de2cfdbb145297c8cf853b139890fc8ce156a85e3d0830995f1b3374",
+    "php": "sha256:778684b37488b05456b2059d11a6bf6a16271e62da11c429f183e30b2bb27add",
+    "rust": "sha256:285bce767a69b5505e1282a11b67649093efcbb66152f17acdbf4eb40396855a",
+    "typescript": "sha256:cd8c6a1df436e85b3c42f2e0c987b66040959d3fc5c78787b58cfcacee933832"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -2405,6 +2405,7 @@
           "symbol": "engine/dbspec/dbspec.go::Manifest",
           "fields": [
             "ManifestText",
+            "ExternalText",
             "SchemaText",
             "ManifestHash",
             "SchemaHash"
@@ -2416,13 +2417,15 @@
             "manifestText",
             "schemaText",
             "manifestHash",
-            "schemaHash"
+            "schemaHash",
+            "externalText"
           ]
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::Manifest",
           "fields": [
             "manifest_text",
+            "external_text",
             "schema_text",
             "manifest_hash",
             "schema_hash"
@@ -2432,6 +2435,7 @@
           "symbol": "clients/typescript/src/dbspec/index.ts::DbspecManifest",
           "fields": [
             "manifestText",
+            "externalText",
             "schemaText",
             "manifestHash",
             "schemaHash"

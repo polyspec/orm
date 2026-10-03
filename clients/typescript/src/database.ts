@@ -3,7 +3,7 @@ import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
-import { Utils } from './utils.js';
+import { Utils, checkExternal } from './utils.js';
 import { wallMicros } from './clock.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
@@ -78,10 +78,15 @@ interface AuditInsert {
 
 const models = new Map<string, RuntimeModel>();
 
-/** The generated schema value: the manifest text of a document set with its declared manifestHash. */
+/**
+ * The generated schema value: the manifest text of a document set with its declared manifestHash, and the
+ * text of the tables that the set uses from external documents, which a set without external documents leaves
+ * out. manifestHash covers the manifest text followed by the external text.
+ */
 export interface Schema {
   readonly manifestText: string;
   readonly manifestHash: string;
+  readonly externalText?: string;
 }
 
 /**
@@ -89,13 +94,15 @@ export interface Schema {
  * statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
  */
 export function schemaModel(schema: Schema): RuntimeModel {
-  if (schema === null || typeof schema !== 'object' || typeof schema.manifestText !== 'string' || typeof schema.manifestHash !== 'string') {
-    throw new OrmError('CONFIG', 'a schema is the manifestText and manifestHash of generated code');
+  if (schema === null || typeof schema !== 'object' || typeof schema.manifestText !== 'string' || typeof schema.manifestHash !== 'string'
+    || (schema.externalText !== undefined && typeof schema.externalText !== 'string')) {
+    throw new OrmError('CONFIG', 'a schema is the manifestText, manifestHash and optional externalText of generated code');
   }
+  const externalText = schema.externalText ?? '';
   const loaded = models.get(schema.manifestHash);
-  if (loaded !== undefined && loaded.manifestText === schema.manifestText) return loaded;
+  if (loaded !== undefined && loaded.manifestText === schema.manifestText && loaded.externalText === externalText) return loaded;
   try {
-    return modelOfManifest(schema.manifestText, schema.manifestHash);
+    return modelOfManifest(schema.manifestText, schema.manifestHash, externalText);
   } catch (error) {
     if (error instanceof OrmError && error.code === 'SCHEMA_HASH_MISMATCH') {
       throw new OrmError('CONFIG', `invalid schema manifest: the manifest text does not hash to its declared manifestHash ${schema.manifestHash}`, error);
@@ -113,18 +120,19 @@ export function registerSet(db: Db, model: RuntimeModel): void {
 }
 
 /**
- * Builds and registers the runtime model of a manifest text; generated model
+ * Builds and registers the runtime model of a manifest text and the external
+ * text of the tables the set uses from external documents; generated model
  * modules call it once when they are imported. Registering the same manifest
  * again returns the registered model. A text that does not hash to
  * manifestHash fails with SCHEMA_HASH_MISMATCH before any statement, also when
  * that hash is already registered, and registers nothing.
  */
-export function registerModel(manifestText: string, manifestHash: string): RuntimeModel {
+export function registerModel(manifestText: string, manifestHash: string, externalText = ''): RuntimeModel {
   const registered = models.get(manifestHash);
-  if (registered !== undefined && registered.manifestText === manifestText) return registered;
+  if (registered !== undefined && registered.manifestText === manifestText && registered.externalText === externalText) return registered;
   // 이미 등록된 hash라도 다른 text는 자기 hash로 검사한다: 잘못된 text는 SCHEMA_INVALID,
   // 다른 hash로 가는 text는 SCHEMA_HASH_MISMATCH다.
-  const model = modelOfManifest(manifestText, manifestHash);
+  const model = modelOfManifest(manifestText, manifestHash, externalText);
   models.set(manifestHash, model);
   return model;
 }
@@ -384,11 +392,20 @@ export class Db {
    * Opens the database selected by the DSN URI scheme and registers the set
    * of a generated schema on the connection; the connect helper of generated
    * models calls it. A manifest text that does not hash to its declared hash
-   * fails with CONFIG before the connection opens.
+   * fails with CONFIG before the connection opens, and a set whose tables of
+   * external documents differ from the database fails with CONFIG and closes
+   * the connection. A set without external documents does not read the
+   * database here.
    */
   public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db> {
     const model = schemaModel(schema);
     const db = await Db.connect(dsn, options);
+    try {
+      await checkExternal(model, db.driver, async sql => (await db.pool.execute(sql, [])).rows);
+    } catch (error) {
+      await db.close();
+      throw error;
+    }
     db[REGISTER](model);
     return db;
   }

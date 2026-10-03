@@ -19,6 +19,20 @@ fn text(lines: &Value) -> String {
     lines.as_array().unwrap().iter().map(|l| format!("{}\n", l.as_str().unwrap())).collect()
 }
 
+/// 줄을 LF로 잇는다. 줄이 없으면 빈 text다.
+fn lines_text(lines: &Value) -> String {
+    text(lines)
+}
+
+/// statement 가운데 CREATE TABLE이 만드는 table 이름이다.
+fn created_tables(statements: &[String]) -> Vec<&str> {
+    statements
+        .iter()
+        .filter_map(|s| s.strip_prefix("CREATE TABLE "))
+        .map(|rest| rest.split(' ').next().unwrap_or("").trim_matches(|c| c == '`' || c == '"'))
+        .collect()
+}
+
 fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
     dbspec::parse(text, set).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
 }
@@ -94,7 +108,10 @@ fn set_vectors() {
     assert!(!sets.is_empty(), "tests/dbspec/cases.json has no sets cases");
     for case in sets {
         let id = case["id"].as_str().unwrap();
-        let texts: Vec<String> = case["documents"].as_array().unwrap().iter().map(text).collect();
+        // 각 문서는 다른 소유 문서, 외부 문서, parsing 문서를 집합으로 parse한다.
+        let owned = case["documents"].as_array().unwrap().len();
+        let texts: Vec<String> =
+            case["documents"].as_array().unwrap().iter().chain(case.get("external").and_then(Value::as_array).into_iter().flatten()).map(text).collect();
         let parsing: BTreeMap<String, String> = case["parsing"].as_object().unwrap().iter().map(|(name, l)| (name.clone(), text(l))).collect();
         let documents: Vec<Document> = texts
             .iter()
@@ -108,7 +125,9 @@ fn set_vectors() {
                         set.insert(name.to_owned(), other.clone());
                     }
                 }
-                parsed(id, source, &set)
+                let mut document = parsed(id, source, &set);
+                document.external = i >= owned;
+                document
             })
             .collect();
         let refs: Vec<&Document> = documents.iter().collect();
@@ -118,8 +137,18 @@ fn set_vectors() {
             .iter()
             .map(|e| (e["rule"].as_str().unwrap().to_owned(), e["line"].as_u64().unwrap() as usize, e["column"].as_u64().unwrap() as usize))
             .collect();
+        let expected = case.get("manifest");
         match dbspec::manifest(&refs) {
-            Ok(_) => assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}"),
+            Ok(manifest) => {
+                assert!(want.is_empty(), "{id}: manifest gave no errors, want {want:?}");
+                if let Some(m) = expected {
+                    assert_eq!(manifest.manifest_text, lines_text(&m["manifestText"]), "{id}: manifestText");
+                    assert_eq!(manifest.external_text, lines_text(&m["externalText"]), "{id}: externalText");
+                    assert_eq!(manifest.schema_text, lines_text(&m["schemaText"]), "{id}: schemaText");
+                    assert_eq!(manifest.manifest_hash, m["manifestHash"].as_str().unwrap(), "{id}: manifestHash");
+                    assert_eq!(manifest.schema_hash, m["schemaHash"].as_str().unwrap(), "{id}: schemaHash");
+                }
+            }
             Err(errors) => {
                 assert!(!want.is_empty(), "{id}: manifest gave {errors:?}");
                 assert_eq!(located(&errors), want, "{id}: manifest");
@@ -127,7 +156,13 @@ fn set_vectors() {
         }
         for (dialect_name, dialect) in DIALECTS {
             match dbspec::render(&refs, dialect) {
-                Ok(_) => assert!(want.is_empty(), "{id}: {dialect_name} rendered, want {want:?}"),
+                Ok(statements) => {
+                    assert!(want.is_empty(), "{id}: {dialect_name} rendered, want {want:?}");
+                    if let Some(m) = expected {
+                        let created: Vec<&str> = m["created"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+                        assert_eq!(created_tables(&statements), created, "{id}: {dialect_name} created tables");
+                    }
+                }
                 Err(errors) => {
                     assert!(!want.is_empty(), "{id}: {dialect_name} gave {errors:?}");
                     assert_eq!(located(&errors), want, "{id}: {dialect_name}");

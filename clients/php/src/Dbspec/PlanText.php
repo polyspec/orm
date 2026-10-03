@@ -84,23 +84,42 @@ final class PlanText
             return self::fail($i + 1, 'a blank line and the target schema text follow the header');
         }
         $offset = $i + 1;
+        // plan 은 database 전체를 하나의 schema 로 옮긴다. 외부 문서를 쓰는 set 의 table 은 install 과
+        // addTablesAndColumns 가 만든다.
+        for ($k = $offset; $k < count($lines); $k++) {
+            if (str_starts_with($lines[$k], 'use ')) {
+                $document = preg_split('/\s+/', $lines[$k])[1] ?? '';
+                return self::fail($k + 1, "a plan targets a whole database, and its target uses the external document $document: install a set that uses external documents with install or addTablesAndColumns");
+            }
+        }
         $schemaText = implode("\n", array_slice($lines, $offset)) . "\n";
         $parsed = Dbspec::parse($schemaText, []);
         if ($parsed->document === null) {
             // target diagnostic 은 plan 안의 위치로 옮긴다.
             return PlanParseResult::invalid(array_map(static fn(Diagnostic $d): Diagnostic => new Diagnostic($d->rule, $d->line + $offset, $d->column, $d->message), $parsed->diagnostics));
         }
-        $manifest = Dbspec::manifest([$parsed->document]);
-        if ($manifest->manifest === null) {
-            return PlanParseResult::invalid($manifest->diagnostics);
-        }
-        if ($manifest->manifest->schemaText !== $schemaText) {
+        if (!SchemaComparison::isSchemaText($parsed->document) || Dbspec::emit($parsed->document) !== $schemaText) {
             return self::fail($offset + 1, 'the target is not a schema text: one document named schema in canonical form with its tables in name order and only the immutable and audit settings');
         }
-        if ($manifest->manifest->schemaHash === $from) {
+        return self::planTo($planName, $from, $renameTables, $renameColumns, $dropTables, $dropColumns, $parsed->document, $schemaText);
+    }
+
+    /**
+     * plan 의 target 을 schema text 문서로 정한다. target 이 from 과 같으면 diagnostic 이다.
+     *
+     * @internal Dbspec::addTablesAndColumnsSteps 도 plan 문서 없이 쓴다.
+     * @param list<TableRename> $renameTables
+     * @param list<ColumnRename> $renameColumns
+     * @param list<string> $dropTables
+     * @param list<ColumnName> $dropColumns
+     */
+    public static function planTo(string $name, ?string $from, array $renameTables, array $renameColumns, array $dropTables, array $dropColumns, Document $schema, string $schemaText): PlanParseResult
+    {
+        $to = 'sha256:' . hash('sha256', $schemaText);
+        if ($to === $from) {
             return self::fail(2, 'the plan starts from its own target schema');
         }
-        return PlanParseResult::valid(new Plan($planName, $from, $renameTables, $renameColumns, $dropTables, $dropColumns, $parsed->document, $manifest->manifest->schemaHash));
+        return PlanParseResult::valid(new Plan($name, $from, $renameTables, $renameColumns, $dropTables, $dropColumns, $schema, $to));
     }
 
     /**
@@ -128,11 +147,8 @@ final class PlanText
     /** plan target 의 schema text; parsePlan 이 받은 target 은 유효한 schema 다. */
     public static function schemaText(Plan $plan): string
     {
-        $manifest = Dbspec::manifest([$plan->schema]);
-        if ($manifest->manifest === null) {
-            throw new \InvalidArgumentException("Plan {$plan->name} has an invalid target: " . $manifest->diagnostics[0]->message);
-        }
-        return $manifest->manifest->schemaText;
+        // target 은 schema text 문서이므로 그 canonical emission 이 schema text 다.
+        return Dbspec::emit($plan->schema);
     }
 
     /**

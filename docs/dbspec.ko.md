@@ -221,11 +221,22 @@ table audit {
 
 manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합의 parse된 문서를 받는다. 집합은 각 문서를 한 번씩, 그리고 그 문서들이 쓰는 모든 문서를 담는다. 반복된 문서 이름은 `name.duplicate` diagnostic, 집합에 없는 쓰이는 문서는 `use` diagnostic이며, 둘 다 뒤쪽 문서나 쓰는 문서의 header 이름(1줄 10열)에 위치하고 message에 문서 이름을 담는다. 문서는 이름 순으로, 한 문서가 쓰는 이름도 이름 순으로 확인한다. diagnostic이 있는 집합에는 manifest도 statement도 없다.
 
-- 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
-- **schema text**는 집합의 모든 table을 table 이름 순으로 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지우고, `audit` setting은 기록하지 않는 column을 column 순서로 적은 `exclude` 목록으로, 모든 column을 기록하면 목록 없이 쓴다([Audit](#audit)). 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄, comment, diagram이 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
-- `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
+- 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 소유한 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
+- **external text**는 외부 문서가 없는 집합에서 비어 있다. 그 밖에는 쓰는 table이 있는 외부 문서마다 이름 순으로, 그 문서의 manifest text를 소유한 문서가 `use` 줄에 적은 table로만 줄인 것을 담는다. table은 문서 순서이고 각 table은 column, primary key, unique key만 갖는다.
+- **schema text**는 집합이 소유한 모든 table을 table 이름 순으로, 그리고 쓰는 table이 있는 외부 문서마다 그 table을 이름 순으로 적은 `use` 줄 하나를 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지우고, `audit` setting은 기록하지 않는 column을 column 순서로 적은 `exclude` 목록으로, 모든 column을 기록하면 목록 없이 쓴다([Audit](#audit)). 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄은 소유한 table이 쓰는 [외부 문서](#external-documents)만 적고 comment와 diagram은 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
+- `manifestHash`는 `sha256:` 뒤에 manifest text와 그 뒤의 external text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
 
-생성 코드는 자신을 만든 문서 집합의 manifest text와 `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.
+생성 코드는 자신을 만든 문서 집합의 manifest text, external text, `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.
+
+## 외부 문서 {#external-documents}
+
+문서 집합은 그 tool이 자기 문서로 나열한 문서를 소유한다. 집합이 table을 쓰는 다른 집합의 문서는 그 집합의 **외부 문서**이며 따로 나열한다: Go `orm-gen gen --use <file.dbs>`, PHP `--use <file.dbs>`, TypeScript `--use <file.dbs>`, Rust `Builder::uses([<files.dbs>])`. 그러면 여러 집합이 database 하나를 나눠 쓸 수 있다. 각 집합은 자기 table만 만들고 바꾸며, table을 렌더링하는 것은 그 table을 소유한 집합뿐이다. 외부 문서는 집합과 함께 parse하고 검사하므로 소유한 table의 foreign key와 `audit` setting은 그곳에서 대상 table을 확인하지만, 외부 문서는 렌더링, 설치, 변경, 비교, 생성하지 않는다. 어느 소유 문서도 `use`로 닿지 않는 외부 문서는 그 header 이름에서 `use` 오류이고, 소유하지도 외부 문서도 아닌 쓰이는 문서도 그렇다.
+
+- **Hash.** manifest text는 소유한 문서를, external text는 외부 문서에서 쓰는 table을 담으므로, `manifestHash`는 쓰는 table이 바뀌면 바뀌고 외부 문서의 다른 table이 바뀌면 그대로다. schema text는 소유한 table을 담고 쓰는 table을 `use` 줄에 적는다.
+- **확인.** 집합의 설치, table과 column 추가, 생성한 schema 값으로 하는 연결은 database를 introspect하고([dialects](dialects.ko.md#introspection)) 쓰는 table마다 외부 정의의 모든 column이 같은 type과 `null`로 있고 primary key와 각 unique key가 있기를 요구한다. database에는 column이 더 있어도 된다. 차이는 어떤 statement보다 먼저 각 차이를 적은 `CONFIG`다: `table <t> does not exist`, `column <t>.<c> does not exist`, `column <t>.<c> is <type>, not <type>`, `column <t>.<c> is null, not not null`(또는 반대), `table <t> has the primary key (<columns>), not (<columns>)`, `table <t> has no unique key (<columns>)`. 외부 문서가 없는 집합은 연결할 때 아무것도 읽지 않는다.
+- **설치.** install은 소유한 table이 하나도 없으면 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. addTablesAndColumns는 소유한 table만 비교하고 바꾼다([schema](schema.ko.md#_4-schema-installation)).
+- **Plan.** plan은 database 전체를 바꾸므로([plans](plans.ko.md#apply)) target schema text에 `use` 줄이 있는 plan은 `plan` 오류다. 외부 문서를 쓰는 집합은 install과 addTablesAndColumns로 설치하고 올린다.
+- **Runtime.** runtime model에는 외부 table의 entity가 없다. 소유한 table의 audit 기록 table은 외부 table일 수 있다. 그 table을 소유한 집합이 같은 연결에 등록되어 있으면 audit 값을 가진 transaction이 그곳에 기록을 삽입한다([Audit](#audit)).
 
 ## Runtime model
 

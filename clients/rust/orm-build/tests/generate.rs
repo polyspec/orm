@@ -264,3 +264,24 @@ fn relation_getters_report_a_mismatched_relation_value() {
         assert!(text.contains(want), "generated source lacks\n{want}");
     }
 }
+
+/// 외부 문서(`uses`)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에
+/// 싣는다.
+#[test]
+fn generation_leaves_external_tables_out() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/external");
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let out = orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();
+    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
+    let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
+    let _ = std::fs::remove_dir_all(&dir);
+    let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
+    assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
+    assert!(!text.contains("pub struct ExtAccount ") && !text.contains("pub struct ExtAudit "), "the external tables have no model");
+    assert!(text.contains("orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
+    let external = external.unwrap_or_else(|e| panic!("orm_external.dbs: {e}"));
+    assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
+    assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
+}

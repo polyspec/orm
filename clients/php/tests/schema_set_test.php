@@ -201,10 +201,114 @@ function editedManifest(string $dsn): void
     }
 }
 
+/**
+ * contracts/fixtures/external의 set을 생성하고 그 schema 값을 돌려준다(한 process에서 한 번). core는
+ * ext_core를 소유한다. member는 ext_core의 ext_account와 ext_audit을 use로 쓰고 ext_post와
+ * ext_post_history만 소유하며, member_v2는 summary column을 더하고, drifted는 외부 문서로
+ * core_extra(database에 없는 column nick)를 쓴다.
+ *
+ * @return array{core: Schema, member: Schema, memberV2: Schema, drifted: Schema}
+ */
+function externalSets(): array
+{
+    global $root, $work;
+    static $sets = null;
+    if ($sets !== null) {
+        return $sets;
+    }
+    $fixture = static fn(string $name): string => "$root/contracts/fixtures/external/$name.dbs";
+    $built = [];
+    foreach ([
+        'core' => ['ExtCore', ['core'], []],
+        'member' => ['ExtMember', ['member'], ['core']],
+        'memberV2' => ['ExtMemberV2', ['member_v2'], ['core']],
+        'drifted' => ['ExtDrifted', ['member'], ['core_extra']],
+    ] as $key => [$prefix, $owned, $external]) {
+        $model = RuntimeModel::build(RuntimeModel::files(array_map($fixture, $owned), array_map($fixture, $external)));
+        $namespace = "$prefix\\Orm";
+        Generator::generate($model, "$work/$prefix", $namespace);
+        autoload("$work/$prefix", $namespace);
+        require "$work/$prefix/bootstrap.php";
+        $built[$key] = ("$namespace\\schema")();
+    }
+    return $sets = $built;
+}
+
+/**
+ * 외부 문서를 쓰는 set(contracts/fixtures/external)을 dsn의 database에서 확인한다
+ * (clients/go/orm/external_documents_test.go의 externalCase와 같다).
+ *   - 외부 table이 없으면 connect, install, addTablesAndColumns가 어떤 statement보다 먼저
+ *     CONFIG이고 member의 table을 만들지 않는다.
+ *   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도 바꾸지 않는다.
+ *     addTablesAndColumns는 소유한 table에만 column을 더한다.
+ *   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
+ *   - 외부 문서의 쓰는 table이 database와 다르면(없는 column) CONFIG다.
+ */
+function externalDocuments(string $dsn): void
+{
+    ['core' => $core, 'member' => $member, 'memberV2' => $memberV2, 'drifted' => $drifted] = externalSets();
+    $config = new Config(auditSource: static fn(): array => ['actor' => 'writer']);
+    $expectConfig = static function (string $step, callable $f, string $message): void {
+        try {
+            $f();
+            check(false, "$step: no error, want CONFIG with $message");
+        } catch (OrmException $e) {
+            check($e->code_ === Code::CONFIG && str_contains($e->getMessage(), $message), "$step: {$e->code_} {$e->getMessage()}, want CONFIG with $message");
+        }
+    };
+    $missing = 'the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist';
+    $expectConfig('connect before core', static fn() => Orm::connectSchema($dsn, $member, $config)->close(), $missing);
+
+    $db = Orm::connect($dsn, $config);
+    try {
+        $schema = $db->utils()->schema();
+        $exists = static function (string $table) use ($db): bool {
+            try {
+                $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
+                return true;
+            } catch (PDOException) {
+                return false;
+            }
+        };
+        $expectConfig('install before core', static fn() => $schema->install($member), $missing);
+        $expectConfig('addTablesAndColumns before core', static fn() => $schema->addTablesAndColumns($member), $missing);
+        check(!$exists('ext_post'), 'ext_post exists after the refused install');
+
+        $schema->install($core);
+        $db->pdo()->exec("INSERT INTO ext_account (name) VALUES ('kim')");
+        $schema->install($member);
+        $schema->install($member);
+        foreach (['ext_post', 'ext_post_history'] as $table) {
+            check($exists($table), "$table does not exist after the member install");
+        }
+        Orm::connectSchema($dsn, $member, $config)->close();
+
+        $db->transaction(fn() => (new \ExtMember\Orm\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+        [$audit, $actor] = $db->pdo()->query('SELECT seq, actor FROM ext_audit')->fetch(PDO::FETCH_NUM);
+        $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchColumn();
+        check($actor === 'writer' && (int) $recorded === (int) $audit, "audit record ($audit, $actor) and history audit $recorded, want the record of writer in the history");
+
+        $added = $schema->addTablesAndColumns($member);
+        check($added === [], 'addTablesAndColumns of the installed member: ' . json_encode($added) . ', want nothing');
+        $added = $schema->addTablesAndColumns($memberV2);
+        check($added === ['ext_post.summary', 'ext_post_history.summary'], 'addTablesAndColumns of member_v2: ' . json_encode($added));
+        $accounts = (int) $db->pdo()->query('SELECT COUNT(*) FROM ext_account')->fetchColumn();
+        check($accounts === 1, "ext_account has $accounts rows after the member changes, want 1");
+
+        $differs = 'the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist';
+        $expectConfig('connect with a drifted external table', static fn() => Orm::connectSchema($dsn, $drifted, $config)->close(), $differs);
+        $expectConfig('install with a drifted external table', static fn() => $schema->install($drifted), $differs);
+        $expectConfig('addTablesAndColumns with a drifted external table', static fn() => $schema->addTablesAndColumns($drifted), $differs);
+    } finally {
+        $db->close();
+    }
+}
+
 $cases = [
     'several_schemas' => severalSchemas(...),
     'unregistered_schema' => unregisteredSchema(...),
     'edited_manifest' => editedManifest(...),
+    'external_documents' => externalDocuments(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 foreach ($selected as $case) {

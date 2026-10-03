@@ -188,6 +188,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
             tables: Vec::new(),
             diagrams: Vec::new(),
             trailing: Vec::new(),
+            external: false,
         },
         unresolved: Vec::new(),
         failed_keys: Vec::new(),

@@ -207,7 +207,9 @@ func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 // Install은 generated schema의 document set을 이 연결의 dialect로 render해
 // 적용하고 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
 // 않으면 어떤 statement보다 먼저 CONFIG다. set의 table이 하나도 없으면 모두
-// 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG다.
+// 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG다. 이 table은
+// set이 소유한 table이다. 외부 문서를 쓰는 set은 먼저 쓰는 table을 database에서
+// 확인하며(checkExternal) 다르면 CONFIG다.
 // PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용한다.
 // MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서
 // 적용하고 안에서는 CONFIG다.
@@ -234,6 +236,9 @@ func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
 		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
 	}
 	apply := func(ctx context.Context, q querier) error {
+		if err := checkExternal(ctx, q, d.driver, m); err != nil {
+			return err
+		}
 		var present, missing []string
 		for _, name := range m.Order {
 			table := m.Entities[name].Table
@@ -272,7 +277,8 @@ func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
 // table을 index, foreign key, check, trigger와 함께 만들며, 있는 table에 빠진 column
 // 가운데 null이거나 default가 있는 column을 더한다. dbspec.AddTablesAndColumnsSteps의
 // plan step을 실행하므로 바뀐 table의 audit trigger도 새 column을 기록하도록 바뀐다.
-// 다른 set의 table은 그대로 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다
+// 다른 set의 table은 그대로 두며 set을 등록하지 않는다. 외부 문서에서 쓰는 table이
+// database와 다르면 어떤 statement보다 먼저 CONFIG다. 다른 차이는 어떤 statement보다
 // 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저 CONFIG다.
 // PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다. MySQL은 schema
 // statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채 table을 다시 만들어
@@ -289,7 +295,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	if len(diagnostics) > 0 {
 		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
-	target, diagnostics := dbspec.Parse(manifest.SchemaText, nil)
+	target, diagnostics := dbspec.Parse(manifest.SchemaText, externalTexts(m))
 	if len(diagnostics) > 0 {
 		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
@@ -299,6 +305,9 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 		if err != nil {
 			return mapDriverErr(err)
+		}
+		if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
+			return externalErr(differences)
 		}
 		additions, steps, differences := dbspec.AddTablesAndColumnsSteps(live, unsupported, target, dialect)
 		if len(differences) > 0 {
@@ -326,6 +335,38 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		return nil, err
 	}
 	return added, nil
+}
+
+// checkExternal은 set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md
+// "External documents"). 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
+func checkExternal(ctx context.Context, q dbspec.Querier, driver string, m *runtimemodel.Model) error {
+	if len(externalTexts(m)) == 0 {
+		return nil
+	}
+	live, _, err := dbspec.Introspect(ctx, q, dbspec.Dialect(driver), "schema")
+	if err != nil {
+		return mapDriverErr(err)
+	}
+	if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
+		return externalErr(differences)
+	}
+	return nil
+}
+
+func externalErr(differences []string) error {
+	return configErr("the tables that the set uses from external documents differ from the database: %s", strings.Join(differences, "; "))
+}
+
+// externalTexts는 set의 외부 문서 text를 문서 이름마다 돌려준다. schema text의 use
+// 줄을 parse할 때 쓴다.
+func externalTexts(m *runtimemodel.Model) map[string]string {
+	out := map[string]string{}
+	for _, d := range m.Documents {
+		if d.External {
+			out[d.Name] = dbspec.Emit(d)
+		}
+	}
+	return out
 }
 
 // sqliteWithoutForeignKeys는 연결 하나에서 foreign key를 끄고 BEGIN IMMEDIATE

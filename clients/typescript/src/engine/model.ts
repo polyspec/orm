@@ -66,7 +66,11 @@ export interface Entity {
 export interface RuntimeModel {
   readonly manifestText: string;
   readonly manifestHash: string;
-  /** Entities by name, documents in name order and tables in document order. */
+  /** The text of the tables that the set uses from external documents; empty without external documents. */
+  readonly externalText: string;
+  /** The parsed documents of the set in name order, the external documents marked external. */
+  readonly documents: readonly DbspecDocument[];
+  /** Entities by name of the owned documents, documents in name order and tables in document order. External tables are not entities. */
   readonly entities: ReadonlyMap<string, Entity>;
 }
 
@@ -177,42 +181,57 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
     throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
   }
   const entities = new Map<string, Entity>();
-  for (const document of [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+  const ordered = [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  for (const document of ordered) {
+    if (document.external === true) continue;
     for (const table of document.tables) {
       const e = entityOfTable(table);
       if (entities.has(e.name)) throw new OrmError('SCHEMA_INVALID', `entity ${e.name} is declared twice in the document set`);
       entities.set(e.name, e);
     }
   }
-  return Object.freeze({ manifestText: result.manifest.manifestText, manifestHash: result.manifest.manifestHash, entities });
+  return Object.freeze({
+    manifestText: result.manifest.manifestText,
+    manifestHash: result.manifest.manifestHash,
+    externalText: result.manifest.externalText,
+    documents: Object.freeze(ordered),
+    entities,
+  });
 }
 
-/** Parses dbspec texts of one document set; each text is parsed with the others as its used documents. */
-export function parseDocumentSet(texts: readonly string[]): DbspecDocument[] {
+/**
+ * Parses dbspec texts of one document set: the documents the set owns and the external documents it uses; each
+ * text is parsed with all others as its used documents, and the external documents are marked external.
+ */
+export function parseDocumentSet(texts: readonly string[], externalTexts: readonly string[] = []): DbspecDocument[] {
   const named: Record<string, string> = {};
-  for (const text of texts) {
+  for (const text of [...texts, ...externalTexts]) {
     if (typeof text !== 'string' || !text.startsWith(HEADER)) throw new OrmError('SCHEMA_INVALID', 'a dbspec text does not start with its header');
     named[headerName(text)] = text;
   }
-  return texts.map(text => {
+  return [...texts, ...externalTexts].map((text, i) => {
     const others = Object.fromEntries(Object.entries(named).filter(([name]) => name !== headerName(text)));
     const parsed = parseDbspec(text, others);
     if (parsed.document === null) {
       const d = parsed.diagnostics[0]!;
       throw new OrmError('SCHEMA_INVALID', `document ${headerName(text)}: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
-    return parsed.document;
+    // 외부 문서는 set이 소유하지 않으므로 external로 표시한다.
+    return i >= texts.length ? Object.freeze({ ...parsed.document, external: true }) : parsed.document;
   });
 }
 
 /**
- * Builds the runtime model of a manifest text and checks that the text is the
- * manifest text of its documents (SCHEMA_INVALID otherwise) and that
- * manifestHash is its hash (SCHEMA_HASH_MISMATCH otherwise).
+ * Builds the runtime model of a manifest text and the external text of the
+ * tables it uses from external documents, and checks that the texts are the
+ * manifest text and the external text of their documents (SCHEMA_INVALID
+ * otherwise) and that manifestHash is their hash (SCHEMA_HASH_MISMATCH
+ * otherwise).
  */
-export function modelOfManifest(manifestText: string, manifestHash: string): RuntimeModel {
-  const model = modelOfDocuments(parseDocumentSet(splitDocuments(manifestText)));
+export function modelOfManifest(manifestText: string, manifestHash: string, externalText = ''): RuntimeModel {
+  const model = modelOfDocuments(parseDocumentSet(splitDocuments(manifestText), externalText === '' ? [] : splitDocuments(externalText)));
   if (model.manifestText !== manifestText) throw new OrmError('SCHEMA_INVALID', 'the embedded text is not the manifest text of its documents');
+  if (model.externalText !== externalText) throw new OrmError('SCHEMA_INVALID', 'the embedded external text is not the external text of its documents');
   if (model.manifestHash !== manifestHash) {
     throw new OrmError('SCHEMA_HASH_MISMATCH', `generated code declares manifest ${manifestHash}, its manifest text hashes to ${model.manifestHash}: generate the models again`);
   }

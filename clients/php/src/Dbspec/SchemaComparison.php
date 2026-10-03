@@ -64,11 +64,26 @@ final class SchemaComparison
         return ComparisonResult::valid($differences);
     }
 
-    /** 문서의 canonical emission 이 그 문서 하나의 schema text 인지 알려 준다. */
-    private static function isSchemaText(Document $document): bool
+    /**
+     * 문서의 canonical emission 이 그 문서 하나의 schema text 인지 알려 준다. 외부 문서의 use 줄은
+     * 문서 이름 순, 그 table 은 이름 순이어야 한다. 외부 문서 자체는 필요 없다.
+     *
+     * @internal PlanText 도 쓴다.
+     */
+    public static function isSchemaText(Document $document): bool
     {
-        $manifest = Dbspec::manifest([$document])->manifest;
-        return $manifest !== null && Dbspec::emit($document) === $manifest->schemaText;
+        if ($document->name !== 'schema') {
+            return false;
+        }
+        $schema = new Document('schema');
+        $schema->tables = $document->tables;
+        usort($schema->tables, static fn(Table $a, Table $b): int => strcmp($a->name, $b->name));
+        foreach ($document->uses as $use) {
+            $tables = array_values(array_unique($use->tables));
+            sort($tables, SORT_STRING);
+            $schema->uses[] = new UseLine($use->document, $tables);
+        }
+        return Dbspec::emit($document) === Emitter::emit($schema, View::Schema);
     }
 
     /**
