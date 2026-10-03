@@ -1,5 +1,9 @@
 # 변경 이력
 
+## 0.0.2
+
+- T28: version은 0.0.2다. 새 VERSION 파일이 이를 적고, `make version-check`(`make check`의 일부)는 orm crate의 Rust manifest나 lockfile 항목, PHP composer 파일, TypeScript package나 lockfile, contracts/features.json, 문서의 version이 이와 다르면 실패한다.
+
 - T27: 모든 check가 몇 분 안에 끝나고 `make check`가 step마다 보고한다. 전체 실행 한 번이 step 43개를 15분에 통과한다(이전 약 100분).
 
 - T29.1: dbspec apply, recover, rollback, finalize는 MySQL과 PostgreSQL에서 connection이 다른 client와 나누지 않는 server session 하나를 지키는지 확인하고, lock을 잡는 session이 이미 lock을 잡고 있거나 뒤의 statement가 다른 session에서 실행되면(transaction pooler처럼) 다음 statement 전에 `session` error로 멈춘다. 요구는 직접 연결이나 session pooling 연결이다.
@@ -888,7 +892,7 @@ Rust `Db::transaction_once`를 추가해 한 번 실행하는 콜백의 자체 �
 트랜잭션 안에서는 savepoint를 사용하고 콜백과 롤백이 함께 실패하면 두 실패를 모두 보고한다.
 데이터베이스 오류와 콜백 오류를 구별한다.
 
-## 미발행 — MySQL CHECK constraint namespace
+### MySQL CHECK constraint namespace
 
 지속 적용할 개발 규칙은 `AGENTS.md`에 두고 구체 작업은 프로젝트 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부하므로 날짜가 고정된 진행 주장으로 항목 상태와 실행 증거를 대신할 수 없다. 대기 중인 생성 인터페이스 검사는 각 공개 클라이언트 API에서 `multi_statement`가 제외됐는지 검증해야 한다.
 
@@ -1033,7 +1037,6 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 
 - 직렬화·`NoWait`·transaction release 검증과 함께 제한된 SQLite ORM lock-cancellation regression을 추가한다. 대기 중인 lock 요청이 무제한 대기 없이 caller context cancellation을 반환한다는 근거를 추적한다.
 
-## Unreleased
 
 - SQLite `forUpdate`·`forShare`와 두 `NoWait` mode를 ORM 소유 transaction 범위 lock 행으로 구현한다. SQLite lock suffix는 생성하지 않고 `NoWait`은 busy timeout을 일시적으로 0으로 설정한다. Go·PHP·Rust·TypeScript가 같은 lock mode를 plan 계약으로 전달한다.
 - SQLite 물리 테이블 이름에서 논리 schema namespace를 보존하도록 `schema.table`을 `schema__table`로 매핑하여 하나의 database에서 같은 이름의 table이 충돌하지 않게 한다.

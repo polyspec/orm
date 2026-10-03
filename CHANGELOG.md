@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.2
+
+- T28: the version is 0.0.2. The new VERSION file states it, and `make version-check` (part of `make check`) fails when any Rust manifest or lockfile entry of the orm crates, the PHP composer file, the TypeScript package or lockfile, contracts/features.json or the documented version differs from it.
+
 - T27: every check finishes within minutes and `make check` reports each step; one full run passes 43 steps in 15 minutes, against about 100 minutes before.
 
 - T29.1: dbspec apply, recover, rollback and finalize check on MySQL and PostgreSQL that the connection keeps one server session of its own and stop with a `session` error before the next statement when the session that takes the lock already holds it or a later statement runs in another session, as through a transaction pooler; the requirement is a direct or session-pooled connection.
@@ -988,7 +992,7 @@ Add Rust `Db::transaction_once` for a callback that runs once and returns its ow
 It uses a savepoint inside an active transaction and reports both the callback and rollback
 failures when both fail. Database errors remain distinct from callback errors.
 
-## Unreleased — MySQL CHECK constraint namespace
+### MySQL CHECK constraint namespace
 
 Keep persistent development rules in `AGENTS.md` and concrete work in the project checklist. The checklist checker now rejects unnumbered policy and status prose, so dated progress claims cannot replace item states and executable evidence. The waiting generated-interface check must verify the `multi_statement` exclusion in each public client API.
 
@@ -1143,7 +1147,6 @@ Prefix generated MySQL CHECK constraint names with their table name so distinct 
 
 - Add a bounded SQLite ORM lock-cancellation regression alongside serialization, `NoWait` and transaction-release coverage. Waiting lock requests now have tracked evidence that caller context cancellation returns without an unbounded wait.
 
-## Unreleased
 
 - Implement SQLite `forUpdate`, `forShare`, and both `NoWait` modes through an ORM-owned transaction-scoped lock row. SQLite emits no lock suffix; `NoWait` temporarily uses a zero busy timeout. Go, PHP, Rust, and TypeScript carry the same lock mode through the plan contract.
 - Preserve logical schema namespaces in SQLite physical table names by mapping `schema.table` to `schema__table`, preventing same-named tables from colliding in one database.

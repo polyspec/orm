@@ -1,9 +1,9 @@
 #!/bin/sh
-# Builds the Go orm-gen release binaries. Version is fixed at 0.0.1 and
-# part of every file name — no "latest" symlinks. Output: dist/<name>-0.0.1-<os>-<arch>[.ext] + SHA256SUMS.
+# Builds the Go orm-gen release binaries. Version comes from VERSION and
+# part of every file name — no "latest" symlinks. Output: dist/<name>-<version>-<os>-<arch>[.ext] + SHA256SUMS.
 set -eu
 cd "$(dirname "$0")/.."
-VERSION=0.0.1
+VERSION=$(cat "$(dirname "$0")/../VERSION")
 OUT=dist
 rm -rf "$OUT" && mkdir -p "$OUT"
 

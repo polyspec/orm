@@ -1048,7 +1048,7 @@ dependencies = [
 
 [[package]]
 name = "orm"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -1079,7 +1079,7 @@ dependencies = [
 
 [[package]]
 name = "orm-build"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "bigdecimal",
  "futures-util",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "orm-case-clock"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "libc",
  "orm-testcase",
@@ -1109,7 +1109,7 @@ dependencies = [
 
 [[package]]
 name = "orm-case-database"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "orm",
  "orm-testcase",
@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "orm-schema"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "orm-case-clock",
  "orm-testcase",
@@ -1131,14 +1131,14 @@ dependencies = [
 
 [[package]]
 name = "orm-testcase"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "orm-tests"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "chrono",
  "orm",

@@ -33,7 +33,8 @@ const execute = (command, cwd, step) => new Promise((resolveRun) => {
 });
 
 if (manifest.manifest_version !== 1) errors.push('manifest_version must be 1');
-if (manifest.contract_version !== '0.0.1') errors.push('contract_version must remain 0.0.1');
+const version = (await readFile(resolve(root, 'VERSION'), 'utf8')).trim();
+if (manifest.contract_version !== version) errors.push(`contract_version must equal VERSION ${version}`);
 if (!Array.isArray(manifest.source?.read_order) || manifest.source.read_order.length === 0) errors.push('source.read_order must be non-empty');
 for (const relative of manifest.source?.read_order ?? []) {
   try { await stat(resolve(root, relative)); }

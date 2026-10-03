@@ -1,6 +1,6 @@
-# orm 0.0.1
+# orm 0.0.2
 
-**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 모델 query grammar다. 버전은 0.0.1이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 있다.
+**Go, PHP, Rust, TypeScript**를 지원하는 스키마 기반 모델 query grammar다. 버전은 0.0.2이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 있다.
 
 네 클라이언트는 같은 query 구조에서 같은 SQL, bind, 결과를 생성한다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사한다.
 
