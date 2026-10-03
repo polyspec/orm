@@ -329,6 +329,7 @@ impl<'m> Planner<'m> {
             "insert" => steps.push(self.insert_step(r)?),
             "update" => steps.push(self.update_step(r)?),
             "delete" => steps.push(self.delete_step(r)?),
+            "restore" => steps.push(self.restore_step(r)?),
             other => return Err(err(codes::IR_INVALID, format!("unknown kind {other:?}"))),
         }
         for (i, st) in steps.iter_mut().enumerate() {
@@ -1239,6 +1240,77 @@ impl<'m> Planner<'m> {
         };
         Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
     }
+
+    /// soft delete한 행 하나를 되돌리는 update다. where는 primary key나 unique key 하나의 모든 column을 eq
+    /// 값으로 한 번씩 이름한다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다.
+    /// set은 되돌리는 행에 함께 쓰는 새 값이며 update처럼 쓴다. 그 뒤에 AES key version, soft delete column의
+    /// NULL, audit table이면 operation column을 쓴다. updated column은 쓰지 않는다.
+    fn restore_step(&self, r: &ir::Request) -> Result<Step> {
+        let ent = self.entity(&r.query.entity)?;
+        let Some(soft_delete) = &ent.soft_delete else {
+            return Err(err(codes::IR_INVALID, format!("restore of {}, which has no soft_delete setting", ent.name)));
+        };
+        let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "restore without where"))?;
+        restore_key(ent, w)?;
+        let set = add_blind_index_assignments(ent, r.set.clone());
+        validate_aes_assignments(ent, &set, true)?;
+        validate_operation_assignment(ent, &set)?;
+        let mut b = Builder::new(self.d);
+        let root = self.table_scope(ent, &r.query)?;
+        let mut sets = Vec::new();
+        for a in &set {
+            let col = self.column_of(ent, &a.column)?;
+            if col.primary_key || col.identity || &col.name == soft_delete {
+                return Err(err(codes::IR_INVALID, format!("restore cannot assign {}", a.column)));
+            }
+            let v = self.render_assign(&mut b, ent, col, a)?;
+            sets.push(format!("{} = {v}", self.d.quote(&a.column)));
+        }
+        let version = aes_version_column(ent);
+        if !version.is_empty() && assigns_aes(ent, &set) {
+            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
+        }
+        sets.push(format!("{} = NULL", self.d.quote(soft_delete)));
+        let operation = operation_column(ent);
+        if !operation.is_empty() {
+            sets.push(format!("{} = {}", self.d.quote(operation), b.operation(self.column_of(ent, operation)?)));
+        }
+        let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
+        where_.push_str(&format!(" AND {} IS NOT NULL", self.qcol(&root, soft_delete)));
+        let sql = format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "));
+        Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+    }
+}
+
+/// restore의 where가 primary key나 unique key 하나의 모든 column을 and로 이은 eq 값 조건으로 한 번씩
+/// 이름하는지 확인한다.
+fn restore_key(ent: &Entity, w: &ir::Group) -> Result<()> {
+    let invalid =
+        || err(codes::IR_INVALID, format!("restore of {} names every column of its primary key or of one unique key once with an eq value", ent.name));
+    let mut columns: Vec<&str> = Vec::new();
+    for (i, item) in w.items.iter().enumerate() {
+        let ir::Item::Pred { pred } = item else {
+            return Err(invalid());
+        };
+        if pred.op != "eq"
+            || pred.p.is_none()
+            || pred.r#fn.is_some()
+            || pred.value.is_some()
+            || pred.r#ref.is_some()
+            || pred.sub.is_some()
+            || !pred.expr.is_empty()
+            || (i > 0 && pred.conn != "and")
+            || columns.contains(&pred.column.as_str())
+        {
+            return Err(invalid());
+        }
+        columns.push(&pred.column);
+    }
+    let same_columns = |key: &[String]| key.len() == columns.len() && key.iter().all(|c| columns.contains(&c.as_str()));
+    if same_columns(&ent.primary_key) || ent.uniques.iter().any(|k| same_columns(&k.columns)) {
+        return Ok(());
+    }
+    Err(invalid())
 }
 
 /// insert마다 executor가 값을 주는 column과 그 bind slot.

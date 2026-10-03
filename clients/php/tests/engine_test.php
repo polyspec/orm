@@ -125,6 +125,125 @@ foreach ($engines as $d => $engine) {
     expect(str_starts_with($delete, 'UPDATE ') && str_contains($delete, $mark) && str_contains($delete, $q('soft_record') . '.' . $q('deleted_at') . ' IS NULL'), "$d soft-delete guarded update: $delete");
 }
 
+// restore 는 primary key 나 unique key 하나의 eq 조건으로 soft delete column 을 NULL 로
+// 되돌리는 update 하나다(engine/planner/restore_test.go 와 같은 case). 지워진 행만 고치고,
+// audit table 이면 operation column 도 쓴다.
+$restoreDocument = <<<'DBS'
+dbspec 1 restore
+
+table link {
+  id i64 identity
+  team_id i64
+  member_id i64
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_link_pair (team_id, member_id)
+  settings {
+    soft_delete deleted_at
+    audit into link_history operation operation_id action change previous previous_operation_id
+  }
+}
+
+table link_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_operation_id i64 null
+  id i64
+  team_id i64
+  member_id i64
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (history_id)
+}
+
+table tag {
+  id i64 identity
+  name varchar(64)
+  label varchar(64)
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_tag_name (name)
+  settings {
+    soft_delete deleted_at
+  }
+}
+
+table plain {
+  id i64 identity
+  name varchar(64)
+  primary key (id)
+}
+
+DBS;
+$restoreModel = RuntimeModel::build(RuntimeModel::parse(['restore.dbs' => $restoreDocument]));
+$restoreRequest = static function (string $entity, array ...$preds) use ($restoreModel): array {
+    $items = [];
+    $n = 0;
+    foreach ($preds as $pred) {
+        if (!isset($pred['p']) && $pred['op'] !== 'is_null') {
+            $pred['p'] = $n++;
+        }
+        $items[] = ['pred' => $pred];
+    }
+    return ['ir_version' => 1, 'manifest_hash' => $restoreModel->manifestHash, 'kind' => 'restore', 'entity' => $entity, 'where' => ['items' => $items], 'n_params' => $n];
+};
+// withSet는 request의 set에 assignment를 더한다. 각 값은 where 다음 parameter다.
+$withSet = static function (array $r, string ...$columns): array {
+    foreach ($columns as $column) {
+        $r['set'][] = ['column' => $column, 'p' => $r['n_params']++];
+    }
+    return $r;
+};
+$slotNames = static fn(array $slots): array => array_map(static fn(array $s): string => $s['from'] === 'param' ? "param {$s['param']}" : $s['from'], $slots);
+foreach ([
+    'unique key with audit' => ['sqlite', $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'and', 'column' => 'member_id', 'op' => 'eq']),
+        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['operation', 'param 0', 'param 1']],
+    'unique key in another order' => ['mysql', $restoreRequest('link', ['column' => 'member_id', 'op' => 'eq'], ['conn' => 'and', 'column' => 'team_id', 'op' => 'eq']),
+        'UPDATE `link` SET `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL',
+        ['operation', 'param 0', 'param 1']],
+    'primary key' => ['postgres', $restoreRequest('link', ['column' => 'id', 'op' => 'eq']),
+        'UPDATE "link" SET "deleted_at" = NULL, "operation_id" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL',
+        ['operation', 'param 0']],
+    'without audit' => ['mysql', $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
+        'UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL',
+        ['param 0']],
+    'new values' => ['sqlite', $withSet($restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'and', 'column' => 'member_id', 'op' => 'eq']), 'team_id'),
+        'UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL',
+        ['param 2', 'operation', 'param 0', 'param 1']],
+    'new value and null' => ['postgres', $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'label'),
+        'UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL',
+        ['param 1', 'param 0']],
+] as $name => [$d, $ir, $sql, $slots]) {
+    try {
+        $plan = (new Engine($restoreModel, $d, 8))->compile($ir);
+        expect(count($plan['steps']) === 1 && $plan['steps'][0]['role'] === 'main' && $plan['steps'][0]['sql'] === $sql, "restore $name: " . json_encode($plan['steps']) . " want $sql");
+        expect($slotNames($plan['steps'][0]['bind_slots']) === $slots, "restore $name bind slots: " . json_encode($slotNames($plan['steps'][0]['bind_slots'])));
+    } catch (OrmException $e) {
+        expect(false, "restore $name: {$e->code_} {$e->getMessage()}");
+    }
+}
+$restoreEngine = new Engine($restoreModel, 'sqlite', 8);
+foreach ([
+    'part of a unique key' => $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq']),
+    'a column that is no key' => $restoreRequest('tag', ['column' => 'label', 'op' => 'eq']),
+    'a key and another column' => $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'label', 'op' => 'eq']),
+    'a repeated column' => $restoreRequest('tag', ['column' => 'name', 'op' => 'eq'], ['conn' => 'and', 'column' => 'name', 'op' => 'eq']),
+    'another operator' => $restoreRequest('tag', ['column' => 'name', 'op' => 'gt']),
+    'an or connector' => $restoreRequest('link', ['column' => 'team_id', 'op' => 'eq'], ['conn' => 'or', 'column' => 'member_id', 'op' => 'eq']),
+    'a null test' => $restoreRequest('tag', ['column' => 'name', 'op' => 'is_null']),
+    'no condition' => $restoreRequest('tag'),
+    'a group' => ['where' => ['items' => [['group' => ['items' => [['pred' => ['column' => 'name', 'op' => 'eq', 'p' => 0]]]]]]], 'n_params' => 1] + $restoreRequest('tag'),
+    'an assignment of the soft delete column' => $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'deleted_at'),
+    'an assignment of the primary key' => $withSet($restoreRequest('tag', ['column' => 'name', 'op' => 'eq']), 'id'),
+    'an assignment of the operation column' => $withSet($restoreRequest('link', ['column' => 'id', 'op' => 'eq']), 'operation_id'),
+    'an optimistic check' => ['optimistic' => ['column' => 'label', 'p' => 0]] + $restoreRequest('tag', ['column' => 'name', 'op' => 'eq']),
+    'a table without soft_delete' => $restoreRequest('plain', ['column' => 'id', 'op' => 'eq']),
+] as $name => $ir) {
+    expect(code(fn() => $restoreEngine->compile($ir)) === Code::IR_INVALID, "restore rejects $name: " . code(fn() => $restoreEngine->compile($ir)));
+}
+
 if ($failures > 0) {
     throw new RuntimeException("$failures check(s) failed; each FAIL line above names one");
 }

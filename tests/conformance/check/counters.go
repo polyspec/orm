@@ -20,6 +20,7 @@ var conformanceWriteTables = map[string]bool{
 	"author":         true,
 	"service":        true,
 	"service_member": true,
+	"soft_record":    true,
 	"task":           true,
 }
 

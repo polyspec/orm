@@ -1,0 +1,41 @@
+dbspec 1 restore
+
+table membership {
+  seq i64 identity
+  team_id i64
+  member_id i64
+  note text null
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (seq)
+  unique uq_membership_pair (team_id, member_id)
+  settings {
+    soft_delete deleted_at
+    audit into membership_history operation operation_id action change previous previous_operation_id exclude (note)
+  }
+}
+
+table membership_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_operation_id i64 null
+  seq i64
+  team_id i64
+  member_id i64
+  operation_id i64
+  deleted_at datetime(6) null
+  primary key (history_id)
+  index ix_membership_history_row (seq)
+}
+
+table label {
+  id i64 identity
+  name varchar(64)
+  color varchar(16) null
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_label_name (name)
+  settings {
+    soft_delete deleted_at
+  }
+}

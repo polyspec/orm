@@ -338,7 +338,7 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 
 ## 9. 예약 명칭
 
-생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `save`, `raw`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
+생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `raw`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
 
 행에 추가되는 명칭은 하나의 명칭 공간을 사용한다. 대상은 실제 컬럼, `addColumn<Name>(fn)`이나 `addRawColumn<Alias>`로 추가한 컬럼, 관계 결과 명칭, `new<Name>` 명칭이다. 이 공간에서 명칭이 겹치면 거부한다. Go와 Rust는 생성 단계에서 거부하고 PHP와 TypeScript는 `CONFIG`를 반환한다. 따라서 같은 테이블에 대한 관계 두 개는 서로 다른 별칭이 필요하며, 서브쿼리 컬럼은 실제 컬럼이 아닌 명칭을 사용해야 한다.
 

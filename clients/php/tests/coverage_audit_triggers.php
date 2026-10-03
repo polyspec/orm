@@ -3,11 +3,12 @@ declare(strict_types=1);
 // audit_triggers feature coverage: contracts/fixtures/audit.dbs을 bench
 // database에 설치하고 clients/go/orm/audit_operation_test.go의 순서로 쓴 뒤,
 // trigger가 남긴 item_history를 확인하고 설치한 table과 PostgreSQL function을
-// 지운다. audit document의 model은 임시 directory에 생성하므로 bench model을
-// 읽지 않는다: 한 process는 한 document set의 model만 가진다.
+// 지운다. soft_delete_restore는 contracts/fixtures/restore.dbs로 같은 일을 한다. fixture의
+// model은 fixture마다 자기 namespace로 임시 directory에 생성하며 bench model은 읽지 않는다.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
+require __DIR__ . '/restore_case.php';
 
 use CoverageAudit\Orm\Item;
 use Orm\Code;
@@ -77,39 +78,45 @@ function auditHistory(Db $db): array
 }
 
 /**
- * audit document의 model을 임시 directory에 한 번 생성하고 autoload에 등록한다. 한 process의 여러
- * case가 같은 model을 쓴다. directory는 process가 끝날 때 지운다.
+ * contracts/fixtures/<fixture>.dbs의 model을 임시 directory의 $namespace에 한 번 생성하고 autoload에
+ * 등록한다. 한 process의 여러 case가 같은 model을 쓴다. directory는 process가 끝날 때 지운다.
  */
-function auditModels(): void
+function fixtureModels(string $fixture, string $namespace): void
 {
-    static $work = null;
-    if ($work !== null) {
+    static $generated = [];
+    if (isset($generated[$fixture])) {
         return;
     }
     $root = dirname(__DIR__, 3);
-    $document = file_get_contents("$root/contracts/fixtures/audit.dbs");
+    $document = file_get_contents("$root/contracts/fixtures/$fixture.dbs");
     if ($document === false) {
-        throw new RuntimeException('cannot read contracts/fixtures/audit.dbs');
+        throw new RuntimeException("cannot read contracts/fixtures/$fixture.dbs");
     }
-    $work = sys_get_temp_dir() . '/orm-php-coverage-audit-' . getmypid();
+    $work = sys_get_temp_dir() . "/orm-php-coverage-$fixture-" . getmypid();
     if (!mkdir($work, 0o700, true)) {
         throw new RuntimeException("cannot create $work");
     }
-    $dir = $work;
-    register_shutdown_function(static function () use ($dir): void {
-        exec('rm -rf ' . escapeshellarg($dir), $output, $status);
+    $generated[$fixture] = $work;
+    register_shutdown_function(static function () use ($work): void {
+        exec('rm -rf ' . escapeshellarg($work), $output, $status);
         if ($status !== 0) {
-            fwrite(STDERR, "cannot remove $dir\n");
+            fwrite(STDERR, "cannot remove $work\n");
             exit(1);
         }
     });
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $document])), "$work/gen", 'CoverageAudit\\Orm');
-    spl_autoload_register(static function (string $class) use ($dir): void {
-        if (str_starts_with($class, 'CoverageAudit\\Orm\\')) {
-            require "$dir/gen/" . substr($class, strlen('CoverageAudit\\Orm\\')) . '.php';
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(["$fixture.dbs" => $document])), "$work/gen", $namespace);
+    spl_autoload_register(static function (string $class) use ($work, $namespace): void {
+        if (str_starts_with($class, "$namespace\\")) {
+            require "$work/gen/" . substr($class, strlen("$namespace\\")) . '.php';
         }
     });
     require "$work/gen/bootstrap.php";
+}
+
+/** audit document의 model을 CoverageAudit\Orm에 생성한다. */
+function auditModels(): void
+{
+    fixtureModels('audit', 'CoverageAudit\\Orm');
 }
 
 /**
@@ -173,5 +180,37 @@ runCoverageCases($argv, [
             ];
             coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
         });
+    },
+    // soft delete한 행을 restore로 되돌린다(restore_case.php): unique key와 exclude 목록을 가진 audit table과
+    // audit 없는 table이다. 끝나면 설치한 table과 PostgreSQL trigger function을 지운다.
+    'soft_delete_restore' => function (): void {
+        [, $dsn] = coverageDatabase();
+        fixtureModels('restore', 'CoverageRestore\\Orm');
+        $tables = ['label', 'membership', 'membership_history'];
+        $db = Orm::connect($dsn, new Config());
+        try {
+            foreach ($tables as $table) {
+                coverageWant(!auditTable($db, $table), "$table exists before the case");
+            }
+            coverageRestoring(function () use ($db): void {
+                $db->utils()->schema()->install(\CoverageRestore\Orm\schema());
+                restoreCase($db, 'CoverageRestore\\Orm');
+            }, function () use ($db): void {
+                $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
+                foreach (['membership_history', 'membership', 'label'] as $table) {
+                    $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
+                }
+                if ($db->driver() === 'postgres') {
+                    foreach (['insert', 'update', 'delete'] as $event) {
+                        $db->pdo()->exec("DROP FUNCTION IF EXISTS \"membership\$audit_$event\"()");
+                    }
+                }
+            });
+            foreach ($tables as $table) {
+                coverageWant(!auditTable($db, $table), "$table remains after the case");
+            }
+        } finally {
+            $db->close();
+        }
     },
 ]);

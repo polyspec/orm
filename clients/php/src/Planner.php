@@ -30,6 +30,9 @@ final class Planner
             case 'delete':
                 $steps->add($this->deleteStep($r));
                 break;
+            case 'restore':
+                $steps->add($this->restoreStep($r));
+                break;
             default:
                 $this->selectStep($steps, $r, $r['kind'], $r['agg'] ?? '', null);
         }
@@ -971,6 +974,70 @@ final class Planner
             return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots);
         }
         return new PlanStep('main', 'DELETE FROM ' . $this->d->quote($ent['table']) . ' WHERE ' . $where, '', $b->slots);
+    }
+
+    /**
+     * soft delete한 행 하나를 되돌리는 update다. where는 primary key나 unique key 하나의 모든
+     * column을 eq 값으로 한 번씩 이름한다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은
+     * 아무것도 바꾸지 않는다. set은 되돌리는 행에 함께 쓰는 새 값이며 update처럼 render한다.
+     * primary key, identity, soft delete column은 쓸 수 없다. updated column은 쓰지 않는다.
+     */
+    private function restoreStep(array $r): PlanStep
+    {
+        $ent = $this->m->entities[$r['entity']];
+        $soft = $ent['soft_delete'];
+        if ($soft === '') {
+            throw self::err(Code::IR_INVALID, "restore of {$ent['entity']}, which has no soft_delete setting");
+        }
+        self::restoreKey($ent, $r['where']);
+        $set = self::withBlindIndexes($ent, $r['set'] ?? []);
+        self::checkAesAssignments($ent, $set, true);
+        $b = new PlanBinds($this->d);
+        $root = $this->scopes($r, $ent['table'], null);
+        $sets = [];
+        foreach ($set as $a) {
+            $col = RuntimeModel::column($ent, $a['column']);
+            if ($col['pk'] || $a['column'] === $ent['identity'] || $a['column'] === $soft) {
+                throw self::err(Code::IR_INVALID, 'restore cannot assign ' . $a['column']);
+            }
+            $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
+        }
+        if (self::assignsAes($ent, $set)) {
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
+        }
+        $sets[] = $this->d->quote($soft) . ' = NULL';
+        if ($ent['audit'] !== '') {
+            $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->operation(RuntimeModel::column($ent, $ent['audit']));
+        }
+        $where = $this->renderGroup($b, $root, $r['where'], true) . ' AND ' . $this->qcol($root, $soft) . ' IS NOT NULL';
+        return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
+    }
+
+    /** restore의 where가 primary key나 unique key 하나의 모든 column을 and로 이은 eq 값 조건으로 한 번씩 이름하는지 확인한다. */
+    private static function restoreKey(array $ent, array $where): void
+    {
+        $invalid = self::err(Code::IR_INVALID, "restore of {$ent['entity']} names every column of its primary key or of one unique key once with an eq value");
+        $columns = [];
+        foreach ($where['items'] as $i => $item) {
+            $pr = $item['pred'] ?? null;
+            if ($pr === null || ($pr['op'] ?? '') !== 'eq' || !isset($pr['p']) || isset($pr['fn']) || isset($pr['value']) || isset($pr['ref']) || isset($pr['sub'])
+                || ($pr['expr'] ?? '') !== '' || ($i > 0 && ($pr['conn'] ?? '') !== 'and') || in_array($pr['column'] ?? '', $columns, true)) {
+                throw $invalid;
+            }
+            $columns[] = $pr['column'];
+        }
+        $same = static function (array $key) use ($columns): bool {
+            return count($key) === count($columns) && array_diff($key, $columns) === [];
+        };
+        if ($same($ent['pk'])) {
+            return;
+        }
+        foreach ($ent['unique'] as $key) {
+            if ($same($key)) {
+                return;
+            }
+        }
+        throw $invalid;
     }
 
     private function columnFunction(PlanScope $s, string $column, array $f): string

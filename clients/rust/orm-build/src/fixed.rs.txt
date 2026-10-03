@@ -127,6 +127,11 @@ impl T {
         orm::model::delete(self, recursive).await
     }
 
+    /// Restores the soft-deleted row that the set key values name and returns it.
+    pub async fn restore(&self) -> orm::Result<Self> {
+        orm::model::restore(self).await
+    }
+
     /// Sets the duplicate-key update of the next create.
     pub fn duplication(mut self, m: Self) -> Self {
         self.__orm.duplication(m.__orm);

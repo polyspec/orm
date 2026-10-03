@@ -338,7 +338,7 @@ A transaction of the same connection inside an active one accepts only `retry`, 
 
 ## 9. Reserved names
 
-The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `save`, `raw`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
+The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `raw`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
 
 The names attached to a row form one name space: real columns, columns added with `addColumn<Name>(fn)` or `addRawColumn<Alias>`, relation result names, and `new<Name>` names. A duplicate name in this space is rejected. Go and Rust reject it during generation; PHP and TypeScript return `CONFIG`. Two relations to the same table therefore need different aliases, and a subquery column needs a name that is not a real column.
 

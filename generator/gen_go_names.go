@@ -23,7 +23,7 @@ var (
 	// reservedPrefixes로 column 이름을 시작할 수 없다.
 	reservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between"}
 	// reservedColumns는 column 이름이 될 수 없다.
-	reservedColumns = []string{"and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "save", "raw", "on", "random"}
+	reservedColumns = []string{"and", "or", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "restore", "save", "raw", "on", "random"}
 	// reservedEntities는 generated package의 package-level 이름과 겹친다.
 	reservedEntities = []string{"connect", "manifest_hash", "manifest_text"}
 )

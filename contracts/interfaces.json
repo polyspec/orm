@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:066701109e2980e7ef9d4b031fdb9c2cd473b65a834c72e86bc84cc871554ac6",
-    "php": "sha256:dec4442582de4ee5c3fdafe4b907d79152bf689a0e070f3c68bfd4db07208f41",
-    "rust": "sha256:87f08bec069b5a1466a7613bc134dcab4d3a135f9051bc21f85e7f3ac101c4b2",
-    "typescript": "sha256:6b19d92608100af6c99bebb50cee949072e23b5f626bcb054740b50b91c31888"
+    "go": "sha256:9fd8d7cf0b8db3abaa6e378d9369ecd978bd6d54044c8adc3950516820fa3599",
+    "php": "sha256:09789f19aa8e51e22cb872f91e0b45f073e051a6a6cdeb1e242588cba53c0df3",
+    "rust": "sha256:b311994ce3346736337d02c4f830bf644985218dd2c7475df5bc7d6d49b4d13f",
+    "typescript": "sha256:2fba0212dac0578c554fedeb4dbc2a51d01efc97fd30b3c270b17c426601cb80"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -78,6 +78,7 @@
         "update",
         "save",
         "delete",
+        "restore",
         "toArray"
       ],
       "ownership": "Generated per entity. Holds the column values of a new or loaded row and the chain state in its Core.",
@@ -1010,6 +1011,37 @@
       }
     },
     {
+      "id": "Model.restore",
+      "for": "entity",
+      "inputs": [],
+      "output": "Model",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "NO_ROWS",
+        "driver or codec error"
+      ],
+      "state": "Clears the soft delete column of the deleted row that the set values of its primary key or one unique key name, writes the other set values with it, and returns the row; a row that is not deleted is returned unchanged",
+      "native": {
+        "go": {
+          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Restore",
+          "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Model.php::Orm\\Model::restore",
+          "signature": "public function restore(): static"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::restore",
+          "signature": "pub async fn restore(&self) -> orm::Result<Self>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/model.ts::Model.restore",
+          "signature": "public async restore(): Promise<this>"
+        }
+      }
+    },
+    {
       "id": "Model.toArray",
       "for": "entity",
       "inputs": [],
@@ -1603,7 +1635,7 @@
       "expected": {
         "members": 2,
         "members_left": 0,
-        "service_left": false
+        "service_left": "NO_ROWS"
       },
       "statements": 10,
       "suite": "tests/conformance"
@@ -1619,6 +1651,26 @@
         0
       ],
       "statements": 5,
+      "suite": "tests/conformance"
+    },
+    {
+      "id": "restore",
+      "expected": {
+        "again": {
+          "deleted_at": null,
+          "name": "restore-2",
+          "seq": "$SEQ"
+        },
+        "hidden": "NO_ROWS",
+        "left": 0,
+        "missing": "NO_ROWS",
+        "restored": {
+          "deleted_at": null,
+          "name": "restore-2",
+          "seq": "$SEQ"
+        }
+      },
+      "statements": 10,
       "suite": "tests/conformance"
     }
   ],

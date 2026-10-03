@@ -1130,6 +1130,55 @@ pub async fn save<M: Model>(m: &mut M) -> Result<M> {
     create(m).await
 }
 
+/// Restores the soft-deleted row that the set values name by its primary key or
+/// one unique key, and returns the restored row. The other set values are new
+/// values of the restored row. It clears the soft delete column with an update
+/// that, on an audited table, writes the operation id like any other update. A
+/// row that is not deleted is returned unchanged and nothing is written; a
+/// missing row returns NO_ROWS. Reads never return a soft-deleted row: restore
+/// names it explicitly.
+pub async fn restore<M: Model>(m: &M) -> Result<M> {
+    let c = m.core();
+    let ex = terminal(c)?;
+    let ent = c.ent.entity_schema()?;
+    // key는 모든 column에 값이 정해진 primary key, 아니면 이름 순서로 처음 그런 unique key다.
+    let value = |column: &str| {
+        c.sets.iter().rev().filter(|s| s.column == column).find_map(|s| match &s.value {
+            SetValue::Value(v) => Some(v.clone()),
+            _ => None,
+        })
+    };
+    let covered = |columns: &[String]| columns.iter().all(|column| value(column).is_some());
+    let mut uniques: Vec<&dbspec::Key> = ent.uniques.iter().collect();
+    uniques.sort_by(|a, b| a.name.cmp(&b.name));
+    let key: &[String] = if covered(&ent.primary_key) {
+        &ent.primary_key
+    } else {
+        match uniques.into_iter().find(|u| covered(&u.columns)) {
+            Some(unique) => &unique.columns,
+            None => return Err(config(format!("restore requires the set values of the primary key or a unique key of {}", ent.name))),
+        }
+    };
+    // key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가 같은 행을 같은 값 변환으로 찾는다.
+    let mut q = Core::new(c.ent);
+    q.conn = c.conn.clone();
+    for (i, column) in key.iter().enumerate() {
+        q.add_eq(if i == 0 { "" } else { "and" }, column, value(column).expect("covered key column"));
+    }
+    let mut req = build(&q, "restore");
+    // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+    for s in &c.sets {
+        if key.contains(&s.column) {
+            continue;
+        }
+        let a = assign(&mut req, &ent, s)?;
+        req.ir.set.push(a);
+    }
+    req.ir.n_params = req.params.len();
+    write(&ex, &mut req).await?;
+    get_core(&q).await
+}
+
 /// Deletes the row; `delete(true)` first deletes loaded related rows that
 /// belong to it, except relations marked with delete_lock.
 pub async fn delete<M: Model>(m: &M, recursive: bool) -> Result<()> {

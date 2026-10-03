@@ -1,6 +1,6 @@
 // Value-free request and plan types (docs/protocol.md).
 
-export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete';
+export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore';
 
 export interface RequestQuery {
   entity: string;

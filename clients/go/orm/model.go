@@ -1162,6 +1162,88 @@ func (c *Core) Save() (Model, error) {
 	return c.Create()
 }
 
+// Restore restores the soft-deleted row that the set values name by its
+// primary key or one unique key, and returns the restored row. The key is the
+// primary key when every primary key column has a set value, otherwise the
+// first unique key in name order whose columns all have set values; every
+// other set value is a new value written with the restore. It clears the soft
+// delete column with one update that, on an audited table, writes the
+// operation id like any other update. A row that is not deleted is returned
+// unchanged and nothing is written; a missing row returns CodeNoRows. Reads
+// never return a soft-deleted row: Restore names it explicitly.
+func (c *Core) Restore() (Model, error) {
+	c.ensureStatement()
+	ex, err := c.terminal()
+	if err != nil {
+		return nil, err
+	}
+	ent, err := c.entityModel(ex.base())
+	if err != nil {
+		return nil, err
+	}
+	values := map[string]any{}
+	for _, s := range c.sets {
+		if !s.null && !s.plus && !s.minus && s.raw == nil {
+			values[s.column] = s.value
+		}
+	}
+	covered := func(columns []string) bool {
+		for _, column := range columns {
+			if _, ok := values[column]; !ok {
+				return false
+			}
+		}
+		return true
+	}
+	var key []string
+	if covered(ent.PK) {
+		key = ent.PK
+	} else {
+		for _, unique := range ent.Uniques {
+			if covered(unique.Columns) {
+				key = unique.Columns
+				break
+			}
+		}
+	}
+	if key == nil {
+		return nil, configErr("restore requires the set values of the primary key or a unique key of %s", ent.Name)
+	}
+	// key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가
+	// 같은 행을 같은 값 변환으로 찾는다.
+	q := NewCore(c.ent)
+	q.conn = c.conn
+	keys := make([]ChainKey, len(key))
+	args := make([]any, len(key))
+	for i, column := range key {
+		keys[i] = ChainKey{Column: column}
+		if i > 0 {
+			keys[i].Conn = "and"
+		}
+		args[i] = values[column]
+	}
+	q.Where("", keys, args...)
+	r := q.build("restore")
+	if r.err != nil {
+		return nil, r.err
+	}
+	for _, s := range c.sets {
+		if slices.Contains(key, s.column) {
+			continue
+		}
+		a, err := r.assign(ent, s)
+		if err != nil {
+			return nil, err
+		}
+		r.ir.Set = append(r.ir.Set, a)
+	}
+	r.ir.NParams = len(r.params)
+	if _, _, err := write(ex, r); err != nil {
+		return nil, err
+	}
+	return q.Get()
+}
+
 // Delete deletes the row. Delete(true) first deletes loaded relation rows
 // that belong to it, except relations marked with deleteLock.
 func (c *Core) Delete(recursive []bool) error {

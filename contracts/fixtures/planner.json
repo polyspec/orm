@@ -150,6 +150,80 @@
         }
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL"
+          }
+        ],
+        "postgres": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $1 AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+          }
+        ],
+        "sqlite": [
+          {
+            "params": [
+              0
+            ],
+            "role": "main",
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+          }
+        ]
+      },
+      "id": "planner_restore",
+      "input": {
+        "entity": "soft_record",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_restore_rejects_non_key",
+      "input": {
+        "entity": "soft_record",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

@@ -56,6 +56,7 @@ const FIXED: &[&str] = &[
     "update",
     "save",
     "delete",
+    "restore",
     "duplication",
     "limit",
     "order_by_random",

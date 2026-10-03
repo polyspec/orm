@@ -792,8 +792,8 @@
       "title": "Model writes",
       "title_ko": "모델 쓰기",
       "status": "implemented",
-      "description": "Create, create many, update with optional optimistic locking, save, and delete with optional recursive relation deletion, including the duplication assignments of an upsert.",
-      "description_ko": "생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다.",
+      "description": "Create, create many, update with optional optimistic locking, save, delete with optional recursive relation deletion, including the duplication assignments of an upsert, and restore a soft-deleted row named by its primary key or one unique key, with new values of its other columns, returning the restored row.",
+      "description_ko": "생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다. primary key나 unique key 하나의 값으로 찾은 soft delete한 행을 다른 컬럼의 새 값과 함께 restore하고 되돌린 행을 반환한다.",
       "inputs": {
         "type": "Model",
         "fields": [
@@ -814,7 +814,8 @@
         "assign values and timestamps",
         "encrypt AES columns with the current key version",
         "run the write statement",
-        "return the stored row"
+        "return the stored row",
+        "restore a soft-deleted row by its primary key or one unique key"
       ],
       "errors": [
         {
@@ -828,6 +829,10 @@
         {
           "code": "FOREIGN_KEY",
           "when": "a write breaks a foreign key"
+        },
+        {
+          "code": "NO_ROWS",
+          "when": "restore names a key that no row has"
         }
       ],
       "clients": {
@@ -2240,7 +2245,8 @@
         "clients/go/orm/coverage_planner_test.go",
         "clients/php/tests/coverage_planner.php",
         "clients/rust/orm/tests/unit/coverage_planner.rs",
-        "clients/typescript/tests/coverage_planner.mjs"
+        "clients/typescript/tests/coverage_planner.mjs",
+        "engine/planner/restore_test.go"
       ],
       "docs": [
         "docs/protocol.md",
@@ -2265,7 +2271,9 @@
         "cases": [
           "planner_statement",
           "planner_count",
-          "planner_rejects_unknown_column"
+          "planner_rejects_unknown_column",
+          "planner_restore",
+          "planner_restore_rejects_non_key"
         ],
         "owners": {
           "go": {
@@ -2281,12 +2289,16 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
-                    "planner_rejects_unknown_column"
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_restore_rejects_non_key"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
                     "planner_count": "TestCoveragePlannerCount",
-                    "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn"
+                    "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn",
+                    "planner_restore": "TestCoveragePlannerRestore",
+                    "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey"
                   }
                 }
               ]
@@ -2305,7 +2317,9 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
-                    "planner_rejects_unknown_column"
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_restore_rejects_non_key"
                   ]
                 }
               ]
@@ -2324,12 +2338,16 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
-                    "planner_rejects_unknown_column"
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_restore_rejects_non_key"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
                     "planner_count": "engine::coverage_planner::coverage_planner_count",
-                    "planner_rejects_unknown_column": "engine::coverage_planner::coverage_planner_rejects_unknown_column"
+                    "planner_rejects_unknown_column": "engine::coverage_planner::coverage_planner_rejects_unknown_column",
+                    "planner_restore": "engine::coverage_planner::coverage_planner_restore",
+                    "planner_restore_rejects_non_key": "engine::coverage_planner::coverage_planner_restore_rejects_non_key"
                   }
                 }
               ]
@@ -2348,7 +2366,9 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
-                    "planner_rejects_unknown_column"
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_restore_rejects_non_key"
                   ]
                 }
               ]
@@ -3345,8 +3365,8 @@
       "title": "Audit triggers",
       "title_ko": "감사 트리거",
       "status": "implemented",
-      "description": "The audit setting of a table installs row triggers that copy every inserted and updated row into the declared history table with the operation id that the transaction sets; the setting records every column, or only the columns that an exclude or include list selects, and the history table holds exactly the recorded columns. Every transaction entry point of a client takes the operation id: Go Transaction, PHP transaction and TypeScript transaction through the connection or its context or signal handle, and Rust transaction, transaction_send and transaction_once; a nested transaction takes none.",
-      "description_ko": "테이블의 audit 설정은 행 trigger를 설치해, 삽입·갱신된 모든 행을 트랜잭션이 정한 작업 id와 함께 선언한 history 테이블에 복사한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 클라이언트의 모든 트랜잭션 진입점이 작업 id를 받는다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 받지 않는다.",
+      "description": "The audit setting of a table installs row triggers that copy every inserted and updated row into the declared history table with the operation id that the transaction sets; the setting records every column, or only the columns that an exclude or include list selects, and the history table holds exactly the recorded columns. Every transaction entry point of a client takes the operation id: Go Transaction, PHP transaction and TypeScript transaction through the connection or its context or signal handle, and Rust transaction, transaction_send and transaction_once; a nested transaction takes none. Restoring a soft-deleted row of an audited table is an update that writes the operation id, and the history records it.",
+      "description_ko": "테이블의 audit 설정은 행 trigger를 설치해, 삽입·갱신된 모든 행을 트랜잭션이 정한 작업 id와 함께 선언한 history 테이블에 복사한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 클라이언트의 모든 트랜잭션 진입점이 작업 id를 받는다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 받지 않는다. 감사 대상 테이블에서 soft delete한 행을 restore하는 것은 작업 id를 쓰는 update이며, history가 이를 기록한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -3363,7 +3383,8 @@
       "state": [
         "render the audit triggers with the audited table",
         "set the operation id on every transaction entry point",
-        "copy each changed row into the history table"
+        "copy each changed row into the history table",
+        "restore a soft-deleted row with an update that the history records"
       ],
       "errors": [
         {
@@ -3380,11 +3401,15 @@
       "fixtures": [
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
+        "contracts/fixtures/restore.dbs",
         "clients/go/orm/schema_helpers_test.go",
         "clients/go/orm/coverage_fixture_test.go",
         "clients/php/tests/coverage_cases.php",
         "clients/rust/orm/tests/common/audit_rows.rs",
-        "clients/typescript/tests/coverage_case.mjs"
+        "clients/typescript/tests/coverage_case.mjs",
+        "clients/php/tests/restore_case.php",
+        "clients/typescript/tests/restore_case.mjs",
+        "clients/rust/orm/tests/common/restore_rows.rs"
       ],
       "tests": [
         "clients/php/tests/model_test.php",
@@ -3397,7 +3422,9 @@
         "clients/php/tests/coverage_audit_triggers.php",
         "clients/rust/orm/tests/coverage_audit_triggers.rs",
         "clients/typescript/tests/coverage_audit_triggers.mjs",
-        "clients/php/tests/coverage_audit_columns.php"
+        "clients/php/tests/coverage_audit_columns.php",
+        "clients/go/orm/restore_test.go",
+        "clients/rust/orm/tests/restore.rs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -3414,7 +3441,8 @@
         "cases": [
           "audit_history",
           "audit_selected_columns",
-          "audit_operation_entry_points"
+          "audit_operation_entry_points",
+          "soft_delete_restore"
         ],
         "owners": {
           "go": {
@@ -3430,12 +3458,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "TestCoverageAuditHistory",
                     "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints"
+                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints",
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3447,12 +3477,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "TestCoverageAuditHistory",
                     "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints"
+                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints",
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3464,12 +3496,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "TestCoverageAuditHistory",
                     "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints"
+                    "audit_operation_entry_points": "TestCoverageAuditOperationEntryPoints",
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3489,7 +3523,8 @@
                   "test": "clients/php/tests/coverage_audit_triggers.php",
                   "cases": [
                     "audit_history",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
@@ -3508,7 +3543,8 @@
                   "test": "clients/php/tests/coverage_audit_triggers.php",
                   "cases": [
                     "audit_history",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
@@ -3527,7 +3563,8 @@
                   "test": "clients/php/tests/coverage_audit_triggers.php",
                   "cases": [
                     "audit_history",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
@@ -3555,12 +3592,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "coverage_audit_history",
                     "audit_selected_columns": "coverage_audit_selected_columns",
-                    "audit_operation_entry_points": "coverage_audit_operation_entry_points"
+                    "audit_operation_entry_points": "coverage_audit_operation_entry_points",
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3572,12 +3611,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "coverage_audit_history",
                     "audit_selected_columns": "coverage_audit_selected_columns",
-                    "audit_operation_entry_points": "coverage_audit_operation_entry_points"
+                    "audit_operation_entry_points": "coverage_audit_operation_entry_points",
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3589,12 +3630,14 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "symbols": {
                     "audit_history": "coverage_audit_history",
                     "audit_selected_columns": "coverage_audit_selected_columns",
-                    "audit_operation_entry_points": "coverage_audit_operation_entry_points"
+                    "audit_operation_entry_points": "coverage_audit_operation_entry_points",
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3614,7 +3657,8 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3626,7 +3670,8 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3638,7 +3683,8 @@
                   "cases": [
                     "audit_history",
                     "audit_selected_columns",
-                    "audit_operation_entry_points"
+                    "audit_operation_entry_points",
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

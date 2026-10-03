@@ -93,6 +93,11 @@ await suite.run('generate', PROCESS, async () => {
     await rm(join(out, 'models.ts'));
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
+    // 모델 method 이름은 column 이름이 될 수 없다: restore() 가 있으므로 restore column 도 거부한다.
+    const reservedSchema = join(work, 'reserved.dbs');
+    await writeFile(reservedSchema, 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n');
+    const reserved = run('gen', '--schema', reservedSchema, '--out', join(work, 'reserved'));
+    check(reserved.status !== 0 && reserved.stderr.includes('column name is a reserved method name: restore'), `a column named restore: ${reserved.status} ${reserved.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });
   }

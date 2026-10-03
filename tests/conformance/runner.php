@@ -12,6 +12,7 @@ use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
+use Polyspec\Orm\Tests\Model\SoftRecord;
 use Polyspec\Orm\Tests\Model\Task;
 use Polyspec\Orm\Tests\Model\User;
 use Orm\AesKeyring;
@@ -413,6 +414,38 @@ vector('transactions', function () use ($db): array {
     }
     $events[] = (new Service)($db)->name(['tx-outer', 'tx-inner'])->getCount();
     return $events;
+});
+
+vector('restore', function () use ($db): array {
+    // soft delete한 행을 primary key로 되돌린다. 지운 시각은 고정한 값으로 써서 모든 database와 runner의
+    // bind가 같다. transaction은 끝에 rollback하므로 database는 처음과 같다.
+    $boom = new RuntimeException('boom');
+    $result = [];
+    try {
+        $db->transaction(function () use ($boom, &$result): void {
+            $created = (new SoftRecord)->setName('restore')->create();
+            $seq = $created->getSeq();
+            mask([$seq]);
+            $created->setDeletedAt(new DateTimeImmutable('2026-01-02 03:04:05', new DateTimeZone('UTC')))->update();
+            $result['hidden'] = caught(fn() => (new SoftRecord)->getBySeq($seq));
+            // key 밖의 값은 지워진 행을 되돌릴 때만 쓴다. 두 번째 restore는 지워지지 않은 행을 바꾸지
+            // 않고 돌려준다.
+            foreach (['restored' => 'restore-2', 'again' => 'ignored'] as $name => $value) {
+                $array = (new SoftRecord)->setSeq($seq)->setName($value)->restore()->toArray();
+                $array['seq'] = '$SEQ';
+                $result[$name] = $array;
+            }
+            $result['missing'] = caught(fn() => (new SoftRecord)->setSeq(0)->restore());
+            throw $boom;
+        }, retry: 0);
+        throw new RuntimeException('the restore transaction committed');
+    } catch (RuntimeException $e) {
+        if ($e !== $boom) {
+            throw $e;
+        }
+    }
+    $result['left'] = (new SoftRecord)($db)->name('restore')->getCount();
+    return $result;
 });
 
 vector('aes_status', function () use ($db): array {

@@ -230,6 +230,15 @@ func (x *CompositeMembershipModel) Save() (*CompositeMembershipModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *CompositeMembershipModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *CompositeMembershipModel) Restore() (*CompositeMembershipModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*CompositeMembershipModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *CompositeMembershipModel) Duplication(m *CompositeMembershipModel) *CompositeMembershipModel {
 	x.m.Duplication(m)

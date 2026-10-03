@@ -1954,6 +1954,70 @@ abstract class Model implements \JsonSerializable
         $db->writeOf($frame, $r);
     }
 
+    /**
+     * Restores the soft-deleted row that the set values name by its primary key
+     * or one unique key and returns the restored row. It clears the soft delete
+     * column with an update that, on an audited table, writes the operation id
+     * like any other update. A row that is not deleted is returned unchanged
+     * and nothing is written; a missing row is NO_ROWS. Reads never return a
+     * soft-deleted row: restore names it explicitly.
+     */
+    public function restore(): static
+    {
+        [$db, $frame] = $this->executor();
+        $meta = static::meta();
+        // key는 모든 column에 값이 있는 primary key, 아니면 이름 순서로 첫 unique key다.
+        $values = [];
+        foreach ($this->sets as $column => $spec) {
+            if (array_key_exists('value', $spec)) {
+                $values[$column] = $spec['value'];
+            }
+        }
+        $covered = static function (array $columns) use ($values): bool {
+            foreach ($columns as $column) {
+                if (!array_key_exists($column, $values)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        $key = null;
+        if ($covered($meta['pk'])) {
+            $key = $meta['pk'];
+        } else {
+            $unique = $meta['unique'];
+            ksort($unique, SORT_STRING);
+            foreach ($unique as $columns) {
+                if ($covered($columns)) {
+                    $key = $columns;
+                    break;
+                }
+            }
+        }
+        if ($key === null) {
+            throw new OrmException(Code::CONFIG, "restore requires the set values of the primary key or a unique key of {$meta['entity']}");
+        }
+        // key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가 같은 행을 같은
+        // 값 변환으로 찾는다. key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+        $keys = [];
+        $args = [];
+        foreach ($key as $column) {
+            $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
+            $args[] = $values[$column];
+        }
+        $q = new static();
+        $q->conn = $this->conn;
+        $q->whereChain('', $keys, $args);
+        $r = $q->build('restore', $db);
+        foreach ($this->sets as $column => $spec) {
+            if (!in_array($column, $key, true)) {
+                $r->ir['set'][] = $this->assignIr($r, $column, $spec);
+            }
+        }
+        $db->writeOf($frame, $r);
+        return $q->get();
+    }
+
     /** @internal the connection of a loaded row */
     public function connection(): ?Db
     {

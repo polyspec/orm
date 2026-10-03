@@ -154,7 +154,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | --- | --- | --- |
 | `entity <name>` | 생성 코드가 table에 쓰는 model 이름. 없으면 model 이름은 table 이름이다 | manifest |
 | `updated <column>` | executor가 자신이 계획하는 모든 `UPDATE`에서 `datetime` column에 UTC statement 시각을 넣는다. database에는 아무것도 렌더링하지 않는다. raw SQL은 기록되지 않는다 | manifest |
-| `soft_delete <column>` | 읽기는 nullable `datetime` column이 null이 아닌 row를 제외한다. 삭제는 그 column에 UTC statement 시각을 넣는다 | manifest |
+| `soft_delete <column>` | 읽기는 nullable `datetime` column이 null이 아닌 row를 제외한다. 삭제는 그 column에 UTC statement 시각을 넣고, `restore`는 primary key나 unique key 값이 지정한 row 하나에서 그 column을 비운다([restore](protocol.ko.md#_1-5-restore)) | manifest |
 | `select explicit <column> ...` | column을 기본 select 집합에서 뺀다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다 | manifest |
 | `codec <column> <stage> ...` | 쓸 때 stage 순서로 encode하고 읽을 때 역순으로 decode한다: `ordered_json`, `aes`, `hex`, `gz`, `base64`, `serialize`, `yaml`, `ip` ([codecs](codec.md)) | manifest |
 | `aes_version <column>` | row의 AES key version을 저장하는 non-null 정수 column. `aes`를 쓰는 column이 있으면 필요하다 | manifest |
@@ -202,7 +202,7 @@ table service_history {
 - **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 기록하는 모든 column의 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 기록하는 모든 column의 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
 - **Schema text와 introspection.** database는 trigger가 적은 기록하는 column만 갖는다. 그래서 schema text는 setting을 기록하지 않는 column을 column 순서로 적은 `exclude`로 쓰고, 모든 column을 기록하면 목록 없이 쓴다. `include (title)`과 나머지 column의 `exclude` 목록은 같은 `schemaHash`를 주며, manifest text는 쓴 목록을 그대로 둔다. introspection은 `audit_insert` trigger에서 기록하는 column을 읽어 setting을 schema text 형식으로 되살린다. database에 다른 것은 저장하지 않는다.
 - **암호화한 값.** 암호화가 필요한 값은 `aes` stage가 있는 codec을 갖고, executor가 쓰기 전에 그 값을 encode한다([codecs](codec.md)). 그래서 row는 ciphertext를 갖고 trigger는 그 ciphertext를 이력 table에 복사하며, trigger가 평문을 보는 일은 없다. 그 이력 column은 같은 storage type이다. 이력에서 그 값을 빼려면 그 column을 exclude한다.
-- **삭제.** `BEFORE DELETE` trigger 때문에 physical `DELETE`는 실패한다. `soft_delete`를 선언한 table은 soft delete column의 `UPDATE`로 삭제하며, 이력이 그 operation과 함께 기록한다. `audit`은 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, schema setting은 manifest setting에 의존하지 않는다.
+- **삭제.** `BEFORE DELETE` trigger 때문에 physical `DELETE`는 실패한다. `soft_delete`를 선언한 table은 soft delete column의 `UPDATE`로 삭제하며, 이력이 그 operation과 함께 기록한다. soft delete한 row의 restore도 이력이 같은 방법으로 기록하는 `UPDATE`다. `audit`은 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, schema setting은 manifest setting에 의존하지 않는다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. operation column을 쓰지 않는 raw SQL은 이전 operation의 id를 다시 기록한다. 이 column을 쓰는 것은 executor뿐이다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.
 
 ## Manifest와 hash {#manifest-and-hashes}
@@ -227,7 +227,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **기본 select 집합.** `select explicit`에 없는 모든 column이다. 선택하지 않은 column을 읽으면 `COLUMN_UNSELECTED`로 실패한다. type이나 codec이 스스로 column을 빼지는 않는다.
 - **Default.** default가 있는 column을 생략한 insert는 database default를 받으며 executor는 채우지 않는다. 단 clock이 millisecond 해상도인 SQLite에서는 생략한 `default now` column에 클라이언트 clock을 bind한다([protocol](protocol.ko.md)). default 없는 non-null column을 생략한 insert는 database에 닿기 전에 `IR_INVALID`로 실패한다.
 - **Codec.** `codec` setting이 있는 column은 첫 stage가 encode하는 값을 담는다. stage 중 `ordered_json`, `serialize`, `yaml`, `gz`, `base64`가 있으면 공통 값 model([codecs](codec.md))의 styled 값이며 SQL NULL과 저장된 null을 구분한다. 모든 stage가 `aes`, `hex`, `ip`이면 문자열이다(`ip`는 주소 text).
-- **Setting.** `updated`는 executor가 계획하는 모든 `UPDATE`에서 UTC statement 시각을 받는다. `soft_delete`는 읽기를 거르고 delete를 update로 바꾼다. `aes_version`은 row의 key version을 저장한다. `blind_index`는 HMAC column을 쓰고 AES column에 대한 같음 조건을 바꾼다. `audit`에서는 호출한 code가 작업 단위의 operation id를 주고, executor는 자신이 insert하거나 update하는 모든 감사 row의 operation column에 그것을 쓴다. operation id 없는 감사 table의 insert나 update는 `CONFIG`로 실패한다. `immutable`은 runtime 동작이 없다: database가 변경을 거부한다. `navigation`도 runtime 동작이 없다.
+- **Setting.** `updated`는 executor가 계획하는 모든 `UPDATE`에서 UTC statement 시각을 받는다. `soft_delete`는 읽기를 거르고 delete를 update로 바꾸며, soft delete한 row와 맞는 호출은 `restore`뿐이다. `aes_version`은 row의 key version을 저장한다. `blind_index`는 HMAC column을 쓰고 AES column에 대한 같음 조건을 바꾼다. `audit`에서는 호출한 code가 작업 단위의 operation id를 주고, executor는 자신이 insert하거나 update하는 모든 감사 row의 operation column에 그것을 쓴다. operation id 없는 감사 table의 insert나 update는 `CONFIG`로 실패한다. `immutable`은 runtime 동작이 없다: database가 변경을 거부한다. `navigation`도 runtime 동작이 없다.
 - **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
 - **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `install`은 자기가 설치한 set을 등록한다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
 

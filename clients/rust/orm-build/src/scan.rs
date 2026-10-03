@@ -52,6 +52,7 @@ const TERMINALS: &[&str] = &[
     "update",
     "save",
     "delete",
+    "restore",
     "to_array",
     "to_json",
 ];

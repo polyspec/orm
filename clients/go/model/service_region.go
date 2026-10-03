@@ -219,6 +219,15 @@ func (x *ServiceRegionModel) Save() (*ServiceRegionModel, error) {
 // Delete deletes the row; Delete(true) first deletes loaded related rows.
 func (x *ServiceRegionModel) Delete(recursive ...bool) error { return x.m.Delete(recursive) }
 
+// Restore restores the soft-deleted row that the set key values name and returns it.
+func (x *ServiceRegionModel) Restore() (*ServiceRegionModel, error) {
+	m, err := x.m.Restore()
+	if err != nil {
+		return nil, err
+	}
+	return m.(*ServiceRegionModel), nil
+}
+
 // Duplication sets the duplicate-key update of the next Create.
 func (x *ServiceRegionModel) Duplication(m *ServiceRegionModel) *ServiceRegionModel {
 	x.m.Duplication(m)

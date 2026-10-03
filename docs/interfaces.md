@@ -144,6 +144,7 @@ The creation spelling follows the host language. The method role, stored request
 | `creates` | inserted row count | model connection or active transaction |
 | `update` | row | row connection or active transaction |
 | `delete` | row or collection | row connection or active transaction |
+| `restore` | the restored row; `NO_ROWS` when no row has the key | model connection or active transaction |
 
 A terminal without a connection outside a transaction returns `CONFIG`. A connection must carry the schema engine used by the generated request; otherwise the terminal returns `CONFIG`.
 
