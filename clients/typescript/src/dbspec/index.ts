@@ -52,6 +52,7 @@ export {
   type DbspecApplyPostgresConnection,
   type DbspecApplySqliteConnection,
 } from './apply.js';
+export type { DbspecMySqlQueryResult, DbspecSqliteStatement } from './connections.js';
 export { exportMermaid, importMermaid, type DbspecMermaidExport, type DbspecMermaidImport } from './mermaid.js';
 export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
 export { compareSchemas, type DbspecComparisonResult, type DbspecDifference } from './compare.js';

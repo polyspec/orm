@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T34: the published TypeScript declarations import no driver module. The dbspec apply and introspection connection types name only the methods the client calls, so code that uses them type-checks with `skipLibCheck` off without pg, @types/pg, mysql2 or the node:sqlite types; mysql2, pg and node:sqlite connections still fit them.
+
 - T33: a transaction that begins without an operation id takes one before its first audited write: Go `Utils().SetOperation(id)`, PHP `utils()->setOperation($id)`, TypeScript `utils().setOperation(id)` and Rust `utils().set_operation(id)`. The id the transaction already has changes nothing, another id is `CONFIG` (also from a nested transaction), and a savepoint that rolls back restores the id it began with.
 
 - T32: `restore()` brings back a soft-deleted row in the four clients. Set the values of its primary key or one unique key and any new values of other columns: one `UPDATE` writes the new values and clears the soft delete column (on an audited table with the operation id, recorded in the history), and the row is read back by the key. A row that is not deleted is returned unchanged, a missing row is `NO_ROWS`, and default reads still exclude soft-deleted rows. The IR has the kind `restore`, and `restore` is a reserved column name.

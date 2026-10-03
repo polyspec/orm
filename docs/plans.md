@@ -141,7 +141,7 @@ Each command reports each occurrence as an event: `plan` when apply or recover r
 
 Between an interruption and its recover or rollback, the plan's tables must not be written: a row written to a table that a SQLite rebuild has emptied, for example, is not in its work table. Apply on a database that has applied the whole chain changes nothing. Apply of the empty chain creates the history table, requires a database without a table, and reports no event; recover, rollback and finalize of the empty chain change nothing.
 
-Go has `Apply`, `Recover`, `Rollback` and `Finalize`; PHP `Dbspec::apply`, `recover`, `rollback` and `finalize`; TypeScript `applyPlans`, `recoverPlans`, `rollbackPlans` and `finalizePlans`; Rust `orm::dbspec::apply`, `recover`, `rollback` and `finalize`. Each takes the connection, the dialect, the plans of the chain, a clock for `applied_at` and an event handler.
+Go has `Apply`, `Recover`, `Rollback` and `Finalize`; PHP `Dbspec::apply`, `recover`, `rollback` and `finalize`; TypeScript `applyPlans`, `recoverPlans`, `rollbackPlans` and `finalizePlans`; Rust `orm::dbspec::apply`, `recover`, `rollback` and `finalize`. Each takes the connection, the dialect, the plans of the chain, a clock for `applied_at` and an event handler. The TypeScript connection types (`DbspecApplyMySqlConnection`, `DbspecApplyPostgresConnection`, `DbspecApplySqliteConnection`, and `DbspecMySqlConnection`, `DbspecPostgresConnection` and `DbspecSqliteConnection` of `introspectDbspec`) name only the methods that the client calls, without the types of pg, mysql2 or node:sqlite: a mysql2 connection, a pg client and a node:sqlite database fit them, and code that installs only one driver type-checks the published declarations.
 
 ## Verification
 

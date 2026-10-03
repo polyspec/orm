@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T34: 배포한 TypeScript 선언은 driver module을 import하지 않는다. dbspec apply와 introspection의 connection type은 client가 호출하는 method만 적으므로, 그것을 쓰는 code는 pg, @types/pg, mysql2, node:sqlite type 없이 `skipLibCheck`를 끄고 type 검사를 통과한다. mysql2, pg, node:sqlite connection은 그대로 맞는다.
+
 - T33: operation id 없이 시작한 transaction은 첫 감사 대상 write 전에 id를 받는다: Go `Utils().SetOperation(id)`, PHP `utils()->setOperation($id)`, TypeScript `utils().setOperation(id)`, Rust `utils().set_operation(id)`. transaction이 이미 가진 id는 아무것도 바꾸지 않고, 다른 id는 중첩 transaction에서도 `CONFIG`이며, rollback한 savepoint는 시작할 때의 id로 되돌린다.
 
 - T32: 네 client에서 `restore()`가 soft delete한 행을 되돌린다. primary key나 unique key 하나의 값과 다른 column의 새 값을 지정하면 `UPDATE` 하나가 새 값을 쓰고 soft delete column을 비우며(감사 대상 table에서는 operation id와 함께 쓰고 이력이 기록한다), key로 행을 다시 읽는다. 지워지지 않은 행은 그대로 반환되고, 없는 행은 `NO_ROWS`이며, 기본 읽기는 여전히 soft delete한 행을 뺀다. IR에 kind `restore`가 있고 `restore`는 예약 column 이름이다.
