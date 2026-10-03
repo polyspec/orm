@@ -8,28 +8,25 @@
 // `end` is inserted, which ends the transaction, so the client's ROLLBACK
 // finds no transaction. On MySQL and PostgreSQL a test connection ends the
 // server session that holds the transaction, so the next statement and the
-// rollback fail. ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test
-// databases; the test fails when either is unset.
+// rollback fail. Each case runs on a case database of its own on the servers
+// of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, or a new SQLite file
+// (case-database.mjs); the test fails when either DSN is unset.
 //
 // rollback_fault case는 condition `orm-test`에서만 resolve되는 test entry point
 // `@polyspec/orm-typescript/testing`의 rollback fault를 설정한다.
 //
 // Usage: node --conditions=orm-test clients/typescript/tests/rollback.mjs [case ...] (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
 import { runCase } from '../../../tests/testcase.mjs';
+import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm-typescript/testing';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-rollback-'));
-// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 table을 지우고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 지운다.
+// CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 database를 지운다.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
@@ -67,22 +64,16 @@ const probe = (db, label) => { const m = new RollbackProbe().connect(db); m[CORE
 async function native(driver, dsn, statements) {
   const url = new URL(dsn);
   if (driver === 'mysql') {
-    const conn = await require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
+    const conn = await mysqlConnection(dsn);
     try { let rows = []; for (const s of statements) [rows] = await conn.query(s); return rows; } finally { await conn.end(); }
   }
   if (driver === 'postgres') {
-    const { Client } = require('pg');
-    const client = new Client({ host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined, password: decodeURIComponent(url.password) || undefined });
+    const client = postgresClient(dsn);
     await client.connect();
     try { let rows = []; for (const s of statements) ({ rows } = await client.query(s)); return rows; } finally { await client.end(); }
   }
   const db = new DatabaseSync(url.pathname);
   try { for (const s of statements) db.exec(s); return []; } finally { db.close(); }
-}
-
-async function dropTable(driver, dsn) {
-  if (driver === 'sqlite') await rm(new URL(dsn).pathname, { force: true });
-  else await native(driver, dsn, ['DROP TABLE IF EXISTS rollback_probe']);
 }
 
 /** Opens the client, installs the fixture and, on SQLite, creates the trigger that raises ROLLBACK. */
@@ -198,32 +189,20 @@ async function rollbackFault(driver, dsn) {
 
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-const targets = { sqlite: `sqlite://${join(work, 'rollback.sqlite')}` };
-for (const [driver, env] of [['mysql', 'ORM_TEST_MYSQL_DSN'], ['postgres', 'ORM_TEST_POSTGRES_DSN']]) {
-  const value = process.env[env];
-  if (!value) throw new Error(`${env} is required; database tests never skip`);
-  targets[driver] = value;
+for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);
 }
-try {
-  for (const name of selected) {
-    const run = cases[name];
-    if (run === undefined) throw new Error(`unknown case ${name}`);
-    for (const [driver, dsn] of Object.entries(targets)) {
-      const before = failures;
-      current = `${name}/${driver}`;
-      const passed = await runCase(`rollback/${current}`, CASE_DEADLINE_MS, async () => {
-        try {
-          await dropTable(driver, dsn);
-          await run(driver, dsn);
-        } finally {
-          await dropTable(driver, dsn);
-        }
-        if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-      });
-      if (!passed && failures === before) failures++;
-    }
+for (const name of selected) {
+  const run = cases[name];
+  if (run === undefined) throw new Error(`unknown case ${name}`);
+  for (const driver of ['sqlite', 'mysql', 'postgres']) {
+    const before = failures;
+    current = `${name}/${driver}`;
+    const passed = await runCase(`rollback/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+      await withCaseDatabase(driver, step, database => run(driver, database.dsn));
+      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+    });
+    if (!passed && failures === before) failures++;
   }
-} finally {
-  await rm(work, { recursive: true, force: true });
 }
 if (failures > 0) process.exitCode = 1;

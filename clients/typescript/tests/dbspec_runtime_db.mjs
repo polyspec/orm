@@ -1,23 +1,21 @@
 // dbspec runtime model test on SQLite, MySQL and PostgreSQL: a connection
 // without a schema path, schema installation from dbspec documents, i16
 // values, database defaults, the default select set, the value type of every
-// codec stage and dbspec type, and the audit operation id.
-// ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN name test databases.
+// codec stage and dbspec type, and the audit operation id. Each dialect runs
+// on a case database of its own on the servers of ORM_TEST_MYSQL_DSN and
+// ORM_TEST_POSTGRES_DSN, or a new SQLite file (case-database.mjs).
 //
 // Usage: node --test clients/typescript/tests/dbspec_runtime_db.mjs (after the build)
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { after, before } from 'node:test';
+import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mjs';
+import { createCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
-const require = createRequire(new URL('../package.json', import.meta.url));
 const root = new URL('../../..', import.meta.url).pathname;
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-dbspec-runtime-'));
 
 const probeText = `dbspec 1 runtime_probe
 
@@ -74,53 +72,29 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
-function mysqlConnection(dsn) {
-  const url = new URL(dsn);
-  return require('mysql2/promise').createConnection({ user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1) });
-}
-
-function postgresClient(dsn) {
-  const url = new URL(dsn);
-  const { Client } = require('pg');
-  return new Client({ host: url.searchParams.get('host') ?? url.hostname, port: url.port ? Number(url.port) : undefined, database: url.pathname.slice(1), user: url.username || undefined });
-}
-
-const tables = ['probe', 'item', 'item_history'];
-
-/** Drops the tables of this test; each SQLite run starts from a new file. */
-async function dropTables(dialect, dsn) {
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try { for (const t of tables) await conn.query(`DROP TABLE IF EXISTS \`${t}\``); } finally { await conn.end(); }
-  } else if (dialect === 'postgres') {
-    const client = postgresClient(dsn);
-    await client.connect();
-    try {
-      await client.query('SET client_min_messages = warning');
-      for (const t of tables) await client.query(`DROP TABLE IF EXISTS "${t}" CASCADE`);
-      for (const f of ['item$audit_insert', 'item$audit_update', 'item$audit_delete']) await client.query(`DROP FUNCTION IF EXISTS "${f}"()`);
-    } finally { await client.end(); }
-  }
-}
-
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
-const targets = [
-  ['sqlite', `sqlite://${join(work, 'runtime.sqlite')}`],
-  ['mysql', process.env.ORM_TEST_MYSQL_DSN],
-  ['postgres', process.env.ORM_TEST_POSTGRES_DSN],
-];
-
-after(async () => { await rm(work, { recursive: true, force: true }); });
 
 // 각 case의 기한: 연결이나 statement 몇 개는 30 s, schema 설치와 audit trigger를 거치는 쓰기는
 // DDL을 실행하므로 60 s다.
-for (const [dialect, dsn] of targets) {
+// dialect마다 첫 case가 case database를 만들고 마지막 case가 지운다. 앞 case가 실패해도 node:test는
+// 마지막 case를 실행한다. process가 그 전에 끝나는 경우에는 after가 남은 database를 지우고, 지운
+// database가 있으면 실패한다.
+for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   let db;
-  before(async () => { await dropTables(dialect, dsn); });
+  let database;
+  after(async () => {
+    if (database === undefined) return;
+    const left = database;
+    database = undefined;
+    await db?.close();
+    await left.drop(text => console.log(`STEP ${dialect}: after the cases: ${text}`));
+    throw new Error(`${dialect}: case database ${left.name} was left by the cases and is dropped`);
+  });
 
-  caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async () => {
-    db = await Db.connect(dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
+  caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async ({ step }) => {
+    database = await createCaseDatabase(dialect, step);
+    db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
     assert.equal(db.driver, dialect);
   });
 
@@ -213,8 +187,9 @@ for (const [dialect, dsn] of targets) {
     assert.equal(await new Item().connect(db).getCount(), 0);
   });
 
-  caseTest(`${dialect}: close and drop the tables`, 30_000, async () => {
-    await db.close();
-    await dropTables(dialect, dsn);
+  caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {
+    const left = database;
+    database = undefined;
+    try { await db?.close(); } finally { await left?.drop(step); }
   });
 }
