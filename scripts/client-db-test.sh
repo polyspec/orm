@@ -34,6 +34,7 @@ php_lane() {
   php clients/php/tests/model_test.php
   php clients/php/tests/aes_json_test.php
   php clients/php/tests/runtime_db_test.php
+  php clients/php/tests/audit_external_sets_test.php
   php clients/php/tests/sqlite_concurrency_test.php
   php clients/php/tests/schema_set_test.php
   php clients/php/tests/add_tables_and_columns_test.php

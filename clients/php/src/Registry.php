@@ -7,7 +7,9 @@ namespace Orm;
  * process의 generated model을 그 model을 만든 document set의 manifestHash별로
  * 갖는다. 한 process는 여러 document set의 generated model을 읽으며, 각 model
  * class의 meta()는 자기 set의 manifest_hash를 갖는다. manifestHash는 manifest
- * text의 hash이므로 두 set이 같은 hash를 갖지 않는다.
+ * text의 hash이므로 두 set이 같은 hash를 갖지 않는다. schema 값으로만 연결에
+ * 등록한 set(install, Orm::connectSchema)은 generated class 없이 그 manifest
+ * text와 external text를 갖는다.
  */
 final class Registry
 {
@@ -34,6 +36,19 @@ final class Registry
         self::$texts[$hash] = $text;
         self::$externals[$hash] = $external;
         self::$models[$hash] ??= [];
+        // 이 set의 runtime model은 이제 generated class의 meta()로 만든다.
+        unset(self::$runtime[$hash]);
+    }
+
+    /**
+     * schema 값으로 연결에 등록한 set의 manifest text와 external text를 기억한다. 그 set의
+     * generated bootstrap이 읽히지 않았어도 runtime model을 이 text로 만든다. Db::registerSet이
+     * 값을 검사한 뒤 부른다.
+     */
+    public static function schema(Schema $schema): void
+    {
+        self::$texts[$schema->manifestHash] ??= $schema->manifestText;
+        self::$externals[$schema->manifestHash] ??= $schema->externalText;
     }
 
     /** @param class-string<Model> $class */
@@ -63,10 +78,21 @@ final class Registry
         return self::$texts[$hash] ?? throw self::unloaded($hash);
     }
 
-    /** 등록된 model의 meta() 배열로 만든 manifest hash의 runtime model이다. */
+    /**
+     * manifest hash의 runtime model이다. set의 generated bootstrap이 읽혔으면 등록된 model의
+     * meta() 배열로, 아니면 schema 값으로 등록한 manifest text와 external text를 한 번 parse해
+     * 만든다. 둘 다 없으면 SCHEMA_HASH_MISMATCH다.
+     */
     public static function model(string $hash): RuntimeModel
     {
-        return self::$runtime[$hash] ??= RuntimeModel::fromModels($hash, self::manifestText($hash), array_values(self::models($hash)), self::$externals[$hash] ?? '');
+        if (isset(self::$runtime[$hash])) {
+            return self::$runtime[$hash];
+        }
+        if (isset(self::$models[$hash])) {
+            return self::$runtime[$hash] = RuntimeModel::fromModels($hash, self::$texts[$hash], array_values(self::$models[$hash]), self::$externals[$hash] ?? '');
+        }
+        $text = self::$texts[$hash] ?? throw self::unloaded($hash);
+        return self::$runtime[$hash] = RuntimeModel::build(RuntimeModel::loadSet($text, self::$externals[$hash] ?? ''));
     }
 
     /** @return array<string, class-string<Model>> 한 document set의 model을 entity별로 돌려준다. */

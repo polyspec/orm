@@ -250,7 +250,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **Codec.** `codec` setting이 있는 column은 첫 stage가 encode하는 값을 담는다. stage 중 `ordered_json`, `serialize`, `yaml`, `gz`, `base64`가 있으면 공통 값 model([codecs](codec.md))의 styled 값이며 SQL NULL과 저장된 null을 구분한다. 모든 stage가 `aes`, `hex`, `ip`이면 문자열이다(`ip`는 주소 text).
 - **Setting.** `updated`는 executor가 계획하는 모든 `UPDATE`에서 UTC statement 시각을 받는다. `soft_delete`는 읽기를 거르고 delete를 update로 바꾸며, soft delete한 row와 맞는 호출은 `restore`뿐이다. `aes_version`은 row의 key version을 저장한다. `blind_index`는 HMAC column을 쓰고 AES column에 대한 같음 조건을 바꾼다. `audit`에서는 audit 값을 가진 transaction이 연결 audit source의 값과 자기 값으로 callback 전에 audit 기록 하나를 삽입하고, executor는 자신이 insert하거나 update하는 모든 감사 row의 audit column에 그 기록의 key를 쓴다. audit 없는 감사 table의 insert나 update는 `CONFIG`로 실패한다. `immutable`은 runtime 동작이 없다: database가 변경을 거부한다. `navigation`도 runtime 동작이 없다.
 - **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
-- **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `install`은 자기가 설치한 set을 등록한다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
+- **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `install`은 자기가 설치한 set을 등록한다. schema 값으로 등록한 set은 manifest text와 external text에서 runtime model을 얻으므로 읽은 생성 코드가 필요 없다. PHP는 생성 class의 bootstrap이 실행된 뒤에는 그 array를 쓴다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
 
 | dbspec | Go | PHP | TypeScript | Rust |
 | --- | --- | --- | --- | --- |
