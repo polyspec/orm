@@ -77,15 +77,20 @@ async fn behavior(driver: &str, dsn: &str) {
     assert_eq!(state(&db).await, [1, 2, 4], "{driver}: outer rollback includes released nested savepoint");
     assert!(active_for(&db).is_none(), "{driver}: transaction frame removed");
     db.transaction_send(|| async { Ok::<_, Error>(()) }).retry(0).await.expect("connection remains usable");
-    // transaction_once의 future는 callback과 그 future가 Send이면 Send다. operation(id)를 정해도 같다.
+    // transaction_once의 future는 callback과 그 future가 Send이면 Send다.
     require_send(
-        db.transaction_once(async || active_for(&db).expect("once frame").raw("INSERT INTO orm_send_savepoint_probe (id) VALUES (7)").await)
-            .operation(7)
-            .into_future(),
+        db.transaction_once(async || active_for(&db).expect("once frame").raw("INSERT INTO orm_send_savepoint_probe (id) VALUES (7)").await).into_future(),
     )
     .await
     .expect("once commit must succeed");
     assert_eq!(state(&db).await, [1, 2, 4, 7], "{driver}: transaction_once commits");
+    // audit 값을 정해도 transaction_send와 transaction_once의 future는 Send다. 이 연결에는 audit 기본값이
+    // 없으므로 둘 다 시작하기 전에 CONFIG다.
+    let send = require_send(db.transaction_send(|| async { Ok::<_, Error>(()) }).audit([("actor", "send")]).retry(0).into_future()).await;
+    assert!(matches!(send, Err(Error::Config(_))), "{driver}: transaction_send audit without defaults: {:?}", send.err());
+    let once = require_send(db.transaction_once(async || Ok::<_, Error>(())).audit([("actor", "once")]).into_future()).await;
+    assert!(matches!(once, Err(TransactionOnceError::Orm(Error::Config(_)))), "{driver}: transaction_once audit without defaults: {once:?}");
+    assert_eq!(state(&db).await, [1, 2, 4, 7], "{driver}: the audit transactions wrote nothing");
     db.close().await;
 }
 async fn check(driver: &str, key: &str) {

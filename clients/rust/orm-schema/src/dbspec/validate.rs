@@ -521,11 +521,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     // The longest of the immutable trigger names stands for both.
                     self.generated_name(line.pos, "immutable_update", false);
                 }
-                Setting::Audit { into, operation, action, previous, lists } => {
+                Setting::Audit { into, column, references, action, previous, lists } => {
                     if changes_rows {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
-                    self.audit(&line.setting, into, operation, action, previous, lists);
+                    self.audit(&line.setting, into, column, references, action, previous, lists);
                     // The longest of the audit trigger names stands for all three.
                     self.generated_name(line.pos, "audit_insert", false);
                 }
@@ -562,18 +562,18 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    /// audit setting과 history table의 모양을 검사한다(docs/dbspec.md "Audit"). history table은
-    /// i64 identity primary key, action과 previous column, 기록하는 column과 같은 이름과 type의
-    /// column만 가지며, 어긋난 곳마다 하나씩 보고한다.
-    fn audit(&mut self, setting: &Setting, into: &Name, operation: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
+    /// audit setting, audit 기록 table과 그 foreign key, history table의 모양을 검사한다(docs/dbspec.md
+    /// "Audit"). history table은 i64 identity primary key, action과 previous column, 기록하는 column과
+    /// 같은 이름과 type의 column만 가지며, 어긋난 곳마다 하나씩 보고한다.
+    #[allow(clippy::too_many_arguments)]
+    fn audit(&mut self, setting: &Setting, into: &Name, column: &Name, references: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
         let table = self.own.table;
-        let operation_column = self.setting_column(operation);
-        if let Some(column) = operation_column {
-            if !matches!(column.ty, Type::I64 | Type::Uuid) || column.nullable {
-                self.report(operation.pos, "setting", "the operation column is a non-null i64 or uuid column");
-            }
+        let audit_column = self.setting_column(column);
+        if audit_column.is_some_and(|c| c.nullable) {
+            self.report(column.pos, "setting", "the audit column is a non-null column");
         }
-        let listed = self.audit_lists(operation, lists);
+        let listed = self.audit_lists(column, lists);
+        self.audit_record(audit_column, column, references, into);
         if !well_formed(&into.text) {
             return;
         }
@@ -623,8 +623,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     self.report(previous.pos, "setting", "the previous column is a separate column of the history table")
                 }
                 Some(column) if !column.nullable => self.report(previous.pos, "setting", "the previous column is nullable"),
-                Some(column) if operation_column.is_some_and(|o| o.ty != column.ty) => {
-                    self.report(previous.pos, "setting", "the previous column has the operation column type")
+                Some(column) if audit_column.is_some_and(|o| o.ty != column.ty) => {
+                    self.report(previous.pos, "setting", "the previous column has the audit column type")
                 }
                 Some(_) => {}
             }
@@ -664,11 +664,74 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
+    /// audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history table이
+    /// 아니고, 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이 audit column의
+    /// type이다. audit column은 그 primary key를 restrict로 가리키는 선언한 foreign key의 유일한
+    /// column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가 거부한다.
+    fn audit_record(&mut self, audit_column: Option<&Column>, column: &Name, references: &Name, into: &Name) {
+        if !well_formed(&references.text) {
+            return;
+        }
+        let table = self.own.table;
+        let Some(record) = self.scope.table(&references.text) else {
+            if !self.scope.unresolved(&references.text) {
+                self.report(references.pos, "setting", format!("audit record table '{}' is not a table of this document or a used table", references.text));
+            }
+            return;
+        };
+        if record.table.name.text == table.name.text {
+            self.report(references.pos, "setting", "a table cannot record its audits in itself");
+            return;
+        }
+        if references.text == into.text {
+            self.report(references.pos, "setting", "the audit record table is another table than the history table");
+            return;
+        }
+        if record.table.settings.as_ref().is_some_and(|s| s.lines.iter().any(|l| matches!(l.setting, Setting::Audit { .. }))) {
+            self.report(references.pos, "setting", format!("audit record table '{}' is audited itself", references.text));
+        }
+        let key = match record.table.primary.as_slice() {
+            [only] if only.columns.len() == 1 => &only.columns[0].text,
+            _ => {
+                if !record.failed_keys.primary {
+                    self.report(references.pos, "setting", format!("audit record table '{}' needs a primary key of one column", references.text));
+                }
+                return;
+            }
+        };
+        let (Some(audit_column), Some(pk)) = (audit_column, record.table.column(key)) else { return };
+        if pk.ty != audit_column.ty {
+            self.report(
+                column.pos,
+                "setting",
+                format!("the audit column has type {}, not the type {} of the primary key of '{}'", audit_column.ty.render(), pk.ty.render(), references.text),
+            );
+            return;
+        }
+        let declared = table.foreign_keys.iter().any(|f| {
+            matches!(f.columns.as_slice(), [only] if only.text == column.text)
+                && f.table.text == references.text
+                && matches!(f.references.as_slice(), [only] if &only.text == key)
+                && f.on_delete == Action::Restrict
+                && f.on_update == Action::Restrict
+        });
+        if !declared && !self.own.failed_keys.any {
+            self.report(
+                column.pos,
+                "setting",
+                format!(
+                    "the audit column needs the foreign key ({}) references {} ({key}) on delete restrict on update restrict",
+                    column.text, references.text
+                ),
+            );
+        }
+    }
+
     /// audit의 exclude나 include 목록을 검사하고, 기록하는 column이 정해지는지 알린다. 두 목록을
     /// 다 쓰면 둘째 목록의 keyword에서 거부하고 false다. 목록의 column은 table의 column이고, 한
-    /// 번만 나오며, operation column이 아니다. operation column은 언제나 기록하므로 어느 목록에도
-    /// 쓰지 않는다.
-    fn audit_lists(&mut self, operation: &Name, lists: &[AuditList]) -> bool {
+    /// 번만 나오며, audit column이 아니다. audit column은 언제나 기록하므로 어느 목록에도 쓰지
+    /// 않는다.
+    fn audit_lists(&mut self, audited: &Name, lists: &[AuditList]) -> bool {
         if let [_, second, ..] = lists {
             self.report(second.keyword.pos, "setting", "audit names its recorded columns by exclude or by include, not both");
             return false;
@@ -678,11 +741,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
             for column in &list.columns {
                 if !listed.insert(column.text.as_str()) {
                     self.report(column.pos, "setting", format!("column '{}' repeats in audit {}", column.text, list.keyword.text));
-                } else if column.text == operation.text {
+                } else if column.text == audited.text {
                     self.report(
                         column.pos,
                         "setting",
-                        format!("the operation column '{}' is always recorded and is not listed in exclude or include", column.text),
+                        format!("the audit column '{}' is always recorded and is not listed in exclude or include", column.text),
                     );
                 } else {
                     self.setting_column(column);

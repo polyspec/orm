@@ -1130,10 +1130,42 @@ pub async fn save<M: Model>(m: &mut M) -> Result<M> {
     create(m).await
 }
 
+/// transaction의 audit 기록 `c`를 삽입하고 그 entity와 primary key 값을 돌려준다. 삽입은 `c`의 연결이나
+/// 지금 transaction에서 실행한다. primary key가 identity면 생성된 값을, 아니면 set한 값을 돌려준다.
+pub(crate) async fn insert_audit(c: &Core) -> Result<crate::tx::AuditKey> {
+    let ex = terminal(c)?;
+    if c.sets.is_empty() {
+        return Err(config("create requires set_<col> values"));
+    }
+    let ent = c.ent.entity_schema()?;
+    let mut req = write_req(c, "insert");
+    for s in &c.sets {
+        let a = assign(&mut req, &ent, s)?;
+        req.ir.set.push(a);
+    }
+    req.ir.n_params = req.params.len();
+    let (id, _) = write(&ex, &mut req).await?;
+    let pk = &ent.primary_key[0];
+    let key = if ent.identity.as_deref() == Some(pk.as_str()) {
+        Param::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?)
+    } else {
+        c.sets
+            .iter()
+            .rev()
+            .filter(|s| &s.column == pk)
+            .find_map(|s| match &s.value {
+                SetValue::Value(v) => Some(v.clone()),
+                _ => None,
+            })
+            .ok_or_else(|| config(format!("the audit record {} has no {pk} after its insert", ent.name)))?
+    };
+    Ok(crate::tx::AuditKey { entity: ent.name.clone(), key })
+}
+
 /// Restores the soft-deleted row that the set values name by its primary key or
 /// one unique key, and returns the restored row. The other set values are new
 /// values of the restored row. It clears the soft delete column with an update
-/// that, on an audited table, writes the operation id like any other update. A
+/// that, on an audited table, writes the audit of the transaction like any other update. A
 /// row that is not deleted is returned unchanged and nothing is written; a
 /// missing row returns NO_ROWS. Reads never return a soft-deleted row: restore
 /// names it explicitly.

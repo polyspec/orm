@@ -1007,8 +1007,10 @@ impl Parser {
             (Kind::Word, "audit") => (|| {
                 self.expect(&mut cursor, "into")?;
                 let into = self.name(&mut cursor)?;
-                self.expect(&mut cursor, "operation")?;
-                let operation = self.name(&mut cursor)?;
+                self.expect(&mut cursor, "column")?;
+                let column = self.name(&mut cursor)?;
+                self.expect(&mut cursor, "references")?;
+                let references = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "action")?;
                 let action = self.name(&mut cursor)?;
                 self.expect(&mut cursor, "previous")?;
@@ -1019,14 +1021,14 @@ impl Parser {
                     let columns = self.audit_columns(&mut cursor)?;
                     lists.push(AuditList { keyword, columns });
                 }
-                // 목록의 이름은 처음 나올 때만 검사한다. operation column은 검사가 따로 거부한다.
+                // 목록의 이름은 처음 나올 때만 검사한다. audit column은 검사가 따로 거부한다.
                 let mut named = HashSet::new();
-                for column in lists.iter().flat_map(|l| &l.columns) {
-                    if named.insert(column.text.clone()) && column.text != operation.text {
-                        self.check_name(&column.text, column.pos);
+                for listed in lists.iter().flat_map(|l| &l.columns) {
+                    if named.insert(listed.text.clone()) && listed.text != column.text {
+                        self.check_name(&listed.text, listed.pos);
                     }
                 }
-                Some(Setting::Audit { into, operation, action, previous, lists })
+                Some(Setting::Audit { into, column, references, action, previous, lists })
             })(),
             _ => {
                 self.report(err(keyword.pos, "setting", format!("unknown setting '{}'", keyword.text)));

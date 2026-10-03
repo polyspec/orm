@@ -99,13 +99,14 @@ final class CatalogTriggers
 
     /**
      * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
-     * operation column으로 audit setting을 만든다. 기록하지 않는 column은 table의 column 순서로
-     * exclude 목록이 된다. 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면
-     * null이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+     * audit column으로 audit setting을 만든다. audit 기록 table은 audit column 하나만 가진 table의
+     * foreign key가 가리키는 table이다. 기록하지 않는 column은 table의 column 순서로 exclude
+     * 목록이 된다. 목록이 renderer 형식이 아니거나, audit column을 기록하지 않거나, 그 foreign
+     * key가 하나가 아니면 null이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
      *
      * @param list<string> $quoted
      */
-    private static function audit(CatalogTable $t, string $history, array $quoted, string $operation): ?Setting
+    private static function audit(CatalogTable $t, string $history, array $quoted, string $column): ?Setting
     {
         $names = [];
         foreach ($quoted as $q) {
@@ -115,17 +116,29 @@ final class CatalogTriggers
             $names[] = $m[1];
         }
         $recorded = array_slice($names, 2);
-        if ($recorded === [] || !in_array($operation, $recorded, true)) {
+        if ($recorded === [] || !in_array($column, $recorded, true)) {
+            return null;
+        }
+        $references = '';
+        foreach ($t->foreignKeys as $f) {
+            if ($f['columns'] === [$column]) {
+                if ($references !== '') {
+                    return null;
+                }
+                $references = $f['table'];
+            }
+        }
+        if ($references === '') {
             return null;
         }
         $excluded = [];
-        foreach ($t->columns as $column) {
-            if (!in_array($column['name'], $recorded, true)) {
-                $excluded[] = $column['name'];
+        foreach ($t->columns as $c) {
+            if (!in_array($c['name'], $recorded, true)) {
+                $excluded[] = $c['name'];
             }
         }
-        // audit 의 인자는 history table, operation, action, previous 순이다.
-        return new Setting('audit', [$history, $operation, $names[0], $names[1]], [], $excluded === [] ? null : $excluded);
+        // audit 의 인자는 history table, audit column, audit 기록 table, action, previous 순이다.
+        return new Setting('audit', [$history, $column, $references, $names[0], $names[1]], [], $excluded === [] ? null : $excluded);
     }
 
     /**

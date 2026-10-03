@@ -69,7 +69,7 @@ var inputs = map[string]map[string]string{
 	"Recursive":           {"go": "recursive...bool", "php": "bool$recursive=false", "rust": "recursive:bool", "typescript": "recursive=false"},
 	"ConnectionOptions":   {"go": "dsnstring,cfgConfig", "php": "string$dsn,Orm\\Config$config", "rust": "dsn:&str,pool_size:u32,mutcfg:Config", "typescript": "dsn:string,options:ConnectOptions={}"},
 	"SchemaConnection":    {"go": "dsnstring,s*Schema,cfgConfig", "php": "string$dsn,Orm\\Schema$schema,Orm\\Config$config", "rust": "dsn:&str,schema:&Schema,pool_size:u32,cfg:Config", "typescript": "dsn:string,schema:Schema,options:ConnectOptions={}"},
-	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3,string|int|null$operation=null", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
+	"TransactionCallback": {"go": "fnfunc()error,options...TransactionOption", "php": "Closure$fn,string$isolation=\"\",bool$readOnly=false,int$timeoutMs=0,int$retry=3,?array$audit=null", "rust": "f:F", "typescript": "callback:()=>Promise<T>|T,options:TransactionOptions={}"},
 	"LockKey":             {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string"},
 	"GeneratedSchema":     {"go": "schema*Schema", "php": "Orm\\Schema$schema", "rust": "schema:&Schema", "typescript": "schema:Schema"},
 	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},

@@ -72,7 +72,7 @@ fn code<T>(r: orm::Result<T>) -> String {
     }
 }
 
-/// case database에 addcol_log와 version 1을 설치하고 log row 하나, operation 1로 item 하나, 그
+/// case database에 addcol_log와 version 1을 설치하고 log row 하나, audit 기록 1로 item 하나, 그
 /// item의 tag와 그 tag의 자식 tag를 쓴 연결. pool은 연결 하나라 add_tables_and_columns가 쓴 연결을 다음
 /// statement가 다시 쓴다.
 async fn installed(database: &CaseDatabase) -> Db {
@@ -81,7 +81,8 @@ async fn installed(database: &CaseDatabase) -> Db {
     db.utils().schema().install(fixture("v1")).await.unwrap();
     for statement in [
         "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
-        "INSERT INTO addcol_item (ref, label, created_at, operation_id) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+        "INSERT INTO audit (actor) VALUES ('setup')",
+        "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
         "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
         "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
     ] {
@@ -109,16 +110,19 @@ async fn add_tables_and_columns() {
         // SQLite는 foreign key를 끄고 table을 다시 만들었다. 연결이 다시 켰는지 본다.
         assert!(exec(&db, "INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')").await.is_err(), "{driver}: a tag of a missing item was written");
         // audit trigger는 새 column을 기록한다.
-        exec(&db, "UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1").await.unwrap();
-        let history = "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'";
+        exec(&db, "INSERT INTO audit (actor) VALUES ('update')").await.unwrap();
+        exec(&db, "UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1").await.unwrap();
+        let history = "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'";
         assert_eq!(count(&db, history).await.unwrap(), 1, "{driver}: history rows of the update with the new columns");
         // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
-        exec(&db, "INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, 'extra', 3)").await.unwrap();
-        let inserted = "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'";
+        exec(&db, "INSERT INTO audit (actor) VALUES ('extra')").await.unwrap();
+        exec(&db, "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)").await.unwrap();
+        let inserted = "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'";
         assert_eq!(count(&db, inserted).await.unwrap(), 1, "{driver}: history rows of the insert into the created table");
         for (statement, what) in [
-            ("INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)", "foreign key"),
-            ("INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)", "check"),
+            ("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)", "foreign key"),
+            ("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)", "check"),
+            ("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'unaudited', 999)", "audit foreign key"),
             ("DELETE FROM addcol_extra", "audit delete"),
         ] {
             assert!(exec(&db, statement).await.is_err(), "{driver}: the {what} of the created table accepted {statement}");

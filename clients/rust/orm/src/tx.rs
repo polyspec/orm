@@ -11,8 +11,10 @@ use std::sync::{Arc, Mutex};
 use futures_util::FutureExt as _;
 use sqlx::SqlSafeStr as _;
 
+use crate::core::Core;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
+use crate::value::Param;
 use crate::{codes, Error, Result};
 
 /// One active transaction.
@@ -23,64 +25,68 @@ pub(crate) struct TxShared {
     savepoints: AtomicU32,
     pub(crate) locals: Mutex<HashMap<String, String>>,
     pub(crate) locks: Mutex<Vec<String>>,
-    /// unit of work의 operation id. executor가 audit 대상 row의 operation column에 쓴다. transaction의
-    /// operation option이나 실행 중의 `utils().set_operation(id)`가 정하고, rollback한 savepoint는 그
-    /// savepoint를 시작할 때의 값으로 되돌린다.
-    pub(crate) operation: Mutex<Option<OperationId>>,
+    /// transaction이 시작할 때 삽입한 audit 기록이다. audit 대상 table의 insert와 update가 그 key를 audit
+    /// column에 쓴다. audit 값이 없는 transaction이면 None이다.
+    pub(crate) audit: Mutex<Option<AuditKey>>,
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
-/// unit of work의 operation id (docs/dbspec.md, "Audit"). audit operation column의
-/// type에 맞춰 `i64` column은 `I64`, `uuid` column은 소문자 canonical text의 `Uuid`를 받는다.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OperationId {
-    I64(i64),
-    Uuid(String),
+/// transaction이 시작할 때 삽입한 audit 기록의 entity와 primary key 값.
+#[derive(Clone, Debug)]
+pub(crate) struct AuditKey {
+    pub(crate) entity: String,
+    pub(crate) key: Param,
 }
 
-impl std::fmt::Display for OperationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OperationId::I64(id) => write!(f, "{id}"),
-            OperationId::Uuid(id) => f.write_str(id),
+/// transaction의 audit 값: audit 기록 table의 column 이름과 값.
+type AuditValues = Vec<(String, Param)>;
+
+/// audit 값을 column 이름과 `Param`으로 모은다.
+fn audit_values<K: Into<String>, V: Into<Param>>(values: impl IntoIterator<Item = (K, V)>) -> AuditValues {
+    values.into_iter().map(|(k, v)| (k.into(), v.into())).collect()
+}
+
+/// handle의 audit 기본값 model에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이
+/// 기본값을 이긴다. 기본값이 없거나, 기본값 model이 다른 연결을 쓰거나, 값의 key가 audit 기록 table의
+/// column이 아니거나, 그 table의 primary key가 column 하나가 아니면 CONFIG다.
+fn audit_record(db: &Db, values: &AuditValues) -> Result<Core> {
+    let Some(defaults) = &db.audit_defaults else {
+        return Err(Error::Config("the transaction has audit values but the connection has no audit defaults: set them with db.audit(defaults)".into()));
+    };
+    let ent = defaults.ent.entity_schema()?;
+    if defaults.conn.as_ref().is_some_and(|conn| conn.id() != db.id()) {
+        return Err(Error::Config(format!("the audit defaults {} connect to another connection than the transaction", ent.name)));
+    }
+    if ent.primary_key.len() != 1 {
+        return Err(Error::Config(format!("the audit record table {} needs a primary key of one column", ent.name)));
+    }
+    let mut record = (**defaults).clone();
+    let mut sorted: Vec<&(String, Param)> = values.iter().collect();
+    sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    for (column, value) in sorted {
+        if ent.field(column).is_none() {
+            return Err(Error::Config(format!("audit value {column} is not a column of {}", ent.name)));
         }
+        record.set(column, value.clone());
+    }
+    match record.err() {
+        Some(e) => Err(e),
+        None => Ok(record),
     }
 }
 
-impl From<i64> for OperationId {
-    fn from(id: i64) -> Self {
-        OperationId::I64(id)
-    }
-}
-
-impl From<String> for OperationId {
-    fn from(id: String) -> Self {
-        OperationId::Uuid(id)
-    }
-}
-
-impl From<&str> for OperationId {
-    fn from(id: &str) -> Self {
-        OperationId::Uuid(id.to_owned())
-    }
+/// transaction의 audit 기록을 transaction frame 안에서 삽입하고 그 key를 transaction에 둔다. 시도마다
+/// record의 복사본을 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
+async fn record_audit(tx: &TxShared, record: &Core) -> Result<()> {
+    let key = crate::model::insert_audit(record).await?;
+    *tx.audit.lock().unwrap() = Some(key);
+    Ok(())
 }
 
 impl TxShared {
-    /// 지금의 operation id다. statement를 기다리기 전에 꺼내 쓴다.
-    pub(crate) fn operation(&self) -> Option<OperationId> {
-        self.operation.lock().unwrap().clone()
-    }
-
-    /// operation id를 정한다. 다른 id가 이미 있으면 CONFIG이고 같은 id면 바꾸지 않는다.
-    pub(crate) fn set_operation(&self, id: OperationId) -> Result<()> {
-        let mut operation = self.operation.lock().unwrap();
-        match &*operation {
-            Some(old) if *old != id => Err(Error::Config(format!("the transaction already has the operation id {old}; it cannot change to {id}"))),
-            _ => {
-                *operation = Some(id);
-                Ok(())
-            }
-        }
+    /// transaction의 audit 기록이다. statement를 기다리기 전에 꺼내 쓴다.
+    pub(crate) fn audit(&self) -> Option<AuditKey> {
+        self.audit.lock().unwrap().clone()
     }
 
     /// Marks the start of a statement; the transaction rejects concurrent use.
@@ -168,7 +174,7 @@ pub struct Transaction<'a, F> {
     read_only: bool,
     timeout_ms: u64,
     retry: u32,
-    operation: Option<OperationId>,
+    audit: Option<AuditValues>,
     set: bool,
 }
 
@@ -184,7 +190,7 @@ pub struct SendTransaction<'a, T> {
     read_only: bool,
     timeout_ms: u64,
     retry: u32,
-    operation: Option<OperationId>,
+    audit: Option<AuditValues>,
     set: bool,
 }
 
@@ -225,7 +231,7 @@ impl Db {
     /// the transaction commits. Models without a connection inside `f` use this
     /// transaction. Deadlocks run `f` again, three times by default.
     pub fn transaction<F>(&self, f: F) -> Transaction<'_, F> {
-        Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, operation: None, set: false }
+        Transaction { db: self, f, isolation: None, read_only: false, timeout_ms: 0, retry: 3, audit: None, set: false }
     }
 
     /// Runs a transaction with a callback whose future is required to be
@@ -237,39 +243,43 @@ impl Db {
         Fut: Future<Output = Result<T>> + Send + 'a,
         T: Send + 'a,
     {
-        SendTransaction {
-            db: self,
-            f: Box::new(move || Box::pin(f())),
-            isolation: None,
-            read_only: false,
-            timeout_ms: 0,
-            retry: 3,
-            operation: None,
-            set: false,
-        }
+        SendTransaction { db: self, f: Box::new(move || Box::pin(f())), isolation: None, read_only: false, timeout_ms: 0, retry: 3, audit: None, set: false }
     }
 
     /// Runs a callback once in a transaction and preserves its own error when
     /// awaited. A nested call uses a savepoint. This call does not retry the
-    /// callback. `operation(id)` sets the operation id of the transaction.
+    /// callback. `audit(values)` records the audit of the transaction.
     pub fn transaction_once<F>(&self, f: F) -> TransactionOnce<'_, F> {
-        TransactionOnce { db: self, f, operation: None }
+        TransactionOnce { db: self, f, audit: None }
+    }
+
+    /// Returns a handle on the same connection whose transactions record their
+    /// audit with `defaults`: a model of the audit record table with the values
+    /// that every audit of the handle shares, such as the account and the
+    /// request. A transaction with `audit(values)` inserts one audit record with
+    /// these defaults and its own values, and the audited writes of the
+    /// transaction refer to it. Models connect to the handle as they connect to
+    /// the connection.
+    pub fn audit<M: crate::model::Model>(&self, defaults: M) -> Db {
+        Db { inner: self.inner.clone(), audit_defaults: Some(Arc::new(defaults.into_core())) }
     }
 }
 
-/// A transaction that runs its callback once: set the operation id with
-/// `operation` and await it.
+/// A transaction that runs its callback once: record its audit with `audit`
+/// and await it.
 pub struct TransactionOnce<'a, F> {
     db: &'a Db,
     f: F,
-    operation: Option<OperationId>,
+    audit: Option<AuditValues>,
 }
 
 impl<F> TransactionOnce<'_, F> {
-    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
-    /// update는 이 값을 operation column에 쓴다. 바깥 transaction만 정할 수 있다.
-    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
-        self.operation = Some(id.into());
+    /// Records the audit of the transaction: before the callback the transaction
+    /// inserts one audit record with the defaults of the handle (`Db::audit`)
+    /// and `values`, and every audited write of the transaction writes its
+    /// primary key. A nested call takes no audit.
+    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
+        self.audit = Some(audit_values(values));
         self
     }
 }
@@ -283,7 +293,7 @@ where
     type IntoFuture = TransactionOnceFuture<'a, F, Fut, T, E>;
 
     fn into_future(self) -> Self::IntoFuture {
-        TransactionOnceFuture { state: OnceState::Start { db: self.db, f: self.f, operation: self.operation } }
+        TransactionOnceFuture { state: OnceState::Start { db: self.db, f: self.f, audit: self.audit } }
     }
 }
 
@@ -296,16 +306,8 @@ type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnw
 
 /// callback이 실행되는 곳: 새 transaction이나 바깥 transaction의 savepoint.
 enum OnceScope<'a> {
-    Transaction {
-        db: &'a Db,
-        tx: Arc<TxShared>,
-    },
-    /// `operation`은 savepoint를 시작할 때의 operation id이며 rollback이 되돌린다.
-    Savepoint {
-        tx: Arc<TxShared>,
-        name: String,
-        operation: Option<OperationId>,
-    },
+    Transaction { db: &'a Db, tx: Arc<TxShared> },
+    Savepoint { tx: Arc<TxShared>, name: String },
 }
 
 impl<'a> OnceScope<'a> {
@@ -339,8 +341,7 @@ impl<'a> OnceScope<'a> {
                     rolled_back
                 }
             }),
-            OnceScope::Savepoint { tx, name, operation } => Box::pin(async move {
-                *tx.operation.lock().unwrap() = operation;
+            OnceScope::Savepoint { tx, name } => Box::pin(async move {
                 let undone = rollback_savepoint(&tx, &name).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 undone
@@ -357,7 +358,7 @@ enum OnceOutcome<T, E> {
 }
 
 enum OnceState<'a, F, Fut, T, E> {
-    Start { db: &'a Db, f: F, operation: Option<OperationId> },
+    Start { db: &'a Db, f: F, audit: Option<AuditValues> },
     Opening { f: F, open: OnceStep<'a, Result<OnceScope<'a>>> },
     Running { scope: OnceScope<'a>, callback: Pin<Box<OnceCallback<Fut>>> },
     Ending { outcome: OnceOutcome<T, E>, end: OnceStep<'a, Result<()>> },
@@ -384,29 +385,46 @@ where
         let this = self.get_mut();
         loop {
             match std::mem::replace(&mut this.state, OnceState::Done) {
-                OnceState::Start { db, f, operation } => {
+                OnceState::Start { db, f, audit } => {
                     let open: OnceStep<'a, Result<OnceScope<'a>>> = match active_for(db) {
-                        Some(_) if operation.is_some() => {
+                        Some(_) if audit.is_some() => {
                             return Poll::Ready(Err(TransactionOnceError::Orm(Error::Config(
-                                "a nested transaction of the same connection does not take an operation id; it uses the operation id of the outer transaction"
-                                    .into(),
+                                "a nested transaction of the same connection takes no audit; it uses the audit of the outer transaction".into(),
                             ))));
                         }
                         Some(tx) => Box::pin(async move {
                             let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
                             let name = format!("orm_sp_{n}");
                             match tx.raw(&format!("SAVEPOINT {name}")).await {
-                                Ok(()) => {
-                                    let operation = tx.operation();
-                                    Ok(OnceScope::Savepoint { tx, name, operation })
-                                }
+                                Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                                     Err(error)
                                 }
                             }
                         }),
-                        None => Box::pin(async move { Ok(OnceScope::Transaction { db, tx: Arc::new(begin(db, None, false, operation).await?) }) }),
+                        None => {
+                            let record = match audit.as_ref().map(|values| audit_record(db, values)).transpose() {
+                                Ok(record) => record,
+                                Err(error) => return Poll::Ready(Err(TransactionOnceError::Orm(error))),
+                            };
+                            Box::pin(async move {
+                                let tx = Arc::new(begin(db, None, false).await?);
+                                if let Some(record) = record {
+                                    // audit 기록은 callback 전에 transaction frame 안에서 삽입한다. 실패하면
+                                    // transaction을 되돌리고 그 오류를 돌려준다.
+                                    let mut stack = frames();
+                                    stack.push(tx.clone());
+                                    if let Err(error) = FLOW.scope(stack, record_audit(&tx, &record)).await {
+                                        return Err(match rollback(&tx).await.and_then(|()| rollback_fault(db)) {
+                                            Ok(()) => error,
+                                            Err(rollback) => Error::rollback(error, rollback),
+                                        });
+                                    }
+                                }
+                                Ok(OnceScope::Transaction { db, tx })
+                            })
+                        }
                     };
                     this.state = OnceState::Opening { f, open };
                 }
@@ -478,10 +496,10 @@ impl<'a, T> SendTransaction<'a, T> {
         self
     }
 
-    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
-    /// update는 이 값을 operation column에 쓴다.
-    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
-        self.operation = Some(id.into());
+    /// Records the audit of the transaction with the defaults of the handle
+    /// (`Db::audit`) and `values`; see `Transaction::audit`.
+    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
+        self.audit = Some(audit_values(values));
         self.set = true;
         self
     }
@@ -510,12 +528,19 @@ where
             }
             return savepoint_send(outer, self.f.as_ref()).await;
         }
+        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, (self.f)())).catch_unwind();
+            let body = async {
+                if let Some(record) = &record {
+                    record_audit(&tx, record).await?;
+                }
+                (self.f)().await
+            };
+            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
             let result = if self.timeout_ms == 0 {
                 callback.await
             } else {
@@ -579,10 +604,18 @@ impl<'a, F> Transaction<'a, F> {
         self
     }
 
-    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
-    /// update는 이 값을 operation column에 쓴다. 바깥 transaction만 정할 수 있다.
-    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
-        self.operation = Some(id.into());
+    /// Makes the transaction one unit of work with an audit record. Before the
+    /// callback, in every attempt, the transaction inserts one row into the
+    /// audit record table: the defaults of the handle (`Db::audit`) with
+    /// `values`, of which a value wins over the default of the same column.
+    /// Every insert, update, soft delete and restore of an audited table in the
+    /// transaction writes the record's primary key into the table's audit
+    /// column. The handle must have defaults, and every key must be a column of
+    /// the audit record table; otherwise the transaction fails with CONFIG
+    /// before it begins. A nested transaction uses the audit of the outer one
+    /// and takes none.
+    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
+        self.audit = Some(audit_values(values));
         self.set = true;
         self
     }
@@ -612,12 +645,19 @@ impl<'a, F> Transaction<'a, F> {
             }
             return savepoint(outer, &self.f).await;
         }
+        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.operation.clone()).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
             let mut stack = frames();
             stack.push(tx.clone());
-            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, (self.f)())).catch_unwind();
+            let body = async {
+                if let Some(record) = &record {
+                    record_audit(&tx, record).await?;
+                }
+                (self.f)().await
+            };
+            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
             let result = if self.timeout_ms == 0 {
                 callback.await
             } else {
@@ -687,8 +727,6 @@ async fn run_savepoint<T, E, Fut>(tx: Arc<TxShared>, callback: Fut) -> Result<st
 where
     Fut: Future<Output = std::result::Result<T, E>>,
 {
-    // savepoint 안에서 정한 operation id는 그 작업과 함께 되돌린다.
-    let operation_before = tx.operation();
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
     let ended = async {
@@ -700,14 +738,8 @@ where
                 tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
                 SavepointEnd::Returned(Ok(value))
             }
-            Ok(Err(error)) => {
-                *tx.operation.lock().unwrap() = operation_before.clone();
-                SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err())))
-            }
-            Err(payload) => {
-                *tx.operation.lock().unwrap() = operation_before.clone();
-                SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err())
-            }
+            Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
+            Err(payload) => SavepointEnd::Panicked(payload, rollback_savepoint(&tx, &name).await.err()),
         })
     }
     .await;
@@ -734,7 +766,7 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
     }
 }
 
-async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, operation: Option<OperationId>) -> Result<TxShared> {
+async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
     if db.inner.closed.load(Ordering::Acquire) {
         return Err(Error::Config("database is closed".into()));
     }
@@ -789,7 +821,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, operation
         savepoints: AtomicU32::new(0),
         locals: Mutex::new(HashMap::new()),
         locks: Mutex::new(Vec::new()),
-        operation: Mutex::new(operation),
+        audit: Mutex::new(None),
         sqlite_mode: Mutex::new(sqlite_mode),
     })
 }
@@ -1135,7 +1167,7 @@ mod tests {
     /// 연결한다. ProxySQL은 KILL을 자기 client session의 명령으로 받는다.
     async fn transaction_with_failing_reset(db: &Db) -> TxShared {
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
-        let tx = begin(db, None, false, None).await.expect("begin");
+        let tx = begin(db, None, false).await.expect("begin");
         let id: u64 = {
             let mut guard = tx.inner.lock().await;
             let Some(TxInner::MySql(t)) = guard.as_mut() else { panic!("MySQL transaction") };

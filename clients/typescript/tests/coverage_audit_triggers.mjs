@@ -1,15 +1,19 @@
-// audit_triggers coverage: contracts/fixtures/audit.dbs 을 schema install 로 설치하고
-// clients/go/orm/audit_operation_test.go 와 같은 순서로 쓴 뒤 trigger 가 남긴 item_history 를
-// 확인한다. 끝에 두 table 과 PostgreSQL trigger function 을 지워 database 를 처음 상태로 돌린다.
+// audit_triggers coverage: audit fixture 를 schema install 로 설치하고 clients/go/orm/coverage_audit_triggers_test.go 와
+// 같은 순서로 쓴 뒤 trigger 가 남긴 history table 을 확인한다. 끝에, 실패해도 설치한 table 과 PostgreSQL trigger
+// function 을 지워 database 를 처음 상태로 돌린다.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
-import { restoreCase, restoreSchema, restoreTables, setOperationCase } from './restore_case.mjs';
+import { auditCase, auditSchema, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 
-const auditText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit.dbs'), 'utf8');
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
+
+/** The tables that contracts/fixtures/audit.dbs creates. */
+const auditTables = ['audit', 'item', 'item_history'];
+/** The tables that contracts/fixtures/audit_columns.dbs creates. */
+const auditColumnsTables = ['audit', 'card', 'card_history', 'tag', 'tag_history'];
 
 /** A document text's generated schema value: its manifest text and manifestHash. */
 function schemaOf(text) {
@@ -17,12 +21,12 @@ function schemaOf(text) {
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
-/** Registers the model of the audit document and returns a model class per entity. */
+/** Registers the model of an audit document and returns a model class per entity. */
 function auditModels(text = auditText) {
   const parsed = parseDbspec(text, {});
-  assert.deepEqual(parsed.diagnostics, [], 'audit.dbs parses');
+  assert.deepEqual(parsed.diagnostics, [], 'the audit fixture parses');
   const { manifest, diagnostics } = dbspecManifest([parsed.document]);
-  assert.deepEqual(diagnostics, [], 'audit.dbs has a manifest');
+  assert.deepEqual(diagnostics, [], 'the audit fixture has a manifest');
   const model = registerModel(manifest.manifestText, manifest.manifestHash);
   const out = {};
   for (const entity of model.entities.values()) {
@@ -33,22 +37,15 @@ function auditModels(text = auditText) {
   return out;
 }
 
-/** Drops the audit tables and, on PostgreSQL, their trigger functions. */
-async function dropAudit(driver, dsn) {
+/**
+ * 고른 database 에서 tables 를 지우고(audit 기록 table 은 그것을 가리키는 table 뒤에), PostgreSQL 에서는 audited
+ * table 의 trigger function 도 지운다.
+ */
+async function dropTables(driver, dsn, tables, audited) {
   const quote = driver === 'mysql' ? name => `\`${name}\`` : name => `"${name}"`;
-  const statements = ['item', 'item_history'].map(t => `DROP TABLE IF EXISTS ${quote(t)}`);
+  const statements = [...tables.filter(t => t !== 'audit'), 'audit'].map(t => `DROP TABLE IF EXISTS ${quote(t)}`);
   if (driver === 'postgres') {
-    for (const f of ['item$audit_insert', 'item$audit_update', 'item$audit_delete']) statements.push(`DROP FUNCTION IF EXISTS "${f}"()`);
-  }
-  await nativeQuery(driver, dsn, statements);
-}
-
-/** Drops the audit_columns tables and, on PostgreSQL, their trigger functions. */
-async function dropAuditColumns(driver, dsn) {
-  const quote = driver === 'mysql' ? name => `\`${name}\`` : name => `"${name}"`;
-  const statements = ['card_history', 'card', 'tag_history', 'tag'].map(t => `DROP TABLE IF EXISTS ${quote(t)}`);
-  if (driver === 'postgres') {
-    for (const t of ['card', 'tag']) {
+    for (const t of audited) {
       for (const e of ['audit_insert', 'audit_update', 'audit_delete']) statements.push(`DROP FUNCTION IF EXISTS "${t}$${e}"()`);
     }
   }
@@ -62,184 +59,117 @@ async function textRows(driver, dsn, sql) {
 }
 
 /**
- * 고른 database에 audit.dbs 를 설치하고 body(db, models, driver, dsn)를 실행한 뒤, 실패해도 설치한 table 과
- * PostgreSQL trigger function 을 지운다.
+ * 고른 database 에 schema 를 설치하고 body(db, driver, dsn)를 실행한 뒤, 실패해도 tables 와 audited table 의
+ * PostgreSQL trigger function 을 지운다. tables 는 case 전에 없어야 하고 뒤에도 남지 않는다.
  */
-async function withAudit(body) {
+async function withInstalled(schema, tables, audited, body) {
   const { driver, dsn } = featureDatabase();
-  for (const table of ['item', 'item_history']) {
+  for (const table of tables) {
     assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
   }
-  const models = auditModels();
   const db = await Db.connect(dsn);
   try {
     assert.equal(db.driver, driver);
     await withCleanup(async () => {
-      await db.utils().schema().install(schemaOf(auditText));
-      await body(db, models, driver, dsn);
-    }, () => dropAudit(driver, dsn));
+      await db.utils().schema().install(schema);
+      await body(db, driver, dsn);
+    }, () => dropTables(driver, dsn, tables, audited));
   } finally { await db.close(); }
-  for (const table of ['item', 'item_history']) {
+  for (const table of tables) {
     assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
   }
 }
 
-/** item_history 의 [change, previous, seq, title, operation, deleted]를 history_id 순서로 읽는다. */
-async function itemHistory(db, ItemHistory) {
-  const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
-  return history.values().map(h => [
-    h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('seq'),
-    h[CORE].column('title'), h[CORE].column('operation_id'), h[CORE].column('deleted_at') !== null,
-  ]);
+/** audit 기록 table audit 의 새 model 에 actor 를 쓴다. 연결의 audit 기본값으로 쓴다. */
+function auditOf(Audit, actor) {
+  const m = new Audit();
+  m[CORE].setValue('actor', actor);
+  return m;
 }
 
 await runCases('coverage_audit_triggers.mjs', {
+  // contracts/fixtures/audit.dbs: audit 기록을 받은 transaction 의 write 를 확인한다(tests/restore_case.mjs).
   async audit_history() {
-    const { driver, dsn } = featureDatabase();
-    for (const table of ['item', 'item_history']) {
-      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
-    }
-    const { item: Item, item_history: ItemHistory } = auditModels();
-    const db = await Db.connect(dsn);
-    try {
-      assert.equal(db.driver, driver);
-      await withCleanup(async () => {
-        await db.utils().schema().install(schemaOf(auditText));
-        const item = title => { const m = new Item(); m[CORE].setValue('title', title); return m; };
-        const byKey = seq => new Item().raw('{seq} = ?', seq);
-        assert.equal(await errorCode(item('outside').connect(db).create()), 'CONFIG', 'insert without an operation id');
-        let seq;
-        await db.transaction(async () => {
-          seq = (await item('first').create())[CORE].column('seq');
-          // 중첩 transaction 은 바깥 operation id 를 쓴다.
-          await db.transaction(async () => {
-            const row = await byKey(seq).get();
-            row[CORE].setValue('title', 'second');
-            await row.update();
-          }, { retry: 0 });
-        }, { operation: 7, retry: 0 });
-        const titled = await byKey(seq).connect(db).get();
-        titled[CORE].setValue('title', 'third');
-        assert.equal(await errorCode(titled.update()), 'CONFIG', 'update without an operation id');
-        await db.transaction(async () => { await (await byKey(seq).get()).delete(); }, { operation: 8, retry: 0 });
-        const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
-        const rows = history.values().map(h => [
-          h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('seq'),
-          h[CORE].column('title'), h[CORE].column('operation_id'), h[CORE].column('deleted_at') !== null,
-        ]);
-        assert.deepEqual(rows, [
-          ['insert', null, seq, 'first', 7, false],
-          ['update', 7, seq, 'second', 7, false],
-          ['update', 7, seq, 'second', 8, true],
-        ], 'item_history in history_id order');
-      }, () => dropAudit(driver, dsn));
-    } finally { await db.close(); }
-    for (const table of ['item', 'item_history']) {
-      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
-    }
+    await withInstalled(auditSchema(), auditTables, ['item'], (db, driver, dsn) => auditCase(db, driver, dsn));
   },
-  // contracts/fixtures/audit_columns.dbs: card는 exclude (secret)로 secret을 빼고, tag는 include (label)로
-  // label과 operation column만 기록한다. client가 쓴 insert, update, soft delete를 audit trigger가 고른 column만으로
-  // 기록하고, history table에는 기록하는 column만 있다. 끝에 table과 PostgreSQL trigger function을 지운다.
-  async audit_selected_columns() {
-    const { driver, dsn } = featureDatabase();
-    const { card: Card, tag: Tag } = auditModels(auditColumnsText);
-    const db = await Db.connect(dsn);
-    try {
-      await withCleanup(async () => {
-        await db.utils().schema().install(schemaOf(auditColumnsText));
-        let seq;
-        let id;
-        await db.transaction(async () => {
-          const card = new Card();
-          card[CORE].setValue('title', 'first');
-          card[CORE].setValue('secret', 's1');
-          seq = (await card.create())[CORE].column('seq');
-          const tag = new Tag();
-          tag[CORE].setValue('label', 'x');
-          tag[CORE].setValue('color', 'red');
-          id = (await tag.create())[CORE].column('id');
-          const row = await new Card().raw('{seq} = ?', seq).get();
-          row[CORE].setValue('title', 'second');
-          row[CORE].setValue('secret', 's2');
-          await row.update();
-        }, { operation: 7, retry: 0 });
-        await db.transaction(async () => {
-          await (await new Card().raw('{seq} = ?', seq).get()).delete();
-          const tag = await new Tag().raw('{id} = ?', id).get();
-          tag[CORE].setValue('color', 'blue');
-          await tag.update();
-        }, { operation: 8, retry: 0 });
-        const change = driver === 'mysql' ? '`change`' : '"change"';
-        const cards = await textRows(driver, dsn, 'SELECT * FROM card_history ORDER BY history_id');
-        assert.deepEqual(cards.columns, ['history_id', 'change', 'previous_operation_id', 'seq', 'title', 'operation_id', 'deleted_at'], 'card_history columns');
-        const cardRows = await textRows(driver, dsn, `SELECT ${change}, previous_operation_id, seq, title, operation_id, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END AS state FROM card_history ORDER BY history_id`);
-        assert.deepEqual(cardRows.rows, [
-          ['insert', 'NULL', String(seq), 'first', '7', 'live'],
-          ['update', '7', String(seq), 'second', '7', 'live'],
-          ['update', '7', String(seq), 'second', '8', 'deleted'],
-        ], 'card_history in history_id order');
-        const tags = await textRows(driver, dsn, 'SELECT * FROM tag_history ORDER BY history_id');
-        assert.deepEqual(tags.columns, ['history_id', 'change', 'previous_operation_id', 'label', 'operation_id'], 'tag_history columns');
-        const tagRows = await textRows(driver, dsn, `SELECT ${change}, previous_operation_id, label, operation_id FROM tag_history ORDER BY history_id`);
-        assert.deepEqual(tagRows.rows, [['insert', 'NULL', 'x', '7'], ['update', '7', 'x', '8']], 'tag_history in history_id order');
-      }, () => dropAuditColumns(driver, dsn));
-    } finally { await db.close(); }
-    for (const table of ['card', 'card_history', 'tag', 'tag_history']) {
-      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
-    }
-  },
-  // 모든 transaction 진입점이 operation id 를 받는다: 연결의 transaction 과 withSignal handle 의 transaction 이
-  // 정한 id 를 audit 대상 write 가 쓰고, 중첩 transaction 은 operation id 를 받지 않는다.
-  async audit_operation_entry_points() {
-    await withAudit(async (db, { item: Item, item_history: ItemHistory }) => {
-      const seq = await db.transaction(async () => {
+  // 모든 transaction 진입점이 audit 을 받는다: audit handle 의 transaction 과 그 handle 의 withSignal handle 의
+  // transaction 이 삽입한 audit 기록의 key 를 audit 대상 write 가 쓰고, 중첩 transaction 은 audit 을 받지 않는다.
+  async audit_transaction_entry_points() {
+    const { item: Item, item_history: ItemHistory, audit: Audit } = auditModels();
+    await withInstalled(auditSchema(), auditTables, ['item'], async db => {
+      const adb = db.audit(auditOf(Audit, 'default'));
+      const seq = await adb.transaction(async () => {
         const row = new Item();
         row[CORE].setValue('title', 'first');
         return (await row.create())[CORE].column('seq');
-      }, { operation: 7, retry: 0 });
-      const handle = db.withSignal(new AbortController().signal);
+      }, { audit: { actor: 'transaction' }, retry: 0 });
+      const handle = adb.withSignal(new AbortController().signal);
       await handle.transaction(async () => {
         const row = await new Item().raw('{seq} = ?', seq).get();
         row[CORE].setValue('title', 'second');
         await row.update();
-      }, { operation: 8, retry: 0 });
-      const nested = db.transaction(async () => { await db.transaction(async () => {}, { operation: 10 }); }, { operation: 9, retry: 0 });
-      assert.equal(await errorCode(nested), 'CONFIG', 'a nested transaction with an operation id');
-      assert.deepEqual(await itemHistory(db, ItemHistory), [
-        ['insert', null, seq, 'first', 7, false],
-        ['update', 7, seq, 'second', 8, false],
+      }, { audit: { actor: 'signal' }, retry: 0 });
+      const nested = adb.transaction(async () => { await adb.transaction(async () => {}, { audit: { actor: 'nested' } }); }, { audit: {}, retry: 0 });
+      assert.equal(await errorCode(nested), 'CONFIG', 'a nested transaction with an audit');
+      const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
+      assert.deepEqual(history.values().map(h => [
+        h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('title'),
+        h[CORE].column('audit_seq'), h[CORE].column('deleted_at') !== null,
+      ]), [
+        ['insert', null, seq, 'first', 1, false],
+        ['update', 1, seq, 'second', 2, false],
       ], 'item_history in history_id order');
+      const audits = await new Audit().connect(db).orderByRaw('{seq} ASC').gets();
+      assert.deepEqual(audits.values().map(a => [a[CORE].column('seq'), a[CORE].column('actor')]), [[1, 'transaction'], [2, 'signal']], 'audit records');
+    });
+  },
+  // contracts/fixtures/audit_columns.dbs: card는 exclude (secret)로 secret을 빼고, tag는 include (label)로
+  // label과 audit column만 기록한다. client가 쓴 insert, update, soft delete를 audit trigger가 고른 column만으로
+  // 기록하고, history table에는 기록하는 column만 있다.
+  async audit_selected_columns() {
+    const { card: Card, tag: Tag, audit: Audit } = auditModels(auditColumnsText);
+    await withInstalled(schemaOf(auditColumnsText), auditColumnsTables, ['card', 'tag'], async (db, driver, dsn) => {
+      const adb = db.audit(auditOf(Audit, 'default'));
+      let seq;
+      let id;
+      await adb.transaction(async () => {
+        const card = new Card();
+        card[CORE].setValue('title', 'first');
+        card[CORE].setValue('secret', 's1');
+        seq = (await card.create())[CORE].column('seq');
+        const tag = new Tag();
+        tag[CORE].setValue('label', 'x');
+        tag[CORE].setValue('color', 'red');
+        id = (await tag.create())[CORE].column('id');
+        const row = await new Card().raw('{seq} = ?', seq).get();
+        row[CORE].setValue('title', 'second');
+        row[CORE].setValue('secret', 's2');
+        await row.update();
+      }, { audit: { actor: 'first' }, retry: 0 });
+      await adb.transaction(async () => {
+        await (await new Card().raw('{seq} = ?', seq).get()).delete();
+        const tag = await new Tag().raw('{id} = ?', id).get();
+        tag[CORE].setValue('color', 'blue');
+        await tag.update();
+      }, { audit: { actor: 'second' }, retry: 0 });
+      const change = driver === 'mysql' ? '`change`' : '"change"';
+      const cards = await textRows(driver, dsn, 'SELECT * FROM card_history ORDER BY history_id');
+      assert.deepEqual(cards.columns, ['history_id', 'change', 'previous_audit_seq', 'seq', 'title', 'audit_seq', 'deleted_at'], 'card_history columns');
+      const cardRows = await textRows(driver, dsn, `SELECT ${change}, previous_audit_seq, seq, title, audit_seq, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END AS state FROM card_history ORDER BY history_id`);
+      assert.deepEqual(cardRows.rows, [
+        ['insert', 'NULL', String(seq), 'first', '1', 'live'],
+        ['update', '1', String(seq), 'second', '1', 'live'],
+        ['update', '1', String(seq), 'second', '2', 'deleted'],
+      ], 'card_history in history_id order');
+      const tags = await textRows(driver, dsn, 'SELECT * FROM tag_history ORDER BY history_id');
+      assert.deepEqual(tags.columns, ['history_id', 'change', 'previous_audit_seq', 'label', 'audit_seq'], 'tag_history columns');
+      const tagRows = await textRows(driver, dsn, `SELECT ${change}, previous_audit_seq, label, audit_seq FROM tag_history ORDER BY history_id`);
+      assert.deepEqual(tagRows.rows, [['insert', 'NULL', 'x', '1'], ['update', '1', 'x', '2']], 'tag_history in history_id order');
     });
   },
   // contracts/fixtures/restore.dbs: unique key 와 exclude 목록을 가진 audit table 과 audit 없는 table 의 soft delete 한
-  // 행을 restore 로 되돌린다(tests/restore_case.mjs). 끝에, 실패해도 table 과 PostgreSQL trigger function 을 지운다.
+  // 행을 restore 로 되돌린다(tests/restore_case.mjs).
   async soft_delete_restore() {
-    const { driver, dsn } = featureDatabase();
-    for (const table of restoreTables) {
-      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
-    }
-    const db = await Db.connect(dsn);
-    try {
-      assert.equal(db.driver, driver);
-      await withCleanup(async () => {
-        await db.utils().schema().install(restoreSchema());
-        await restoreCase(db);
-      }, async () => {
-        const quote = driver === 'mysql' ? name => `\`${name}\`` : name => `"${name}"`;
-        const statements = ['membership_history', 'membership', 'label'].map(t => `DROP TABLE IF EXISTS ${quote(t)}`);
-        if (driver === 'postgres') {
-          for (const e of ['audit_insert', 'audit_update', 'audit_delete']) statements.push(`DROP FUNCTION IF EXISTS "membership$${e}"()`);
-        }
-        await nativeQuery(driver, dsn, statements);
-      });
-    } finally { await db.close(); }
-    for (const table of restoreTables) {
-      assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
-    }
-  },
-  // 시작한 transaction 안에서 utils().setOperation(id)로 operation id 를 정한다(tests/restore_case.mjs).
-  async audit_operation_set_in_transaction() {
-    await withAudit(async db => { await setOperationCase(db); });
+    await withInstalled(restoreSchema(), restoreTables, ['membership'], db => restoreCase(db));
   },
 }, 300_000);

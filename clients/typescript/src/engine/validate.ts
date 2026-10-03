@@ -69,7 +69,7 @@ class Validator {
     const n = [a.p !== undefined, a.null === true, (a.expr ?? '') !== '', a.plus_p !== undefined, a.minus_p !== undefined].filter(Boolean).length;
     if (n !== 1) fail('IR_INVALID', `set ${a.column}: exactly one of p/null/expr/plus_p/minus_p`);
     if (a.null && !c.nullable) fail('IR_INVALID', `set ${r.entity}.${a.column} to null but column is NOT NULL`);
-    if (a.column === ent.auditOperation) fail('IR_INVALID', `${r.entity}.${a.column} is the audit operation column, which the executor writes`);
+    if (a.column === ent.auditColumn) fail('IR_INVALID', `${r.entity}.${a.column} is written by the executor from the audit of the transaction`);
     if ((a.plus_p !== undefined || a.minus_p !== undefined) && !numericTypes.has(c.type)) {
       fail('OPERATOR_NOT_ALLOWED', `plus/minus on ${r.entity}.${a.column} (${c.type})`);
     }

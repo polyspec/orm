@@ -3,24 +3,31 @@ dbspec 1 audit
 table item {
   seq i64 identity
   title varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (seq)
-  index ix_item_operation (operation_id)
+  index ix_item_audit (audit_seq)
+  foreign key fk_item_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into item_history operation operation_id action change previous previous_operation_id
+    audit into item_history column audit_seq references audit action change previous previous_audit_seq
   }
 }
 
 table item_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   seq i64
   title varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (history_id)
   index ix_item_history_row (seq)
+}
+
+table audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
 }

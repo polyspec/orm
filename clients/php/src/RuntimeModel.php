@@ -13,8 +13,8 @@ use Orm\Dbspec\Document;
  * model에서 같은 배열을 다시 읽으므로 어떤 요청도 dbspec text를 parse하지 않는다.
  *
  * entity는 [entity, table, pk, identity, updated, soft_delete, aes_version,
- * audit, columns, unique, indexes]이며 `audit`은 감사 table의 operation
- * column이다. column은 [name, type, nullable, default, default_now, select,
+ * audit, audit_record, columns, unique, indexes]이며 `audit`은 감사 table의 audit
+ * column, `audit_record`는 transaction의 audit 기록을 담는 table의 entity 이름이다. column은 [name, type, nullable, default, default_now, select,
  * codec, blind_index, pk, foreign_key]이고 decimal, time, datetime은
  * precision을, decimal은 scale도 가진다. default_now는 default가 `now`임을
  * 뜻한다. generated model의 meta()는 entity에 그 model을 만든 document set의
@@ -134,6 +134,15 @@ final class RuntimeModel
                 $entities[$entity['entity']] = $entity;
             }
         }
+        $byTable = [];
+        foreach ($entities as $name => $entity) {
+            $byTable[$entity['table']] = $name;
+        }
+        foreach ($entities as $name => $entity) {
+            if ($entity['audit_record'] !== '') {
+                $entities[$name]['audit_record'] = $byTable[$entity['audit_record']] ?? $entity['audit_record'];
+            }
+        }
         return new self($result->manifest->manifestHash, $result->manifest->manifestText, $entities);
     }
 
@@ -248,6 +257,8 @@ final class RuntimeModel
             'soft_delete' => $one('soft_delete'),
             'aes_version' => $one('aes_version'),
             'audit' => $settings['audit'][0][1] ?? '',
+            // table 이름이며 build가 모든 entity를 만든 뒤 entity 이름으로 바꾼다.
+            'audit_record' => $settings['audit'][0][2] ?? '',
             'columns' => $columns,
             'unique' => $unique,
             'indexes' => $indexes,

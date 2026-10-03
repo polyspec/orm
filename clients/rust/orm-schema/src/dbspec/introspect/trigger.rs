@@ -79,20 +79,27 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<St
 }
 
 /// audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
-/// operation column으로 audit setting과 그 줄을 만든다. 기록하지 않는 column은 table의 column
-/// 순서로 exclude 목록이 된다. 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면
-/// None이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
-fn audit_of(t: &ITable, history: &str, quoted: &str, operation: &str) -> Option<(Setting, String)> {
+/// audit column으로 audit setting과 그 줄을 만든다. audit 기록 table은 audit column 하나만 가진
+/// table의 foreign key가 가리키는 table이다. 기록하지 않는 column은 table의 column 순서로 exclude
+/// 목록이 된다. 목록이 renderer 형식이 아니거나, audit column을 기록하지 않거나, 그 foreign key가
+/// 하나가 아니면 None이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+fn audit_of(t: &ITable, history: &str, quoted: &str, column: &str) -> Option<(Setting, String)> {
     let names = quoted.split(", ").map(|q| AUDIT_COLUMN.captures(q).map(|m| group(&m, 1).to_owned())).collect::<Option<Vec<String>>>()?;
     let [action, previous, recorded @ ..] = names.as_slice() else { return None };
-    if !recorded.iter().any(|c| c == operation) {
+    if !recorded.iter().any(|c| c == column) {
+        return None;
+    }
+    let mut keys = t.fks.iter().filter(|f| f.columns.len() == 1 && f.columns[0] == column);
+    let references = keys.next()?.table.clone();
+    if keys.next().is_some() {
         return None;
     }
     let excluded: Vec<&str> = t.columns.iter().map(|c| c.name.as_str()).filter(|c| !recorded.iter().any(|r| r == c)).collect();
-    let line = audit_line(history, operation, action, previous, "exclude", &excluded);
+    let line = audit_line(history, column, &references, action, previous, "exclude", &excluded);
     let lists =
         if excluded.is_empty() { Vec::new() } else { vec![AuditList { keyword: name("exclude"), columns: excluded.iter().map(|c| name(c)).collect() }] };
-    let setting = Setting::Audit { into: name(history), operation: name(operation), action: name(action), previous: name(previous), lists };
+    let setting =
+        Setting::Audit { into: name(history), column: name(column), references: name(&references), action: name(action), previous: name(previous), lists };
     Some((setting, line))
 }
 

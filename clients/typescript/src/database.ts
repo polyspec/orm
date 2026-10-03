@@ -9,6 +9,9 @@ import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
+import { CORE, isModel, type Core, type ModelLike } from './core.js';
+import type { Model } from './model.js';
+import { fieldOf } from './engine/model.js';
 
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
 
@@ -31,14 +34,6 @@ export interface ConnectOptions {
   statementTimeoutMs?: number;
 }
 
-/** An operation id: a safe integer for an i64 operation column, a string for a uuid one. */
-export type OperationId = number | string;
-
-/** id 가 operation id 가 될 수 있는 값(safe integer 나 빈 문자열이 아닌 문자열)인지 알린다. */
-export function isOperationId(id: unknown): id is OperationId {
-  return Number.isSafeInteger(id) || (typeof id === 'string' && id !== '');
-}
-
 export interface TransactionOptions {
   isolation?: Isolation;
   readOnly?: boolean;
@@ -46,10 +41,22 @@ export interface TransactionOptions {
   /** Deadlock retries; the default is 3 and 0 disables retry. */
   retry?: number;
   /**
-   * The operation id of the unit of work: every insert and update of an
-   * audited table inside the transaction writes it into the operation column.
+   * Makes the transaction one unit of work with an audit record. Before the
+   * callback, in every attempt, the transaction inserts one row into the
+   * audit record table: the defaults of the handle (`db.audit(defaults)`)
+   * with these values, a value winning over the default of the same column.
+   * Every insert, update, soft delete and restore of an audited table in the
+   * transaction writes the record's primary key into the table's audit
+   * column. A nested transaction uses the audit of the outer one and does not
+   * take this option.
    */
-  operation?: OperationId;
+  audit?: Readonly<Record<string, unknown>>;
+}
+
+/** The audit record a transaction inserted: the entity of the audit record table and the primary key of the row. */
+interface AuditRecord {
+  readonly entity: string;
+  readonly key: unknown;
 }
 
 const models = new Map<string, RuntimeModel>();
@@ -112,8 +119,9 @@ export class TxFrame {
   public savepoints = 0;
   public readonly locals = new Map<string, string>();
   public readonly locks: string[] = [];
-  /** The operation id of the unit of work; utils().setOperation(id) sets it inside the transaction. */
-  public constructor(public readonly db: Db, public readonly tx: DriverTransaction, public operation: OperationId | undefined) {}
+  /** The audit record of the unit of work; audited writes of the transaction write its key. */
+  public audit: AuditRecord | undefined = undefined;
+  public constructor(public readonly db: Db, public readonly tx: DriverTransaction) {}
 }
 
 const flow = new AsyncLocalStorage<readonly TxFrame[]>();
@@ -303,6 +311,8 @@ export class Db {
   // point의 failNextRollback이 설정하는 test fault다.
   private readonly shared = { closed: false, rollbackFault: false };
   public readonly signal: AbortSignal | undefined = undefined;
+  /** The model of the audit record table whose values every audit of this handle's transactions shares. */
+  public readonly auditDefaults: Model | undefined = undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
   public readonly aesKey: string;
@@ -387,6 +397,24 @@ export class Db {
     return handle;
   }
 
+  /**
+   * Returns a handle on the same connection whose transactions record their
+   * audit with defaults: a model of the audit record table with the values
+   * that every audit of the handle shares, such as the account and the
+   * request. A transaction with the audit option inserts one audit record
+   * with these defaults and its own values, and the audited writes of the
+   * transaction refer to it. Models connect to the handle as they connect to
+   * the connection.
+   */
+  public audit(defaults: Model): Db {
+    if (!isModel(defaults)) throw new OrmError('CONFIG', 'the audit defaults are a model of the audit record table');
+    const handle: Db = Object.create(Db.prototype) as Db;
+    Object.assign(handle, this);
+    Object.defineProperty(handle, 'auditDefaults', { value: defaults, enumerable: true, writable: false });
+    Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
+    return handle;
+  }
+
   /** The connection this handle was derived from; a connection returns itself. */
   public root(): Db {
     return (this as { rootDb?: Db }).rootDb ?? this;
@@ -414,20 +442,18 @@ export class Db {
     if (!Number.isSafeInteger(retry) || retry < 0) throw new OrmError('CONFIG', 'transaction retry must be a non-negative integer');
     const timeoutMs = options.timeoutMs ?? 0;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
-    const operation = options.operation;
-    if (operation !== undefined && !isOperationId(operation)) {
-      throw new OrmError('CONFIG', 'transaction operation must be a safe integer or a non-empty string');
-    }
     const outer = activeFor(this);
+    // audit 기록은 transaction 이 시작하기 전에 검사하고 시도마다 callback 앞에서 삽입한다.
+    const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
-      if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || operation !== undefined) {
+      if (options.isolation !== undefined || options.readOnly !== undefined || options.timeoutMs !== undefined || options.audit !== undefined) {
         throw new OrmError('CONFIG', 'a nested transaction of the same connection accepts only the retry option');
       }
       return this.savepoint(outer, callback);
     }
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs }, operation);
+        return await this.run(callback, { isolation: options.isolation, readOnly: options.readOnly, timeoutMs }, record);
       } catch (error) {
         if (!(error instanceof OrmError) || error.code !== 'DEADLOCK' || attempt >= retry) throw error;
         await new Promise(resolve => setTimeout(resolve, (50 << attempt) + Math.floor(Math.random() * 20)));
@@ -435,13 +461,54 @@ export class Db {
     }
   }
 
-  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, operation: OperationId | undefined): Promise<T> {
+  /**
+   * handle 의 기본값 model 에 transaction 의 값을 더한 audit 기록 model 이다. 같은 column 이면 transaction 의 값이
+   * 기본값을 이긴다. 기본값이 없거나, 기본값 model 이 다른 연결을 쓰거나, 값의 key 가 audit 기록 table 의 column 이
+   * 아니거나, 그 table 의 primary key 가 column 하나가 아니면 CONFIG 다.
+   */
+  private auditRecord(values: Readonly<Record<string, unknown>>): Core {
+    if (values === null || typeof values !== 'object' || Array.isArray(values)) throw new OrmError('CONFIG', 'transaction audit is an object of column values');
+    const defaults = this.auditDefaults;
+    if (defaults === undefined) {
+      throw new OrmError('CONFIG', 'the transaction has audit values but the connection has no audit defaults: set them with db.audit(defaults)');
+    }
+    const core = defaults[CORE];
+    const entity = core.ent.entity;
+    if (core.conn !== undefined && core.conn.root().pool !== this.root().pool) {
+      throw new OrmError('CONFIG', `the audit defaults ${entity.name} connect to another connection than the transaction`);
+    }
+    if (entity.primaryKey.length !== 1) throw new OrmError('CONFIG', `the audit record table ${entity.name} needs a primary key of one column`);
+    const record = core.clone();
+    for (const column of Object.keys(values).sort()) {
+      if (fieldOf(entity, column) === undefined) throw new OrmError('CONFIG', `audit value ${column} is not a column of ${entity.name}`);
+      record.setValue(column, values[column]);
+    }
+    return record;
+  }
+
+  /**
+   * transaction 의 audit 기록을 삽입하고 그 entity 와 primary key 값을 돌려준다. 시도마다 record 의 복사본을
+   * 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
+   */
+  private async insertAudit(record: Core): Promise<AuditRecord> {
+    const entity = record.ent.entity;
+    const model = record.clone().self as unknown as { create(): Promise<ModelLike> };
+    const created = (await model.create())[CORE];
+    const key = created.values.get(entity.primaryKey[0]!);
+    if (key === undefined || key === null) throw new OrmError('CONFIG', `the audit record ${entity.name} has no ${entity.primaryKey[0]} after its insert`);
+    return { entity: entity.name, key };
+  }
+
+  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, record: Core | undefined): Promise<T> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     const tx = await this.pool.begin(options);
-    const frame = new TxFrame(this, tx, operation);
+    const frame = new TxFrame(this, tx);
     let result: T;
     try {
-      result = await flow.run([...frames(), frame], callback);
+      result = await flow.run([...frames(), frame], async () => {
+        if (record !== undefined) frame.audit = await this.insertAudit(record);
+        return callback();
+      });
     } catch (error) {
       try {
         await this.finish(frame, false);
@@ -496,15 +563,12 @@ export class Db {
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
     frame.savepoints++;
     const name = `orm_sp_${frame.savepoints}`;
-    // savepoint 안에서 정한 operation id 는 그 작업과 함께 되돌린다.
-    const operationBefore = frame.operation;
     try {
       await frame.tx.control(`SAVEPOINT ${name}`);
       let result: T;
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
-        frame.operation = operationBefore;
         // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
         const errors: unknown[] = [];
         for (const statement of [`ROLLBACK TO SAVEPOINT ${name}`, `RELEASE SAVEPOINT ${name}`]) {
@@ -547,7 +611,7 @@ export class Db {
   }
 
   /** Resolves the bind slots of a step; masked marks secret and clock positions. */
-  public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = [], operation?: OperationId): { values: unknown[]; masked: unknown[] } {
+  public args(step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = [], audit?: AuditRecord): { values: unknown[]; masked: unknown[] } {
     const values: unknown[] = [];
     const masked: unknown[] = [];
     const push = (value: unknown, mask?: string) => { values.push(value); masked.push(mask ?? value); };
@@ -576,8 +640,8 @@ export class Db {
           push(value);
           break;
         }
-        case 'operation':
-          push(operationValue(slot, operation));
+        case 'audit':
+          push(auditValue(slot, audit));
           break;
         case 'secret':
           if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError('CONFIG', `secret ${slot.name} is not configured`);
@@ -603,7 +667,7 @@ export class Db {
   }
 
   public async execute(ex: Executor, cached: Cached, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
-    const { values, masked } = this.args(step, params, parents, ex.frame?.operation);
+    const { values, masked } = this.args(step, params, parents, ex.frame?.audit);
     const started = performance.now();
     const connection = ex.frame?.tx ?? this.pool;
     try {
@@ -628,18 +692,16 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
 }
 
 /**
- * The operation id bound to the operation column of an audited table; a write
- * without an operation id, or with one of another type than the column, is
- * CONFIG.
+ * The key of the transaction's audit record, bound to the audit column of an
+ * audited table; a write without an audit, or whose table records its audits
+ * in another entity than the transaction's audit record, is CONFIG.
  */
-function operationValue(slot: BindSlot, operation: OperationId | undefined): OperationId {
-  if (operation === undefined) {
-    throw new OrmError('CONFIG', `${slot.name} is audited: run the write in a transaction with an operation id, or set the id with utils().setOperation(id)`);
+function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
+  if (audit === undefined) throw new OrmError('CONFIG', 'a write of an audited table needs an audit: run it in a transaction with audit values');
+  if (audit.entity !== slot.name) {
+    throw new OrmError('CONFIG', `the audited table records its audits in ${slot.name}, but the audit of the transaction is a ${audit.entity}`);
   }
-  if (slot.col_type === 'uuid' ? typeof operation !== 'string' : !Number.isSafeInteger(operation)) {
-    throw new OrmError('CONFIG', `the operation column ${slot.name}.${slot.column} (${slot.col_type}) does not take the operation id ${JSON.stringify(operation)}`);
-  }
-  return operation;
+  return audit.key;
 }
 
 function transform(kind: string, value: string): string {

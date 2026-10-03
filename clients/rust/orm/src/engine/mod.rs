@@ -191,7 +191,7 @@ mod tests {
 
     /// unique key를 가진 soft delete table 두 개(audit table link와 audit 없는 tag)와
     /// soft_delete가 없는 plain이다. engine/planner/restore_test.go와 같은 문서다.
-    const RESTORE_DOCUMENT: &str = "dbspec 1 restore\n\ntable link {\n  id i64 identity\n  team_id i64\n  member_id i64\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_link_pair (team_id, member_id)\n  settings {\n    soft_delete deleted_at\n    audit into link_history operation operation_id action change previous previous_operation_id\n  }\n}\n\ntable link_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_operation_id i64 null\n  id i64\n  team_id i64\n  member_id i64\n  operation_id i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n}\n\ntable tag {\n  id i64 identity\n  name varchar(64)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_tag_name (name)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable plain {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n}\n";
+    const RESTORE_DOCUMENT: &str = "dbspec 1 restore\n\ntable link {\n  id i64 identity\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_link_pair (team_id, member_id)\n  index ix_link_audit (audit_seq)\n  foreign key fk_link_audit (audit_seq) references audit (seq) on delete restrict on update restrict\n  settings {\n    soft_delete deleted_at\n    audit into link_history column audit_seq references audit action change previous previous_audit_seq\n  }\n}\n\ntable link_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n}\n\ntable tag {\n  id i64 identity\n  name varchar(64)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_tag_name (name)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable plain {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n}\n\ntable audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n}\n";
 
     fn restore_manifest() -> Manifest {
         let document = crate::dbspec::parse(RESTORE_DOCUMENT, &Default::default()).unwrap();
@@ -232,7 +232,7 @@ mod tests {
     }
 
     // restore는 primary key나 unique key 하나의 eq 조건으로 soft delete column을 NULL로 되돌리는 update
-    // 하나다. 지워진 행만 고치고, audit table이면 operation column도 쓴다.
+    // 하나다. 지워진 행만 고치고, audit table이면 audit column도 쓴다.
     #[test]
     fn restore_plans_guarded_update() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
@@ -241,20 +241,20 @@ mod tests {
             (
                 Dialect::Sqlite,
                 restore_request(&m, "link", &[("", "team_id", "eq"), ("and", "member_id", "eq")]),
-                r#"UPDATE "link" SET "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
-                vec!["operation", "param 0", "param 1"],
+                r#"UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["audit", "param 0", "param 1"],
             ),
             (
                 Dialect::MySql,
                 restore_request(&m, "link", &[("", "member_id", "eq"), ("and", "team_id", "eq")]),
-                "UPDATE `link` SET `deleted_at` = NULL, `operation_id` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL",
-                vec!["operation", "param 0", "param 1"],
+                "UPDATE `link` SET `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.`member_id` = ? AND `link`.`team_id` = ? AND `link`.`deleted_at` IS NOT NULL",
+                vec!["audit", "param 0", "param 1"],
             ),
             (
                 Dialect::Postgres,
                 restore_request(&m, "link", &[("", "id", "eq")]),
-                r#"UPDATE "link" SET "deleted_at" = NULL, "operation_id" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL"#,
-                vec!["operation", "param 0"],
+                r#"UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = $1 WHERE "link"."id" = $2 AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["audit", "param 0"],
             ),
             (
                 Dialect::MySql,
@@ -265,8 +265,8 @@ mod tests {
             (
                 Dialect::Sqlite,
                 with_set(restore_request(&m, "link", &[("", "team_id", "eq"), ("and", "member_id", "eq")]), &["team_id"]),
-                r#"UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "operation_id" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
-                vec!["param 2", "operation", "param 0", "param 1"],
+                r#"UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL"#,
+                vec!["param 2", "audit", "param 0", "param 1"],
             ),
             (
                 Dialect::Postgres,
@@ -316,7 +316,7 @@ mod tests {
             ("a group", group),
             ("an assignment of the soft delete column", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["deleted_at"])),
             ("an assignment of the primary key", with_set(restore_request(&m, "tag", &[("", "name", "eq")]), &["id"])),
-            ("an assignment of the operation column", with_set(restore_request(&m, "link", &[("", "id", "eq")]), &["operation_id"])),
+            ("an assignment of the audit column", with_set(restore_request(&m, "link", &[("", "id", "eq")]), &["audit_seq"])),
             ("an optimistic check", optimistic),
             ("a table without soft_delete", restore_request(&m, "plain", &[("", "id", "eq")])),
         ];

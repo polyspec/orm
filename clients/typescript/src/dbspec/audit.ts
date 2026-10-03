@@ -4,11 +4,11 @@ import type { DbspecSetting, DbspecTable } from './model.js';
 export type DbspecAuditSetting = Extract<DbspecSetting, { readonly kind: 'audit' }>;
 
 /**
- * audit trigger가 column을 복사하는지 알린다. operation column은 언제나, exclude 목록의 column은
+ * audit trigger가 column을 복사하는지 알린다. audit column은 언제나, exclude 목록의 column은
  * 언제나 아니며, include 목록이 있으면 그 column만 복사한다.
  */
 export function auditRecords(a: DbspecAuditSetting, column: string): boolean {
-  if (column === a.operation) return true;
+  if (column === a.column) return true;
   if (a.exclude !== null) return !a.exclude.includes(column);
   if (a.include !== null) return a.include.includes(column);
   return true;
@@ -21,6 +21,6 @@ export function auditExcluded(a: DbspecAuditSetting, t: DbspecTable): string[] {
 
 /** setting 줄이다. columns가 null이면 목록 없이, 아니면 list keyword와 그 column을 쓴다. */
 export function auditLine(a: DbspecAuditSetting, list: 'exclude' | 'include', columns: readonly string[] | null): string {
-  const head = `audit into ${a.into} operation ${a.operation} action ${a.action} previous ${a.previous}`;
+  const head = `audit into ${a.into} column ${a.column} references ${a.references} action ${a.action} previous ${a.previous}`;
   return columns === null || columns.length === 0 ? head : `${head} ${list} (${columns.join(', ')})`;
 }

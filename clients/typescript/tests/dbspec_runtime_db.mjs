@@ -1,7 +1,7 @@
 // dbspec runtime model test on SQLite, MySQL and PostgreSQL: a connection
 // without a schema path, schema installation from dbspec documents, i16
 // values, database defaults, the default select set, the value type of every
-// codec stage and dbspec type, and the audit operation id. Each dialect runs
+// codec stage and dbspec type, and the audit record of a transaction. Each dialect runs
 // on a case database of its own on the servers of ORM_TEST_MYSQL_DSN and
 // ORM_TEST_POSTGRES_DSN, or a new SQLite file (case-database.mjs).
 //
@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mjs';
 import { createCaseDatabase } from './case-database.mjs';
-import { restoreCase, restoreSchema, setOperationCase } from './restore_case.mjs';
+import { auditCase, restoreCase, restoreSchema } from './restore_case.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -67,7 +67,7 @@ function models(text) {
 }
 
 const { probe: Probe } = models(probeText);
-const { item: Item, item_history: ItemHistory } = models(auditText);
+const { item: Item } = models(auditText);
 
 async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
@@ -167,37 +167,23 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
   });
 
-  caseTest(`${dialect}: an audited write takes the operation id of its transaction`, 60_000, async () => {
-    const item = title => { const m = new Item().connect(db); m[CORE].setValue('title', title); return m; };
-    assert.equal(await code(item('a').create()), 'CONFIG');
-    assert.equal(await code(db.transaction(async () => { await item('a').create(); }, { retry: 0 })), 'CONFIG');
-    const assigned = item('a');
-    assigned[CORE].setValue('operation_id', 9);
-    assert.equal(await code(db.transaction(async () => { await assigned.create(); }, { operation: 9, retry: 0 })), 'IR_INVALID');
-    let seq;
-    await db.transaction(async () => { seq = (await item('a').create())[CORE].column('seq'); }, { operation: 7, retry: 0 });
-    await db.transaction(async () => {
-      const row = await new Item().raw('{seq} = ?', seq).get();
-      row[CORE].setValue('title', 'b');
-      await row.update();
-    }, { operation: 8, retry: 0 });
-    await db.transaction(async () => { await (await new Item().raw('{seq} = ?', seq).get()).delete(); }, { operation: 9, retry: 0 });
-    const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
-    const rows = history.values().map(h => [h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('operation_id'), h[CORE].column('title'), h[CORE].column('deleted_at') !== null]);
-    assert.deepEqual(rows, [['insert', null, 7, 'a', false], ['update', 7, 8, 'b', false], ['update', 8, 9, 'b', true]]);
-    assert.equal(await new Item().connect(db).getCount(), 0);
+  // audit 기록을 받은 transaction 의 write 를 확인한다(tests/restore_case.mjs). audit.dbs 는 앞 case 가 설치했다.
+  caseTest(`${dialect}: an audited write takes the audit record of its transaction`, 60_000, async () => {
+    await auditCase(db, dialect, database.dsn);
   });
 
-  // 시작한 transaction 안에서 utils().setOperation(id)로 operation id 를 정한다(tests/restore_case.mjs). audit.dbs 는 앞
-  // case 가 설치했고, 이 case 는 자기가 쓴 행의 이력만 확인한다.
-  caseTest(`${dialect}: setOperation sets the operation id inside a running transaction`, 60_000, async () => {
-    await setOperationCase(db);
-  });
-
-  // soft delete 한 행을 unique key 나 primary key 로 restore 한다(tests/restore_case.mjs).
-  caseTest(`${dialect}: restore brings back a soft-deleted row by its primary key or a unique key`, 60_000, async () => {
-    await db.utils().schema().install(restoreSchema());
-    await restoreCase(db);
+  // soft delete 한 행을 unique key 나 primary key 로 restore 한다(tests/restore_case.mjs). restore.dbs 는 audit.dbs 와
+  // 같은 이름의 audit table 을 가지므로 자기 case database 에 설치한다.
+  caseTest(`${dialect}: restore brings back a soft-deleted row by its primary key or a unique key`, 60_000, async ({ step }) => {
+    const own = await createCaseDatabase(dialect, step);
+    let restoreDb;
+    try {
+      restoreDb = await Db.connect(own.dsn);
+      await restoreDb.utils().schema().install(restoreSchema());
+      await restoreCase(restoreDb);
+    } finally {
+      try { await restoreDb?.close(); } finally { await own.drop(step); }
+    }
   });
 
   caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {

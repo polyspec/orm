@@ -80,8 +80,9 @@ function count_of(Db $db, string $sql): int
 }
 
 /**
- * case database에 addcol_log와 version 1을 설치하고 log row 하나, operation 1로 item 하나, 그
- * item의 tag와 그 tag의 자식 tag를 쓴 연결이다.
+ * case database에 addcol_log와 version 1을 설치하고 log row 하나, audit 기록 1로 item 하나, 그
+ * item의 tag와 그 tag의 자식 tag를 쓴 연결이다. item의 audit column은 audit 기록 table의 행을
+ * foreign key로 가리키므로 audit 기록을 먼저 쓴다.
  */
 function installed(string $dsn): Db
 {
@@ -90,7 +91,8 @@ function installed(string $dsn): Db
     $db->utils()->schema()->install(fixture('v1'));
     $pdo = $db->pdo();
     $pdo->exec("INSERT INTO addcol_log_entry (message) VALUES ('kept')");
-    $pdo->exec("INSERT INTO addcol_item (ref, label, created_at, operation_id) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)");
+    $pdo->exec("INSERT INTO audit (actor) VALUES ('setup')");
+    $pdo->exec("INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)");
     $pdo->exec("INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')");
     $pdo->exec("INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')");
     return $db;
@@ -116,16 +118,19 @@ function addTablesAndColumns(string $dsn, string $driver): void
         }
         check($orphan !== null, 'a tag of a missing item was written');
         // audit trigger는 새 column을 기록한다.
-        $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1");
-        $history = count_of($db, "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
+        $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('update')");
+        $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1");
+        $history = count_of($db, "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
         check($history === 1, "history rows of the update with the new columns $history");
         // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
-        $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, 'extra', 3)");
-        $inserted = count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'");
+        $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('extra')");
+        $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
+        $inserted = count_of($db, "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'");
         check($inserted === 1, "history rows of the insert into the created table $inserted");
         foreach ([
-            "INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)" => 'foreign key',
-            "INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)" => 'check',
+            "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)" => 'foreign key',
+            "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 999)" => 'audit foreign key',
+            "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)" => 'check',
             'DELETE FROM addcol_extra' => 'audit delete',
         ] as $statement => $what) {
             $refused = null;

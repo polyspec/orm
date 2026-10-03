@@ -104,6 +104,7 @@ classDiagram
         Cache_Sql_Statement statements
         connect()
         connectSchema()
+        audit()
         transaction()
         utils()
         close()
@@ -139,7 +140,6 @@ classDiagram
         lock()
         setLocal()
         local()
-        setOperation()
         schema()
         privileges()
         aes()

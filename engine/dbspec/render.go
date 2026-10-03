@@ -519,7 +519,7 @@ func (r renderer) triggers(t *Table) []string {
 	}
 	if a := t.Settings.Audit; a != nil {
 		out = append(out, r.history(t, a, "audit_insert", "AFTER INSERT", "'insert'", "NULL")...)
-		out = append(out, r.history(t, a, "audit_update", "AFTER UPDATE", "'update'", "OLD."+r.q(a.Operation))...)
+		out = append(out, r.history(t, a, "audit_update", "AFTER UPDATE", "'update'", "OLD."+r.q(a.Column))...)
 		out = append(out, r.reject(t, "audit_delete", "BEFORE DELETE", "table "+t.Name+" deletes through its soft delete column")...)
 	}
 	return out

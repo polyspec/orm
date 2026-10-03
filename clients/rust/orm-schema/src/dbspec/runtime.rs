@@ -82,7 +82,10 @@ pub struct ForeignKey {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Audit {
     pub history: String,
-    pub operation: String,
+    /// transaction의 audit 기록 key를 담는 column.
+    pub column: String,
+    /// audit 기록 table의 entity 이름.
+    pub record: String,
     pub action: String,
     pub previous: String,
 }
@@ -118,7 +121,13 @@ impl Field {
 /// 잘못된 document set이면 `manifest`와 같은 diagnostic을 돌려준다.
 pub fn runtime_model(documents: &[&Document]) -> Result<RuntimeModel, Vec<Diagnostic>> {
     let ordered = super::check_set(documents)?;
-    let entities = ordered.iter().flat_map(|d| d.tables.iter()).map(entity).collect();
+    let mut entities: Vec<Entity> = ordered.iter().flat_map(|d| d.tables.iter()).map(entity).collect();
+    let names: Vec<(String, String)> = entities.iter().map(|e| (e.table.clone(), e.name.clone())).collect();
+    for audit in entities.iter_mut().filter_map(|e| e.audit.as_mut()) {
+        if let Some((_, name)) = names.iter().find(|(table, _)| *table == audit.record) {
+            audit.record = name.clone();
+        }
+    }
     Ok(RuntimeModel { entities })
 }
 
@@ -178,9 +187,14 @@ fn entity(table: &Table) -> Entity {
         soft_delete: column(|s| if let Setting::SoftDelete(n) = s { Some(n) } else { None }),
         aes_version: column(|s| if let Setting::AesVersion(n) = s { Some(n) } else { None }),
         audit: lines.iter().find_map(|s| match s {
-            Setting::Audit { into, operation, action, previous, .. } => {
-                Some(Audit { history: into.text.clone(), operation: operation.text.clone(), action: action.text.clone(), previous: previous.text.clone() })
-            }
+            // record는 table 이름이며 runtime_model이 모든 entity를 만든 뒤 entity 이름으로 바꾼다.
+            Setting::Audit { into, column, references, action, previous, .. } => Some(Audit {
+                history: into.text.clone(),
+                column: column.text.clone(),
+                record: references.text.clone(),
+                action: action.text.clone(),
+                previous: previous.text.clone(),
+            }),
             _ => None,
         }),
         immutable: lines.iter().any(|s| matches!(s, Setting::Immutable)),

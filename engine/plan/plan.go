@@ -45,7 +45,7 @@ type IfParent struct {
 //   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" (dialects without a sub-second clock)
-//   - operation: 현재 unit of work의 operation id. audit table의 insert와 update가 operation column에 쓴다.
+//   - audit: transaction의 audit 기록 key. audit table의 insert와 update가 audit column에 쓴다. Name은 audit 기록 entity다.
 //
 // Transform (executor-side, value-level): "" | "like_contains" (escape % _ \ then wrap in %).
 type BindSlot struct {
@@ -61,8 +61,7 @@ type BindSlot struct {
 	HostStyles []string `json:"host_styles,omitempty"`
 	// ColType은 값이 비교되거나 할당되는 column의 dbspec type이다. param
 	// slot은 date, time, datetime, decimal만 싣고(datetime type이 없는 언어의
-	// executor는 정확히 이 값만 정규화한다), operation slot은 operation
-	// column의 i64 또는 uuid를 싣는다.
+	// executor는 정확히 이 값만 정규화한다).
 	ColType   string `json:"col_type,omitempty"`
 	Precision int    `json:"precision,omitempty"`
 	Scale     int    `json:"scale,omitempty"`

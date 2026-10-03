@@ -221,26 +221,29 @@ type ImmutableSetting struct {
 	Comments []string
 }
 
-// AuditSetting은 `audit into <history> operation <column> action <column>
-// previous <column> [exclude (<column>, ...) | include (<column>, ...)]`이다.
+// AuditSetting은 `audit into <history> column <column> references <table>
+// action <column> previous <column> [exclude (<column>, ...) | include
+// (<column>, ...)]`이다. Column은 audit 기록 table References의 primary
+// key를 담는 column이다.
 // 목록이 없으면 Exclude와 Include는 nil이고, parse한 setting은 둘 중 하나만
 // 가진다(docs/dbspec.md "Audit").
 type AuditSetting struct {
-	Comments  []string
-	History   string
-	Operation string
-	Action    string
-	Previous  string
-	Exclude   []string
-	Include   []string
+	Comments   []string
+	History    string
+	Column     string
+	References string
+	Action     string
+	Previous   string
+	Exclude    []string
+	Include    []string
 }
 
-// Records는 audit trigger가 column을 복사하는지 알린다. operation column은
+// Records는 audit trigger가 column을 복사하는지 알린다. audit column은
 // 언제나, exclude 목록의 column은 언제나 아니며, include 목록이 있으면 그
 // column만 복사한다.
 func (a *AuditSetting) Records(column string) bool {
 	switch {
-	case column == a.Operation:
+	case column == a.Column:
 		return true
 	case a.Exclude != nil:
 		return !slices.Contains(a.Exclude, column)
@@ -265,7 +268,7 @@ func (a *AuditSetting) Excluded(t *Table) []string {
 // line은 setting 줄을 쓴다. columns가 nil이면 목록 없이, 아니면 list
 // keyword와 그 column을 쓴다.
 func (a *AuditSetting) line(list string, columns []string) string {
-	s := "audit into " + a.History + " operation " + a.Operation + " action " + a.Action + " previous " + a.Previous
+	s := "audit into " + a.History + " column " + a.Column + " references " + a.References + " action " + a.Action + " previous " + a.Previous
 	if columns != nil {
 		s += " " + list + " (" + strings.Join(columns, ", ") + ")"
 	}

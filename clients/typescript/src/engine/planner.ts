@@ -56,9 +56,12 @@ class Builder {
   public config(name: string): string { return this.push(slot({ from: 'config', name })); }
   /** A timestamp the executor supplies (dialects without a sub-second clock) with p fraction digits. */
   public now(precision: number): string { return this.push(slot({ from: 'now', precision })); }
-  /** The operation id of the unit of work, written to the operation column of an audited table. */
-  public operation(ent: Entity, col: Column): string {
-    return this.push(slot({ from: 'operation', name: ent.table, column: col.name, col_type: col.type }));
+  /**
+   * The key of the transaction's audit record, written to the audit column of an audited table. name is the
+   * entity of the audit record table; the executor checks that the transaction's audit is a row of it.
+   */
+  public audit(ent: Entity): string {
+    return this.push(slot({ from: 'audit', name: ent.auditRecord }));
   }
   /** The one placeholder an executor expands to the parent values. */
   public parentList(step: number): string { return this.push(slot({ from: 'parent', step })); }
@@ -123,12 +126,12 @@ function validateAESAssignments(ent: Entity, set: readonly Assignment[], require
 /**
  * An insert assigns every required column: a NOT NULL column without a
  * default that is neither the identity column nor a column the planner writes
- * (the AES key version and the audit operation). An omitted column with a
+ * (the AES key version and the audit column). An omitted column with a
  * default takes the database default.
  */
 function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): void {
   for (const col of ent.fields) {
-    if (col.nullable || col.hasDefault || col.identity || col.name === ent.aesVersion || col.name === ent.auditOperation || assigned(set, col.name)) continue;
+    if (col.nullable || col.hasDefault || col.identity || col.name === ent.aesVersion || col.name === ent.auditColumn || assigned(set, col.name)) continue;
     fail('IR_INVALID', `required column ${ent.name}.${col.name} is not set`);
   }
 }
@@ -712,14 +715,14 @@ export class Planner {
     return this.d.hostNow ? b.now(col.precision) : this.d.now(col.precision);
   }
 
-  /** The assignment of the audit operation column of an audited table, or undefined. */
-  private operationAssignment(b: Builder, ent: Entity): string | undefined {
-    if (ent.auditOperation === '') return undefined;
-    return `${this.d.quote(ent.auditOperation)} = ${b.operation(ent, columnOf(ent, ent.auditOperation)!)}`;
+  /** The assignment of the audit column of an audited table, or undefined. */
+  private auditAssignment(b: Builder, ent: Entity): string | undefined {
+    if (ent.auditColumn === '') return undefined;
+    return `${this.d.quote(ent.auditColumn)} = ${b.audit(ent)}`;
   }
 
   /**
-   * insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit operation column,
+   * insert가 사용자 assignment 외에 쓰는 column이다: AES key version, audit column,
    * sub-second clock이 없는 dialect에서 assign되지 않은 `default now` column(field 순서).
    * 그런 dialect의 database clock은 millisecond만 가지므로 executor의 microsecond clock을 쓴다.
    */
@@ -727,9 +730,8 @@ export class Planner {
     const out: { column: string; value: (b: Builder) => string }[] = [];
     const version = aesVersionColumn(ent);
     if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version') });
-    if (ent.auditOperation !== '') {
-      const operation = columnOf(ent, ent.auditOperation)!;
-      out.push({ column: operation.name, value: b => b.operation(ent, operation) });
+    if (ent.auditColumn !== '') {
+      out.push({ column: ent.auditColumn, value: b => b.audit(ent) });
     }
     if (this.d.hostNow) {
       for (const f of ent.fields) {
@@ -755,7 +757,7 @@ export class Planner {
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
-    // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit operation,
+    // executor가 관리하는 column은 사용자 assignment 뒤에 AES key version, audit column,
     // `default now` column 순서로 쓴다.
     const managed = this.managedInsertColumns(ent, set);
     for (const c of managed) {
@@ -778,7 +780,7 @@ export class Planner {
       validateAESAssignments(ent, duplicate, true);
       const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
       if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
-      const op = this.operationAssignment(b, ent);
+      const op = this.auditAssignment(b, ent);
       if (op !== undefined) sets.push(op);
       if (ent.identity !== '' && !this.d.insertReturningId) {
         // make the last insert id report the existing row on update
@@ -806,7 +808,7 @@ export class Planner {
     if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
     // The update time is always assigned: optimistic locking needs the same behavior on every dialect.
     if (ent.updated !== '' && !assigned(r.set ?? [], ent.updated)) sets.push(`${this.d.quote(ent.updated)} = ${this.clock(b, columnOf(ent, ent.updated)!)}`);
-    const op = this.operationAssignment(b, ent);
+    const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     let where = this.renderGroup(b, root, r.where!, true);
     if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.param(r.optimistic.p)}`;
@@ -821,9 +823,9 @@ export class Planner {
     if (ent.softDelete === '') {
       return { role: 'main', sql: `DELETE FROM ${this.d.quote(ent.table)} WHERE ${this.renderGroup(b, root, r.where!, true)}`, bind_slots: b.binds };
     }
-    // A soft delete is an update: it stamps the column and, on an audited table, the operation.
+    // A soft delete is an update: it stamps the column and, on an audited table, the audit column.
     const sets = [`${this.d.quote(ent.softDelete)} = ${this.clock(b, columnOf(ent, ent.softDelete)!)}`];
-    const op = this.operationAssignment(b, ent);
+    const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NULL`;
     return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
@@ -833,7 +835,7 @@ export class Planner {
    * soft delete 한 행 하나를 되돌리는 update 다. where 는 primary key 나 unique key 하나의 모든 column 을 eq 값으로
    * 한 번씩 이름한다. 지워진 행만 고치므로 지워지지 않은 행과 없는 행은 아무것도 바꾸지 않는다. set 은 되돌리는 행에
    * 함께 쓰는 새 값이며 update 처럼 쓴다. primary key, identity, soft delete column 은 쓸 수 없다. SET 순서는 새 값,
-   * AES key version, soft delete column, audit table 의 operation column 이다. updated column 은 쓰지 않는다.
+   * AES key version, soft delete column, audit table 의 audit column 이다. updated column 은 쓰지 않는다.
    */
   private restoreStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);
@@ -852,7 +854,7 @@ export class Planner {
     const version = aesVersionColumn(ent);
     if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
     sets.push(`${this.d.quote(ent.softDelete)} = NULL`);
-    const op = this.operationAssignment(b, ent);
+    const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NOT NULL`;
     return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };

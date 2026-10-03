@@ -161,49 +161,59 @@ Codec stages run in the written order on write. The storage type follows the las
 | `blind_index <aes column> <index column>` | The executor writes an HMAC of the AES column's plaintext to the indexed column and uses it for equality conditions | manifest |
 | `navigation <foreign key> <child name> <parent name>` | The relation names that tools show for the foreign key, from the child and from the parent; generated code joins through its match methods and does not read them | manifest |
 | `immutable` | The database rejects `UPDATE` and `DELETE` of the table's rows with generated row triggers. `TRUNCATE` is not covered. Rejected on a child of a `cascade` or `set_null` foreign key | schema |
-| `audit into <history table> operation <column> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | Generated row triggers copy the recorded columns of every `INSERT` and `UPDATE` into the history table; see [Audit](#audit) | schema |
+| `audit into <history table> column <column> references <table> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | Generated row triggers copy the recorded columns of every `INSERT` and `UPDATE` into the history table; see [Audit](#audit) | schema |
 
 `schemaHash` covers the tables' definitions and the settings marked schema; it changes exactly when the database must change. `manifestHash` covers the definitions and every setting; generated code checks it. Diagrams and comments belong to neither; [Manifest and hashes](#manifest-and-hashes) defines both.
 
 ### Audit
 
-An audited table keeps its own operation column, and a history table keeps every version of its rows. The trigger reads everything it records from the row it receives, `OLD` and `NEW`, so the three databases need no other channel between the executor and the trigger.
+An audited table keeps the key of its audit record in its own audit column, and a history table keeps every version of its rows. An audit record is a row of a declared table, written once for each unit of work (a transaction) before its changes; every audited row that the unit of work inserts or updates refers to it. The trigger reads everything it records from the row it receives, `OLD` and `NEW`, so the three databases need no other channel between the executor and the trigger.
 
 ```text
 table service {
   id i64 identity
   name varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (id)
-  index ix_service_operation (operation_id)
+  index ix_service_audit (audit_seq)
+  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict
   settings {
     soft_delete deleted_at
-    audit into service_history operation operation_id action change previous previous_operation_id
+    audit into service_history column audit_seq references audit action change previous previous_audit_seq
   }
 }
 
 table service_history {
   history_id i64 identity
   change varchar(8)
-  previous_operation_id i64 null
+  previous_audit_seq i64 null
   id i64
   name varchar(191)
-  operation_id i64
+  audit_seq i64
   deleted_at datetime(6) null
   primary key (history_id)
   index ix_service_history_row (id)
 }
+
+table audit {
+  seq i64 identity
+  account_seq i64
+  request_id varchar(64)
+  action varchar(64) null
+  primary key (seq)
+}
 ```
 
-- **Operation column.** `operation <column>` names a non-null `i64` or `uuid` column of the audited table. The executor writes the current operation's id into it on every `INSERT` and `UPDATE` of the table. `NEW.<column>` is the operation that makes the change and `OLD.<column>` the operation that made the previous version.
-- **Recorded columns.** Without a list the triggers record every column of the audited table. `exclude (<column>, ...)` records every column except the listed ones, and `include (<column>, ...)` records only the listed ones. The operation column is always recorded, so neither list names it. A setting has at most one list, and a listed column is a column of the audited table that appears once. Naming an unknown column, listing a column twice, writing both lists and listing the operation column are `setting` errors at the listed column or at the keyword of the second list. A column added to the table later is recorded under `exclude` and not under `include`.
-- **History table.** `into <history table>` names a table of the document or a used table. It is another table than the audited one. It has an `i64 identity` primary key, the `action` column (a non-null `varchar(8)`), the `previous` column (nullable, the type of the operation column) and one column for every recorded column of the audited table, with the same name and type; it has no other column. A history table that lacks a copy of a recorded column, has a column of another type, or has any other column, an unrecorded column of the audited table included, is a `setting` error at the history table name, one for each mismatch. The history columns may be nullable. The history table is not audited itself.
-- **Triggers.** An `AFTER INSERT` row trigger writes `action = 'insert'`, `previous = NULL` and the `NEW` value of every recorded column. An `AFTER UPDATE` row trigger writes `action = 'update'`, `previous = OLD.<operation column>` and the `NEW` value of every recorded column. A `BEFORE DELETE` row trigger rejects the delete. Values are copied column to column, so the history row is equal on the three databases; no row is serialized as JSON.
-- **Schema text and introspection.** The database holds only the recorded columns, which the triggers list. The schema text therefore writes the setting with `exclude` and the columns that it does not record, in column order, or without a list when it records every column; `include (title)` and the `exclude` list of the other columns give the same `schemaHash`, and the manifest text keeps the list as written. Introspection reads the recorded columns from the `audit_insert` trigger and restores the setting in the schema text form; nothing else is stored in the database.
+- **Audit column.** `column <column>` names a non-null column of the audited table. The executor writes the key of the transaction's audit record into it on every `INSERT` and `UPDATE` of the table ([usage](usage.md#audited-writes)). `NEW.<column>` is the audit record of the change and `OLD.<column>` the audit record of the previous version.
+- **Audit record table.** `references <table>` names a table of the document or a used table: another table than the audited and the history table, not audited itself, with a primary key of one column whose type is the audit column's type. The audited table declares the foreign key `(<column>) references <table> (<key>) on delete restrict on update restrict`, with the leading index that every foreign key needs, so the database rejects an audit column value that names no audit record and the deletion of an audit record that a row refers to; the foreign key is rendered and introspected like any other. An unknown table, the audited or the history table, an audited table, a key of another shape or type, and a missing foreign key are `setting` errors at the table name or the audit column.
+- **Recorded columns.** Without a list the triggers record every column of the audited table. `exclude (<column>, ...)` records every column except the listed ones, and `include (<column>, ...)` records only the listed ones. The audit column is always recorded, so neither list names it. A setting has at most one list, and a listed column is a column of the audited table that appears once. Naming an unknown column, listing a column twice, writing both lists and listing the audit column are `setting` errors at the listed column or at the keyword of the second list. A column added to the table later is recorded under `exclude` and not under `include`.
+- **History table.** `into <history table>` names a table of the document or a used table. It is another table than the audited one. It has an `i64 identity` primary key, the `action` column (a non-null `varchar(8)`), the `previous` column (nullable, the type of the audit column) and one column for every recorded column of the audited table, with the same name and type; it has no other column. A history table that lacks a copy of a recorded column, has a column of another type, or has any other column, an unrecorded column of the audited table included, is a `setting` error at the history table name, one for each mismatch. The history columns may be nullable. The history table is not audited itself.
+- **Triggers.** An `AFTER INSERT` row trigger writes `action = 'insert'`, `previous = NULL` and the `NEW` value of every recorded column. An `AFTER UPDATE` row trigger writes `action = 'update'`, `previous = OLD.<audit column>` and the `NEW` value of every recorded column. A `BEFORE DELETE` row trigger rejects the delete. Values are copied column to column, so the history row is equal on the three databases; no row is serialized as JSON.
+- **Schema text and introspection.** The database holds only the recorded columns, which the triggers list. The schema text therefore writes the setting with `exclude` and the columns that it does not record, in column order, or without a list when it records every column; `include (title)` and the `exclude` list of the other columns give the same `schemaHash`, and the manifest text keeps the list as written. Introspection reads the recorded columns from the `audit_insert` trigger, the audit record table from the foreign key of the audit column, and restores the setting in the schema text form; nothing else is stored in the database.
 - **Encrypted values.** A value that needs encryption has a codec with the `aes` stage, and the executor encodes it before the write ([codecs](codec.md)), so the row holds the ciphertext and the triggers copy that ciphertext into the history table; the triggers never see a plaintext. Its history column has the same storage type. Exclude such a column to keep it out of the history.
-- **Deleting.** The `BEFORE DELETE` trigger makes a physical `DELETE` fail. A table that declares `soft_delete` deletes with an `UPDATE` of the soft delete column, which the history records with its operation, and a restore of a soft-deleted row is an `UPDATE` that the history records in the same way. `audit` does not require `soft_delete`: a schema setting is read back from the database and a manifest setting is not, so a schema setting never depends on a manifest setting.
-- **Limits.** The setting is rejected on a child of a `cascade` or `set_null` foreign key, because MySQL triggers do not fire for rows changed by a foreign key action. `TRUNCATE` is not covered. Raw SQL that does not write the operation column records the previous operation's id again; the executor is the only writer that sets it. Creating the triggers on MySQL with binary logging needs `SUPER` or `log_bin_trust_function_creators=ON`, which apply checks first.
+- **Deleting.** The `BEFORE DELETE` trigger makes a physical `DELETE` fail. A table that declares `soft_delete` deletes with an `UPDATE` of the soft delete column, which the history records with its audit record, and a restore of a soft-deleted row is an `UPDATE` that the history records in the same way. `audit` does not require `soft_delete`: a schema setting is read back from the database and a manifest setting is not, so a schema setting never depends on a manifest setting.
+- **Limits.** The setting is rejected on a child of a `cascade` or `set_null` foreign key, because MySQL triggers do not fire for rows changed by a foreign key action. `TRUNCATE` is not covered. Raw SQL must name an existing audit record in the audit column, which the foreign key checks; an `UPDATE` that does not write the column records the previous audit record again, and the executor always writes it. Creating the triggers on MySQL with binary logging needs `SUPER` or `log_bin_trust_function_creators=ON`, which apply checks first.
 
 ## Manifest and hashes
 
@@ -227,7 +237,7 @@ A client builds one runtime model from the document set, and generated code is p
 - **Default select set.** Every column except those of `select explicit`; reading a column that was not selected fails with `COLUMN_UNSELECTED`. No type or codec leaves a column out by itself.
 - **Defaults.** An insert that omits a column with a default takes the database default; the executor does not fill it, except that on SQLite, whose clock has millisecond resolution, it binds the client clock for an omitted `default now` column ([protocol](protocol.md)). An insert that omits a non-null column without a default fails with `IR_INVALID` before reaching the database.
 - **Codecs.** A column with a `codec` setting holds the value that the first stage encodes. When a stage is `ordered_json`, `serialize`, `yaml`, `gz` or `base64`, that is a styled value of the common value model ([codecs](codec.md)), which distinguishes SQL NULL from a stored null; when every stage is `aes`, `hex` or `ip`, it is a string (`ip` takes the address text).
-- **Settings.** `updated` is assigned the UTC statement time on every `UPDATE` the executor plans; `soft_delete` filters reads and turns deletes into updates, and `restore` is the only call that matches a soft-deleted row; `aes_version` stores the key version of the row; `blind_index` writes the HMAC column and rewrites equality conditions on the AES column. For `audit`, the calling code supplies an operation id for its unit of work, when the transaction begins or before its first audited write, and the executor writes it into the operation column of every audited row it inserts or updates; an insert or update of an audited table without an operation id fails with `CONFIG`. `immutable` has no runtime behavior: the database rejects the change. `navigation` has none either.
+- **Settings.** `updated` is assigned the UTC statement time on every `UPDATE` the executor plans; `soft_delete` filters reads and turns deletes into updates, and `restore` is the only call that matches a soft-deleted row; `aes_version` stores the key version of the row; `blind_index` writes the HMAC column and rewrites equality conditions on the AES column. For `audit`, a transaction with audit values inserts one audit record before its callback, from the audit defaults of its connection handle and its own values, and the executor writes the record's key into the audit column of every audited row it inserts or updates; an insert or update of an audited table without an audit fails with `CONFIG`. `immutable` has no runtime behavior: the database rejects the change. `navigation` has none either.
 - **Relations.** Generated code joins two entities through the match methods of their columns, as before; a joined result is reached under the alias the call gives or under `<entity>_model` and `<entity>_models`.
 - **Connection.** A raw connection takes the DSN URI and its configuration and registers no set; it never takes a schema path. Generated code carries the manifest text and `manifestHash`, and its connect helper opens a connection and registers that set on it; `install` registers the set it installs. A request carries `manifestHash` and runs only on a connection where its set is registered ([protocol](protocol.md)).
 
@@ -332,7 +342,7 @@ Every feature of the Mermaid language and its manifest:
 | `orm:table` schema-qualified names | Removed (one document is one database or schema) |
 | `orm:foreign` | Replaced by `use` and foreign keys to used tables |
 | `orm:immutable` | Kept as the `immutable` setting with row triggers |
-| `orm:audit`, `orm:audit_log` | Replaced by the `audit` setting with history tables; the operation and change tables, the context setting and the JSON row values are removed |
+| `orm:audit`, `orm:audit_log` | Replaced by the `audit` setting with an audit record table and history tables; the separate change tables, the context setting and the JSON row values are removed |
 | `orm:field`, `route`, `scope`, `filter`, `operation`, `permission` and other pass-through directives | Removed |
 | `-- orm:` trigger markers and `-- orm-schema-v1` SQL sources | Removed; restoration compares renderer output |
 | PhysicalGraph records with dialect SQL text (`typeSql`, `predicateSql`, `expressionSql`, `collationSql`, `operatorClassSql`) and the annotated Markdown document | Removed; the dbspec model replaces them |

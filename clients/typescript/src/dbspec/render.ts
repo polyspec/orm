@@ -341,7 +341,7 @@ export class Renderer {
     for (const a of t.settings.settings) {
       if (a.kind !== 'audit') continue;
       out.push(...this.history(t, a, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
-      out.push(...this.history(t, a, 'audit_update', 'AFTER UPDATE', "'update'", `OLD.${this.q(a.operation)}`));
+      out.push(...this.history(t, a, 'audit_update', 'AFTER UPDATE', "'update'", `OLD.${this.q(a.column)}`));
       out.push(...this.reject(t, 'audit_delete', 'BEFORE DELETE', `table ${t.name} deletes through its soft delete column`));
     }
     return out;

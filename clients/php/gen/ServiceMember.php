@@ -20,6 +20,7 @@ final class ServiceMember extends Model
             'soft_delete' => '',
             'aes_version' => '',
             'audit' => '',
+            'audit_record' => '',
             'columns' => [
                 'seq' => ['name' => 'seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
                 'service_seq' => ['name' => 'service_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => true],

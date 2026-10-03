@@ -94,6 +94,8 @@ type DB struct {
 	cfg      Config
 	driver   string
 	location *time.Location
+	// auditDefaults는 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다.
+	auditDefaults Model
 
 	plans map[uint64]*cached
 	stmts map[string]*sql.Stmt
@@ -353,6 +355,19 @@ func (d *DB) WithContext(ctx context.Context) *DB {
 	}
 	handle := *d
 	handle.ctx = ctx
+	handle.root = d.Root()
+	return &handle
+}
+
+// Audit returns a handle on the same connection whose transactions record
+// their audit with defaults: a model of the audit record table with the values
+// that every audit of the handle shares, such as the account and the request.
+// A transaction with orm.Audit inserts one audit record with these defaults and
+// its own values, and the audited writes of the transaction refer to it.
+// Models connect to the handle as they connect to the connection.
+func (d *DB) Audit(defaults Model) *DB {
+	handle := *d
+	handle.auditDefaults = defaults
 	handle.root = d.Root()
 	return &handle
 }

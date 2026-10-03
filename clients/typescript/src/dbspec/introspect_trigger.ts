@@ -71,12 +71,13 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
 }
 
 /**
- * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의 operation
- * column으로 audit setting을 만든다. 기록하지 않는 column은 table의 column 순서로 exclude 목록이 된다.
- * 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면 null이다. 만든 setting은 다시
+ * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의 audit column으로
+ * audit setting을 만든다. audit 기록 table은 audit column 하나만 가진 table의 foreign key가 가리키는
+ * table이다. 기록하지 않는 column은 table의 column 순서로 exclude 목록이 된다. 목록이 renderer 형식이
+ * 아니거나, audit column을 기록하지 않거나, 그 foreign key가 하나가 아니면 null이다. 만든 setting은 다시
  * 렌더링해 catalog trigger와 비교한다.
  */
-function auditOf(t: ITable, into: string, quoted: readonly string[], operation: string): DbspecSetting | null {
+function auditOf(t: ITable, into: string, quoted: readonly string[], column: string): DbspecSetting | null {
   const names: string[] = [];
   for (const q of quoted) {
     const m = AUDIT_COLUMN_PATTERN.exec(q);
@@ -84,9 +85,14 @@ function auditOf(t: ITable, into: string, quoted: readonly string[], operation: 
     names.push(m[1]!);
   }
   const recorded = names.slice(2);
-  if (recorded.length === 0 || !recorded.includes(operation)) return null;
+  if (recorded.length === 0 || !recorded.includes(column)) return null;
+  const references = t.fks.filter(f => f.columns.length === 1 && f.columns[0] === column).map(f => f.table);
+  if (references.length !== 1) return null;
   const excluded = t.columns.filter(c => !recorded.includes(c.name)).map(c => c.name);
-  return { comments: [], kind: 'audit', into, action: names[0]!, previous: names[1]!, operation, exclude: excluded.length === 0 ? null : excluded, include: null };
+  return {
+    comments: [], kind: 'audit', into, column, references: references[0]!, action: names[0]!, previous: names[1]!,
+    exclude: excluded.length === 0 ? null : excluded, include: null,
+  };
 }
 
 /** renderer가 trigger를 쓰는 데 필요한 table: 이름, column 이름과 type, setting 하나다. */

@@ -88,24 +88,6 @@ final class Utils
     }
 
     /** A value set with setLocal(); NO_ROWS when it is missing. */
-    /**
-     * Sets the operation id of the active transaction of the connection, for a
-     * unit of work whose id is known only after the transaction began. Every
-     * later insert and update of an audited table in the transaction writes it:
-     * an int for an i64 operation column, a lower-case UUID string for a uuid
-     * one. Setting the id the transaction already has changes nothing; another
-     * id, also from a nested transaction or after transaction(..., operation:),
-     * fails with CONFIG. A savepoint that rolls back restores the id it began with.
-     */
-    public function setOperation(int|string $id): void
-    {
-        $frame = $this->active('setOperation');
-        if ($frame->operation !== null && $frame->operation !== $id) {
-            throw new OrmException(Code::CONFIG, 'the transaction already has the operation id ' . $frame->operation . "; it cannot change to $id");
-        }
-        $frame->operation = $id;
-    }
-
     public function local(string $key): string
     {
         $frame = $this->active('local');

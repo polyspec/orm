@@ -214,8 +214,8 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 				clock = d.now()
 			}
 			out = append(out, clockText(clock, b.Precision))
-		case "operation":
-			v, err := operationValue(r.operation, b.ColType)
+		case "audit":
+			v, err := auditValue(r.audit, b.Name)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -235,43 +235,16 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 	return out, masks, nil
 }
 
-// operationValue는 operation slot의 값이다. operation id가 없거나 operation
-// column type에 맞지 않으면 CONFIG다.
-func operationValue(id any, columnType string) (any, error) {
-	if id == nil {
-		return nil, configErr("a write of an audited table needs an operation id: run it in a transaction with orm.Operation(id) or set the id with Utils().SetOperation(id)")
+// auditValue는 audit slot의 값이다: transaction이 삽입한 audit 기록의 primary
+// key다. audit이 없거나 audit table이 다른 entity에 audit을 기록하면 CONFIG다.
+func auditValue(a *auditRecord, record string) (any, error) {
+	if a == nil {
+		return nil, configErr("a write of an audited table needs an audit: run it in a transaction with orm.Audit(record)")
 	}
-	switch columnType {
-	case "i64":
-		if _, ok := id.(int64); ok {
-			return id, nil
-		}
-	case "uuid":
-		if s, ok := id.(string); ok && canonicalUUID(s) {
-			return s, nil
-		}
+	if a.entity != record {
+		return nil, configErr("the audited table records its audits in %s, but the audit of the transaction is a %s", record, a.entity)
 	}
-	return nil, configErr("operation id %v does not fit the %s operation column", id, columnType)
-}
-
-// canonicalUUID는 소문자 8-4-4-4-12 UUID text인지 알린다.
-func canonicalUUID(s string) bool {
-	if len(s) != 36 {
-		return false
-	}
-	for i, c := range s {
-		switch i {
-		case 8, 13, 18, 23:
-			if c != '-' {
-				return false
-			}
-		default:
-			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
-				return false
-			}
-		}
-	}
-	return true
+	return a.key, nil
 }
 
 func paramValue(b *plan.BindSlot, r *request) (any, error) {
@@ -949,7 +922,7 @@ func write(ex executor, r *request) (lastID, affected int64, err error) {
 		return 0, 0, err
 	}
 	if t := ex.transaction(); t != nil {
-		r.operation = t.operation
+		r.audit = t.audit
 	}
 	st := &c.plan.Steps[0]
 	args, masks, err := d.args(st, r, nil)

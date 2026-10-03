@@ -100,6 +100,10 @@ final class Parser
     private array $deferredForeignKeys = [];
     /** @var list<array> audit settings whose history table is checked after the last line */
     private array $deferredAudits = [];
+    /** @var list<array{0: Table, 1: ?Column, 2: list<array{0: string, 1: int}>, 3: int, 4: bool}> audit setting의 기록 table 검사 */
+    private array $deferredAuditRecords = [];
+    /** @var array<string, true> primary key 줄이 실패한 table */
+    private array $failedPrimaryTables = [];
 
     /**
      * @param array<string, string> $documents the declared document set
@@ -191,6 +195,7 @@ final class Parser
         }
         $this->document->trailingComments = $this->takeComments();
         $this->checkForeignKeyTargets();
+        $this->checkAuditRecords();
         $this->checkAuditHistories();
     }
 
@@ -730,6 +735,9 @@ final class Parser
     {
         $this->failedPrimary = $this->failedPrimary || $primary;
         $this->failedKeyTables[$this->table->name] = true;
+        if ($primary) {
+            $this->failedPrimaryTables[$this->table->name] = true;
+        }
     }
 
     /** @param list<array{0:string,1:int,2:bool}> $columns */
@@ -881,7 +889,7 @@ final class Parser
             'blind_index' => [2, 2],
             'navigation' => [3, 3],
             'immutable' => [0, 0],
-            'audit' => [8, 8],
+            'audit' => [10, 10],
             default => null,
         };
         if ($arity === null) {
@@ -889,11 +897,11 @@ final class Parser
             return;
         }
         $arguments = array_slice($t, 1);
-        // audit의 exclude와 include 목록은 여덟 낱말 뒤에 오며 앞의 낱말을 검사한 뒤 따로 읽는다.
+        // audit의 exclude와 include 목록은 열 낱말 뒤에 오며 앞의 낱말을 검사한 뒤 따로 읽는다.
         $rest = [];
-        if ($keyword === 'audit' && count($arguments) > 8) {
-            $rest = array_slice($arguments, 8);
-            $arguments = array_slice($arguments, 0, 8);
+        if ($keyword === 'audit' && count($arguments) > 10) {
+            $rest = array_slice($arguments, 10);
+            $arguments = array_slice($arguments, 0, 10);
         }
         foreach ($arguments as $i => $argument) {
             if (!self::isWord($argument[0])) {
@@ -919,13 +927,14 @@ final class Parser
             $kind = 'select_explicit';
             $arguments = array_slice($arguments, 1);
         } elseif ($keyword === 'audit') {
-            foreach (['into', 'operation', 'action', 'previous'] as $n => $word) {
+            foreach (['into', 'column', 'references', 'action', 'previous'] as $n => $word) {
                 if ($arguments[2 * $n][0] !== $word) {
                     $this->error('syntax', $this->line, $arguments[2 * $n][1], "expected `$word`");
                     return;
                 }
             }
-            $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7]];
+            // audit의 인자는 history table, audit column, audit 기록 table, action, previous 순이다.
+            $arguments = [$arguments[1], $arguments[3], $arguments[5], $arguments[7], $arguments[9]];
             if ($rest !== []) {
                 $lists = $this->auditListTokens($rest);
                 if ($lists === null) {
@@ -944,7 +953,7 @@ final class Parser
         foreach ($kind === 'codec' ? [$arguments[0]] : $arguments as $argument) {
             $this->name($argument);
         }
-        // 목록의 이름은 처음 나올 때만 검사한다. operation column은 검사가 따로 거부한다.
+        // 목록의 이름은 처음 나올 때만 검사한다. audit column은 검사가 따로 거부한다.
         $named = [];
         foreach ($lists as [, $columns]) {
             foreach ($columns as $token) {
@@ -1279,13 +1288,16 @@ final class Parser
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
                     }
-                    $operation = $column($arguments[1]);
-                    if ($operation !== null && ($operation->nullable || ($operation->type->name !== 'i64' && $operation->type->name !== 'uuid'))) {
-                        $this->error('setting', $line, $arguments[1][1], 'the audit operation column is a non-null i64 or uuid column');
+                    $audit = $column($arguments[1]);
+                    if ($audit !== null && $audit->nullable) {
+                        $this->error('setting', $line, $arguments[1][1], 'the audit column is a non-null column');
                     }
                     $recorded = $this->auditLists($lists, $arguments[1][0], $line, $column);
-                    if (self::validName($arguments[0][0]) && self::validName($arguments[2][0]) && self::validName($arguments[3][0])) {
-                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $operation?->type, $line, $recorded];
+                    if (self::validName($arguments[2][0])) {
+                        $this->deferredAuditRecords[] = [$this->table, $audit, $arguments, $line, isset($this->failedKeyTables[$this->table->name])];
+                    }
+                    if (self::validName($arguments[0][0]) && self::validName($arguments[3][0]) && self::validName($arguments[4][0])) {
+                        $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $audit?->type, $line, $recorded];
                     }
                     $this->generatedName($line, $at, $this->table->name . '$audit_insert');
                     break;
@@ -1343,14 +1355,14 @@ final class Parser
     /**
      * audit의 exclude나 include 목록을 검사하고, column이 기록되는지 알리는 함수를 돌려준다
      * (docs/dbspec.md "Audit"). 두 목록을 다 쓰면 둘째 목록의 keyword에서 거부하고 null을
-     * 돌려준다. 목록의 column은 table의 column이고, 한 번만 나오며, operation column이 아니다.
-     * operation column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
+     * 돌려준다. 목록의 column은 table의 column이고, 한 번만 나오며, audit column이 아니다.
+     * audit column은 언제나 기록하므로 어느 목록에도 쓰지 않는다.
      *
      * @param list<array{0: array{0: string, 1: int}, 1: list<array{0: string, 1: int}>}> $lists
      * @param \Closure(array): ?Column $column
      * @return (\Closure(string): bool)|null
      */
-    private function auditLists(array $lists, string $operation, int $line, \Closure $column): ?\Closure
+    private function auditLists(array $lists, string $audit, int $line, \Closure $column): ?\Closure
     {
         if (count($lists) > 1) {
             $this->error('setting', $line, $lists[1][0][1], 'audit names its recorded columns by exclude or by include, not both');
@@ -1363,8 +1375,8 @@ final class Parser
                     $this->error('setting', $line, $token[1], "column `{$token[0]}` repeats in audit {$keyword[0]}");
                     continue;
                 }
-                if ($token[0] === $operation) {
-                    $this->error('setting', $line, $token[1], "the operation column `{$token[0]}` is always recorded and is not listed in exclude or include");
+                if ($token[0] === $audit) {
+                    $this->error('setting', $line, $token[1], "the audit column `{$token[0]}` is always recorded and is not listed in exclude or include");
                 } else {
                     $column($token);
                 }
@@ -1372,15 +1384,79 @@ final class Parser
             }
         }
         if (count($lists) === 1 && $lists[0][0][0] === 'include') {
-            return static fn(string $c): bool => $c === $operation || isset($listed[$c]);
+            return static fn(string $c): bool => $c === $audit || isset($listed[$c]);
         }
-        return static fn(string $c): bool => $c === $operation || !isset($listed[$c]);
+        return static fn(string $c): bool => $c === $audit || !isset($listed[$c]);
+    }
+
+    /**
+     * audit 기록 table을 검사한다. 그 table은 이 문서나 사용한 문서의 다른 table이며 history
+     * table이 아니고, 자신은 audit 대상이 아니며, column 하나의 primary key를 가지고 그 type이
+     * audit column의 type이다. audit column은 그 primary key를 restrict로 가리키는 선언한
+     * foreign key의 유일한 column이다. 그래서 audit 기록 행이 없는 audit column 값은 database가
+     * 거부한다.
+     */
+    private function checkAuditRecords(): void
+    {
+        foreach ($this->deferredAuditRecords as [$audited, $column, $arguments, $line, $failedKeys]) {
+            [$historyToken, $columnToken, $referencesToken] = $arguments;
+            $name = $referencesToken[0];
+            $entry = $this->tables[$name] ?? null;
+            if ($entry === null && isset($this->failedTables[$name])) {
+                continue;
+            }
+            if ($entry === null) {
+                $this->error('setting', $line, $referencesToken[1], "audit record table `$name` is not a table of this document or a used table");
+                continue;
+            }
+            $record = $entry['table'];
+            if ($record === null) {
+                continue;
+            }
+            if ($record === $audited) {
+                $this->error('setting', $line, $referencesToken[1], 'a table cannot record its audits in itself');
+                continue;
+            }
+            if ($name === $historyToken[0]) {
+                $this->error('setting', $line, $referencesToken[1], 'the audit record table is another table than the history table');
+                continue;
+            }
+            foreach ($record->settings?->settings ?? [] as $setting) {
+                if ($setting->kind === 'audit') {
+                    $this->error('setting', $line, $referencesToken[1], "audit record table `$name` is audited itself");
+                }
+            }
+            $key = $record->primaryKey?->columns ?? [];
+            if (count($key) !== 1) {
+                if (!isset($this->failedPrimaryTables[$name])) {
+                    $this->error('setting', $line, $referencesToken[1], "audit record table `$name` needs a primary key of one column");
+                }
+                continue;
+            }
+            $pk = $entry['columns'][$key[0]] ?? null;
+            if ($column === null || $pk === null) {
+                continue;
+            }
+            if ($pk->type->name !== 'invalid' && $column->type->name !== 'invalid' && $pk->type->text() !== $column->type->text()) {
+                $this->error('setting', $line, $columnToken[1], "the audit column has type {$column->type->text()}, not the type {$pk->type->text()} of the primary key of `$name`");
+                continue;
+            }
+            foreach ($audited->foreignKeys as $foreignKey) {
+                if ($foreignKey->columns === [$columnToken[0]] && $foreignKey->table === $name && $foreignKey->referencedColumns === [$key[0]]
+                    && $foreignKey->onDelete === 'restrict' && $foreignKey->onUpdate === 'restrict') {
+                    continue 2;
+                }
+            }
+            if (!$failedKeys) {
+                $this->error('setting', $line, $columnToken[1], "the audit column needs the foreign key ($columnToken[0]) references $name ({$key[0]}) on delete restrict on update restrict");
+            }
+        }
     }
 
     private function checkAuditHistories(): void
     {
-        foreach ($this->deferredAudits as [$audited, $columns, $arguments, $operationType, $line, $recorded]) {
-            [$historyToken, , $actionToken, $previousToken] = $arguments;
+        foreach ($this->deferredAudits as [$audited, $columns, $arguments, $auditType, $line, $recorded]) {
+            [$historyToken, , , $actionToken, $previousToken] = $arguments;
             $entry = $this->tables[$historyToken[0]] ?? null;
             if ($entry === null && isset($this->failedTables[$historyToken[0]])) {
                 continue;
@@ -1419,8 +1495,8 @@ final class Parser
             }
             $reserved[$actionToken[0]] = true;
             $previous = $historyColumns[$previousToken[0]] ?? null;
-            if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable || ($operationType !== null && $previous->type->text() !== $operationType->text())) {
-                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate null column of `{$history->name}` with the operation column's type");
+            if ($previous === null || isset($reserved[$previousToken[0]]) || !$previous->nullable || ($auditType !== null && $previous->type->text() !== $auditType->text())) {
+                $this->error('setting', $line, $previousToken[1], "the audit previous column `{$previousToken[0]}` is a separate null column of `{$history->name}` with the audit column's type");
             }
             $reserved[$previousToken[0]] = true;
             // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 column을 맞추어 보지 않는다.

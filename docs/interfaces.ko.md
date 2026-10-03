@@ -160,6 +160,9 @@ classDiagram
 | `readOnly` | 불리언 |
 | `timeoutMs` | 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환 |
 | `retry` | 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다 |
+| `audit` | 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 콜백 전에, 시도마다, 연결 handle의 audit 기본값에 이 값을 더해(값이 이긴다) 삽입하고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](usage.ko.md#audited-writes)) |
+
+`connection.audit(defaults)`는 audit 기록 테이블의 모델인 audit 기본값을 가진 같은 연결의 handle을 반환하며, 연결 자신은 바꾸지 않는다. 기본값 없는 handle에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패한다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
 
 - 실행 흐름마다 활성 트랜잭션 스택을 유지한다. 실행 흐름은 Go의 goroutine, PHP의 요청, TypeScript의 비동기 컨텍스트, Rust의 task다. `connect` 없는 모델은 가장 안쪽 트랜잭션을 사용한다.
 - 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다. 콜백 오류, panic, Go `runtime.Goexit` 뒤에는 `ROLLBACK TO SAVEPOINT`와 `RELEASE SAVEPOINT`를 모두 실행하고, 둘 중 하나가 실패하면 오류나 panic 값은 `ROLLBACK` `transaction failed (<cause>) and rollback failed (<savepoint end error>)`다. 성공한 콜백 뒤에 실패한 `RELEASE SAVEPOINT`는 그 오류를 반환한다. 취소된 트랜잭션 context로 이미 끝난 트랜잭션의 savepoint는 트랜잭션과 함께 끝났다.
@@ -173,7 +176,6 @@ classDiagram
 |---|---|
 | `lock(key)` | 트랜잭션 범위 이름 잠금. MySQL `GET_LOCK`, PostgreSQL advisory lock, SQLite ORM 잠금 행. 활성 트랜잭션 필요 |
 | `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
-| `setOperation(id)` | 첫 감사 대상 write 전에 활성 트랜잭션의 operation id를 정한다. 활성 트랜잭션 필요. 트랜잭션이 가진 id와 다른 id는 `CONFIG`이고, rollback한 savepoint는 시작할 때의 id로 되돌린다 |
 | `wasInserted(entity, sequence)` | 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원 |
 | `backendWaitingForLock(ctx)` | PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환 |
 | `schema().install(schema)` | generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |

@@ -20,6 +20,7 @@ final class AccountProject extends Model
             'soft_delete' => '',
             'aes_version' => '',
             'audit' => '',
+            'audit_record' => '',
             'columns' => [
                 'account_seq' => ['name' => 'account_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],
                 'project_seq' => ['name' => 'project_seq', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => true],

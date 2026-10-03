@@ -134,17 +134,6 @@ $master = \Polyspec\Orm\Tests\Model\connect($masterDsn, new Config(aesKey: $aesK
 
 `bootstrap.php` of the generated models defines `MANIFEST_TEXT`, `MANIFEST_HASH`, the schema value `schema()` and the connect helper `connect()`, which opens the connection with `Orm::connectSchema` and registers the set of the models on it; every request carries `manifestHash`. `Orm::connect` opens a connection without any set. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` installs the set and registers it on the connection.
 
-An audited table (`audit` setting, [dbspec](dbspec.md#audit)) is written inside a transaction that names its operation id; the executor writes the id into the operation column of every audited row the transaction inserts or updates, a soft delete included:
-
-```php
-$master->transaction(function (): void {
-    (new Service)->setName('renamed')->create();
-    (new Service)->getBySeq(42)->delete();
-}, operation: $operationId);
-```
-
-The id is an `int` for an `i64` operation column and a lower-case canonical UUID `string` for a `uuid` one. An insert or update of an audited table outside such a transaction, or with an id of the other type, fails with `CONFIG`; assigning the operation column with its setter fails with `IR_INVALID`. A nested transaction uses the id of the outer one and does not take `operation`.
-
 ### Rust
 
 ```rust
@@ -154,26 +143,6 @@ master.utils().schema().install(&model::SCHEMA).await?;
 
 `orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It does nothing when every table of the set exists and returns `CONFIG` when only some exist; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
 
-An audited table (`audit` setting) takes the operation id of its unit of work from the transaction. `operation(id)` sets it on the outermost transaction; the executor writes it into the operation column of every audited row the transaction inserts or updates, including the update of a soft delete:
-
-```rust
-db.transaction(async || {
-    service.set_name("renamed").update(false).await
-})
-.operation(operation_id) // i64 for an i64 operation column, &str or String for a uuid column
-.await?;
-```
-
-Every transaction entry point takes `operation(id)`: `transaction`, `transaction_send` and `transaction_once`, which runs its callback once and returns `TransactionOnceError` with the callback's own error type. Its builder is awaited as before, and its future is `Send` when the callback and its future are:
-
-```rust
-db.transaction_once(async || service.set_name("renamed").update(false).await)
-    .operation(operation_id)
-    .await?;
-```
-
-An insert or update of an audited table without an operation id, outside a transaction or with an id that does not fit the operation column type, fails with `CONFIG`. A nested transaction accepts no `operation` (a nested `transaction_once` returns `TransactionOnceError::Orm` with `CONFIG`), and a request that assigns the operation column itself fails with `IR_INVALID`.
-
 ### TypeScript
 
 ```typescript
@@ -181,12 +150,9 @@ import { Item, SCHEMA, connect } from './models/models.js';
 
 const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
-await master.transaction(async () => {
-  await new Item().setTitle('first').create();
-}, { operation: 42 });
 ```
 
-`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`. The `operation` option of `transaction` is the operation id of the unit of work: every insert and update of a table with an `audit` setting inside the transaction writes it into the operation column, a soft delete included. It is a safe integer for an `i64` operation column and a string for a `uuid` one; an insert or update of an audited table without it, or with an id of the other type, fails with `CONFIG`, and assigning the operation column yourself fails with `IR_INVALID`. A nested transaction keeps the operation of the outer one.
+`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`.
 
 Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed set to a version that only adds: it creates the tables the database lacks, adds the missing columns of its existing tables that are null or have a default, and returns `SCHEMA_DIFFERS` before any change for every other difference ([schema.md](schema.md#_5-adding-tables-and-columns)).
 
@@ -328,62 +294,41 @@ $row = $master->transaction(fn () => (new Author)->setName('x')->…->create());
 let row = master.transaction(async || Author::new().set_name("x")./*…*/.create().await).await?;
 ```
 
-### Go operation id
+### Audited writes
 
-A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that names its unit of work with `orm.Operation(id)`. Every insert, update, soft delete and duplicate update of an audited table in the transaction writes `id` into the table's operation column, and the database triggers copy each version into the history table. `id` is an `int64` for an `i64` operation column and a lower-case UUID string for a `uuid` operation column. A nested transaction uses the id of the outer transaction and accepts only `orm.Retry`.
+A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that records its unit of work in the audit record table. Two calls name the record:
 
-```go
-err := master.Transaction(func() error {
-    _, err := model.Item().SetTitle("draft").Create()
-    return err
-}, orm.Operation(int64(42)))
-```
-
-A write of an audited table outside such a transaction, or with an id that does not fit the operation column, fails with `CONFIG` before it reaches the database; `orm.Operation` with a value that is neither `int64` nor `string` fails the transaction with `CONFIG` before it begins. A request that assigns the operation column itself fails with `IR_INVALID`.
-
-### Set the operation id inside a transaction
-
-When the operation id is known only after the transaction began, for example because it is the key of a row that the unit of work inserts first, set it on the running transaction before the first audited write. Utilities call it on the connection of the transaction:
+- `audit(defaults)` on a connection returns a handle of the same connection that carries the audit defaults: a model of the audit record table with the values every unit of work of the handle shares, such as the account and the request. It changes nothing on the connection itself, so set it once per request and pass the handle on. Models connect to the handle as they connect to the connection.
+- The `audit` option of a transaction on that handle holds the values of this unit of work, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `.audit(pairs)` on `transaction`, `transaction_send` and `transaction_once`, TypeScript `{ audit: {...} }`). An empty map records the defaults alone.
 
 ```go
-err := master.Transaction(func() error {
-    op, err := model.Operation().SetName("import").Create() // a table without audit
-    if err != nil {
-        return err
-    }
-    if err := master.Utils().SetOperation(op.GetSeq()); err != nil {
-        return err
-    }
-    _, err = model.Item().SetTitle("draft").Create()
+db := master.Audit(model.Audit().SetAccountSeq(accountSeq).SetRequestId(requestID)) // once per request
+err := db.Transaction(func() error {
+    _, err := model.Service().SetName("renamed").Create()
     return err
-})
+}, orm.Audit(map[string]any{"action": "service.rename", "reason": reason}))
 ```
 ```php
-$master->transaction(function () use ($master): void {
-    $op = (new Operation)->setName('import')->create();
-    $master->utils()->setOperation($op->getSeq());
-    (new Item)->setTitle('draft')->create();
-});
+$db = $master->audit((new Audit)->setAccountSeq($accountSeq)->setRequestId($requestId)); // once per request
+$db->transaction(function (): void {
+    (new Service)->setName('renamed')->create();
+}, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-master.transaction(async || {
-    let op = Operation::new().set_name("import").create().await?;
-    master.utils().set_operation(op.get_seq()?)?;
-    Item::new().set_title("draft").create().await.map(|_| ())
-}).await?;
+let db = master.audit(Audit::new().set_account_seq(account_seq).set_request_id(request_id)); // once per request
+db.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
+    .audit([("action", "service.rename"), ("reason", reason.as_str())])
+    .await?;
 ```
 ```typescript
-await master.transaction(async () => {
-    const op = await new Operation().setName('import').create();
-    master.utils().setOperation(op.getSeq());
-    await new Item().setTitle('draft').create();
-});
+const db = master.audit(new Audit().setAccountSeq(accountSeq).setRequestId(requestId)); // once per request
+await db.transaction(async () => {
+  await new Service().setName('renamed').create();
+}, { audit: { action: 'service.rename', reason } });
 ```
 
-- It requires an active transaction of the connection; outside one it fails with `CONFIG`. An audited write before it fails with `CONFIG` as without an operation id.
-- The id belongs to the whole transaction: a nested transaction uses it and can set it when the outer one has none. Setting the id the transaction already has, from the option or an earlier call, changes nothing; another id fails with `CONFIG`.
-- A nested transaction whose savepoint rolls back restores the id it began with, because the rows written under it are rolled back too.
-- The id has the type of the operation column, as for the transaction option.
+- Before the callback, in every attempt of a retried transaction, the transaction inserts one row into the audit record table: the defaults with the transaction's values, where a value wins over the default of the same column. Every insert, update, soft delete and restore of an audited table in the transaction writes that row's primary key into the table's audit column, and the database triggers copy each version into the history table. A failed callback rolls the audit row back with the changes.
+- The transaction fails with `CONFIG` before it begins when the handle has no defaults or a value names a column that the audit record table does not have. A write of an audited table outside a transaction with audit values fails with `CONFIG`, as does a write of a table whose audit record table is another table than the defaults' one. A nested transaction uses the audit of the outer one and does not take `audit`; a request that assigns the audit column itself fails with `IR_INVALID`.
 
 ### Restore a soft-deleted row
 
@@ -404,7 +349,7 @@ const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).s
 
 - The key is the primary key when every primary key column has a set value, otherwise the first unique key, in name order, whose columns all have set values; a key value is a plain value, not null, raw, plus or minus. Every other set value is a new value, assigned as in `update`. Without the values of a key restore fails with `CONFIG`; an assignment of a primary key or soft delete column, or a table without `soft_delete`, fails with `IR_INVALID`.
 - A row that is not deleted is returned unchanged and nothing is written, the new values included. A key that no row has fails with `NO_ROWS`.
-- On a table with an `audit` setting the restore is an update like any other: it runs in a transaction with an operation id, writes that id into the operation column, and the triggers record the version in the history table. Without an operation id it fails with `CONFIG`.
+- On a table with an `audit` setting the restore is an update like any other: it runs in a transaction with audit values, writes the audit record's key into the audit column, and the triggers record the version in the history table. Without an audit it fails with `CONFIG`.
 - Like a soft delete, restore does not assign the `updated` column. The update and the read are two statements; inside a transaction they see one state.
 
 ---

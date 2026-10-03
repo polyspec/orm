@@ -14,9 +14,9 @@ type request struct {
 	// schema은 request를 plan할 manifest다.
 	schema *Schema
 	params []any
-	// operation은 write가 실행되는 transaction의 operation id다.
-	operation any
-	err       error
+	// audit은 write가 실행되는 transaction의 audit 기록이며 없으면 nil이다.
+	audit *auditRecord
+	err   error
 	// nodes maps each model of the statement to the IR node it produced;
 	// assembly uses it to create child models.
 	joins     map[string]*Core

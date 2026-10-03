@@ -736,7 +736,7 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
  * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. key 는 모든 column 에
  * 값(null, raw, plus, minus 가 아닌 set 값)이 있으면 primary key, 아니면 모든 column 에 값이 있는 첫 unique key(이름
  * 순서)다. key 밖의 set 값은 되돌리는 행에 update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼
- * operation id 를 쓴다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
+ * transaction 의 audit 기록 key 를 쓴다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
  * 지운 행을 읽지 않는다.
  */
 async function restore(c: Core): Promise<Model> {

@@ -210,15 +210,15 @@ SQLite STRICT table은 storage class를 검사하지만 타입 이름은 `INT`, 
 | Catalog 텍스트 | `ACTION_STATEMENT`는 주석을 포함해 쓴 그대로의 본문이다 | `prosrc`는 쓴 그대로의 함수 본문이다. `pg_get_triggerdef`는 schema로 한정한 table을 포함한 정규화 텍스트를 반환한다 | `sqlite_master.sql`은 쓴 그대로의 `CREATE TRIGGER` 텍스트다 | `mysql.trigger.body_catalog_verbatim`, `postgres.trigger.catalog_text`, `sqlite.trigger.catalog_verbatim` | **Decision:** 생성한 trigger는 catalog 텍스트가 선언한 renderer version의 출력과 같을 때만 복원한다. MySQL은 timing, event, 본문, PostgreSQL은 `pg_get_triggerdef`와 `prosrc`, SQLite는 전체 텍스트다. 주석 표식은 쓰지 않는다 | 표에 적은 대로 |
 | 이름 | Database에서 고유하다(1359) | Table 범위다 | Database에서 고유하다 | `mysql.trigger.name_schema_scope`, `postgres.trigger.name_table_scope`, `sqlite.trigger.name_database_scope` | **Decision:** 생성 이름은 schema에서 고유하고 63바이트 이하다. 생성 이름이 이를 넘는 table은 거부한다 | 표에 적은 대로 |
 
-Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에서 설정한 operation id를 읽는다.
+Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에서 설정한 작업 단위의 audit을 읽는다.
 
 - **PostgreSQL** `set_config('<setting>', id, true)`는 transaction 범위다. `COMMIT` 뒤 같은 session에서는 빈 문자열, 설정한 적 없는 session에서는 NULL을 읽는다(`postgres.context.set_config_local`).
 - **MySQL** user variable은 session 범위이며 `COMMIT` 뒤에도 남는다(`mysql.context.user_variable_session_scope`). Pool 연결은 클라이언트가 지우지 않으면 값을 유지한다.
 - **SQLite**에는 session 변수가 없다. Main table의 trigger는 `TEMP` table을 읽도록 만들 수 있지만 실행할 때 실패한다(`sqlite.context.temp_table_not_visible`). Main table의 행은 `COMMIT` 뒤 모든 연결에 보인다(`sqlite.context.main_table_shared`).
 
-선택지는 (1) 클라이언트가 transaction 안에서 id를 설정하고 MySQL과 SQLite에서는 transaction 끝에서 지운다는 규칙을 가진 위 데이터베이스별 방식, (2) 실행기가 audit 대상 행마다 쓰는 operation 컬럼이며 table 정의가 바뀐다.
+선택지는 (1) 클라이언트가 transaction 안에서 id를 설정하고 MySQL과 SQLite에서는 transaction 끝에서 지운다는 규칙을 가진 위 데이터베이스별 방식, (2) 실행기가 audit 대상 행마다 쓰는 audit 컬럼이며 table 정의가 바뀐다.
 
-**판정(owner):** 두 전달 방식 모두 쓰지 않는다. 감사 대상 row가 자기 operation column을 갖고 executor가 모든 `INSERT`와 `UPDATE`에서 그 column을 쓰므로, 모든 database에서 row trigger는 바꾸는 operation을 `NEW`에서, 이전 operation을 `OLD`에서 읽는다. 생성된 trigger는 row를 JSON으로 만들지 않고 column 대 column으로 이력 table에 복사한다. physical `DELETE`의 `OLD`는 지우는 operation이 아니라 이전 operation이므로, 감사 대상 table은 soft delete column으로만 지운다. session 변수, transaction setting, `orm__context` table은 쓰지 않는다. 정의는 [dbspec](dbspec.md#audit)에 있다.
+**판정:** 두 전달 방식 모두 쓰지 않는다. 감사 대상 row가 audit 기록의 key를 담는 자기 audit column을 갖는다. transaction이 audit 기록을 삽입하고 executor가 모든 `INSERT`와 `UPDATE`에서 그 column을 쓰므로, 모든 database에서 row trigger는 바꾸는 audit 기록을 `NEW`에서, 이전 audit 기록을 `OLD`에서 읽는다. 생성된 trigger는 row를 JSON으로 만들지 않고 column 대 column으로 이력 table에 복사한다. physical `DELETE`의 `OLD`는 지우는 audit 기록이 아니라 이전 audit 기록이므로, 감사 대상 table은 soft delete column으로만 지운다. session 변수, transaction setting, `orm__context` table은 쓰지 않는다. 정의는 [dbspec](dbspec.md#audit)에 있다.
 
 출처: [MySQL trigger syntax](https://dev.mysql.com/doc/refman/8.4/en/trigger-syntax.html), [MySQL stored program binary logging](https://dev.mysql.com/doc/refman/8.4/en/stored-programs-logging.html), [MySQL FOREIGN KEY and triggers](https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html), [MySQL user variables](https://dev.mysql.com/doc/refman/8.4/en/user-variables.html), [PostgreSQL CREATE TRIGGER](https://www.postgresql.org/docs/17/sql-createtrigger.html), [PostgreSQL trigger functions](https://www.postgresql.org/docs/17/plpgsql-trigger.html), [PostgreSQL set_config](https://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-ADMIN-SET), [SQLite CREATE TRIGGER](https://www.sqlite.org/lang_createtrigger.html), [SQLite DELETE](https://www.sqlite.org/lang_delete.html).
 
@@ -311,7 +311,7 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 생성 trigger 이름은 `<table>$<event>`이다: `immutable_update`, `immutable_delete`, `audit_insert`, `audit_update`, `audit_delete`. PostgreSQL trigger는 renderer가 소유한 같은 이름의 function을 실행한다. 거부는 `table <table> is immutable`이나 `table <table> deletes through its soft delete column` message를 일으킨다: MySQL `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '…'`, PostgreSQL `RAISE EXCEPTION '…'`, SQLite `SELECT RAISE(ABORT, '…')`.
 
 - `immutable`: 거부하는 `BEFORE UPDATE`와 `BEFORE DELETE` row trigger.
-- `audit`: `AFTER INSERT` row trigger는 이력 table에 action `'insert'`, NULL 이전 operation, 기록하는 모든 column의 `NEW` 값을 넣는다. `AFTER UPDATE` row trigger는 `'update'`, `OLD.<operation column>`, 기록하는 모든 column의 `NEW` 값을 넣는다. `BEFORE DELETE` row trigger는 거부한다. insert는 action, previous, 기록하는 column 순으로, 기록하는 column은 table의 column 순서로 적고 이력 key는 identity에 맡긴다([audit](dbspec.md#audit)).
+- `audit`: `AFTER INSERT` row trigger는 이력 table에 action `'insert'`, NULL 이전 audit 기록, 기록하는 모든 column의 `NEW` 값을 넣는다. `AFTER UPDATE` row trigger는 `'update'`, `OLD.<audit column>`, 기록하는 모든 column의 `NEW` 값을 넣는다. `BEFORE DELETE` row trigger는 거부한다. insert는 action, previous, 기록하는 column 순으로, 기록하는 column은 table의 column 순서로 적고 이력 key는 identity에 맡긴다([audit](dbspec.md#audit)).
 - MySQL trigger 본문은 statement 하나다. PostgreSQL function 본문은 `LANGUAGE plpgsql`의 `BEGIN … RETURN NULL; END`다(`BEFORE` 거부는 반환하지 않는다). SQLite 본문은 `BEGIN …; END`다.
 
 ## Introspection
@@ -366,7 +366,7 @@ literal은 만나는 column의 값으로 읽어 canonical default 형식으로 �
 
 ### Trigger
 
-`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. insert는 action, previous, 기록하는 column을 적고, 기록하는 column은 operation column을 포함하며, insert가 적지 않은 table의 column은 schema text가 쓰는 대로 column 순서의 `exclude` 목록이 된다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
+`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. insert는 action, previous, 기록하는 column을 적고, 기록하는 column은 audit column을 포함하며, insert가 적지 않은 table의 column은 schema text가 쓰는 대로 column 순서의 `exclude` 목록이 된다. audit 기록 table은 audit column의 유일한 foreign key의 대상 table이다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
 
 ### 미지원 객체
 

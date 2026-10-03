@@ -53,7 +53,7 @@ async function countOf(driver, dsn, sql) {
 }
 
 /**
- * case database에 addcol_log와 version 1을 설치하고 log row 하나, operation 1로 item 하나, 그 item의
+ * case database에 addcol_log와 version 1을 설치하고 log row 하나, audit 기록 1로 item 하나, 그 item의
  * tag와 그 tag의 자식 tag를 쓴 연결이다.
  */
 async function installed(driver, dsn) {
@@ -62,7 +62,8 @@ async function installed(driver, dsn) {
   await db.utils().schema().install(await fixture('v1'));
   await nativeQuery(driver, dsn, [
     "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
-    "INSERT INTO addcol_item (ref, label, created_at, operation_id) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+    "INSERT INTO audit (actor) VALUES ('setup')",
+    "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
     "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
     "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
   ]);
@@ -83,16 +84,16 @@ async function addTablesAndColumns(driver, dsn) {
     const orphan = await thrown(() => db.pool.execute("INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')", []));
     check(orphan?.code === 'FOREIGN_KEY', `a tag of a missing item: ${orphan?.message ?? 'written'}`);
     // audit trigger는 새 column을 기록한다.
-    await nativeQuery(driver, dsn, ["UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1"]);
-    const history = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
+    await nativeQuery(driver, dsn, ["INSERT INTO audit (actor) VALUES ('update')", "UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1"]);
+    const history = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'");
     check(history === 1, `history rows of the update with the new columns ${history}`);
     // 새 table은 index, foreign key, check, audit trigger와 함께 만들어졌다.
-    await nativeQuery(driver, dsn, ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, 'extra', 3)"]);
-    const inserted = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_extra_history WHERE history_action = 'insert' AND previous_operation_id IS NULL AND operation_id = 3 AND item_id = 1 AND label = 'extra'");
+    await nativeQuery(driver, dsn, ["INSERT INTO audit (actor) VALUES ('extra')", "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)"]);
+    const inserted = await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'");
     check(inserted === 1, `history rows of the insert into the created table ${inserted}`);
     for (const [statement, what] of [
-      ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (999, 'orphan', 3)", 'foreign key'],
-      ["INSERT INTO addcol_extra (item_id, label, operation_id) VALUES (1, '', 3)", 'check'],
+      ["INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)", 'foreign key'],
+      ["INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)", 'check'],
       ['DELETE FROM addcol_extra', 'audit delete'],
     ]) {
       let refused = null;

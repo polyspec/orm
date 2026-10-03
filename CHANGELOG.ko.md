@@ -2,13 +2,13 @@
 
 ## 0.0.2
 
-- T34: 배포한 TypeScript 선언은 driver module을 import하지 않는다. dbspec apply와 introspection의 connection type은 client가 호출하는 method만 적으므로, 그것을 쓰는 code는 pg, @types/pg, mysql2, node:sqlite type 없이 `skipLibCheck`를 끄고 type 검사를 통과한다. mysql2, pg, node:sqlite connection은 그대로 맞는다.
+- T35: 감사 대상 작업 단위는 선언한 audit 기록 table의 row 하나로 기록한다. `audit` setting은 `audit into <history> column <col> references <table> action <col> previous <col> [exclude (...) | include (...)]`이고, 감사 대상 table은 audit column에서 기록 table의 column 하나짜리 primary key로 가는 restrict foreign key를 선언하므로 database는 어떤 기록의 key도 아닌 값을 거부한다. 이력의 `previous`는 이전 audit key를 갖는다. `audit(defaults)`는 audit 기본값을 가진 같은 연결의 handle을 돌려주고, audit 값을 가진 transaction(Go `orm.Audit(map)`, PHP `audit:`, TypeScript `{ audit }`, 세 builder의 Rust `.audit(pairs)`)은 callback 전에 기본값과 그 값으로 기록 하나를 삽입하고 모든 감사 대상 insert, update, soft delete, restore에 그 key를 쓴다. operation id, 그 transaction option, `setOperation`은 제거했다.
 
-- T33: operation id 없이 시작한 transaction은 첫 감사 대상 write 전에 id를 받는다: Go `Utils().SetOperation(id)`, PHP `utils()->setOperation($id)`, TypeScript `utils().setOperation(id)`, Rust `utils().set_operation(id)`. transaction이 이미 가진 id는 아무것도 바꾸지 않고, 다른 id는 중첩 transaction에서도 `CONFIG`이며, rollback한 savepoint는 시작할 때의 id로 되돌린다.
+- T34: 배포한 TypeScript 선언은 driver module을 import하지 않는다. dbspec apply와 introspection의 connection type은 client가 호출하는 method만 적으므로, 그것을 쓰는 code는 pg, @types/pg, mysql2, node:sqlite type 없이 `skipLibCheck`를 끄고 type 검사를 통과한다. mysql2, pg, node:sqlite connection은 그대로 맞는다.
 
 - T32: 네 client에서 `restore()`가 soft delete한 행을 되돌린다. primary key나 unique key 하나의 값과 다른 column의 새 값을 지정하면 `UPDATE` 하나가 새 값을 쓰고 soft delete column을 비우며(감사 대상 table에서는 operation id와 함께 쓰고 이력이 기록한다), key로 행을 다시 읽는다. 지워지지 않은 행은 그대로 반환되고, 없는 행은 `NO_ROWS`이며, 기본 읽기는 여전히 soft delete한 행을 뺀다. IR에 kind `restore`가 있고 `restore`는 예약 column 이름이다.
 
-- T31: Rust `Db::transaction_once(callback)`는 `transaction`, `transaction_send`처럼 `operation(id)`를 받는 builder이므로, 감사 대상 write가 모든 transaction 진입점을 거쳐 실행된다. 기존 `.await` 호출부는 그대로이고, callback과 그 future가 `Send`이면 future도 `Send`다. operation id를 가진 중첩 `transaction_once`는 `CONFIG`를 담은 `TransactionOnceError::Orm`을 돌려준다.
+- T31: Rust `Db::transaction_once(callback)`는 `transaction`, `transaction_send`처럼 builder이므로, 감사 대상 write가 `.audit(values)`(T35)로 모든 transaction 진입점을 거쳐 실행된다. 기존 `.await` 호출부는 그대로이고, callback과 그 future가 `Send`이면 future도 `Send`다.
 
 - T31.1: `go run ./tests/interfaces/check`는 cargo가 build했다고 보고한 위치에서 Rust symbol 도구를 찾는다. Makefile이 모든 cargo 명령에 주는 것처럼 `CARGO_TARGET_DIR`이 다른 target directory를 정해도 이 검사는 현재 도구를 실행한다.
 

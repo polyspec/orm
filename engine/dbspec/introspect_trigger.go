@@ -98,11 +98,13 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (s
 }
 
 // auditOf는 audit insert trigger의 column 목록(action, previous, 기록하는
-// column)과 update trigger의 operation column으로 audit setting을 만든다.
-// 기록하지 않는 column은 table의 column 순서로 exclude 목록이 된다. 목록이
-// renderer 형식이 아니거나 operation column을 기록하지 않으면 nil이다.
-// 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
-func auditOf(t *itable, history string, quoted []string, operation string) *AuditSetting {
+// column)과 update trigger의 audit column으로 audit setting을 만든다. audit
+// 기록 table은 audit column 하나만 가진 table의 foreign key가 가리키는
+// table이다. 기록하지 않는 column은 table의 column 순서로 exclude 목록이
+// 된다. 목록이 renderer 형식이 아니거나, audit column을 기록하지 않거나, 그
+// foreign key가 하나가 아니면 nil이다. 만든 setting은 다시 렌더링해 catalog
+// trigger와 비교한다.
+func auditOf(t *itable, history string, quoted []string, column string) *AuditSetting {
 	var names []string
 	for _, q := range quoted {
 		m := auditColumnPattern.FindStringSubmatch(q)
@@ -111,10 +113,22 @@ func auditOf(t *itable, history string, quoted []string, operation string) *Audi
 		}
 		names = append(names, m[1])
 	}
-	if len(names) < 3 || !slices.Contains(names[2:], operation) {
+	if len(names) < 3 || !slices.Contains(names[2:], column) {
 		return nil
 	}
-	a := &AuditSetting{History: history, Action: names[0], Previous: names[1], Operation: operation}
+	references := ""
+	for _, f := range t.fks {
+		if len(f.columns) == 1 && f.columns[0] == column {
+			if references != "" {
+				return nil
+			}
+			references = f.table
+		}
+	}
+	if references == "" {
+		return nil
+	}
+	a := &AuditSetting{History: history, Column: column, References: references, Action: names[0], Previous: names[1]}
 	for _, col := range t.columns {
 		if !slices.Contains(names[2:], col.name) {
 			a.Exclude = append(a.Exclude, col.name)

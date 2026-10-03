@@ -1,16 +1,17 @@
 <?php
 declare(strict_types=1);
-// audit_triggers feature coverage: contracts/fixtures/audit.dbs을 bench
-// database에 설치하고 clients/go/orm/audit_operation_test.go의 순서로 쓴 뒤,
-// trigger가 남긴 item_history를 확인하고 설치한 table과 PostgreSQL function을
-// 지운다. soft_delete_restore는 contracts/fixtures/restore.dbs로 같은 일을 한다. fixture의
-// model은 fixture마다 자기 namespace로 임시 directory에 생성하며 bench model은 읽지 않는다.
+// audit_triggers feature coverage: contracts/fixtures/audit.dbs를 bench database에 설치하고
+// clients/go/orm/audit_transaction_test.go의 auditCase와 같은 순서로 audit transaction으로 쓴 뒤,
+// trigger가 남긴 item_history와 audit 기록을 확인하고 설치한 table과 PostgreSQL function을 지운다.
+// soft_delete_restore는 contracts/fixtures/restore.dbs로 같은 일을 한다. fixture의 model은
+// fixture마다 자기 namespace로 임시 directory에 생성하며 bench model은 읽지 않는다.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 require __DIR__ . '/restore_case.php';
-require __DIR__ . '/set_operation_case.php';
+require __DIR__ . '/audit_case.php';
 
+use CoverageAudit\Orm\Audit;
 use CoverageAudit\Orm\Item;
 use Orm\Code;
 use Orm\Config;
@@ -32,50 +33,26 @@ function auditTable(Db $db, string $table): bool
     return (int) $st->fetchColumn() === 1;
 }
 
-/** 설치한 table과, table과 함께 지워지지 않는 PostgreSQL trigger function을 지운다. */
-function dropAudit(Db $db): void
+/**
+ * 설치한 table을 audit 기록 table을 가리키는 table부터 지우고, table과 함께 지워지지 않는
+ * PostgreSQL trigger function을 지운다.
+ *
+ * @param list<string> $tables 지울 순서의 table
+ * @param list<string> $audited audit trigger function을 가진 table
+ */
+function dropFixture(Db $db, array $tables, array $audited): void
 {
     $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
-    foreach (['item_history', 'item'] as $table) {
+    foreach ($tables as $table) {
         $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
     }
     if ($db->driver() === 'postgres') {
-        foreach (['insert', 'update', 'delete'] as $event) {
-            $db->pdo()->exec("DROP FUNCTION IF EXISTS \"item\$audit_$event\"()");
+        foreach ($audited as $table) {
+            foreach (['insert', 'update', 'delete'] as $event) {
+                $db->pdo()->exec("DROP FUNCTION IF EXISTS \"$table\$audit_$event\"()");
+            }
         }
     }
-}
-
-/** native 값을 bool로 읽는다. 다른 값은 오류다. */
-function auditBool(mixed $v): bool
-{
-    return match (true) {
-        $v === true, $v === 1, $v === '1', $v === 't' => true,
-        $v === false, $v === 0, $v === '0', $v === 'f' => false,
-        default => throw new RuntimeException('not a boolean cell: ' . var_export($v, true)),
-    };
-}
-
-/** native 값을 정수로 읽는다. 다른 값은 오류다. */
-function auditInt(mixed $v): int
-{
-    if (is_int($v)) {
-        return $v;
-    }
-    if (is_string($v) && preg_match('/^-?[0-9]+$/D', $v) === 1) {
-        return (int) $v;
-    }
-    throw new RuntimeException('not an integer cell: ' . var_export($v, true));
-}
-
-/** @return list<array{string, ?int, int, string, int, bool}> item_history를 history_id 순서로 읽은 행 */
-function auditHistory(Db $db): array
-{
-    $change = $db->driver() === 'mysql' ? '`change`' : '"change"';
-    $rows = $db->pdo()->query("SELECT $change, previous_operation_id, seq, title, operation_id, deleted_at IS NOT NULL FROM item_history ORDER BY history_id")->fetchAll(PDO::FETCH_NUM);
-    return array_map(static fn(array $r): array => [
-        $r[0], $r[1] === null ? null : auditInt($r[1]), auditInt($r[2]), $r[3], auditInt($r[4]), auditBool($r[5]),
-    ], $rows);
 }
 
 /**
@@ -120,6 +97,9 @@ function auditModels(): void
     fixtureModels('audit', 'CoverageAudit\\Orm');
 }
 
+/** audit fixture가 만드는 table이다. */
+const AUDIT_TABLES = ['audit', 'item', 'item_history'];
+
 /**
  * 고른 database에 audit document를 설치하고 $body를 실행한 뒤, 실패해도 설치한 table과 function을
  * 지운다.
@@ -132,54 +112,45 @@ function withAudit(Closure $body): void
     auditModels();
     $db = Orm::connect($dsn, new Config());
     try {
-        coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'item or item_history exists before the case');
+        foreach (AUDIT_TABLES as $table) {
+            coverageWant(!auditTable($db, $table), "$table exists before the case");
+        }
         coverageRestoring(function () use ($db, $body): void {
             $db->utils()->schema()->install(\CoverageAudit\Orm\schema());
             $body($db);
-        }, fn() => dropAudit($db));
-        coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'the audit tables remain');
+        }, fn() => dropFixture($db, ['item_history', 'item', 'audit'], ['item']));
+        foreach (AUDIT_TABLES as $table) {
+            coverageWant(!auditTable($db, $table), "$table remains after the case");
+        }
     } finally {
         $db->close();
     }
 }
 
 runCoverageCases($argv, [
+    // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
     'audit_history' => function (): void {
-        withAudit(function (Db $db): void {
-            $outside = coverageCode(fn() => (new Item)($db)->setTitle('outside')->create());
-            coverageWant($outside === Code::CONFIG, "an insert without an operation id is $outside, want CONFIG");
-            $seq = $db->transaction(function () use ($db): int {
-                $seq = (new Item)->setTitle('first')->create()->getSeq();
-                // 중첩 transaction은 바깥 operation id를 쓴다.
-                $db->transaction(fn() => (new Item)->getBySeq($seq)->setTitle('second')->update());
-                return $seq;
-            }, operation: 7, retry: 0);
-            $third = coverageCode(fn() => (new Item)($db)->getBySeq($seq)->setTitle('third')->update());
-            coverageWant($third === Code::CONFIG, "an update without an operation id is $third, want CONFIG");
-            $db->transaction(fn() => (new Item)->getBySeq($seq)->delete(), operation: 8, retry: 0);
-            $history = auditHistory($db);
-            $want = [
-                ['insert', null, $seq, 'first', 7, false],
-                ['update', 7, $seq, 'second', 7, false],
-                ['update', 7, $seq, 'second', 8, true],
-            ];
-            coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
-        });
+        withAudit(fn(Db $db) => auditCase($db, 'CoverageAudit\\Orm'));
     },
-    // 모든 transaction 진입점이 operation id를 받는다: PHP의 진입점은 Db::transaction 하나이며, 정한 id를
-    // audit 대상 write가 쓰고 중첩 transaction은 operation id를 받지 않는다.
-    'audit_operation_entry_points' => function (): void {
+    // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit 기본값을 가진 handle의 Db::transaction
+    // 하나이며, 두 transaction이 audit 기록을 하나씩 삽입하고 audit 대상 write가 그 key를 쓰고, 중첩
+    // transaction은 audit을 받지 않는다.
+    'audit_transaction_entry_points' => function (): void {
         withAudit(function (Db $db): void {
-            $seq = $db->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), operation: 7, retry: 0);
-            $db->transaction(fn() => (new Item)->getBySeq($seq)->setTitle('second')->update(), operation: 8, retry: 0);
-            $nested = coverageCode(fn() => $db->transaction(fn() => $db->transaction(fn() => null, operation: 10), operation: 9, retry: 0));
-            coverageWant($nested === Code::CONFIG, "a nested transaction with an operation id is $nested, want CONFIG");
-            $history = auditHistory($db);
+            $adb = $db->audit((new Audit)->setActor('default'));
+            $seq = $adb->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
+            $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'handle'], retry: 0);
+            $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
+            coverageWant($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
+            $s = (string) $seq;
+            $history = auditItemHistory($db);
             $want = [
-                ['insert', null, $seq, 'first', 7, false],
-                ['update', 7, $seq, 'second', 8, false],
+                ['insert', 'NULL', $s, 'first', '1', 'live'],
+                ['update', '1', $s, 'second', '2', 'live'],
             ];
             coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
+            $records = auditTextRows($db, 'SELECT seq, actor FROM audit ORDER BY seq');
+            coverageWant($records === [['1', 'transaction'], ['2', 'handle']], 'audit records ' . json_encode($records));
         });
     },
     // soft delete한 행을 restore로 되돌린다(restore_case.php): unique key와 exclude 목록을 가진 audit table과
@@ -187,7 +158,7 @@ runCoverageCases($argv, [
     'soft_delete_restore' => function (): void {
         [, $dsn] = coverageDatabase();
         fixtureModels('restore', 'CoverageRestore\\Orm');
-        $tables = ['label', 'membership', 'membership_history'];
+        $tables = ['audit', 'label', 'membership', 'membership_history'];
         $db = Orm::connect($dsn, new Config());
         try {
             foreach ($tables as $table) {
@@ -196,26 +167,12 @@ runCoverageCases($argv, [
             coverageRestoring(function () use ($db): void {
                 $db->utils()->schema()->install(\CoverageRestore\Orm\schema());
                 restoreCase($db, 'CoverageRestore\\Orm');
-            }, function () use ($db): void {
-                $quote = $db->driver() === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
-                foreach (['membership_history', 'membership', 'label'] as $table) {
-                    $db->pdo()->exec('DROP TABLE IF EXISTS ' . $quote($table));
-                }
-                if ($db->driver() === 'postgres') {
-                    foreach (['insert', 'update', 'delete'] as $event) {
-                        $db->pdo()->exec("DROP FUNCTION IF EXISTS \"membership\$audit_$event\"()");
-                    }
-                }
-            });
+            }, fn() => dropFixture($db, ['membership_history', 'membership', 'label', 'audit'], ['membership']));
             foreach ($tables as $table) {
                 coverageWant(!auditTable($db, $table), "$table remains after the case");
             }
         } finally {
             $db->close();
         }
-    },
-    // utils()->setOperation은 실행 중인 transaction의 operation id를 정한다(set_operation_case.php).
-    'audit_operation_set_in_transaction' => function (): void {
-        withAudit(fn(Db $db) => setOperationCase($db, 'CoverageAudit\\Orm'));
     },
 ]);

@@ -442,44 +442,50 @@ const audited = [
   'table service {',
   '  id i64 identity',
   '  name varchar(191)',
-  '  operation_id i64 null',
+  '  audit_seq i64 null',
   '  primary key (id)',
   '  settings {',
-  '    audit into service_history operation operation_id action change previous previous_operation_id',
+  '    audit into service_history column audit_seq references audit action change previous previous_audit_seq',
   '  }',
   '}',
   'table service_history {',
   '  history_id i64 identity',
   '  change varchar(16)',
-  '  previous_operation_id i64',
+  '  previous_audit_seq i64',
   '  id i64',
   '  name varchar(64)',
   '  extra i32',
   '  primary key (history_id)',
   '  settings {',
   '    soft_delete history_id',
-  '    audit into service operation id action name previous id',
+  '    audit into service column id references service_history action name previous id',
   '  }',
+  '}',
+  'table audit {',
+  '  seq i64 identity',
+  '  primary key (seq)',
   '}',
 ];
 invalid('audit', audited, [
   ['setting', 8, 16], // service_history is audited itself
   ['setting', 8, 16], // name varchar(64) differs
-  ['setting', 8, 16], // no operation_id copy
+  ['setting', 8, 16], // no audit_seq copy
   ['setting', 8, 16], // extra column
-  ['setting', 8, 42], // nullable operation column
-  ['setting', 8, 62], // action is varchar(16)
-  ['setting', 8, 78], // previous is not null
+  ['setting', 8, 39], // nullable audit column
+  ['setting', 8, 39], // no foreign key (audit_seq) references audit (seq)
+  ['setting', 8, 73], // action is varchar(16)
+  ['setting', 8, 89], // previous is not null
   ['setting', 20, 17], // soft_delete on an i64 column
   ['setting', 21, 16], // service is audited itself
   ['setting', 21, 16], // no history_id copy
   ['setting', 21, 16], // no change copy
-  ['setting', 21, 16], // no previous_operation_id copy
+  ['setting', 21, 16], // no previous_audit_seq copy
   ['setting', 21, 16], // name varchar(191) differs
   ['setting', 21, 16], // no extra copy
-  ['setting', 21, 16], // operation_id is not a copied column
-  ['setting', 21, 44], // action is varchar(191)
-  ['setting', 21, 58], // previous is not null
+  ['setting', 21, 16], // audit_seq is not a copied column
+  ['setting', 21, 45], // the audit record table is the table itself
+  ['setting', 21, 68], // action is varchar(191)
+  ['setting', 21, 82], // previous is not null
 ]);
 normalize('settings order and comments move with their lines', [
   'dbspec 1 shop',
